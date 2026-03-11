@@ -26,6 +26,8 @@ devlens
 
 This runs the default `analyze` command and outputs a full project report including language breakdown, frameworks, structure, issues, and suggestions.
 
+For a comprehensive walkthrough of every feature, use case, and output format, see the **[Full Guide](GUIDE.md)**.
+
 ## Commands
 
 ### `devlens analyze`
