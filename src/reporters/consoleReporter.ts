@@ -39,7 +39,7 @@ function bar(percentage: number, width = 20): string {
 // ── Report: analyze ───────────────────────────────────────
 
 export function reportAnalysis(report: AnalysisReport): void {
-  console.log(header('DevLens Project Report'));
+  console.log(header('ProjScan Project Report'));
 
   // Project info
   console.log(header('Project'));
@@ -102,7 +102,7 @@ export function reportAnalysis(report: AnalysisReport): void {
     for (const issue of fixableIssues) {
       console.log(`  ${chalk.green('•')} ${issue.description}`);
     }
-    console.log(`\n  Run ${chalk.bold.cyan('devlens fix')} to auto-fix these issues.`);
+    console.log(`\n  Run ${chalk.bold.cyan('projscan fix')} to auto-fix these issues.`);
   }
 
   console.log('');
@@ -147,7 +147,7 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
     for (let i = 0; i < fixable.length; i++) {
       console.log(`  ${chalk.bold(String(i + 1) + '.')} Fix: ${fixable[i].title}`);
     }
-    console.log(`\n  Run ${chalk.bold.cyan('devlens fix')} to auto-fix ${fixable.length} issue${fixable.length > 1 ? 's' : ''}.\n`);
+    console.log(`\n  Run ${chalk.bold.cyan('projscan fix')} to auto-fix ${fixable.length} issue${fixable.length > 1 ? 's' : ''}.\n`);
   }
 
   console.log('');

@@ -10,7 +10,7 @@ import type {
 export function reportAnalysisMarkdown(report: AnalysisReport): void {
   const lines: string[] = [];
 
-  lines.push('# DevLens Project Report');
+  lines.push('# ProjScan Project Report');
   lines.push('');
   lines.push('## Project');
   lines.push('');
