@@ -52,18 +52,6 @@ After installing, the `projscan` command is available everywhere.
 npx projscan
 ```
 
-### From source
-
-```bash
-git clone https://github.com/your-org/projscan.git
-cd projscan
-npm install
-npm run build
-npm link
-```
-
-This builds the TypeScript source and symlinks the `projscan` binary into your PATH.
-
 ### Requirements
 
 - Node.js >= 18
