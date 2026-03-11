@@ -15,46 +15,30 @@ function getVersion(): string {
 }
 
 /**
- * Full ASCII art banner — shown only on the default `projscan` command.
+ * Full banner — shown only on the default `projscan` command.
+ * Clean, modern design with rounded corners and diamond marker.
  */
 export function showBanner(): void {
   const version = getVersion();
+  const w = 44;
 
   const dim = chalk.dim;
-  const cyan = chalk.cyan.bold;
-  const green = chalk.green;
+  const cyan = chalk.cyan;
+  const white = chalk.white.bold;
 
-  const logo = [
-    `${cyan('  ██████╗ ██████╗  ██████╗      ██╗')}`,
-    `${cyan('  ██╔══██╗██╔══██╗██╔═══██╗     ██║')}`,
-    `${cyan('  ██████╔╝██████╔╝██║   ██║     ██║')}`,
-    `${cyan('  ██╔═══╝ ██╔══██╗██║   ██║██   ██║')}`,
-    `${cyan('  ██║     ██║  ██║╚██████╔╝╚█████╔╝')}`,
-    `${cyan('  ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚════╝')}`,
-  ];
-
-  const tagline = `${green(`v${version}`)}  ${dim('·')}  Instant Codebase Insights`;
-  const link = dim('github.com/abhiyoheswaran1/projscan');
-
-  const contentLines = [
-    '',
-    ...logo,
-    `         ${dim('┈┈┈')} ${chalk.white.bold('PROJSCAN')} ${dim('┈┈┈')}`,
-    '',
-    `  ${tagline}`,
-    `  ${link}`,
-    '',
-  ];
-
-  const maxLen = 47;
-  const top = dim(` ┌${'─'.repeat(maxLen)}┐`);
-  const bot = dim(` └${'─'.repeat(maxLen)}┘`);
+  const top = dim(`  ╭${'─'.repeat(w)}╮`);
+  const bot = dim(`  ╰${'─'.repeat(w)}╯`);
+  const row = (s: string) => dim('  │') + padVisual(s, w) + dim('│');
+  const blank = row('');
 
   console.log('');
   console.log(top);
-  for (const line of contentLines) {
-    console.log(dim(' │') + padVisual(line, maxLen) + dim('│'));
-  }
+  console.log(blank);
+  console.log(row(`    ${cyan('◆')}  ${white('ProjScan')}`));
+  console.log(blank);
+  console.log(row(`    ${dim(`v${version}`)}`));
+  console.log(row(`    ${dim('Instant codebase insights')}`));
+  console.log(blank);
   console.log(bot);
   console.log('');
 }
@@ -66,7 +50,7 @@ export function showCompactBanner(): void {
   const version = getVersion();
   console.log('');
   console.log(
-    `  ${chalk.cyan.bold('projscan')} ${chalk.dim(`v${version}`)}`,
+    `  ${chalk.cyan('◆')} ${chalk.white.bold('ProjScan')} ${chalk.dim(`v${version}`)}`,
   );
 }
 
