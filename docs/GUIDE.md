@@ -1,6 +1,6 @@
-# DevLens — Full Guide
+# ProjScan — Full Guide
 
-A deep dive into everything DevLens can do. For a quick overview, see the [README](../README.md).
+A deep dive into everything ProjScan can do. For a quick overview, see the [README](../README.md).
 
 ---
 
@@ -21,7 +21,7 @@ A deep dive into everything DevLens can do. For a quick overview, see the [READM
   - [JSON](#json)
   - [Markdown](#markdown)
 - [Global Options](#global-options)
-- [What DevLens Detects](#what-devlens-detects)
+- [What ProjScan Detects](#what-projscan-detects)
   - [Languages](#languages)
   - [Frameworks and Libraries](#frameworks-and-libraries)
   - [Issues and Health Checks](#issues-and-health-checks)
@@ -41,16 +41,28 @@ A deep dive into everything DevLens can do. For a quick overview, see the [READM
 ### Global install (recommended)
 
 ```bash
-npm install -g devlens
+npm install -g projscan
 ```
 
-After installing, the `devlens` command is available everywhere.
+After installing, the `projscan` command is available everywhere.
 
 ### Run without installing
 
 ```bash
-npx devlens
+npx projscan
 ```
+
+### From source
+
+```bash
+git clone https://github.com/your-org/projscan.git
+cd projscan
+npm install
+npm run build
+npm link
+```
+
+This builds the TypeScript source and symlinks the `projscan` binary into your PATH.
 
 ### Requirements
 
@@ -65,7 +77,7 @@ Navigate into any repository and run:
 
 ```bash
 cd your-project
-devlens
+projscan
 ```
 
 This runs the default `analyze` command. Within a second or two you'll see a full report covering:
@@ -83,7 +95,7 @@ This runs the default `analyze` command. Within a second or two you'll see a ful
 ### analyze
 
 ```bash
-devlens analyze
+projscan analyze
 ```
 
 The flagship command. Runs every detection module and produces the full project report.
@@ -99,9 +111,9 @@ The flagship command. Runs every detection module and produces the full project 
 **Example:**
 
 ```bash
-$ devlens analyze
+$ projscan analyze
 
-DevLens Analysis
+ProjScan Analysis
 ──────────────────────────────────────────
 
   Project    my-app
@@ -129,7 +141,7 @@ Frameworks
 ### doctor
 
 ```bash
-devlens doctor
+projscan doctor
 ```
 
 A focused health check. Runs only the issue detection pipeline and presents results as a health report with a summary score.
@@ -139,7 +151,7 @@ Use this when you want a quick "is this project in good shape?" answer without t
 **Example:**
 
 ```bash
-$ devlens doctor
+$ projscan doctor
 
 Project Health Report
 ──────────────────────────────────────────
@@ -158,7 +170,7 @@ Recommendations
   1. Fix: No Prettier configuration
   2. Fix: Missing .editorconfig
 
-  Run devlens fix to auto-fix 2 issues.
+  Run projscan fix to auto-fix 2 issues.
 ```
 
 **Severity levels:**
@@ -169,7 +181,7 @@ Recommendations
 ### fix
 
 ```bash
-devlens fix
+projscan fix
 ```
 
 Detects fixable issues and offers to auto-remediate them. Shows you exactly what will change before applying anything.
@@ -177,7 +189,7 @@ Detects fixable issues and offers to auto-remediate them. Shows you exactly what
 **Interactive mode (default):**
 
 ```bash
-$ devlens fix
+$ projscan fix
 
   Detected 3 fixable issues:
 
@@ -197,7 +209,7 @@ $ devlens fix
 **Non-interactive mode:**
 
 ```bash
-devlens fix -y
+projscan fix -y
 ```
 
 Skips the confirmation prompt. Useful in scripts or CI.
@@ -214,7 +226,7 @@ Skips the confirmation prompt. Useful in scripts or CI.
 ### explain
 
 ```bash
-devlens explain <file>
+projscan explain <file>
 ```
 
 Analyzes a single file and explains what it does. Uses regex-based static analysis — no AI, no network calls.
@@ -228,7 +240,7 @@ Analyzes a single file and explains what it does. Uses regex-based static analys
 **Example:**
 
 ```bash
-$ devlens explain src/core/repositoryScanner.ts
+$ projscan explain src/core/repositoryScanner.ts
 
 File Explanation
 ──────────────────────────────────────────
@@ -251,7 +263,7 @@ Exports
 ### diagram
 
 ```bash
-devlens diagram
+projscan diagram
 ```
 
 Generates an ASCII architecture diagram. Scans your directory structure and framework detection results to identify architectural layers.
@@ -291,7 +303,7 @@ Only layers that actually exist in the project are shown.
 ### structure
 
 ```bash
-devlens structure
+projscan structure
 ```
 
 Renders a tree view of the project directory with file counts per directory.
@@ -316,7 +328,7 @@ Hidden directories, `node_modules`, and build output directories are excluded au
 ### dependencies
 
 ```bash
-devlens dependencies
+projscan dependencies
 ```
 
 Deep dive into your project's dependency graph. Shows:
@@ -353,7 +365,7 @@ Every command supports the `--format` flag.
 Rich, colored terminal output with Unicode box-drawing characters and status icons. Best for interactive use.
 
 ```bash
-devlens analyze
+projscan analyze
 ```
 
 ### JSON
@@ -361,17 +373,17 @@ devlens analyze
 Machine-readable output. Useful for piping into other tools, storing results, or building dashboards.
 
 ```bash
-devlens analyze --format json
+projscan analyze --format json
 ```
 
 The JSON output contains the complete `AnalysisReport` object with all data from every detection module.
 
 ```bash
 # Pipe into jq for filtering
-devlens analyze --format json | jq '.issues[] | select(.severity == "error")'
+projscan analyze --format json | jq '.issues[] | select(.severity == "error")'
 
 # Save to file
-devlens analyze --format json > analysis.json
+projscan analyze --format json > analysis.json
 ```
 
 ### Markdown
@@ -379,8 +391,8 @@ devlens analyze --format json > analysis.json
 Formatted Markdown suitable for saving as documentation or pasting into a PR description.
 
 ```bash
-devlens doctor --format markdown > HEALTH.md
-devlens analyze --format markdown > ANALYSIS.md
+projscan doctor --format markdown > HEALTH.md
+projscan analyze --format markdown > ANALYSIS.md
 ```
 
 ---
@@ -398,17 +410,17 @@ devlens analyze --format markdown > ANALYSIS.md
 **Per-command help:**
 
 ```bash
-devlens fix --help
-devlens explain --help
+projscan fix --help
+projscan explain --help
 ```
 
 ---
 
-## What DevLens Detects
+## What ProjScan Detects
 
 ### Languages
 
-DevLens maps file extensions to language names. Supported languages include:
+ProjScan maps file extensions to language names. Supported languages include:
 
 | Language | Extensions |
 |----------|-----------|
@@ -457,7 +469,7 @@ Each detection has a **confidence level** (high, medium, low) and a **category**
 
 ### Issues and Health Checks
 
-DevLens ships with five analyzer modules:
+ProjScan ships with five analyzer modules:
 
 #### 1. ESLint Check
 - Looks for `.eslintrc.*`, `eslint.config.*`, or `eslintConfig` in package.json
@@ -492,7 +504,7 @@ The fix system is intentionally conservative. It only creates configuration file
 
 ### How fixes work
 
-1. `devlens fix` runs the issue detection pipeline
+1. `projscan fix` runs the issue detection pipeline
 2. Filters to issues where `fixAvailable: true`
 3. Shows you exactly what each fix will do
 4. Prompts for confirmation (unless `-y` is passed)
@@ -581,7 +593,7 @@ The `explain` command performs regex-based static analysis. It does not execute 
 
 ## Performance
 
-DevLens is designed to be fast enough to run on every save or as a pre-commit hook.
+ProjScan is designed to be fast enough to run on every save or as a pre-commit hook.
 
 | Metric | Target |
 |--------|--------|
@@ -604,16 +616,16 @@ DevLens is designed to be fast enough to run on every save or as a pre-commit ho
 
 ```bash
 cd new-project
-devlens                      # Full overview
-devlens structure            # Understand the layout
-devlens diagram              # See the architecture
-devlens explain src/index.ts # Understand the entry point
+projscan                      # Full overview
+projscan structure            # Understand the layout
+projscan diagram              # See the architecture
+projscan explain src/index.ts # Understand the entry point
 ```
 
 ### Pre-commit health check
 
 ```bash
-devlens doctor
+projscan doctor
 ```
 
 ### Setting up a new project
@@ -621,38 +633,38 @@ devlens doctor
 ```bash
 mkdir my-project && cd my-project
 npm init -y
-devlens fix -y   # Set up ESLint, Prettier, Vitest, EditorConfig
+projscan fix -y   # Set up ESLint, Prettier, Vitest, EditorConfig
 ```
 
 ### Generating a project report for a PR
 
 ```bash
-devlens analyze --format markdown > ANALYSIS.md
+projscan analyze --format markdown > ANALYSIS.md
 ```
 
 ### Checking dependency health
 
 ```bash
-devlens dependencies
-devlens dependencies --format json | jq '.risks'
+projscan dependencies
+projscan dependencies --format json | jq '.risks'
 ```
 
 ### Extracting data for a dashboard
 
 ```bash
-devlens analyze --format json > /tmp/devlens-report.json
+projscan analyze --format json > /tmp/projscan-report.json
 ```
 
 ---
 
 ## CI/CD Integration
 
-DevLens can run in CI to enforce project health standards.
+ProjScan can run in CI to enforce project health standards.
 
 ### GitHub Actions example
 
 ```yaml
-name: DevLens Health Check
+name: ProjScan Health Check
 on: [push, pull_request]
 
 jobs:
@@ -663,14 +675,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install -g devlens
-      - run: devlens doctor --format json > health.json
+      - run: npm install -g projscan
+      - run: projscan doctor --format json > health.json
       - name: Check for errors
         run: |
           errors=$(cat health.json | jq '[.[] | select(.severity == "error")] | length')
           if [ "$errors" -gt "0" ]; then
             echo "Found $errors error-level issues"
-            devlens doctor
+            projscan doctor
             exit 1
           fi
 ```
@@ -679,7 +691,7 @@ jobs:
 
 ```bash
 #!/bin/bash
-result=$(devlens doctor --format json)
+result=$(projscan doctor --format json)
 errors=$(echo "$result" | jq '[.[] | select(.severity == "error")] | length')
 warnings=$(echo "$result" | jq '[.[] | select(.severity == "warning")] | length')
 
@@ -700,7 +712,7 @@ The `dependencies` and `fix` commands require a `package.json` in the current di
 
 ### Scan is slow
 
-If scanning takes more than a few seconds, check whether you have large unignored directories. DevLens ignores `node_modules`, `.git`, `dist`, `build`, and `coverage` by default, but other large directories (e.g., vendored assets, data files) may slow the scan.
+If scanning takes more than a few seconds, check whether you have large unignored directories. ProjScan ignores `node_modules`, `.git`, `dist`, `build`, and `coverage` by default, but other large directories (e.g., vendored assets, data files) may slow the scan.
 
 ### Fix command fails to install packages
 
@@ -708,13 +720,13 @@ The fix system uses `npm install` by default. If you use yarn or pnpm, the insta
 
 ### Explain command shows "Source module"
 
-This is the fallback purpose when DevLens can't infer a more specific purpose from the file name or directory. It means the file doesn't match any known naming conventions.
+This is the fallback purpose when ProjScan can't infer a more specific purpose from the file name or directory. It means the file doesn't match any known naming conventions.
 
 ---
 
 ## Project Internals
 
-For contributors and the curious — here's how DevLens is structured:
+For contributors and the curious — here's how ProjScan is structured:
 
 ```
 src/
@@ -753,4 +765,4 @@ src/
 - **ESM-only** — Required by chalk v5 and ora v8; all imports use `.js` extensions
 - **Pure functions where possible** — `detectLanguages` is pure (no I/O), making it trivially testable
 - **No class hierarchies** — Analyzers and fixes are plain functions with consistent signatures
-- **No runtime config** — Everything is convention-based; no `.devlensrc` file needed
+- **No runtime config** — Everything is convention-based; no `.projscanrc` file needed

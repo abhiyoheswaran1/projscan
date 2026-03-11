@@ -61,7 +61,7 @@ import type {
 const program = new Command();
 
 program
-  .name('devlens')
+  .name('projscan')
   .description('Instant codebase insights — doctor, x-ray, and architecture map for any repository')
   .version('0.1.0')
   .option('--format <type>', 'output format: console, json, markdown', 'console')

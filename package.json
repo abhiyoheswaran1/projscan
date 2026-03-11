@@ -1,12 +1,12 @@
 {
-  "name": "devlens",
+  "name": "projscan",
   "version": "0.1.0",
   "description": "Instant codebase insights — doctor, x-ray, and architecture map for any repository",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "devlens": "./dist/cli/index.js"
+    "projscan": "./dist/cli/index.js"
   },
   "files": [
     "dist"
@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "lint": "eslint src/",
     "format": "prettier --write .",
-    "prepare": "npm run build"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "cli",
