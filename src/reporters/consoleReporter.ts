@@ -8,6 +8,7 @@ import type {
   ArchitectureLayer,
   DirectoryNode,
   DependencyReport,
+  DiffResult,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -155,6 +156,58 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
     console.log(`\n  Run ${chalk.bold.cyan('projscan fix')} to auto-fix ${fixable.length} issue${fixable.length > 1 ? 's' : ''}.\n`);
   }
 
+  console.log('');
+}
+
+// ── Report: ci ────────────────────────────────────────────
+
+export function reportCi(issues: Issue[], threshold: number): void {
+  const { score, grade, errors, warnings, infos } = calculateScore(issues);
+  const pass = score >= threshold;
+  const status = pass ? chalk.green('PASS') : chalk.red('FAIL');
+  const gradeColor = grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
+
+  console.log(
+    `projscan: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))} — ${errors} error${errors !== 1 ? 's' : ''}, ${warnings} warning${warnings !== 1 ? 's' : ''}, ${infos} info — ${status} (threshold: ${threshold})`,
+  );
+
+  if (!pass) {
+    for (const issue of issues) {
+      console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
+    }
+  }
+}
+
+// ── Report: diff ──────────────────────────────────────────
+
+export function reportDiff(diff: DiffResult): void {
+  console.log(header('Health Diff'));
+
+  const arrow = diff.scoreDelta > 0 ? chalk.green('↑') : diff.scoreDelta < 0 ? chalk.red('↓') : chalk.dim('—');
+  const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
+
+  console.log(`\n  Score: ${diff.before.score} → ${diff.after.score} (${delta})  ${arrow}`);
+  console.log(`  Grade: ${diff.before.grade} → ${diff.after.grade}`);
+
+  if (diff.resolvedIssues.length > 0) {
+    console.log(`\n  ${chalk.green('✓')} Resolved (${diff.resolvedIssues.length}):`);
+    for (const title of diff.resolvedIssues) {
+      console.log(`    ${chalk.green('—')} ${title}`);
+    }
+  }
+
+  if (diff.newIssues.length > 0) {
+    console.log(`\n  ${chalk.red('✗')} New (${diff.newIssues.length}):`);
+    for (const title of diff.newIssues) {
+      console.log(`    ${chalk.red('—')} ${title}`);
+    }
+  }
+
+  if (diff.resolvedIssues.length === 0 && diff.newIssues.length === 0) {
+    console.log(`\n  ${chalk.dim('No change in issues.')}`);
+  }
+
+  console.log(`\n  Baseline: ${chalk.dim(diff.before.timestamp)}`);
   console.log('');
 }
 

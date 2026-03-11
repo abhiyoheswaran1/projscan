@@ -5,6 +5,7 @@ import type {
   ArchitectureLayer,
   DirectoryNode,
   DependencyReport,
+  DiffResult,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
@@ -72,6 +73,61 @@ export function reportHealthMarkdown(issues: Issue[]): void {
     for (const issue of issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
       lines.push(`- ${icon} **${issue.title}** — ${issue.description}`);
+    }
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportCiMarkdown(issues: Issue[], threshold: number): void {
+  const { score, grade } = calculateScore(issues);
+  const pass = score >= threshold;
+  const lines: string[] = [
+    `# Projscan CI — ${pass ? 'PASS' : 'FAIL'}`,
+    '',
+    `| Metric | Value |`,
+    `| --- | --- |`,
+    `| Score | **${score}/100** |`,
+    `| Grade | **${grade}** |`,
+    `| Threshold | ${threshold} |`,
+    `| Result | ${pass ? '✅ Pass' : '❌ Fail'} |`,
+  ];
+
+  if (issues.length > 0) {
+    lines.push('', '## Issues', '');
+    for (const issue of issues) {
+      const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
+      lines.push(`- ${icon} **${issue.title}** — ${issue.description}`);
+    }
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportDiffMarkdown(diff: DiffResult): void {
+  const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
+  const arrow = diff.scoreDelta > 0 ? '↑' : diff.scoreDelta < 0 ? '↓' : '—';
+
+  const lines: string[] = [
+    '# Health Diff',
+    '',
+    '| Metric | Before | After | Delta |',
+    '| --- | --- | --- | --- |',
+    `| Score | ${diff.before.score} | ${diff.after.score} | ${delta} ${arrow} |`,
+    `| Grade | ${diff.before.grade} | ${diff.after.grade} | |`,
+  ];
+
+  if (diff.resolvedIssues.length > 0) {
+    lines.push('', '## Resolved', '');
+    for (const title of diff.resolvedIssues) {
+      lines.push(`- ✅ ${title}`);
+    }
+  }
+
+  if (diff.newIssues.length > 0) {
+    lines.push('', '## New Issues', '');
+    for (const title of diff.newIssues) {
+      lines.push(`- ❌ ${title}`);
     }
   }
 
