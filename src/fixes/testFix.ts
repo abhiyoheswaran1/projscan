@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Fix } from '../types.js';
+import { fileExists } from '../utils/fileHelpers.js';
 
 export const testFix: Fix = {
   id: 'add-tests',
@@ -13,11 +14,12 @@ export const testFix: Fix = {
     execSync('npm install --save-dev vitest', {
       cwd: rootPath,
       stdio: 'pipe',
+      timeout: 60_000,
     });
 
     // Add test script to package.json
+    const pkgPath = path.join(rootPath, 'package.json');
     try {
-      const pkgPath = path.join(rootPath, 'package.json');
       const raw = await fs.readFile(pkgPath, 'utf-8');
       const pkg = JSON.parse(raw);
 
@@ -30,8 +32,11 @@ export const testFix: Fix = {
       }
 
       await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
-    } catch {
-      // No package.json to update
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+        return; // No package.json — nothing to update
+      }
+      throw err; // Re-throw JSON parse errors or unexpected failures
     }
 
     // Create tests directory and sample test
@@ -57,12 +62,3 @@ describe('example', () => {
     }
   },
 };
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
