@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "lint": "eslint src/",
     "format": "prettier --write .",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
     "cli",
