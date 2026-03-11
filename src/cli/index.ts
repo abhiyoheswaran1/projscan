@@ -94,7 +94,11 @@ function setupLogLevel(): void {
 function maybeBanner(): void {
   const opts = program.opts();
   if (!opts.quiet && getFormat() === 'console') {
-    showBanner();
+    try {
+      showBanner();
+    } catch {
+      // Never let banner errors block the actual command
+    }
   }
 }
 
