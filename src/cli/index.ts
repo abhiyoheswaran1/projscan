@@ -15,7 +15,7 @@ import { collectIssues } from '../core/issueEngine.js';
 import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
-import { showBanner, showCompactBanner } from '../utils/banner.js';
+import { showBanner, showCompactBanner, showHelp } from '../utils/banner.js';
 import { saveBaseline, loadBaseline, computeDiff } from '../utils/baseline.js';
 
 import {
@@ -212,6 +212,7 @@ program
   .option('--min-score <score>', 'minimum passing score (0-100)', '70')
   .action(async (cmdOpts) => {
     setupLogLevel();
+    maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
 
@@ -250,6 +251,7 @@ program
   .option('--baseline <path>', 'path to baseline file (default: .projscan-baseline.json)')
   .action(async (cmdOpts) => {
     setupLogLevel();
+    maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
 
@@ -285,7 +287,6 @@ program
           reportDiffMarkdown(diff);
           break;
         default:
-          if (format === 'console') maybeCompactBanner();
           reportDiff(diff);
       }
     } catch (error) {
@@ -809,6 +810,15 @@ function promptYesNo(question: string): Promise<boolean> {
     });
   });
 }
+
+// ── Command: help ─────────────────────────────────────────
+
+program
+  .command('help')
+  .description('Show detailed help with all commands and options')
+  .action(() => {
+    showHelp();
+  });
 
 // ── Run ───────────────────────────────────────────────────
 

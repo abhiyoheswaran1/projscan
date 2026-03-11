@@ -95,6 +95,55 @@ export function showCompactBanner(): void {
 }
 
 /**
+ * Help screen — shown by `projscan help`.
+ * Displays the full banner + detailed command reference.
+ */
+export function showHelp(): void {
+  showBanner();
+
+  const dim = chalk.dim;
+  const cyan = chalk.cyan;
+  const w = chalk.white.bold;
+  const g = chalk.gray;
+
+  const commands = [
+    { cmd: 'projscan',              desc: 'Full project analysis (default)' },
+    { cmd: 'projscan doctor',       desc: 'Health check — detect issues and score your project' },
+    { cmd: 'projscan fix',          desc: 'Auto-fix detected issues (interactive)' },
+    { cmd: 'projscan fix -y',       desc: 'Auto-fix without prompting' },
+    { cmd: 'projscan ci',           desc: 'CI gate — exit 1 if score below threshold' },
+    { cmd: 'projscan ci --min-score 80', desc: 'Set custom minimum score' },
+    { cmd: 'projscan diff',         desc: 'Compare current health against saved baseline' },
+    { cmd: 'projscan diff --save-baseline', desc: 'Save current state as baseline' },
+    { cmd: 'projscan explain <file>', desc: 'Explain a file — purpose, imports, exports' },
+    { cmd: 'projscan diagram',      desc: 'Show architecture layer diagram' },
+    { cmd: 'projscan structure',    desc: 'Show directory structure overview' },
+    { cmd: 'projscan dependencies', desc: 'Analyze project dependencies' },
+    { cmd: 'projscan badge',        desc: 'Generate a health badge for your README' },
+  ];
+
+  const maxCmd = Math.max(...commands.map(c => c.cmd.length));
+
+  console.log(`  ${cyan('Usage')}`);
+  console.log(dim('  ─'.repeat(20)));
+  console.log('');
+
+  for (const { cmd, desc } of commands) {
+    console.log(`  ${w(cmd.padEnd(maxCmd + 2))} ${g(desc)}`);
+  }
+
+  console.log('');
+  console.log(`  ${cyan('Global Options')}`);
+  console.log(dim('  ─'.repeat(20)));
+  console.log('');
+  console.log(`  ${w('--format <type>')}   ${g('Output format: console, json, markdown')}`);
+  console.log(`  ${w('--verbose')}          ${g('Enable verbose/debug output')}`);
+  console.log(`  ${w('--quiet')}            ${g('Suppress non-essential output')}`);
+  console.log(`  ${w('--version')}          ${g('Show version number')}`);
+  console.log('');
+}
+
+/**
  * Pads a string with chalk formatting to a fixed visual width.
  * Strips ANSI codes when measuring length so columns align.
  */
