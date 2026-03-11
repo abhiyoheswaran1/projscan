@@ -11,6 +11,8 @@ A deep dive into everything ProjScan can do. For a quick overview, see the [READ
 - [Commands In Depth](#commands-in-depth)
   - [analyze](#analyze)
   - [doctor](#doctor)
+  - [ci](#ci)
+  - [diff](#diff)
   - [fix](#fix)
   - [explain](#explain)
   - [diagram](#diagram)
@@ -95,7 +97,7 @@ The flagship command. Runs every detection module and produces the full project 
 2. Builds a language breakdown by mapping file extensions to language names
 3. Detects frameworks by inspecting `package.json` dependencies and config file presence
 4. Analyzes dependencies from `package.json`
-5. Runs all issue analyzers (ESLint, Prettier, tests, architecture, dependency risk)
+5. Runs all issue analyzers (ESLint, Prettier, tests, architecture, dependency risk, security)
 6. Renders the combined report
 
 **Example:**
@@ -168,6 +170,106 @@ Recommendations
 - **error** (✖) — Problems that should be addressed immediately
 - **warning** (⚠) — Issues that affect code quality or maintainability
 - **info** (ℹ) — Suggestions for best practices
+
+### ci
+
+```bash
+projscan ci
+```
+
+A CI-pipeline-friendly health gate. Runs the full health check and exits with code 1 if the score falls below a threshold. No spinners or banners — clean output for CI logs.
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--min-score <n>` | Minimum passing score (0–100) | 70 |
+
+**Example:**
+
+```bash
+$ projscan ci --min-score 80
+
+projscan: B (82/100) — 0 errors, 2 warnings, 1 info — PASS (threshold: 80)
+```
+
+**Exit codes:**
+- `0` — Score meets or exceeds the threshold
+- `1` — Score is below the threshold
+
+**JSON output** (useful for CI parsing):
+
+```bash
+projscan ci --min-score 70 --format json
+```
+
+```json
+{
+  "ci": {
+    "score": 82,
+    "grade": "B",
+    "pass": true,
+    "threshold": 70,
+    "totalIssues": 3,
+    "errors": 0,
+    "warnings": 2,
+    "info": 1,
+    "issues": [...]
+  }
+}
+```
+
+### diff
+
+```bash
+projscan diff
+```
+
+Compare your project's current health against a saved baseline. Useful for tracking whether health is improving or degrading over time.
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--save-baseline` | Save current health as the baseline |
+| `--baseline <path>` | Path to baseline file (default: `.projscan-baseline.json`) |
+
+**Workflow:**
+
+```bash
+# Step 1: Save current state as baseline
+$ projscan diff --save-baseline
+
+  Baseline saved to /path/to/project/.projscan-baseline.json
+  Score: B (82/100)
+  Issues: 3
+
+# Step 2: Make changes, then compare
+$ projscan diff
+
+Health Diff
+──────────────────────────────────────────
+
+  Score: 82 → 90 (+8)  ↑
+  Grade: B → A
+
+  ✓ Resolved (2):
+    — No ESLint configuration
+    — Missing .editorconfig
+
+  ✗ New (1):
+    — Potential AWS Access Key detected in src/config.ts
+
+  Baseline: 2026-03-11T10:30:00.000Z
+```
+
+**Markdown output** (paste into PRs):
+
+```bash
+projscan diff --format markdown
+```
+
+The baseline file (`.projscan-baseline.json`) stores the score, grade, and issue list. Add it to your repo to track health over time, or add it to `.gitignore` if you only want local comparisons.
 
 ### fix
 
@@ -364,7 +466,7 @@ $ projscan badge
   https://img.shields.io/badge/projscan-A-brightgreen
 
   Markdown:
-  [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](https://github.com/abhiyoheswaran1/devlens)
+  [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](https://github.com/abhiyoheswaran1/projscan)
 
   Add this to your README to show your project health score.
 ```
@@ -519,7 +621,7 @@ Each detection has a **confidence level** (high, medium, low) and a **category**
 
 ### Issues and Health Checks
 
-ProjScan ships with five analyzer modules:
+ProjScan ships with six analyzer modules:
 
 #### 1. ESLint Check
 - Looks for `.eslintrc.*`, `eslint.config.*`, or `eslintConfig` in package.json
@@ -545,6 +647,18 @@ ProjScan ships with five analyzer modules:
 - Errors if total dependencies exceed 100
 - Flags `*` or `latest` version ranges
 - Warns if no lock file is present
+
+#### 6. Security Check
+- **Committed `.env` files**: Flags `.env`, `.env.local`, `.env.production`, etc. (but not `.env.example`, `.env.sample`, `.env.template`)
+- **Private key files**: Detects `.pem`, `.key`, `id_rsa`, `id_ed25519`, `.p12`, `.pfx` files
+- **Hardcoded secrets**: Scans file contents (files under 512KB) for:
+  - AWS Access Keys (`AKIA...`)
+  - GitHub tokens (`ghp_...`, `ghs_...`)
+  - Slack tokens (`xoxb-...`, `xoxp-...`)
+  - Generic patterns (`password=`, `secret=`, `api_key=` with quoted values)
+  - PEM private key headers
+- **Missing `.gitignore` entries**: Warns if `.env` is not in `.gitignore`
+- Severity: `error` for secrets and private keys, `warning` for .env files and missing .gitignore entries
 
 ---
 
@@ -709,49 +823,57 @@ projscan analyze --format json > /tmp/projscan-report.json
 
 ## CI/CD Integration
 
-ProjScan can run in CI to enforce project health standards.
+ProjScan ships with a dedicated `ci` command and a ready-to-use GitHub Actions workflow template.
 
-### GitHub Actions example
+### Using `projscan ci`
 
-```yaml
-name: ProjScan Health Check
-on: [push, pull_request]
+The `ci` command is purpose-built for pipelines — no spinners, no banners, clean exit codes:
 
-jobs:
-  health:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install -g projscan
-      - run: projscan doctor --format json > health.json
-      - name: Check health grade
-        run: |
-          grade=$(cat health.json | jq -r '.health.grade')
-          score=$(cat health.json | jq '.health.score')
-          echo "Health: $grade ($score/100)"
-          if [ "$grade" = "F" ]; then
-            echo "Health grade F — failing build"
-            projscan doctor
-            exit 1
-          fi
+```bash
+projscan ci                          # Fail if score < 70 (default)
+projscan ci --min-score 80           # Fail if score < 80
+projscan ci --min-score 70 --format json  # JSON output for parsing
 ```
+
+### GitHub Actions (copy-paste ready)
+
+ProjScan includes a workflow template at `.github/projscan-ci.yml`. Copy it to your project:
+
+```bash
+cp node_modules/projscan/.github/projscan-ci.yml .github/workflows/projscan.yml
+```
+
+Or copy from the [template file](../.github/projscan-ci.yml) directly. The workflow:
+
+1. Runs `projscan ci --min-score 70` on every push and PR
+2. Posts (or updates) a markdown health report as a PR comment
+3. Fails the build if the score is below the threshold
 
 ### Using JSON output in scripts
 
 ```bash
 #!/bin/bash
-result=$(projscan doctor --format json)
-errors=$(echo "$result" | jq '[.[] | select(.severity == "error")] | length')
-warnings=$(echo "$result" | jq '[.[] | select(.severity == "warning")] | length')
+result=$(projscan ci --min-score 0 --format json)
+pass=$(echo "$result" | jq '.ci.pass')
+score=$(echo "$result" | jq '.ci.score')
 
-echo "Errors: $errors, Warnings: $warnings"
+echo "Score: $score, Pass: $pass"
 
-if [ "$errors" -gt 0 ]; then
+if [ "$pass" = "false" ]; then
   exit 1
 fi
+```
+
+### Tracking health over time in CI
+
+Combine `ci` with `diff` to track regressions:
+
+```bash
+projscan diff --save-baseline        # Run once to create baseline
+# Commit .projscan-baseline.json to your repo
+
+# In CI, compare against baseline:
+projscan diff --format json          # Shows new/resolved issues
 ```
 
 ---
@@ -795,7 +917,8 @@ src/
 │   ├── prettierCheck.ts       # Prettier configuration presence
 │   ├── testCheck.ts           # Test framework + test file presence
 │   ├── architectureCheck.ts   # Structural heuristics
-│   └── dependencyRiskCheck.ts # Dependency count + version risks
+│   ├── dependencyRiskCheck.ts # Dependency count + version risks
+│   └── securityCheck.ts       # Secrets, .env files, private keys
 ├── fixes/
 │   ├── eslintFix.ts           # Creates eslint config, installs eslint
 │   ├── prettierFix.ts         # Creates .prettierrc, installs prettier
@@ -809,7 +932,8 @@ src/
 ├── utils/
 │   ├── fileWalker.ts          # fast-glob wrapper with ignore patterns
 │   ├── logger.ts              # Structured logger with levels
-│   └── scoreCalculator.ts     # Health score calculation and badge generation
+│   ├── scoreCalculator.ts     # Health score calculation and badge generation
+│   └── baseline.ts            # Baseline save/load/diff for health tracking
 └── types.ts                   # All shared TypeScript interfaces
 ```
 

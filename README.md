@@ -3,7 +3,7 @@
 # projscan
 
 [![npm version](https://img.shields.io/npm/v/projscan.svg)](https://www.npmjs.com/package/projscan)
-[![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/devlens/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/projscan/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 
 **Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
@@ -77,6 +77,8 @@ Run inside any repository:
 projscan            # Full project analysis
 projscan doctor     # Health check
 projscan fix        # Auto-fix detected issues
+projscan ci         # CI health gate (exits 1 on low score)
+projscan diff       # Compare health against a baseline
 projscan diagram    # Architecture visualization
 projscan structure  # Directory tree
 ```
@@ -88,13 +90,21 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | Command | Description |
 |---------|-------------|
 | `projscan analyze` | Full analysis — languages, frameworks, dependencies, issues |
-| `projscan doctor` | Health check — missing tooling, architecture smells, risks |
+| `projscan doctor` | Health check — missing tooling, architecture smells, security risks |
 | `projscan fix` | Auto-fix issues (ESLint, Prettier, Vitest, .editorconfig) |
+| `projscan ci` | CI pipeline health gate — exits 1 if score below threshold |
+| `projscan diff` | Compare current health against a saved baseline |
 | `projscan explain <file>` | Explain a file's purpose, imports, exports, and issues |
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
 | `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
 | `projscan badge` | Generate a health score badge for your README |
+
+To see all commands and options, run:
+
+```bash
+projscan --help
+```
 
 ### Output Formats
 
@@ -150,6 +160,9 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 - Large utility directories (architecture smell)
 - Excessive, deprecated, or wildcard-versioned dependencies
 - Missing lockfile
+- Committed `.env` files and private keys (security)
+- Hardcoded secrets — AWS keys, GitHub tokens, Slack tokens, generic passwords (security)
+- Missing `.env` in `.gitignore` (security)
 
 ## Performance
 
@@ -158,13 +171,44 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 - **Zero network requests** — everything runs locally
 - **4 runtime dependencies** — minimal footprint
 
+## CI/CD Integration
+
+Use `projscan ci` to gate your pipelines:
+
+```bash
+projscan ci --min-score 70          # Exits 1 if score < 70
+projscan ci --min-score 80 --format json  # JSON output for parsing
+```
+
+### GitHub Actions
+
+Copy the included workflow template to your project:
+
+```bash
+cp .github/projscan-ci.yml .github/workflows/projscan.yml
+```
+
+This runs health checks on every push/PR and posts a markdown health report as a PR comment. See [`.github/projscan-ci.yml`](.github/projscan-ci.yml) for the full workflow.
+
+## Tracking Health Over Time
+
+Save a baseline and compare later:
+
+```bash
+projscan diff --save-baseline       # Save current score
+# ... make changes ...
+projscan diff                       # Compare against baseline
+projscan diff --format markdown     # Markdown diff for PRs
+```
+
 ## Use Cases
 
 - **Onboarding**: Understand any codebase in seconds, not hours
 - **Code reviews**: Run `projscan doctor --format markdown` and paste into PRs
-- **CI/CD**: Add health checks to your pipeline ([see guide](docs/GUIDE.md#cicd-integration))
+- **CI/CD**: Use `projscan ci` to enforce health standards in your pipeline
+- **Security**: Catch committed secrets and `.env` files before they reach production
 - **Consulting**: Quickly assess client projects before diving in
-- **Maintenance**: Regular health checks across multiple repositories
+- **Maintenance**: Track health trends with `projscan diff` across releases
 
 ## Contributing
 
