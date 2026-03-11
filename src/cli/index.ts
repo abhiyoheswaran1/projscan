@@ -20,7 +20,6 @@ import {
   reportAnalysis,
   reportHealth,
   reportDetectedIssues,
-  reportFixResults,
   reportExplanation,
   reportDiagram,
   reportStructure,
@@ -47,12 +46,10 @@ import {
 
 import type {
   AnalysisReport,
-  Issue,
   FileExplanation,
   ImportInfo,
   ExportInfo,
   ArchitectureLayer,
-  DependencyReport,
   ReportFormat,
   FixResult,
 } from '../types.js';
