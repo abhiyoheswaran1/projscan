@@ -172,22 +172,6 @@ ProjScan is designed for speed:
 - Wildcard version ranges
 - Missing lockfile
 
-## Development
-
-```bash
-git clone https://github.com/your-org/projscan.git
-cd projscan
-npm install
-npm run build
-npm link
-```
-
-Run tests:
-
-```bash
-npm test
-```
-
 ## License
 
 MIT
