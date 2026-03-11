@@ -16,6 +16,8 @@ A deep dive into everything ProjScan can do. For a quick overview, see the [READ
   - [diagram](#diagram)
   - [structure](#structure)
   - [dependencies](#dependencies)
+  - [badge](#badge)
+- [Health Score](#health-score)
 - [Output Formats](#output-formats)
   - [Console](#console-default)
   - [JSON](#json)
@@ -132,7 +134,7 @@ Frameworks
 projscan doctor
 ```
 
-A focused health check. Runs only the issue detection pipeline and presents results as a health report with a summary score.
+A focused health check. Runs only the issue detection pipeline and presents results as a health report with a health score and letter grade.
 
 Use this when you want a quick "is this project in good shape?" answer without the full language/framework breakdown.
 
@@ -144,6 +146,7 @@ $ projscan doctor
 Project Health Report
 ──────────────────────────────────────────
 
+  Health Score: D (67/100)
   Found 1 error, 2 warnings, 1 info
 
 Issues Detected
@@ -341,6 +344,65 @@ Risks
   ⚠ lodash uses wildcard version "*"
   ⚠ No lock file found — builds may not be reproducible
 ```
+
+### badge
+
+```bash
+projscan badge
+```
+
+Calculates the project health score and generates a [shields.io](https://shields.io) badge you can add to your README.
+
+**Example:**
+
+```bash
+$ projscan badge
+
+  Health Score: A (100/100)
+
+  Badge URL:
+  https://img.shields.io/badge/projscan-A-brightgreen
+
+  Markdown:
+  [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](https://github.com/abhiyoheswaran1/devlens)
+
+  Add this to your README to show your project health score.
+```
+
+Use `--markdown` to output only the markdown snippet:
+
+```bash
+projscan badge --markdown
+```
+
+---
+
+## Health Score
+
+Every `projscan doctor` and `projscan badge` run calculates a health score from 0 to 100 based on detected issues.
+
+**Scoring:**
+
+| Severity | Deduction per issue |
+|----------|-------------------|
+| Error | -20 points |
+| Warning | -10 points |
+| Info | -3 points |
+
+**Grade thresholds:**
+
+| Grade | Score Range | Meaning |
+|-------|-------------|---------|
+| A | 90–100 | Excellent — project follows best practices |
+| B | 80–89 | Good — minor improvements possible |
+| C | 70–79 | Fair — several issues to address |
+| D | 60–69 | Poor — significant issues found |
+| F | < 60 | Critical — major issues need attention |
+
+The score appears in all output formats:
+- **Console**: Shown at the top of the doctor report
+- **JSON**: Included as `health.score` and `health.grade` fields
+- **Markdown**: Shown as a heading with an auto-generated shields.io badge
 
 ---
 
@@ -665,11 +727,13 @@ jobs:
           node-version: 22
       - run: npm install -g projscan
       - run: projscan doctor --format json > health.json
-      - name: Check for errors
+      - name: Check health grade
         run: |
-          errors=$(cat health.json | jq '[.[] | select(.severity == "error")] | length')
-          if [ "$errors" -gt "0" ]; then
-            echo "Found $errors error-level issues"
+          grade=$(cat health.json | jq -r '.health.grade')
+          score=$(cat health.json | jq '.health.score')
+          echo "Health: $grade ($score/100)"
+          if [ "$grade" = "F" ]; then
+            echo "Health grade F — failing build"
             projscan doctor
             exit 1
           fi
@@ -744,7 +808,8 @@ src/
 │   └── markdownReporter.ts    # Markdown output
 ├── utils/
 │   ├── fileWalker.ts          # fast-glob wrapper with ignore patterns
-│   └── logger.ts              # Structured logger with levels
+│   ├── logger.ts              # Structured logger with levels
+│   └── scoreCalculator.ts     # Health score calculation and badge generation
 └── types.ts                   # All shared TypeScript interfaces
 ```
 
