@@ -1,4 +1,4 @@
-# projscan
+# devlens
 
 Instant codebase insights — doctor, x-ray, and architecture map for any repository.
 
@@ -7,13 +7,13 @@ Run once, learn something immediately. Run daily, improve your codebase.
 ## Install
 
 ```bash
-npm install -g projscan
+npm install -g devlens
 ```
 
-Or run directly:
+Or run directly without installing:
 
 ```bash
-npx projscan
+npx devlens
 ```
 
 ## Quick Start
@@ -21,7 +21,7 @@ npx projscan
 Run inside any repository:
 
 ```bash
-projscan
+devlens
 ```
 
 This runs the default `analyze` command and outputs a full project report including language breakdown, frameworks, structure, issues, and suggestions.
@@ -30,20 +30,20 @@ For a comprehensive walkthrough of every feature, use case, and output format, s
 
 ## Commands
 
-### `projscan analyze`
+### `devlens analyze`
 
 Full project analysis — language detection, framework detection, dependency audit, and issue scanning.
 
 ```bash
-projscan analyze
+devlens analyze
 ```
 
-### `projscan doctor`
+### `devlens doctor`
 
 Health check for your project. Detects missing tooling, architecture smells, and dependency risks.
 
 ```bash
-projscan doctor
+devlens doctor
 ```
 
 Example output:
@@ -69,15 +69,15 @@ Recommendations
   3. Fix: No test framework detected
   4. Fix: Missing .editorconfig
 
-  Run projscan fix to auto-fix 4 issues.
+  Run devlens fix to auto-fix 4 issues.
 ```
 
-### `projscan fix`
+### `devlens fix`
 
 Automatically installs and configures missing developer tools.
 
 ```bash
-projscan fix
+devlens fix
 ```
 
 Detects issues, proposes fixes, prompts for confirmation, then applies:
@@ -90,39 +90,39 @@ Detects issues, proposes fixes, prompts for confirmation, then applies:
 Use `-y` to skip the prompt:
 
 ```bash
-projscan fix -y
+devlens fix -y
 ```
 
-### `projscan explain <file>`
+### `devlens explain <file>`
 
 Explains a file — its purpose, imports, exports, and potential issues.
 
 ```bash
-projscan explain src/services/payment.ts
+devlens explain src/services/payment.ts
 ```
 
-### `projscan diagram`
+### `devlens diagram`
 
 Generates an ASCII architecture diagram showing project layers and technologies.
 
 ```bash
-projscan diagram
+devlens diagram
 ```
 
-### `projscan structure`
+### `devlens structure`
 
 Shows the project directory tree with file counts.
 
 ```bash
-projscan structure
+devlens structure
 ```
 
-### `projscan dependencies`
+### `devlens dependencies`
 
 Analyzes project dependencies — counts, risks, and recommendations.
 
 ```bash
-projscan dependencies
+devlens dependencies
 ```
 
 ## Output Formats
@@ -130,8 +130,8 @@ projscan dependencies
 All commands support `--format` for different output targets:
 
 ```bash
-projscan analyze --format json
-projscan doctor --format markdown > HEALTH.md
+devlens analyze --format json
+devlens doctor --format markdown > HEALTH.md
 ```
 
 Formats: `console` (default), `json`, `markdown`
@@ -148,7 +148,7 @@ Formats: `console` (default), `json`, `markdown`
 
 ## Performance
 
-ProjScan is designed for speed:
+DevLens is designed for speed:
 
 - 5,000 files analyzed in under 1.5 seconds
 - 20,000 files analyzed in under 3 seconds
@@ -171,22 +171,6 @@ ProjScan is designed for speed:
 - Deprecated packages
 - Wildcard version ranges
 - Missing lockfile
-
-## Development
-
-```bash
-git clone https://github.com/your-org/projscan.git
-cd projscan
-npm install
-npm run build
-npm link
-```
-
-Run tests:
-
-```bash
-npm test
-```
 
 ## License
 

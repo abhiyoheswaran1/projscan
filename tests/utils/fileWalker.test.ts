@@ -8,7 +8,7 @@ describe('fileWalker', () => {
   let tmpDir: string;
 
   async function createTmpDir(): Promise<string> {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-test-'));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'devlens-test-'));
     return dir;
   }
 

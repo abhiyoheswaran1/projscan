@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
-const CACHE_DIR = path.join(os.tmpdir(), 'projscan-cache');
+const CACHE_DIR = path.join(os.tmpdir(), 'devlens-cache');
 const DEFAULT_TTL_MS = 60_000; // 1 minute
 
 async function ensureCacheDir(): Promise<void> {
