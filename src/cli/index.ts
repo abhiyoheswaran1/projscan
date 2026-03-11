@@ -14,6 +14,7 @@ import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { collectIssues } from '../core/issueEngine.js';
 import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
+import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
 
 import {
   reportAnalysis,
@@ -376,6 +377,44 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Dependency analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: badge ────────────────────────────────────────
+
+program
+  .command('badge')
+  .description('Generate a health badge for your README')
+  .option('--markdown', 'output as markdown image link')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    const rootPath = getRootPath();
+    const spinner = ora('Calculating health score...').start();
+
+    try {
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+      const { score, grade } = calculateScore(issues);
+
+      spinner.stop();
+
+      const gradeColor = grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
+      console.log(`\n  Health Score: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))}\n`);
+
+      if (cmdOpts.markdown) {
+        console.log(`  ${badgeMarkdown(grade)}\n`);
+      } else {
+        console.log(`  ${chalk.bold('Badge URL:')}`);
+        console.log(`  ${badgeUrl(grade)}\n`);
+        console.log(`  ${chalk.bold('Markdown:')}`);
+        console.log(`  ${badgeMarkdown(grade)}\n`);
+      }
+
+      console.log(chalk.dim('  Add this to your README to show your project health score.\n'));
+    } catch (error) {
+      spinner.fail('Badge generation failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

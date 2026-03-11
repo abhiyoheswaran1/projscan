@@ -6,6 +6,7 @@ import type {
   DirectoryNode,
   DependencyReport,
 } from '../types.js';
+import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
 export function reportAnalysisMarkdown(report: AnalysisReport): void {
   const lines: string[] = [];
@@ -55,7 +56,13 @@ export function reportAnalysisMarkdown(report: AnalysisReport): void {
 }
 
 export function reportHealthMarkdown(issues: Issue[]): void {
+  const { score, grade } = calculateScore(issues);
   const lines: string[] = ['# Project Health Report', ''];
+
+  lines.push(`**Health Score: ${grade} (${score}/100)**`);
+  lines.push('');
+  lines.push(badgeMarkdown(grade));
+  lines.push('');
 
   if (issues.length === 0) {
     lines.push('No issues detected. Project looks healthy!');
