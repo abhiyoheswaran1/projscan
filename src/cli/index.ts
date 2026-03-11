@@ -5,7 +5,12 @@ import ora from 'ora';
 import chalk from 'chalk';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import readline from 'node:readline';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
 
 import { scanRepository } from '../core/repositoryScanner.js';
 import { detectLanguages } from '../core/languageDetector.js';
@@ -69,7 +74,7 @@ const program = new Command();
 program
   .name('projscan')
   .description('Instant codebase insights — doctor, x-ray, and architecture map for any repository')
-  .version('0.1.0')
+  .version(pkg.version)
   .option('--format <type>', 'output format: console, json, markdown', 'console')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
