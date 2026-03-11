@@ -14,6 +14,9 @@ function getVersion(): string {
   }
 }
 
+/**
+ * Full ASCII art banner — shown only on the default `projscan` command.
+ */
 export function showBanner(): void {
   const version = getVersion();
 
@@ -54,6 +57,17 @@ export function showBanner(): void {
   }
   console.log(bot);
   console.log('');
+}
+
+/**
+ * Compact one-liner — shown on subcommands (doctor, fix, etc.).
+ */
+export function showCompactBanner(): void {
+  const version = getVersion();
+  console.log('');
+  console.log(
+    `  ${chalk.cyan.bold('projscan')} ${chalk.dim(`v${version}`)}`,
+  );
 }
 
 /**
