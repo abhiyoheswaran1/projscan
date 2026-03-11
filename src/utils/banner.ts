@@ -15,31 +15,71 @@ function getVersion(): string {
 }
 
 /**
- * Full banner — shown only on the default `projscan` command.
- * Clean, modern design with rounded corners and diamond marker.
+ * Full two-panel welcome screen — shown only on the default `projscan` command.
+ * Left panel: ASCII logo + version. Right panel: commands + what's new.
  */
 export function showBanner(): void {
   const version = getVersion();
-  const w = 44;
 
+  const c = chalk.cyan.bold;
   const dim = chalk.dim;
-  const cyan = chalk.cyan;
-  const white = chalk.white.bold;
+  const head = chalk.cyan;
+  const w = chalk.white;
 
-  const top = dim(`  ╭${'─'.repeat(w)}╮`);
-  const bot = dim(`  ╰${'─'.repeat(w)}╯`);
-  const row = (s: string) => dim('  │') + padVisual(s, w) + dim('│');
-  const blank = row('');
+  // Left panel lines (logo + info)
+  const L = [
+    '',
+    `  ${c('██████╗ ██████╗  ██████╗      ██╗')} `,
+    `  ${c('██╔══██╗██╔══██╗██╔═══██╗     ██║')} `,
+    `  ${c('██████╔╝██████╔╝██║   ██║     ██║')} `,
+    `  ${c('██╔═══╝ ██╔══██╗██║   ██║██   ██║')} `,
+    `  ${c('██║     ██║  ██║╚██████╔╝╚█████╔╝')} `,
+    `  ${c('╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚════╝')}  `,
+    '',
+    `  ${dim(`v${version}`)} ${dim('·')} ${dim('Instant codebase insights')}`,
+    `  ${dim('github.com/abhiyoheswaran1/projscan')}`,
+    '',
+  ];
+
+  // Right panel lines (commands + what's new)
+  const R = [
+    `${head('Commands')}`,
+    `${w('doctor')}     ${dim('Health check')}`,
+    `${w('fix')}        ${dim('Auto-fix issues')}`,
+    `${w('ci')}         ${dim('CI health gate')}`,
+    `${w('diff')}       ${dim('Compare baseline')}`,
+    `${w('explain')}    ${dim('Explain a file')}`,
+    `${w('diagram')}    ${dim('Architecture map')}`,
+    `${dim('...projscan --help')}`,
+    `${head("What's new")}`,
+    `${dim('Security checker')}`,
+    `${dim('CI health gate & diff')}`,
+  ];
+
+  const leftW = 42;
+  const rightW = 32;
+  const totalW = leftW + 1 + rightW; // +1 for the middle divider
+
+  const title = ` ProjScan v${version} `;
+  const dashCount = totalW - title.length;
+  const dashLeft = Math.floor(dashCount / 2);
+  const dashRight = dashCount - dashLeft;
+  const topLine = dim('  ╭') + dim('╌'.repeat(dashLeft)) + dim(title) + dim('╌'.repeat(dashRight)) + dim('╮');
+  const botLine = dim(`  ╰${'─'.repeat(totalW)}╯`);
+
+  const rows = Math.max(L.length, R.length);
 
   console.log('');
-  console.log(top);
-  console.log(blank);
-  console.log(row(`    ${cyan('◆')}  ${white('ProjScan')}`));
-  console.log(blank);
-  console.log(row(`    ${dim(`v${version}`)}`));
-  console.log(row(`    ${dim('Instant codebase insights')}`));
-  console.log(blank);
-  console.log(bot);
+  console.log(topLine);
+
+  for (let i = 0; i < rows; i++) {
+    const left = i < L.length ? L[i] : '';
+    const right = i < R.length ? R[i] : '';
+    const sep = (i > 0 && i < rows - 1) ? dim('│') : ' ';
+    console.log(dim('  │') + padVisual(left, leftW) + sep + padVisual(right, rightW) + dim('│'));
+  }
+
+  console.log(botLine);
   console.log('');
 }
 
