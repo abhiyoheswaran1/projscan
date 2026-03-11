@@ -27,10 +27,23 @@
     "project-health",
     "architecture",
     "linting",
-    "devtools"
+    "devtools",
+    "code-quality",
+    "analyzer",
+    "project-scanner",
+    "dev-tools",
+    "dx"
   ],
-  "author": "",
+  "author": "Abhi Yoheswaran",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abhiyoheswaran1/devlens.git"
+  },
+  "homepage": "https://github.com/abhiyoheswaran1/devlens#readme",
+  "bugs": {
+    "url": "https://github.com/abhiyoheswaran1/devlens/issues"
+  },
   "engines": {
     "node": ">=18"
   },

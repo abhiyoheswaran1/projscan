@@ -1,54 +1,35 @@
+<![CDATA[<div align="center">
+
 # projscan
 
-Instant codebase insights — doctor, x-ray, and architecture map for any repository.
+[![npm version](https://img.shields.io/npm/v/projscan.svg)](https://www.npmjs.com/package/projscan)
+[![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/devlens/blob/main/LICENSE)
+[![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 
-Run once, learn something immediately. Run daily, improve your codebase.
+**Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
 
-## Install
+[Install](#install) · [Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md)
 
-```bash
-npm install -g projscan
-```
+</div>
 
-Or run directly:
+---
 
-```bash
-npx projscan
-```
+## Why?
 
-## Quick Start
+Every time you clone a new repo, join a new team, or revisit an old project, you face the same questions:
 
-Run inside any repository:
+- What language and framework is this?
+- Is there linting? Testing? Formatting?
+- What's the project structure?
+- Are the dependencies healthy?
 
-```bash
-projscan
-```
+Answering these manually takes 10-30 minutes of poking through config files and directories.
 
-This runs the default `analyze` command and outputs a full project report including language breakdown, frameworks, structure, issues, and suggestions.
-
-For a comprehensive walkthrough of every feature, use case, and output format, see the **[Full Guide](docs/GUIDE.md)**.
-
-## Commands
-
-### `projscan analyze`
-
-Full project analysis — language detection, framework detection, dependency audit, and issue scanning.
+**projscan answers all of this in one command, in under 2 seconds.**
 
 ```bash
-projscan analyze
-```
+$ projscan doctor
 
-### `projscan doctor`
-
-Health check for your project. Detects missing tooling, architecture smells, and dependency risks.
-
-```bash
-projscan doctor
-```
-
-Example output:
-
-```
 Project Health Report
 ──────────────────────────────────────────
 
@@ -62,81 +43,69 @@ Issues Detected
   ℹ Missing .editorconfig
   ℹ README is nearly empty
 
-Recommendations
-──────────────────────────────────────────
-  1. Fix: No ESLint configuration
-  2. Fix: No Prettier configuration
-  3. Fix: No test framework detected
-  4. Fix: Missing .editorconfig
-
   Run projscan fix to auto-fix 4 issues.
 ```
 
-### `projscan fix`
-
-Automatically installs and configures missing developer tools.
+And it doesn't just report problems — it **fixes them**:
 
 ```bash
-projscan fix
+$ projscan fix -y
+✔ Installed ESLint with TypeScript support
+✔ Installed Prettier with sensible defaults
+✔ Installed Vitest with sample test
+✔ Created .editorconfig
 ```
 
-Detects issues, proposes fixes, prompts for confirmation, then applies:
-
-- Installs ESLint with TypeScript support
-- Installs Prettier with sensible defaults
-- Installs Vitest with a sample test
-- Creates `.editorconfig`
-
-Use `-y` to skip the prompt:
+## Install
 
 ```bash
-projscan fix -y
+npm install -g projscan
 ```
 
-### `projscan explain <file>`
-
-Explains a file — its purpose, imports, exports, and potential issues.
+Or run directly without installing:
 
 ```bash
-projscan explain src/services/payment.ts
+npx projscan
 ```
 
-### `projscan diagram`
+## Quick Start
 
-Generates an ASCII architecture diagram showing project layers and technologies.
+Run inside any repository:
 
 ```bash
-projscan diagram
+projscan            # Full project analysis
+projscan doctor     # Health check
+projscan fix        # Auto-fix detected issues
+projscan diagram    # Architecture visualization
+projscan structure  # Directory tree
 ```
 
-### `projscan structure`
+For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 
-Shows the project directory tree with file counts.
+## Commands
 
-```bash
-projscan structure
-```
+| Command | Description |
+|---------|-------------|
+| `projscan analyze` | Full analysis — languages, frameworks, dependencies, issues |
+| `projscan doctor` | Health check — missing tooling, architecture smells, risks |
+| `projscan fix` | Auto-fix issues (ESLint, Prettier, Vitest, .editorconfig) |
+| `projscan explain <file>` | Explain a file's purpose, imports, exports, and issues |
+| `projscan diagram` | ASCII architecture diagram of your project |
+| `projscan structure` | Directory tree with file counts |
+| `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
 
-### `projscan dependencies`
-
-Analyzes project dependencies — counts, risks, and recommendations.
-
-```bash
-projscan dependencies
-```
-
-## Output Formats
+### Output Formats
 
 All commands support `--format` for different output targets:
 
 ```bash
-projscan analyze --format json
-projscan doctor --format markdown > HEALTH.md
+projscan analyze --format json       # Machine-readable JSON
+projscan doctor --format markdown    # Markdown for docs/PRs
 ```
 
 Formats: `console` (default), `json`, `markdown`
 
-## Options
+### Options
 
 | Flag | Description |
 |------|-------------|
@@ -146,15 +115,6 @@ Formats: `console` (default), `json`, `markdown`
 | `-V, --version` | Show version |
 | `-h, --help` | Show help |
 
-## Performance
-
-ProjScan is designed for speed:
-
-- 5,000 files analyzed in under 1.5 seconds
-- 20,000 files analyzed in under 3 seconds
-- Zero network requests — everything runs locally
-- Minimal dependencies (4 runtime packages)
-
 ## What It Detects
 
 **Languages**: TypeScript, JavaScript, Python, Go, Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more
@@ -162,16 +122,33 @@ ProjScan is designed for speed:
 **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, and more
 
 **Issues**:
-- Missing ESLint configuration
-- Missing Prettier configuration
+- Missing linting (ESLint) and formatting (Prettier) configuration
 - Missing test framework
 - Missing `.editorconfig`
 - Large utility directories (architecture smell)
-- Excessive dependencies
-- Deprecated packages
-- Wildcard version ranges
+- Excessive, deprecated, or wildcard-versioned dependencies
 - Missing lockfile
+
+## Performance
+
+- **5,000 files** analyzed in under 1.5 seconds
+- **20,000 files** analyzed in under 3 seconds
+- **Zero network requests** — everything runs locally
+- **4 runtime dependencies** — minimal footprint
+
+## Use Cases
+
+- **Onboarding**: Understand any codebase in seconds, not hours
+- **Code reviews**: Run `projscan doctor --format markdown` and paste into PRs
+- **CI/CD**: Add health checks to your pipeline ([see guide](docs/GUIDE.md#cicd-integration))
+- **Consulting**: Quickly assess client projects before diving in
+- **Maintenance**: Regular health checks across multiple repositories
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
 MIT
+]]>
