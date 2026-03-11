@@ -143,6 +143,16 @@ export interface AnalysisReport {
   timestamp: string;
 }
 
+// === Health Score ===
+
+export interface HealthScore {
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  errors: number;
+  warnings: number;
+  infos: number;
+}
+
 // === Reporter Interface ===
 
 export type ReportFormat = 'console' | 'json' | 'markdown';

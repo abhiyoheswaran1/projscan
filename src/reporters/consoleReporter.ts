@@ -9,6 +9,7 @@ import type {
   DirectoryNode,
   DependencyReport,
 } from '../types.js';
+import { calculateScore } from '../utils/scoreCalculator.js';
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -113,8 +114,12 @@ export function reportAnalysis(report: AnalysisReport): void {
 export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
   console.log(header('Project Health Report'));
 
+  const { score, grade } = calculateScore(issues);
+  const gradeColor = grade === 'A' ? chalk.green : grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : grade === 'D' ? chalk.yellow : chalk.red;
+  console.log(`\n  Health Score: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))}`);
+
   if (issues.length === 0) {
-    console.log(`\n  ${chalk.green('✓')} ${chalk.bold('No issues detected!')} Your project looks healthy.\n`);
+    console.log(`  ${chalk.green('✓')} ${chalk.bold('No issues detected!')} Your project looks healthy.\n`);
     return;
   }
 
@@ -127,7 +132,7 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
   if (errors.length > 0) parts.push(chalk.red(`${errors.length} error${errors.length > 1 ? 's' : ''}`));
   if (warnings.length > 0) parts.push(chalk.yellow(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`));
   if (infos.length > 0) parts.push(chalk.blue(`${infos.length} info`));
-  console.log(`\n  Found ${parts.join(', ')}`);
+  console.log(`  Found ${parts.join(', ')}`);
 
   if (scanTimeMs !== undefined) {
     console.log(`  Scanned in ${chalk.dim(scanTimeMs.toFixed(0) + 'ms')}`);

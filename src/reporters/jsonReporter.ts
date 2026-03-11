@@ -6,20 +6,24 @@ import type {
   DirectoryNode,
   DependencyReport,
 } from '../types.js';
+import { calculateScore } from '../utils/scoreCalculator.js';
 
 export function reportAnalysisJson(report: AnalysisReport): void {
   console.log(JSON.stringify(report, null, 2));
 }
 
 export function reportHealthJson(issues: Issue[]): void {
+  const { score, grade, errors, warnings, infos } = calculateScore(issues);
   console.log(
     JSON.stringify(
       {
         health: {
+          score,
+          grade,
           totalIssues: issues.length,
-          errors: issues.filter((i) => i.severity === 'error').length,
-          warnings: issues.filter((i) => i.severity === 'warning').length,
-          info: issues.filter((i) => i.severity === 'info').length,
+          errors,
+          warnings,
+          info: infos,
           issues,
         },
       },

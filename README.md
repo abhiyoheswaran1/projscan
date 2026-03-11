@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # projscan
 
@@ -151,4 +151,3 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ## License
 
 MIT
-]]>
