@@ -47,5 +47,5 @@ export function badgeUrl(grade: HealthScore['grade']): string {
 }
 
 export function badgeMarkdown(grade: HealthScore['grade']): string {
-  return `[![projscan health](${badgeUrl(grade)})](https://github.com/abhiyoheswaran1/devlens)`;
+  return `[![projscan health](${badgeUrl(grade)})](https://github.com/abhiyoheswaran1/projscan)`;
 }

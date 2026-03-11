@@ -153,6 +153,23 @@ export interface HealthScore {
   infos: number;
 }
 
+// === Baseline / Diff ===
+
+export interface Baseline {
+  score: number;
+  grade: HealthScore['grade'];
+  issues: { id: string; title: string; severity: IssueSeverity }[];
+  timestamp: string;
+}
+
+export interface DiffResult {
+  before: Baseline;
+  after: Baseline;
+  scoreDelta: number;
+  newIssues: string[];
+  resolvedIssues: string[];
+}
+
 // === Reporter Interface ===
 
 export type ReportFormat = 'console' | 'json' | 'markdown';

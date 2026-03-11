@@ -87,6 +87,6 @@ describe('badgeMarkdown', () => {
     const md = badgeMarkdown('A');
     expect(md).toContain('[![projscan health]');
     expect(md).toContain('brightgreen');
-    expect(md).toContain('github.com/abhiyoheswaran1/devlens');
+    expect(md).toContain('github.com/abhiyoheswaran1/projscan');
   });
 });

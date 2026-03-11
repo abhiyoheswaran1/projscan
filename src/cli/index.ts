@@ -16,10 +16,13 @@ import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
 import { showBanner } from '../utils/banner.js';
+import { saveBaseline, loadBaseline, computeDiff } from '../utils/baseline.js';
 
 import {
   reportAnalysis,
   reportHealth,
+  reportCi,
+  reportDiff,
   reportDetectedIssues,
   reportExplanation,
   reportDiagram,
@@ -30,6 +33,8 @@ import {
 import {
   reportAnalysisJson,
   reportHealthJson,
+  reportCiJson,
+  reportDiffJson,
   reportExplanationJson,
   reportDiagramJson,
   reportStructureJson,
@@ -39,6 +44,8 @@ import {
 import {
   reportAnalysisMarkdown,
   reportHealthMarkdown,
+  reportCiMarkdown,
+  reportDiffMarkdown,
   reportExplanationMarkdown,
   reportDiagramMarkdown,
   reportStructureMarkdown,
@@ -177,6 +184,96 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Health check failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: ci ──────────────────────────────────────────
+
+program
+  .command('ci')
+  .description('Run health check for CI pipelines (exits 1 if score below threshold)')
+  .option('--min-score <score>', 'minimum passing score (0-100)', '70')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    const rootPath = getRootPath();
+    const format = getFormat();
+
+    try {
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+      const threshold = Math.max(0, Math.min(100, parseInt(cmdOpts.minScore, 10) || 70));
+      const { score } = calculateScore(issues);
+
+      switch (format) {
+        case 'json':
+          reportCiJson(issues, threshold);
+          break;
+        case 'markdown':
+          reportCiMarkdown(issues, threshold);
+          break;
+        default:
+          reportCi(issues, threshold);
+      }
+
+      if (score < threshold) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: diff ─────────────────────────────────────────
+
+program
+  .command('diff')
+  .description('Compare health against a saved baseline')
+  .option('--save-baseline', 'save current health as the baseline')
+  .option('--baseline <path>', 'path to baseline file (default: .projscan-baseline.json)')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    const rootPath = getRootPath();
+    const format = getFormat();
+
+    try {
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+
+      if (cmdOpts.saveBaseline) {
+        const filePath = await saveBaseline(rootPath, issues);
+        const { score, grade } = calculateScore(issues);
+        console.log(chalk.green(`\n  Baseline saved to ${filePath}`));
+        console.log(`  Score: ${chalk.bold(`${grade} (${score}/100)`)}`);
+        console.log(`  Issues: ${issues.length}\n`);
+        return;
+      }
+
+      let baseline;
+      try {
+        baseline = await loadBaseline(cmdOpts.baseline, rootPath);
+      } catch {
+        console.error(chalk.yellow('\n  No baseline found.'));
+        console.error(`  Run ${chalk.bold.cyan('projscan diff --save-baseline')} first to create one.\n`);
+        process.exit(1);
+      }
+
+      const diff = computeDiff(baseline, issues);
+
+      switch (format) {
+        case 'json':
+          reportDiffJson(diff);
+          break;
+        case 'markdown':
+          reportDiffMarkdown(diff);
+          break;
+        default:
+          if (format === 'console') maybeBanner();
+          reportDiff(diff);
+      }
+    } catch (error) {
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

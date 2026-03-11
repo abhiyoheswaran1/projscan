@@ -5,8 +5,8 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Development Setup
 
 ```bash
-git clone https://github.com/abhiyoheswaran1/devlens.git
-cd devlens
+git clone https://github.com/abhiyoheswaran1/projscan.git
+cd projscan
 npm install
 npm run build
 ```
@@ -39,14 +39,14 @@ npm run format        # Prettier
 
 ### Reporting Bugs
 
-Open an [issue](https://github.com/abhiyoheswaran1/devlens/issues/new?template=bug_report.md) with:
+Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=bug_report.md) with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Node.js version and OS
 
 ### Suggesting Features
 
-Open an [issue](https://github.com/abhiyoheswaran1/devlens/issues/new?template=feature_request.md) describing:
+Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=feature_request.md) describing:
 - The problem you're trying to solve
 - Your proposed solution
 - Alternative approaches you've considered

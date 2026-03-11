@@ -5,6 +5,7 @@ import type {
   ArchitectureLayer,
   DirectoryNode,
   DependencyReport,
+  DiffResult,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -31,6 +32,33 @@ export function reportHealthJson(issues: Issue[]): void {
       2,
     ),
   );
+}
+
+export function reportCiJson(issues: Issue[], threshold: number): void {
+  const { score, grade, errors, warnings, infos } = calculateScore(issues);
+  console.log(
+    JSON.stringify(
+      {
+        ci: {
+          score,
+          grade,
+          pass: score >= threshold,
+          threshold,
+          totalIssues: issues.length,
+          errors,
+          warnings,
+          info: infos,
+          issues,
+        },
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+export function reportDiffJson(diff: DiffResult): void {
+  console.log(JSON.stringify({ diff }, null, 2));
 }
 
 export function reportExplanationJson(explanation: FileExplanation): void {
