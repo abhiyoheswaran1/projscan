@@ -96,8 +96,8 @@ function maybeBanner(): void {
   if (!opts.quiet && getFormat() === 'console') {
     try {
       showBanner();
-    } catch {
-      // Never let banner errors block the actual command
+    } catch (err) {
+      console.error(chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`));
     }
   }
 }
@@ -107,8 +107,8 @@ function maybeCompactBanner(): void {
   if (!opts.quiet && getFormat() === 'console') {
     try {
       showCompactBanner();
-    } catch {
-      // Never let banner errors block the actual command
+    } catch (err) {
+      console.error(chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`));
     }
   }
 }
