@@ -33,6 +33,7 @@ $ projscan doctor
 Project Health Report
 ──────────────────────────────────────────
 
+  Health Score: C (67/100)
   Found 3 warnings, 2 info
 
 Issues Detected
@@ -93,6 +94,7 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
 | `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
+| `projscan badge` | Generate a health score badge for your README |
 
 ### Output Formats
 
@@ -114,6 +116,26 @@ Formats: `console` (default), `json`, `markdown`
 | `--quiet` | Suppress non-essential output |
 | `-V, --version` | Show version |
 | `-h, --help` | Show help |
+
+## Health Score
+
+Every `projscan doctor` run calculates a health score (0–100) and letter grade:
+
+| Grade | Score | Meaning |
+|-------|-------|---------|
+| A | 90–100 | Excellent — project follows best practices |
+| B | 80–89 | Good — minor improvements possible |
+| C | 70–79 | Fair — several issues to address |
+| D | 60–69 | Poor — significant issues found |
+| F | < 60 | Critical — major issues need attention |
+
+Generate a badge for your README:
+
+```bash
+projscan badge
+```
+
+This outputs a [shields.io](https://shields.io) badge URL and markdown snippet you can paste into your README.
 
 ## What It Detects
 
