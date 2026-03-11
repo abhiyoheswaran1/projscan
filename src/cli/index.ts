@@ -15,6 +15,7 @@ import { collectIssues } from '../core/issueEngine.js';
 import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
+import { showBanner } from '../utils/banner.js';
 
 import {
   reportAnalysis,
@@ -83,6 +84,13 @@ function setupLogLevel(): void {
   else if (opts.quiet) setLogLevel('quiet');
 }
 
+function maybeBanner(): void {
+  const opts = program.opts();
+  if (!opts.quiet && getFormat() === 'console') {
+    showBanner();
+  }
+}
+
 // ── Command: analyze (default) ────────────────────────────
 
 program
@@ -90,6 +98,7 @@ program
   .description('Analyze repository and show project report')
   .action(async () => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
     const spinner = format === 'console' ? ora('Scanning repository...').start() : null;
@@ -145,6 +154,7 @@ program
   .description('Evaluate project health and detect issues')
   .action(async () => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
     const spinner = format === 'console' ? ora('Running health checks...').start() : null;
@@ -180,6 +190,7 @@ program
   .option('-y, --yes', 'apply fixes without prompting')
   .action(async (cmdOpts) => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const spinner = ora('Detecting issues...').start();
 
@@ -246,6 +257,7 @@ program
   .description('Explain a file — its purpose, dependencies, and exports')
   .action(async (filePath: string) => {
     setupLogLevel();
+    maybeBanner();
     const format = getFormat();
     const absolutePath = path.resolve(filePath);
 
@@ -280,6 +292,7 @@ program
   .description('Generate architecture overview diagram')
   .action(async () => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
     const spinner = format === 'console' ? ora('Analyzing architecture...').start() : null;
@@ -315,6 +328,7 @@ program
   .description('Show project directory structure')
   .action(async () => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
     const spinner = format === 'console' ? ora('Scanning...').start() : null;
@@ -348,6 +362,7 @@ program
   .description('Analyze project dependencies')
   .action(async () => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
     const spinner = format === 'console' ? ora('Analyzing dependencies...').start() : null;
@@ -387,6 +402,7 @@ program
   .option('--markdown', 'output as markdown image link')
   .action(async (cmdOpts) => {
     setupLogLevel();
+    maybeBanner();
     const rootPath = getRootPath();
     const spinner = ora('Calculating health score...').start();
 

@@ -13,6 +13,7 @@ export const prettierFix: Fix = {
     execSync('npm install --save-dev prettier', {
       cwd: rootPath,
       stdio: 'pipe',
+      timeout: 60_000,
     });
 
     const config = {
@@ -30,8 +31,8 @@ export const prettierFix: Fix = {
     );
 
     // Add format script to package.json if not present
+    const pkgPath = path.join(rootPath, 'package.json');
     try {
-      const pkgPath = path.join(rootPath, 'package.json');
       const raw = await fs.readFile(pkgPath, 'utf-8');
       const pkg = JSON.parse(raw);
 
@@ -40,8 +41,11 @@ export const prettierFix: Fix = {
         pkg.scripts.format = 'prettier --write .';
         await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
       }
-    } catch {
-      // No package.json to update
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+        return; // No package.json — nothing to update
+      }
+      throw err; // Re-throw JSON parse errors or unexpected failures
     }
   },
 };

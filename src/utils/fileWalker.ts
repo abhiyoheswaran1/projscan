@@ -36,6 +36,7 @@ export async function walkFiles(rootPath: string, options?: WalkOptions): Promis
     ignore,
     stats: true,
     onlyFiles: true,
+    followSymbolicLinks: false,
   });
 
   return entries.map((entry) => {

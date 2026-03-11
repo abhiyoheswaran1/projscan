@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Fix } from '../types.js';
+import { fileExists } from '../utils/fileHelpers.js';
 
 export const eslintFix: Fix = {
   id: 'add-eslint',
@@ -20,6 +21,7 @@ export const eslintFix: Fix = {
     execSync(`npm install --save-dev ${packages.join(' ')}`, {
       cwd: rootPath,
       stdio: 'pipe',
+      timeout: 60_000,
     });
 
     const config = hasTypeScript
@@ -45,12 +47,3 @@ export const eslintFix: Fix = {
     );
   },
 };
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
