@@ -1,6 +1,6 @@
 # DevLens — Full Guide
 
-A deep dive into everything DevLens can do. For a quick overview, see the [README](README.md).
+A deep dive into everything DevLens can do. For a quick overview, see the [README](../README.md).
 
 ---
 
