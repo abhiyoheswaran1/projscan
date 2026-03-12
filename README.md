@@ -8,7 +8,7 @@
 
 **Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
 
-[Install](#install) · [Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md)
+[Install](#install) · [Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
 <img src="docs/hero.png" alt="projscan banner" width="600">
 
