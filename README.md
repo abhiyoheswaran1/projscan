@@ -5,7 +5,6 @@
 [![npm version](https://img.shields.io/npm/v/projscan.svg)](https://www.npmjs.com/package/projscan)
 [![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/projscan/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
-[![projscan health](https://img.shields.io/badge/projscan-D-orange)](https://github.com/abhiyoheswaran1/projscan)
 
 **Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
 
@@ -167,6 +166,8 @@ projscan badge
 ```
 
 This outputs a [shields.io](https://shields.io) badge URL and markdown snippet you can paste into your README.
+
+**Sample badge:** [![projscan health](https://img.shields.io/badge/projscan-D-orange)](https://github.com/abhiyoheswaran1/projscan)
 
 ## What It Detects
 
