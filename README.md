@@ -30,9 +30,17 @@ Answering these manually takes 10-30 minutes of poking through config files and 
 
 **projscan answers all of this in one command, in under 2 seconds.**
 
+```bash
+npx projscan
+```
+
 <img src="docs/npx%20projscan.png" alt="npx projscan" width="700">
 
 Run `projscan doctor` for a focused health check:
+
+```bash
+npx projscan doctor
+```
 
 <img src="docs/npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
 

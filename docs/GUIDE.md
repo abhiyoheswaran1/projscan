@@ -104,6 +104,34 @@ The flagship command. Runs every detection module and produces the full project 
 
 **Example:**
 
+```bash
+$ projscan analyze
+
+ProjScan Analysis
+──────────────────────────────────────────
+
+  Project    my-app
+  Files      342 files across 28 directories
+  Scanned    127ms
+
+Languages
+──────────────────────────────────────────
+  TypeScript   78.4%  (268 files)
+  JavaScript    8.5%  (29 files)
+  CSS           5.6%  (19 files)
+  JSON          4.4%  (15 files)
+  Markdown      3.2%  (11 files)
+
+Frameworks
+──────────────────────────────────────────
+  React         frontend    high
+  Next.js       fullstack   high
+  Tailwind CSS  css         high
+  Vitest        testing     high
+
+...
+```
+
 <img src="npx%20projscan.png" alt="npx projscan analyze" width="700">
 
 ### doctor
@@ -117,6 +145,30 @@ A focused health check. Runs only the issue detection pipeline and presents resu
 Use this when you want a quick "is this project in good shape?" answer without the full language/framework breakdown.
 
 **Example:**
+
+```bash
+$ projscan doctor
+
+Project Health Report
+──────────────────────────────────────────
+
+  Health Score: D (67/100)
+  Found 1 error, 2 warnings, 1 info
+
+Issues Detected
+──────────────────────────────────────────
+  ✖ Excessive dependencies (127 production)
+  ⚠ No Prettier configuration
+  ⚠ Large utils directory (14 files in src/utils)
+  ℹ Missing .editorconfig
+
+Recommendations
+──────────────────────────────────────────
+  1. Fix: No Prettier configuration
+  2. Fix: Missing .editorconfig
+
+  Run projscan fix to auto-fix 2 issues.
+```
 
 <img src="npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
 
@@ -140,6 +192,12 @@ A CI-pipeline-friendly health gate. Runs the full health check and exits with co
 | `--min-score <n>` | Minimum passing score (0–100) | 70 |
 
 **Example:**
+
+```bash
+$ projscan ci --min-score 80
+
+projscan: B (82/100) — 0 errors, 2 warnings, 1 info — PASS (threshold: 80)
+```
 
 <img src="npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci" width="700">
 
@@ -188,10 +246,24 @@ Compare your project's current health against a saved baseline. Useful for track
 
 ```bash
 # Step 1: Save current state as baseline
-projscan diff --save-baseline
+$ projscan diff --save-baseline
+
+  Baseline saved to /path/to/project/.projscan-baseline.json
+  Score: D (60/100)
+  Issues: 2
 
 # Step 2: Make changes, then compare
-projscan diff
+$ projscan diff
+
+Health Diff
+──────────────────────────────────────────
+
+  Score: 60 → 90 (+30)  ↑
+  Grade: D → A
+
+  ✓ Resolved (2):
+    — Potential Generic Secret detected in public/sw.js
+    — Potential Generic Secret detected in js/services/firebase.js
 ```
 
 <img src="npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
@@ -265,6 +337,27 @@ Analyzes a single file and explains what it does. Uses regex-based static analys
 
 **Example:**
 
+```bash
+$ projscan explain src/core/repositoryScanner.ts
+
+File Explanation
+──────────────────────────────────────────
+  File      src/core/repositoryScanner.ts
+  Purpose   Source module
+  Lines     45
+
+Imports
+──────────────────────────────────────────
+  fast-glob                    (package)
+  node:path                    (package)
+  ../types.js                  (relative)
+  ../utils/fileWalker.js       (relative)
+
+Exports
+──────────────────────────────────────────
+  scanRepository               function
+```
+
 <img src="npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
 
 ### diagram
@@ -286,6 +379,15 @@ Generates an ASCII architecture diagram. Scans your directory structure and fram
 
 **Example:**
 
+```
+Architecture Diagram
+──────────────────────────────────────────
+
+  Frontend
+  └─ Static
+     └─ public
+```
+
 <img src="npx%20projscan%20diagram.png" alt="npx projscan diagram" width="700">
 
 Only layers that actually exist in the project are shown.
@@ -299,6 +401,22 @@ projscan structure
 Renders a tree view of the project directory with file counts per directory.
 
 **Example:**
+
+```
+Project Structure
+──────────────────────────────────────────
+
+  demo app (159 files)
+  ├── .firebase/       (1 files)
+  ├── css/             (27 files)
+  ├── docs/            (17 files)
+  ├── js/              (53 files)
+  │   ├── __tests__/   (5 files)
+  │   └── services/    (1 files)
+  ├── locales/         (4 files)
+  ├── public/          (2 files)
+  └── tests/           (31 files)
+```
 
 <img src="npx%20projscan%20structure.png" alt="npx projscan structure" width="700">
 
@@ -319,6 +437,19 @@ Deep dive into your project's dependency graph. Shows:
 
 **Example:**
 
+```
+Dependency Report
+──────────────────────────────────────────
+
+  Production:     1 packages
+  Development:    6 packages
+  Total:          7 packages
+
+Production Dependencies
+──────────────────────────────────────────
+  • projscan ^0.1.10
+```
+
 <img src="npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
 
 ### badge
@@ -330,6 +461,20 @@ projscan badge
 Calculates the project health score and generates a [shields.io](https://shields.io) badge you can add to your README.
 
 **Example:**
+
+```bash
+$ projscan badge
+
+  Health Score: D (60/100)
+
+  Badge URL:
+  https://img.shields.io/badge/projscan-D-orange
+
+  Markdown:
+  [![projscan health](https://img.shields.io/badge/projscan-D-orange)](https://github.com/abhiyoheswaran1/projscan)
+
+  Add this to your README to show your project health score.
+```
 
 <img src="npx%20projscan%20badge.png" alt="npx projscan badge" width="700">
 
