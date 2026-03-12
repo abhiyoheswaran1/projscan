@@ -5,10 +5,13 @@
 [![npm version](https://img.shields.io/npm/v/projscan.svg)](https://www.npmjs.com/package/projscan)
 [![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/projscan/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
+[![projscan health](https://img.shields.io/badge/projscan-D-orange)](https://github.com/abhiyoheswaran1/projscan)
 
 **Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
 
 [Install](#install) · [Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md)
+
+<img src="docs/hero.png" alt="projscan banner" width="600">
 
 </div>
 
@@ -28,34 +31,18 @@ Answering these manually takes 10-30 minutes of poking through config files and 
 **projscan answers all of this in one command, in under 2 seconds.**
 
 ```bash
-$ projscan doctor
-
-Project Health Report
-──────────────────────────────────────────
-
-  Health Score: C (67/100)
-  Found 3 warnings, 2 info
-
-Issues Detected
-──────────────────────────────────────────
-  ⚠ No ESLint configuration
-  ⚠ No Prettier configuration
-  ⚠ No test framework detected
-  ℹ Missing .editorconfig
-  ℹ README is nearly empty
-
-  Run projscan fix to auto-fix 4 issues.
+npx projscan
 ```
 
-And it doesn't just report problems — it **fixes them**:
+<img src="docs/npx%20projscan.png" alt="npx projscan" width="700">
+
+Run `projscan doctor` for a focused health check:
 
 ```bash
-$ projscan fix -y
-✔ Installed ESLint with TypeScript support
-✔ Installed Prettier with sensible defaults
-✔ Installed Vitest with sample test
-✔ Created .editorconfig
+npx projscan doctor
 ```
+
+<img src="docs/npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
 
 ## Install
 
@@ -83,6 +70,8 @@ projscan diagram    # Architecture visualization
 projscan structure  # Directory tree
 ```
 
+<img src="docs/npx%20projscan%20--help.png" alt="npx projscan --help" width="700">
+
 For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 
 ## Commands
@@ -105,6 +94,38 @@ To see all commands and options, run:
 ```bash
 projscan --help
 ```
+
+### Command Screenshots
+
+<details>
+<summary><strong>projscan structure</strong> — Directory tree with file counts</summary>
+
+<img src="docs/npx%20projscan%20structure.png" alt="npx projscan structure" width="700">
+</details>
+
+<details>
+<summary><strong>projscan diagram</strong> — Architecture visualization</summary>
+
+<img src="docs/npx%20projscan%20diagram.png" alt="npx projscan diagram" width="700">
+</details>
+
+<details>
+<summary><strong>projscan dependencies</strong> — Dependency analysis</summary>
+
+<img src="docs/npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
+</details>
+
+<details>
+<summary><strong>projscan explain</strong> — File explanation</summary>
+
+<img src="docs/npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
+</details>
+
+<details>
+<summary><strong>projscan badge</strong> — Health badge generation</summary>
+
+<img src="docs/npx%20projscan%20badge.png" alt="npx projscan badge" width="700">
+</details>
 
 ### Output Formats
 
@@ -180,6 +201,8 @@ projscan ci --min-score 70          # Exits 1 if score < 70
 projscan ci --min-score 80 --format json  # JSON output for parsing
 ```
 
+<img src="docs/npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci --min-score 70" width="700">
+
 ### GitHub Actions
 
 Copy the included workflow template to your project:
@@ -200,6 +223,8 @@ projscan diff --save-baseline       # Save current score
 projscan diff                       # Compare against baseline
 projscan diff --format markdown     # Markdown diff for PRs
 ```
+
+<img src="docs/npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
 
 ## Use Cases
 

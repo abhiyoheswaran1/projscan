@@ -74,6 +74,8 @@ projscan
 
 This runs the default `analyze` command. Within a second or two you'll see a full report covering:
 
+<img src="npx%20projscan.png" alt="npx projscan" width="700">
+
 1. **Project overview** — name, total files, total directories, scan time
 2. **Language breakdown** — primary language, percentages per language
 3. **Frameworks detected** — with confidence levels and categories
@@ -130,6 +132,8 @@ Frameworks
 ...
 ```
 
+<img src="npx%20projscan.png" alt="npx projscan analyze" width="700">
+
 ### doctor
 
 ```bash
@@ -166,6 +170,8 @@ Recommendations
   Run projscan fix to auto-fix 2 issues.
 ```
 
+<img src="npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
+
 **Severity levels:**
 - **error** (✖) — Problems that should be addressed immediately
 - **warning** (⚠) — Issues that affect code quality or maintainability
@@ -192,6 +198,8 @@ $ projscan ci --min-score 80
 
 projscan: B (82/100) — 0 errors, 2 warnings, 1 info — PASS (threshold: 80)
 ```
+
+<img src="npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci" width="700">
 
 **Exit codes:**
 - `0` — Score meets or exceeds the threshold
@@ -241,8 +249,8 @@ Compare your project's current health against a saved baseline. Useful for track
 $ projscan diff --save-baseline
 
   Baseline saved to /path/to/project/.projscan-baseline.json
-  Score: B (82/100)
-  Issues: 3
+  Score: D (60/100)
+  Issues: 2
 
 # Step 2: Make changes, then compare
 $ projscan diff
@@ -250,18 +258,15 @@ $ projscan diff
 Health Diff
 ──────────────────────────────────────────
 
-  Score: 82 → 90 (+8)  ↑
-  Grade: B → A
+  Score: 60 → 90 (+30)  ↑
+  Grade: D → A
 
   ✓ Resolved (2):
-    — No ESLint configuration
-    — Missing .editorconfig
-
-  ✗ New (1):
-    — Potential AWS Access Key detected in src/config.ts
-
-  Baseline: 2026-03-11T10:30:00.000Z
+    — Potential Generic Secret detected in public/sw.js
+    — Potential Generic Secret detected in js/services/firebase.js
 ```
+
+<img src="npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
 
 **Markdown output** (paste into PRs):
 
@@ -353,6 +358,8 @@ Exports
   scanRepository               function
 ```
 
+<img src="npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
+
 ### diagram
 
 ```bash
@@ -376,20 +383,12 @@ Generates an ASCII architecture diagram. Scans your directory structure and fram
 Architecture Diagram
 ──────────────────────────────────────────
 
-┌──────────────────────────────────┐
-│       Frontend (React)           │
-│   components, pages, layouts     │
-├──────────────────────────────────┤
-│       API Layer (Express)        │
-│   routes, controllers            │
-├──────────────────────────────────┤
-│       Services (TypeScript)      │
-│   services, core                 │
-├──────────────────────────────────┤
-│       Database (Prisma)          │
-│   prisma, models                 │
-└──────────────────────────────────┘
+  Frontend
+  └─ Static
+     └─ public
 ```
+
+<img src="npx%20projscan%20diagram.png" alt="npx projscan diagram" width="700">
 
 Only layers that actually exist in the project are shown.
 
@@ -404,17 +403,22 @@ Renders a tree view of the project directory with file counts per directory.
 **Example:**
 
 ```
-my-app/
-├── src/                  (142 files)
-│   ├── components/       (38 files)
-│   ├── pages/            (12 files)
-│   ├── services/         (8 files)
-│   └── utils/            (6 files)
-├── tests/                (38 files)
-├── public/               (12 files)
-├── package.json
-└── tsconfig.json
+Project Structure
+──────────────────────────────────────────
+
+  demo app (159 files)
+  ├── .firebase/       (1 files)
+  ├── css/             (27 files)
+  ├── docs/            (17 files)
+  ├── js/              (53 files)
+  │   ├── __tests__/   (5 files)
+  │   └── services/    (1 files)
+  ├── locales/         (4 files)
+  ├── public/          (2 files)
+  └── tests/           (31 files)
 ```
+
+<img src="npx%20projscan%20structure.png" alt="npx projscan structure" width="700">
 
 Hidden directories, `node_modules`, and build output directories are excluded automatically.
 
@@ -434,18 +438,19 @@ Deep dive into your project's dependency graph. Shows:
 **Example:**
 
 ```
-Dependency Analysis
+Dependency Report
 ──────────────────────────────────────────
-  Production       24 packages
-  Development      18 packages
-  Package Manager  npm
-  Lock File        ✓ package-lock.json
 
-Risks
+  Production:     1 packages
+  Development:    6 packages
+  Total:          7 packages
+
+Production Dependencies
 ──────────────────────────────────────────
-  ⚠ lodash uses wildcard version "*"
-  ⚠ No lock file found — builds may not be reproducible
+  • projscan ^0.1.10
 ```
+
+<img src="npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
 
 ### badge
 
@@ -460,16 +465,18 @@ Calculates the project health score and generates a [shields.io](https://shields
 ```bash
 $ projscan badge
 
-  Health Score: A (100/100)
+  Health Score: D (60/100)
 
   Badge URL:
-  https://img.shields.io/badge/projscan-A-brightgreen
+  https://img.shields.io/badge/projscan-D-orange
 
   Markdown:
-  [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](https://github.com/abhiyoheswaran1/projscan)
+  [![projscan health](https://img.shields.io/badge/projscan-D-orange)](https://github.com/abhiyoheswaran1/projscan)
 
   Add this to your README to show your project health score.
 ```
+
+<img src="npx%20projscan%20badge.png" alt="npx projscan badge" width="700">
 
 Use `--markdown` to output only the markdown snippet:
 
