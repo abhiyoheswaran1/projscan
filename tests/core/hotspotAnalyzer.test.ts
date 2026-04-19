@@ -103,4 +103,24 @@ describe('computeRiskScore', () => {
     });
     expect(withIssues - noIssues).toBeGreaterThanOrEqual(30);
   });
+
+  it('bus-factor-1 files get an additional penalty', () => {
+    const base = computeRiskScore({
+      churn: 10,
+      lines: 300,
+      authors: 2,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+    });
+    const withBus = computeRiskScore({
+      churn: 10,
+      lines: 300,
+      authors: 2,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+      busFactorOne: true,
+    });
+    expect(withBus).toBeGreaterThan(base);
+    expect(withBus - base).toBeGreaterThanOrEqual(10);
+  });
 });

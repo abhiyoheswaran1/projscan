@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getToolDefinitions, getToolHandler } from './tools.js';
+import { getPromptDefinitions, getPrompt } from './prompts.js';
+import { getResourceDefinitions, readResource } from './resources.js';
 
 const PROTOCOL_VERSION = '2024-11-05';
 
@@ -69,6 +71,8 @@ export function createMcpServer(rootPath: string): McpServerHandle {
             },
             capabilities: {
               tools: {},
+              prompts: {},
+              resources: {},
             },
           });
         }
@@ -117,6 +121,45 @@ export function createMcpServer(rootPath: string): McpServerHandle {
               content: [{ type: 'text', text: `Error: ${message}` }],
               isError: true,
             });
+          }
+        }
+
+        case 'prompts/list': {
+          return ok(id, { prompts: getPromptDefinitions() });
+        }
+
+        case 'prompts/get': {
+          const params = (request.params ?? {}) as {
+            name?: string;
+            arguments?: Record<string, unknown>;
+          };
+          if (!params.name) {
+            return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing prompt name');
+          }
+          try {
+            const result = await getPrompt(params.name, params.arguments ?? {}, rootPath);
+            return ok(id, result);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return fail(id, JSONRPC_ERROR.InvalidParams, message);
+          }
+        }
+
+        case 'resources/list': {
+          return ok(id, { resources: getResourceDefinitions() });
+        }
+
+        case 'resources/read': {
+          const params = (request.params ?? {}) as { uri?: string };
+          if (!params.uri) {
+            return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing resource uri');
+          }
+          try {
+            const content = await readResource(params.uri, rootPath);
+            return ok(id, { contents: [content] });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return fail(id, JSONRPC_ERROR.InvalidParams, message);
           }
         }
 

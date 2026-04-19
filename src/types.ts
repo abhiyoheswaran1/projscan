@@ -155,11 +155,32 @@ export interface HealthScore {
 
 // === Baseline / Diff ===
 
+export interface BaselineHotspot {
+  relativePath: string;
+  riskScore: number;
+  churn: number;
+}
+
 export interface Baseline {
   score: number;
   grade: HealthScore['grade'];
   issues: { id: string; title: string; severity: IssueSeverity }[];
+  hotspots?: BaselineHotspot[];
   timestamp: string;
+}
+
+export interface HotspotDelta {
+  relativePath: string;
+  beforeScore: number | null;
+  afterScore: number | null;
+  scoreDelta: number;
+}
+
+export interface HotspotDiffSummary {
+  rose: HotspotDelta[];
+  fell: HotspotDelta[];
+  appeared: HotspotDelta[];
+  resolved: HotspotDelta[];
 }
 
 export interface DiffResult {
@@ -168,6 +189,7 @@ export interface DiffResult {
   scoreDelta: number;
   newIssues: string[];
   resolvedIssues: string[];
+  hotspotDiff?: HotspotDiffSummary;
 }
 
 // === Reporter Interface ===
@@ -175,6 +197,12 @@ export interface DiffResult {
 export type ReportFormat = 'console' | 'json' | 'markdown';
 
 // === Hotspots ===
+
+export interface AuthorShare {
+  author: string;
+  commits: number;
+  share: number;
+}
 
 export interface FileHotspot {
   relativePath: string;
@@ -187,6 +215,10 @@ export interface FileHotspot {
   issueIds: string[];
   riskScore: number;
   reasons: string[];
+  primaryAuthor: string | null;
+  primaryAuthorShare: number;
+  busFactorOne: boolean;
+  topAuthors: AuthorShare[];
 }
 
 export interface HotspotReport {
@@ -195,6 +227,22 @@ export interface HotspotReport {
   window: { since: string | null; commitsScanned: number };
   hotspots: FileHotspot[];
   totalFilesRanked: number;
+}
+
+// === Per-file Inspection ===
+
+export interface FileInspection {
+  relativePath: string;
+  exists: boolean;
+  reason?: string;
+  purpose: string;
+  lineCount: number;
+  sizeBytes: number;
+  imports: ImportInfo[];
+  exports: ExportInfo[];
+  potentialIssues: string[];
+  hotspot: FileHotspot | null;
+  issues: Issue[];
 }
 
 // === MCP ===
@@ -207,4 +255,23 @@ export interface McpToolDefinition {
     properties: Record<string, unknown>;
     required?: string[];
   };
+}
+
+export interface McpPromptArgument {
+  name: string;
+  description: string;
+  required?: boolean;
+}
+
+export interface McpPromptDefinition {
+  name: string;
+  description: string;
+  arguments?: McpPromptArgument[];
+}
+
+export interface McpResourceDefinition {
+  uri: string;
+  name: string;
+  description: string;
+  mimeType: string;
 }

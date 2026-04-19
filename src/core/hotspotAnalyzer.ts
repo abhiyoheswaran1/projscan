@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { FileEntry, Issue, FileHotspot, HotspotReport } from '../types.js';
+import type { AuthorShare, FileEntry, Issue, FileHotspot, HotspotReport } from '../types.js';
 
 const CODE_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
@@ -76,12 +76,18 @@ export async function analyzeHotspots(
     const lines = lineCounts.get(file.relativePath) ?? estimateLines(file.sizeBytes);
     const issueIds = issueIndex.get(file.relativePath) ?? [];
 
+    const topAuthors = rankAuthors(churnEntry?.authorCommits);
+    const primaryAuthor = topAuthors[0]?.author ?? null;
+    const primaryAuthorShare = topAuthors[0]?.share ?? 0;
+    const busFactorOne = churn >= 3 && primaryAuthorShare >= 0.8;
+
     const riskScore = computeRiskScore({
       churn,
       lines,
       authors,
       daysSinceLastChange,
       issueCount: issueIds.length,
+      busFactorOne,
     });
 
     const reasons = buildReasons({
@@ -90,6 +96,8 @@ export async function analyzeHotspots(
       authors,
       daysSinceLastChange,
       issueCount: issueIds.length,
+      busFactorOne,
+      primaryAuthor,
     });
 
     return {
@@ -103,6 +111,10 @@ export async function analyzeHotspots(
       issueIds,
       riskScore,
       reasons,
+      primaryAuthor,
+      primaryAuthorShare,
+      busFactorOne,
+      topAuthors,
     };
   });
 
@@ -126,6 +138,7 @@ export async function analyzeHotspots(
 interface ChurnEntry {
   churn: number;
   authors: Set<string>;
+  authorCommits: Map<string, number>;
   lastTimestampMs: number | null;
   commitHashes: Set<string>;
 }
@@ -185,6 +198,7 @@ async function collectGitChurn(rootPath: string, since: string): Promise<Map<str
       entry = {
         churn: 0,
         authors: new Set(),
+        authorCommits: new Map(),
         lastTimestampMs: null,
         commitHashes: new Set(),
       };
@@ -194,6 +208,9 @@ async function collectGitChurn(rootPath: string, since: string): Promise<Map<str
     if (!entry.commitHashes.has(currentHash)) {
       entry.commitHashes.add(currentHash);
       entry.churn++;
+      if (currentAuthor) {
+        entry.authorCommits.set(currentAuthor, (entry.authorCommits.get(currentAuthor) ?? 0) + 1);
+      }
     }
     if (currentAuthor) entry.authors.add(currentAuthor);
     if (currentTsMs !== null && (entry.lastTimestampMs === null || currentTsMs > entry.lastTimestampMs)) {
@@ -313,6 +330,7 @@ interface ScoreInputs {
   authors: number;
   daysSinceLastChange: number | null;
   issueCount: number;
+  busFactorOne?: boolean;
 }
 
 export function computeRiskScore(i: ScoreInputs): number {
@@ -321,6 +339,7 @@ export function computeRiskScore(i: ScoreInputs): number {
   const hotChurnXComplexity = Math.log2(1 + i.churn) * Math.log2(1 + i.lines) * 3;
   const authorWeight = Math.log2(1 + i.authors) * 5;
   const issueWeight = i.issueCount * 12;
+  const busFactorPenalty = i.busFactorOne ? 15 : 0;
 
   let recencyBoost = 0;
   if (i.daysSinceLastChange !== null) {
@@ -330,14 +349,24 @@ export function computeRiskScore(i: ScoreInputs): number {
   }
 
   const raw =
-    churnWeight + complexityWeight + hotChurnXComplexity + authorWeight + issueWeight + recencyBoost;
+    churnWeight +
+    complexityWeight +
+    hotChurnXComplexity +
+    authorWeight +
+    issueWeight +
+    recencyBoost +
+    busFactorPenalty;
 
   if (i.churn === 0 && i.issueCount === 0) return 0;
 
   return Math.round(raw * 10) / 10;
 }
 
-function buildReasons(i: ScoreInputs): string[] {
+interface ReasonInputs extends ScoreInputs {
+  primaryAuthor?: string | null;
+}
+
+function buildReasons(i: ReasonInputs): string[] {
   const reasons: string[] = [];
   if (i.churn >= 20) reasons.push(`high churn (${i.churn} commits)`);
   else if (i.churn >= 8) reasons.push(`frequent changes (${i.churn} commits)`);
@@ -357,5 +386,29 @@ function buildReasons(i: ScoreInputs): string[] {
     reasons.push('changed this week');
   }
 
+  if (i.busFactorOne && i.primaryAuthor) {
+    reasons.push(`bus factor 1 (${formatAuthor(i.primaryAuthor)})`);
+  }
+
   return reasons;
+}
+
+function rankAuthors(authorCommits: Map<string, number> | undefined): AuthorShare[] {
+  if (!authorCommits || authorCommits.size === 0) return [];
+  const total = [...authorCommits.values()].reduce((sum, n) => sum + n, 0);
+  if (total === 0) return [];
+
+  return [...authorCommits.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([author, commits]) => ({
+      author,
+      commits,
+      share: Math.round((commits / total) * 1000) / 1000,
+    }));
+}
+
+function formatAuthor(email: string): string {
+  const atIdx = email.indexOf('@');
+  return atIdx > 0 ? email.slice(0, atIdx) : email;
 }

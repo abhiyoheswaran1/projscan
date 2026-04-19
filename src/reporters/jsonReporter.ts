@@ -2,6 +2,7 @@ import type {
   AnalysisReport,
   Issue,
   FileExplanation,
+  FileInspection,
   ArchitectureLayer,
   DirectoryNode,
   DependencyReport,
@@ -80,4 +81,8 @@ export function reportDependenciesJson(report: DependencyReport): void {
 
 export function reportHotspotsJson(report: HotspotReport): void {
   console.log(JSON.stringify({ hotspots: report }, null, 2));
+}
+
+export function reportFileJson(inspection: FileInspection): void {
+  console.log(JSON.stringify({ file: inspection }, null, 2));
 }

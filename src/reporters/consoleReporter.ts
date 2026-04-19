@@ -5,6 +5,7 @@ import type {
   Fix,
   FixResult,
   FileExplanation,
+  FileInspection,
   ArchitectureLayer,
   DirectoryNode,
   DependencyReport,
@@ -208,6 +209,42 @@ export function reportDiff(diff: DiffResult): void {
     console.log(`\n  ${chalk.dim('No change in issues.')}`);
   }
 
+  if (diff.hotspotDiff) {
+    const hd = diff.hotspotDiff;
+    const total = hd.rose.length + hd.fell.length + hd.appeared.length + hd.resolved.length;
+    if (total > 0) {
+      console.log(header('Hotspot Changes'));
+      if (hd.rose.length > 0) {
+        console.log(`\n  ${chalk.red('▲')} Worsening (${hd.rose.length}):`);
+        for (const delta of hd.rose.slice(0, 10)) {
+          console.log(
+            `    ${chalk.red('+' + delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
+          );
+        }
+      }
+      if (hd.appeared.length > 0) {
+        console.log(`\n  ${chalk.yellow('●')} Newly risky (${hd.appeared.length}):`);
+        for (const delta of hd.appeared.slice(0, 10)) {
+          console.log(`    ${chalk.yellow(delta.afterScore?.toFixed(1) ?? '?')}  ${delta.relativePath}`);
+        }
+      }
+      if (hd.fell.length > 0) {
+        console.log(`\n  ${chalk.green('▼')} Improving (${hd.fell.length}):`);
+        for (const delta of hd.fell.slice(0, 10)) {
+          console.log(
+            `    ${chalk.green(delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
+          );
+        }
+      }
+      if (hd.resolved.length > 0) {
+        console.log(`\n  ${chalk.green('✓')} No longer tracked (${hd.resolved.length}):`);
+        for (const delta of hd.resolved.slice(0, 5)) {
+          console.log(`    ${chalk.green('—')}  ${delta.relativePath}`);
+        }
+      }
+    }
+  }
+
   console.log(`\n  Baseline: ${chalk.dim(diff.before.timestamp)}`);
   console.log('');
 }
@@ -392,5 +429,89 @@ export function reportHotspots(report: HotspotReport): void {
     console.log(`       ${chalk.dim(reasonStr)}`);
   }
 
-  console.log(chalk.dim(`\n  Tip: run ${chalk.bold.cyan('projscan explain <file>')} to investigate a hotspot.\n`));
+  console.log(chalk.dim(`\n  Tip: run ${chalk.bold.cyan('projscan file <file>')} to drill into a hotspot.\n`));
+}
+
+// ── Report: file (drill-down) ─────────────────────────────
+
+export function reportFileInspection(insp: FileInspection): void {
+  console.log(header('File Report'));
+
+  if (!insp.exists) {
+    console.log(`\n  ${chalk.red('✗')} ${insp.reason ?? 'File unavailable.'}\n`);
+    return;
+  }
+
+  console.log(`\n  ${chalk.bold('File:')}     ${insp.relativePath}`);
+  console.log(`  ${chalk.bold('Purpose:')}  ${insp.purpose}`);
+  console.log(`  ${chalk.bold('Lines:')}    ${insp.lineCount}`);
+  console.log(`  ${chalk.bold('Size:')}     ${formatSize(insp.sizeBytes)}`);
+
+  if (insp.hotspot) {
+    const h = insp.hotspot;
+    console.log(header('Risk'));
+    console.log(`  ${chalk.bold('Risk Score:')}  ${chalk.bold(h.riskScore.toFixed(1))}`);
+    console.log(`  ${chalk.bold('Commits:')}     ${h.churn}`);
+    console.log(
+      `  ${chalk.bold('Authors:')}     ${h.distinctAuthors}${
+        h.primaryAuthor ? ` (primary: ${formatAuthorEmail(h.primaryAuthor)}, ${Math.round(h.primaryAuthorShare * 100)}%)` : ''
+      }`,
+    );
+    if (h.daysSinceLastChange !== null) {
+      console.log(`  ${chalk.bold('Last change:')} ${h.daysSinceLastChange} days ago`);
+    }
+    if (h.busFactorOne) {
+      console.log(`  ${chalk.red('⚠')} Bus factor 1 — only one author has touched this.`);
+    }
+    if (h.reasons.length > 0) {
+      console.log(`  ${chalk.dim(h.reasons.join(', '))}`);
+    }
+  } else {
+    console.log(chalk.dim('\n  No hotspot data (file is untouched in git window or outside analysis scope).'));
+  }
+
+  if (insp.issues.length > 0) {
+    console.log(header('Related Issues'));
+    for (const issue of insp.issues) {
+      console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
+    }
+  }
+
+  if (insp.potentialIssues.length > 0) {
+    console.log(header('Potential Issues'));
+    for (const issue of insp.potentialIssues) {
+      console.log(`  ${chalk.yellow('⚠')} ${issue}`);
+    }
+  }
+
+  if (insp.imports.length > 0) {
+    console.log(header('Dependencies'));
+    for (const imp of insp.imports.slice(0, 20)) {
+      const prefix = imp.isRelative ? chalk.dim('(local)') : chalk.cyan('(package)');
+      console.log(`  ${prefix} ${imp.source}`);
+    }
+    if (insp.imports.length > 20) {
+      console.log(chalk.dim(`  ... and ${insp.imports.length - 20} more`));
+    }
+  }
+
+  if (insp.exports.length > 0) {
+    console.log(header('Exports'));
+    for (const exp of insp.exports) {
+      console.log(`  ${chalk.dim('•')} ${chalk.bold(exp.name)} ${chalk.dim(`(${exp.type})`)}`);
+    }
+  }
+
+  console.log('');
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatAuthorEmail(email: string): string {
+  const at = email.indexOf('@');
+  return at > 0 ? email.slice(0, at) : email;
 }
