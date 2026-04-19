@@ -6,6 +6,7 @@ import type {
   DirectoryNode,
   DependencyReport,
   DiffResult,
+  HotspotReport,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
@@ -216,6 +217,38 @@ export function reportDependenciesMarkdown(report: DependencyReport): void {
     for (const risk of report.risks) {
       lines.push(`- **${risk.name}**: ${risk.reason} (${risk.severity})`);
     }
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportHotspotsMarkdown(report: HotspotReport): void {
+  const lines: string[] = ['# Project Hotspots', ''];
+
+  if (!report.available) {
+    lines.push(`> ${report.reason ?? 'Hotspot analysis unavailable.'}`);
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  const { since, commitsScanned } = report.window;
+  lines.push(`_Scanned **${commitsScanned}** commit(s) since **${since}** · ranked **${report.totalFilesRanked}** file(s)_`);
+  lines.push('');
+
+  if (report.hotspots.length === 0) {
+    lines.push('No hotspots detected.');
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  lines.push('| # | Score | File | Churn | Lines | Issues | Reasons |');
+  lines.push('| --- | ---: | --- | ---: | ---: | ---: | --- |');
+  for (let i = 0; i < report.hotspots.length; i++) {
+    const h = report.hotspots[i];
+    const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '—';
+    lines.push(
+      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
+    );
   }
 
   console.log(lines.join('\n'));

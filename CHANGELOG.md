@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `projscan hotspots` — ranks files by risk using `git log` churn × complexity (lines of code) × open issues × recency. Turns a flat health score into a prioritized "fix these files first" list. Graceful fallback when the project is not a git repository.
+- `projscan mcp` — runs projscan as an MCP (Model Context Protocol) server over stdio, exposing `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_explain`, `projscan_structure`, and `projscan_dependencies` as tools that AI coding agents (Claude Code, Cursor, etc.) can call to ground their work in project health.
+- Public API: `analyzeHotspots`, `computeRiskScore`, `createMcpServer`, `runMcpServer`, `getToolDefinitions`.
+- New types: `FileHotspot`, `HotspotReport`, `McpToolDefinition`.
+
 ## [0.1.3] - 2026-03-11
 
 ### Added

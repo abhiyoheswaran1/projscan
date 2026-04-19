@@ -17,11 +17,13 @@ import { detectLanguages } from '../core/languageDetector.js';
 import { detectFrameworks } from '../core/frameworkDetector.js';
 import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { collectIssues } from '../core/issueEngine.js';
+import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
 import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
 import { showBanner, showCompactBanner, showHelp } from '../utils/banner.js';
 import { saveBaseline, loadBaseline, computeDiff } from '../utils/baseline.js';
+import { runMcpServer } from '../mcp/server.js';
 
 import {
   reportAnalysis,
@@ -33,6 +35,7 @@ import {
   reportDiagram,
   reportStructure,
   reportDependencies,
+  reportHotspots,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -44,6 +47,7 @@ import {
   reportDiagramJson,
   reportStructureJson,
   reportDependenciesJson,
+  reportHotspotsJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -55,6 +59,7 @@ import {
   reportDiagramMarkdown,
   reportStructureMarkdown,
   reportDependenciesMarkdown,
+  reportHotspotsMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import type {
@@ -507,6 +512,64 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Dependency analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: hotspots ─────────────────────────────────────
+
+program
+  .command('hotspots')
+  .description('Rank files by risk (git churn × complexity × open issues)')
+  .option('--limit <n>', 'number of hotspots to show', '10')
+  .option('--since <when>', 'git history window (e.g. "6 months ago", "2024-01-01")', '12 months ago')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Analyzing hotspots...').start() : null;
+
+    try {
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+      const limit = Math.max(1, Math.min(100, parseInt(cmdOpts.limit, 10) || 10));
+      const report = await analyzeHotspots(rootPath, scan.files, issues, {
+        since: cmdOpts.since,
+        limit,
+      });
+
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportHotspotsJson(report);
+          break;
+        case 'markdown':
+          reportHotspotsMarkdown(report);
+          break;
+        default:
+          reportHotspots(report);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Hotspot analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: mcp ──────────────────────────────────────────
+
+program
+  .command('mcp')
+  .description('Run projscan as an MCP server (stdio) for AI coding agents')
+  .action(async () => {
+    setLogLevel('quiet');
+    const rootPath = getRootPath();
+    try {
+      await runMcpServer(rootPath);
+    } catch (error) {
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

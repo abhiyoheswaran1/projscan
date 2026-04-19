@@ -6,6 +6,7 @@ import type {
   DirectoryNode,
   DependencyReport,
   DiffResult,
+  HotspotReport,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -75,4 +76,8 @@ export function reportStructureJson(tree: DirectoryNode): void {
 
 export function reportDependenciesJson(report: DependencyReport): void {
   console.log(JSON.stringify(report, null, 2));
+}
+
+export function reportHotspotsJson(report: HotspotReport): void {
+  console.log(JSON.stringify({ hotspots: report }, null, 2));
 }

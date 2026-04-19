@@ -9,6 +9,7 @@ import type {
   DirectoryNode,
   DependencyReport,
   DiffResult,
+  HotspotReport,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -356,4 +357,40 @@ export function reportDependencies(report: DependencyReport): void {
   }
 
   console.log('');
+}
+
+// ── Report: hotspots ──────────────────────────────────────
+
+export function reportHotspots(report: HotspotReport): void {
+  console.log(header('Project Hotspots'));
+
+  if (!report.available) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'Hotspot analysis unavailable.'}\n`);
+    return;
+  }
+
+  if (report.hotspots.length === 0) {
+    console.log(`\n  ${chalk.green('✓')} No hotspots detected.`);
+    console.log(chalk.dim(`  Scanned ${report.window.commitsScanned} commit${report.window.commitsScanned === 1 ? '' : 's'} since ${report.window.since}.\n`));
+    return;
+  }
+
+  console.log(
+    chalk.dim(
+      `\n  ${report.window.commitsScanned} commit${report.window.commitsScanned === 1 ? '' : 's'} since ${report.window.since} · ${report.totalFilesRanked} file${report.totalFilesRanked === 1 ? '' : 's'} ranked\n`,
+    ),
+  );
+
+  const maxScore = report.hotspots[0]?.riskScore ?? 1;
+  for (let i = 0; i < report.hotspots.length; i++) {
+    const h = report.hotspots[i];
+    const rank = chalk.bold(String(i + 1).padStart(2, ' ') + '.');
+    const scoreLabel = chalk.bold(h.riskScore.toFixed(1).padStart(5, ' '));
+    const barPct = Math.min(100, Math.round((h.riskScore / maxScore) * 100));
+    console.log(`  ${rank} ${scoreLabel}  ${bar(barPct, 14)}  ${chalk.cyan(h.relativePath)}`);
+    const reasonStr = h.reasons.length > 0 ? h.reasons.join(', ') : 'ranked by risk';
+    console.log(`       ${chalk.dim(reasonStr)}`);
+  }
+
+  console.log(chalk.dim(`\n  Tip: run ${chalk.bold.cyan('projscan explain <file>')} to investigate a hotspot.\n`));
 }

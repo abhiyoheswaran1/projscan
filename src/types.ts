@@ -173,3 +173,38 @@ export interface DiffResult {
 // === Reporter Interface ===
 
 export type ReportFormat = 'console' | 'json' | 'markdown';
+
+// === Hotspots ===
+
+export interface FileHotspot {
+  relativePath: string;
+  churn: number;
+  distinctAuthors: number;
+  daysSinceLastChange: number | null;
+  lineCount: number;
+  sizeBytes: number;
+  issueCount: number;
+  issueIds: string[];
+  riskScore: number;
+  reasons: string[];
+}
+
+export interface HotspotReport {
+  available: boolean;
+  reason?: string;
+  window: { since: string | null; commitsScanned: number };
+  hotspots: FileHotspot[];
+  totalFilesRanked: number;
+}
+
+// === MCP ===
+
+export interface McpToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
