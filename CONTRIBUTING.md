@@ -64,10 +64,12 @@ Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=
 ```
 src/
 ├── cli/          # Command definitions (Commander.js)
-├── analyzers/    # Language, framework, dependency, and issue analyzers
-├── reporters/    # Output formatters (console, JSON, markdown)
-├── fixers/       # Auto-fix implementations
-└── utils/        # Shared utilities (file walker, cache)
+├── core/         # Scanners, detectors, issue engine, hotspots, file inspector
+├── analyzers/    # Issue checkers (eslint, prettier, test, architecture, deps, security)
+├── fixes/        # Auto-fix implementations (ESLint, Prettier, Vitest, EditorConfig)
+├── reporters/    # Output formatters (console, JSON, markdown, SARIF)
+├── mcp/          # MCP server — tools, prompts, resources for AI agents
+└── utils/        # Shared utilities (config loader, changed-files, baseline, banner, logger)
 ```
 
 ## Code Style

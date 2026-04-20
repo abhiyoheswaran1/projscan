@@ -60,16 +60,18 @@ npx projscan
 Run inside any repository:
 
 ```bash
-projscan                # Full project analysis
-projscan doctor         # Health check
-projscan hotspots       # Rank files by risk (churn × complexity × issues × ownership)
-projscan file <path>    # Drill into a file — purpose, risk, ownership, issues
-projscan fix            # Auto-fix detected issues
-projscan ci             # CI health gate (exits 1 on low score)
-projscan diff           # Compare health + hotspot trends against a baseline
-projscan diagram        # Architecture visualization
-projscan structure      # Directory tree
-projscan mcp            # Run as an MCP server for AI coding agents
+projscan                            # Full project analysis
+projscan doctor                     # Health check
+projscan hotspots                   # Rank files by risk (churn × complexity × issues × ownership)
+projscan file <path>                # Drill into a file — purpose, risk, ownership, issues
+projscan fix                        # Auto-fix detected issues
+projscan ci                         # CI health gate (exits 1 on low score)
+projscan ci --changed-only          # Gate only on this PR's diff
+projscan ci --format sarif          # SARIF 2.1.0 for GitHub Code Scanning
+projscan diff                       # Compare health + hotspot trends against a baseline
+projscan diagram                    # Architecture visualization
+projscan structure                  # Directory tree
+projscan mcp                        # Run as an MCP server for AI coding agents
 ```
 
 <img src="docs/npx%20projscan%20--help.png" alt="npx projscan --help" width="700">

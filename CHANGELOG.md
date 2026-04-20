@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-20
+
+### Changed
+
+- **Docs: thorough pass for 0.3.0 features.** `docs/GUIDE.md` rewritten to cover `hotspots`, `file`, `mcp`, SARIF output, `.projscanrc` config, and `--changed-only` PR-diff mode — plus a dedicated Configuration section, an updated Global Options table, an expanded CI/CD Integration section covering the first-party GitHub Action, and a refreshed Project Internals directory map. Fixed a stale note that claimed "no `.projscanrc` file needed."
+- **README: quick-start examples surface `--changed-only` and `--format sarif`** so 0.3.0's CI-native story is visible above the fold.
+- **CLI banner and help text refreshed:** `projscan help` now lists `hotspots`, `file`, `mcp`, `ci --changed-only`, and `ci --format sarif`; global-options table now documents `--config`, `--changed-only`, `--base-ref`, and `sarif` as a valid `--format`. "What's new" panel updated to 0.3.0's headline features.
+- **CONTRIBUTING.md:** project structure tree fixed (`fixers/` → `fixes/`, added `core/` and `mcp/`, listed the new SARIF reporter, config loader, and changed-files helper).
+
+### CI
+
+- **Publish workflow hardened** — checks out the tagged ref (not HEAD of main), verifies `package.json` version matches the tag before publishing, adds `workflow_dispatch` so a failed publish can be retried without cutting a new release, and adds a concurrency guard against racing re-runs.
+- **Node bumped to 22** across the publish workflow and the CI matrix (now 20 / 22 / 24). Node 20 is being deprecated on GitHub-hosted runners in June 2026. `engines` stays at `>=18` for install compatibility.
+
+No runtime behavior changes. No API changes.
+
 ## [0.3.0] - 2026-04-20
 
 ### Added

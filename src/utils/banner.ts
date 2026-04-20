@@ -45,15 +45,16 @@ export function showBanner(): void {
   const R = [
     `${head('Commands')}`,
     `${w('doctor')}     ${dim('Health check')}`,
-    `${w('fix')}        ${dim('Auto-fix issues')}`,
-    `${w('ci')}         ${dim('CI health gate')}`,
+    `${w('hotspots')}   ${dim('Risk-rank files')}`,
+    `${w('file')}       ${dim('Drill into a file')}`,
+    `${w('ci')}         ${dim('CI gate (SARIF)')}`,
     `${w('diff')}       ${dim('Compare baseline')}`,
-    `${w('explain')}    ${dim('Explain a file')}`,
-    `${w('diagram')}    ${dim('Architecture map')}`,
+    `${w('mcp')}        ${dim('AI agent server')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('Security checker')}`,
-    `${dim('CI health gate & diff')}`,
+    `${dim('SARIF + GitHub Action')}`,
+    `${dim('--changed-only PR mode')}`,
+    `${dim('.projscanrc config')}`,
   ];
 
   const leftW = 42;
@@ -107,19 +108,24 @@ export function showHelp(): void {
   const g = chalk.gray;
 
   const commands = [
-    { cmd: 'projscan',              desc: 'Full project analysis (default)' },
-    { cmd: 'projscan doctor',       desc: 'Health check — detect issues and score your project' },
-    { cmd: 'projscan fix',          desc: 'Auto-fix detected issues (interactive)' },
-    { cmd: 'projscan fix -y',       desc: 'Auto-fix without prompting' },
-    { cmd: 'projscan ci',           desc: 'CI gate — exit 1 if score below threshold' },
-    { cmd: 'projscan ci --min-score 80', desc: 'Set custom minimum score' },
-    { cmd: 'projscan diff',         desc: 'Compare current health against saved baseline' },
-    { cmd: 'projscan diff --save-baseline', desc: 'Save current state as baseline' },
-    { cmd: 'projscan explain <file>', desc: 'Explain a file — purpose, imports, exports' },
-    { cmd: 'projscan diagram',      desc: 'Show architecture layer diagram' },
-    { cmd: 'projscan structure',    desc: 'Show directory structure overview' },
-    { cmd: 'projscan dependencies', desc: 'Analyze project dependencies' },
-    { cmd: 'projscan badge',        desc: 'Generate a health badge for your README' },
+    { cmd: 'projscan',                       desc: 'Full project analysis (default)' },
+    { cmd: 'projscan doctor',                desc: 'Health check — detect issues and score your project' },
+    { cmd: 'projscan hotspots',              desc: 'Rank files by risk — churn × complexity × issues × ownership' },
+    { cmd: 'projscan file <path>',           desc: 'Drill into a file — purpose, risk, ownership, issues' },
+    { cmd: 'projscan fix',                   desc: 'Auto-fix detected issues (interactive)' },
+    { cmd: 'projscan fix -y',                desc: 'Auto-fix without prompting' },
+    { cmd: 'projscan ci',                    desc: 'CI gate — exit 1 if score below threshold' },
+    { cmd: 'projscan ci --min-score 80',     desc: 'Set custom minimum score' },
+    { cmd: 'projscan ci --changed-only',     desc: 'Gate only on issues in this PR\'s diff' },
+    { cmd: 'projscan ci --format sarif',     desc: 'Emit SARIF 2.1.0 for GitHub Code Scanning' },
+    { cmd: 'projscan diff',                  desc: 'Compare current health against saved baseline' },
+    { cmd: 'projscan diff --save-baseline',  desc: 'Save current state as baseline' },
+    { cmd: 'projscan explain <file>',        desc: 'Explain a file — purpose, imports, exports' },
+    { cmd: 'projscan diagram',               desc: 'Show architecture layer diagram' },
+    { cmd: 'projscan structure',             desc: 'Show directory structure overview' },
+    { cmd: 'projscan dependencies',          desc: 'Analyze project dependencies' },
+    { cmd: 'projscan badge',                 desc: 'Generate a health badge for your README' },
+    { cmd: 'projscan mcp',                   desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
   ];
 
   const maxCmd = Math.max(...commands.map(c => c.cmd.length));
@@ -136,7 +142,10 @@ export function showHelp(): void {
   console.log(`  ${cyan('Global Options')}`);
   console.log(dim('  ─'.repeat(20)));
   console.log('');
-  console.log(`  ${w('--format <type>')}   ${g('Output format: console, json, markdown')}`);
+  console.log(`  ${w('--format <type>')}    ${g('Output format: console, json, markdown, sarif')}`);
+  console.log(`  ${w('--config <path>')}    ${g('Path to a .projscanrc config file')}`);
+  console.log(`  ${w('--changed-only')}     ${g('Scope to files changed vs base ref (ci/analyze/doctor)')}`);
+  console.log(`  ${w('--base-ref <ref>')}   ${g('Git base ref for --changed-only (default: origin/main)')}`);
   console.log(`  ${w('--verbose')}          ${g('Enable verbose/debug output')}`);
   console.log(`  ${w('--quiet')}            ${g('Suppress non-essential output')}`);
   console.log(`  ${w('--version')}          ${g('Show version number')}`);
