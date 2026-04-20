@@ -1,4 +1,4 @@
-# ProjScan — Full Guide
+# ProjScan - Full Guide
 
 A deep dive into everything ProjScan can do. For a quick overview, see the [README](../README.md).
 
@@ -75,7 +75,7 @@ npx projscan
 
 - Node.js >= 18
 - npm, yarn, or pnpm
-- Git (optional — unlocks `hotspots` and `--changed-only`)
+- Git (optional - unlocks `hotspots` and `--changed-only`)
 
 ---
 
@@ -92,11 +92,11 @@ This runs the default `analyze` command. Within a second or two you'll see a ful
 
 <img src="npx%20projscan.png" alt="npx projscan" width="700">
 
-1. **Project overview** — name, total files, total directories, scan time
-2. **Language breakdown** — primary language, percentages per language
-3. **Frameworks detected** — with confidence levels and categories
-4. **Dependency summary** — production vs. dev count, package manager, lock file status
-5. **Issues found** — grouped by severity (error, warning, info)
+1. **Project overview** - name, total files, total directories, scan time
+2. **Language breakdown** - primary language, percentages per language
+3. **Frameworks detected** - with confidence levels and categories
+4. **Dependency summary** - production vs. dev count, package manager, lock file status
+5. **Issues found** - grouped by severity (error, warning, info)
 
 ---
 
@@ -148,9 +148,9 @@ Use this when you want a quick "is this project in good shape?" answer without t
 <img src="npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
 
 **Severity levels:**
-- **error** (✖) — Problems that should be addressed immediately
-- **warning** (⚠) — Issues that affect code quality or maintainability
-- **info** (ℹ) — Suggestions for best practices
+- **error** (✖) - Problems that should be addressed immediately
+- **warning** (⚠) - Issues that affect code quality or maintainability
+- **info** (ℹ) - Suggestions for best practices
 
 ### hotspots
 
@@ -158,7 +158,7 @@ Use this when you want a quick "is this project in good shape?" answer without t
 projscan hotspots
 ```
 
-Ranks files by **risk** — a combination of git churn, complexity (lines of code), open issues, recency, and ownership (bus-factor). Turns a flat health score into a prioritized "fix these first" list.
+Ranks files by **risk** - a combination of git churn, complexity (lines of code), open issues, recency, and ownership (bus-factor). Turns a flat health score into a prioritized "fix these first" list.
 
 **Options:**
 
@@ -168,15 +168,15 @@ Ranks files by **risk** — a combination of git churn, complexity (lines of cod
 | `--since <when>` | Git history window (e.g. `"6 months ago"`, `"2024-01-01"`) | `12 months ago` |
 
 **What you get per file:**
-- `riskScore` — combined score (0–100)
-- `churn` — number of commits touching the file in the window
-- `distinctAuthors` — how many people have touched it
-- `primaryAuthor` / `primaryAuthorShare` — who owns most of the history
-- `busFactorOne` — **true** if a single author dominates AND churn is high (organizational risk)
-- `issueIds` — open issues that reference the file
-- `reasons` — human-readable tags explaining the score
+- `riskScore` - combined score (0–100)
+- `churn` - number of commits touching the file in the window
+- `distinctAuthors` - how many people have touched it
+- `primaryAuthor` / `primaryAuthorShare` - who owns most of the history
+- `busFactorOne` - **true** if a single author dominates AND churn is high (organizational risk)
+- `issueIds` - open issues that reference the file
+- `reasons` - human-readable tags explaining the score
 
-**Fallback:** If the project isn't a git repository, hotspots returns `available: false` with a friendly reason — it does not crash.
+**Fallback:** If the project isn't a git repository, hotspots returns `available: false` with a friendly reason - it does not crash.
 
 ### search
 
@@ -187,7 +187,7 @@ projscan search authenticate --scope symbols
 projscan search stripe --scope files
 ```
 
-BM25-ranked search across content, symbol names, and path tokens. No embeddings, no model download — just a solid classical IR implementation that beats substring matching for typical code queries.
+BM25-ranked search across content, symbol names, and path tokens. No embeddings, no model download - just a solid classical IR implementation that beats substring matching for typical code queries.
 
 **Scopes:**
 
@@ -208,7 +208,7 @@ BM25-ranked search across content, symbol names, and path tokens. No embeddings,
 
 **Limitations:**
 - No real semantic understanding. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) is on the 0.9.0 roadmap as an opt-in peer dep.
-- Index is rebuilt on every run (fast — the AST is already parsed from the code-graph cache).
+- Index is rebuilt on every run (fast - the AST is already parsed from the code-graph cache).
 
 ### file
 
@@ -218,13 +218,13 @@ projscan file src/cli/index.ts
 
 Per-file drill-down. Combines everything ProjScan knows about a file into one view:
 
-- **Purpose** — inferred from name and directory
-- **Imports** / **exports** — from regex-based static analysis
-- **Hotspot risk** — the file's entry from `hotspots` (churn, score, owner, bus factor)
-- **Related issues** — every open issue whose `locations` reference the file
-- **Inline smells** — large files, `console.log`, TODO/FIXME, `any` types
+- **Purpose** - inferred from name and directory
+- **Imports** / **exports** - from regex-based static analysis
+- **Hotspot risk** - the file's entry from `hotspots` (churn, score, owner, bus factor)
+- **Related issues** - every open issue whose `locations` reference the file
+- **Inline smells** - large files, `console.log`, TODO/FIXME, `any` types
 
-Natural follow-up to `projscan hotspots` — once hotspots tells you *which* file to look at, `file` tells you *what* to do about it.
+Natural follow-up to `projscan hotspots` - once hotspots tells you *which* file to look at, `file` tells you *what* to do about it.
 
 ### ci
 
@@ -232,7 +232,7 @@ Natural follow-up to `projscan hotspots` — once hotspots tells you *which* fil
 projscan ci
 ```
 
-A CI-pipeline-friendly health gate. Runs the full health check and exits with code 1 if the score falls below a threshold. No spinners or banners — clean output for CI logs.
+A CI-pipeline-friendly health gate. Runs the full health check and exits with code 1 if the score falls below a threshold. No spinners or banners - clean output for CI logs.
 
 **Options:**
 
@@ -247,14 +247,14 @@ A CI-pipeline-friendly health gate. Runs the full health check and exits with co
 ```bash
 $ projscan ci --min-score 80
 
-projscan: B (82/100) — 0 errors, 2 warnings, 1 info — PASS (threshold: 80)
+projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
 ```
 
 <img src="npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci" width="700">
 
 **Exit codes:**
-- `0` — Score meets or exceeds the threshold
-- `1` — Score is below the threshold
+- `0` - Score meets or exceeds the threshold
+- `1` - Score is below the threshold
 
 **JSON output** (useful for scripts):
 
@@ -307,7 +307,7 @@ $ projscan diff --save-baseline
 $ projscan diff
 ```
 
-The diff reports four hotspot movements: files that **rose**, **fell**, **appeared**, or were **resolved** since the baseline — alongside the usual new/resolved issue lists.
+The diff reports four hotspot movements: files that **rose**, **fell**, **appeared**, or were **resolved** since the baseline - alongside the usual new/resolved issue lists.
 
 <img src="npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
 
@@ -340,13 +340,13 @@ projscan fix -y
 projscan explain <file>
 ```
 
-Analyzes a single file and explains what it does. Uses regex-based static analysis — no AI, no network calls.
+Analyzes a single file and explains what it does. Uses regex-based static analysis - no AI, no network calls.
 
 **What it detects:**
-- **Purpose** — Inferred from the file name and directory
-- **Imports** — Both ES module `import` and CommonJS `require` statements
-- **Exports** — Functions, classes, variables, types, interfaces, default exports
-- **Potential issues** — Files over 500 lines, `console.log` statements, TODO/FIXME comments, usage of `any` type
+- **Purpose** - Inferred from the file name and directory
+- **Imports** - Both ES module `import` and CommonJS `require` statements
+- **Exports** - Functions, classes, variables, types, interfaces, default exports
+- **Potential issues** - Files over 500 lines, `console.log` statements, TODO/FIXME comments, usage of `any` type
 
 <img src="npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
 
@@ -376,7 +376,7 @@ Renders a tree view of the project directory with file counts per directory.
 projscan dependencies
 ```
 
-Deep dive into your project's dependency graph — production/dev counts, package manager, lock file presence, and risk analysis (wildcard versions, `latest` tags, excessive counts).
+Deep dive into your project's dependency graph - production/dev counts, package manager, lock file presence, and risk analysis (wildcard versions, `latest` tags, excessive counts).
 
 <img src="npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
 
@@ -386,16 +386,16 @@ Deep dive into your project's dependency graph — production/dev counts, packag
 projscan outdated
 ```
 
-Offline drift check — compares the version declared in `package.json` against the version installed under `node_modules/<pkg>/package.json`. Classifies each package as `patch`, `minor`, `major`, `same`, or `unknown` drift. Does **not** hit the npm registry.
+Offline drift check - compares the version declared in `package.json` against the version installed under `node_modules/<pkg>/package.json`. Classifies each package as `patch`, `minor`, `major`, `same`, or `unknown` drift. Does **not** hit the npm registry.
 
 **Output fields per package:**
-- `declared` — the range in `package.json` (e.g., `^1.2.3`)
-- `installed` — the concrete version in `node_modules`, or `null` if not installed
-- `latest` — same as `installed` in offline mode (registry-aware preview is planned)
-- `drift` — classification
-- `scope` — `dependency` or `devDependency`
+- `declared` - the range in `package.json` (e.g., `^1.2.3`)
+- `installed` - the concrete version in `node_modules`, or `null` if not installed
+- `latest` - same as `installed` in offline mode (registry-aware preview is planned)
+- `drift` - classification
+- `scope` - `dependency` or `devDependency`
 
-JSON / Markdown formats supported. No SARIF — this isn't a vulnerability signal.
+JSON / Markdown formats supported. No SARIF - this isn't a vulnerability signal.
 
 ### audit
 
@@ -429,20 +429,20 @@ Each finding becomes a SARIF result with `ruleId: audit-<pkg>`, severity mapped 
 projscan upgrade <package>
 ```
 
-Preview the impact of upgrading a package — fully offline.
+Preview the impact of upgrading a package - fully offline.
 
 **What you get:**
 - Drift classification (`patch` / `minor` / `major`)
 - Breaking-change markers found in the CHANGELOG: scans for `BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`, and section headers containing "breaking"
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
-- Importer list — every file in your source tree that imports the package (direct or sub-path)
+- Importer list - every file in your source tree that imports the package (direct or sub-path)
 
 **Example:**
 
 ```bash
 $ projscan upgrade react --format markdown
 
-# Upgrade Preview — `react`
+# Upgrade Preview - `react`
 - Declared: `^18.2.0`
 - Installed: `18.3.1`
 - Drift: **minor**
@@ -463,19 +463,19 @@ $ projscan upgrade react --format markdown
 projscan coverage
 ```
 
-Joins test coverage with the hotspot ranking and produces a list sorted by "risk × uncovered fraction" — the files that most deserve tests.
+Joins test coverage with the hotspot ranking and produces a list sorted by "risk × uncovered fraction" - the files that most deserve tests.
 
 **Supported formats** (auto-detected in this order):
-- `coverage/lcov.info` — lcov format (Vitest, Jest, c8)
-- `coverage/coverage-final.json` — Istanbul per-file detail
-- `coverage/coverage-summary.json` — Istanbul summary
+- `coverage/lcov.info` - lcov format (Vitest, Jest, c8)
+- `coverage/coverage-final.json` - Istanbul per-file detail
+- `coverage/coverage-summary.json` - Istanbul summary
 
 **Output fields per entry:**
-- `relativePath` — file path
-- `riskScore` — the file's hotspot risk
-- `coverage` — line coverage %, or `null` if the file isn't in the coverage report
-- `priority` — `riskScore × (0.3 + 0.7 × uncoveredFraction)`; files without coverage data treat `uncovered = 1`
-- `reasons` — inherited from the hotspot entry, including any `low coverage (X%)` or `moderate coverage (X%)` tags
+- `relativePath` - file path
+- `riskScore` - the file's hotspot risk
+- `coverage` - line coverage %, or `null` if the file isn't in the coverage report
+- `priority` - `riskScore × (0.3 + 0.7 × uncoveredFraction)`; files without coverage data treat `uncovered = 1`
+- `reasons` - inherited from the hotspot entry, including any `low coverage (X%)` or `moderate coverage (X%)` tags
 
 **Options:**
 
@@ -523,17 +523,17 @@ Every `projscan doctor` and `projscan badge` run calculates a health score from 
 
 | Grade | Score Range | Meaning |
 |-------|-------------|---------|
-| A | 90–100 | Excellent — project follows best practices |
-| B | 80–89 | Good — minor improvements possible |
-| C | 70–79 | Fair — several issues to address |
-| D | 60–69 | Poor — significant issues found |
-| F | < 60 | Critical — major issues need attention |
+| A | 90–100 | Excellent - project follows best practices |
+| B | 80–89 | Good - minor improvements possible |
+| C | 70–79 | Fair - several issues to address |
+| D | 60–69 | Poor - significant issues found |
+| F | < 60 | Critical - major issues need attention |
 
 The score appears in all output formats:
 - **Console**: Shown at the top of the doctor report
 - **JSON**: Included as `health.score` and `health.grade` fields
 - **Markdown**: Shown as a heading with an auto-generated shields.io badge
-- **SARIF**: Not surfaced directly — SARIF is per-issue, not per-project. The score still drives `ci`'s exit code.
+- **SARIF**: Not surfaced directly - SARIF is per-issue, not per-project. The score still drives `ci`'s exit code.
 
 ---
 
@@ -564,19 +564,19 @@ projscan doctor --format markdown > HEALTH.md
 
 ### SARIF
 
-[SARIF 2.1.0](https://sarifweb.azurewebsites.net/) output — the industry standard for static analysis results. GitHub Code Scanning, Azure DevOps, GitLab, and many other systems consume SARIF natively.
+[SARIF 2.1.0](https://sarifweb.azurewebsites.net/) output - the industry standard for static analysis results. GitHub Code Scanning, Azure DevOps, GitLab, and many other systems consume SARIF natively.
 
 ```bash
 projscan ci --format sarif > projscan.sarif
 ```
 
 Supported on `analyze`, `doctor`, and `ci`. Each issue is emitted as a SARIF `result` with:
-- `ruleId` — stable rule identifier (e.g., `hardcoded-secret`, `missing-prettier`)
-- `level` — `error`, `warning`, or `note` (mapped from projscan severity)
-- `message.text` — the issue description
-- `locations` — real file + line/column when the analyzer can supply them (security findings include line numbers); project-level issues anchor to repo root
-- `properties.category` — the analyzer category (`security`, `formatting`, `architecture`, …)
-- `properties.fixAvailable` — whether `projscan fix` can remediate it
+- `ruleId` - stable rule identifier (e.g., `hardcoded-secret`, `missing-prettier`)
+- `level` - `error`, `warning`, or `note` (mapped from projscan severity)
+- `message.text` - the issue description
+- `locations` - real file + line/column when the analyzer can supply them (security findings include line numbers); project-level issues anchor to repo root
+- `properties.category` - the analyzer category (`security`, `formatting`, `architecture`, …)
+- `properties.fixAvailable` - whether `projscan fix` can remediate it
 
 When uploaded to GitHub Code Scanning, findings appear in the **Security → Code scanning** tab and (for PRs) as inline annotations on changed lines.
 
@@ -623,7 +623,7 @@ ProjScan loads a project-wide config from one of:
 | `hotspots.limit` | number (1–100) | Default limit for `projscan hotspots`. |
 | `hotspots.since` | string | Default git history window for `projscan hotspots`. |
 
-Invalid JSON in a discovered config file is a hard error — projscan exits rather than silently ignoring it.
+Invalid JSON in a discovered config file is a hard error - projscan exits rather than silently ignoring it.
 
 ### Embedded config in `package.json`
 
@@ -643,7 +643,7 @@ If you prefer to keep everything in `package.json`:
 
 ## PR-Diff Mode (`--changed-only`)
 
-For CI on pull requests, you usually only care about issues that **this PR introduced** — not the long tail of legacy warnings elsewhere in the repo. `--changed-only` scopes the report to files changed vs a base ref.
+For CI on pull requests, you usually only care about issues that **this PR introduced** - not the long tail of legacy warnings elsewhere in the repo. `--changed-only` scopes the report to files changed vs a base ref.
 
 **How it decides what's "changed":**
 
@@ -654,7 +654,7 @@ For CI on pull requests, you usually only care about issues that **this PR intro
 
 **How it filters:**
 
-Issues that carry a `location` (file path) are kept only if that file appears in the changed set. **Project-level issues without a location are dropped** in `--changed-only` mode — that's intentional: "No ESLint config" is a real issue, but it shouldn't block every PR that doesn't touch ESLint.
+Issues that carry a `location` (file path) are kept only if that file appears in the changed set. **Project-level issues without a location are dropped** in `--changed-only` mode - that's intentional: "No ESLint config" is a real issue, but it shouldn't block every PR that doesn't touch ESLint.
 
 **When to use it:**
 
@@ -681,7 +681,7 @@ Example GitHub Actions snippet:
 | `--config <path>` | Path to a `.projscanrc` config file |
 | `--changed-only` | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
-| `--verbose` | Show debug-level logging — useful for diagnosing scan issues |
+| `--verbose` | Show debug-level logging - useful for diagnosing scan issues |
 | `--quiet` | Suppress all non-essential output (spinners, status messages) |
 | `-V, --version` | Print the version number |
 | `-h, --help` | Print help for any command |
@@ -707,11 +707,11 @@ The **primary language** is the one with the most files.
 
 Detection uses two strategies:
 
-**1. Dependency scanning** — checks `package.json` for known framework packages:
+**1. Dependency scanning** - checks `package.json` for known framework packages:
 
 React, Next.js, Vue.js, Nuxt.js, Svelte, SvelteKit, Angular, Solid.js, Express, Fastify, NestJS, Hono, Koa, Apollo Server, tRPC, Prisma, Drizzle ORM, Mongoose, TypeORM, Sequelize, Tailwind CSS, Vite, Webpack, Rollup, esbuild, Vitest, Jest, Mocha, Cypress, Playwright, Storybook, and more.
 
-**2. Config file presence** — checks for known configuration files:
+**2. Config file presence** - checks for known configuration files:
 
 `next.config.js`, `nuxt.config.ts`, `svelte.config.js`, `angular.json`, `vite.config.ts`, `webpack.config.js`, `tailwind.config.js`, `prisma/schema.prisma`, `docker-compose.yml`, `Dockerfile`, and more.
 
@@ -747,7 +747,7 @@ ProjScan ships with six analyzer modules:
 - Warns if no lock file is present
 
 #### 6. Security Check
-- **Committed `.env` files**: Flags `.env`, `.env.local`, `.env.production`, etc. (but not `.env.example`, `.env.sample`, `.env.template`) — location anchored to the file
+- **Committed `.env` files**: Flags `.env`, `.env.local`, `.env.production`, etc. (but not `.env.example`, `.env.sample`, `.env.template`) - location anchored to the file
 - **Private key files**: Detects `.pem`, `.key`, `id_rsa`, `id_ed25519`, `.p12`, `.pfx` files
 - **Hardcoded secrets**: Scans file contents (files under 512KB) for:
   - AWS Access Keys (`AKIA...`)
@@ -803,7 +803,7 @@ The fix system is intentionally conservative. It only creates configuration file
 
 **EditorConfig fix:**
 - Creates `.editorconfig`
-- Installs nothing — EditorConfig is handled by editor plugins
+- Installs nothing - EditorConfig is handled by editor plugins
 
 ---
 
@@ -857,17 +857,17 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 | Bus factor | penalty tag | Single-author + high churn = organizational risk |
 
 **Ownership signals:**
-- `primaryAuthor` — the top committer by share
-- `primaryAuthorShare` — fraction of commits (0–1)
-- `topAuthors` — ranked list
-- `busFactorOne` — `true` if the primary author owns > 80% of commits **and** churn is above the median
+- `primaryAuthor` - the top committer by share
+- `primaryAuthorShare` - fraction of commits (0–1)
+- `topAuthors` - ranked list
+- `busFactorOne` - `true` if the primary author owns > 80% of commits **and** churn is above the median
 
-**Bus-factor-one files get a score penalty and a `bus-factor-one` reason tag** — they show up higher in the ranking because if that one author leaves, the knowledge is gone.
+**Bus-factor-one files get a score penalty and a `bus-factor-one` reason tag** - they show up higher in the ranking because if that one author leaves, the knowledge is gone.
 
 **What "hotspots" can't do:**
 - It's a heuristic, not a proof. Low-risk files may still have bugs.
 - It weights LOC as a proxy for complexity; a clean 1,000-line file may rank higher than it deserves.
-- It has no visibility into logical coupling — two small files that change together still look independent.
+- It has no visibility into logical coupling - two small files that change together still look independent.
 
 `projscan diff` snapshots the top 20 hotspots and tracks which ones **rose** / **fell** / **appeared** / **resolved** over time.
 
@@ -878,27 +878,27 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
 **Tools (13):**
-- `projscan_graph` — **structural query over the AST code graph.** Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agent-native; milliseconds on a warm cache.
-- `projscan_search` — **BM25-ranked search.** Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Query tokens are split on camelCase/snake_case and lightly stemmed.
-- `projscan_analyze` — full project snapshot
-- `projscan_doctor` — health score + issue list
-- `projscan_hotspots` — ranked file risk (`limit`, `since` args)
-- `projscan_file` — per-file inspection (purpose, risk, ownership, related issues)
-- `projscan_explain` — purpose, imports, exports, smells
-- `projscan_structure` — directory tree
-- `projscan_dependencies` — package audit
-- `projscan_outdated` — declared-vs-installed drift (offline)
-- `projscan_audit` — npm audit, normalized (severity summary + findings)
-- `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
-- `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction" (`limit` arg)
+- `projscan_graph` - **structural query over the AST code graph.** Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agent-native; milliseconds on a warm cache.
+- `projscan_search` - **BM25-ranked search.** Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Query tokens are split on camelCase/snake_case and lightly stemmed.
+- `projscan_analyze` - full project snapshot
+- `projscan_doctor` - health score + issue list
+- `projscan_hotspots` - ranked file risk (`limit`, `since` args)
+- `projscan_file` - per-file inspection (purpose, risk, ownership, related issues)
+- `projscan_explain` - purpose, imports, exports, smells
+- `projscan_structure` - directory tree
+- `projscan_dependencies` - package audit
+- `projscan_outdated` - declared-vs-installed drift (offline)
+- `projscan_audit` - npm audit, normalized (severity summary + findings)
+- `projscan_upgrade` - upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
+- `projscan_coverage` - coverage × hotspots, ranked by "risk × uncovered fraction" (`limit` arg)
 
 **Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field.
 
 **Incremental cache:** projscan caches parsed ASTs at `.projscan-cache/graph.json`. First run populates, subsequent runs re-parse only files whose `mtime` changed. Auto-gitignored. Delete the directory to force a rebuild.
 
 **Prompts (2, parameterized with live project data):**
-- `prioritize_refactoring` — ranked plan grounded in current hotspots
-- `investigate_file` — senior-engineer brief for a specific file
+- `prioritize_refactoring` - ranked plan grounded in current hotspots
+- `investigate_file` - senior-engineer brief for a specific file
 
 **Resources (3, readable on demand):**
 - `projscan://health`
@@ -941,10 +941,10 @@ ProjScan is designed to be fast enough to run on every save or as a pre-commit h
 
 **How it stays fast:**
 - Uses `fast-glob` for file walking
-- Language detection is a pure function — no I/O, just extension mapping
+- Language detection is a pure function - no I/O, just extension mapping
 - Framework detection reads at most one file (`package.json`) plus checks file names already in memory
 - Hotspots is the only command that shells out to `git`; that's ~1s on a 5k-commit repo
-- `--changed-only` mode scopes reporting (not scanning), so scan time is unchanged — but CI jobs with heavy parsing can pair it with a smaller file set if you want faster runs
+- `--changed-only` mode scopes reporting (not scanning), so scan time is unchanged - but CI jobs with heavy parsing can pair it with a smaller file set if you want faster runs
 
 ---
 
@@ -1002,7 +1002,7 @@ ProjScan has three first-class CI integration paths:
 
 ### 1. First-party GitHub Action (recommended)
 
-The easiest path — installs projscan, runs the health gate, uploads SARIF to GitHub Code Scanning.
+The easiest path - installs projscan, runs the health gate, uploads SARIF to GitHub Code Scanning.
 
 ```yaml
 name: ProjScan
@@ -1036,9 +1036,9 @@ Findings show up in **Security → Code scanning**; PR annotations are automatic
 
 ### 2. Plain workflow (no SARIF upload)
 
-If you'd rather skip Code Scanning, the repo ships `.github/projscan-ci.yml` — a drop-in workflow that runs `projscan ci` and posts a markdown health report as a PR comment.
+If you'd rather skip Code Scanning, the repo ships `.github/projscan-ci.yml` - a drop-in workflow that runs `projscan ci` and posts a markdown health report as a PR comment.
 
-### 3. Any CI — raw `projscan ci`
+### 3. Any CI - raw `projscan ci`
 
 The `ci` command is purpose-built for pipelines:
 
@@ -1091,7 +1091,7 @@ If scanning takes more than a few seconds, check whether you have large unignore
 
 Check stderr for a warning. Most common causes:
 - Running outside a git repository
-- The base ref doesn't exist (e.g., `origin/main` isn't fetched in a shallow CI clone — set `fetch-depth: 0` in checkout)
+- The base ref doesn't exist (e.g., `origin/main` isn't fetched in a shallow CI clone - set `fetch-depth: 0` in checkout)
 - Fresh commit with no parent (no `HEAD~1`)
 
 ### SARIF upload fails with "permission denied"
@@ -1106,7 +1106,7 @@ The fix system uses `npm install` by default. If you use yarn or pnpm, the insta
 
 ## Project Internals
 
-For contributors and the curious — here's how ProjScan is structured:
+For contributors and the curious - here's how ProjScan is structured:
 
 ```
 src/
@@ -1125,7 +1125,7 @@ src/
 │   ├── auditRunner.ts           # npm audit wrapper + SARIF normalization
 │   ├── upgradePreview.ts        # Offline upgrade preview (CHANGELOG + importers)
 │   ├── coverageParser.ts        # lcov / coverage-final / coverage-summary parser
-│   ├── coverageJoin.ts          # Join hotspots × coverage — "scariest untested files"
+│   ├── coverageJoin.ts          # Join hotspots × coverage - "scariest untested files"
 │   ├── ast.ts                   # @babel/parser wrapper → imports + exports + call sites
 │   ├── codeGraph.ts             # Bidirectional file×symbol graph built from AST
 │   ├── indexCache.ts            # mtime-keyed .projscan-cache/graph.json
@@ -1174,8 +1174,8 @@ src/
 ```
 
 **Key design decisions:**
-- **Single `types.ts`** — avoids circular dependencies between modules
-- **ESM-only** — required by chalk v5 and ora v8; all imports use `.js` extensions
-- **Pure functions where possible** — `detectLanguages` is pure (no I/O), trivially testable
-- **No class hierarchies** — analyzers, fixes, reporters, and MCP tools are plain functions with consistent signatures
-- **Opt-in config** — `.projscanrc` is never required, but when present it tunes defaults without needing to change CI scripts
+- **Single `types.ts`** - avoids circular dependencies between modules
+- **ESM-only** - required by chalk v5 and ora v8; all imports use `.js` extensions
+- **Pure functions where possible** - `detectLanguages` is pure (no I/O), trivially testable
+- **No class hierarchies** - analyzers, fixes, reporters, and MCP tools are plain functions with consistent signatures
+- **Opt-in config** - `.projscanrc` is never required, but when present it tunes defaults without needing to change CI scripts

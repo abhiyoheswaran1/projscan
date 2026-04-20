@@ -34,7 +34,7 @@ export const testFix: Fix = {
       await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
-        return; // No package.json — nothing to update
+        return; // No package.json - nothing to update
       }
       throw err; // Re-throw JSON parse errors or unexpected failures
     }

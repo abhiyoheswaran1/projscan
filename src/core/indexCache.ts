@@ -24,7 +24,7 @@ interface SerializedGraph {
 
 /**
  * Load a previously cached code graph, if present and valid. Returns undefined
- * when there's no cache or the cache is incompatible — caller should rebuild.
+ * when there's no cache or the cache is incompatible - caller should rebuild.
  */
 export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | undefined> {
   const cachePath = path.join(rootPath, CACHE_DIR, CACHE_FILE);
@@ -58,7 +58,7 @@ export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | und
     });
   }
 
-  // Derived indexes are rebuilt on load — cheap compared to re-parsing.
+  // Derived indexes are rebuilt on load - cheap compared to re-parsing.
   // Return a partial graph the caller will rehydrate via buildCodeGraph.
   return {
     files,
@@ -70,7 +70,7 @@ export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | und
 }
 
 /**
- * Persist the graph. Creates .projscan-cache/ if needed. Swallows errors —
+ * Persist the graph. Creates .projscan-cache/ if needed. Swallows errors -
  * caching is best-effort, never blocks a run.
  */
 export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promise<void> {
@@ -107,7 +107,7 @@ export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promi
     const gitignorePath = path.join(dir, '.gitignore');
     await fs.writeFile(gitignorePath, '*\n', 'utf-8');
   } catch {
-    // ignore — cache is best-effort
+    // ignore - cache is best-effort
   }
 }
 

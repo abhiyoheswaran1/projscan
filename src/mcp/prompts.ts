@@ -78,10 +78,10 @@ async function prioritizeRefactoringPrompt(
           const ownership = h.busFactorOne && h.primaryAuthor
             ? ` [BUS FACTOR 1: ${h.primaryAuthor}]`
             : '';
-          return `${i + 1}. ${h.relativePath} — risk ${h.riskScore.toFixed(1)} (${reasons})${ownership}`;
+          return `${i + 1}. ${h.relativePath} - risk ${h.riskScore.toFixed(1)} (${reasons})${ownership}`;
         })
         .join('\n')
-    : '(no hotspots available — project may not be a git repository)';
+    : '(no hotspots available - project may not be a git repository)';
 
   const topIssues = issues
     .slice(0, 15)
@@ -136,7 +136,7 @@ async function investigateFilePrompt(
     'Explain in order:',
     '1. What this file does and how it fits in the codebase.',
     '2. What is risky about it right now (cite evidence from the report).',
-    '3. Concrete next actions — questions to ask, tests to add, or refactors to attempt.',
+    '3. Concrete next actions - questions to ask, tests to add, or refactors to attempt.',
     '4. Who to involve (based on ownership, if available).',
   ].join('\n');
 

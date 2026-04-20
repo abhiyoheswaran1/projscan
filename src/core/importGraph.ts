@@ -12,7 +12,7 @@ export interface ImportGraph {
 
 /**
  * Walk source files and build an import graph. Now backed by AST-based
- * codeGraph — this function is retained for public API compatibility.
+ * codeGraph - this function is retained for public API compatibility.
  */
 export async function buildImportGraph(
   rootPath: string,

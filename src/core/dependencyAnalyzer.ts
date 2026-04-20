@@ -4,9 +4,9 @@ import type { DependencyReport, DependencyRisk } from '../types.js';
 
 const DEPRECATED_PACKAGES: Record<string, string> = {
   moment: 'Consider using date-fns or dayjs instead',
-  request: 'Deprecated — use node-fetch, undici, or axios instead',
+  request: 'Deprecated - use node-fetch, undici, or axios instead',
   'node-uuid': 'Renamed to uuid',
-  nomnom: 'Deprecated — use commander or yargs instead',
+  nomnom: 'Deprecated - use commander or yargs instead',
   'coffee-script': 'CoffeeScript is no longer maintained',
 };
 
@@ -51,13 +51,13 @@ export async function analyzeDependencies(rootPath: string): Promise<DependencyR
   if (totalDeps > 100) {
     risks.push({
       name: 'excessive-dependencies',
-      reason: `${totalDeps} production dependencies — consider auditing for unused packages`,
+      reason: `${totalDeps} production dependencies - consider auditing for unused packages`,
       severity: 'high',
     });
   } else if (totalDeps > 50) {
     risks.push({
       name: 'many-dependencies',
-      reason: `${totalDeps} production dependencies — review for opportunities to reduce`,
+      reason: `${totalDeps} production dependencies - review for opportunities to reduce`,
       severity: 'medium',
     });
   }
@@ -67,7 +67,7 @@ export async function analyzeDependencies(rootPath: string): Promise<DependencyR
     if (version === '*' || version.startsWith('>=')) {
       risks.push({
         name,
-        reason: `Wildcard version range "${version}" — pin to a specific version for reproducible builds`,
+        reason: `Wildcard version range "${version}" - pin to a specific version for reproducible builds`,
         severity: 'high',
       });
     }
@@ -78,7 +78,7 @@ export async function analyzeDependencies(rootPath: string): Promise<DependencyR
   if (!hasLockfile && totalDeps > 0) {
     risks.push({
       name: 'no-lockfile',
-      reason: 'No lockfile found — run npm install to generate package-lock.json',
+      reason: 'No lockfile found - run npm install to generate package-lock.json',
       severity: 'medium',
     });
   }

@@ -105,7 +105,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
     if (graph.externalPackages.has(name)) continue;
     if (isImplicitlyUsed(name)) continue;
     if (scriptUsedBinaries.has(name)) continue;
-    // skip scoped bin lookups (e.g., "npx some-tool") — covered by scriptUsedBinaries
+    // skip scoped bin lookups (e.g., "npx some-tool") - covered by scriptUsedBinaries
 
     const isDev = name in devDependencies;
     const line = locations?.lineOfDependency.get(name);

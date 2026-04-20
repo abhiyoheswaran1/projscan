@@ -120,14 +120,14 @@ export function extractImports(content: string): ImportInfo[] {
     }
   };
 
-  // ES import — optional `type` keyword for type-only imports.
+  // ES import - optional `type` keyword for type-only imports.
   const esImportRegex = /import\s+(?:type\s+)?(?:(?:\{[^}]*\}|[\w*]+(?:\s*,\s*\{[^}]*\})?|\*\s+as\s+\w+)\s+from\s+)?['"]([^'"]+)['"]/gm;
   let match: RegExpExecArray | null;
   while ((match = esImportRegex.exec(content)) !== null) {
     addSource(match[1]);
   }
 
-  // ES re-export — `export ... from '...'` counts as an import from the
+  // ES re-export - `export ... from '...'` counts as an import from the
   // importer's point of view for graph-building purposes.
   const esReexportRegex = /export\s+(?:type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]([^'"]+)['"]/gm;
   while ((match = esReexportRegex.exec(content)) !== null) {
@@ -223,11 +223,11 @@ export function inferPurpose(filePath: string, exports: ExportInfo[]): string {
 export function detectFileIssues(content: string, lineCount: number): string[] {
   const issues: string[] = [];
 
-  if (lineCount > 500) issues.push(`Large file (${lineCount} lines) — consider splitting`);
-  if (lineCount > 1000) issues.push('Very large file — strongly consider refactoring');
+  if (lineCount > 500) issues.push(`Large file (${lineCount} lines) - consider splitting`);
+  if (lineCount > 1000) issues.push('Very large file - strongly consider refactoring');
 
   if (/console\.(log|warn|error|debug)\s*\(/.test(content)) {
-    issues.push('Contains console.log statements — consider using a proper logger');
+    issues.push('Contains console.log statements - consider using a proper logger');
   }
 
   if (/TODO|FIXME|HACK|XXX/i.test(content)) {
@@ -235,7 +235,7 @@ export function detectFileIssues(content: string, lineCount: number): string[] {
   }
 
   if (/:\s*any\b/.test(content) && /\.tsx?$/.test(content)) {
-    issues.push('Uses "any" type — consider using proper types');
+    issues.push('Uses "any" type - consider using proper types');
   }
 
   return issues;

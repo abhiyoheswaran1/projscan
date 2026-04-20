@@ -8,7 +8,7 @@ import type { CodeGraph } from './codeGraph.js';
  *
  * We index three fields per file with different weights:
  *   - content (body tokens, BM25 baseline)
- *   - symbols (export names — most informative for code search)
+ *   - symbols (export names - most informative for code search)
  *   - path (file path tokens)
  *
  * Scoring:
@@ -262,7 +262,7 @@ export function tokenize(input: string): string[] {
       .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
     const parts = camelSplit.split(/[_\s]+/).filter(Boolean);
     for (const part of parts) {
-      // Split embedded digits from letters — e.g. "v1api" → "v", "1", "api"
+      // Split embedded digits from letters - e.g. "v1api" → "v", "1", "api"
       const subparts = part.split(/(\d+)/).filter(Boolean);
       for (const sp of subparts) {
         const lower = sp.toLowerCase();

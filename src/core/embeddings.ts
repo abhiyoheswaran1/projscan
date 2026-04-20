@@ -1,5 +1,5 @@
 /**
- * Thin wrapper around `@xenova/transformers` — imported dynamically so we
+ * Thin wrapper around `@xenova/transformers` - imported dynamically so we
  * fail softly when the peer dep is absent.
  *
  * Design goals:
@@ -54,7 +54,7 @@ async function tryLoadTransformers(): Promise<TransformersModule | null> {
       cachedModule = null;
       return null;
     }
-    // Unexpected load error — treat as unavailable, log to stderr for diagnosis.
+    // Unexpected load error - treat as unavailable, log to stderr for diagnosis.
     process.stderr.write(`[projscan] embeddings unavailable: ${err instanceof Error ? err.message : String(err)}\n`);
     cachedModule = null;
     return null;

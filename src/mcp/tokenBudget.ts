@@ -2,7 +2,7 @@
  * Rough token estimator and record-aware truncator for MCP tool output.
  *
  * Uses the widely-used "~4 chars per token" heuristic. Good enough for
- * prioritization — absolute accuracy is not required.
+ * prioritization - absolute accuracy is not required.
  */
 
 export const CHARS_PER_TOKEN = 4;
@@ -80,7 +80,7 @@ function safeStringify(value: unknown): string {
 }
 
 /**
- * Find top-level array field names — our convention is that MCP results
+ * Find top-level array field names - our convention is that MCP results
  * expose a primary array (hotspots, entries, findings, files) worth
  * trimming before scalar fields.
  */

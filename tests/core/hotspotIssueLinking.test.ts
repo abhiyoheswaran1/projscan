@@ -48,7 +48,7 @@ describe('hotspot ↔ issue linking', () => {
       await commitFile(dir, 'src/a.ts', 'export const a = 1;'),
       await commitFile(dir, 'src/ab.ts', 'export const ab = 2;'),
     ];
-    // Issue anchored to src/ab.ts via locations — its title still mentions "src/a.ts"
+    // Issue anchored to src/ab.ts via locations - its title still mentions "src/a.ts"
     // as a red herring (e.g., because of a nearby import path). The old substring
     // logic would falsely link it to src/a.ts. Locations should win.
     const issues: Issue[] = [
@@ -74,7 +74,7 @@ describe('hotspot ↔ issue linking', () => {
       await commitFile(dir, 'src/a.ts', 'export const a = 1;'),
       await commitFile(dir, 'src/ab.ts', 'export const ab = 2;'),
     ];
-    // No locations — substring fallback kicks in. We mention "src/ab.ts" in
+    // No locations - substring fallback kicks in. We mention "src/ab.ts" in
     // the description; the boundary guard must prevent "src/a.ts" from matching.
     const issues: Issue[] = [
       {

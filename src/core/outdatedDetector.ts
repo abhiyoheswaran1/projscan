@@ -4,7 +4,7 @@ import type { OutdatedPackage, OutdatedReport } from '../types.js';
 import { drift as semverDrift } from '../utils/semver.js';
 
 /**
- * Offline outdated check — compares the version declared in package.json
+ * Offline outdated check - compares the version declared in package.json
  * to the version installed under node_modules/<pkg>/package.json.
  *
  * Does not hit the npm registry. `latest` is filled in only when a node_modules

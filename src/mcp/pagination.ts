@@ -25,7 +25,7 @@ const MAX_PAGE_SIZE = 500;
 
 /**
  * Slice an array into a page. `checksum` should be a cheap identifier of
- * the result-set shape (e.g., `items.length`) — if it mismatches a cursor's
+ * the result-set shape (e.g., `items.length`) - if it mismatches a cursor's
  * captured checksum we treat the page as fresh (offset=0) rather than risk
  * returning stale offsets.
  */
@@ -74,7 +74,7 @@ export function decodeCursor(cursor?: string): DecodedCursor | null {
 }
 
 /**
- * Compute a lightweight checksum for a list. Deliberately weak — we want
+ * Compute a lightweight checksum for a list. Deliberately weak - we want
  * cursor invalidation on shape changes (length) but not on micro-changes
  * within items (scores that shift slightly between runs). Agents already
  * handle eventual consistency.

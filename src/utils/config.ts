@@ -31,7 +31,7 @@ export async function loadConfig(
     try {
       raw = await fs.readFile(candidate, 'utf-8');
     } catch {
-      // File not present — try next candidate.
+      // File not present - try next candidate.
       continue;
     }
     const parsed = safeParse(raw, candidate);

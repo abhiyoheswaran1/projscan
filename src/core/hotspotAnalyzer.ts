@@ -34,7 +34,7 @@ export async function analyzeHotspots(
   if (!isRepo) {
     return {
       available: false,
-      reason: 'Not a git repository — hotspot analysis requires git history',
+      reason: 'Not a git repository - hotspot analysis requires git history',
       window: { since: null, commitsScanned: 0 },
       hotspots: [],
       totalFilesRanked: 0,
@@ -322,7 +322,7 @@ function indexIssuesByFile(issues: Issue[], files: FileEntry[]): Map<string, str
   };
 
   for (const issue of issues) {
-    // Prefer explicit locations when the analyzer supplied them — this is
+    // Prefer explicit locations when the analyzer supplied them - this is
     // exact and avoids the substring-false-positive problem where "src/a.ts"
     // would match issues that only mention "src/ab.ts".
     if (issue.locations && issue.locations.length > 0) {

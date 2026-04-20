@@ -68,7 +68,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   async function dispatch(request: JsonRpcRequest): Promise<JsonRpcResponse | null> {
     const id = request.id ?? null;
 
-    // Notifications (no id) — no response expected.
+    // Notifications (no id) - no response expected.
     const isNotification = request.id === undefined || request.id === null;
 
     try {

@@ -15,7 +15,7 @@ function getVersion(): string {
 }
 
 /**
- * Full two-panel welcome screen — shown only on the default `projscan` command.
+ * Full two-panel welcome screen - shown only on the default `projscan` command.
  * Left panel: ASCII logo + version. Right panel: commands + what's new.
  */
 export function showBanner(): void {
@@ -85,7 +85,7 @@ export function showBanner(): void {
 }
 
 /**
- * Compact one-liner — shown on subcommands (doctor, fix, etc.).
+ * Compact one-liner - shown on subcommands (doctor, fix, etc.).
  */
 export function showCompactBanner(): void {
   const version = getVersion();
@@ -96,7 +96,7 @@ export function showCompactBanner(): void {
 }
 
 /**
- * Help screen — shown by `projscan help`.
+ * Help screen - shown by `projscan help`.
  * Displays the full banner + detailed command reference.
  */
 export function showHelp(): void {
@@ -109,26 +109,26 @@ export function showHelp(): void {
 
   const commands = [
     { cmd: 'projscan',                       desc: 'Full project analysis (default)' },
-    { cmd: 'projscan doctor',                desc: 'Health check — detect issues and score your project' },
-    { cmd: 'projscan hotspots',              desc: 'Rank files by risk — churn × complexity × issues × ownership' },
+    { cmd: 'projscan doctor',                desc: 'Health check - detect issues and score your project' },
+    { cmd: 'projscan hotspots',              desc: 'Rank files by risk - churn × complexity × issues × ownership' },
     { cmd: 'projscan search <query>',        desc: 'BM25-ranked search across content, symbols, and paths' },
-    { cmd: 'projscan file <path>',           desc: 'Drill into a file — purpose, risk, ownership, issues' },
+    { cmd: 'projscan file <path>',           desc: 'Drill into a file - purpose, risk, ownership, issues' },
     { cmd: 'projscan fix',                   desc: 'Auto-fix detected issues (interactive)' },
     { cmd: 'projscan fix -y',                desc: 'Auto-fix without prompting' },
-    { cmd: 'projscan ci',                    desc: 'CI gate — exit 1 if score below threshold' },
+    { cmd: 'projscan ci',                    desc: 'CI gate - exit 1 if score below threshold' },
     { cmd: 'projscan ci --min-score 80',     desc: 'Set custom minimum score' },
     { cmd: 'projscan ci --changed-only',     desc: 'Gate only on issues in this PR\'s diff' },
     { cmd: 'projscan ci --format sarif',     desc: 'Emit SARIF 2.1.0 for GitHub Code Scanning' },
     { cmd: 'projscan diff',                  desc: 'Compare current health against saved baseline' },
     { cmd: 'projscan diff --save-baseline',  desc: 'Save current state as baseline' },
-    { cmd: 'projscan explain <file>',        desc: 'Explain a file — purpose, imports, exports' },
+    { cmd: 'projscan explain <file>',        desc: 'Explain a file - purpose, imports, exports' },
     { cmd: 'projscan diagram',               desc: 'Show architecture layer diagram' },
     { cmd: 'projscan structure',             desc: 'Show directory structure overview' },
     { cmd: 'projscan dependencies',          desc: 'Analyze project dependencies' },
     { cmd: 'projscan outdated',              desc: 'Declared-vs-installed drift (offline)' },
     { cmd: 'projscan audit',                 desc: 'Run npm audit; SARIF-ready vulnerability report' },
     { cmd: 'projscan upgrade <pkg>',         desc: 'Preview upgrade impact (CHANGELOG + importers, offline)' },
-    { cmd: 'projscan coverage',              desc: 'Coverage × hotspots — surface scariest untested files' },
+    { cmd: 'projscan coverage',              desc: 'Coverage × hotspots - surface scariest untested files' },
     { cmd: 'projscan badge',                 desc: 'Generate a health badge for your README' },
     { cmd: 'projscan mcp',                   desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
   ];

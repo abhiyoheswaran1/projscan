@@ -9,7 +9,7 @@ export interface PackageJsonLocations {
 /**
  * Parse package.json and find the line number of each dependency name
  * (within dependencies, devDependencies, peerDependencies, optionalDependencies).
- * Line numbers are 1-based. Uses regex against the raw text — robust enough
+ * Line numbers are 1-based. Uses regex against the raw text - robust enough
  * for typical formatted package.json files.
  */
 export async function findDependencyLines(

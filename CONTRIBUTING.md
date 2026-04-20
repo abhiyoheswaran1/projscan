@@ -68,7 +68,7 @@ src/
 ├── analyzers/    # Issue checkers (eslint, prettier, test, architecture, deps, security)
 ├── fixes/        # Auto-fix implementations (ESLint, Prettier, Vitest, EditorConfig)
 ├── reporters/    # Output formatters (console, JSON, markdown, SARIF)
-├── mcp/          # MCP server — tools, prompts, resources for AI agents
+├── mcp/          # MCP server - tools, prompts, resources for AI agents
 └── utils/        # Shared utilities (config loader, changed-files, baseline, banner, logger)
 ```
 
@@ -76,7 +76,7 @@ src/
 
 - TypeScript with strict mode
 - ESLint + Prettier for formatting
-- Keep dependencies minimal — avoid adding new runtime dependencies unless necessary
+- Keep dependencies minimal - avoid adding new runtime dependencies unless necessary
 - Write tests for new analyzers and fixers
 
 ## License

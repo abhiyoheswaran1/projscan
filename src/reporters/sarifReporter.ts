@@ -4,7 +4,7 @@ const TOOL_INFO = {
   name: 'projscan',
   informationUri: 'https://github.com/abhiyoheswaran1/projscan',
   shortDescription: {
-    text: 'Instant codebase insights — doctor, x-ray, and architecture map.',
+    text: 'Instant codebase insights - doctor, x-ray, and architecture map.',
   },
 };
 

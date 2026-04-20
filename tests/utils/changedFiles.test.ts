@@ -64,7 +64,7 @@ describe('getChangedFiles', () => {
     await git(repo, ['add', 'a.txt']);
     await git(repo, ['commit', '-q', '-m', 'first']);
 
-    // Uncommitted new file — no second commit yet
+    // Uncommitted new file - no second commit yet
     await fs.writeFile(path.join(repo, 'uncommitted.txt'), 'wip');
 
     // No HEAD~1 exists yet (only one commit), but status fallback should still surface the file.

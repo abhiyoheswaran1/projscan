@@ -237,7 +237,7 @@ const tools: McpTool[] = [
   {
     name: 'projscan_outdated',
     description:
-      'Compare declared vs installed versions of every package. Reports drift (patch/minor/major). Offline — does not hit the npm registry. Supports cursor pagination.',
+      'Compare declared vs installed versions of every package. Reports drift (patch/minor/major). Offline - does not hit the npm registry. Supports cursor pagination.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -314,7 +314,7 @@ const tools: McpTool[] = [
   {
     name: 'projscan_coverage',
     description:
-      'Join test coverage with hotspot risk. Returns files ranked by "risk × uncovered fraction" — the scariest untested files. Requires a coverage file at coverage/lcov.info, coverage/coverage-final.json, or coverage/coverage-summary.json.',
+      'Join test coverage with hotspot risk. Returns files ranked by "risk × uncovered fraction" - the scariest untested files. Requires a coverage file at coverage/lcov.info, coverage/coverage-final.json, or coverage/coverage-summary.json.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -355,7 +355,7 @@ const tools: McpTool[] = [
   {
     name: 'projscan_graph',
     description:
-      'Query the AST-based code graph directly. Returns imports, exports, importers, or symbol definitions for a file or symbol. Agents should prefer this over analyze/doctor/explain for targeted structural questions — it is much cheaper and more accurate.',
+      'Query the AST-based code graph directly. Returns imports, exports, importers, or symbol definitions for a file or symbol. Agents should prefer this over analyze/doctor/explain for targeted structural questions - it is much cheaper and more accurate.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -465,7 +465,7 @@ const tools: McpTool[] = [
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
 
-      // Files scope — simple substring scan; ranking adds no value
+      // Files scope - simple substring scan; ranking adds no value
       if (scope === 'files') {
         const q = query.toLowerCase();
         const all = scan.files
@@ -475,7 +475,7 @@ const tools: McpTool[] = [
         return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
       }
 
-      // Symbols scope — walk the graph's export table; rank exact/prefix/substring
+      // Symbols scope - walk the graph's export table; rank exact/prefix/substring
       if (scope === 'symbols') {
         const q = query.toLowerCase();
         const rawMatches: Array<{ symbol: string; kind: string; file: string; line: number; rank: number }> = [];
@@ -498,7 +498,7 @@ const tools: McpTool[] = [
         return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
       }
 
-      // Content or auto scope — lexical BM25 by default, optionally semantic or hybrid
+      // Content or auto scope - lexical BM25 by default, optionally semantic or hybrid
       const mode = String(args.mode ?? 'lexical');
       const index = await buildSearchIndex(rootPath, scan.files, graph);
       const lexicalHits = searchIndex(index, query, { limit });
@@ -518,7 +518,7 @@ const tools: McpTool[] = [
         };
       }
 
-      // Semantic or hybrid — both require the peer
+      // Semantic or hybrid - both require the peer
       const hasSemantic = await isSemanticAvailable();
       if (!hasSemantic) {
         return {
@@ -574,7 +574,7 @@ const tools: McpTool[] = [
         };
       }
 
-      // Hybrid — reciprocal rank fusion
+      // Hybrid - reciprocal rank fusion
       const fused = reciprocalRankFusion([lexicalHits, semHits]).slice(0, limit);
       const enriched = await attachExcerpts(
         rootPath,

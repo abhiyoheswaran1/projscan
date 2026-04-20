@@ -8,7 +8,7 @@
  *     emit chunk blocks each containing a slice of the array.
  *   - Otherwise, emit a single block.
  *
- * Chunk size defaults to 20 records per block — small enough to be a
+ * Chunk size defaults to 20 records per block - small enough to be a
  * meaningful streaming unit, big enough to avoid pathological block counts.
  */
 

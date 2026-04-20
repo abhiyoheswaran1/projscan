@@ -33,7 +33,7 @@ describe('MCP server budget sidecar', () => {
     const parsed = JSON.parse(text) as Record<string, unknown>;
 
     // If truncated, the response MUST still be a plain object with _budget
-    // set — never an array-shaped blob with numeric keys.
+    // set - never an array-shaped blob with numeric keys.
     if (parsed._budget) {
       expect(typeof parsed).toBe('object');
       expect(Array.isArray(parsed)).toBe(false);

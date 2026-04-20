@@ -43,7 +43,7 @@ export const prettierFix: Fix = {
       }
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
-        return; // No package.json — nothing to update
+        return; // No package.json - nothing to update
       }
       throw err; // Re-throw JSON parse errors or unexpected failures
     }

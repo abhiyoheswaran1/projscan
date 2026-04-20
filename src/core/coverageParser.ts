@@ -67,7 +67,7 @@ function parseByFormat(raw: string, source: CoverageSource, rootPath: string): F
 }
 
 /**
- * LCOV — record-oriented plain text:
+ * LCOV - record-oriented plain text:
  *   SF:/abs/path/to/file.ts
  *   LF:100         (lines found)
  *   LH:85          (lines hit)
@@ -107,7 +107,7 @@ function parseLcov(raw: string, rootPath: string): FileCoverage[] {
 }
 
 /**
- * coverage-final.json — Istanbul per-file detail:
+ * coverage-final.json - Istanbul per-file detail:
  *   { "/abs/path/file.ts": { "path": "...", "statementMap": {...}, "s": { "0": 1, "1": 0 }, ... } }
  * We approximate line coverage from statement counts (statements is the closest
  * thing to "line" when line-level data isn't separately broken out).
@@ -138,7 +138,7 @@ function parseCoverageFinal(raw: string, rootPath: string): FileCoverage[] {
 }
 
 /**
- * coverage-summary.json — Istanbul per-file summary:
+ * coverage-summary.json - Istanbul per-file summary:
  *   { "total": {...}, "/abs/path/file.ts": { "lines": { "total": 100, "covered": 85, "pct": 85.0 }, ... } }
  */
 function parseCoverageSummary(raw: string, rootPath: string): FileCoverage[] {

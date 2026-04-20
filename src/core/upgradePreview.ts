@@ -41,7 +41,7 @@ export async function previewUpgrade(
   if (!installed) {
     return {
       available: false,
-      reason: `Package "${pkgName}" not installed — run npm install and retry`,
+      reason: `Package "${pkgName}" not installed - run npm install and retry`,
       name: pkgName,
       declared: declaredVersions,
       installed: null,

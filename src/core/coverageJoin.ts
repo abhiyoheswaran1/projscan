@@ -7,7 +7,7 @@ import type {
 
 /**
  * Join a hotspot report with a coverage report and rank entries by
- * "risk × uncovered fraction" — the files that most deserve tests.
+ * "risk × uncovered fraction" - the files that most deserve tests.
  */
 export function joinCoverageWithHotspots(
   hotspots: HotspotReport,

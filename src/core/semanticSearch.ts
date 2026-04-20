@@ -65,7 +65,7 @@ export interface SemanticHit {
 
 /**
  * Build (or refresh) a semantic index. Reuses cached embeddings for files
- * whose mtime AND content hash match — both guards are necessary because
+ * whose mtime AND content hash match - both guards are necessary because
  * git checkouts can preserve mtime while swapping content.
  *
  * Returns null if the peer dep isn't available.
@@ -178,7 +178,7 @@ export async function buildSemanticIndex(
   };
 
   await saveCache(rootPath, index).catch(() => {
-    // best-effort — don't fail the search if cache write fails
+    // best-effort - don't fail the search if cache write fails
   });
 
   return index;

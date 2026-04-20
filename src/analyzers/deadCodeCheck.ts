@@ -6,7 +6,7 @@ import { extractExports } from '../core/fileInspector.js';
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
 
-// Never flag these — they're public API by definition
+// Never flag these - they're public API by definition
 const PUBLIC_PATH_PREFIXES = ['src/index', 'index.'];
 
 // Or if they're explicitly named as exports in package.json
@@ -25,12 +25,12 @@ interface PackageExports {
  *
  * Does NOT flag:
  * - files listed as the package's public entry points (main, exports, types, bin)
- * - default exports (too many false positives — framework conventions)
+ * - default exports (too many false positives - framework conventions)
  * - test files (they're not supposed to export)
  * - index files (barrels re-export for public use)
  *
  * False-positive guard: if a file is the target of at least one import, we treat
- * all its exports as "possibly used" — the regex-based graph can't tell which
+ * all its exports as "possibly used" - the regex-based graph can't tell which
  * named export is imported via `import { ... } from './barrel'`. This keeps
  * noise low at the cost of missing some dead exports that live in used files.
  */
@@ -155,7 +155,7 @@ async function loadPublicEntries(rootPath: string): Promise<Set<string>> {
     }
     collectExports(pkg.exports, entries);
   } catch {
-    // package.json missing/unreadable — don't guard, every file is a candidate
+    // package.json missing/unreadable - don't guard, every file is a candidate
   }
   return entries;
 }

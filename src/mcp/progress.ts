@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * Per MCP spec, a client that wants progress sets `_meta.progressToken` on
  * the tool-call request. We capture it at dispatch time and expose a
  * `notify(progress, total?, message?)` callback to the tool handler via an
- * AsyncLocalStorage context — which means concurrent tool calls get their
+ * AsyncLocalStorage context - which means concurrent tool calls get their
  * own isolated emitters (the naive module-level-variable approach had tools
  * clobbering each other's progress streams under pipelined requests).
  *

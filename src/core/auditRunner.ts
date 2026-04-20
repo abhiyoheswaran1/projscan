@@ -22,7 +22,7 @@ export interface AuditOptions {
 /**
  * Run `npm audit --json` and normalize the output.
  *
- * npm's audit JSON format has changed between npm 6/7/8/9+ — we handle the
+ * npm's audit JSON format has changed between npm 6/7/8/9+ - we handle the
  * modern format (npm 7+) first and fall back to a friendly error otherwise.
  * Yarn/pnpm projects: we don't try to translate; we report "not available"
  * with a hint.
@@ -42,12 +42,12 @@ export async function runAudit(
 
   if (!hasNpmLock) {
     if (hasYarnLock) {
-      return unavailable('yarn.lock detected — run `yarn npm audit` instead');
+      return unavailable('yarn.lock detected - run `yarn npm audit` instead');
     }
     if (hasPnpmLock) {
-      return unavailable('pnpm-lock.yaml detected — run `pnpm audit` instead');
+      return unavailable('pnpm-lock.yaml detected - run `pnpm audit` instead');
     }
-    return unavailable('No package-lock.json — run `npm install` first, then retry');
+    return unavailable('No package-lock.json - run `npm install` first, then retry');
   }
 
   const timeoutMs = options.timeoutMs ?? 60_000;
@@ -60,7 +60,7 @@ export async function runAudit(
     });
     stdout = result.stdout;
   } catch (err) {
-    // `npm audit` exits non-zero when vulnerabilities exist — this is normal.
+    // `npm audit` exits non-zero when vulnerabilities exist - this is normal.
     // The stdout still contains the JSON payload.
     const e = err as { stdout?: string | Buffer; code?: string; message?: string };
     if (typeof e.stdout === 'string' && e.stdout) {
@@ -224,7 +224,7 @@ export function auditFindingsToIssues(report: AuditReport): import('../types.js'
     title: f.title,
     description:
       f.url !== undefined
-        ? `${f.title} — ${f.url}${f.range ? ` (range: ${f.range})` : ''}`
+        ? `${f.title} - ${f.url}${f.range ? ` (range: ${f.range})` : ''}`
         : `${f.title}${f.range ? ` (range: ${f.range})` : ''}`,
     severity: severityMap[f.severity],
     category: 'security',

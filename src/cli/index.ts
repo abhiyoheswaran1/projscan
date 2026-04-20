@@ -123,7 +123,7 @@ const program = new Command();
 
 program
   .name('projscan')
-  .description('Instant codebase insights — doctor, x-ray, and architecture map for any repository')
+  .description('Instant codebase insights - doctor, x-ray, and architecture map for any repository')
   .version(pkg.version)
   .option('--format <type>', 'output format: console, json, markdown, sarif', 'console')
   .option('--config <path>', 'path to .projscanrc config file')
@@ -165,7 +165,7 @@ async function filterIssuesByChangedFiles(
   const result = await getChangedFiles(rootPath, baseRef);
   if (!result.available) {
     if (getFormat() === 'console' && !program.opts().quiet) {
-      console.error(chalk.yellow(`  [--changed-only: ${result.reason ?? 'unavailable'} — reporting all issues]`));
+      console.error(chalk.yellow(`  [--changed-only: ${result.reason ?? 'unavailable'} - reporting all issues]`));
     }
     return issues;
   }
@@ -523,7 +523,7 @@ program
 
 program
   .command('file <file>')
-  .description('Drill into a file — purpose, risk, ownership, related issues')
+  .description('Drill into a file - purpose, risk, ownership, related issues')
   .action(async (filePath: string) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -561,7 +561,7 @@ program
 
 program
   .command('explain <file>')
-  .description('Explain a file — its purpose, dependencies, and exports')
+  .description('Explain a file - its purpose, dependencies, and exports')
   .action(async (filePath: string) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -758,7 +758,7 @@ program
 
 program
   .command('outdated')
-  .description('Detect outdated dependencies (offline — compares declared vs installed)')
+  .description('Detect outdated dependencies (offline - compares declared vs installed)')
   .action(async () => {
     setupLogLevel();
     maybeCompactBanner();
@@ -832,7 +832,7 @@ program
 
 program
   .command('upgrade <package>')
-  .description('Preview the impact of upgrading a package (offline — reads local CHANGELOG + importers)')
+  .description('Preview the impact of upgrading a package (offline - reads local CHANGELOG + importers)')
   .action(async (pkgName: string) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -867,7 +867,7 @@ program
 
 program
   .command('search <query...>')
-  .description('Ranked search — BM25 by default, semantic or hybrid when @xenova/transformers peer is installed')
+  .description('Ranked search - BM25 by default, semantic or hybrid when @xenova/transformers peer is installed')
   .option('--scope <scope>', 'auto | content | symbols | files', 'auto')
   .option('--mode <mode>', 'lexical | semantic | hybrid (content/auto scope only)', 'lexical')
   .option('--semantic', 'shortcut for --mode semantic')
@@ -1022,14 +1022,14 @@ program
 
       if (format === 'markdown') {
         const r = results as { matches: Array<Record<string, unknown>>; query: string; scope: string };
-        console.log(`# Search — \`${r.query}\` (${r.scope})\n`);
+        console.log(`# Search - \`${r.query}\` (${r.scope})\n`);
         if (r.matches.length === 0) {
           console.log('_No matches._');
           return;
         }
         for (const m of r.matches) {
           if ('symbol' in m) console.log(`- \`${m.symbol}\` (${m.kind}) → \`${m.file}:${m.line}\``);
-          else if ('score' in m) console.log(`- \`${m.file}:${m.line}\` — score ${m.score} — ${m.excerpt ?? ''}`);
+          else if ('score' in m) console.log(`- \`${m.file}:${m.line}\` - score ${m.score} - ${m.excerpt ?? ''}`);
           else console.log(`- \`${m.file}\``);
         }
         return;
@@ -1042,7 +1042,7 @@ program
         total: number;
         queryTokens?: string[];
       };
-      console.log(`\n  ${chalk.bold(`Search — "${query}"`)} ${chalk.dim(`[${r.scope}]`)}`);
+      console.log(`\n  ${chalk.bold(`Search - "${query}"`)} ${chalk.dim(`[${r.scope}]`)}`);
       if (r.queryTokens) console.log(chalk.dim(`  tokens: ${r.queryTokens.join(', ')}`));
       console.log(chalk.dim('  ─'.repeat(20)));
       if (r.matches.length === 0) {
@@ -1076,7 +1076,7 @@ program
 
 program
   .command('coverage')
-  .description('Join test coverage with hotspots — surface the scariest untested files')
+  .description('Join test coverage with hotspots - surface the scariest untested files')
   .option('--limit <n>', 'limit number of entries shown', '30')
   .action(async (cmdOpts) => {
     setupLogLevel();

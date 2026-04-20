@@ -78,7 +78,7 @@ export function reportHealthMarkdown(issues: Issue[]): void {
     lines.push('');
     for (const issue of issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** — ${issue.description}`);
+      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
     }
   }
 
@@ -89,7 +89,7 @@ export function reportCiMarkdown(issues: Issue[], threshold: number): void {
   const { score, grade } = calculateScore(issues);
   const pass = score >= threshold;
   const lines: string[] = [
-    `# Projscan CI — ${pass ? 'PASS' : 'FAIL'}`,
+    `# Projscan CI - ${pass ? 'PASS' : 'FAIL'}`,
     '',
     `| Metric | Value |`,
     `| --- | --- |`,
@@ -103,7 +103,7 @@ export function reportCiMarkdown(issues: Issue[], threshold: number): void {
     lines.push('', '## Issues', '');
     for (const issue of issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** — ${issue.description}`);
+      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
     }
   }
 
@@ -112,7 +112,7 @@ export function reportCiMarkdown(issues: Issue[], threshold: number): void {
 
 export function reportDiffMarkdown(diff: DiffResult): void {
   const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
-  const arrow = diff.scoreDelta > 0 ? '↑' : diff.scoreDelta < 0 ? '↓' : '—';
+  const arrow = diff.scoreDelta > 0 ? '↑' : diff.scoreDelta < 0 ? '↓' : '-';
 
   const lines: string[] = [
     '# Health Diff',
@@ -274,7 +274,7 @@ export function reportFileMarkdown(insp: FileInspection): void {
     lines.push(`- **Commits:** ${h.churn}`);
     lines.push(`- **Authors:** ${h.distinctAuthors}${h.primaryAuthor ? ` (primary: ${h.primaryAuthor}, ${Math.round(h.primaryAuthorShare * 100)}%)` : ''}`);
     if (h.daysSinceLastChange !== null) lines.push(`- **Last change:** ${h.daysSinceLastChange} days ago`);
-    if (h.busFactorOne) lines.push('- ⚠️ **Bus factor 1** — only one author has touched this.');
+    if (h.busFactorOne) lines.push('- ⚠️ **Bus factor 1** - only one author has touched this.');
     if (h.reasons.length > 0) lines.push(`- ${h.reasons.join(', ')}`);
   }
 
@@ -282,7 +282,7 @@ export function reportFileMarkdown(insp: FileInspection): void {
     lines.push('', '## Related Issues', '');
     for (const issue of insp.issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** — ${issue.description}`);
+      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
     }
   }
 
@@ -331,7 +331,7 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
   lines.push('| --- | ---: | --- | ---: | ---: | ---: | --- |');
   for (let i = 0; i < report.hotspots.length; i++) {
     const h = report.hotspots[i];
-    const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '—';
+    const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '-';
     lines.push(
       `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
     );
@@ -364,7 +364,7 @@ export function reportOutdatedMarkdown(report: OutdatedReport): void {
   lines.push('| --- | --- | --- | --- | --- |');
   for (const p of drifting) {
     lines.push(
-      `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '—'} | ${p.drift} |`,
+      `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '-'} | ${p.drift} |`,
     );
   }
 
@@ -383,7 +383,7 @@ export function reportAuditMarkdown(report: AuditReport): void {
 
   const s = report.summary;
   const total = s.critical + s.high + s.moderate + s.low + s.info;
-  lines.push(`**${total}** findings — ${s.critical} critical · ${s.high} high · ${s.moderate} moderate · ${s.low} low · ${s.info} info`);
+  lines.push(`**${total}** findings - ${s.critical} critical · ${s.high} high · ${s.moderate} moderate · ${s.low} low · ${s.info} info`);
   lines.push('');
 
   if (report.findings.length === 0) {
@@ -404,7 +404,7 @@ export function reportAuditMarkdown(report: AuditReport): void {
 
 export function reportUpgradeMarkdown(preview: UpgradePreview): void {
   const lines: string[] = [];
-  lines.push(`# Upgrade Preview — \`${preview.name}\``);
+  lines.push(`# Upgrade Preview - \`${preview.name}\``);
   lines.push('');
   if (!preview.available) {
     lines.push(`_${preview.reason ?? 'unavailable'}_`);
@@ -412,8 +412,8 @@ export function reportUpgradeMarkdown(preview: UpgradePreview): void {
     return;
   }
 
-  lines.push(`- Declared: \`${preview.declared ?? '—'}\``);
-  lines.push(`- Installed: \`${preview.installed ?? '—'}\``);
+  lines.push(`- Declared: \`${preview.declared ?? '-'}\``);
+  lines.push(`- Installed: \`${preview.installed ?? '-'}\``);
   lines.push(`- Drift: **${preview.drift}**`);
   lines.push('');
 
@@ -464,8 +464,8 @@ export function reportCoverageMarkdown(report: CoverageJoinedReport): void {
   lines.push('| Priority | Coverage | Risk | Churn | File | Reasons |');
   lines.push('| ---: | ---: | ---: | ---: | --- | --- |');
   for (const e of report.entries) {
-    const cov = e.coverage === null ? '—' : `${e.coverage.toFixed(0)}%`;
-    const reasons = e.reasons.length > 0 ? e.reasons.join(', ') : '—';
+    const cov = e.coverage === null ? '-' : `${e.coverage.toFixed(0)}%`;
+    const reasons = e.reasons.length > 0 ? e.reasons.join(', ') : '-';
     lines.push(
       `| ${e.priority.toFixed(1)} | ${cov} | ${e.riskScore.toFixed(1)} | ${e.churn} | \`${e.relativePath}\` | ${reasons} |`,
     );

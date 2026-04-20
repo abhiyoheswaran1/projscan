@@ -82,7 +82,7 @@ export function isParseable(filePath: string): boolean {
  * Uses @babel/parser with generous options so we accept real-world code:
  * TypeScript, JSX, decorators, top-level await, class properties, etc.
  *
- * Failures return ok:false with a reason — callers decide whether to fall
+ * Failures return ok:false with a reason - callers decide whether to fall
  * back to regex or skip the file. Never throws.
  */
 export function parseSource(filePath: string, content: string): AstResult {
@@ -124,7 +124,7 @@ export function parseSource(filePath: string, content: string): AstResult {
   }
 
   // Second pass: extract dynamic imports + call sites. Walk the whole tree
-  // (cheap — we already have the AST in memory).
+  // (cheap - we already have the AST in memory).
   walk(ast.program, (n) => {
     if (n.type === 'CallExpression') {
       const callee = n.callee;

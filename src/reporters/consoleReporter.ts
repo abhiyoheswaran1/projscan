@@ -174,7 +174,7 @@ export function reportCi(issues: Issue[], threshold: number): void {
   const gradeColor = grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
 
   console.log(
-    `projscan: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))} — ${errors} error${errors !== 1 ? 's' : ''}, ${warnings} warning${warnings !== 1 ? 's' : ''}, ${infos} info — ${status} (threshold: ${threshold})`,
+    `projscan: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))} - ${errors} error${errors !== 1 ? 's' : ''}, ${warnings} warning${warnings !== 1 ? 's' : ''}, ${infos} info - ${status} (threshold: ${threshold})`,
   );
 
   if (!pass) {
@@ -189,7 +189,7 @@ export function reportCi(issues: Issue[], threshold: number): void {
 export function reportDiff(diff: DiffResult): void {
   console.log(header('Health Diff'));
 
-  const arrow = diff.scoreDelta > 0 ? chalk.green('↑') : diff.scoreDelta < 0 ? chalk.red('↓') : chalk.dim('—');
+  const arrow = diff.scoreDelta > 0 ? chalk.green('↑') : diff.scoreDelta < 0 ? chalk.red('↓') : chalk.dim('-');
   const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
 
   console.log(`\n  Score: ${diff.before.score} → ${diff.after.score} (${delta})  ${arrow}`);
@@ -198,14 +198,14 @@ export function reportDiff(diff: DiffResult): void {
   if (diff.resolvedIssues.length > 0) {
     console.log(`\n  ${chalk.green('✓')} Resolved (${diff.resolvedIssues.length}):`);
     for (const title of diff.resolvedIssues) {
-      console.log(`    ${chalk.green('—')} ${title}`);
+      console.log(`    ${chalk.green('-')} ${title}`);
     }
   }
 
   if (diff.newIssues.length > 0) {
     console.log(`\n  ${chalk.red('✗')} New (${diff.newIssues.length}):`);
     for (const title of diff.newIssues) {
-      console.log(`    ${chalk.red('—')} ${title}`);
+      console.log(`    ${chalk.red('-')} ${title}`);
     }
   }
 
@@ -243,7 +243,7 @@ export function reportDiff(diff: DiffResult): void {
       if (hd.resolved.length > 0) {
         console.log(`\n  ${chalk.green('✓')} No longer tracked (${hd.resolved.length}):`);
         for (const delta of hd.resolved.slice(0, 5)) {
-          console.log(`    ${chalk.green('—')}  ${delta.relativePath}`);
+          console.log(`    ${chalk.green('-')}  ${delta.relativePath}`);
         }
       }
     }
@@ -274,7 +274,7 @@ export function reportFixResults(results: FixResult[]): void {
     if (result.success) {
       console.log(`  ${chalk.green('✔')} ${result.fix.title}`);
     } else {
-      console.log(`  ${chalk.red('✗')} ${result.fix.title} — ${chalk.dim(result.error ?? 'unknown error')}`);
+      console.log(`  ${chalk.red('✗')} ${result.fix.title} - ${chalk.dim(result.error ?? 'unknown error')}`);
     }
   }
   console.log('');
@@ -465,7 +465,7 @@ export function reportFileInspection(insp: FileInspection): void {
       console.log(`  ${chalk.bold('Last change:')} ${h.daysSinceLastChange} days ago`);
     }
     if (h.busFactorOne) {
-      console.log(`  ${chalk.red('⚠')} Bus factor 1 — only one author has touched this.`);
+      console.log(`  ${chalk.red('⚠')} Bus factor 1 - only one author has touched this.`);
     }
     if (h.reasons.length > 0) {
       console.log(`  ${chalk.dim(h.reasons.join(', '))}`);
@@ -627,10 +627,10 @@ export function reportUpgrade(preview: UpgradePreview): void {
     return;
   }
 
-  console.log(header(`Upgrade Preview — ${preview.name}`));
+  console.log(header(`Upgrade Preview - ${preview.name}`));
   const drift = DRIFT_COLORS[preview.drift] ?? chalk.dim;
-  console.log(`  Declared:  ${chalk.dim(preview.declared ?? '—')}`);
-  console.log(`  Installed: ${chalk.bold(preview.installed ?? '—')}`);
+  console.log(`  Declared:  ${chalk.dim(preview.declared ?? '-')}`);
+  console.log(`  Installed: ${chalk.bold(preview.installed ?? '-')}`);
   console.log(`  Drift:     ${drift(preview.drift.toUpperCase())}`);
   console.log('');
 
@@ -675,7 +675,7 @@ export function reportCoverage(report: CoverageJoinedReport): void {
     return;
   }
 
-  console.log(header('Coverage × Hotspots — "Scariest Untested Files"'));
+  console.log(header('Coverage × Hotspots - "Scariest Untested Files"'));
   const src = report.coverageSourceFile ? ` (${report.coverageSourceFile})` : '';
   console.log(chalk.dim(`  Source: ${report.coverageSource}${src}`));
   console.log('');
