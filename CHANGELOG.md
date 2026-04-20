@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-04-20
+
+### Theme — "Smart Search"
+
+Ranked local search across content, symbols, and paths. No embeddings, no API calls, no 100MB model downloads — just a solid BM25 implementation that beats substring matching for most code-search queries.
+
+**Why not embeddings in 0.7?** The only credible local-embeddings path in Node.js (`@xenova/transformers`) pulls a ~100MB ONNX model. For code search — where queries and identifiers share vocabulary (`auth`, `jwt`, `token`, `session`) — BM25 + symbol weighting captures most of the semantic value at 0% of the install-size cost. True semantic search is deferred; the door is explicitly left open as a future opt-in peer dep.
+
+### Added
+
+- **`src/core/searchIndex.ts`** — BM25-ranked inverted index over source files. Indexes content, exported symbol names, and path tokens separately, each with its own weight.
+- **Query expansion** — camelCase / snake_case / digit splitting, light stemming (strip trailing `-s` / `-ing` / `-ed`), stopword + TS-keyword filtering. `userAuthToken` indexes as `user`, `auth`, `token`.
+- **Symbol-match boost** — files that export a name matching the query rank higher than files that merely mention it. `authenticate` as a function name beats `authenticate` as a comment.
+- **Upgraded `projscan_search` MCP tool** — scope `auto` (default, BM25-ranked content + excerpt) joins existing `symbols` / `files` / `content` scopes. Returns ranked matches with file + line + excerpt.
+- **New CLI command `projscan search <query>`** — same ranked search from the terminal. Supports `--scope`, `--limit`, and all three output formats.
+- **Public API:** `buildSearchIndex`, `search`, `tokenize`, `expandQuery`, `attachExcerpts`.
+
+### Fixed
+
+- **MCP budget sidecar corrupted array responses.** When a tool handler returned an array and the budget truncated it, the server spread the array into `{ ...value, _budget }` — producing `{ "0": …, "1": …, _budget }` garbage. Now wraps non-object values as `{ value, _budget }`.
+- **Hotspot ↔ issue linking used fragile substring matching.** Issues about `src/ab.ts` could falsely attach to `src/a.ts`. Now prefers `issue.locations` when present and uses path-boundary guards for the legacy substring fallback.
+- **Dead `src/utils/cache.ts` removed** — our own dead-code analyzer flagged it; deleting resolves the finding.
+
+### Changed (dogfooding)
+
+- Added **`.projscanrc.json`** to the repo — ignores the hardcoded-secret test fixture (`tests/analyzers/securityCheck.test.ts`) and disables the `large-utils-dir` rule that we intentionally trip. Demonstrates the config loader on real code.
+- Added **`.prettierrc`** and **`.editorconfig`** to resolve the two lingering "missing config" warnings on projscan itself.
+- Our own `projscan doctor` score goes from D/51 → A/100. The tool is now healthy by its own standards.
+
+### Notes
+
+- 249 tests passing (+14 new).
+- Zero new runtime dependencies.
+- All offline, no network.
+
 ## [0.6.0] - 2026-04-20
 
 ### Theme — "Agent-First"

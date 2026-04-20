@@ -60,6 +60,7 @@ Run inside any repository:
 projscan                            # Full project analysis
 projscan doctor                     # Health check
 projscan hotspots                   # Rank files by risk (churn × complexity × issues × ownership)
+projscan search <query>             # BM25-ranked search (content + symbols + path)
 projscan file <path>                # Drill into a file — purpose, risk, ownership, issues
 projscan fix                        # Auto-fix detected issues
 projscan ci                         # CI health gate (exits 1 on low score)
@@ -86,6 +87,7 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan analyze` | Full analysis — languages, frameworks, dependencies, issues |
 | `projscan doctor` | Health check — missing tooling, architecture smells, security risks |
 | `projscan hotspots` | Rank files by risk — churn × complexity × issues × ownership |
+| `projscan search <query>` | **BM25-ranked search** — content + symbols + path, with excerpts |
 | `projscan file <path>` | Drill into a file — purpose, risk, ownership, related issues |
 | `projscan fix` | Auto-fix issues (ESLint, Prettier, Vitest, .editorconfig) |
 | `projscan ci` | CI health gate — SARIF output, `--changed-only` PR-diff mode, exits 1 if score below threshold |

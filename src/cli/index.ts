@@ -23,6 +23,9 @@ import { runAudit, auditFindingsToIssues } from '../core/auditRunner.js';
 import { previewUpgrade } from '../core/upgradePreview.js';
 import { parseCoverage, coverageMap } from '../core/coverageParser.js';
 import { joinCoverageWithHotspots } from '../core/coverageJoin.js';
+import { buildCodeGraph } from '../core/codeGraph.js';
+import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
+import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   inspectFile,
   extractImports,
@@ -832,6 +835,134 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Upgrade preview failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: search ───────────────────────────────────────
+
+program
+  .command('search <query...>')
+  .description('Ranked search across the project (BM25 + symbol/path boosts)')
+  .option('--scope <scope>', 'auto | content | symbols | files', 'auto')
+  .option('--limit <n>', 'max results', '15')
+  .action(async (queryParts: string[], cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const config = await loadProjectConfig();
+    const query = queryParts.join(' ').trim();
+    if (!query) {
+      console.error(chalk.red('\n  search requires a non-empty query\n'));
+      process.exit(1);
+    }
+    const limitRaw = cmdOpts.limit ?? 15;
+    const limit = Math.max(1, Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 15 : limitRaw));
+    const scope = String(cmdOpts.scope ?? 'auto');
+
+    const spinner = format === 'console' ? ora('Indexing repository...').start() : null;
+    try {
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      const cached = await loadCachedGraph(rootPath);
+      const graph = await buildCodeGraph(rootPath, scan.files, cached);
+      await saveCachedGraph(rootPath, graph);
+
+      if (spinner) spinner.text = 'Searching...';
+
+      let results: unknown;
+      if (scope === 'symbols') {
+        const q = query.toLowerCase();
+        const matches: Array<{ symbol: string; kind: string; file: string; line: number }> = [];
+        for (const [file, entry] of graph.files) {
+          for (const exp of entry.exports) {
+            if (exp.name.toLowerCase().includes(q)) {
+              matches.push({ symbol: exp.name, kind: exp.kind, file, line: exp.line });
+            }
+          }
+        }
+        matches.sort((a, b) => {
+          const aExact = a.symbol.toLowerCase() === q ? 0 : a.symbol.toLowerCase().startsWith(q) ? 1 : 2;
+          const bExact = b.symbol.toLowerCase() === q ? 0 : b.symbol.toLowerCase().startsWith(q) ? 1 : 2;
+          return aExact - bExact;
+        });
+        results = { scope, query, matches: matches.slice(0, limit), total: matches.length };
+      } else if (scope === 'files') {
+        const q = query.toLowerCase();
+        const matches = scan.files
+          .filter((f) => f.relativePath.toLowerCase().includes(q))
+          .slice(0, limit)
+          .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
+        results = { scope, query, matches, total: matches.length };
+      } else {
+        const index = await buildSearchIndex(rootPath, scan.files, graph);
+        const hits = searchIndex(index, query, { limit });
+        const tokens = expandQuery(query);
+        const withExcerpts = await attachExcerpts(rootPath, hits, tokens);
+        results = {
+          scope: scope === 'auto' ? 'content' : scope,
+          query,
+          queryTokens: tokens,
+          matches: withExcerpts,
+          total: withExcerpts.length,
+        };
+      }
+
+      if (spinner) spinner.stop();
+
+      if (format === 'json') {
+        console.log(JSON.stringify({ search: results }, null, 2));
+        return;
+      }
+
+      if (format === 'markdown') {
+        const r = results as { matches: Array<Record<string, unknown>>; query: string; scope: string };
+        console.log(`# Search — \`${r.query}\` (${r.scope})\n`);
+        if (r.matches.length === 0) {
+          console.log('_No matches._');
+          return;
+        }
+        for (const m of r.matches) {
+          if ('symbol' in m) console.log(`- \`${m.symbol}\` (${m.kind}) → \`${m.file}:${m.line}\``);
+          else if ('score' in m) console.log(`- \`${m.file}:${m.line}\` — score ${m.score} — ${m.excerpt ?? ''}`);
+          else console.log(`- \`${m.file}\``);
+        }
+        return;
+      }
+
+      // Console
+      const r = results as {
+        scope: string;
+        matches: Array<Record<string, unknown>>;
+        total: number;
+        queryTokens?: string[];
+      };
+      console.log(`\n  ${chalk.bold(`Search — "${query}"`)} ${chalk.dim(`[${r.scope}]`)}`);
+      if (r.queryTokens) console.log(chalk.dim(`  tokens: ${r.queryTokens.join(', ')}`));
+      console.log(chalk.dim('  ─'.repeat(20)));
+      if (r.matches.length === 0) {
+        console.log(chalk.yellow('\n  No matches.\n'));
+        return;
+      }
+      for (const m of r.matches) {
+        if ('symbol' in m) {
+          console.log(
+            `  ${chalk.bold(String(m.symbol))} ${chalk.dim(`(${m.kind})`)}  →  ${chalk.dim(`${m.file}:${m.line}`)}`,
+          );
+        } else if ('score' in m) {
+          const score = typeof m.score === 'number' ? m.score.toFixed(1) : String(m.score);
+          console.log(
+            `  ${chalk.bold(score.padStart(5))}  ${chalk.cyan(String(m.file))}${m.line ? chalk.dim(`:${m.line}`) : ''}`,
+          );
+          if (m.excerpt) console.log(`           ${chalk.dim(String(m.excerpt))}`);
+        } else {
+          console.log(`  ${chalk.cyan(String(m.file))}`);
+        }
+      }
+      console.log('');
+    } catch (error) {
+      if (spinner) spinner.fail('Search failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

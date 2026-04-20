@@ -45,16 +45,16 @@ export function showBanner(): void {
   const R = [
     `${head('Commands')}`,
     `${w('mcp')}        ${dim('MCP server (primary)')}`,
+    `${w('search')}     ${dim('BM25 ranked search')}`,
     `${w('doctor')}     ${dim('Health check')}`,
     `${w('hotspots')}   ${dim('Risk-rank files')}`,
     `${w('coverage')}   ${dim('Untested hotspots')}`,
     `${w('upgrade')}    ${dim('Preview upgrade')}`,
-    `${w('audit')}      ${dim('Vulnerabilities')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('Real AST parsing')}`,
-    `${dim('Code graph + cache')}`,
-    `${dim('2 new MCP tools')}`,
+    `${dim('Smart Search (BM25)')}`,
+    `${dim('Issue-location linking')}`,
+    `${dim('Budget-safe MCP output')}`,
   ];
 
   const leftW = 42;
@@ -111,6 +111,7 @@ export function showHelp(): void {
     { cmd: 'projscan',                       desc: 'Full project analysis (default)' },
     { cmd: 'projscan doctor',                desc: 'Health check — detect issues and score your project' },
     { cmd: 'projscan hotspots',              desc: 'Rank files by risk — churn × complexity × issues × ownership' },
+    { cmd: 'projscan search <query>',        desc: 'BM25-ranked search across content, symbols, and paths' },
     { cmd: 'projscan file <path>',           desc: 'Drill into a file — purpose, risk, ownership, issues' },
     { cmd: 'projscan fix',                   desc: 'Auto-fix detected issues (interactive)' },
     { cmd: 'projscan fix -y',                desc: 'Auto-fix without prompting' },

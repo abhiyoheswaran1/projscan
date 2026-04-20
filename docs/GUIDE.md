@@ -14,6 +14,7 @@ As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interfac
   - [analyze](#analyze)
   - [doctor](#doctor)
   - [hotspots](#hotspots)
+  - [search](#search)
   - [file](#file)
   - [ci](#ci)
   - [diff](#diff)
@@ -176,6 +177,38 @@ Ranks files by **risk** — a combination of git churn, complexity (lines of cod
 - `reasons` — human-readable tags explaining the score
 
 **Fallback:** If the project isn't a git repository, hotspots returns `available: false` with a friendly reason — it does not crash.
+
+### search
+
+```bash
+projscan search <query>
+projscan search "npm audit" --scope auto
+projscan search authenticate --scope symbols
+projscan search stripe --scope files
+```
+
+BM25-ranked search across content, symbol names, and path tokens. No embeddings, no model download — just a solid classical IR implementation that beats substring matching for typical code queries.
+
+**Scopes:**
+
+| Scope | What it matches | Ranking |
+|-------|-----------------|---------|
+| `auto` (default) | Content, with symbol + path boost | BM25 + symbol boost × 2.0 + path boost × 0.5 |
+| `content` | Same as `auto` | BM25 |
+| `symbols` | Names of exported functions/classes/types/etc. | Exact → prefix → substring |
+| `files` | Relative path substring | Path order |
+
+**Query handling:**
+- Tokens are split on camelCase, snake_case, and digits. `userAuthToken` indexes as `user`, `auth`, `token`.
+- Light stemming (trailing `-s`, `-ing`, `-ed` stripped).
+- Stopwords and TypeScript keywords filtered (`the`, `function`, `class`, `export`, …).
+- Multi-word queries are OR across tokens, ranked by sum of BM25 scores.
+
+**Output includes:** file path, line number, a one-line excerpt centered on the first matching line, the match score, and which tokens matched.
+
+**Limitations:**
+- No real semantic understanding. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) is on the 0.9.0 roadmap as an opt-in peer dep.
+- Index is rebuilt on every run (fast — the AST is already parsed from the code-graph cache).
 
 ### file
 
@@ -846,7 +879,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 **Tools (13):**
 - `projscan_graph` — **structural query over the AST code graph.** Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agent-native; milliseconds on a warm cache.
-- `projscan_search` — **fast symbol/file/content search.** Scopes: `symbols` (exported names), `files` (path substring), `content` (source substring with line + excerpt).
+- `projscan_search` — **BM25-ranked search.** Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Query tokens are split on camelCase/snake_case and lightly stemmed.
 - `projscan_analyze` — full project snapshot
 - `projscan_doctor` — health score + issue list
 - `projscan_hotspots` — ranked file risk (`limit`, `since` args)
@@ -1095,7 +1128,8 @@ src/
 │   ├── coverageJoin.ts          # Join hotspots × coverage — "scariest untested files"
 │   ├── ast.ts                   # @babel/parser wrapper → imports + exports + call sites
 │   ├── codeGraph.ts             # Bidirectional file×symbol graph built from AST
-│   └── indexCache.ts            # mtime-keyed .projscan-cache/graph.json
+│   ├── indexCache.ts            # mtime-keyed .projscan-cache/graph.json
+│   └── searchIndex.ts           # BM25-ranked inverted index (content + symbols + path)
 ├── analyzers/
 │   ├── eslintCheck.ts
 │   ├── prettierCheck.ts

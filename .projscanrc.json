@@ -1,0 +1,13 @@
+{
+  "minScore": 80,
+  "ignore": [
+    "tests/analyzers/securityCheck.test.ts"
+  ],
+  "disableRules": [
+    "large-utils-dir"
+  ],
+  "hotspots": {
+    "limit": 10,
+    "since": "12 months ago"
+  }
+}

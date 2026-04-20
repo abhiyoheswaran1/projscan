@@ -115,7 +115,11 @@ export function createMcpServer(rootPath: string): McpServerHandle {
                 : undefined;
             const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
             const payload = budgeted.truncated
-              ? { ...(budgeted.value as object), _budget: { truncated: true, estimatedTokens: budgeted.estimatedTokens, maxTokens } }
+              ? attachBudgetSidecar(budgeted.value, {
+                  truncated: true,
+                  estimatedTokens: budgeted.estimatedTokens,
+                  maxTokens,
+                })
               : budgeted.value;
             return ok(id, {
               content: [
@@ -228,6 +232,27 @@ function safeStringify(value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+interface BudgetInfo {
+  truncated: boolean;
+  estimatedTokens: number;
+  maxTokens?: number;
+}
+
+/**
+ * Attach a _budget sidecar to the result. Arrays and primitives must be
+ * wrapped rather than spread; object spread over an array yields a garbled
+ * { "0": ..., "1": ..., _budget } object that breaks downstream consumers.
+ */
+function attachBudgetSidecar(value: unknown, info: BudgetInfo): unknown {
+  if (Array.isArray(value)) {
+    return { value, _budget: info };
+  }
+  if (value === null || typeof value !== 'object') {
+    return { value, _budget: info };
+  }
+  return { ...(value as Record<string, unknown>), _budget: info };
 }
 
 export async function runMcpServer(rootPath: string): Promise<void> {

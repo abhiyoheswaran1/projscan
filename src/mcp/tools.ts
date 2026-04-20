@@ -20,6 +20,7 @@ import {
   importsOf,
 } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
+import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   inspectFile,
   extractImports,
@@ -344,18 +345,18 @@ const tools: McpTool[] = [
   {
     name: 'projscan_search',
     description:
-      'Fast structural search across the project. Scope can be "symbols" (exported function/class/type names), "files" (relative path substring), or "content" (text substring in source files). Returns a ranked list of matches. Prefer this over running shell grep.',
+      'Ranked search across the project, BM25 over content + symbol-name + path. Scope: "auto" / "content" (BM25 ranked, returns line excerpts), "symbols" (exported names, ranked exact→prefix→substring), or "files" (relative path substring). Query tokens are split on camelCase/snake_case and lightly stemmed. Prefer this over shelling out to grep — it returns ranked results with line-level excerpts.',
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'Search string (case-insensitive for files/content; exact-ish for symbols).',
+          description: 'Search string. Multi-word queries are treated as OR across BM25 terms.',
         },
         scope: {
           type: 'string',
-          description: 'What to search over: "symbols" | "files" | "content".',
-          enum: ['symbols', 'files', 'content'],
+          description: 'What to search over: "auto" (= content, BM25 ranked), "symbols", "files", "content".',
+          enum: ['auto', 'symbols', 'files', 'content'],
         },
         limit: {
           type: 'number',
@@ -366,12 +367,12 @@ const tools: McpTool[] = [
           description: 'Cap the response to roughly this many tokens.',
         },
       },
-      required: ['query', 'scope'],
+      required: ['query'],
     },
     handler: async (args, rootPath) => {
       const query = String(args.query ?? '').trim();
       if (!query) throw new Error('query argument is required and must be non-empty');
-      const scope = String(args.scope ?? 'symbols');
+      const scope = String(args.scope ?? 'auto');
       const limit = Math.max(1, Math.min(500, typeof args.limit === 'number' ? args.limit : 30));
 
       const scan = await scanRepository(rootPath);
@@ -379,6 +380,7 @@ const tools: McpTool[] = [
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
 
+      // Files scope — simple substring scan; ranking adds no value
       if (scope === 'files') {
         const q = query.toLowerCase();
         const matches = scan.files
@@ -388,51 +390,44 @@ const tools: McpTool[] = [
         return { scope, query, matches, total: matches.length };
       }
 
+      // Symbols scope — walk the graph's export table; rank exact/prefix/substring
       if (scope === 'symbols') {
         const q = query.toLowerCase();
-        const matches: Array<{ symbol: string; kind: string; file: string; line: number }> = [];
+        const rawMatches: Array<{ symbol: string; kind: string; file: string; line: number; rank: number }> = [];
         for (const [file, entry] of graph.files) {
           for (const exp of entry.exports) {
-            if (exp.name.toLowerCase().includes(q)) {
-              matches.push({ symbol: exp.name, kind: exp.kind, file, line: exp.line });
-            }
+            const name = exp.name.toLowerCase();
+            if (!name.includes(q)) continue;
+            const rank = name === q ? 0 : name.startsWith(q) ? 1 : 2;
+            rawMatches.push({ symbol: exp.name, kind: exp.kind, file, line: exp.line, rank });
           }
-          if (matches.length >= limit * 3) break;
         }
-        matches.sort((a, b) => {
-          const aExact = a.symbol.toLowerCase() === query.toLowerCase() ? 0 : 1;
-          const bExact = b.symbol.toLowerCase() === query.toLowerCase() ? 0 : 1;
-          return aExact - bExact;
-        });
-        return { scope, query, matches: matches.slice(0, limit), total: matches.length };
+        rawMatches.sort((a, b) => a.rank - b.rank);
+        return {
+          scope,
+          query,
+          matches: rawMatches.slice(0, limit).map((m) => ({
+            symbol: m.symbol,
+            kind: m.kind,
+            file: m.file,
+            line: m.line,
+          })),
+          total: rawMatches.length,
+        };
       }
 
-      // content scope: scan parseable files for substring, return file + first 3 lines of context
-      const q = query.toLowerCase();
-      const matches: Array<{ file: string; line: number; excerpt: string }> = [];
-      for (const file of scan.files) {
-        if (!graph.files.has(file.relativePath)) continue;
-        if (file.sizeBytes > 512 * 1024) continue;
-        if (matches.length >= limit) break;
-        try {
-          const content = await fs.readFile(
-            path.isAbsolute(file.absolutePath) ? file.absolutePath : path.resolve(rootPath, file.relativePath),
-            'utf-8',
-          );
-          const lower = content.toLowerCase();
-          const idx = lower.indexOf(q);
-          if (idx === -1) continue;
-          const before = content.slice(0, idx);
-          const line = before.split('\n').length;
-          const lineStart = before.lastIndexOf('\n') + 1;
-          const lineEnd = content.indexOf('\n', idx);
-          const excerpt = content.slice(lineStart, lineEnd === -1 ? content.length : lineEnd).trim().slice(0, 200);
-          matches.push({ file: file.relativePath, line, excerpt });
-        } catch {
-          // unreadable; skip
-        }
-      }
-      return { scope, query, matches, total: matches.length };
+      // Content or auto scope — BM25-ranked index
+      const index = await buildSearchIndex(rootPath, scan.files, graph);
+      const hits = searchIndex(index, query, { limit });
+      const tokens = expandQuery(query);
+      const withExcerpts = await attachExcerpts(rootPath, hits, tokens);
+      return {
+        scope: scope === 'auto' ? 'content' : scope,
+        query,
+        queryTokens: tokens,
+        matches: withExcerpts,
+        total: withExcerpts.length,
+      };
     },
   },
 ];

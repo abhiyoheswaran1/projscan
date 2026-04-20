@@ -313,20 +313,74 @@ function estimateLines(sizeBytes: number): number {
 
 function indexIssuesByFile(issues: Issue[], files: FileEntry[]): Map<string, string[]> {
   const index = new Map<string, string[]>();
-  const filePaths = new Set(files.map((f) => f.relativePath));
+  const filePathSet = new Set(files.map((f) => f.relativePath));
+
+  const add = (file: string, issueId: string) => {
+    const list = index.get(file) ?? [];
+    if (!list.includes(issueId)) list.push(issueId);
+    index.set(file, list);
+  };
 
   for (const issue of issues) {
-    const haystack = `${issue.title}\n${issue.description}`;
-    for (const filePath of filePaths) {
-      if (!filePath) continue;
-      if (haystack.includes(filePath)) {
-        const list = index.get(filePath) ?? [];
-        if (!list.includes(issue.id)) list.push(issue.id);
-        index.set(filePath, list);
+    // Prefer explicit locations when the analyzer supplied them — this is
+    // exact and avoids the substring-false-positive problem where "src/a.ts"
+    // would match issues that only mention "src/ab.ts".
+    if (issue.locations && issue.locations.length > 0) {
+      for (const loc of issue.locations) {
+        if (loc.file && filePathSet.has(loc.file)) add(loc.file, issue.id);
       }
+      continue;
+    }
+
+    // Fall back to substring scan for legacy issues with no locations.
+    // Use word-boundary-ish guards: require the match to start at the
+    // beginning of title/description OR be preceded/followed by non-path chars.
+    const haystack = `${issue.title}\n${issue.description}`;
+    for (const filePath of filePathSet) {
+      if (!filePath) continue;
+      if (!haystack.includes(filePath)) continue;
+      if (!hasPathBoundaries(haystack, filePath)) continue;
+      add(filePath, issue.id);
     }
   }
   return index;
+}
+
+function hasPathBoundaries(haystack: string, filePath: string): boolean {
+  let startIdx = 0;
+  while (startIdx < haystack.length) {
+    const idx = haystack.indexOf(filePath, startIdx);
+    if (idx === -1) return false;
+    const before = idx > 0 ? haystack.charCodeAt(idx - 1) : -1;
+    const after = idx + filePath.length < haystack.length ? haystack.charCodeAt(idx + filePath.length) : -1;
+    // Good boundary = start-of-string, whitespace, quote, paren, comma, colon, or end-of-string.
+    if (isPathBoundary(before) && isPathBoundary(after)) return true;
+    startIdx = idx + 1;
+  }
+  return false;
+}
+
+function isPathBoundary(code: number): boolean {
+  if (code === -1) return true; // string boundary
+  // Safe neighbors: space, quotes, parens, brackets, braces, colon, comma, backtick, newline, tab.
+  return (
+    code === 0x20 /* space */ ||
+    code === 0x09 /* tab */ ||
+    code === 0x0a /* \n */ ||
+    code === 0x0d /* \r */ ||
+    code === 0x22 /* " */ ||
+    code === 0x27 /* ' */ ||
+    code === 0x60 /* ` */ ||
+    code === 0x28 /* ( */ ||
+    code === 0x29 /* ) */ ||
+    code === 0x5b /* [ */ ||
+    code === 0x5d /* ] */ ||
+    code === 0x7b /* { */ ||
+    code === 0x7d /* } */ ||
+    code === 0x3a /* : */ ||
+    code === 0x2c /* , */ ||
+    code === 0x3b /* ; */
+  );
 }
 
 // ── Risk Scoring ──────────────────────────────────────────

@@ -10,11 +10,11 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-### 0.7.0 — Semantic Search
-Local embeddings over file chunks; nearest-neighbor queries. Agents ask *"which files implement auth?"* and get semantically relevant results, not regex hits. No API calls — offline-first.
+### 0.8.0 — Streaming & Pagination
+Upgrade MCP protocol to 2025-03-26. Cursor-based pagination on list-returning tools. Progress notifications during long-running tools. Response chunking for large arrays.
 
-### 0.8.0 — Streaming MCP
-Stream large responses so agents can stop reading as soon as they have enough. Especially for `projscan_graph` on large repos.
+### 0.9.0 — True Semantic Search (optional peer)
+Real local embeddings via `@xenova/transformers` as an opt-in peer dep — activates only when installed. Local ONNX model, no API calls. Deferred from 0.7 after we validated that BM25 + symbol boosting covers most code-search queries without the ~100MB model footprint.
 
 ### Real Cyclomatic Complexity
 Now that AST is in place (0.6), add cyclomatic complexity per function. Replace the LOC proxy in the hotspot score.
@@ -38,6 +38,13 @@ Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm re
 ---
 
 ## Recently Shipped
+
+### v0.7.x
+- **Smart Search** theme. BM25-ranked content + symbols + path.
+- `src/core/searchIndex.ts` + `projscan search <query>` + upgraded `projscan_search` MCP tool
+- camelCase / snake_case query expansion, light stemming, stopword + TS-keyword filtering
+- Bug fixes: MCP budget sidecar on arrays, hotspot ↔ issue linking, dead-code cleanup
+- Dogfooded projscan on itself — own doctor score is now A/100
 
 ### v0.6.x
 - **Agent-First** theme. MCP server becomes the primary product.
