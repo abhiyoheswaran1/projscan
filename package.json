@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.1.13",
-  "description": "Instant codebase insights — doctor, x-ray, and architecture map for any repository",
+  "version": "0.2.0",
+  "description": "Instant codebase insights — doctor, hotspots, and MCP server for any repository",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

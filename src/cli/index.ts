@@ -17,11 +17,20 @@ import { detectLanguages } from '../core/languageDetector.js';
 import { detectFrameworks } from '../core/frameworkDetector.js';
 import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { collectIssues } from '../core/issueEngine.js';
+import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
+import {
+  inspectFile,
+  extractImports,
+  extractExports,
+  inferPurpose,
+  detectFileIssues,
+} from '../core/fileInspector.js';
 import { getAllAvailableFixes } from '../fixes/fixRegistry.js';
 import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
 import { showBanner, showCompactBanner, showHelp } from '../utils/banner.js';
 import { saveBaseline, loadBaseline, computeDiff } from '../utils/baseline.js';
+import { runMcpServer } from '../mcp/server.js';
 
 import {
   reportAnalysis,
@@ -33,6 +42,8 @@ import {
   reportDiagram,
   reportStructure,
   reportDependencies,
+  reportHotspots,
+  reportFileInspection,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -44,6 +55,8 @@ import {
   reportDiagramJson,
   reportStructureJson,
   reportDependenciesJson,
+  reportHotspotsJson,
+  reportFileJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -55,13 +68,13 @@ import {
   reportDiagramMarkdown,
   reportStructureMarkdown,
   reportDependenciesMarkdown,
+  reportHotspotsMarkdown,
+  reportFileMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import type {
   AnalysisReport,
   FileExplanation,
-  ImportInfo,
-  ExportInfo,
   ArchitectureLayer,
   ReportFormat,
   FixResult,
@@ -263,13 +276,19 @@ program
     try {
       const scan = await scanRepository(rootPath);
       const issues = await collectIssues(rootPath, scan.files);
+      const hotspotReport = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
 
       if (cmdOpts.saveBaseline) {
-        const filePath = await saveBaseline(rootPath, issues);
+        const filePath = await saveBaseline(rootPath, issues, hotspotReport);
         const { score, grade } = calculateScore(issues);
         console.log(chalk.green(`\n  Baseline saved to ${filePath}`));
         console.log(`  Score: ${chalk.bold(`${grade} (${score}/100)`)}`);
-        console.log(`  Issues: ${issues.length}\n`);
+        console.log(`  Issues: ${issues.length}`);
+        if (hotspotReport.available) {
+          console.log(`  Hotspots snapshotted: ${hotspotReport.hotspots.length}\n`);
+        } else {
+          console.log('');
+        }
         return;
       }
 
@@ -282,7 +301,7 @@ program
         process.exit(1);
       }
 
-      const diff = computeDiff(baseline, issues);
+      const diff = computeDiff(baseline, issues, hotspotReport);
 
       switch (format) {
         case 'json':
@@ -363,6 +382,44 @@ program
       console.log('');
     } catch (error) {
       spinner.fail('Fix detection failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: file ─────────────────────────────────────────
+
+program
+  .command('file <file>')
+  .description('Drill into a file — purpose, risk, ownership, related issues')
+  .action(async (filePath: string) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Inspecting file...').start() : null;
+
+    try {
+      const inspection = await inspectFile(rootPath, filePath);
+      if (spinner) spinner.stop();
+
+      if (!inspection.exists) {
+        console.error(chalk.red(`\n  ${inspection.reason ?? 'File unavailable'}: ${filePath}\n`));
+        process.exit(1);
+      }
+
+      switch (format) {
+        case 'json':
+          reportFileJson(inspection);
+          break;
+        case 'markdown':
+          reportFileMarkdown(inspection);
+          break;
+        default:
+          reportFileInspection(inspection);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('File inspection failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }
@@ -512,6 +569,64 @@ program
     }
   });
 
+// ── Command: hotspots ─────────────────────────────────────
+
+program
+  .command('hotspots')
+  .description('Rank files by risk (git churn × complexity × open issues)')
+  .option('--limit <n>', 'number of hotspots to show', '10')
+  .option('--since <when>', 'git history window (e.g. "6 months ago", "2024-01-01")', '12 months ago')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Analyzing hotspots...').start() : null;
+
+    try {
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+      const limit = Math.max(1, Math.min(100, parseInt(cmdOpts.limit, 10) || 10));
+      const report = await analyzeHotspots(rootPath, scan.files, issues, {
+        since: cmdOpts.since,
+        limit,
+      });
+
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportHotspotsJson(report);
+          break;
+        case 'markdown':
+          reportHotspotsMarkdown(report);
+          break;
+        default:
+          reportHotspots(report);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Hotspot analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: mcp ──────────────────────────────────────────
+
+program
+  .command('mcp')
+  .description('Run projscan as an MCP server (stdio) for AI coding agents')
+  .action(async () => {
+    setLogLevel('quiet');
+    const rootPath = getRootPath();
+    try {
+      await runMcpServer(rootPath);
+    } catch (error) {
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
 // ── Command: badge ────────────────────────────────────────
 
 program
@@ -557,7 +672,7 @@ function analyzeFile(filePath: string, content: string): FileExplanation {
   const lines = content.split('\n');
   const imports = extractImports(content);
   const exports = extractExports(content);
-  const purpose = inferPurpose(filePath, imports, exports);
+  const purpose = inferPurpose(filePath, exports);
   const potentialIssues = detectFileIssues(content, lines.length);
 
   return {
@@ -568,140 +683,6 @@ function analyzeFile(filePath: string, content: string): FileExplanation {
     potentialIssues,
     lineCount: lines.length,
   };
-}
-
-function extractImports(content: string): ImportInfo[] {
-  const imports: ImportInfo[] = [];
-  const seen = new Set<string>();
-
-  // ES import
-  const esImportRegex = /import\s+(?:(?:\{[^}]*\}|[\w*]+(?:\s*,\s*\{[^}]*\})?|\*\s+as\s+\w+)\s+from\s+)?['"]([^'"]+)['"]/gm;
-  let match: RegExpExecArray | null;
-  while ((match = esImportRegex.exec(content)) !== null) {
-    const source = match[1];
-    if (!seen.has(source)) {
-      seen.add(source);
-      imports.push({
-        source,
-        specifiers: [],
-        isRelative: source.startsWith('.') || source.startsWith('/'),
-      });
-    }
-  }
-
-  // CommonJS require
-  const requireRegex = /(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/gm;
-  while ((match = requireRegex.exec(content)) !== null) {
-    const source = match[1];
-    if (!seen.has(source)) {
-      seen.add(source);
-      imports.push({
-        source,
-        specifiers: [],
-        isRelative: source.startsWith('.') || source.startsWith('/'),
-      });
-    }
-  }
-
-  return imports;
-}
-
-function extractExports(content: string): ExportInfo[] {
-  const exports: ExportInfo[] = [];
-
-  // export function
-  const funcRegex = /^export\s+(?:async\s+)?function\s+(\w+)/gm;
-  let match: RegExpExecArray | null;
-  while ((match = funcRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'function' });
-  }
-
-  // export class
-  const classRegex = /^export\s+class\s+(\w+)/gm;
-  while ((match = classRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'class' });
-  }
-
-  // export const/let/var
-  const varRegex = /^export\s+(?:const|let|var)\s+(\w+)/gm;
-  while ((match = varRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'variable' });
-  }
-
-  // export interface
-  const interfaceRegex = /^export\s+interface\s+(\w+)/gm;
-  while ((match = interfaceRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'interface' });
-  }
-
-  // export type
-  const typeRegex = /^export\s+type\s+(\w+)/gm;
-  while ((match = typeRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'type' });
-  }
-
-  // export default
-  if (/^export\s+default/m.test(content)) {
-    exports.push({ name: 'default', type: 'default' });
-  }
-
-  return exports;
-}
-
-function inferPurpose(filePath: string, imports: ImportInfo[], exports: ExportInfo[]): string {
-  const name = path.basename(filePath, path.extname(filePath)).toLowerCase();
-  const dir = path.dirname(filePath).toLowerCase();
-
-  if (name.includes('test') || name.includes('spec')) return 'Test file';
-  if (name.includes('config') || name.includes('rc')) return 'Configuration file';
-  if (name === 'index') return 'Module entry point / barrel file';
-  if (name === 'main' || name === 'app') return 'Application entry point';
-  if (name.includes('route') || name.includes('router')) return 'Route definitions';
-  if (name.includes('middleware')) return 'Middleware handler';
-  if (name.includes('controller')) return 'Request controller';
-  if (name.includes('service')) return 'Service layer logic';
-  if (name.includes('model') || name.includes('schema')) return 'Data model / schema definition';
-  if (name.includes('util') || name.includes('helper')) return 'Utility functions';
-  if (name.includes('hook')) return 'Custom hook';
-  if (name.includes('context') || name.includes('provider')) return 'Context / state provider';
-  if (name.includes('type') || name.includes('interface')) return 'Type definitions';
-  if (name.includes('constant') || name.includes('config')) return 'Constants / configuration';
-  if (name.includes('migration')) return 'Database migration';
-  if (name.includes('seed')) return 'Database seed data';
-  if (name.includes('auth')) return 'Authentication logic';
-  if (name.includes('api')) return 'API endpoint handler';
-
-  if (dir.includes('component') || dir.includes('pages')) return 'UI component';
-  if (dir.includes('service')) return 'Service module';
-  if (dir.includes('model')) return 'Data model';
-  if (dir.includes('util') || dir.includes('lib')) return 'Library / utility module';
-
-  const exportTypes = exports.map((e) => e.type);
-  if (exportTypes.includes('class')) return 'Class-based module';
-  if (exportTypes.filter((t) => t === 'function').length > 2) return 'Function library';
-
-  return 'Source module';
-}
-
-function detectFileIssues(content: string, lineCount: number): string[] {
-  const issues: string[] = [];
-
-  if (lineCount > 500) issues.push(`Large file (${lineCount} lines) — consider splitting`);
-  if (lineCount > 1000) issues.push('Very large file — strongly consider refactoring');
-
-  if (/console\.(log|warn|error|debug)\s*\(/.test(content)) {
-    issues.push('Contains console.log statements — consider using a proper logger');
-  }
-
-  if (/TODO|FIXME|HACK|XXX/i.test(content)) {
-    issues.push('Contains TODO/FIXME comments');
-  }
-
-  if (/any\b/.test(content) && /\.tsx?$/.test(content)) {
-    issues.push('Uses "any" type — consider using proper types');
-  }
-
-  return issues;
 }
 
 // ── Architecture Layer Detection ──────────────────────────

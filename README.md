@@ -60,13 +60,16 @@ npx projscan
 Run inside any repository:
 
 ```bash
-projscan            # Full project analysis
-projscan doctor     # Health check
-projscan fix        # Auto-fix detected issues
-projscan ci         # CI health gate (exits 1 on low score)
-projscan diff       # Compare health against a baseline
-projscan diagram    # Architecture visualization
-projscan structure  # Directory tree
+projscan                # Full project analysis
+projscan doctor         # Health check
+projscan hotspots       # Rank files by risk (churn × complexity × issues × ownership)
+projscan file <path>    # Drill into a file — purpose, risk, ownership, issues
+projscan fix            # Auto-fix detected issues
+projscan ci             # CI health gate (exits 1 on low score)
+projscan diff           # Compare health + hotspot trends against a baseline
+projscan diagram        # Architecture visualization
+projscan structure      # Directory tree
+projscan mcp            # Run as an MCP server for AI coding agents
 ```
 
 <img src="docs/npx%20projscan%20--help.png" alt="npx projscan --help" width="700">
@@ -79,14 +82,17 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 |---------|-------------|
 | `projscan analyze` | Full analysis — languages, frameworks, dependencies, issues |
 | `projscan doctor` | Health check — missing tooling, architecture smells, security risks |
+| `projscan hotspots` | Rank files by risk — churn × complexity × issues × ownership |
+| `projscan file <path>` | Drill into a file — purpose, risk, ownership, related issues |
 | `projscan fix` | Auto-fix issues (ESLint, Prettier, Vitest, .editorconfig) |
 | `projscan ci` | CI pipeline health gate — exits 1 if score below threshold |
-| `projscan diff` | Compare current health against a saved baseline |
+| `projscan diff` | Compare current health **and hotspot trends** against a baseline |
 | `projscan explain <file>` | Explain a file's purpose, imports, exports, and issues |
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
 | `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
 | `projscan badge` | Generate a health score badge for your README |
+| `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Cursor, …) |
 
 To see all commands and options, run:
 
@@ -227,10 +233,87 @@ projscan diff --format markdown     # Markdown diff for PRs
 
 <img src="docs/npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
 
+## Hotspots — Where to Fix First
+
+A flat health score doesn't tell you what to do. **`projscan hotspots`** combines `git log` churn, file complexity, open issues, recency, and **ownership** into a single risk score per file — so you know where refactoring or review will actually pay off.
+
+```bash
+projscan hotspots                       # Top 10 hotspots
+projscan hotspots --limit 20
+projscan hotspots --since "6 months ago"
+projscan hotspots --format json         # Machine-readable for dashboards
+projscan hotspots --format markdown     # Drop into a PR or tech-debt ticket
+```
+
+Hotspot ranking follows the classic Feathers "churn × complexity" heuristic with boosts for files that fail `projscan doctor`, changed recently, or show **bus factor 1** (single-author + high churn). Falls back gracefully outside a git repo.
+
+### Drill Into a Hotspot
+
+```bash
+projscan file src/cli/index.ts
+```
+
+Combines the file's purpose, imports, exports, hotspot risk, ownership, and every open issue that references it — the natural follow-up to `projscan hotspots`.
+
+### Track Trends Over Time
+
+```bash
+projscan diff --save-baseline           # Snapshots health + hotspots
+# ...time passes, commits happen...
+projscan diff                           # Shows which hotspots rose / fell
+```
+
+The baseline file now captures top hotspots too, so `diff` surfaces files that are **getting worse** (not just new issues).
+
+## AI Agent Integration (MCP)
+
+**`projscan mcp`** starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query projscan during a session.
+
+**Tools** (7):
+- `projscan_analyze` — full project report
+- `projscan_doctor` — health score + issues
+- `projscan_hotspots` — risk-ranked files (with `limit`, `since` args)
+- `projscan_file` — per-file risk + ownership + related issues
+- `projscan_explain` — per-file purpose, imports, exports, smells
+- `projscan_structure` — directory tree
+- `projscan_dependencies` — package audit
+
+**Prompts** (2, parameterized with live project data):
+- `prioritize_refactoring` — ranked plan grounded in current hotspots
+- `investigate_file` — senior-engineer brief for a specific file
+
+**Resources** (3, readable on demand):
+- `projscan://health` · `projscan://hotspots` · `projscan://structure`
+
+### Claude Code
+
+```bash
+claude mcp add projscan -- npx projscan mcp
+```
+
+### Cursor / Windsurf / any MCP client
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "projscan": {
+      "command": "npx",
+      "args": ["projscan", "mcp"]
+    }
+  }
+}
+```
+
+Now your agent can ask *"what are the riskiest files in this repo?"* and get a grounded answer, or run `projscan_doctor` before proposing an edit.
+
 ## Use Cases
 
 - **Onboarding**: Understand any codebase in seconds, not hours
 - **Code reviews**: Run `projscan doctor --format markdown` and paste into PRs
+- **Tech-debt prioritization**: Use `projscan hotspots` to decide what deserves refactoring time
+- **AI-assisted development**: Mount `projscan mcp` in your agent of choice for grounded edits
 - **CI/CD**: Use `projscan ci` to enforce health standards in your pipeline
 - **Security**: Catch committed secrets and `.env` files before they reach production
 - **Consulting**: Quickly assess client projects before diving in
