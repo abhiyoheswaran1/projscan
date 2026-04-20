@@ -6,14 +6,14 @@ Planned features and improvements. Community suggestions welcome — open an iss
 
 ## Planned
 
-### Coverage × Hotspots Join (0.5.0)
-Combine hotspot risk with test coverage data (LCOV/coverage-final.json) to surface "scariest untested files."
-
-### Dead Code / Unused Exports (0.5.0)
-Flag exports that nothing consumes, across the full import graph. Complements the unused-dependency detection shipped in 0.4.0.
-
 ### Registry-aware Upgrade Preview
 Today's `projscan upgrade` is offline (local CHANGELOG + installed version). A future iteration will optionally fetch `latest` from the npm registry and diff against what's currently installed.
+
+### Real Cyclomatic Complexity
+Replace LOC-as-complexity proxy in the hotspot score with AST-derived cyclomatic complexity. Likely via `@babel/parser` as an optional peer dep.
+
+### Coupling & Cycle Detection
+Per-file fan-in / fan-out from the import graph, plus circular-dependency detection.
 
 ---
 
@@ -28,6 +28,13 @@ Today's `projscan upgrade` is offline (local CHANGELOG + installed version). A f
 ---
 
 ## Recently Shipped
+
+### v0.5.x
+- **Deeper Signal** theme
+  - `projscan coverage` — parses lcov / coverage-final / coverage-summary, joins with hotspots, surfaces "scariest untested files"
+  - Coverage-weighted hotspot risk — uncovered churning files bubble up
+  - Dead-code analyzer — flags source files whose exports nothing imports; respects package.json public entries
+  - Import-graph extractor upgraded — captures `import type`, re-exports, and dynamic `import()`
 
 ### v0.4.x
 - **Dependency Health** theme

@@ -1,6 +1,7 @@
 import type {
   AnalysisReport,
   AuditReport,
+  CoverageJoinedReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -100,4 +101,8 @@ export function reportAuditJson(report: AuditReport): void {
 
 export function reportUpgradeJson(preview: UpgradePreview): void {
   console.log(JSON.stringify({ upgrade: preview }, null, 2));
+}
+
+export function reportCoverageJson(report: CoverageJoinedReport): void {
+  console.log(JSON.stringify({ coverage: report }, null, 2));
 }

@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import type {
   AnalysisReport,
   AuditReport,
+  CoverageJoinedReport,
   Issue,
   Fix,
   FixResult,
@@ -664,6 +665,50 @@ export function reportUpgrade(preview: UpgradePreview): void {
   } else {
     console.log(chalk.dim('  No local CHANGELOG found (node_modules/<pkg>/CHANGELOG.md).\n'));
   }
+}
+
+// ── Report: coverage × hotspots ───────────────────────────
+
+export function reportCoverage(report: CoverageJoinedReport): void {
+  if (!report.available) {
+    console.log(chalk.yellow(`\n  ${report.reason ?? 'Coverage report unavailable'}\n`));
+    return;
+  }
+
+  console.log(header('Coverage × Hotspots — "Scariest Untested Files"'));
+  const src = report.coverageSourceFile ? ` (${report.coverageSourceFile})` : '';
+  console.log(chalk.dim(`  Source: ${report.coverageSource}${src}`));
+  console.log('');
+
+  if (report.entries.length === 0) {
+    console.log(`  ${chalk.green('✓')} No hotspots intersected with coverage data.\n`);
+    return;
+  }
+
+  for (const e of report.entries.slice(0, 20)) {
+    const covStr = e.coverage === null ? chalk.dim('n/a') : formatCoverage(e.coverage);
+    const pri = chalk.bold(e.priority.toFixed(1).padStart(6));
+    console.log(
+      `  ${pri}  cov ${covStr}  risk ${chalk.dim(e.riskScore.toFixed(1))}  churn ${chalk.dim(String(e.churn))}  ${chalk.bold(e.relativePath)}`,
+    );
+    if (e.reasons.length > 0) {
+      console.log(`         ${chalk.dim(e.reasons.join(', '))}`);
+    }
+  }
+
+  if (report.entries.length > 20) {
+    console.log(chalk.dim(`\n  … and ${report.entries.length - 20} more.\n`));
+  } else {
+    console.log('');
+  }
+}
+
+function formatCoverage(pct: number): string {
+  const padded = `${pct.toFixed(0)}%`.padStart(4);
+  if (pct < 40) return chalk.red(padded);
+  if (pct < 70) return chalk.yellow(padded);
+  if (pct < 90) return chalk.blue(padded);
+  return chalk.green(padded);
 }
 
 function formatAuthorEmail(email: string): string {

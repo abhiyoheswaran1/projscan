@@ -9,6 +9,8 @@ export { buildImportGraph, toPackageName, isPackageUsed, filesImporting } from '
 export { detectOutdated } from './core/outdatedDetector.js';
 export { runAudit, auditFindingsToIssues } from './core/auditRunner.js';
 export { previewUpgrade } from './core/upgradePreview.js';
+export { parseCoverage, coverageMap } from './core/coverageParser.js';
+export { joinCoverageWithHotspots } from './core/coverageJoin.js';
 export { findDependencyLines } from './utils/packageJsonLocator.js';
 export { parse as parseSemver, compare as compareSemver, drift as semverDrift } from './utils/semver.js';
 export { walkFiles } from './utils/fileWalker.js';
@@ -60,4 +62,9 @@ export type {
   AuditFinding,
   AuditReport,
   UpgradePreview,
+  CoverageSource,
+  FileCoverage,
+  CoverageReport,
+  CoverageJoinedHotspot,
+  CoverageJoinedReport,
 } from './types.js';

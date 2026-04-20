@@ -109,31 +109,41 @@ export function extractImports(content: string): ImportInfo[] {
   const imports: ImportInfo[] = [];
   const seen = new Set<string>();
 
-  const esImportRegex = /import\s+(?:(?:\{[^}]*\}|[\w*]+(?:\s*,\s*\{[^}]*\})?|\*\s+as\s+\w+)\s+from\s+)?['"]([^'"]+)['"]/gm;
+  const addSource = (source: string) => {
+    if (!seen.has(source)) {
+      seen.add(source);
+      imports.push({
+        source,
+        specifiers: [],
+        isRelative: source.startsWith('.') || source.startsWith('/'),
+      });
+    }
+  };
+
+  // ES import — optional `type` keyword for type-only imports.
+  const esImportRegex = /import\s+(?:type\s+)?(?:(?:\{[^}]*\}|[\w*]+(?:\s*,\s*\{[^}]*\})?|\*\s+as\s+\w+)\s+from\s+)?['"]([^'"]+)['"]/gm;
   let match: RegExpExecArray | null;
   while ((match = esImportRegex.exec(content)) !== null) {
-    const source = match[1];
-    if (!seen.has(source)) {
-      seen.add(source);
-      imports.push({
-        source,
-        specifiers: [],
-        isRelative: source.startsWith('.') || source.startsWith('/'),
-      });
-    }
+    addSource(match[1]);
   }
 
+  // ES re-export — `export ... from '...'` counts as an import from the
+  // importer's point of view for graph-building purposes.
+  const esReexportRegex = /export\s+(?:type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]([^'"]+)['"]/gm;
+  while ((match = esReexportRegex.exec(content)) !== null) {
+    addSource(match[1]);
+  }
+
+  // Dynamic import()
+  const dynamicRegex = /import\(\s*['"]([^'"]+)['"]\s*\)/gm;
+  while ((match = dynamicRegex.exec(content)) !== null) {
+    addSource(match[1]);
+  }
+
+  // CommonJS require
   const requireRegex = /(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/gm;
   while ((match = requireRegex.exec(content)) !== null) {
-    const source = match[1];
-    if (!seen.has(source)) {
-      seen.add(source);
-      imports.push({
-        source,
-        specifiers: [],
-        isRelative: source.startsWith('.') || source.startsWith('/'),
-      });
-    }
+    addSource(match[1]);
   }
 
   return imports;

@@ -1,6 +1,7 @@
 import type {
   AnalysisReport,
   AuditReport,
+  CoverageJoinedReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -434,6 +435,40 @@ export function reportUpgradeMarkdown(preview: UpgradePreview): void {
     lines.push('```');
     lines.push(preview.changelogExcerpt);
     lines.push('```');
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportCoverageMarkdown(report: CoverageJoinedReport): void {
+  const lines: string[] = [];
+  lines.push('# Coverage × Hotspots');
+  lines.push('');
+  if (!report.available) {
+    lines.push(`_${report.reason ?? 'unavailable'}_`);
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  if (report.coverageSourceFile) {
+    lines.push(`_Source: \`${report.coverageSourceFile}\` (${report.coverageSource})_`);
+    lines.push('');
+  }
+
+  if (report.entries.length === 0) {
+    lines.push('_No hotspots intersected with coverage data._');
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  lines.push('| Priority | Coverage | Risk | Churn | File | Reasons |');
+  lines.push('| ---: | ---: | ---: | ---: | --- | --- |');
+  for (const e of report.entries) {
+    const cov = e.coverage === null ? '—' : `${e.coverage.toFixed(0)}%`;
+    const reasons = e.reasons.length > 0 ? e.reasons.join(', ') : '—';
+    lines.push(
+      `| ${e.priority.toFixed(1)} | ${cov} | ${e.riskScore.toFixed(1)} | ${e.churn} | \`${e.relativePath}\` | ${reasons} |`,
+    );
   }
 
   console.log(lines.join('\n'));

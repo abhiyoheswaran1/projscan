@@ -21,6 +21,8 @@ import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
 import { detectOutdated } from '../core/outdatedDetector.js';
 import { runAudit, auditFindingsToIssues } from '../core/auditRunner.js';
 import { previewUpgrade } from '../core/upgradePreview.js';
+import { parseCoverage, coverageMap } from '../core/coverageParser.js';
+import { joinCoverageWithHotspots } from '../core/coverageJoin.js';
 import {
   inspectFile,
   extractImports,
@@ -52,6 +54,7 @@ import {
   reportOutdated,
   reportAudit,
   reportUpgrade,
+  reportCoverage,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -68,6 +71,7 @@ import {
   reportOutdatedJson,
   reportAuditJson,
   reportUpgradeJson,
+  reportCoverageJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -84,6 +88,7 @@ import {
   reportOutdatedMarkdown,
   reportAuditMarkdown,
   reportUpgradeMarkdown,
+  reportCoverageMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import {
@@ -697,9 +702,11 @@ program
         Math.min(100, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 10 : limitRaw),
       );
       const since = cmdOpts.since ?? config.hotspots?.since ?? '12 months ago';
+      const coverageReport = await parseCoverage(rootPath);
       const report = await analyzeHotspots(rootPath, scan.files, issues, {
         since,
         limit,
+        coverage: coverageReport.available ? coverageMap(coverageReport) : undefined,
       });
 
       if (spinner) spinner.stop();
@@ -825,6 +832,52 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Upgrade preview failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: coverage ─────────────────────────────────────
+
+program
+  .command('coverage')
+  .description('Join test coverage with hotspots — surface the scariest untested files')
+  .option('--limit <n>', 'limit number of entries shown', '30')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const config = await loadProjectConfig();
+    const spinner = format === 'console' ? ora('Parsing coverage...').start() : null;
+
+    try {
+      const coverage = await parseCoverage(rootPath);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      const issues = await collectIssues(rootPath, scan.files);
+      const limitRaw = cmdOpts.limit ?? 30;
+      const limit = Math.max(1, Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 30 : limitRaw));
+      const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
+        limit,
+        coverage: coverage.available ? coverageMap(coverage) : undefined,
+      });
+
+      const joined = joinCoverageWithHotspots(hotspots, coverage);
+
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportCoverageJson(joined);
+          break;
+        case 'markdown':
+          reportCoverageMarkdown(joined);
+          break;
+        default:
+          reportCoverage(joined);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Coverage analysis failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

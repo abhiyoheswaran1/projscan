@@ -18,6 +18,7 @@ const DEFAULT_SINCE = '12 months ago';
 export interface HotspotOptions {
   since?: string;
   limit?: number;
+  coverage?: Map<string, number>;
 }
 
 export async function analyzeHotspots(
@@ -81,6 +82,9 @@ export async function analyzeHotspots(
     const primaryAuthorShare = topAuthors[0]?.share ?? 0;
     const busFactorOne = churn >= 3 && primaryAuthorShare >= 0.8;
 
+    const coverage = options.coverage?.get(file.relativePath);
+    const coverageValue = typeof coverage === 'number' ? coverage : null;
+
     const riskScore = computeRiskScore({
       churn,
       lines,
@@ -88,6 +92,7 @@ export async function analyzeHotspots(
       daysSinceLastChange,
       issueCount: issueIds.length,
       busFactorOne,
+      coverage: coverageValue,
     });
 
     const reasons = buildReasons({
@@ -98,6 +103,7 @@ export async function analyzeHotspots(
       issueCount: issueIds.length,
       busFactorOne,
       primaryAuthor,
+      coverage: coverageValue,
     });
 
     return {
@@ -115,6 +121,7 @@ export async function analyzeHotspots(
       primaryAuthorShare,
       busFactorOne,
       topAuthors,
+      coverage: coverageValue,
     };
   });
 
@@ -331,6 +338,7 @@ interface ScoreInputs {
   daysSinceLastChange: number | null;
   issueCount: number;
   busFactorOne?: boolean;
+  coverage?: number | null;
 }
 
 export function computeRiskScore(i: ScoreInputs): number {
@@ -348,6 +356,14 @@ export function computeRiskScore(i: ScoreInputs): number {
     else if (i.daysSinceLastChange <= 90) recencyBoost = 3;
   }
 
+  // Coverage penalty: low coverage on a hot/changing file = scarier.
+  // Only apply when coverage data is known AND the file has some churn.
+  let coveragePenalty = 0;
+  if (typeof i.coverage === 'number' && i.churn > 0) {
+    const uncoveredFraction = Math.max(0, (100 - i.coverage) / 100);
+    coveragePenalty = uncoveredFraction * Math.log2(1 + i.churn) * 4;
+  }
+
   const raw =
     churnWeight +
     complexityWeight +
@@ -355,7 +371,8 @@ export function computeRiskScore(i: ScoreInputs): number {
     authorWeight +
     issueWeight +
     recencyBoost +
-    busFactorPenalty;
+    busFactorPenalty +
+    coveragePenalty;
 
   if (i.churn === 0 && i.issueCount === 0) return 0;
 
@@ -388,6 +405,11 @@ function buildReasons(i: ReasonInputs): string[] {
 
   if (i.busFactorOne && i.primaryAuthor) {
     reasons.push(`bus factor 1 (${formatAuthor(i.primaryAuthor)})`);
+  }
+
+  if (typeof i.coverage === 'number' && i.churn > 0) {
+    if (i.coverage < 40) reasons.push(`low coverage (${Math.round(i.coverage)}%)`);
+    else if (i.coverage < 70) reasons.push(`moderate coverage (${Math.round(i.coverage)}%)`);
   }
 
   return reasons;

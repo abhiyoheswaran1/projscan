@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-20
+
+### Added — "Deeper Signal" theme
+
+- **`projscan coverage`** — parses test coverage from `coverage/lcov.info`, `coverage/coverage-final.json`, or `coverage/coverage-summary.json`, joins it with the hotspot ranking, and surfaces the **scariest untested files**: high-risk × low-coverage. Works with Vitest, Jest, c8, Istanbul — any tool that emits one of the three standard formats.
+- **Coverage-weighted hotspot risk** — `computeRiskScore` now takes an optional `coverage` input. Uncovered churning files bubble up the ranking; fully covered files see no change. New reason tags: `low coverage (X%)`, `moderate coverage (X%)`.
+- **Dead-code analyzer** — new issue type `unused-exports-<file>`. Builds the full import graph across source, and flags non-barrel / non-test source files whose exports nothing imports. Respects `package.json#main`, `#exports`, `#bin`, `#types`. Handles ESM `import type`, dynamic `import()`, re-exports (`export { x } from ...`), and `.js` specifiers that resolve to `.ts` files under NodeNext.
+- **Existing `projscan hotspots` now surfaces coverage** — when a coverage file exists, `hotspots` automatically reads it and includes per-file coverage in the output (no flag needed).
+- **`FileHotspot.coverage`** — new optional field on hotspot entries.
+- **New MCP tool:** `projscan_coverage`.
+- **Public API:** `parseCoverage`, `coverageMap`, `joinCoverageWithHotspots`.
+- **New types:** `CoverageSource`, `FileCoverage`, `CoverageReport`, `CoverageJoinedHotspot`, `CoverageJoinedReport`.
+
+### Fixed
+
+- **`extractImports` regex was missing type-only imports** — `import type { X } from './foo.js'` wasn't being captured, which silently under-counted imports in the graph. Now handles:
+  - ESM `import type`
+  - ESM re-exports (`export { x } from ...`, `export * as y from ...`)
+  - Dynamic `import('...')`
+  This makes the unused-dependency and unused-export analyzers more accurate.
+
+### Notes
+
+- All coverage parsing is offline and file-based. No runners invoked, no network.
+- Coverage is additive — projects without a coverage file get the same hotspot output as before.
+- Tests: 202 passing (+17 new).
+- Zero new runtime dependencies. Still 4 packages in `dependencies`.
+
 ## [0.4.0] - 2026-04-20
 
 ### Added — "Dependency Health" theme

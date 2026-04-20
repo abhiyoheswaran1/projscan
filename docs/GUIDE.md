@@ -23,6 +23,7 @@ A deep dive into everything ProjScan can do. For a quick overview, see the [READ
   - [outdated](#outdated)
   - [audit](#audit)
   - [upgrade](#upgrade)
+  - [coverage](#coverage)
   - [badge](#badge)
   - [mcp](#mcp)
 - [Health Score](#health-score)
@@ -421,6 +422,34 @@ $ projscan upgrade react --format markdown
 - Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
 - Works with what's **installed**, not what's latest on the registry. Registry-aware preview is on the roadmap.
 
+### coverage
+
+```bash
+projscan coverage
+```
+
+Joins test coverage with the hotspot ranking and produces a list sorted by "risk × uncovered fraction" — the files that most deserve tests.
+
+**Supported formats** (auto-detected in this order):
+- `coverage/lcov.info` — lcov format (Vitest, Jest, c8)
+- `coverage/coverage-final.json` — Istanbul per-file detail
+- `coverage/coverage-summary.json` — Istanbul summary
+
+**Output fields per entry:**
+- `relativePath` — file path
+- `riskScore` — the file's hotspot risk
+- `coverage` — line coverage %, or `null` if the file isn't in the coverage report
+- `priority` — `riskScore × (0.3 + 0.7 × uncoveredFraction)`; files without coverage data treat `uncovered = 1`
+- `reasons` — inherited from the hotspot entry, including any `low coverage (X%)` or `moderate coverage (X%)` tags
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--limit <n>` | Number of entries to return | 30 (max 200) |
+
+**How it feeds into `hotspots`:** when any coverage file exists, `projscan hotspots` automatically passes it into the risk calculator. Uncovered churning files get a score bump and a `low coverage (X%)` reason tag. No coverage file? Hotspots behaves exactly as before.
+
 ### badge
 
 ```bash
@@ -813,7 +842,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
-**Tools (10):**
+**Tools (11):**
 - `projscan_analyze` — full project snapshot
 - `projscan_doctor` — health score + issue list
 - `projscan_hotspots` — ranked file risk (`limit`, `since` args)
@@ -824,6 +853,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_outdated` — declared-vs-installed drift (offline)
 - `projscan_audit` — npm audit, normalized (severity summary + findings)
 - `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
+- `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction" (`limit` arg)
 
 **Prompts (2, parameterized with live project data):**
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
@@ -1052,7 +1082,9 @@ src/
 │   ├── importGraph.ts           # Source-wide import graph for unused-dep / dead-code
 │   ├── outdatedDetector.ts      # Declared-vs-installed drift check (offline)
 │   ├── auditRunner.ts           # npm audit wrapper + SARIF normalization
-│   └── upgradePreview.ts        # Offline upgrade preview (CHANGELOG + importers)
+│   ├── upgradePreview.ts        # Offline upgrade preview (CHANGELOG + importers)
+│   ├── coverageParser.ts        # lcov / coverage-final / coverage-summary parser
+│   └── coverageJoin.ts          # Join hotspots × coverage — "scariest untested files"
 ├── analyzers/
 │   ├── eslintCheck.ts
 │   ├── prettierCheck.ts
@@ -1060,7 +1092,8 @@ src/
 │   ├── architectureCheck.ts
 │   ├── dependencyRiskCheck.ts
 │   ├── securityCheck.ts
-│   └── unusedDependencyCheck.ts
+│   ├── unusedDependencyCheck.ts
+│   └── deadCodeCheck.ts
 ├── fixes/
 │   ├── eslintFix.ts
 │   ├── prettierFix.ts

@@ -9,6 +9,8 @@ import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
 import { detectOutdated } from '../core/outdatedDetector.js';
 import { runAudit } from '../core/auditRunner.js';
 import { previewUpgrade } from '../core/upgradePreview.js';
+import { parseCoverage, coverageMap } from '../core/coverageParser.js';
+import { joinCoverageWithHotspots } from '../core/coverageJoin.js';
 import {
   inspectFile,
   extractImports,
@@ -226,6 +228,33 @@ const tools: McpTool[] = [
       if (!pkgName) throw new Error('package argument is required');
       const scan = await scanRepository(rootPath);
       return await previewUpgrade(rootPath, pkgName, scan.files);
+    },
+  },
+
+  {
+    name: 'projscan_coverage',
+    description:
+      'Join test coverage with hotspot risk. Returns files ranked by "risk × uncovered fraction" — the scariest untested files. Requires a coverage file at coverage/lcov.info, coverage/coverage-final.json, or coverage/coverage-summary.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'How many entries to return (default: 30, max: 200).',
+        },
+      },
+    },
+    handler: async (args, rootPath) => {
+      const coverage = await parseCoverage(rootPath);
+      const scan = await scanRepository(rootPath);
+      const issues = await collectIssues(rootPath, scan.files);
+      const rawLimit = typeof args.limit === 'number' ? args.limit : 30;
+      const limit = Math.max(1, Math.min(200, rawLimit));
+      const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
+        limit,
+        coverage: coverage.available ? coverageMap(coverage) : undefined,
+      });
+      return joinCoverageWithHotspots(hotspots, coverage);
     },
   },
 ];

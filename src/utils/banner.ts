@@ -46,15 +46,15 @@ export function showBanner(): void {
     `${head('Commands')}`,
     `${w('doctor')}     ${dim('Health check')}`,
     `${w('hotspots')}   ${dim('Risk-rank files')}`,
+    `${w('coverage')}   ${dim('Untested hotspots')}`,
     `${w('outdated')}   ${dim('Dep drift check')}`,
     `${w('audit')}      ${dim('Vulnerabilities')}`,
     `${w('upgrade')}    ${dim('Preview upgrade')}`,
-    `${w('ci')}         ${dim('CI gate (SARIF)')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('outdated / audit / upgrade')}`,
-    `${dim('Unused-dep analyzer')}`,
-    `${dim('package.json locations')}`,
+    `${dim('coverage × hotspots')}`,
+    `${dim('Dead-code analyzer')}`,
+    `${dim('Coverage-weighted risk')}`,
   ];
 
   const leftW = 42;
@@ -127,6 +127,7 @@ export function showHelp(): void {
     { cmd: 'projscan outdated',              desc: 'Declared-vs-installed drift (offline)' },
     { cmd: 'projscan audit',                 desc: 'Run npm audit; SARIF-ready vulnerability report' },
     { cmd: 'projscan upgrade <pkg>',         desc: 'Preview upgrade impact (CHANGELOG + importers, offline)' },
+    { cmd: 'projscan coverage',              desc: 'Coverage × hotspots — surface scariest untested files' },
     { cmd: 'projscan badge',                 desc: 'Generate a health badge for your README' },
     { cmd: 'projscan mcp',                   desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
   ];

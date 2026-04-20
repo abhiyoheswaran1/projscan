@@ -71,6 +71,7 @@ projscan ci --format sarif          # SARIF 2.1.0 for GitHub Code Scanning
 projscan outdated                   # Declared-vs-installed drift (offline)
 projscan audit                      # npm audit, normalized + SARIF-ready
 projscan upgrade <pkg>              # Preview upgrade impact (local CHANGELOG + importers)
+projscan coverage                   # Coverage × hotspots — scariest untested files
 projscan diff                       # Compare health + hotspot trends against a baseline
 projscan diagram                    # Architecture visualization
 projscan structure                  # Directory tree
@@ -96,9 +97,10 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
 | `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
-| `projscan outdated` | **Declared-vs-installed drift check** (offline) |
-| `projscan audit` | **`npm audit`-powered vulnerability report** — SARIF-ready for Code Scanning |
-| `projscan upgrade <pkg>` | **Preview upgrade impact** — local CHANGELOG + importer list, offline |
+| `projscan outdated` | Declared-vs-installed drift check (offline) |
+| `projscan audit` | `npm audit`-powered vulnerability report — SARIF-ready for Code Scanning |
+| `projscan upgrade <pkg>` | Preview upgrade impact — local CHANGELOG + importer list, offline |
+| `projscan coverage` | **Coverage × hotspots — rank the scariest untested files** |
 | `projscan badge` | Generate a health score badge for your README |
 | `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Cursor, …) |
 
@@ -360,11 +362,35 @@ projscan upgrade chalk --format markdown # Paste-ready review comment
 
 Implicit-use packages (typescript, eslint/prettier plugins, `@types/*`, and anything invoked from a `package.json` script) are allowlisted. Override via `.projscanrc` → `disableRules` if projscan flags something that is used but not imported.
 
+## Coverage × Hotspots — Scariest Untested Files
+
+`projscan coverage` joins your test coverage with the hotspot ranking. A file with high churn and low coverage is where a bug is most likely to bite you — so that's where you want tests first.
+
+```bash
+projscan coverage                       # Top 30 scariest untested files
+projscan coverage --format markdown     # Paste into a tech-debt ticket
+projscan coverage --format json         # Machine-readable for dashboards
+```
+
+**How it decides "scariest":** `priority = riskScore × (0.3 + 0.7 × uncoveredFraction)` — so a file with 50 risk and 10% coverage outranks a file with 50 risk and 95% coverage.
+
+**Which coverage files are supported:**
+
+- `coverage/lcov.info` (lcov — Vitest, Jest, c8)
+- `coverage/coverage-final.json` (Istanbul per-file detail)
+- `coverage/coverage-summary.json` (Istanbul summary)
+
+Coverage is also automatically joined into `projscan hotspots` when one of those files exists — no flag needed. Uncovered churning files get a score bump and a `low coverage (X%)` reason tag.
+
+### Dead-code detection (automatic in `doctor`)
+
+`projscan doctor` now flags source files whose exports nothing imports — dead code left over from refactors or utilities that were never wired up. Respects `package.json` public entry points (`main`, `exports`, `bin`, `types`), skips test files and barrel (`index`) files.
+
 ## AI Agent Integration (MCP)
 
 **`projscan mcp`** starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query projscan during a session.
 
-**Tools** (10):
+**Tools** (11):
 - `projscan_analyze` — full project report
 - `projscan_doctor` — health score + issues
 - `projscan_hotspots` — risk-ranked files (with `limit`, `since` args)
@@ -375,6 +401,7 @@ Implicit-use packages (typescript, eslint/prettier plugins, `@types/*`, and anyt
 - `projscan_outdated` — declared-vs-installed drift
 - `projscan_audit` — npm audit, normalized
 - `projscan_upgrade` — offline upgrade preview with CHANGELOG + importers
+- `projscan_coverage` — coverage × hotspots, "scariest untested files"
 
 **Prompts** (2, parameterized with live project data):
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
