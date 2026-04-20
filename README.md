@@ -6,9 +6,9 @@
 [![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/projscan/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 
-**Instant codebase insights — doctor, x-ray, and architecture map for any repository.**
+**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Cursor, Windsurf) query your codebase — with a CLI for humans on the side.
 
-[Install](#install) · [Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
+[AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
 <img src="docs/hero.png" alt="projscan banner" width="600">
 
@@ -18,16 +18,13 @@
 
 ## Why?
 
-Every time you clone a new repo, join a new team, or revisit an old project, you face the same questions:
+AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* — it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-- What language and framework is this?
-- Is there linting? Testing? Formatting?
-- What's the project structure?
-- Are the dependencies healthy?
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 13 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots — without loading the file tree into its context.
 
-Answering these manually takes 10-30 minutes of poking through config files and directories.
+Humans get the same thing through the CLI.
 
-**projscan answers all of this in one command, in under 2 seconds.**
+**Everything is offline-first. Zero network calls. No API keys.**
 
 ```bash
 npx projscan
@@ -388,27 +385,7 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 ## AI Agent Integration (MCP)
 
-**`projscan mcp`** starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query projscan during a session.
-
-**Tools** (11):
-- `projscan_analyze` — full project report
-- `projscan_doctor` — health score + issues
-- `projscan_hotspots` — risk-ranked files (with `limit`, `since` args)
-- `projscan_file` — per-file risk + ownership + related issues
-- `projscan_explain` — per-file purpose, imports, exports, smells
-- `projscan_structure` — directory tree
-- `projscan_dependencies` — package audit
-- `projscan_outdated` — declared-vs-installed drift
-- `projscan_audit` — npm audit, normalized
-- `projscan_upgrade` — offline upgrade preview with CHANGELOG + importers
-- `projscan_coverage` — coverage × hotspots, "scariest untested files"
-
-**Prompts** (2, parameterized with live project data):
-- `prioritize_refactoring` — ranked plan grounded in current hotspots
-- `investigate_file` — senior-engineer brief for a specific file
-
-**Resources** (3, readable on demand):
-- `projscan://health` · `projscan://hotspots` · `projscan://structure`
+**This is the primary way to use projscan.** `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query your codebase with real structural accuracy — not regex, not grep.
 
 ### Claude Code
 
@@ -417,8 +394,6 @@ claude mcp add projscan -- npx projscan mcp
 ```
 
 ### Cursor / Windsurf / any MCP client
-
-Add to your MCP config:
 
 ```json
 {
@@ -431,7 +406,54 @@ Add to your MCP config:
 }
 ```
 
-Now your agent can ask *"what are the riskiest files in this repo?"* and get a grounded answer, or run `projscan_doctor` before proposing an edit.
+### What agents can ask
+
+- *"Who imports `src/auth/jwt.ts`?"* → `projscan_graph { file, direction: "importers" }`
+- *"Where is `runAudit` defined?"* → `projscan_search { query: "runAudit", scope: "symbols" }`
+- *"Which files implement auth?"* → `projscan_search { query: "auth", scope: "content" }`
+- *"What are the scariest untested files?"* → `projscan_coverage`
+- *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
+- *"Where should I refactor first?"* → `projscan_hotspots`
+
+### The 13 MCP tools
+
+**Structural (0.6.0 — new, agent-native):**
+- **`projscan_graph`** — query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
+- **`projscan_search`** — fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Replaces the temptation to shell out to grep.
+
+**Analysis:**
+- `projscan_analyze` — full project report
+- `projscan_doctor` — health score + issues
+- `projscan_hotspots` — risk-ranked files (churn × complexity × issues × ownership × coverage)
+- `projscan_file` — per-file risk + ownership + related issues
+- `projscan_explain` — per-file purpose, imports, exports, smells
+- `projscan_structure` — directory tree
+- `projscan_coverage` — scariest untested files (coverage × hotspots)
+
+**Dependencies:**
+- `projscan_dependencies` — declared deps, risks
+- `projscan_outdated` — declared-vs-installed drift (offline)
+- `projscan_audit` — normalized `npm audit`
+- `projscan_upgrade` — upgrade preview (CHANGELOG + importers, offline)
+
+### Context-window budgeting
+
+**Every MCP tool accepts an optional `max_tokens` argument.** Set it and projscan serializes the result, and — if over budget — truncates the largest array field record-by-record until it fits. Responses include a `_budget` sidecar when truncated so your agent knows it got a partial view.
+
+```json
+{ "name": "projscan_hotspots", "arguments": { "limit": 100, "max_tokens": 800 } }
+```
+
+### Incremental index cache
+
+projscan caches parsed ASTs at `.projscan-cache/graph.json` (auto-gitignored). First run populates it; subsequent runs re-parse only files whose `mtime` changed. Agent queries on a warm cache are milliseconds, not seconds.
+
+### Prompts (2, parameterized with live project data)
+- `prioritize_refactoring` — ranked plan grounded in current hotspots
+- `investigate_file` — senior-engineer brief for a specific file
+
+### Resources (3, readable on demand)
+- `projscan://health` · `projscan://hotspots` · `projscan://structure`
 
 ## Use Cases
 

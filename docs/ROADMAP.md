@@ -4,16 +4,26 @@ Planned features and improvements. Community suggestions welcome — open an iss
 
 ---
 
+## Big bet: "Agent-First"
+
+The tool is repositioning. The MCP server is the product; the CLI is a consumer of the same primitives.
+
 ## Planned
 
-### Registry-aware Upgrade Preview
-Today's `projscan upgrade` is offline (local CHANGELOG + installed version). A future iteration will optionally fetch `latest` from the npm registry and diff against what's currently installed.
+### 0.7.0 — Semantic Search
+Local embeddings over file chunks; nearest-neighbor queries. Agents ask *"which files implement auth?"* and get semantically relevant results, not regex hits. No API calls — offline-first.
+
+### 0.8.0 — Streaming MCP
+Stream large responses so agents can stop reading as soon as they have enough. Especially for `projscan_graph` on large repos.
 
 ### Real Cyclomatic Complexity
-Replace LOC-as-complexity proxy in the hotspot score with AST-derived cyclomatic complexity. Likely via `@babel/parser` as an optional peer dep.
+Now that AST is in place (0.6), add cyclomatic complexity per function. Replace the LOC proxy in the hotspot score.
 
 ### Coupling & Cycle Detection
-Per-file fan-in / fan-out from the import graph, plus circular-dependency detection.
+Per-file fan-in / fan-out from the code graph, circular-dependency detection.
+
+### Registry-aware Upgrade Preview
+Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm registry and diff against what's installed.
 
 ---
 
@@ -28,6 +38,14 @@ Per-file fan-in / fan-out from the import graph, plus circular-dependency detect
 ---
 
 ## Recently Shipped
+
+### v0.6.x
+- **Agent-First** theme. MCP server becomes the primary product.
+- Real AST parsing (`@babel/parser`) replacing regex in the import/export extractor
+- `codeGraph` core primitive — bidirectional file×symbol graph
+- Incremental `.projscan-cache/` (mtime-keyed) — agent queries become millisecond-fast on warm cache
+- MCP context-token budgeter — `max_tokens` arg on any tool, automatic truncation
+- New MCP tools: `projscan_graph` (structural queries), `projscan_search` (symbols/files/content)
 
 ### v0.5.x
 - **Deeper Signal** theme

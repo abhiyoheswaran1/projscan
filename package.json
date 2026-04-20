@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.5.0",
-  "description": "Instant codebase insights — doctor, hotspots, coverage × hotspots, dependency health, SARIF for Code Scanning, and MCP server for any repository",
+  "version": "0.6.0",
+  "description": "Agent-first code intelligence — MCP server with real AST parsing, code graph, and context-budgeted output for Claude Code, Cursor, Windsurf; CLI on the side",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -49,6 +49,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.2",
+    "@babel/types": "^7.29.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "fast-glob": "^3.3.2",

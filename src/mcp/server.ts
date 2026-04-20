@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { getToolDefinitions, getToolHandler } from './tools.js';
 import { getPromptDefinitions, getPrompt } from './prompts.js';
 import { getResourceDefinitions, readResource } from './resources.js';
+import { applyBudget } from './tokenBudget.js';
 
 const PROTOCOL_VERSION = '2024-11-05';
 
@@ -105,12 +106,22 @@ export function createMcpServer(rootPath: string): McpServerHandle {
             return fail(id, JSONRPC_ERROR.MethodNotFound, `Unknown tool: ${name}`);
           }
           try {
-            const result = await handler(params.arguments ?? {}, rootPath);
+            const args = params.arguments ?? {};
+            const result = await handler(args, rootPath);
+            const rawMaxTokens = args.max_tokens;
+            const maxTokens =
+              typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
+                ? rawMaxTokens
+                : undefined;
+            const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
+            const payload = budgeted.truncated
+              ? { ...(budgeted.value as object), _budget: { truncated: true, estimatedTokens: budgeted.estimatedTokens, maxTokens } }
+              : budgeted.value;
             return ok(id, {
               content: [
                 {
                   type: 'text',
-                  text: safeStringify(result),
+                  text: safeStringify(payload),
                 },
               ],
               isError: false,

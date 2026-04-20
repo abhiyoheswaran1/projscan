@@ -11,6 +11,18 @@ export { runAudit, auditFindingsToIssues } from './core/auditRunner.js';
 export { previewUpgrade } from './core/upgradePreview.js';
 export { parseCoverage, coverageMap } from './core/coverageParser.js';
 export { joinCoverageWithHotspots } from './core/coverageJoin.js';
+export { parseSource, isParseable } from './core/ast.js';
+export {
+  buildCodeGraph,
+  filesImportingFile,
+  filesImportingPackage,
+  filesDefiningSymbol,
+  exportsOf,
+  importsOf,
+  importersOf,
+} from './core/codeGraph.js';
+export { loadCachedGraph, saveCachedGraph, invalidateCache } from './core/indexCache.js';
+export { applyBudget, estimateTokens } from './mcp/tokenBudget.js';
 export { findDependencyLines } from './utils/packageJsonLocator.js';
 export { parse as parseSemver, compare as compareSemver, drift as semverDrift } from './utils/semver.js';
 export { walkFiles } from './utils/fileWalker.js';

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-04-20
+
+### Theme — "Agent-First"
+
+**projscan is repositioning as an MCP-native code-intelligence tool.** The CLI still works identically; nothing breaks. But the product center of gravity moves to the MCP server, and everything below is in service of that: AI coding agents (Claude Code, Cursor, Windsurf, custom) are now first-class consumers, not an afterthought.
+
+### Added
+
+- **Real AST parsing** via [`@babel/parser`](https://babeljs.io/docs/babel-parser) — replaces regex in `src/core/fileInspector.ts`. Handles JS/TS/JSX/MJS/CTS with decorator, dynamic-import, top-level-await, and error-recovery support. `import type`, re-exports, and dynamic `import()` now captured correctly (regex was missing all three).
+- **Code graph** (`src/core/codeGraph.ts`) — new core primitive. Files + exports + imports + call sites, bidirectional edges, built from real ASTs. Relative import resolution covers extension inference, barrel files (`foo/index.ts`), and `.js` specifiers that resolve to `.ts` under NodeNext.
+- **Incremental index cache** (`src/core/indexCache.ts`) — mtime-keyed parse cache at `.projscan-cache/graph.json` (auto-gitignored). First run populates; subsequent runs re-parse only changed files. Agent queries against warm caches are millisecond-fast, not second-slow.
+- **MCP context-token budgeter** (`src/mcp/tokenBudget.ts`) — every MCP tool call accepts an optional `max_tokens` argument. When set, projscan serializes the result and, if over budget, truncates the largest array field record-by-record until it fits. Ships a `_budget` sidecar on truncated responses so the agent knows it got a partial view.
+- **New MCP tool `projscan_graph`** — query the code graph directly. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agents can ask "who imports this file?" or "where is `runAudit` defined?" and get an answer in milliseconds without loading 11 other tools.
+- **New MCP tool `projscan_search`** — fast structural search. Scopes: `symbols` (exports), `files` (path substring), `content` (source substring with line + excerpt). Replaces the temptation to shell out to `grep`.
+- **Public API:** `parseSource`, `isParseable`, `buildCodeGraph`, `filesImportingFile`, `filesImportingPackage`, `filesDefiningSymbol`, `exportsOf`, `importsOf`, `importersOf`, `loadCachedGraph`, `saveCachedGraph`, `invalidateCache`, `applyBudget`, `estimateTokens`.
+
+### Changed
+
+- **`buildImportGraph` is now a compat shim** — backed by AST-based `buildCodeGraph` internally. Accuracy improves (no more regex false negatives), API is unchanged.
+- **MCP tools now advertise `max_tokens`** — the new two explicitly, but the dispatcher applies the budget to every tool call whether the schema mentions it or not. Agents can set `max_tokens` on any existing tool (`projscan_hotspots`, `projscan_coverage`, etc.) and get right-sized output.
+- **Two new runtime dependencies:** `@babel/parser` (~1.5MB) and `@babel/types`. Deliberate trade-off — regex hit an accuracy ceiling and every downstream analyzer was building on sand. "Real AST parsing" is a 0.6 headline; the zero-heavy-deps claim ends here.
+
+### Fixed (from the AST migration)
+
+- `import type { X }` now captured everywhere. Was silently dropped by the old regex, under-reporting imports in the graph.
+- Dynamic `import('./lazy.js')` now captured.
+- `export * as ns from './foo.js'` and other re-export shapes now captured.
+- Unused-dependency and unused-exports analyzers are measurably more accurate as a side effect — no more flagging files that are reachable via type-only imports or dynamic loads.
+
+### Notes
+
+- **202 → 235 tests** (+33). Every new primitive has dedicated coverage.
+- All offline. Cache file is the only disk artifact, lives at `.projscan-cache/`, is gitignored automatically.
+- CLI output is unchanged. If you use projscan-the-CLI today, 0.6.0 is a no-op feature bump (with faster subsequent runs thanks to the cache).
+
 ## [0.5.0] - 2026-04-20
 
 ### Added — "Deeper Signal" theme

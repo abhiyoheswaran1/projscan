@@ -12,6 +12,15 @@ import { previewUpgrade } from '../core/upgradePreview.js';
 import { parseCoverage, coverageMap } from '../core/coverageParser.js';
 import { joinCoverageWithHotspots } from '../core/coverageJoin.js';
 import {
+  buildCodeGraph,
+  filesImportingFile,
+  filesImportingPackage,
+  filesDefiningSymbol,
+  exportsOf,
+  importsOf,
+} from '../core/codeGraph.js';
+import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
+import {
   inspectFile,
   extractImports,
   extractExports,
@@ -242,6 +251,10 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'How many entries to return (default: 30, max: 200).',
         },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap the response size to roughly this many tokens (~4 chars/token). Truncates the entries array to fit.',
+        },
       },
     },
     handler: async (args, rootPath) => {
@@ -255,6 +268,171 @@ const tools: McpTool[] = [
         coverage: coverage.available ? coverageMap(coverage) : undefined,
       });
       return joinCoverageWithHotspots(hotspots, coverage);
+    },
+  },
+
+  {
+    name: 'projscan_graph',
+    description:
+      'Query the AST-based code graph directly. Returns imports, exports, importers, or symbol definitions for a file or symbol. Agents should prefer this over analyze/doctor/explain for targeted structural questions — it is much cheaper and more accurate.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'File path (relative to project root) to query.',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Symbol name to query (e.g. a function or class). Use instead of `file` to find where a symbol is defined.',
+        },
+        direction: {
+          type: 'string',
+          description: 'What to return: "imports" (what the file imports), "exports" (what the file exports), "importers" (who imports the file), "symbol_defs" (files defining the symbol), "package_importers" (files importing a package by name).',
+          enum: ['imports', 'exports', 'importers', 'symbol_defs', 'package_importers'],
+        },
+        limit: {
+          type: 'number',
+          description: 'Max entries returned (default 50).',
+        },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap the response to roughly this many tokens.',
+        },
+      },
+      required: ['direction'],
+    },
+    handler: async (args, rootPath) => {
+      const scan = await scanRepository(rootPath);
+      const cached = await loadCachedGraph(rootPath);
+      const graph = await buildCodeGraph(rootPath, scan.files, cached);
+      await saveCachedGraph(rootPath, graph);
+
+      const direction = String(args.direction);
+      const file = typeof args.file === 'string' ? args.file : undefined;
+      const symbol = typeof args.symbol === 'string' ? args.symbol : undefined;
+      const limit = Math.max(1, Math.min(500, typeof args.limit === 'number' ? args.limit : 50));
+
+      switch (direction) {
+        case 'imports': {
+          if (!file) throw new Error('file argument is required for direction=imports');
+          return { file, imports: importsOf(graph, file).slice(0, limit) };
+        }
+        case 'exports': {
+          if (!file) throw new Error('file argument is required for direction=exports');
+          return { file, exports: exportsOf(graph, file).slice(0, limit) };
+        }
+        case 'importers': {
+          if (!file) throw new Error('file argument is required for direction=importers');
+          return { file, importers: filesImportingFile(graph, file).slice(0, limit) };
+        }
+        case 'symbol_defs': {
+          if (!symbol) throw new Error('symbol argument is required for direction=symbol_defs');
+          return { symbol, definedIn: filesDefiningSymbol(graph, symbol).slice(0, limit) };
+        }
+        case 'package_importers': {
+          const pkg = symbol ?? file;
+          if (!pkg) throw new Error('symbol (or file) argument is required for direction=package_importers');
+          return { package: pkg, importers: filesImportingPackage(graph, pkg).slice(0, limit) };
+        }
+        default:
+          throw new Error(`unknown direction: ${direction}`);
+      }
+    },
+  },
+
+  {
+    name: 'projscan_search',
+    description:
+      'Fast structural search across the project. Scope can be "symbols" (exported function/class/type names), "files" (relative path substring), or "content" (text substring in source files). Returns a ranked list of matches. Prefer this over running shell grep.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search string (case-insensitive for files/content; exact-ish for symbols).',
+        },
+        scope: {
+          type: 'string',
+          description: 'What to search over: "symbols" | "files" | "content".',
+          enum: ['symbols', 'files', 'content'],
+        },
+        limit: {
+          type: 'number',
+          description: 'Max matches returned (default 30).',
+        },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap the response to roughly this many tokens.',
+        },
+      },
+      required: ['query', 'scope'],
+    },
+    handler: async (args, rootPath) => {
+      const query = String(args.query ?? '').trim();
+      if (!query) throw new Error('query argument is required and must be non-empty');
+      const scope = String(args.scope ?? 'symbols');
+      const limit = Math.max(1, Math.min(500, typeof args.limit === 'number' ? args.limit : 30));
+
+      const scan = await scanRepository(rootPath);
+      const cached = await loadCachedGraph(rootPath);
+      const graph = await buildCodeGraph(rootPath, scan.files, cached);
+      await saveCachedGraph(rootPath, graph);
+
+      if (scope === 'files') {
+        const q = query.toLowerCase();
+        const matches = scan.files
+          .filter((f) => f.relativePath.toLowerCase().includes(q))
+          .slice(0, limit)
+          .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
+        return { scope, query, matches, total: matches.length };
+      }
+
+      if (scope === 'symbols') {
+        const q = query.toLowerCase();
+        const matches: Array<{ symbol: string; kind: string; file: string; line: number }> = [];
+        for (const [file, entry] of graph.files) {
+          for (const exp of entry.exports) {
+            if (exp.name.toLowerCase().includes(q)) {
+              matches.push({ symbol: exp.name, kind: exp.kind, file, line: exp.line });
+            }
+          }
+          if (matches.length >= limit * 3) break;
+        }
+        matches.sort((a, b) => {
+          const aExact = a.symbol.toLowerCase() === query.toLowerCase() ? 0 : 1;
+          const bExact = b.symbol.toLowerCase() === query.toLowerCase() ? 0 : 1;
+          return aExact - bExact;
+        });
+        return { scope, query, matches: matches.slice(0, limit), total: matches.length };
+      }
+
+      // content scope: scan parseable files for substring, return file + first 3 lines of context
+      const q = query.toLowerCase();
+      const matches: Array<{ file: string; line: number; excerpt: string }> = [];
+      for (const file of scan.files) {
+        if (!graph.files.has(file.relativePath)) continue;
+        if (file.sizeBytes > 512 * 1024) continue;
+        if (matches.length >= limit) break;
+        try {
+          const content = await fs.readFile(
+            path.isAbsolute(file.absolutePath) ? file.absolutePath : path.resolve(rootPath, file.relativePath),
+            'utf-8',
+          );
+          const lower = content.toLowerCase();
+          const idx = lower.indexOf(q);
+          if (idx === -1) continue;
+          const before = content.slice(0, idx);
+          const line = before.split('\n').length;
+          const lineStart = before.lastIndexOf('\n') + 1;
+          const lineEnd = content.indexOf('\n', idx);
+          const excerpt = content.slice(lineStart, lineEnd === -1 ? content.length : lineEnd).trim().slice(0, 200);
+          matches.push({ file: file.relativePath, line, excerpt });
+        } catch {
+          // unreadable; skip
+        }
+      }
+      return { scope, query, matches, total: matches.length };
     },
   },
 ];

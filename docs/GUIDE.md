@@ -2,6 +2,8 @@
 
 A deep dive into everything ProjScan can do. For a quick overview, see the [README](../README.md).
 
+As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interface, and the CLI is a consumer of the same primitives. This guide covers both, but if you're integrating with Claude Code / Cursor / Windsurf, start with [MCP Server for AI Agents](#mcp-server-for-ai-agents).
+
 ---
 
 ## Table of Contents
@@ -842,7 +844,9 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
-**Tools (11):**
+**Tools (13):**
+- `projscan_graph` — **structural query over the AST code graph.** Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agent-native; milliseconds on a warm cache.
+- `projscan_search` — **fast symbol/file/content search.** Scopes: `symbols` (exported names), `files` (path substring), `content` (source substring with line + excerpt).
 - `projscan_analyze` — full project snapshot
 - `projscan_doctor` — health score + issue list
 - `projscan_hotspots` — ranked file risk (`limit`, `since` args)
@@ -854,6 +858,10 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_audit` — npm audit, normalized (severity summary + findings)
 - `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
 - `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction" (`limit` arg)
+
+**Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field.
+
+**Incremental cache:** projscan caches parsed ASTs at `.projscan-cache/graph.json`. First run populates, subsequent runs re-parse only files whose `mtime` changed. Auto-gitignored. Delete the directory to force a rebuild.
 
 **Prompts (2, parameterized with live project data):**
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
@@ -1084,7 +1092,10 @@ src/
 │   ├── auditRunner.ts           # npm audit wrapper + SARIF normalization
 │   ├── upgradePreview.ts        # Offline upgrade preview (CHANGELOG + importers)
 │   ├── coverageParser.ts        # lcov / coverage-final / coverage-summary parser
-│   └── coverageJoin.ts          # Join hotspots × coverage — "scariest untested files"
+│   ├── coverageJoin.ts          # Join hotspots × coverage — "scariest untested files"
+│   ├── ast.ts                   # @babel/parser wrapper → imports + exports + call sites
+│   ├── codeGraph.ts             # Bidirectional file×symbol graph built from AST
+│   └── indexCache.ts            # mtime-keyed .projscan-cache/graph.json
 ├── analyzers/
 │   ├── eslintCheck.ts
 │   ├── prettierCheck.ts
@@ -1106,8 +1117,9 @@ src/
 │   ├── markdownReporter.ts      # Markdown output
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
-│   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport
-│   ├── tools.ts                 # 7 MCP tools
+│   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, max_tokens budgeting
+│   ├── tools.ts                 # 13 MCP tools
+│   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── prompts.ts               # 2 parameterized prompts
 │   └── resources.ts             # 3 on-demand resources
 ├── utils/

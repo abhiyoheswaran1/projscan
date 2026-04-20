@@ -44,17 +44,17 @@ export function showBanner(): void {
   // Right panel lines (commands + what's new)
   const R = [
     `${head('Commands')}`,
+    `${w('mcp')}        ${dim('MCP server (primary)')}`,
     `${w('doctor')}     ${dim('Health check')}`,
     `${w('hotspots')}   ${dim('Risk-rank files')}`,
     `${w('coverage')}   ${dim('Untested hotspots')}`,
-    `${w('outdated')}   ${dim('Dep drift check')}`,
-    `${w('audit')}      ${dim('Vulnerabilities')}`,
     `${w('upgrade')}    ${dim('Preview upgrade')}`,
+    `${w('audit')}      ${dim('Vulnerabilities')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('coverage × hotspots')}`,
-    `${dim('Dead-code analyzer')}`,
-    `${dim('Coverage-weighted risk')}`,
+    `${dim('Real AST parsing')}`,
+    `${dim('Code graph + cache')}`,
+    `${dim('2 new MCP tools')}`,
   ];
 
   const leftW = 42;
