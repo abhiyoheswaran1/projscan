@@ -446,6 +446,27 @@ claude mcp add projscan -- npx projscan mcp
 { "name": "projscan_hotspots", "arguments": { "limit": 100, "max_tokens": 800 } }
 ```
 
+### Semantic search (0.9.0+, opt-in)
+
+projscan ships with BM25-ranked lexical search by default. To unlock **true semantic search** — embeddings over file content so queries like *"which file implements auth"* hit files that don't literally contain the word "auth" — install the optional peer:
+
+```bash
+npm install @xenova/transformers
+projscan search "verifying user credentials" --mode semantic
+```
+
+Or via the MCP tool:
+```json
+{ "name": "projscan_search", "arguments": { "query": "verifying user credentials", "mode": "semantic" } }
+```
+
+Modes on `projscan_search`:
+- `lexical` (default) — BM25 over content + symbol + path boosts. No peer needed.
+- `semantic` — cosine similarity on `Xenova/all-MiniLM-L6-v2` embeddings. Requires peer.
+- `hybrid` — both, fused via Reciprocal Rank Fusion. Requires peer.
+
+Semantic embeddings are cached at `.projscan-cache/embeddings.bin` keyed by `(model, mtime, content hash)` — invalidates automatically on file change. All offline after the first-run model download (~25MB).
+
 ### Pagination, progress, and streaming (0.8.0+)
 
 Large responses can be walked incrementally:

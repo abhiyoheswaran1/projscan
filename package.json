@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.8.0",
-  "description": "Agent-first code intelligence — MCP server (2025-03-26) with AST parsing, code graph, BM25 search, cursor pagination, progress notifications, and context-budgeted output; CLI on the side",
+  "version": "0.9.0",
+  "description": "Agent-first code intelligence — MCP server (2025-03-26) with AST parsing, code graph, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output; CLI on the side",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -56,9 +56,18 @@
     "fast-glob": "^3.3.2",
     "ora": "^8.1.0"
   },
+  "peerDependencies": {
+    "@xenova/transformers": "^2.17.0"
+  },
+  "peerDependenciesMeta": {
+    "@xenova/transformers": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.0.0",
+    "@xenova/transformers": "^2.17.0",
     "eslint": "^10.0.3",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.57.0",

@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .cache/
+.projscan-cache/
 *.tgz
 .DS_Store
 .env

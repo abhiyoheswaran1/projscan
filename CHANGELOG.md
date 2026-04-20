@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-20
+
+### Theme — "True Semantic Search (opt-in)"
+
+Real embeddings-based search via `@xenova/transformers` as an **optional peer dependency**. projscan's default install remains small; users who want semantic search opt in by installing the peer (~50MB + ~25MB first-run model download).
+
+### Added
+
+- **Optional peer dep** `@xenova/transformers` declared with `peerDependenciesMeta.optional: true`. Not pulled unless the user explicitly installs it. Default installs get a npm warning but no actual download — exactly as intended.
+- **`src/core/embeddings.ts`** — dynamic-import wrapper around the peer. `isSemanticAvailable()`, `embedText()`, `embedBatch()`, `cosineSimilarity()`. Model: `Xenova/all-MiniLM-L6-v2` (384-dim, quantized, ~25MB). Graceful `ERR_MODULE_NOT_FOUND` handling.
+- **`src/core/semanticSearch.ts`** — file-level embeddings, cosine similarity retrieval, disk cache at `.projscan-cache/embeddings.bin` (keyed by model + mtime + content hash, invalidates on any change). Incremental builds reuse cached vectors.
+- **Upgraded `projscan_search` MCP tool** — new `mode` argument:
+  - `lexical` (default) — BM25 only, no peer needed. Unchanged from 0.7.
+  - `semantic` — embeddings only. Requires peer. Returns helpful error if missing.
+  - `hybrid` — BM25 + semantic via Reciprocal Rank Fusion (RRF). Files ranked near the top of *both* lists win.
+- **Upgraded CLI `projscan search`** — `--mode semantic|lexical|hybrid` and `--semantic` shortcut.
+- **Public API:** `isSemanticAvailable`, `embedText`, `embedBatch`, `cosineSimilarity`, `DEFAULT_MODEL`, `EMBEDDING_DIM`, `buildSemanticIndex`, `semanticSearch`, `reciprocalRankFusion`.
+
+### Fixed (bug-hunt round 3)
+
+- **Progress emitter context could leak between concurrent tool calls.** The previous implementation stored the current emitter on a module-level variable — when two tool calls overlapped (common under MCP pipelining), call A's progress events would route to call B's client mid-flight, and vice versa. Rewrote using Node's `AsyncLocalStorage` so every `withProgress` call gets an isolated context. A regression test covers the interleaved case.
+- **Semantic index build aborted silently if the peer dep disappeared mid-batch.** Now writes a stderr diagnostic so operators can tell the capability was disabled, not that it returned zero results.
+
+### Notes on the peer-dep model
+
+If you just want the CLI, do nothing — `projscan` still works end to end. Your install stays ~7MB.
+
+If you want semantic search:
+```bash
+npm install @xenova/transformers
+projscan search "which file implements auth" --mode semantic
+```
+
+The first run downloads the model (~25MB). Subsequent runs hit the local HuggingFace cache. All queries stay offline after that — no API calls, ever.
+
+### Stats
+
+- 271 tests passing (+11 new, including the concurrency regression)
+- 2 new runtime-optional packages (only if opted in): `@xenova/transformers`, `@babel/parser` + `@babel/types` stay the same
+- All semantic search is offline after first-run model download
+
 ## [0.8.0] - 2026-04-20
 
 ### Theme — "Streaming & Pagination"

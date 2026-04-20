@@ -33,6 +33,19 @@ export {
   expandQuery,
   attachExcerpts,
 } from './core/searchIndex.js';
+export {
+  isSemanticAvailable,
+  embedText,
+  embedBatch,
+  cosineSimilarity,
+  DEFAULT_MODEL,
+  EMBEDDING_DIM,
+} from './core/embeddings.js';
+export {
+  buildSemanticIndex,
+  semanticSearch,
+  reciprocalRankFusion,
+} from './core/semanticSearch.js';
 export { findDependencyLines } from './utils/packageJsonLocator.js';
 export { parse as parseSemver, compare as compareSemver, drift as semverDrift } from './utils/semver.js';
 export { walkFiles } from './utils/fileWalker.js';

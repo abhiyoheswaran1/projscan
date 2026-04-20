@@ -27,6 +27,12 @@ import { buildCodeGraph } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
+  buildSemanticIndex,
+  semanticSearch,
+  reciprocalRankFusion,
+} from '../core/semanticSearch.js';
+import { isSemanticAvailable } from '../core/embeddings.js';
+import {
   inspectFile,
   extractImports,
   extractExports,
@@ -861,8 +867,10 @@ program
 
 program
   .command('search <query...>')
-  .description('Ranked search across the project (BM25 + symbol/path boosts)')
+  .description('Ranked search — BM25 by default, semantic or hybrid when @xenova/transformers peer is installed')
   .option('--scope <scope>', 'auto | content | symbols | files', 'auto')
+  .option('--mode <mode>', 'lexical | semantic | hybrid (content/auto scope only)', 'lexical')
+  .option('--semantic', 'shortcut for --mode semantic')
   .option('--limit <n>', 'max results', '15')
   .action(async (queryParts: string[], cmdOpts) => {
     setupLogLevel();
@@ -913,17 +921,96 @@ program
           .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
         results = { scope, query, matches, total: matches.length };
       } else {
+        const mode = cmdOpts.semantic ? 'semantic' : String(cmdOpts.mode ?? 'lexical');
         const index = await buildSearchIndex(rootPath, scan.files, graph);
-        const hits = searchIndex(index, query, { limit });
+        const lexicalHits = searchIndex(index, query, { limit });
         const tokens = expandQuery(query);
-        const withExcerpts = await attachExcerpts(rootPath, hits, tokens);
-        results = {
-          scope: scope === 'auto' ? 'content' : scope,
-          query,
-          queryTokens: tokens,
-          matches: withExcerpts,
-          total: withExcerpts.length,
-        };
+
+        if (mode === 'lexical') {
+          const withExcerpts = await attachExcerpts(rootPath, lexicalHits, tokens);
+          results = {
+            scope: scope === 'auto' ? 'content' : scope,
+            mode: 'lexical',
+            query,
+            queryTokens: tokens,
+            matches: withExcerpts,
+            total: withExcerpts.length,
+          };
+        } else {
+          const available = await isSemanticAvailable();
+          if (!available) {
+            if (spinner) spinner.stop();
+            console.error(
+              chalk.red(
+                `\n  Semantic search requires the optional peer @xenova/transformers.\n  Install it with: ${chalk.bold('npm install @xenova/transformers')}\n`,
+              ),
+            );
+            process.exit(1);
+          }
+
+          if (spinner) spinner.text = 'Building semantic index (first run may take ~10s + model download)...';
+          const semIndex = await buildSemanticIndex(rootPath, scan.files, {
+            onFirstLoad: (m) => spinner?.text && (spinner.text = m),
+            onProgress: (d, t) => {
+              if (spinner) spinner.text = `Embedding files... ${d}/${t}`;
+            },
+          });
+          if (!semIndex) {
+            if (spinner) spinner.fail('Semantic index build failed');
+            process.exit(1);
+          }
+          if (spinner) spinner.text = 'Searching...';
+          const semHits = await semanticSearch(semIndex, query, { limit });
+
+          if (mode === 'semantic') {
+            const enriched = await attachExcerpts(
+              rootPath,
+              semHits.map((h) => ({
+                file: h.file,
+                score: h.score,
+                matched: [],
+                symbolMatch: false,
+                pathMatch: false,
+                excerpt: '',
+                line: 0,
+              })),
+              tokens,
+            );
+            results = {
+              scope: scope === 'auto' ? 'content' : scope,
+              mode: 'semantic',
+              query,
+              model: semIndex.model,
+              matches: enriched,
+              total: enriched.length,
+            };
+          } else {
+            // hybrid
+            const fused = reciprocalRankFusion([lexicalHits, semHits]).slice(0, limit);
+            const enriched = await attachExcerpts(
+              rootPath,
+              fused.map((f) => ({
+                file: f.file,
+                score: f.score,
+                matched: [],
+                symbolMatch: false,
+                pathMatch: false,
+                excerpt: '',
+                line: 0,
+              })),
+              tokens,
+            );
+            results = {
+              scope: scope === 'auto' ? 'content' : scope,
+              mode: 'hybrid',
+              query,
+              queryTokens: tokens,
+              model: semIndex.model,
+              matches: enriched,
+              total: enriched.length,
+            };
+          }
+        }
       }
 
       if (spinner) spinner.stop();

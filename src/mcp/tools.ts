@@ -21,6 +21,12 @@ import {
 } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
+import {
+  buildSemanticIndex,
+  semanticSearch,
+  reciprocalRankFusion,
+} from '../core/semanticSearch.js';
+import { isSemanticAvailable } from '../core/embeddings.js';
 import { paginate, listChecksum, readPageParams } from './pagination.js';
 import { emitProgress } from './progress.js';
 import {
@@ -419,18 +425,23 @@ const tools: McpTool[] = [
   {
     name: 'projscan_search',
     description:
-      'Ranked search across the project, BM25 over content + symbol-name + path. Scope: "auto" / "content" (BM25 ranked, returns line excerpts), "symbols" (exported names, ranked exact→prefix→substring), or "files" (relative path substring). Query tokens are split on camelCase/snake_case and lightly stemmed. Prefer this over shelling out to grep — it returns ranked results with line-level excerpts.',
+      'Ranked search across the project. Lexical (BM25) by default; optional semantic (vector) and hybrid (RRF fusion) modes available when the @xenova/transformers peer dependency is installed. Scope controls what to search: "auto"/"content" (ranked content matches with excerpts), "symbols" (exported names), "files" (path substring).',
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'Search string. Multi-word queries are treated as OR across BM25 terms.',
+          description: 'Search string. Multi-word queries are treated as OR across BM25 terms; semantic mode embeds the full query.',
         },
         scope: {
           type: 'string',
-          description: 'What to search over: "auto" (= content, BM25 ranked), "symbols", "files", "content".',
+          description: 'What to search over: "auto" (= content), "symbols", "files", "content".',
           enum: ['auto', 'symbols', 'files', 'content'],
+        },
+        mode: {
+          type: 'string',
+          description: '"lexical" (default, BM25) | "semantic" (embeddings, requires peer dep) | "hybrid" (BM25 + semantic via reciprocal rank fusion). Ignored for "symbols" and "files" scopes.',
+          enum: ['lexical', 'semantic', 'hybrid'],
         },
         limit: {
           type: 'number',
@@ -487,16 +498,104 @@ const tools: McpTool[] = [
         return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
       }
 
-      // Content or auto scope — BM25-ranked index
+      // Content or auto scope — lexical BM25 by default, optionally semantic or hybrid
+      const mode = String(args.mode ?? 'lexical');
       const index = await buildSearchIndex(rootPath, scan.files, graph);
-      const hits = searchIndex(index, query, { limit });
+      const lexicalHits = searchIndex(index, query, { limit });
       const tokens = expandQuery(query);
-      const withExcerpts = await attachExcerpts(rootPath, hits, tokens);
-      const page = paginate(withExcerpts, readPageParams(args), listChecksum(withExcerpts));
+
+      if (mode === 'lexical') {
+        const withExcerpts = await attachExcerpts(rootPath, lexicalHits, tokens);
+        const page = paginate(withExcerpts, readPageParams(args), listChecksum(withExcerpts));
+        return {
+          scope: scope === 'auto' ? 'content' : scope,
+          mode: 'lexical',
+          query,
+          queryTokens: tokens,
+          matches: page.items,
+          total: page.total,
+          nextCursor: page.nextCursor,
+        };
+      }
+
+      // Semantic or hybrid — both require the peer
+      const hasSemantic = await isSemanticAvailable();
+      if (!hasSemantic) {
+        return {
+          scope: scope === 'auto' ? 'content' : scope,
+          mode,
+          query,
+          error:
+            'Semantic search requires the optional peer dependency @xenova/transformers. Install it with: npm install @xenova/transformers',
+          available: false,
+          matches: [],
+          total: 0,
+        };
+      }
+
+      const semIndex = await buildSemanticIndex(rootPath, scan.files);
+      if (!semIndex) {
+        return {
+          scope: scope === 'auto' ? 'content' : scope,
+          mode,
+          query,
+          error: 'Semantic index build failed (peer loaded but model not usable).',
+          available: false,
+          matches: [],
+          total: 0,
+        };
+      }
+
+      const semHits = await semanticSearch(semIndex, query, { limit });
+
+      if (mode === 'semantic') {
+        const enriched = await attachExcerpts(
+          rootPath,
+          semHits.map((h) => ({
+            file: h.file,
+            score: h.score,
+            matched: [],
+            symbolMatch: false,
+            pathMatch: false,
+            excerpt: '',
+            line: 0,
+          })),
+          tokens,
+        );
+        const page = paginate(enriched, readPageParams(args), listChecksum(enriched));
+        return {
+          scope: scope === 'auto' ? 'content' : scope,
+          mode: 'semantic',
+          query,
+          model: semIndex.model,
+          matches: page.items,
+          total: page.total,
+          nextCursor: page.nextCursor,
+        };
+      }
+
+      // Hybrid — reciprocal rank fusion
+      const fused = reciprocalRankFusion([lexicalHits, semHits]).slice(0, limit);
+      const enriched = await attachExcerpts(
+        rootPath,
+        fused.map((f) => ({
+          file: f.file,
+          score: f.score,
+          matched: [],
+          symbolMatch: false,
+          pathMatch: false,
+          excerpt: '',
+          line: 0,
+        })),
+        tokens,
+      );
+      const page = paginate(enriched, readPageParams(args), listChecksum(enriched));
       return {
         scope: scope === 'auto' ? 'content' : scope,
+        mode: 'hybrid',
         query,
         queryTokens: tokens,
+        model: semIndex.model,
         matches: page.items,
         total: page.total,
         nextCursor: page.nextCursor,

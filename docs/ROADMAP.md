@@ -10,8 +10,14 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-### 0.9.0 — True Semantic Search (optional peer)
-Real local embeddings via `@xenova/transformers` as an opt-in peer dep — activates only when installed. Local ONNX model, no API calls. Deferred from 0.7 after we validated that BM25 + symbol boosting covers most code-search queries without the ~100MB model footprint.
+### 0.10.0 — Sub-file embeddings + richer semantic queries
+Chunk large files (per-export, per-function, per-class) so semantic search can point at specific code blocks rather than whole files. Requires a chunker and a larger disk cache; deferred until file-level search usage data shows demand.
+
+### Real cyclomatic complexity
+Replace the LOC proxy in the hotspot score with AST-derived cyclomatic complexity.
+
+### Coupling & cycle detection
+Per-file fan-in / fan-out from the code graph, circular-dependency detection.
 
 ### Real Cyclomatic Complexity
 Now that AST is in place (0.6), add cyclomatic complexity per function. Replace the LOC proxy in the hotspot score.
@@ -35,6 +41,14 @@ Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm re
 ---
 
 ## Recently Shipped
+
+### v0.9.x
+- **True Semantic Search (opt-in)** theme
+- `@xenova/transformers` as optional peer dep — default install unchanged
+- File-level embeddings via `Xenova/all-MiniLM-L6-v2` (384-dim, ~25MB quantized)
+- Disk cache keyed by model + mtime + content hash
+- Three search modes: `lexical` (default), `semantic`, `hybrid` (RRF)
+- Bug fixes: progress-emitter context isolation via AsyncLocalStorage; stderr logging when semantic build aborts
 
 ### v0.8.x
 - **Streaming & Pagination** theme
