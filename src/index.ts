@@ -8,7 +8,7 @@ export { inspectFile } from './core/fileInspector.js';
 export { buildImportGraph, toPackageName, isPackageUsed, filesImporting } from './core/importGraph.js';
 export { detectOutdated } from './core/outdatedDetector.js';
 export { runAudit, auditFindingsToIssues } from './core/auditRunner.js';
-export { previewUpgrade } from './core/upgradePreview.js';
+export { previewUpgrade, isValidPackageName } from './core/upgradePreview.js';
 export { parseCoverage, coverageMap } from './core/coverageParser.js';
 export { joinCoverageWithHotspots } from './core/coverageJoin.js';
 export { parseSource, isParseable } from './core/ast.js';

@@ -15,11 +15,49 @@ const BREAKING_MARKERS = [
   /no\s+longer\s+supported/i,
 ];
 
+// npm package-name grammar: optional scope + name, letters/digits/._-
+// No slashes other than the single scope separator. No `..`, no absolute paths.
+const PACKAGE_NAME_RE = /^(?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i;
+
+/**
+ * Validate a package name against the npm grammar before any filesystem
+ * operation. Rejects traversal (`..`), absolute paths, backslashes, spaces,
+ * and any other shape that could escape node_modules/<name>/.
+ *
+ * This is security-critical: `previewUpgrade` is exposed via MCP
+ * (`projscan_upgrade`) where the argument comes from AI agents that can be
+ * influenced by untrusted content. A name containing `../` would otherwise
+ * escape node_modules and return arbitrary CHANGELOG / package.json contents
+ * to the caller.
+ */
+export function isValidPackageName(name: string): boolean {
+  if (typeof name !== 'string') return false;
+  if (name.length === 0 || name.length > 214) return false;
+  if (name !== name.trim()) return false;
+  if (name.includes('..')) return false;
+  if (name.includes('\\')) return false;
+  return PACKAGE_NAME_RE.test(name);
+}
+
 export async function previewUpgrade(
   rootPath: string,
   pkgName: string,
   files: FileEntry[],
 ): Promise<UpgradePreview> {
+  if (!isValidPackageName(pkgName)) {
+    return {
+      available: false,
+      reason: `Invalid package name: "${pkgName}". Must match the npm package-name grammar.`,
+      name: pkgName,
+      declared: null,
+      installed: null,
+      latest: null,
+      drift: 'unknown',
+      breakingMarkers: [],
+      importers: [],
+    };
+  }
+
   const declaredVersions = await readDeclaredVersion(rootPath, pkgName);
   const installed = await readInstalledVersion(rootPath, pkgName);
   const latest = installed; // offline mode: best we know without a registry
@@ -104,7 +142,10 @@ async function readDeclaredVersion(rootPath: string, name: string): Promise<stri
 }
 
 async function readInstalledVersion(rootPath: string, name: string): Promise<string | null> {
-  const p = path.join(rootPath, 'node_modules', name, 'package.json');
+  const nodeModules = path.resolve(rootPath, 'node_modules');
+  const pkgDir = path.resolve(nodeModules, name);
+  if (!isInside(pkgDir, nodeModules)) return null;
+  const p = path.join(pkgDir, 'package.json');
   try {
     const raw = await fs.readFile(p, 'utf-8');
     const pkg = JSON.parse(raw) as { version?: string };
@@ -115,7 +156,9 @@ async function readInstalledVersion(rootPath: string, name: string): Promise<str
 }
 
 async function readChangelog(rootPath: string, name: string): Promise<string | undefined> {
-  const base = path.join(rootPath, 'node_modules', name);
+  const nodeModules = path.resolve(rootPath, 'node_modules');
+  const base = path.resolve(nodeModules, name);
+  if (!isInside(base, nodeModules)) return undefined;
   for (const filename of CHANGELOG_NAMES) {
     const p = path.join(base, filename);
     try {
@@ -125,6 +168,12 @@ async function readChangelog(rootPath: string, name: string): Promise<string | u
     }
   }
   return undefined;
+}
+
+/** True iff `candidate` resolves to `parent` itself or a path inside `parent`. */
+function isInside(candidate: string, parent: string): boolean {
+  const rel = path.relative(parent, candidate);
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
 /**

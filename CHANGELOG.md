@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-04-20
+
+### Security
+
+Fixes a **path traversal / arbitrary file read** in the `projscan_upgrade` MCP tool (CVE assignment pending).
+
+Severity: **HIGH**. Users who expose `projscan mcp` to an AI agent that processes untrusted content should upgrade.
+
+**What was wrong.** The `package` argument to `projscan_upgrade` was forwarded to `previewUpgrade` without validation. The implementation called `path.join(rootPath, 'node_modules', name, ...)` which normalizes `..` segments. A name like `../../../other-project` escaped `node_modules/` and caused the tool to return the contents of an arbitrary `CHANGELOG.md` / `CHANGELOG` / `History.md` / `HISTORY.md` file plus the `version` from any `package.json` in the traversed directory.
+
+**Exploit model.** An AI agent using projscan over MCP processes untrusted content (README, issue body, web page, etc.). That content contains a prompt-injection payload instructing the agent to call `projscan_upgrade` with an attacker-chosen `package` argument. Without the fix, the returned `changelogExcerpt` exfiltrates files outside the project root.
+
+**Fix (defense in depth).**
+
+1. `isValidPackageName(name)` rejects anything not matching the npm package-name grammar: `^(?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$`. This rejects `..`, `/` (except the single scope separator), `\`, whitespace, null bytes, absolute paths, and overlong names.
+2. Even if a future regression let a bad name through the first check, `readInstalledVersion` and `readChangelog` now resolve the target against `node_modules/` and refuse any path that escapes it (the same containment pattern already used in `projscan_explain` / `inspectFile`).
+3. 5 new regression tests cover the traversal-rejection path with realistic attacker payloads.
+
+**Scope.** Only `previewUpgrade` (and the `projscan_upgrade` MCP tool / CLI `projscan upgrade <pkg>`) was affected. Other MCP tools (`projscan_file`, `projscan_explain`) already enforced root containment.
+
+**Public API.** `isValidPackageName` is exported for downstream users who want the same check.
+
+No behavior change for any well-formed package name. 276 tests passing (+5 new).
+
 ## [0.9.1] - 2026-04-20
 
 ### Changed

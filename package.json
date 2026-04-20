@@ -1,6 +1,6 @@
 {
   "name": "projscan",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing, code graph, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
