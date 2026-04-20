@@ -21,6 +21,8 @@ import {
 } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
+import { paginate, listChecksum, readPageParams } from './pagination.js';
+import { emitProgress } from './progress.js';
 import {
   inspectFile,
   extractImports,
@@ -49,12 +51,18 @@ const tools: McpTool[] = [
       properties: {},
     },
     handler: async (_args, rootPath) => {
+      emitProgress(0, 5, 'scanning repository');
       const scan = await scanRepository(rootPath);
+      emitProgress(1, 5, 'detecting languages + frameworks');
       const languages = detectLanguages(scan.files);
       const frameworks = await detectFrameworks(rootPath, scan.files);
+      emitProgress(2, 5, 'analyzing dependencies');
       const dependencies = await analyzeDependencies(rootPath);
+      emitProgress(3, 5, 'running analyzers');
       const issues = await collectIssues(rootPath, scan.files);
+      emitProgress(4, 5, 'scoring');
       const health = calculateScore(issues);
+      emitProgress(5, 5, 'done');
 
       const report: AnalysisReport & { health: typeof health } = {
         projectName: path.basename(rootPath),
@@ -93,26 +101,53 @@ const tools: McpTool[] = [
   {
     name: 'projscan_hotspots',
     description:
-      'Rank files by risk using git churn × complexity × open issues. Returns the most dangerous files to touch. Use this to decide where to focus refactoring, testing, or review effort.',
+      'Rank files by risk using git churn × complexity × open issues. Returns the most dangerous files to touch. Supports cursor-based pagination: pass the `nextCursor` from a previous response back as `cursor` to fetch the next page.',
     inputSchema: {
       type: 'object',
       properties: {
         limit: {
           type: 'number',
-          description: 'How many hotspots to return (default: 10, max: 100).',
+          description: 'Cap on total hotspots ranked (default 100). For paging the returned set, use `page_size` + `cursor` instead.',
         },
         since: {
           type: 'string',
           description: 'Git history window. Examples: "12 months ago", "2024-01-01". Default: "12 months ago".',
         },
+        cursor: {
+          type: 'string',
+          description: 'Opaque cursor from a previous response. Omit for the first page.',
+        },
+        page_size: {
+          type: 'number',
+          description: 'Items per page (default 50, max 500).',
+        },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap response to roughly this many tokens.',
+        },
       },
     },
     handler: async (args, rootPath) => {
+      emitProgress(0, 4, 'scanning repository');
       const scan = await scanRepository(rootPath);
+      emitProgress(1, 4, 'collecting issues');
       const issues = await collectIssues(rootPath, scan.files);
-      const limit = typeof args.limit === 'number' ? args.limit : undefined;
+      const limit = typeof args.limit === 'number' ? args.limit : 100;
       const since = typeof args.since === 'string' ? args.since : undefined;
-      return await analyzeHotspots(rootPath, scan.files, issues, { limit, since });
+      emitProgress(2, 4, 'analyzing git churn + risk');
+      const report = await analyzeHotspots(rootPath, scan.files, issues, { limit, since });
+      emitProgress(3, 4, 'paginating');
+      const page = paginate(report.hotspots, readPageParams(args), listChecksum(report.hotspots));
+      emitProgress(4, 4, 'done');
+      return {
+        available: report.available,
+        reason: report.reason,
+        window: report.window,
+        hotspots: page.items,
+        totalFilesRanked: report.totalFilesRanked,
+        nextCursor: page.nextCursor,
+        total: page.total,
+      };
     },
   },
 
@@ -196,26 +231,55 @@ const tools: McpTool[] = [
   {
     name: 'projscan_outdated',
     description:
-      'Compare declared vs installed versions of every package. Reports drift (patch/minor/major). Offline — does not hit the npm registry.',
+      'Compare declared vs installed versions of every package. Reports drift (patch/minor/major). Offline — does not hit the npm registry. Supports cursor pagination.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        cursor: { type: 'string', description: 'Opaque cursor from a previous response.' },
+        page_size: { type: 'number', description: 'Items per page (default 50).' },
+        max_tokens: { type: 'number', description: 'Cap response size.' },
+      },
     },
-    handler: async (_args, rootPath) => {
-      return await detectOutdated(rootPath);
+    handler: async (args, rootPath) => {
+      const report = await detectOutdated(rootPath);
+      if (!report.available) return report;
+      const page = paginate(report.packages, readPageParams(args), listChecksum(report.packages));
+      return {
+        available: true,
+        totalPackages: report.totalPackages,
+        packages: page.items,
+        total: page.total,
+        nextCursor: page.nextCursor,
+      };
     },
   },
 
   {
     name: 'projscan_audit',
     description:
-      'Run `npm audit` and return a normalized summary of vulnerabilities (critical / high / moderate / low / info). Requires package-lock.json.',
+      'Run `npm audit` and return a normalized summary of vulnerabilities (critical / high / moderate / low / info). Requires package-lock.json. Supports cursor pagination on the findings array.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        cursor: { type: 'string', description: 'Opaque cursor from a previous response.' },
+        page_size: { type: 'number', description: 'Items per page (default 50).' },
+        max_tokens: { type: 'number', description: 'Cap response size.' },
+      },
     },
-    handler: async (_args, rootPath) => {
-      return await runAudit(rootPath);
+    handler: async (args, rootPath) => {
+      emitProgress(0, 2, 'running npm audit');
+      const report = await runAudit(rootPath);
+      if (!report.available) return report;
+      emitProgress(1, 2, 'normalizing findings');
+      const page = paginate(report.findings, readPageParams(args), listChecksum(report.findings));
+      emitProgress(2, 2, 'done');
+      return {
+        available: true,
+        summary: report.summary,
+        findings: page.items,
+        total: page.total,
+        nextCursor: page.nextCursor,
+      };
     },
   },
 
@@ -262,13 +326,23 @@ const tools: McpTool[] = [
       const coverage = await parseCoverage(rootPath);
       const scan = await scanRepository(rootPath);
       const issues = await collectIssues(rootPath, scan.files);
-      const rawLimit = typeof args.limit === 'number' ? args.limit : 30;
-      const limit = Math.max(1, Math.min(200, rawLimit));
+      const rawLimit = typeof args.limit === 'number' ? args.limit : 200;
+      const limit = Math.max(1, Math.min(500, rawLimit));
       const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
         limit,
         coverage: coverage.available ? coverageMap(coverage) : undefined,
       });
-      return joinCoverageWithHotspots(hotspots, coverage);
+      const joined = joinCoverageWithHotspots(hotspots, coverage);
+      if (!joined.available) return joined;
+      const page = paginate(joined.entries, readPageParams(args), listChecksum(joined.entries));
+      return {
+        available: true,
+        coverageSource: joined.coverageSource,
+        coverageSourceFile: joined.coverageSourceFile,
+        entries: page.items,
+        total: page.total,
+        nextCursor: page.nextCursor,
+      };
     },
   },
 
@@ -383,11 +457,11 @@ const tools: McpTool[] = [
       // Files scope — simple substring scan; ranking adds no value
       if (scope === 'files') {
         const q = query.toLowerCase();
-        const matches = scan.files
+        const all = scan.files
           .filter((f) => f.relativePath.toLowerCase().includes(q))
-          .slice(0, limit)
           .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
-        return { scope, query, matches, total: matches.length };
+        const page = paginate(all, readPageParams(args), listChecksum(all));
+        return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
       }
 
       // Symbols scope — walk the graph's export table; rank exact/prefix/substring
@@ -403,17 +477,14 @@ const tools: McpTool[] = [
           }
         }
         rawMatches.sort((a, b) => a.rank - b.rank);
-        return {
-          scope,
-          query,
-          matches: rawMatches.slice(0, limit).map((m) => ({
-            symbol: m.symbol,
-            kind: m.kind,
-            file: m.file,
-            line: m.line,
-          })),
-          total: rawMatches.length,
-        };
+        const cleaned = rawMatches.map((m) => ({
+          symbol: m.symbol,
+          kind: m.kind,
+          file: m.file,
+          line: m.line,
+        }));
+        const page = paginate(cleaned, readPageParams(args), listChecksum(cleaned));
+        return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
       }
 
       // Content or auto scope — BM25-ranked index
@@ -421,12 +492,14 @@ const tools: McpTool[] = [
       const hits = searchIndex(index, query, { limit });
       const tokens = expandQuery(query);
       const withExcerpts = await attachExcerpts(rootPath, hits, tokens);
+      const page = paginate(withExcerpts, readPageParams(args), listChecksum(withExcerpts));
       return {
         scope: scope === 'auto' ? 'content' : scope,
         query,
         queryTokens: tokens,
-        matches: withExcerpts,
-        total: withExcerpts.length,
+        matches: page.items,
+        total: page.total,
+        nextCursor: page.nextCursor,
       };
     },
   },

@@ -23,6 +23,9 @@ export {
 } from './core/codeGraph.js';
 export { loadCachedGraph, saveCachedGraph, invalidateCache } from './core/indexCache.js';
 export { applyBudget, estimateTokens } from './mcp/tokenBudget.js';
+export { paginate, encodeCursor, decodeCursor, listChecksum, readPageParams } from './mcp/pagination.js';
+export { toContentBlocks } from './mcp/chunker.js';
+export { emitProgress, withProgress } from './mcp/progress.js';
 export {
   buildSearchIndex,
   search,

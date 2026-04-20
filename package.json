@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.7.0",
-  "description": "Agent-first code intelligence — MCP server with real AST parsing, code graph, BM25-ranked search, and context-budgeted output for Claude Code, Cursor, Windsurf; CLI on the side",
+  "version": "0.8.0",
+  "description": "Agent-first code intelligence — MCP server (2025-03-26) with AST parsing, code graph, BM25 search, cursor pagination, progress notifications, and context-budgeted output; CLI on the side",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

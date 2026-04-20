@@ -1151,9 +1151,12 @@ src/
 │   ├── markdownReporter.ts      # Markdown output
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
-│   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, max_tokens budgeting
+│   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
 │   ├── tools.ts                 # 13 MCP tools
 │   ├── tokenBudget.ts           # Record-aware response truncator
+│   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
+│   ├── progress.ts              # notifications/progress plumbing
+│   ├── chunker.ts               # Opt-in response chunking (stream: true)
 │   ├── prompts.ts               # 2 parameterized prompts
 │   └── resources.ts             # 3 on-demand resources
 ├── utils/

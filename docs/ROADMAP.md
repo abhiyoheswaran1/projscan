@@ -10,9 +10,6 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-### 0.8.0 — Streaming & Pagination
-Upgrade MCP protocol to 2025-03-26. Cursor-based pagination on list-returning tools. Progress notifications during long-running tools. Response chunking for large arrays.
-
 ### 0.9.0 — True Semantic Search (optional peer)
 Real local embeddings via `@xenova/transformers` as an opt-in peer dep — activates only when installed. Local ONNX model, no API calls. Deferred from 0.7 after we validated that BM25 + symbol boosting covers most code-search queries without the ~100MB model footprint.
 
@@ -38,6 +35,14 @@ Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm re
 ---
 
 ## Recently Shipped
+
+### v0.8.x
+- **Streaming & Pagination** theme
+- MCP protocol 2025-03-26 (with 2024-11-05 backward negotiation)
+- Cursor-based pagination on `projscan_hotspots`, `projscan_search`, `projscan_audit`, `projscan_outdated`, `projscan_coverage`
+- Progress notifications on long-running tools (agents that pass a `progressToken` get per-milestone updates)
+- Opt-in response chunking via `stream: true` — splits large arrays into multiple MCP content blocks
+- Bug fixes: `--changed-only` now reports drop count; hotspot path boundaries extended
 
 ### v0.7.x
 - **Smart Search** theme. BM25-ranked content + symbols + path.

@@ -362,7 +362,8 @@ function hasPathBoundaries(haystack: string, filePath: string): boolean {
 
 function isPathBoundary(code: number): boolean {
   if (code === -1) return true; // string boundary
-  // Safe neighbors: space, quotes, parens, brackets, braces, colon, comma, backtick, newline, tab.
+  // Safe neighbors: whitespace, quotes, parens, brackets, braces, punctuation
+  // commonly adjacent to paths (colon, comma, period, question/exclamation/>/<).
   return (
     code === 0x20 /* space */ ||
     code === 0x09 /* tab */ ||
@@ -379,7 +380,12 @@ function isPathBoundary(code: number): boolean {
     code === 0x7d /* } */ ||
     code === 0x3a /* : */ ||
     code === 0x2c /* , */ ||
-    code === 0x3b /* ; */
+    code === 0x3b /* ; */ ||
+    code === 0x2e /* . (e.g., "src/a.ts." end of sentence) */ ||
+    code === 0x3f /* ? */ ||
+    code === 0x21 /* ! */ ||
+    code === 0x3e /* > */ ||
+    code === 0x3c /* < */
   );
 }
 

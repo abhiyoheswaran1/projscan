@@ -52,9 +52,9 @@ export function showBanner(): void {
     `${w('upgrade')}    ${dim('Preview upgrade')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('Smart Search (BM25)')}`,
-    `${dim('Issue-location linking')}`,
-    `${dim('Budget-safe MCP output')}`,
+    `${dim('MCP pagination')}`,
+    `${dim('Progress notifications')}`,
+    `${dim('MCP 2025-03-26 proto')}`,
   ];
 
   const leftW = 42;

@@ -167,10 +167,27 @@ async function filterIssuesByChangedFiles(
     console.error(chalk.dim(`  [--changed-only: base=${result.baseRef}, ${result.files.length} file(s)]`));
   }
   const set = new Set(result.files);
-  return issues.filter((issue) => {
+  const filtered = issues.filter((issue) => {
     if (!issue.locations || issue.locations.length === 0) return false;
     return issue.locations.some((loc) => set.has(loc.file));
   });
+
+  const dropped = issues.length - filtered.length;
+  if (dropped > 0 && !program.opts().quiet) {
+    const unlocated = issues.filter((i) => !i.locations || i.locations.length === 0).length;
+    const message = unlocated > 0
+      ? `  [--changed-only: ${dropped} issue(s) filtered out; ${unlocated} had no file location]`
+      : `  [--changed-only: ${dropped} issue(s) outside the changed-file set]`;
+    if (getFormat() === 'console') {
+      console.error(chalk.dim(message));
+    } else {
+      // For non-console formats, still emit to stderr so the count is visible
+      // without corrupting machine-readable stdout.
+      console.error(message.trim());
+    }
+  }
+
+  return filtered;
 }
 
 function setupLogLevel(): void {

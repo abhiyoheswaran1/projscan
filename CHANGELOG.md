@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-20
+
+### Theme — "Streaming & Pagination"
+
+MCP agents can now consume large responses incrementally: cursor-based pagination, progress notifications during long-running tools, and opt-in response chunking. Protocol bumped to 2025-03-26 with backward negotiation for 2024-11-05 clients.
+
+### Added
+
+- **MCP protocol 2025-03-26** with version negotiation. Clients requesting 2024-11-05 still work — the server echoes their version when supported.
+- **Cursor-based pagination** on list-returning MCP tools: `projscan_hotspots`, `projscan_search`, `projscan_audit`, `projscan_outdated`, `projscan_coverage`. Accept `cursor` + `page_size`; return `nextCursor` when more results exist. Cursor is opaque base64; includes a checksum so shape-changes across calls reset to offset=0 safely.
+- **Progress notifications** (`notifications/progress`) during long-running tools: `projscan_analyze` (5 milestones), `projscan_hotspots` (4 milestones), `projscan_audit` (2 milestones). Agents that set `_meta.progressToken` on the request get per-milestone updates they can display or use to cancel.
+- **Opt-in response chunking** — when the caller sets `stream: true`, tool output is split into multiple MCP `content` blocks: one header with scalar fields, then N chunk blocks containing 20 records each. Default behavior (single block) unchanged for backward compatibility.
+- **New public API:** `paginate`, `encodeCursor`, `decodeCursor`, `listChecksum`, `readPageParams`, `toContentBlocks`, `emitProgress`, `withProgress`.
+- **`createMcpServer` gains an options object** with `notify: (payload) => void` for transports that want to emit out-of-band JSON-RPC notifications. `runMcpServer` wires this to stdout automatically.
+
+### Fixed
+
+- **`--changed-only` silently dropped issues without file locations.** Now emits a stderr message: `"N issue(s) filtered out; X had no file location"` so users can tell the difference between "no problems in this PR" and "filter dropped everything."
+- **Hotspot substring fallback had incomplete path-boundary chars.** Added `.`, `?`, `!`, `>`, `<` so cases like *"see src/a.ts."* (sentence end) correctly link to `src/a.ts`. The location-based path still takes priority when analyzers supply it.
+
+### Notes
+
+- 260 tests passing (+11 new covering pagination, progress, chunking).
+- Zero new runtime dependencies.
+- Clients on old protocol version: no action required — negotiation is transparent.
+
 ## [0.7.0] - 2026-04-20
 
 ### Theme — "Smart Search"

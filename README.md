@@ -446,6 +446,16 @@ claude mcp add projscan -- npx projscan mcp
 { "name": "projscan_hotspots", "arguments": { "limit": 100, "max_tokens": 800 } }
 ```
 
+### Pagination, progress, and streaming (0.8.0+)
+
+Large responses can be walked incrementally:
+
+- **Cursor pagination**: pass `cursor` and `page_size`, get `nextCursor` back. Works on `projscan_hotspots`, `projscan_search`, `projscan_audit`, `projscan_outdated`, `projscan_coverage`.
+- **Progress notifications**: set `_meta.progressToken` on the tool-call request. The server emits `notifications/progress` at coarse milestones (scanning → analyzing → ranking → done) so your agent can display progress or cancel.
+- **Response chunking**: set `stream: true` in arguments to split large arrays into multiple `content` blocks (header + N chunks of ~20 records each).
+
+All opt-in — default behavior is unchanged.
+
 ### Incremental index cache
 
 projscan caches parsed ASTs at `.projscan-cache/graph.json` (auto-gitignored). First run populates it; subsequent runs re-parse only files whose `mtime` changed. Agent queries on a warm cache are milliseconds, not seconds.

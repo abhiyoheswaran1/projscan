@@ -6,8 +6,11 @@ import { getToolDefinitions, getToolHandler } from './tools.js';
 import { getPromptDefinitions, getPrompt } from './prompts.js';
 import { getResourceDefinitions, readResource } from './resources.js';
 import { applyBudget } from './tokenBudget.js';
+import { withProgress, type ProgressEmitter } from './progress.js';
+import { toContentBlocks } from './chunker.js';
 
-const PROTOCOL_VERSION = '2024-11-05';
+const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
+const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -49,7 +52,16 @@ export interface McpServerHandle {
   handleMessage(line: string): Promise<string | null>;
 }
 
-export function createMcpServer(rootPath: string): McpServerHandle {
+export interface McpServerOptions {
+  /**
+   * Called when the server wants to emit a JSON-RPC notification (e.g.,
+   * `notifications/progress`) out of band from the normal request/response
+   * cycle. The transport layer is responsible for writing the payload.
+   */
+  notify?: (payload: string) => void;
+}
+
+export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readPackageVersion();
   let initialized = false;
 
@@ -64,16 +76,24 @@ export function createMcpServer(rootPath: string): McpServerHandle {
         case 'initialize': {
           const params = (request.params ?? {}) as { protocolVersion?: string };
           initialized = true;
+          // Negotiate: echo the client's version if we support it; otherwise
+          // respond with our newest version.
+          const requested = params.protocolVersion;
+          const negotiated =
+            requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
+              ? requested
+              : PROTOCOL_VERSION;
           return ok(id, {
-            protocolVersion: params.protocolVersion ?? PROTOCOL_VERSION,
+            protocolVersion: negotiated,
             serverInfo: {
               name: 'projscan',
               version: serverVersion,
             },
             capabilities: {
-              tools: {},
-              prompts: {},
-              resources: {},
+              tools: { listChanged: false },
+              prompts: { listChanged: false },
+              resources: { listChanged: false, subscribe: false },
+              logging: {},
             },
           });
         }
@@ -96,6 +116,7 @@ export function createMcpServer(rootPath: string): McpServerHandle {
           const params = (request.params ?? {}) as {
             name?: string;
             arguments?: Record<string, unknown>;
+            _meta?: { progressToken?: string | number };
           };
           const name = params.name;
           if (!name) {
@@ -107,7 +128,28 @@ export function createMcpServer(rootPath: string): McpServerHandle {
           }
           try {
             const args = params.arguments ?? {};
-            const result = await handler(args, rootPath);
+
+            // Progress emitter: if the client supplied a progressToken AND
+            // the transport gave us a notify channel, forward progress events.
+            const progressToken = params._meta?.progressToken;
+            const emit: ProgressEmitter | undefined =
+              progressToken !== undefined && options.notify
+                ? (progress, total, message) => {
+                    const payload = JSON.stringify({
+                      jsonrpc: '2.0',
+                      method: 'notifications/progress',
+                      params: {
+                        progressToken,
+                        progress,
+                        ...(total !== undefined ? { total } : {}),
+                        ...(message !== undefined ? { message } : {}),
+                      },
+                    });
+                    options.notify!(payload);
+                  }
+                : undefined;
+
+            const result = await withProgress(emit, () => handler(args, rootPath));
             const rawMaxTokens = args.max_tokens;
             const maxTokens =
               typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
@@ -121,13 +163,16 @@ export function createMcpServer(rootPath: string): McpServerHandle {
                   maxTokens,
                 })
               : budgeted.value;
+
+            // Opt-in response chunking: agents that want streaming set
+            // `stream: true`. Default stays single-block for backcompat.
+            const wantsStreaming = args.stream === true;
+            const content = wantsStreaming
+              ? toContentBlocks(payload)
+              : [{ type: 'text', text: safeStringify(payload) }];
+
             return ok(id, {
-              content: [
-                {
-                  type: 'text',
-                  text: safeStringify(payload),
-                },
-              ],
+              content,
               isError: false,
             });
           } catch (err) {
@@ -256,7 +301,11 @@ function attachBudgetSidecar(value: unknown, info: BudgetInfo): unknown {
 }
 
 export async function runMcpServer(rootPath: string): Promise<void> {
-  const server = createMcpServer(rootPath);
+  const server = createMcpServer(rootPath, {
+    notify: (payload) => {
+      process.stdout.write(payload + '\n');
+    },
+  });
 
   process.stderr.write(`[projscan-mcp] listening on stdio (root=${rootPath})\n`);
 
