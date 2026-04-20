@@ -29,6 +29,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
         severity: 'warning',
         category: 'architecture',
         fixAvailable: false,
+        locations: [{ file: dir }],
       });
     }
   }

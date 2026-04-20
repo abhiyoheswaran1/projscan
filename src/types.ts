@@ -74,6 +74,14 @@ export interface DependencyRisk {
 
 export type IssueSeverity = 'info' | 'warning' | 'error';
 
+export interface IssueLocation {
+  file: string;
+  line?: number;
+  column?: number;
+  endLine?: number;
+  endColumn?: number;
+}
+
 export interface Issue {
   id: string;
   title: string;
@@ -82,6 +90,7 @@ export interface Issue {
   category: string;
   fixAvailable: boolean;
   fixId?: string;
+  locations?: IssueLocation[];
 }
 
 // === Fix System ===
@@ -194,7 +203,26 @@ export interface DiffResult {
 
 // === Reporter Interface ===
 
-export type ReportFormat = 'console' | 'json' | 'markdown';
+export type ReportFormat = 'console' | 'json' | 'markdown' | 'sarif';
+
+// === Config (.projscanrc) ===
+
+export interface ProjscanConfig {
+  minScore?: number;
+  baseRef?: string;
+  hotspots?: {
+    limit?: number;
+    since?: string;
+  };
+  ignore?: string[];
+  disableRules?: string[];
+  severityOverrides?: Record<string, IssueSeverity>;
+}
+
+export interface LoadedConfig {
+  config: ProjscanConfig;
+  source: string | null;
+}
 
 // === Hotspots ===
 

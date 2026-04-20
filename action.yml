@@ -1,0 +1,118 @@
+name: 'ProjScan'
+description: 'Run projscan health check and upload results to GitHub Code Scanning as SARIF.'
+author: 'Abhi Yoheswaran'
+branding:
+  icon: 'activity'
+  color: 'blue'
+
+inputs:
+  min-score:
+    description: 'Minimum passing score (0-100). Fails the job if below.'
+    required: false
+    default: '70'
+  changed-only:
+    description: 'Only gate on issues in files changed vs base-ref.'
+    required: false
+    default: 'false'
+  base-ref:
+    description: 'Git base ref for --changed-only (default: origin/<default-branch>).'
+    required: false
+    default: ''
+  config:
+    description: 'Path to a .projscanrc config file.'
+    required: false
+    default: ''
+  sarif-file:
+    description: 'Output path for the SARIF file.'
+    required: false
+    default: 'projscan.sarif'
+  upload-sarif:
+    description: 'Upload the SARIF file to GitHub Code Scanning.'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Directory to run projscan in.'
+    required: false
+    default: '.'
+  version:
+    description: 'Version of projscan to install (e.g. "0.3.0" or "latest").'
+    required: false
+    default: 'latest'
+
+outputs:
+  score:
+    description: 'Health score reported by projscan ci.'
+    value: ${{ steps.projscan.outputs.score }}
+  grade:
+    description: 'Letter grade reported by projscan ci.'
+    value: ${{ steps.projscan.outputs.grade }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run projscan
+      id: projscan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PROJSCAN_MIN_SCORE: ${{ inputs.min-score }}
+        PROJSCAN_CHANGED_ONLY: ${{ inputs.changed-only }}
+        PROJSCAN_BASE_REF: ${{ inputs.base-ref }}
+        PROJSCAN_CONFIG: ${{ inputs.config }}
+        PROJSCAN_SARIF_FILE: ${{ inputs.sarif-file }}
+        PROJSCAN_VERSION: ${{ inputs.version }}
+      run: |
+        set -o pipefail
+        args=(ci --min-score "$PROJSCAN_MIN_SCORE" --format sarif)
+        if [ "$PROJSCAN_CHANGED_ONLY" = "true" ]; then
+          args+=(--changed-only)
+          if [ -n "$PROJSCAN_BASE_REF" ]; then
+            args+=(--base-ref "$PROJSCAN_BASE_REF")
+          fi
+        fi
+        if [ -n "$PROJSCAN_CONFIG" ]; then
+          args+=(--config "$PROJSCAN_CONFIG")
+        fi
+
+        echo "Running: npx projscan@${PROJSCAN_VERSION} ${args[*]}"
+        exit_code=0
+        npx --yes "projscan@${PROJSCAN_VERSION}" "${args[@]}" > "$PROJSCAN_SARIF_FILE" || exit_code=$?
+
+        # Parse a human-friendly score/grade separately so outputs work even when SARIF mode was used above.
+        json_args=(ci --min-score 0 --format json)
+        if [ "$PROJSCAN_CHANGED_ONLY" = "true" ]; then
+          json_args+=(--changed-only)
+          if [ -n "$PROJSCAN_BASE_REF" ]; then
+            json_args+=(--base-ref "$PROJSCAN_BASE_REF")
+          fi
+        fi
+        if [ -n "$PROJSCAN_CONFIG" ]; then
+          json_args+=(--config "$PROJSCAN_CONFIG")
+        fi
+
+        summary=$(npx --yes "projscan@${PROJSCAN_VERSION}" "${json_args[@]}" 2>/dev/null || echo '{}')
+        score=$(node -e "try { const s = JSON.parse(process.argv[1]); console.log(s.ci && s.ci.score != null ? s.ci.score : ''); } catch (_) { console.log(''); }" "$summary")
+        grade=$(node -e "try { const s = JSON.parse(process.argv[1]); console.log(s.ci && s.ci.grade ? s.ci.grade : ''); } catch (_) { console.log(''); }" "$summary")
+
+        echo "score=${score}" >> "$GITHUB_OUTPUT"
+        echo "grade=${grade}" >> "$GITHUB_OUTPUT"
+
+        {
+          echo "### projscan health"
+          echo ""
+          if [ -n "$grade" ] && [ -n "$score" ]; then
+            echo "- Grade: **${grade}** (${score}/100)"
+          fi
+          echo "- SARIF file: \`${PROJSCAN_SARIF_FILE}\`"
+          echo "- Min score: ${PROJSCAN_MIN_SCORE}"
+          echo "- Changed-only: ${PROJSCAN_CHANGED_ONLY}"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        exit $exit_code
+
+    - name: Upload SARIF to Code Scanning
+      if: always() && inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.working-directory }}/${{ inputs.sarif-file }}
+        category: projscan

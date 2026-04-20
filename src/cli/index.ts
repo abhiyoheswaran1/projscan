@@ -30,6 +30,8 @@ import { setLogLevel } from '../utils/logger.js';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../utils/scoreCalculator.js';
 import { showBanner, showCompactBanner, showHelp } from '../utils/banner.js';
 import { saveBaseline, loadBaseline, computeDiff } from '../utils/baseline.js';
+import { loadConfig, applyConfigToIssues } from '../utils/config.js';
+import { getChangedFiles } from '../utils/changedFiles.js';
 import { runMcpServer } from '../mcp/server.js';
 
 import {
@@ -72,12 +74,20 @@ import {
   reportFileMarkdown,
 } from '../reporters/markdownReporter.js';
 
+import {
+  reportAnalysisSarif,
+  reportHealthSarif,
+  reportCiSarif,
+} from '../reporters/sarifReporter.js';
+
 import type {
   AnalysisReport,
   FileExplanation,
   ArchitectureLayer,
   ReportFormat,
   FixResult,
+  Issue,
+  ProjscanConfig,
 } from '../types.js';
 
 // ── CLI Setup ─────────────────────────────────────────────
@@ -88,19 +98,58 @@ program
   .name('projscan')
   .description('Instant codebase insights — doctor, x-ray, and architecture map for any repository')
   .version(pkg.version)
-  .option('--format <type>', 'output format: console, json, markdown', 'console')
+  .option('--format <type>', 'output format: console, json, markdown, sarif', 'console')
+  .option('--config <path>', 'path to .projscanrc config file')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
 
 function getFormat(): ReportFormat {
   const opts = program.opts();
   const f = opts.format as string;
-  if (f === 'json' || f === 'markdown') return f;
+  if (f === 'json' || f === 'markdown' || f === 'sarif') return f;
   return 'console';
 }
 
 function getRootPath(): string {
   return process.cwd();
+}
+
+async function loadProjectConfig(): Promise<ProjscanConfig> {
+  const opts = program.opts();
+  const explicit = typeof opts.config === 'string' ? (opts.config as string) : undefined;
+  try {
+    const { config, source } = await loadConfig(getRootPath(), explicit);
+    if (source && !opts.quiet && getFormat() === 'console') {
+      console.error(chalk.dim(`  [config: ${path.relative(getRootPath(), source) || source}]`));
+    }
+    return config;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`  Config error: ${msg}`));
+    process.exit(1);
+  }
+}
+
+async function filterIssuesByChangedFiles(
+  issues: Issue[],
+  rootPath: string,
+  baseRef?: string,
+): Promise<Issue[]> {
+  const result = await getChangedFiles(rootPath, baseRef);
+  if (!result.available) {
+    if (getFormat() === 'console' && !program.opts().quiet) {
+      console.error(chalk.yellow(`  [--changed-only: ${result.reason ?? 'unavailable'} — reporting all issues]`));
+    }
+    return issues;
+  }
+  if (getFormat() === 'console' && !program.opts().quiet) {
+    console.error(chalk.dim(`  [--changed-only: base=${result.baseRef}, ${result.files.length} file(s)]`));
+  }
+  const set = new Set(result.files);
+  return issues.filter((issue) => {
+    if (!issue.locations || issue.locations.length === 0) return false;
+    return issue.locations.some((loc) => set.has(loc.file));
+  });
 }
 
 function setupLogLevel(): void {
@@ -136,15 +185,18 @@ function maybeCompactBanner(): void {
 program
   .command('analyze', { isDefault: true })
   .description('Analyze repository and show project report')
-  .action(async () => {
+  .option('--changed-only', 'only report issues on files changed vs base ref')
+  .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+  .action(async (cmdOpts) => {
     setupLogLevel();
     maybeBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
     const spinner = format === 'console' ? ora('Scanning repository...').start() : null;
 
     try {
-      const scan = await scanRepository(rootPath);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
       if (spinner) spinner.text = 'Detecting languages...';
       const languages = detectLanguages(scan.files);
 
@@ -155,7 +207,11 @@ program
       const dependencies = await analyzeDependencies(rootPath);
 
       if (spinner) spinner.text = 'Checking for issues...';
-      const issues = await collectIssues(rootPath, scan.files);
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
+      if (cmdOpts.changedOnly) {
+        issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+      }
 
       if (spinner) spinner.stop();
 
@@ -177,6 +233,9 @@ program
         case 'markdown':
           reportAnalysisMarkdown(report);
           break;
+        case 'sarif':
+          reportAnalysisSarif(issues, pkg.version);
+          break;
         default:
           reportAnalysis(report);
       }
@@ -192,16 +251,23 @@ program
 program
   .command('doctor')
   .description('Evaluate project health and detect issues')
-  .action(async () => {
+  .option('--changed-only', 'only report issues on files changed vs base ref')
+  .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+  .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
     const spinner = format === 'console' ? ora('Running health checks...').start() : null;
 
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
+      if (cmdOpts.changedOnly) {
+        issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+      }
 
       if (spinner) spinner.stop();
 
@@ -211,6 +277,9 @@ program
           break;
         case 'markdown':
           reportHealthMarkdown(issues);
+          break;
+        case 'sarif':
+          reportHealthSarif(issues, pkg.version);
           break;
         default:
           reportHealth(issues, scan.scanDurationMs);
@@ -227,17 +296,29 @@ program
 program
   .command('ci')
   .description('Run health check for CI pipelines (exits 1 if score below threshold)')
-  .option('--min-score <score>', 'minimum passing score (0-100)', '70')
+  .option('--min-score <score>', 'minimum passing score (0-100)')
+  .option('--changed-only', 'gate only on issues in files changed vs base ref')
+  .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
 
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
-      const threshold = Math.max(0, Math.min(100, parseInt(cmdOpts.minScore, 10) || 70));
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
+      if (cmdOpts.changedOnly) {
+        issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+      }
+
+      const rawThreshold = cmdOpts.minScore ?? config.minScore ?? 70;
+      const threshold = Math.max(
+        0,
+        Math.min(100, typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold),
+      );
       const { score } = calculateScore(issues);
 
       switch (format) {
@@ -246,6 +327,9 @@ program
           break;
         case 'markdown':
           reportCiMarkdown(issues, threshold);
+          break;
+        case 'sarif':
+          reportCiSarif(issues, pkg.version);
           break;
         default:
           reportCi(issues, threshold);
@@ -273,9 +357,11 @@ program
     const rootPath = getRootPath();
     const format = getFormat();
 
+    const config = await loadProjectConfig();
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
       const hotspotReport = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
 
       if (cmdOpts.saveBaseline) {
@@ -330,10 +416,12 @@ program
     maybeCompactBanner();
     const rootPath = getRootPath();
     const spinner = ora('Detecting issues...').start();
+    const config = await loadProjectConfig();
 
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
       const fixes = getAllAvailableFixes(issues);
 
       spinner.stop();
@@ -470,10 +558,11 @@ program
     maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
     const spinner = format === 'console' ? ora('Analyzing architecture...').start() : null;
 
     try {
-      const scan = await scanRepository(rootPath);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
       const frameworks = await detectFrameworks(rootPath, scan.files);
       const layers = buildArchitectureLayers(scan.files, frameworks.frameworks.map((f) => f.name));
 
@@ -506,10 +595,11 @@ program
     maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
     const spinner = format === 'console' ? ora('Scanning...').start() : null;
 
     try {
-      const scan = await scanRepository(rootPath);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
 
       if (spinner) spinner.stop();
 
@@ -574,21 +664,28 @@ program
 program
   .command('hotspots')
   .description('Rank files by risk (git churn × complexity × open issues)')
-  .option('--limit <n>', 'number of hotspots to show', '10')
-  .option('--since <when>', 'git history window (e.g. "6 months ago", "2024-01-01")', '12 months ago')
+  .option('--limit <n>', 'number of hotspots to show')
+  .option('--since <when>', 'git history window (e.g. "6 months ago", "2024-01-01")')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
     const rootPath = getRootPath();
     const format = getFormat();
+    const config = await loadProjectConfig();
     const spinner = format === 'console' ? ora('Analyzing hotspots...').start() : null;
 
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
-      const limit = Math.max(1, Math.min(100, parseInt(cmdOpts.limit, 10) || 10));
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
+      const limitRaw = cmdOpts.limit ?? config.hotspots?.limit ?? 10;
+      const limit = Math.max(
+        1,
+        Math.min(100, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 10 : limitRaw),
+      );
+      const since = cmdOpts.since ?? config.hotspots?.since ?? '12 months ago';
       const report = await analyzeHotspots(rootPath, scan.files, issues, {
-        since: cmdOpts.since,
+        since,
         limit,
       });
 
@@ -638,10 +735,12 @@ program
     maybeCompactBanner();
     const rootPath = getRootPath();
     const spinner = ora('Calculating health score...').start();
+    const config = await loadProjectConfig();
 
     try {
-      const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let issues = await collectIssues(rootPath, scan.files);
+      issues = applyConfigToIssues(issues, config);
       const { score, grade } = calculateScore(issues);
 
       spinner.stop();

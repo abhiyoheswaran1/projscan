@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-20
+
+### Added
+
+- **SARIF output** (`--format sarif`) — emit SARIF 2.1.0 from `analyze`, `doctor`, and `ci`. Feeds directly into GitHub Code Scanning (and any other SARIF consumer), so projscan findings show up in the Security tab as annotated results with file/line locations.
+- **`--changed-only` mode** — restrict `analyze`, `doctor`, and `ci` to issues in files changed vs a base ref. `--base-ref <ref>` overrides the default (auto-detects `origin/main` → `origin/master` → `main` → `master` → `HEAD~1`). Makes PR CI runs ~10× faster and only gates on issues the PR introduced.
+- **`.projscanrc` config** — load project-wide defaults from `.projscanrc.json`, `.projscanrc`, or a `"projscan"` key in `package.json`. Supports:
+  - `minScore` — default threshold for `ci`.
+  - `baseRef` — default base ref for `--changed-only`.
+  - `hotspots.limit`, `hotspots.since` — defaults for `hotspots`.
+  - `ignore` — extra glob patterns layered onto the built-in ignore list.
+  - `disableRules` — silence rules by id (supports `rule-id` or wildcard `prefix-*`).
+  - `severityOverrides` — remap a rule's severity (`info` / `warning` / `error`).
+
+  CLI flags always win over config; use `--config <path>` to load a specific file.
+- **First-party GitHub Action** (`action.yml`) — composite action that installs projscan, runs `projscan ci --format sarif` (optionally `--changed-only`), writes a SARIF file, uploads to GitHub Code Scanning, and exposes `score` / `grade` outputs plus a Job Summary.
+- **Issue locations** — `Issue` now carries optional `locations: IssueLocation[]` (file, line, column). Security checks populate real file/line locations (including line numbers for hardcoded secrets), and architecture checks anchor large-dir issues to their directory. Used by SARIF, `--changed-only`, and future file-centric outputs.
+- Public API: `loadConfig`, `applyConfigToIssues`, `getChangedFiles`, `issuesToSarif`.
+- New types: `IssueLocation`, `ProjscanConfig`, `LoadedConfig`.
+
+### Changed
+
+- `scanRepository(rootPath, { ignore })` now accepts optional ignore globs that layer onto the built-in list. The CLI passes `config.ignore` through automatically.
+- `projscan ci` no longer hard-codes `--min-score 70`; missing flag falls back to `config.minScore`, then to 70.
+- `ReportFormat` type now includes `'sarif'`.
+
 ## [0.2.0] - 2026-04-19
 
 ### Added

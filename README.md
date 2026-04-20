@@ -85,7 +85,7 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan hotspots` | Rank files by risk — churn × complexity × issues × ownership |
 | `projscan file <path>` | Drill into a file — purpose, risk, ownership, related issues |
 | `projscan fix` | Auto-fix issues (ESLint, Prettier, Vitest, .editorconfig) |
-| `projscan ci` | CI pipeline health gate — exits 1 if score below threshold |
+| `projscan ci` | CI health gate — SARIF output, `--changed-only` PR-diff mode, exits 1 if score below threshold |
 | `projscan diff` | Compare current health **and hotspot trends** against a baseline |
 | `projscan explain <file>` | Explain a file's purpose, imports, exports, and issues |
 | `projscan diagram` | ASCII architecture diagram of your project |
@@ -139,15 +139,19 @@ All commands support `--format` for different output targets:
 ```bash
 projscan analyze --format json       # Machine-readable JSON
 projscan doctor --format markdown    # Markdown for docs/PRs
+projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
 ```
 
-Formats: `console` (default), `json`, `markdown`
+Formats: `console` (default), `json`, `markdown`, `sarif`
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `--format <type>` | Output format: console, json, markdown |
+| `--format <type>` | Output format: console, json, markdown, sarif |
+| `--config <path>` | Path to a `.projscanrc` config file |
+| `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
+| `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 | `--verbose` | Enable debug output |
 | `--quiet` | Suppress non-essential output |
 | `-V, --version` | Show version |
@@ -204,21 +208,79 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 Use `projscan ci` to gate your pipelines:
 
 ```bash
-projscan ci --min-score 70          # Exits 1 if score < 70
-projscan ci --min-score 80 --format json  # JSON output for parsing
+projscan ci --min-score 70                     # Exits 1 if score < 70
+projscan ci --min-score 80 --format json       # JSON output for parsing
+projscan ci --changed-only                     # Gate only on this PR's diff
+projscan ci --format sarif > projscan.sarif    # SARIF for Code Scanning
 ```
 
 <img src="docs/npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci --min-score 70" width="700">
 
-### GitHub Actions
+### GitHub Action (recommended)
 
-Copy the included workflow template to your project:
+projscan ships a first-party GitHub Action that installs, runs, and uploads SARIF to **GitHub Code Scanning** in one step:
 
-```bash
-cp .github/projscan-ci.yml .github/workflows/projscan.yml
+```yaml
+# .github/workflows/projscan.yml
+name: ProjScan
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+permissions:
+  contents: read
+  security-events: write   # required for SARIF upload
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }  # needed for --changed-only
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: abhiyoheswaran1/projscan@v0.3.0
+        with:
+          min-score: '70'
+          changed-only: 'true'
 ```
 
-This runs health checks on every push/PR and posts a markdown health report as a PR comment. See [`.github/projscan-ci.yml`](.github/projscan-ci.yml) for the full workflow.
+Inputs: `min-score`, `changed-only`, `base-ref`, `config`, `sarif-file`, `upload-sarif`, `working-directory`, `version`. Outputs: `score`, `grade`.
+
+Findings appear in the **Security → Code scanning** tab, annotated on files and lines. PRs get inline annotations on changed lines.
+
+### Plain workflow (no SARIF upload)
+
+If you'd rather not upload SARIF, [`.github/projscan-ci.yml`](.github/projscan-ci.yml) is a drop-in workflow that runs projscan and posts a markdown health report as a PR comment.
+
+## Configuration (`.projscanrc`)
+
+Drop a `.projscanrc.json` at your repo root to set defaults — CLI flags always win over config. A `"projscan"` key in `package.json` and plain `.projscanrc` are also supported.
+
+```json
+{
+  "minScore": 80,
+  "baseRef": "origin/main",
+  "ignore": ["**/fixtures/**", "**/generated/**"],
+  "disableRules": ["missing-editorconfig", "large-*"],
+  "severityOverrides": {
+    "missing-prettier": "info"
+  },
+  "hotspots": {
+    "limit": 20,
+    "since": "6 months ago"
+  }
+}
+```
+
+Fields:
+
+- `minScore` — default `ci` threshold (0–100)
+- `baseRef` — default base ref for `--changed-only`
+- `ignore` — extra glob patterns added to the built-in ignore list
+- `disableRules` — silence rules by id; supports wildcard `prefix-*`
+- `severityOverrides` — remap a rule's severity (`info` / `warning` / `error`)
+- `hotspots.limit` / `hotspots.since` — defaults for the `hotspots` command
 
 ## Tracking Health Over Time
 

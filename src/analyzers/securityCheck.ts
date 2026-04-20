@@ -46,6 +46,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
         severity: 'warning',
         category: 'security',
         fixAvailable: false,
+        locations: [{ file: file.relativePath, line: 1 }],
       });
     }
   }
@@ -67,6 +68,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
         severity: 'error',
         category: 'security',
         fixAvailable: false,
+        locations: [{ file: file.relativePath, line: 1 }],
       });
     }
   }
@@ -123,7 +125,9 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
     const content = await fs.readFile(file.absolutePath, 'utf-8');
 
     for (const { name, pattern } of SECRET_PATTERNS) {
-      if (pattern.test(content)) {
+      const match = pattern.exec(content);
+      if (match) {
+        const line = lineNumberFor(content, match.index);
         return {
           id: 'hardcoded-secret',
           title: `Potential ${name} detected in ${file.relativePath}`,
@@ -131,6 +135,7 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
           severity: 'error',
           category: 'security',
           fixAvailable: false,
+          locations: [{ file: file.relativePath, line }],
         };
       }
     }
@@ -138,4 +143,13 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
     // Skip files that can't be read
   }
   return null;
+}
+
+function lineNumberFor(content: string, index: number): number {
+  if (index <= 0) return 1;
+  let line = 1;
+  for (let i = 0; i < index && i < content.length; i++) {
+    if (content.charCodeAt(i) === 10) line++;
+  }
+  return line;
 }

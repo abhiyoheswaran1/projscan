@@ -1,10 +1,17 @@
 import path from 'node:path';
-import { walkFiles } from '../utils/fileWalker.js';
+import { walkFiles, getDefaultIgnorePatterns } from '../utils/fileWalker.js';
 import type { ScanResult, FileEntry, DirectoryNode } from '../types.js';
 
-export async function scanRepository(rootPath: string): Promise<ScanResult> {
+export interface ScanOptions {
+  ignore?: string[];
+}
+
+export async function scanRepository(rootPath: string, options?: ScanOptions): Promise<ScanResult> {
   const start = performance.now();
-  const files = await walkFiles(rootPath);
+  const ignore = options?.ignore?.length
+    ? [...getDefaultIgnorePatterns(), ...options.ignore]
+    : undefined;
+  const files = await walkFiles(rootPath, ignore ? { ignore } : undefined);
   const directoryTree = buildDirectoryTree(files, rootPath);
   const directories = new Set(files.map((f) => f.directory));
   const scanDurationMs = performance.now() - start;
