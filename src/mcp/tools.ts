@@ -6,6 +6,9 @@ import { detectFrameworks } from '../core/frameworkDetector.js';
 import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { collectIssues } from '../core/issueEngine.js';
 import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
+import { detectOutdated } from '../core/outdatedDetector.js';
+import { runAudit } from '../core/auditRunner.js';
+import { previewUpgrade } from '../core/upgradePreview.js';
 import {
   inspectFile,
   extractImports,
@@ -175,6 +178,54 @@ const tools: McpTool[] = [
       const report = await analyzeDependencies(rootPath);
       if (!report) return { available: false, reason: 'No package.json found' };
       return { available: true, ...report };
+    },
+  },
+
+  {
+    name: 'projscan_outdated',
+    description:
+      'Compare declared vs installed versions of every package. Reports drift (patch/minor/major). Offline — does not hit the npm registry.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (_args, rootPath) => {
+      return await detectOutdated(rootPath);
+    },
+  },
+
+  {
+    name: 'projscan_audit',
+    description:
+      'Run `npm audit` and return a normalized summary of vulnerabilities (critical / high / moderate / low / info). Requires package-lock.json.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (_args, rootPath) => {
+      return await runAudit(rootPath);
+    },
+  },
+
+  {
+    name: 'projscan_upgrade',
+    description:
+      'Preview the impact of upgrading a package: semver drift, breaking-change markers from the local CHANGELOG, and the files in your repo that import it. Offline.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        package: {
+          type: 'string',
+          description: 'Name of the package to preview.',
+        },
+      },
+      required: ['package'],
+    },
+    handler: async (args, rootPath) => {
+      const pkgName = typeof args.package === 'string' ? args.package : '';
+      if (!pkgName) throw new Error('package argument is required');
+      const scan = await scanRepository(rootPath);
+      return await previewUpgrade(rootPath, pkgName, scan.files);
     },
   },
 ];

@@ -205,6 +205,59 @@ export interface DiffResult {
 
 export type ReportFormat = 'console' | 'json' | 'markdown' | 'sarif';
 
+// === Dependency Health (0.4.0) ===
+
+export type SemverDrift = 'patch' | 'minor' | 'major' | 'same' | 'unknown';
+
+export interface OutdatedPackage {
+  name: string;
+  declared: string;
+  installed: string | null;
+  latest: string | null;
+  drift: SemverDrift;
+  scope: 'dependency' | 'devDependency';
+}
+
+export interface OutdatedReport {
+  available: boolean;
+  reason?: string;
+  totalPackages: number;
+  packages: OutdatedPackage[];
+}
+
+export type AuditSeverity = 'critical' | 'high' | 'moderate' | 'low' | 'info';
+
+export interface AuditFinding {
+  name: string;
+  severity: AuditSeverity;
+  title: string;
+  url?: string;
+  cve?: string[];
+  via: string[];
+  range?: string;
+  fixAvailable: boolean;
+}
+
+export interface AuditReport {
+  available: boolean;
+  reason?: string;
+  summary: Record<AuditSeverity, number>;
+  findings: AuditFinding[];
+}
+
+export interface UpgradePreview {
+  available: boolean;
+  reason?: string;
+  name: string;
+  declared: string | null;
+  installed: string | null;
+  latest: string | null;
+  drift: SemverDrift;
+  breakingMarkers: string[];
+  changelogExcerpt?: string;
+  importers: string[];
+}
+
 // === Config (.projscanrc) ===
 
 export interface ProjscanConfig {

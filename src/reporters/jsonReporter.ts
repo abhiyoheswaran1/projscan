@@ -1,5 +1,6 @@
 import type {
   AnalysisReport,
+  AuditReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -8,6 +9,8 @@ import type {
   DependencyReport,
   DiffResult,
   HotspotReport,
+  OutdatedReport,
+  UpgradePreview,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -85,4 +88,16 @@ export function reportHotspotsJson(report: HotspotReport): void {
 
 export function reportFileJson(inspection: FileInspection): void {
   console.log(JSON.stringify({ file: inspection }, null, 2));
+}
+
+export function reportOutdatedJson(report: OutdatedReport): void {
+  console.log(JSON.stringify({ outdated: report }, null, 2));
+}
+
+export function reportAuditJson(report: AuditReport): void {
+  console.log(JSON.stringify({ audit: report }, null, 2));
+}
+
+export function reportUpgradeJson(preview: UpgradePreview): void {
+  console.log(JSON.stringify({ upgrade: preview }, null, 2));
 }

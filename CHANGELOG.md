@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-20
+
+### Added — "Dependency Health" theme
+
+- **`projscan outdated`** — offline outdated check. Compares versions declared in `package.json` against the versions actually installed under `node_modules/` and classifies drift (patch / minor / major / same / unknown). No network calls.
+- **`projscan audit`** — runs `npm audit --json` and normalizes the output into a projscan-shaped report: severity summary, per-package findings with title/URL/range/fix-available. SARIF output routes every finding into GitHub Code Scanning with `audit-<pkg>` rule IDs, anchored to `package.json`. Graceful messages for yarn/pnpm projects.
+- **`projscan upgrade <pkg>`** — preview the impact of upgrading a package, fully offline. Reports semver drift, extracts the relevant section of the package's own `CHANGELOG.md` from `node_modules/<pkg>/`, highlights breaking-change markers (`BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`), and lists every file in your source that imports the package.
+- **Unused-dependency analyzer** — new issue type `unused-dependency-<name>`. Builds an import graph across all source files (ES imports + CommonJS requires), diffs against declared dependencies, and emits issues anchored to the exact line in `package.json`. Implicit-use allowlist covers typescript, eslint/prettier/vite plugins, types packages, and packages invoked via `package.json` scripts — with a `disableRules` escape hatch for the rest.
+- **`package.json` locations on every dependency-related issue** — `dep-risk-*` and `unused-dependency-*` issues now carry `locations: [{ file: 'package.json', line }]`. SARIF upload to GitHub Code Scanning annotates the offending dependency line directly in PR review.
+- **3 new MCP tools**: `projscan_outdated`, `projscan_audit`, `projscan_upgrade`.
+- **Public API:** `buildImportGraph`, `toPackageName`, `isPackageUsed`, `filesImporting`, `detectOutdated`, `runAudit`, `auditFindingsToIssues`, `previewUpgrade`, `findDependencyLines`, `parseSemver`, `compareSemver`, `semverDrift`.
+- **New types:** `SemverDrift`, `OutdatedPackage`, `OutdatedReport`, `AuditSeverity`, `AuditFinding`, `AuditReport`, `UpgradePreview`.
+
+### Changed
+
+- Issue engine now includes the unused-dependency analyzer alongside the six existing checks.
+- `dep-risk-*` issues now carry `package.json` locations (line-level for package-specific risks, file-level for project-level risks like `excessive-dependencies`).
+
+### Notes
+
+- Everything in 0.4.0 is **offline-first** — no registry calls, no changelog fetching from GitHub. `projscan upgrade` reads the CHANGELOG that npm already placed in your `node_modules/<pkg>/`. Network-fetching upgrade preview is deferred to a later release.
+- Zero new runtime dependencies. Still 4 packages in `dependencies`.
+- Tests: 185 passing (+37 new).
+
 ## [0.3.1] - 2026-04-20
 
 ### Changed

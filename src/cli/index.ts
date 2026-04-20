@@ -18,6 +18,9 @@ import { detectFrameworks } from '../core/frameworkDetector.js';
 import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { collectIssues } from '../core/issueEngine.js';
 import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
+import { detectOutdated } from '../core/outdatedDetector.js';
+import { runAudit, auditFindingsToIssues } from '../core/auditRunner.js';
+import { previewUpgrade } from '../core/upgradePreview.js';
 import {
   inspectFile,
   extractImports,
@@ -46,6 +49,9 @@ import {
   reportDependencies,
   reportHotspots,
   reportFileInspection,
+  reportOutdated,
+  reportAudit,
+  reportUpgrade,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -59,6 +65,9 @@ import {
   reportDependenciesJson,
   reportHotspotsJson,
   reportFileJson,
+  reportOutdatedJson,
+  reportAuditJson,
+  reportUpgradeJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -72,12 +81,16 @@ import {
   reportDependenciesMarkdown,
   reportHotspotsMarkdown,
   reportFileMarkdown,
+  reportOutdatedMarkdown,
+  reportAuditMarkdown,
+  reportUpgradeMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import {
   reportAnalysisSarif,
   reportHealthSarif,
   reportCiSarif,
+  issuesToSarif,
 } from '../reporters/sarifReporter.js';
 
 import type {
@@ -703,6 +716,115 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Hotspot analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: outdated ─────────────────────────────────────
+
+program
+  .command('outdated')
+  .description('Detect outdated dependencies (offline — compares declared vs installed)')
+  .action(async () => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Checking dependencies...').start() : null;
+
+    try {
+      const report = await detectOutdated(rootPath);
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportOutdatedJson(report);
+          break;
+        case 'markdown':
+          reportOutdatedMarkdown(report);
+          break;
+        case 'sarif':
+          console.log(JSON.stringify(issuesToSarif([], pkg.version), null, 2));
+          break;
+        default:
+          reportOutdated(report);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Outdated check failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: audit ────────────────────────────────────────
+
+program
+  .command('audit')
+  .description('Run npm audit and surface vulnerabilities (SARIF supported)')
+  .option('--timeout <ms>', 'override npm audit timeout (default 60000)')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Running npm audit...').start() : null;
+
+    try {
+      const timeoutMs = cmdOpts.timeout ? Math.max(5_000, parseInt(cmdOpts.timeout, 10)) : undefined;
+      const report = await runAudit(rootPath, timeoutMs !== undefined ? { timeoutMs } : {});
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportAuditJson(report);
+          break;
+        case 'markdown':
+          reportAuditMarkdown(report);
+          break;
+        case 'sarif':
+          console.log(JSON.stringify(issuesToSarif(auditFindingsToIssues(report), pkg.version), null, 2));
+          break;
+        default:
+          reportAudit(report);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Audit failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: upgrade ──────────────────────────────────────
+
+program
+  .command('upgrade <package>')
+  .description('Preview the impact of upgrading a package (offline — reads local CHANGELOG + importers)')
+  .action(async (pkgName: string) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const config = await loadProjectConfig();
+    const spinner = format === 'console' ? ora(`Previewing ${pkgName}...`).start() : null;
+
+    try {
+      const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      const preview = await previewUpgrade(rootPath, pkgName, scan.files);
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportUpgradeJson(preview);
+          break;
+        case 'markdown':
+          reportUpgradeMarkdown(preview);
+          break;
+        default:
+          reportUpgrade(preview);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('Upgrade preview failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

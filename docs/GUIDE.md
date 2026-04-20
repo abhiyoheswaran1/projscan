@@ -20,6 +20,9 @@ A deep dive into everything ProjScan can do. For a quick overview, see the [READ
   - [diagram](#diagram)
   - [structure](#structure)
   - [dependencies](#dependencies)
+  - [outdated](#outdated)
+  - [audit](#audit)
+  - [upgrade](#upgrade)
   - [badge](#badge)
   - [mcp](#mcp)
 - [Health Score](#health-score)
@@ -340,6 +343,83 @@ projscan dependencies
 Deep dive into your project's dependency graph — production/dev counts, package manager, lock file presence, and risk analysis (wildcard versions, `latest` tags, excessive counts).
 
 <img src="npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
+
+### outdated
+
+```bash
+projscan outdated
+```
+
+Offline drift check — compares the version declared in `package.json` against the version installed under `node_modules/<pkg>/package.json`. Classifies each package as `patch`, `minor`, `major`, `same`, or `unknown` drift. Does **not** hit the npm registry.
+
+**Output fields per package:**
+- `declared` — the range in `package.json` (e.g., `^1.2.3`)
+- `installed` — the concrete version in `node_modules`, or `null` if not installed
+- `latest` — same as `installed` in offline mode (registry-aware preview is planned)
+- `drift` — classification
+- `scope` — `dependency` or `devDependency`
+
+JSON / Markdown formats supported. No SARIF — this isn't a vulnerability signal.
+
+### audit
+
+```bash
+projscan audit
+```
+
+Wraps `npm audit --json` and normalizes the output. Requires a `package-lock.json`. Graceful error for `yarn.lock` / `pnpm-lock.yaml` projects (suggests the right native command).
+
+**Per-finding fields:** `name`, `severity` (`critical` / `high` / `moderate` / `low` / `info`), `title`, `url`, `cve`, `via`, `range`, `fixAvailable`.
+
+**Summary:** counts per severity.
+
+**SARIF output:**
+
+```bash
+projscan audit --format sarif > audit.sarif
+```
+
+Each finding becomes a SARIF result with `ruleId: audit-<pkg>`, severity mapped to `error` / `warning` / `note`, anchored to `package.json`. Pipe into `github/codeql-action/upload-sarif` or the first-party projscan Action and vulnerabilities show up in the Security → Code scanning tab.
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--timeout <ms>` | Override npm audit timeout | 60000 |
+
+### upgrade
+
+```bash
+projscan upgrade <package>
+```
+
+Preview the impact of upgrading a package — fully offline.
+
+**What you get:**
+- Drift classification (`patch` / `minor` / `major`)
+- Breaking-change markers found in the CHANGELOG: scans for `BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`, and section headers containing "breaking"
+- CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
+- Importer list — every file in your source tree that imports the package (direct or sub-path)
+
+**Example:**
+
+```bash
+$ projscan upgrade react --format markdown
+
+# Upgrade Preview — `react`
+- Declared: `^18.2.0`
+- Installed: `18.3.1`
+- Drift: **minor**
+
+## Importers (14)
+- `src/App.tsx`
+- `src/components/Button.tsx`
+- ...
+```
+
+**Limitations:**
+- Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
+- Works with what's **installed**, not what's latest on the registry. Registry-aware preview is on the roadmap.
 
 ### badge
 
@@ -733,7 +813,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
-**Tools (7):**
+**Tools (10):**
 - `projscan_analyze` — full project snapshot
 - `projscan_doctor` — health score + issue list
 - `projscan_hotspots` — ranked file risk (`limit`, `since` args)
@@ -741,6 +821,9 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_explain` — purpose, imports, exports, smells
 - `projscan_structure` — directory tree
 - `projscan_dependencies` — package audit
+- `projscan_outdated` — declared-vs-installed drift (offline)
+- `projscan_audit` — npm audit, normalized (severity summary + findings)
+- `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
 
 **Prompts (2, parameterized with live project data):**
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
@@ -965,14 +1048,19 @@ src/
 │   ├── dependencyAnalyzer.ts    # package.json parsing, risk detection
 │   ├── issueEngine.ts           # Runs all analyzers, aggregates issues
 │   ├── hotspotAnalyzer.ts       # git churn × complexity × issues × ownership
-│   └── fileInspector.ts         # Per-file inspection (purpose, imports, exports, risk)
+│   ├── fileInspector.ts         # Per-file inspection (purpose, imports, exports, risk)
+│   ├── importGraph.ts           # Source-wide import graph for unused-dep / dead-code
+│   ├── outdatedDetector.ts      # Declared-vs-installed drift check (offline)
+│   ├── auditRunner.ts           # npm audit wrapper + SARIF normalization
+│   └── upgradePreview.ts        # Offline upgrade preview (CHANGELOG + importers)
 ├── analyzers/
 │   ├── eslintCheck.ts
 │   ├── prettierCheck.ts
 │   ├── testCheck.ts
 │   ├── architectureCheck.ts
 │   ├── dependencyRiskCheck.ts
-│   └── securityCheck.ts
+│   ├── securityCheck.ts
+│   └── unusedDependencyCheck.ts
 ├── fixes/
 │   ├── eslintFix.ts
 │   ├── prettierFix.ts
@@ -996,6 +1084,8 @@ src/
 │   ├── baseline.ts              # Baseline save/load/diff (issues + hotspots)
 │   ├── config.ts                # .projscanrc loader + rule application
 │   ├── changedFiles.ts          # git-based changed-files detector
+│   ├── packageJsonLocator.ts    # Line-number lookup for package.json deps
+│   ├── semver.ts                # Tiny semver parser/compare/drift
 │   ├── banner.ts                # CLI banner + help rendering
 │   └── cache.ts                 # Small LRU for hot paths
 └── types.ts                     # All shared TypeScript interfaces

@@ -5,6 +5,12 @@ export { analyzeDependencies } from './core/dependencyAnalyzer.js';
 export { collectIssues } from './core/issueEngine.js';
 export { analyzeHotspots, computeRiskScore } from './core/hotspotAnalyzer.js';
 export { inspectFile } from './core/fileInspector.js';
+export { buildImportGraph, toPackageName, isPackageUsed, filesImporting } from './core/importGraph.js';
+export { detectOutdated } from './core/outdatedDetector.js';
+export { runAudit, auditFindingsToIssues } from './core/auditRunner.js';
+export { previewUpgrade } from './core/upgradePreview.js';
+export { findDependencyLines } from './utils/packageJsonLocator.js';
+export { parse as parseSemver, compare as compareSemver, drift as semverDrift } from './utils/semver.js';
 export { walkFiles } from './utils/fileWalker.js';
 export { loadConfig, applyConfigToIssues } from './utils/config.js';
 export { getChangedFiles } from './utils/changedFiles.js';
@@ -47,4 +53,11 @@ export type {
   McpResourceDefinition,
   ProjscanConfig,
   LoadedConfig,
+  SemverDrift,
+  OutdatedPackage,
+  OutdatedReport,
+  AuditSeverity,
+  AuditFinding,
+  AuditReport,
+  UpgradePreview,
 } from './types.js';

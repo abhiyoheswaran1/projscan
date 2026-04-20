@@ -68,6 +68,9 @@ projscan fix                        # Auto-fix detected issues
 projscan ci                         # CI health gate (exits 1 on low score)
 projscan ci --changed-only          # Gate only on this PR's diff
 projscan ci --format sarif          # SARIF 2.1.0 for GitHub Code Scanning
+projscan outdated                   # Declared-vs-installed drift (offline)
+projscan audit                      # npm audit, normalized + SARIF-ready
+projscan upgrade <pkg>              # Preview upgrade impact (local CHANGELOG + importers)
 projscan diff                       # Compare health + hotspot trends against a baseline
 projscan diagram                    # Architecture visualization
 projscan structure                  # Directory tree
@@ -93,6 +96,9 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
 | `projscan dependencies` | Dependency analysis — counts, risks, recommendations |
+| `projscan outdated` | **Declared-vs-installed drift check** (offline) |
+| `projscan audit` | **`npm audit`-powered vulnerability report** — SARIF-ready for Code Scanning |
+| `projscan upgrade <pkg>` | **Preview upgrade impact** — local CHANGELOG + importer list, offline |
 | `projscan badge` | Generate a health score badge for your README |
 | `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Cursor, …) |
 
@@ -329,11 +335,36 @@ projscan diff                           # Shows which hotspots rose / fell
 
 The baseline file now captures top hotspots too, so `diff` surfaces files that are **getting worse** (not just new issues).
 
+## Dependency Health
+
+projscan ships three focused commands for keeping your dependency graph healthy — all **offline** by default, no registry calls.
+
+```bash
+projscan outdated                       # Which declared deps drift from what's installed?
+projscan outdated --format json         # Machine-readable drift report
+projscan audit                          # Wrap npm audit; normalized, SARIF-ready
+projscan audit --format sarif > a.sarif # Upload to GitHub Code Scanning
+projscan upgrade chalk                  # What breaks if I bump chalk? Who imports it?
+projscan upgrade chalk --format markdown # Paste-ready review comment
+```
+
+### What each one tells you
+
+- **`outdated`** — reads `package.json` and `node_modules/<pkg>/package.json` to classify drift (`major` / `minor` / `patch` / `same` / `unknown`). No network.
+- **`audit`** — wraps `npm audit --json`, normalizes the output, and emits SARIF with per-finding rules anchored to `package.json`. Graceful fallback message for yarn/pnpm projects.
+- **`upgrade <pkg>`** — reads `node_modules/<pkg>/CHANGELOG.md`, slices the section between your installed version and the previous one, flags `BREAKING CHANGE` / `deprecated` / `removed support` markers, and lists every file in your repo that imports the package. All offline.
+
+### Unused dependencies (automatic in `doctor`)
+
+`projscan doctor` now flags declared dependencies that are never imported from source. Each finding is anchored to the **exact line in `package.json`** so GitHub Code Scanning PR annotations land in the right place.
+
+Implicit-use packages (typescript, eslint/prettier plugins, `@types/*`, and anything invoked from a `package.json` script) are allowlisted. Override via `.projscanrc` → `disableRules` if projscan flags something that is used but not imported.
+
 ## AI Agent Integration (MCP)
 
 **`projscan mcp`** starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query projscan during a session.
 
-**Tools** (7):
+**Tools** (10):
 - `projscan_analyze` — full project report
 - `projscan_doctor` — health score + issues
 - `projscan_hotspots` — risk-ranked files (with `limit`, `since` args)
@@ -341,6 +372,9 @@ The baseline file now captures top hotspots too, so `diff` surfaces files that a
 - `projscan_explain` — per-file purpose, imports, exports, smells
 - `projscan_structure` — directory tree
 - `projscan_dependencies` — package audit
+- `projscan_outdated` — declared-vs-installed drift
+- `projscan_audit` — npm audit, normalized
+- `projscan_upgrade` — offline upgrade preview with CHANGELOG + importers
 
 **Prompts** (2, parameterized with live project data):
 - `prioritize_refactoring` — ranked plan grounded in current hotspots

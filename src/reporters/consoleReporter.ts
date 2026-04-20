@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type {
   AnalysisReport,
+  AuditReport,
   Issue,
   Fix,
   FixResult,
@@ -11,6 +12,8 @@ import type {
   DependencyReport,
   DiffResult,
   HotspotReport,
+  OutdatedReport,
+  UpgradePreview,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -509,6 +512,158 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ── Report: outdated ──────────────────────────────────────
+
+const DRIFT_COLORS = {
+  major: chalk.red,
+  minor: chalk.yellow,
+  patch: chalk.blue,
+  same: chalk.dim,
+  unknown: chalk.dim,
+};
+
+export function reportOutdated(report: OutdatedReport): void {
+  if (!report.available) {
+    console.log(chalk.yellow(`\n  ${report.reason}\n`));
+    return;
+  }
+
+  const drifting = report.packages.filter((p) => p.drift !== 'same' && p.drift !== 'unknown');
+  const missing = report.packages.filter((p) => !p.installed);
+
+  console.log(header('Outdated Packages'));
+  console.log(
+    `  ${chalk.bold(report.totalPackages)} declared · ${chalk.bold(drifting.length)} drifted · ${chalk.bold(missing.length)} not installed\n`,
+  );
+
+  if (drifting.length === 0 && missing.length === 0) {
+    console.log(`  ${chalk.green('✓')} All declared packages match installed versions.\n`);
+    return;
+  }
+
+  // Group by drift
+  for (const level of ['major', 'minor', 'patch'] as const) {
+    const pkgs = drifting.filter((p) => p.drift === level);
+    if (pkgs.length === 0) continue;
+    const colour = DRIFT_COLORS[level];
+    console.log(`  ${colour.bold(level.toUpperCase())} (${pkgs.length})`);
+    for (const p of pkgs) {
+      const scope = p.scope === 'devDependency' ? chalk.dim(' [dev]') : '';
+      console.log(
+        `    ${chalk.bold(p.name.padEnd(30))} ${chalk.dim(p.declared)} → ${colour(p.installed ?? '?')}${scope}`,
+      );
+    }
+    console.log('');
+  }
+
+  if (missing.length > 0) {
+    console.log(`  ${chalk.dim('Not installed')} (${missing.length})`);
+    for (const p of missing.slice(0, 10)) {
+      console.log(`    ${chalk.dim(p.name)} ${chalk.dim(p.declared)}`);
+    }
+    if (missing.length > 10) console.log(`    ${chalk.dim(`… and ${missing.length - 10} more`)}`);
+    console.log('');
+  }
+}
+
+// ── Report: audit ─────────────────────────────────────────
+
+const SEVERITY_COLORS = {
+  critical: chalk.red.bold,
+  high: chalk.red,
+  moderate: chalk.yellow,
+  low: chalk.blue,
+  info: chalk.dim,
+};
+
+export function reportAudit(report: AuditReport): void {
+  if (!report.available) {
+    console.log(chalk.yellow(`\n  ${report.reason}\n`));
+    return;
+  }
+
+  console.log(header('Vulnerability Audit'));
+  const { summary, findings } = report;
+  const total = summary.critical + summary.high + summary.moderate + summary.low + summary.info;
+
+  if (total === 0) {
+    console.log(`  ${chalk.green('✓')} ${chalk.bold('No known vulnerabilities.')}\n`);
+    return;
+  }
+
+  console.log(
+    `  ${SEVERITY_COLORS.critical(`${summary.critical} critical`)} · ` +
+      `${SEVERITY_COLORS.high(`${summary.high} high`)} · ` +
+      `${SEVERITY_COLORS.moderate(`${summary.moderate} moderate`)} · ` +
+      `${SEVERITY_COLORS.low(`${summary.low} low`)} · ` +
+      `${SEVERITY_COLORS.info(`${summary.info} info`)}\n`,
+  );
+
+  for (const f of findings.slice(0, 30)) {
+    const colour = SEVERITY_COLORS[f.severity];
+    const fix = f.fixAvailable ? chalk.green(' (fix available)') : '';
+    console.log(`  ${colour(`[${f.severity.toUpperCase()}]`)} ${chalk.bold(f.name)}${fix}`);
+    console.log(`    ${f.title}`);
+    if (f.range) console.log(`    ${chalk.dim(`range: ${f.range}`)}`);
+    if (f.url) console.log(`    ${chalk.dim(f.url)}`);
+    console.log('');
+  }
+
+  if (findings.length > 30) {
+    console.log(chalk.dim(`  … and ${findings.length - 30} more. Use --format json for full list.\n`));
+  }
+
+  console.log(chalk.dim('  Tip: run `npm audit fix` to auto-apply safe upgrades.\n'));
+}
+
+// ── Report: upgrade ───────────────────────────────────────
+
+export function reportUpgrade(preview: UpgradePreview): void {
+  if (!preview.available) {
+    console.log(chalk.yellow(`\n  ${preview.reason ?? 'Upgrade preview unavailable'}\n`));
+    return;
+  }
+
+  console.log(header(`Upgrade Preview — ${preview.name}`));
+  const drift = DRIFT_COLORS[preview.drift] ?? chalk.dim;
+  console.log(`  Declared:  ${chalk.dim(preview.declared ?? '—')}`);
+  console.log(`  Installed: ${chalk.bold(preview.installed ?? '—')}`);
+  console.log(`  Drift:     ${drift(preview.drift.toUpperCase())}`);
+  console.log('');
+
+  if (preview.breakingMarkers.length > 0) {
+    console.log(chalk.red.bold('  ⚠ Breaking-change markers detected:'));
+    for (const m of preview.breakingMarkers) {
+      console.log(`    ${chalk.red('•')} ${m.slice(0, 100)}`);
+    }
+    console.log('');
+  } else {
+    console.log(chalk.green('  ✓ No obvious breaking-change markers detected.\n'));
+  }
+
+  if (preview.importers.length > 0) {
+    console.log(chalk.bold(`  Importers (${preview.importers.length}):`));
+    for (const file of preview.importers.slice(0, 15)) {
+      console.log(`    ${chalk.dim('•')} ${file}`);
+    }
+    if (preview.importers.length > 15) {
+      console.log(chalk.dim(`    … and ${preview.importers.length - 15} more`));
+    }
+    console.log('');
+  } else {
+    console.log(chalk.dim('  No direct importers found in source.\n'));
+  }
+
+  if (preview.changelogExcerpt) {
+    console.log(chalk.bold('  CHANGELOG excerpt:'));
+    const lines = preview.changelogExcerpt.split('\n').slice(0, 40);
+    for (const line of lines) console.log(`    ${chalk.dim(line)}`);
+    console.log('');
+  } else {
+    console.log(chalk.dim('  No local CHANGELOG found (node_modules/<pkg>/CHANGELOG.md).\n'));
+  }
 }
 
 function formatAuthorEmail(email: string): string {

@@ -5,6 +5,7 @@ import { check as testCheck } from '../analyzers/testCheck.js';
 import { check as architectureCheck } from '../analyzers/architectureCheck.js';
 import { check as dependencyRiskCheck } from '../analyzers/dependencyRiskCheck.js';
 import { check as securityCheck } from '../analyzers/securityCheck.js';
+import { check as unusedDependencyCheck } from '../analyzers/unusedDependencyCheck.js';
 
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
 
@@ -15,6 +16,7 @@ const checkers: Checker[] = [
   architectureCheck,
   dependencyRiskCheck,
   securityCheck,
+  unusedDependencyCheck,
 ];
 
 export async function collectIssues(rootPath: string, files: FileEntry[]): Promise<Issue[]> {

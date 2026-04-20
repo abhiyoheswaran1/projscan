@@ -1,5 +1,6 @@
 import type {
   AnalysisReport,
+  AuditReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -8,6 +9,8 @@ import type {
   DependencyReport,
   DiffResult,
   HotspotReport,
+  OutdatedReport,
+  UpgradePreview,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
@@ -331,6 +334,106 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
     lines.push(
       `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
     );
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportOutdatedMarkdown(report: OutdatedReport): void {
+  const lines: string[] = [];
+  lines.push('# Outdated Packages');
+  lines.push('');
+  if (!report.available) {
+    lines.push(`_${report.reason ?? 'unavailable'}_`);
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  const drifting = report.packages.filter((p) => p.drift !== 'same' && p.drift !== 'unknown');
+  lines.push(`**${report.totalPackages}** declared · **${drifting.length}** drifted`);
+  lines.push('');
+
+  if (drifting.length === 0) {
+    lines.push('_All declared packages match installed versions._');
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  lines.push('| Package | Scope | Declared | Installed | Drift |');
+  lines.push('| --- | --- | --- | --- | --- |');
+  for (const p of drifting) {
+    lines.push(
+      `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '—'} | ${p.drift} |`,
+    );
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportAuditMarkdown(report: AuditReport): void {
+  const lines: string[] = [];
+  lines.push('# Vulnerability Audit');
+  lines.push('');
+  if (!report.available) {
+    lines.push(`_${report.reason ?? 'audit unavailable'}_`);
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  const s = report.summary;
+  const total = s.critical + s.high + s.moderate + s.low + s.info;
+  lines.push(`**${total}** findings — ${s.critical} critical · ${s.high} high · ${s.moderate} moderate · ${s.low} low · ${s.info} info`);
+  lines.push('');
+
+  if (report.findings.length === 0) {
+    lines.push('_No known vulnerabilities._');
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  lines.push('| Severity | Package | Title | Fix |');
+  lines.push('| --- | --- | --- | --- |');
+  for (const f of report.findings) {
+    const title = f.url ? `[${f.title}](${f.url})` : f.title;
+    lines.push(`| ${f.severity} | \`${f.name}\` | ${title} | ${f.fixAvailable ? 'yes' : 'no'} |`);
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportUpgradeMarkdown(preview: UpgradePreview): void {
+  const lines: string[] = [];
+  lines.push(`# Upgrade Preview — \`${preview.name}\``);
+  lines.push('');
+  if (!preview.available) {
+    lines.push(`_${preview.reason ?? 'unavailable'}_`);
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  lines.push(`- Declared: \`${preview.declared ?? '—'}\``);
+  lines.push(`- Installed: \`${preview.installed ?? '—'}\``);
+  lines.push(`- Drift: **${preview.drift}**`);
+  lines.push('');
+
+  if (preview.breakingMarkers.length > 0) {
+    lines.push('## ⚠ Breaking-change markers');
+    for (const m of preview.breakingMarkers) lines.push(`- ${m}`);
+    lines.push('');
+  }
+
+  if (preview.importers.length > 0) {
+    lines.push(`## Importers (${preview.importers.length})`);
+    for (const file of preview.importers) lines.push(`- \`${file}\``);
+    lines.push('');
+  }
+
+  if (preview.changelogExcerpt) {
+    lines.push('## CHANGELOG excerpt');
+    lines.push('');
+    lines.push('```');
+    lines.push(preview.changelogExcerpt);
+    lines.push('```');
   }
 
   console.log(lines.join('\n'));

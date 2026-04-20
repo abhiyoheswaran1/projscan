@@ -46,15 +46,15 @@ export function showBanner(): void {
     `${head('Commands')}`,
     `${w('doctor')}     ${dim('Health check')}`,
     `${w('hotspots')}   ${dim('Risk-rank files')}`,
-    `${w('file')}       ${dim('Drill into a file')}`,
+    `${w('outdated')}   ${dim('Dep drift check')}`,
+    `${w('audit')}      ${dim('Vulnerabilities')}`,
+    `${w('upgrade')}    ${dim('Preview upgrade')}`,
     `${w('ci')}         ${dim('CI gate (SARIF)')}`,
-    `${w('diff')}       ${dim('Compare baseline')}`,
-    `${w('mcp')}        ${dim('AI agent server')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('SARIF + GitHub Action')}`,
-    `${dim('--changed-only PR mode')}`,
-    `${dim('.projscanrc config')}`,
+    `${dim('outdated / audit / upgrade')}`,
+    `${dim('Unused-dep analyzer')}`,
+    `${dim('package.json locations')}`,
   ];
 
   const leftW = 42;
@@ -124,6 +124,9 @@ export function showHelp(): void {
     { cmd: 'projscan diagram',               desc: 'Show architecture layer diagram' },
     { cmd: 'projscan structure',             desc: 'Show directory structure overview' },
     { cmd: 'projscan dependencies',          desc: 'Analyze project dependencies' },
+    { cmd: 'projscan outdated',              desc: 'Declared-vs-installed drift (offline)' },
+    { cmd: 'projscan audit',                 desc: 'Run npm audit; SARIF-ready vulnerability report' },
+    { cmd: 'projscan upgrade <pkg>',         desc: 'Preview upgrade impact (CHANGELOG + importers, offline)' },
     { cmd: 'projscan badge',                 desc: 'Generate a health badge for your README' },
     { cmd: 'projscan mcp',                   desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
   ];
