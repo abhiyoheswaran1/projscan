@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../types.js';
-import { parseSource, isParseable, type AstImport, type AstExport, type AstResult } from './ast.js';
+import type { AstImport, AstExport, AstResult } from './ast.js';
+import { getAdapterFor, listAdapters } from './languages/registry.js';
+import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 
 export interface GraphFile {
   relativePath: string;
@@ -12,30 +14,17 @@ export interface GraphFile {
   mtimeMs: number;
   parseOk: boolean;
   parseReason?: string;
+  /** Adapter id that parsed this file. */
+  adapterId?: string;
 }
 
 export interface CodeGraph {
-  /** per-file parse results, keyed by relativePath */
   files: Map<string, GraphFile>;
-  /** package name → relativePaths that import it */
   packageImporters: Map<string, Set<string>>;
-  /** relativePath → relativePaths that import it (local resolution) */
   localImporters: Map<string, Set<string>>;
-  /** symbol name → relativePaths that export it */
   symbolDefs: Map<string, Set<string>>;
-  /** scanned file count */
   scannedFiles: number;
 }
-
-const NODE_BUILTINS = new Set([
-  'assert','async_hooks','buffer','child_process','cluster','console','constants','crypto',
-  'dgram','dns','domain','events','fs','fs/promises','http','http2','https','inspector',
-  'module','net','os','path','perf_hooks','process','punycode','querystring','readline',
-  'repl','stream','string_decoder','sys','timers','tls','trace_events','tty','url','util',
-  'v8','vm','wasi','worker_threads','zlib',
-]);
-
-const RESOLUTION_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'];
 
 const MAX_FILE_SIZE = 1024 * 1024;
 
@@ -44,16 +33,26 @@ export async function buildCodeGraph(
   files: FileEntry[],
   previousGraph?: CodeGraph,
 ): Promise<CodeGraph> {
-  const parseable = files.filter((f) => isParseable(f.relativePath) && f.sizeBytes <= MAX_FILE_SIZE);
+  // Per-adapter setup (e.g. Python package-root detection).
+  const contextByAdapter = new Map<LanguageAdapter, LanguageResolveContext>();
+  for (const adapter of listAdapters()) {
+    contextByAdapter.set(adapter, await adapter.preparePackageRoots(rootPath, files));
+  }
+
+  const parseable = files
+    .map((f) => ({ file: f, adapter: getAdapterFor(f.relativePath) }))
+    .filter(
+      (x): x is { file: FileEntry; adapter: LanguageAdapter } =>
+        !!x.adapter && x.file.sizeBytes <= (x.adapter.maxFileSize ?? MAX_FILE_SIZE),
+    );
 
   const graphFiles = new Map<string, GraphFile>();
   const packageImporters = new Map<string, Set<string>>();
   const localImporters = new Map<string, Set<string>>();
   const symbolDefs = new Map<string, Set<string>>();
 
-  // Parse each file (with mtime-based reuse if we have a previous graph)
   await Promise.all(
-    parseable.map(async (file) => {
+    parseable.map(async ({ file, adapter }) => {
       const absolutePath = path.isAbsolute(file.absolutePath)
         ? file.absolutePath
         : path.resolve(rootPath, file.relativePath);
@@ -67,7 +66,7 @@ export async function buildCodeGraph(
       }
 
       const cached = previousGraph?.files.get(file.relativePath);
-      if (cached && cached.mtimeMs === mtimeMs) {
+      if (cached && cached.mtimeMs === mtimeMs && cached.adapterId === adapter.id) {
         graphFiles.set(file.relativePath, cached);
         return;
       }
@@ -79,7 +78,21 @@ export async function buildCodeGraph(
         return;
       }
 
-      const result: AstResult = parseSource(file.relativePath, content);
+      let result: AstResult;
+      try {
+        result = await adapter.parse(file.relativePath, content);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        result = {
+          ok: false,
+          reason: `adapter ${adapter.id} threw: ${msg.slice(0, 120)}`,
+          imports: [],
+          exports: [],
+          callSites: [],
+          lineCount: 0,
+        };
+      }
+
       graphFiles.set(file.relativePath, {
         relativePath: file.relativePath,
         imports: result.imports,
@@ -89,24 +102,31 @@ export async function buildCodeGraph(
         mtimeMs,
         parseOk: result.ok,
         parseReason: result.reason,
+        adapterId: adapter.id,
       });
     }),
   );
 
-  // Build derived indexes after all parsing is done
   for (const [importingFile, entry] of graphFiles) {
-    const importingDir = path.posix.dirname(importingFile);
+    const adapter = getAdapterFor(importingFile);
+    if (!adapter) continue;
+    const context = contextByAdapter.get(adapter) ?? {};
+
     for (const imp of entry.imports) {
-      const pkg = toPackageName(imp.source);
+      // Try local resolution first. For JS/TS this is a no-op on bare specifiers
+      // (resolveImport short-circuits on non-relative paths). For Python it
+      // matters: `pkg.core` could be either a local module or third-party.
+      // Local takes precedence when it resolves; otherwise fall back to pkg.
+      const resolved = adapter.resolveImport(importingFile, imp.source, graphFiles, context);
+      if (resolved) {
+        if (!localImporters.has(resolved)) localImporters.set(resolved, new Set());
+        localImporters.get(resolved)!.add(importingFile);
+        continue;
+      }
+      const pkg = adapter.toPackageName(imp.source);
       if (pkg) {
         if (!packageImporters.has(pkg)) packageImporters.set(pkg, new Set());
         packageImporters.get(pkg)!.add(importingFile);
-      } else if (imp.source.startsWith('.') || imp.source.startsWith('/')) {
-        const resolved = resolveRelative(importingDir, imp.source, graphFiles);
-        if (resolved) {
-          if (!localImporters.has(resolved)) localImporters.set(resolved, new Set());
-          localImporters.get(resolved)!.add(importingFile);
-        }
       }
     }
 
@@ -127,56 +147,13 @@ export async function buildCodeGraph(
 }
 
 /**
- * Convert an import specifier to a bare package name.
+ * Back-compat: convert a JS/TS import specifier to a bare package name.
+ * Delegates to the JavaScript adapter. For multi-language use cases, prefer
+ * `getAdapterFor(filePath).toPackageName(specifier)`.
  */
 export function toPackageName(specifier: string): string | null {
-  if (!specifier) return null;
-  if (specifier.startsWith('.') || specifier.startsWith('/')) return null;
-  if (specifier.startsWith('node:')) return null;
-  if (NODE_BUILTINS.has(specifier)) return null;
-
-  if (specifier.startsWith('@')) {
-    const segments = specifier.split('/');
-    if (segments.length < 2) return null;
-    return `${segments[0]}/${segments[1]}`;
-  }
-
-  return specifier.split('/')[0];
-}
-
-/**
- * Resolve a relative import to a file in the graph, or null if no match.
- * Supports:
- *   - direct hit  (./foo.ts → foo.ts)
- *   - extension inference (./foo → foo.ts)
- *   - barrel index (./foo → foo/index.ts)
- *   - .js that resolves to .ts under NodeNext
- */
-function resolveRelative(
-  importingDir: string,
-  specifier: string,
-  graphFiles: Map<string, GraphFile>,
-): string | null {
-  const base = path.posix.normalize(path.posix.join(importingDir, specifier));
-
-  if (graphFiles.has(base)) return base;
-
-  for (const ext of RESOLUTION_EXTS) {
-    if (graphFiles.has(base + ext)) return base + ext;
-  }
-  for (const ext of RESOLUTION_EXTS) {
-    const barrel = `${base}/index${ext}`;
-    if (graphFiles.has(barrel)) return barrel;
-  }
-
-  // .js → .ts fallback (NodeNext)
-  if (base.endsWith('.js')) {
-    const trimmed = base.slice(0, -3);
-    if (graphFiles.has(`${trimmed}.ts`)) return `${trimmed}.ts`;
-    if (graphFiles.has(`${trimmed}.tsx`)) return `${trimmed}.tsx`;
-  }
-
-  return null;
+  const jsAdapter = listAdapters().find((a) => a.id === 'javascript');
+  return jsAdapter ? jsAdapter.toPackageName(specifier) : null;
 }
 
 // ── Query API ──────────────────────────────────────────────
