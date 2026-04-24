@@ -35,6 +35,13 @@ const TS_KEYWORDS = new Set([
   'object','symbol','bigint',
 ]);
 
+const PY_KEYWORDS = new Set([
+  'def','class','self','cls','lambda','yield','pass','elif','none','true','false',
+  'and','or','not','is','in','import','from','as','with','try','except','finally',
+  'raise','assert','global','nonlocal','del','async','await','return','if','else',
+  'for','while','break','continue',
+]);
+
 export interface IndexedFile {
   relativePath: string;
   content: string[];
@@ -297,6 +304,7 @@ function keepToken(token: string): boolean {
   if (token.length < 2) return false;
   if (STOPWORDS.has(token)) return false;
   if (TS_KEYWORDS.has(token)) return false;
+  if (PY_KEYWORDS.has(token)) return false;
   return true;
 }
 

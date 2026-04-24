@@ -364,6 +364,8 @@ export interface FileInspection {
   potentialIssues: string[];
   hotspot: FileHotspot | null;
   issues: Issue[];
+  /** Adapter id (e.g. 'javascript', 'python'). Set when the graph was available. */
+  language?: string;
 }
 
 // === MCP ===

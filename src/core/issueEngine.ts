@@ -7,6 +7,10 @@ import { check as dependencyRiskCheck } from '../analyzers/dependencyRiskCheck.j
 import { check as securityCheck } from '../analyzers/securityCheck.js';
 import { check as unusedDependencyCheck } from '../analyzers/unusedDependencyCheck.js';
 import { check as deadCodeCheck } from '../analyzers/deadCodeCheck.js';
+import { check as pythonTestCheck } from '../analyzers/pythonTestCheck.js';
+import { check as pythonLinterCheck } from '../analyzers/pythonLinterCheck.js';
+import { check as pythonDependencyRiskCheck } from '../analyzers/pythonDependencyRiskCheck.js';
+import { check as pythonUnusedDependencyCheck } from '../analyzers/pythonUnusedDependencyCheck.js';
 
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
 
@@ -19,6 +23,12 @@ const checkers: Checker[] = [
   securityCheck,
   unusedDependencyCheck,
   deadCodeCheck,
+  // Python analyzers - each early-exits on zero .py files so JS/TS repos
+  // see zero new issues.
+  pythonTestCheck,
+  pythonLinterCheck,
+  pythonDependencyRiskCheck,
+  pythonUnusedDependencyCheck,
 ];
 
 export async function collectIssues(rootPath: string, files: FileEntry[]): Promise<Issue[]> {

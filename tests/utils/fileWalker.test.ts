@@ -77,4 +77,27 @@ describe('fileWalker', () => {
     expect(patterns).toContain('**/.git/**');
     expect(patterns).toContain('**/dist/**');
   });
+
+  it('should ignore Python virtualenv and cache dirs by default', async () => {
+    tmpDir = await createTmpDir();
+    await createFile(tmpDir, 'app.py', 'x = 1');
+    await createFile(tmpDir, 'venv/lib/site-packages/requests/__init__.py', '');
+    await createFile(tmpDir, '.venv/lib/site-packages/flask/__init__.py', '');
+    await createFile(tmpDir, '__pycache__/app.cpython-312.pyc', '');
+    await createFile(tmpDir, '.pytest_cache/v/cache/lastfailed', '');
+    await createFile(tmpDir, '.mypy_cache/3.12/builtins.meta.json', '');
+    await createFile(tmpDir, '.ruff_cache/0.1.0/foo.bin', '');
+    await createFile(tmpDir, 'my_pkg.egg-info/PKG-INFO', '');
+
+    const files = await walkFiles(tmpDir);
+    expect(files).toHaveLength(1);
+    expect(files[0].relativePath).toBe('app.py');
+  });
+
+  it('should expose the new Python ignore patterns via the public helper', () => {
+    const patterns = getDefaultIgnorePatterns();
+    expect(patterns).toContain('**/venv/**');
+    expect(patterns).toContain('**/__pycache__/**');
+    expect(patterns).toContain('**/*.egg-info/**');
+  });
 });

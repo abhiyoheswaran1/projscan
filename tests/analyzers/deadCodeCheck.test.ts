@@ -98,4 +98,46 @@ describe('deadCodeCheck', () => {
     const issues = await check(tmp, files);
     expect(issues.find((i) => i.id === 'unused-exports-src/helper.ts')).toBeUndefined();
   });
+
+  it('flags dead Python modules with named exports', async () => {
+    const files = [
+      await writeFile(tmp, 'pkg/__init__.py', ''),
+      await writeFile(tmp, 'pkg/used.py', 'def used():\n    pass\n'),
+      await writeFile(tmp, 'pkg/dead.py', 'def never_called():\n    pass\n\nCONSTANT = 1\n'),
+      await writeFile(tmp, 'pkg/main.py', 'from .used import used\n\nused()\n'),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-pkg/dead.py')).toBeDefined();
+    expect(issues.find((i) => i.id === 'unused-exports-pkg/used.py')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-pkg/main.py')).toBeDefined();
+  });
+
+  it('does not flag __init__.py as dead (barrel equivalent)', async () => {
+    const files = [
+      await writeFile(tmp, 'pkg/__init__.py', 'from .util import helper\n__all__ = ["helper"]\n'),
+      await writeFile(tmp, 'pkg/util.py', 'def helper():\n    pass\n'),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-pkg/__init__.py')).toBeUndefined();
+  });
+
+  it('skips pytest-convention test files', async () => {
+    const files = [
+      await writeFile(tmp, 'pkg/__init__.py', ''),
+      await writeFile(tmp, 'pkg/test_module.py', 'def test_something():\n    pass\n'),
+      await writeFile(tmp, 'pkg/util_test.py', 'def test_other():\n    pass\n'),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.filter((i) => i.id.startsWith('unused-exports-'))).toEqual([]);
+  });
+
+  it('uses "names" (not "exports") in message for Python', async () => {
+    const files = [
+      await writeFile(tmp, 'pkg/__init__.py', ''),
+      await writeFile(tmp, 'pkg/lonely.py', 'def lonely():\n    pass\n'),
+    ];
+    const issues = await check(tmp, files);
+    const dead = issues.find((i) => i.id === 'unused-exports-pkg/lonely.py');
+    expect(dead?.title).toMatch(/Unused names/);
+  });
 });

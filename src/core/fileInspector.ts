@@ -12,11 +12,15 @@ import type {
 import { scanRepository } from './repositoryScanner.js';
 import { collectIssues } from './issueEngine.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
+import { getAdapterFor } from './languages/registry.js';
+import type { CodeGraph } from './codeGraph.js';
 
 export interface InspectOptions {
   scan?: { files: FileEntry[] };
   issues?: Issue[];
   hotspots?: HotspotReport;
+  /** If provided, prefer graph-derived imports/exports over regex parsing. */
+  graph?: CodeGraph;
 }
 
 export async function inspectFile(
@@ -49,8 +53,35 @@ export async function inspectFile(
 
   const relativePath = path.relative(resolvedRoot, absolutePath).split(path.sep).join('/');
   const lines = content.split('\n');
-  const imports = extractImports(content);
-  const exports = extractExports(content);
+  const adapter = getAdapterFor(relativePath);
+  const language = adapter?.id;
+
+  // Prefer graph-derived imports/exports when available. The regex extractors
+  // in this file only understand JS/TS syntax and would emit garbage on
+  // Python. For JS/TS we still fall back to regex when no graph is provided
+  // (preserves existing behavior).
+  let imports: ImportInfo[];
+  let exports: ExportInfo[];
+  const graphFile = options.graph?.files.get(relativePath);
+  if (graphFile) {
+    imports = graphFile.imports.map((i) => ({
+      source: i.source,
+      specifiers: i.specifiers,
+      isRelative: i.source.startsWith('.') || i.source.startsWith('/'),
+    }));
+    exports = graphFile.exports.map((e) => ({
+      name: e.name,
+      type: mapExportType(e.kind),
+    }));
+  } else if (language === 'javascript') {
+    imports = extractImports(content);
+    exports = extractExports(content);
+  } else {
+    // Non-JS file with no graph: we don't have a safe extractor. Return empty
+    // rather than running the JS regex against (e.g.) Python and emitting garbage.
+    imports = [];
+    exports = [];
+  }
   const purpose = inferPurpose(absolutePath, exports);
   const potentialIssues = detectFileIssues(content, lines.length);
 
@@ -75,7 +106,24 @@ export async function inspectFile(
     potentialIssues,
     hotspot,
     issues: relatedIssues,
+    language,
   };
+}
+
+function mapExportType(kind: string): ExportInfo['type'] {
+  switch (kind) {
+    case 'function':
+    case 'class':
+    case 'variable':
+    case 'type':
+    case 'interface':
+    case 'default':
+      return kind;
+    case 'enum':
+      return 'type';
+    default:
+      return 'unknown';
+  }
 }
 
 function makeEmpty(relativePath: string, reason: string): FileInspection {

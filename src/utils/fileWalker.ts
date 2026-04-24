@@ -18,6 +18,20 @@ const DEFAULT_IGNORE = [
   '**/.cache/**',
   '**/.turbo/**',
   '**/.output/**',
+  // Python noise. Without these, a repo with a committed virtualenv
+  // or interpreter bytecode cache would scan thousands of third-party
+  // files and tank the health score.
+  '**/venv/**',
+  '**/.venv/**',
+  '**/env/**',
+  '**/.env/**',
+  '**/__pycache__/**',
+  '**/.tox/**',
+  '**/.pytest_cache/**',
+  '**/.mypy_cache/**',
+  '**/.ruff_cache/**',
+  '**/.eggs/**',
+  '**/*.egg-info/**',
 ];
 
 export async function walkFiles(rootPath: string, options?: WalkOptions): Promise<FileEntry[]> {

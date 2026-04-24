@@ -1,15 +1,21 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
-import { buildImportGraph } from '../core/importGraph.js';
-import { extractExports } from '../core/fileInspector.js';
+import { buildCodeGraph } from '../core/codeGraph.js';
+import { getAdapterFor } from '../core/languages/registry.js';
 
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
+const SOURCE_EXTENSIONS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts',
+  '.py', '.pyw',
+]);
 
-// Never flag these - they're public API by definition
+// Never flag these - they're public API by definition (JS convention).
 const PUBLIC_PATH_PREFIXES = ['src/index', 'index.'];
 
-// Or if they're explicitly named as exports in package.json
+// Names (sans extension) that are barrel-equivalents and should never be
+// flagged as dead. `index` for JS/TS, `__init__` for Python packages.
+const BARREL_BASENAMES = new Set(['index', '__init__']);
+
 interface PackageExports {
   main?: string;
   types?: string;
@@ -19,68 +25,54 @@ interface PackageExports {
 }
 
 /**
- * Flag exports that are never imported anywhere in the project. This catches:
- * - dead named exports left over from refactors
- * - utilities that are implemented but never hooked up
+ * Flag source files whose exports nothing imports. Language-agnostic: uses the
+ * code graph directly, so JS/TS/Python all get the same correctness guarantees.
  *
- * Does NOT flag:
- * - files listed as the package's public entry points (main, exports, types, bin)
- * - default exports (too many false positives - framework conventions)
- * - test files (they're not supposed to export)
- * - index files (barrels re-export for public use)
+ * Skipped:
+ *   - public package entries (main/exports/bin/types in package.json)
+ *   - test files (JS conventions + pytest `test_*.py` / `*_test.py` / `tests/`)
+ *   - barrel files (`index.*` for JS, `__init__.py` for Python)
+ *   - default-only exports (too many framework false positives)
  *
- * False-positive guard: if a file is the target of at least one import, we treat
- * all its exports as "possibly used" - the regex-based graph can't tell which
- * named export is imported via `import { ... } from './barrel'`. This keeps
- * noise low at the cost of missing some dead exports that live in used files.
+ * False-positive guard: if any import resolves to this file, we treat ALL its
+ * exports as possibly used - the graph can't always tell which named export
+ * got picked up from a barrel.
  */
 export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
   const sourceFiles = files.filter((f) => SOURCE_EXTENSIONS.has(f.extension));
   if (sourceFiles.length === 0) return [];
 
   const publicEntries = await loadPublicEntries(rootPath);
-  const graph = await buildImportGraph(rootPath, sourceFiles);
-
-  // Build a set of files that are the target of at least one relative import.
-  // A relative import specifier is resolved against its importing file's dir,
-  // so we convert each relative specifier into a candidate target path.
-  const importedTargets = new Set<string>();
-  for (const [importingFile, specifiers] of graph.byFile) {
-    const importingDir = path.posix.dirname(importingFile);
-    for (const spec of specifiers) {
-      if (!spec.startsWith('.')) continue;
-      const resolved = path.posix.normalize(path.posix.join(importingDir, spec));
-      for (const candidate of resolutionCandidates(resolved)) {
-        importedTargets.add(candidate);
-      }
-    }
-  }
+  const graph = await buildCodeGraph(rootPath, sourceFiles);
 
   const issues: Issue[] = [];
   for (const file of sourceFiles) {
     if (isTestFile(file.relativePath)) continue;
     if (isBarrelFile(file.relativePath)) continue;
     if (isPublicEntry(file.relativePath, publicEntries)) continue;
-    if (importedTargets.has(file.relativePath)) continue;
-    if (importedTargets.has(stripExtension(file.relativePath))) continue;
 
-    let content: string;
-    try {
-      content = await fs.readFile(file.absolutePath, 'utf-8');
-    } catch {
-      continue;
-    }
+    // Any importer → file is used.
+    if ((graph.localImporters.get(file.relativePath)?.size ?? 0) > 0) continue;
 
-    const exports = extractExports(content).filter((e) => e.type !== 'default' && e.name !== 'default');
-    if (exports.length === 0) continue;
+    const graphFile = graph.files.get(file.relativePath);
+    if (!graphFile || !graphFile.parseOk) continue;
+
+    const namedExports = graphFile.exports.filter(
+      (e) => e.name !== 'default' && e.kind !== 'default',
+    );
+    if (namedExports.length === 0) continue;
+
+    const adapter = getAdapterFor(file.relativePath);
+    const languageLabel = adapter?.id ?? 'file';
+    const kindLabel = languageLabel === 'python' ? 'name' : 'export';
 
     issues.push({
       id: `unused-exports-${file.relativePath}`,
-      title: `Unused exports in ${file.relativePath}`,
-      description: `${exports.length} named export${exports.length === 1 ? '' : 's'} (${exports
+      title: `Unused ${kindLabel}s in ${file.relativePath}`,
+      description: `${namedExports.length} named ${kindLabel}${namedExports.length === 1 ? '' : 's'} (${namedExports
         .slice(0, 5)
         .map((e) => e.name)
-        .join(', ')}${exports.length > 5 ? `, … +${exports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?`,
+        .join(', ')}${namedExports.length > 5 ? `, … +${namedExports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?`,
       severity: 'info',
       category: 'architecture',
       fixAvailable: false,
@@ -92,17 +84,22 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
 }
 
 function isTestFile(relativePath: string): boolean {
+  const base = path.basename(relativePath);
   return (
     relativePath.includes('.test.') ||
     relativePath.includes('.spec.') ||
     relativePath.includes('__tests__') ||
-    relativePath.startsWith('tests/')
+    relativePath.startsWith('tests/') ||
+    relativePath.includes('/tests/') ||
+    // pytest conventions
+    /^test_.+\.py$/.test(base) ||
+    /^.+_test\.py$/.test(base)
   );
 }
 
 function isBarrelFile(relativePath: string): boolean {
   const base = path.basename(relativePath, path.extname(relativePath));
-  return base === 'index';
+  return BARREL_BASENAMES.has(base);
 }
 
 function isPublicEntry(relativePath: string, publicEntries: Set<string>): boolean {
@@ -117,27 +114,6 @@ function isPublicEntry(relativePath: string, publicEntries: Set<string>): boolea
 function stripExtension(p: string): string {
   const ext = path.extname(p);
   return ext ? p.slice(0, -ext.length) : p;
-}
-
-/**
- * Return the set of possible resolution targets for a relative import
- * specifier (already joined+normalized). For './foo' we yield:
- *   foo, foo.ts, foo.tsx, foo.js, foo.jsx, foo.mjs, foo.cjs,
- *   foo/index.ts, foo/index.tsx, foo/index.js, ...
- */
-function resolutionCandidates(base: string): string[] {
-  const exts = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'];
-  const out: string[] = [base];
-  for (const ext of exts) {
-    out.push(base + ext);
-    out.push(base + '/index' + ext);
-  }
-  // Handle imports written with an explicit ".js" that actually resolve to a .ts file (ESM+NodeNext)
-  if (base.endsWith('.js')) {
-    const noJs = base.slice(0, -3);
-    out.push(noJs + '.ts', noJs + '.tsx');
-  }
-  return out;
 }
 
 async function loadPublicEntries(rootPath: string): Promise<Set<string>> {
@@ -155,7 +131,7 @@ async function loadPublicEntries(rootPath: string): Promise<Set<string>> {
     }
     collectExports(pkg.exports, entries);
   } catch {
-    // package.json missing/unreadable - don't guard, every file is a candidate
+    // package.json missing - nothing to guard
   }
   return entries;
 }

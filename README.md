@@ -190,9 +190,21 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 
 ## What It Detects
 
-**Languages**: TypeScript, JavaScript, Python, Go, Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more
+**Languages**: TypeScript, JavaScript, Python (full AST analysis for all three), plus file-level detection for Go, Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more.
 
 **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, and more
+
+### Python (0.10)
+
+Python repos now get the same treatment JS/TS has had since 0.6:
+
+- **AST-accurate import graph.** `from pkg.mod import x`, relative imports, `__init__.py` packages, `__all__`. Parsed via tree-sitter-python (wasm, offline).
+- **Python-aware analyzers.** Missing pytest / ruff / black config. Deprecated packages (nose, simplejson, pycrypto). Unused `pyproject.toml` / `requirements.txt` deps. Missing lockfile.
+- **Code search.** BM25 and semantic modes work on `.py` files out of the box.
+- **Hotspots + dead code.** Same scoring as JS/TS, with `__init__.py` and pytest test-file conventions understood.
+- **MCP tools work unchanged.** `projscan_graph`, `projscan_search`, `projscan_doctor`, `projscan_hotspots`, etc. all accept Python projects. Agents can ask "which files import `pkg.core`?" and get an answer in milliseconds.
+
+`projscan_upgrade` remains Node-only for now - a Python equivalent (reading pip / poetry metadata) is on the roadmap.
 
 **Issues**:
 - Missing linting (ESLint) and formatting (Prettier) configuration
@@ -210,7 +222,7 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 - **5,000 files** analyzed in under 1.5 seconds
 - **20,000 files** analyzed in under 3 seconds
 - **Zero network requests** - everything runs locally
-- **4 runtime dependencies** - minimal footprint
+- **6 runtime dependencies** - still minimal footprint (the two tree-sitter packages add ~640 KB of vendored wasm)
 
 ## CI/CD Integration
 

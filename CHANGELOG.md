@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-04-24
+
+### Theme - "Beyond JS"
+
+Python is now a first-class language. The import graph, code search, hotspot analysis, dead-code detection, and MCP tools all work on Python repos. JavaScript and TypeScript behavior is unchanged. This is the first step toward a multi-language projscan; Go and Rust are planned for 0.11+.
+
+### Added
+
+- **`LanguageAdapter` interface** (`src/core/languages/LanguageAdapter.ts`) - abstraction that lets every core primitive (parse, resolve imports, detect packages) be implemented per-language. The existing babel-based code is wrapped as the `javascript` adapter; the new tree-sitter-based Python implementation is the `python` adapter. Registration is extension-keyed via `src/core/languages/registry.ts`. Third parties can add new languages by implementing the interface and calling `registerAdapter`.
+- **Python parser via tree-sitter** - `web-tree-sitter` 0.26.8 runtime (wasm, pure Node; no native compile) plus a pinned `tree-sitter-python` 0.25.0 grammar. Both wasm artifacts are vendored into `dist/grammars/` at build time via `scripts/copy-wasm.mjs`, so there is zero network activity at runtime (still offline-first). First use of a `.py` file lazy-loads the grammar.
+- **Python imports / exports / resolver** - captures `import`, `from ... import`, relative imports (`from . import`, `from ..mod import`), aliased imports, `from x import *`, and conditional imports inside `try/except ImportError` blocks. `__future__` imports are filtered. Exports cover top-level `def` / `async def` / `class`, assignments to identifiers and tuple patterns, re-exports from `from .mod import x`, decorated functions/classes, and honors `__all__` as an authoritative allowlist when declared as a literal list/tuple. Underscore-prefixed names are private unless listed in `__all__`.
+- **Python package-root detection** - reads `pyproject.toml` (PEP 621, Poetry, setuptools `packages.find` / `package-dir`), `setup.py` `install_requires`, `setup.cfg` `[options] install_requires`, `requirements*.txt`. Falls back to walking `__init__.py` placement, then the repo root. Resolver handles absolute imports against detected roots and relative imports with dot-walks; probes module-as-`.py` then module-as-`/__init__.py`.
+- **Four new Python analyzers**, wired into the issue engine:
+  - `pythonTestCheck` - detects pytest / unittest / nose / ward via manifests, `pytest.ini`, `tox.ini`, `[tool.pytest.ini_options]`, or `import unittest` in test files. Emits `missing-python-test-framework` (warning) or `no-python-test-files` (info).
+  - `pythonLinterCheck` - detects ruff / flake8 / pylint and black / ruff-format / autopep8 / yapf via config files and manifests. Emits `missing-python-linter` and/or `missing-python-formatter` (warning).
+  - `pythonDependencyRiskCheck` - flags deprecated packages (nose, simplejson, pycrypto, mysql-python), soft-deprecated (python-dateutil), heavy (pandas, numpy, torch, tensorflow), unpinned requirements.txt entries, and missing lockfiles. Anchored to `pyproject.toml` / `requirements.txt` lines for GitHub Code Scanning PR annotations.
+  - `pythonUnusedDependencyCheck` - diffs declared Python deps against packages actually imported. Implicit-use allowlist covers pytest, ruff, black, mypy, coverage, wheel, build, setuptools, pip, pip-tools, twine, flake8, pylint, isort, bandit, tox, pre-commit, hatch, maturin, and related tooling. PEP 503 name normalization (case-insensitive, `_` / `-` / `.` equivalence).
+- **`DEFAULT_IGNORE` extended for Python noise** - `venv/`, `.venv/`, `env/`, `.env/`, `__pycache__/`, `.tox/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.eggs/`, `*.egg-info/`. Without this, a repo with a committed virtualenv would scan thousands of third-party files and destroy the health score.
+- **`FileInspection.language`** - new optional field exposing which adapter parsed the file.
+- **MCP `projscan_upgrade` Python fallback** - returns `available:false` with a clear "unsupported for Python" reason on Python-dominated repos rather than hitting the node_modules CHANGELOG pipeline.
+- **Public API:** `LanguageAdapter`, `LanguageResolveContext`, `getAdapterFor`, `isAdapterParseable`, `listAdapters`, `registerAdapter`, `pythonAdapter`, `javascriptAdapter`, `detectPythonProject`, `parsePyproject`, `parseRequirements`, `splitPep508`.
+
+### Changed
+
+- **`deadCodeCheck` rewritten to use `buildCodeGraph` directly** - language-agnostic. `__init__.py` is treated as a barrel equivalent (like `index.ts`); pytest test-file conventions (`test_*.py`, `*_test.py`, and files under `tests/`) are skipped. Message uses "names" for Python vs "exports" for JS/TS.
+- **`fileInspector` prefers graph-derived imports/exports** when a `CodeGraph` is supplied. Running the JS-only regex against Python source would emit garbage; now Python files without a graph return empty imports/exports instead.
+- **`codeGraph` resolution order flipped to local-first** - previously JS-optimized (relative = local, bare = package). Python's `pkg.core` could be either. Now every adapter's `resolveImport` gets a shot at local resolution before the specifier is classified as a third-party package.
+- **`indexCache` bumped to v2** - entries carry `adapterId`, so a file switching adapters (unlikely in practice) invalidates cleanly.
+- **`searchIndex` keyword filter** now includes Python keywords (`def`, `class`, `self`, `lambda`, `yield`, `pass`, `elif`, etc.) so they don't pollute BM25 scoring.
+- **README, ROADMAP, GUIDE, CONTRIBUTING** updated to reflect multi-language support. ROADMAP moves sub-file embeddings from "Planned 0.10" down to Under Consideration / 0.11+.
+
+### Runtime dependencies
+
+Added `web-tree-sitter` (~200 KB wasm runtime) and `tree-sitter-python` (~450 KB grammar). Total footprint is ~640 KB of vendored wasm. Runtime deps go from 4 to 6. No network at runtime; wasm ships in the published tarball.
+
+### Notes
+
+- **~600 tests passing** (+90 over 0.9.2). New coverage: adapter registry, Python parser/imports/exports/resolver/package-roots, manifest parsing, 4 new analyzers, mixed-language graph sanity, Python integration test, pack-smoke test for vendored wasm.
+- All JS/TS tests unchanged; zero behavior change for JS/TS projects.
+- No Python interpreter required anywhere. Tests, CI, and runtime all stay pure Node.
+
 ## [0.9.2] - 2026-04-20
 
 ### Security

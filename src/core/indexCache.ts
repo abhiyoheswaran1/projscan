@@ -4,7 +4,9 @@ import type { CodeGraph, GraphFile } from './codeGraph.js';
 
 const CACHE_DIR = '.projscan-cache';
 const CACHE_FILE = 'graph.json';
-const CACHE_VERSION = 1;
+// v2: added `adapterId` to entries for multi-language routing. v1 caches are
+// discarded on load so a file that switched adapters can't reuse a stale parse.
+const CACHE_VERSION = 2;
 
 interface SerializedGraph {
   version: number;
@@ -18,6 +20,7 @@ interface SerializedGraph {
     mtimeMs: number;
     parseOk: boolean;
     parseReason?: string;
+    adapterId?: string;
   }>;
   createdAt: string;
 }
@@ -55,6 +58,7 @@ export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | und
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,
+      adapterId: entry.adapterId,
     });
   }
 
@@ -93,6 +97,7 @@ export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promi
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,
+      adapterId: entry.adapterId,
     })),
     createdAt: new Date().toISOString(),
   };

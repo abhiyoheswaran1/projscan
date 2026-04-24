@@ -1,0 +1,9 @@
+[project]
+name = "python-small-fixture"
+version = "0.1.0"
+dependencies = [
+    "requests>=2.25.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]

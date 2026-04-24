@@ -10,23 +10,20 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-### 0.10.0 - Sub-file embeddings + richer semantic queries
-Chunk large files (per-export, per-function, per-class) so semantic search can point at specific code blocks rather than whole files. Requires a chunker and a larger disk cache; deferred until file-level search usage data shows demand.
+### 0.11.0 - Real cyclomatic complexity
+Replace the LOC proxy in the hotspot score with AST-derived cyclomatic complexity. The adapter-per-language groundwork from 0.10 makes this language-agnostic.
 
-### Real cyclomatic complexity
-Replace the LOC proxy in the hotspot score with AST-derived cyclomatic complexity.
+### More languages
+After Python (0.10), the adapter interface opens the door to Go, Rust, Java. Priority and sequencing will be driven by 0.10 adoption feedback.
+
+### Sub-file embeddings + richer semantic queries
+Chunk large files (per-export, per-function, per-class) so semantic search can point at specific code blocks rather than whole files. Requires a chunker and a larger disk cache; deferred until file-level search usage data shows demand.
 
 ### Coupling & cycle detection
 Per-file fan-in / fan-out from the code graph, circular-dependency detection.
 
-### Real Cyclomatic Complexity
-Now that AST is in place (0.6), add cyclomatic complexity per function. Replace the LOC proxy in the hotspot score.
-
-### Coupling & Cycle Detection
-Per-file fan-in / fan-out from the code graph, circular-dependency detection.
-
 ### Registry-aware Upgrade Preview
-Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm registry and diff against what's installed.
+Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm registry and diff against what's installed. A Python equivalent would read pip/poetry metadata.
 
 ---
 
@@ -41,6 +38,13 @@ Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm re
 ---
 
 ## Recently Shipped
+
+### v0.10.x - "Beyond JS"
+- Python is a first-class language. `LanguageAdapter` interface; tree-sitter-python (wasm, offline); Python parser + imports + exports + resolver; package-root detection from pyproject.toml / setup.py / setup.cfg / `__init__.py` walk.
+- Four new Python analyzers: `pythonTestCheck`, `pythonLinterCheck`, `pythonDependencyRiskCheck`, `pythonUnusedDependencyCheck`.
+- `DEFAULT_IGNORE` extended with Python noise dirs (venv, __pycache__, .tox, .pytest_cache, .mypy_cache, .ruff_cache, .eggs, *.egg-info).
+- `deadCodeCheck` widened; `fileInspector` graph-aware; `indexCache` v2; `searchIndex` filters Python keywords.
+- +2 runtime deps (web-tree-sitter + tree-sitter-python wasm, ~640 KB vendored). Zero new network activity.
 
 ### v0.9.x
 - **True Semantic Search (opt-in)** theme
