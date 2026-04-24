@@ -37,7 +37,36 @@ import {
   detectFileIssues,
 } from '../core/fileInspector.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
-import type { McpToolDefinition, AnalysisReport, FileExplanation } from '../types.js';
+import type { McpToolDefinition, AnalysisReport, FileExplanation, FileEntry } from '../types.js';
+
+/**
+ * A repo is "Python-dominated" if it has a pyproject.toml OR setup.py AND
+ * either no node_modules directory or no package.json. Used by the upgrade
+ * handler to short-circuit cleanly rather than return a confusing "not found"
+ * for a package that would never live in node_modules to begin with.
+ */
+async function isPythonDominated(rootPath: string, files: FileEntry[]): Promise<boolean> {
+  const hasPython = files.some((f) => f.extension === '.py' || f.extension === '.pyw');
+  if (!hasPython) return false;
+  const manifests = ['pyproject.toml', 'setup.py', 'setup.cfg'];
+  let hasPyManifest = false;
+  for (const m of manifests) {
+    try {
+      await fs.access(path.join(rootPath, m));
+      hasPyManifest = true;
+      break;
+    } catch {
+      // next
+    }
+  }
+  if (!hasPyManifest) return false;
+  try {
+    await fs.access(path.join(rootPath, 'package.json'));
+    return false; // has JS manifest, not Python-dominated
+  } catch {
+    return true;
+  }
+}
 
 export interface McpToolHandler {
   (args: Record<string, unknown>, rootPath: string): Promise<unknown>;
@@ -307,6 +336,25 @@ const tools: McpTool[] = [
       const pkgName = typeof args.package === 'string' ? args.package : '';
       if (!pkgName) throw new Error('package argument is required');
       const scan = await scanRepository(rootPath);
+
+      // Python-dominated repos have no node_modules CHANGELOG to slice.
+      // Short-circuit with a clear reason rather than returning
+      // available:false with a misleading "not found" message.
+      if (await isPythonDominated(rootPath, scan.files)) {
+        return {
+          available: false,
+          reason:
+            'Upgrade preview is currently supported only for Node.js packages. Python support is planned for a future release.',
+          name: pkgName,
+          declared: null,
+          installed: null,
+          latest: null,
+          drift: 'unknown',
+          breakingMarkers: [],
+          importers: [],
+        };
+      }
+
       return await previewUpgrade(rootPath, pkgName, scan.files);
     },
   },
