@@ -1,10 +1,14 @@
 {
   "minScore": 80,
   "ignore": [
-    "tests/analyzers/securityCheck.test.ts"
+    "tests/analyzers/securityCheck.test.ts",
+    "tests/fixtures/python-small/**",
+    "tests/fixtures/python-mixed/**",
+    "tests/fixtures/python-namespace-pkg/**"
   ],
   "disableRules": [
-    "large-utils-dir"
+    "large-utils-dir",
+    "unused-dependency-tree-sitter-python"
   ],
   "hotspots": {
     "limit": 10,
