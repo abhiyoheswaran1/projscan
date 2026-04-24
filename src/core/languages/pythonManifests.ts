@@ -167,7 +167,7 @@ export function parsePyproject(content: string): PythonDeclaredDep[] {
   }
 
   // [tool.poetry.dependencies] / [tool.poetry.group.<name>.dependencies]
-  const poetryMainRe = /\[tool\.poetry\.dependencies\]([\s\S]*?)(?=\n\[|\n\Z|$)/;
+  const poetryMainRe = /\[tool\.poetry\.dependencies\]([\s\S]*?)(?=\n\[|$)/;
   const poetryMainMatch = poetryMainRe.exec(content);
   if (poetryMainMatch) {
     const offset = offsetToLine(content, poetryMainMatch.index);
@@ -176,7 +176,7 @@ export function parsePyproject(content: string): PythonDeclaredDep[] {
       out.push({ name, versionSpec, source: 'pyproject.toml', line, scope: 'main' });
     }
   }
-  const poetryGroupRe = /\[tool\.poetry\.group\.[\w.-]+\.dependencies\]([\s\S]*?)(?=\n\[|\n\Z|$)/g;
+  const poetryGroupRe = /\[tool\.poetry\.group\.[\w.-]+\.dependencies\]([\s\S]*?)(?=\n\[|$)/g;
   let gm: RegExpExecArray | null;
   while ((gm = poetryGroupRe.exec(content))) {
     const offset = offsetToLine(content, gm.index);
@@ -192,7 +192,7 @@ function extractPyprojectRoots(content: string): string[] {
   const roots: string[] = [];
 
   // [tool.setuptools.packages.find] where = ['src']
-  const findWhereRe = /\[tool\.setuptools\.packages\.find\]([\s\S]*?)(?=\n\[|\n\Z|$)/;
+  const findWhereRe = /\[tool\.setuptools\.packages\.find\]([\s\S]*?)(?=\n\[|$)/;
   const findMatch = findWhereRe.exec(content);
   if (findMatch) {
     const whereRe = /where\s*=\s*\[\s*([^\]]+?)\s*\]/;
@@ -313,7 +313,7 @@ function parseSetupPyInstallRequires(content: string): PythonDeclaredDep[] {
 
 function parseSetupCfg(content: string): PythonDeclaredDep[] {
   const out: PythonDeclaredDep[] = [];
-  const m = /\[options\][\s\S]*?install_requires\s*=\s*([\s\S]*?)(?=\n\[|\n\n|\n\Z|$)/.exec(content);
+  const m = /\[options\][\s\S]*?install_requires\s*=\s*([\s\S]*?)(?=\n\[|\n\n|$)/.exec(content);
   if (!m) return out;
   const baseLine = offsetToLine(content, m.index + m[0].indexOf('install_requires'));
   const lines = m[1].split('\n');
