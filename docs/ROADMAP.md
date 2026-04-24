@@ -10,30 +10,33 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-### 0.11.0 - Real cyclomatic complexity
-Replace the LOC proxy in the hotspot score with AST-derived cyclomatic complexity. The adapter-per-language groundwork from 0.10 makes this language-agnostic.
+This is the six-month plan coming out of the 0.10 product review. Each version is a themed release with a single headline bet. Order is deliberate: signal quality first (0.11), then the PR-native use case that agents actually need (0.12), then enterprise ceilings (0.13 / 0.14), then a second language proof (0.15).
 
-### More languages
-After Python (0.10), the adapter interface opens the door to Go, Rust, Java. Priority and sequencing will be driven by 0.10 adoption feedback.
+### 0.11.0 - "Signal Quality"
+Replace the LOC proxy in the hotspot score with **AST-derived cyclomatic complexity**. Add **coupling & cycle detection** (per-file fan-in / fan-out from the code graph, circular-dependency flagging). The adapter-per-language work from 0.10 makes both language-agnostic. Low effort, high signal; collects the check on the AST investment.
 
-### Sub-file embeddings + richer semantic queries
-Chunk large files (per-export, per-function, per-class) so semantic search can point at specific code blocks rather than whole files. Requires a chunker and a larger disk cache; deferred until file-level search usage data shows demand.
+### 0.12.0 - "PR Native"
+Ship a new MCP tool + CLI command that answers **"what changed structurally in this PR?"** Not a text diff - an AST-diff: functions added/removed, export renames, import surface changes, callsite shifts. Positions projscan as the agent's eyes during code review. Strongest under-built agent use case.
 
-### Coupling & cycle detection
-Per-file fan-in / fan-out from the code graph, circular-dependency detection.
+### 0.13.0 - "Monorepo"
+**Workspace awareness.** Detect pnpm / npm / yarn workspaces, Nx, Turborepo, Lerna. Per-package scoping on every command. Cross-package graph edges (an import from package A's src into package B's published entry). Removes the single-package ceiling; becomes credible at mid-size companies.
 
-### Registry-aware Upgrade Preview
-Today's `projscan upgrade` is offline. Optionally fetch `latest` from the npm registry and diff against what's installed. A Python equivalent would read pip/poetry metadata.
+### 0.14.0 - "Observability"
+**Opt-in, privacy-preserving telemetry.** Tool-call counts, latency histograms, zero source content ever. Stops the guessing - after 0.14 we make data-driven calls instead of intuition-driven ones. Must be easy to turn on and off; off by default; never blocking.
 
----
+### 0.15.0 - "Second Language"
+**Add Go support** via tree-sitter-go (same adapter pattern as Python). Serves two purposes: unlocks the Go backend market, and proves the `LanguageAdapter` interface scales to a second non-JS language. Unblocks Rust / Java as follow-ons.
 
-## Under Consideration
+### Backlog / under consideration
 
-- **Monorepo support** - scan multiple packages in a single workspace
-- **HTML report export** - generate a standalone HTML health report
-- **Watch mode** - re-scan on file changes
-- **Plugin API** - third-party analyzers and reporters
-- **Real cyclomatic complexity** - AST-based, replacing the LOC proxy
+- **Sub-file embeddings** - chunk large files (per-export, per-function, per-class) so semantic search points at specific code blocks. Deferred until 0.14 telemetry shows demand.
+- **Registry-aware upgrade preview** - `projscan upgrade <pkg>` optionally fetches `latest` from npm registry; Python equivalent reads pip/poetry metadata.
+- **Fix generation via the driving agent** - `projscan fix` today is rule-based; extend with `projscan_fix_suggest` that returns a prompt the agent can act on (agent-native fixes without embedding an LLM in projscan itself).
+- **SAST-style security rules** - extend securityCheck with AST-based path-traversal, SQL-injection, XSS rules. Careful - do not turn into a Snyk competitor.
+- **Plugin API** - third-party analyzers and reporters. Needs multi-language + monorepo stable first.
+- **Multi-repo dashboard / SaaS** - upload baselines, team health trends, org-wide hotspots. Needs telemetry (0.14) first.
+- **HTML report export** - standalone HTML health report.
+- **Watch mode** - re-scan on file changes.
 
 ---
 

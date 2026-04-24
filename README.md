@@ -222,7 +222,7 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 - **5,000 files** analyzed in under 1.5 seconds
 - **20,000 files** analyzed in under 3 seconds
 - **Zero network requests** - everything runs locally
-- **6 runtime dependencies** - still minimal footprint (the two tree-sitter packages add ~640 KB of vendored wasm)
+- **8 runtime dependencies** - still minimal (the two tree-sitter packages added in 0.10 bring ~640 KB of vendored wasm)
 
 ## CI/CD Integration
 
