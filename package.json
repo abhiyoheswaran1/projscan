@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.9.2",
-  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing, code graph, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
+  "version": "0.10.0",
+  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, and Python; code graph, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,7 +33,10 @@
     "analyzer",
     "project-scanner",
     "dev-tools",
-    "dx"
+    "dx",
+    "python",
+    "tree-sitter",
+    "multi-language"
   ],
   "author": "Abhi Yoheswaran",
   "license": "MIT",
