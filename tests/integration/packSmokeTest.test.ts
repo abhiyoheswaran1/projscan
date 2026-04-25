@@ -19,6 +19,8 @@ describe('npm pack smoke test', () => {
     expect(existsSync(path.join(distGrammars, 'web-tree-sitter.wasm'))).toBe(true);
     expect(existsSync(path.join(distGrammars, 'tree-sitter-python.wasm'))).toBe(true);
     expect(existsSync(path.join(distGrammars, 'tree-sitter-go.wasm'))).toBe(true);
+    expect(existsSync(path.join(distGrammars, 'tree-sitter-java.wasm'))).toBe(true);
+    expect(existsSync(path.join(distGrammars, 'tree-sitter-ruby.wasm'))).toBe(true);
     // 0.11+: tool manifest for external consumers (e.g. website docs page).
     expect(existsSync(path.join(repoRoot, 'dist', 'tool-manifest.json'))).toBe(true);
 
@@ -38,6 +40,8 @@ describe('npm pack smoke test', () => {
       expect(listing).toContain('package/dist/grammars/web-tree-sitter.wasm');
       expect(listing).toContain('package/dist/grammars/tree-sitter-python.wasm');
       expect(listing).toContain('package/dist/grammars/tree-sitter-go.wasm');
+      expect(listing).toContain('package/dist/grammars/tree-sitter-java.wasm');
+      expect(listing).toContain('package/dist/grammars/tree-sitter-ruby.wasm');
       expect(listing).toContain('package/dist/tool-manifest.json');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });

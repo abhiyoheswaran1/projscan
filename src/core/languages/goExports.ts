@@ -12,7 +12,7 @@ interface TsNode {
  * Extract package-level "exports" from a Go AST.
  *
  * Go's export rule is mechanical: an identifier is exported iff it starts
- * with an uppercase letter. We scan top-level declarations only — local
+ * with an uppercase letter. We scan top-level declarations only - local
  * symbols inside functions are not part of the package surface.
  *
  * Captured forms:

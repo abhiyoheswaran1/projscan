@@ -93,7 +93,7 @@ export async function analyzeHotspots(
     const coverageValue = typeof coverage === 'number' ? coverage : null;
 
     // Prefer AST cyclomatic complexity when the graph parsed this file.
-    // Files in the graph but with parseOk:false fall back to LOC too — a
+    // Files in the graph but with parseOk:false fall back to LOC too - a
     // failed parse means we can't trust the (zero) CC value.
     const graphEntry = options.graph?.files.get(file.relativePath);
     const cc = graphEntry?.parseOk ? graphEntry.cyclomaticComplexity : null;
@@ -476,7 +476,7 @@ function buildReasons(i: ReasonInputs): string[] {
   else if (i.churn >= 8) reasons.push(`frequent changes (${i.churn} commits)`);
   else if (i.churn > 0) reasons.push(`${i.churn} commit${i.churn === 1 ? '' : 's'}`);
 
-  // When CC is available, prefer it over raw line count — it's the more
+  // When CC is available, prefer it over raw line count - it's the more
   // honest signal. Fall back to "large file (lines)" for non-AST languages.
   if (typeof i.complexity === 'number') {
     if (i.complexity >= 30) reasons.push(`high complexity (CC ${i.complexity})`);

@@ -17,14 +17,14 @@ export interface GoProjectInfo {
  * repository root first, then any directory that contains at least one .go
  * file (handles nested modules / examples directories).
  *
- * Returns null if no go.mod exists — Go files outside any module are valid
+ * Returns null if no go.mod exists - Go files outside any module are valid
  * (e.g. snippets) but their imports can't be resolved to local files.
  */
 export async function detectGoProject(
   rootPath: string,
   files: FileEntry[],
 ): Promise<GoProjectInfo | null> {
-  // 1) Try repo root first — by far the most common case.
+  // 1) Try repo root first - by far the most common case.
   const rootGoMod = await readGoMod(path.join(rootPath, 'go.mod'));
   if (rootGoMod) return { modulePath: rootGoMod, moduleRoot: rootPath };
 

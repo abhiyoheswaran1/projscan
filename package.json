@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.11.0",
-  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, and Go; code graph, AST cyclomatic complexity, coupling + cycle detection, structural PR diff, monorepo workspace awareness, opt-in telemetry, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
+  "version": "0.12.0",
+  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, and Ruby; code graph, AST cyclomatic complexity, coupling + cycle detection, structural PR diff, monorepo workspace awareness with per-package outdated, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "lint": "eslint src/",
     "format": "prettier --write .",
+    "bench": "node scripts/bench.mjs",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -59,7 +60,9 @@
     "fast-glob": "^3.3.2",
     "ora": "^8.1.0",
     "tree-sitter-go": "^0.25.0",
+    "tree-sitter-java": "^0.23.5",
     "tree-sitter-python": "^0.25.0",
+    "tree-sitter-ruby": "^0.23.1",
     "web-tree-sitter": "^0.26.8"
   },
   "peerDependencies": {

@@ -8,8 +8,6 @@ import { getResourceDefinitions, readResource } from './resources.js';
 import { applyBudget } from './tokenBudget.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
 import { toContentBlocks } from './chunker.js';
-import { recordToolCall } from '../core/telemetry.js';
-import { loadConfig } from '../utils/config.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
@@ -128,7 +126,6 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
           if (!handler) {
             return fail(id, JSONRPC_ERROR.MethodNotFound, `Unknown tool: ${name}`);
           }
-          const startedAt = Date.now();
           try {
             const args = params.arguments ?? {};
 
@@ -174,17 +171,12 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
               ? toContentBlocks(payload)
               : [{ type: 'text', text: safeStringify(payload) }];
 
-            // Telemetry: opt-in, fire-and-forget, never blocks the response.
-            void recordTelemetrySafe(name, Date.now() - startedAt, true, undefined, rootPath);
-
             return ok(id, {
               content,
               isError: false,
             });
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            const code = err instanceof Error ? err.name : 'Error';
-            void recordTelemetrySafe(name, Date.now() - startedAt, false, code, rootPath);
             return ok(id, {
               content: [{ type: 'text', text: `Error: ${message}` }],
               isError: true,
@@ -306,27 +298,6 @@ function attachBudgetSidecar(value: unknown, info: BudgetInfo): unknown {
     return { value, _budget: info };
   }
   return { ...(value as Record<string, unknown>), _budget: info };
-}
-
-/**
- * Wraps recordToolCall with config loading. Telemetry is opt-in via
- * .projscanrc telemetry block (or PROJSCAN_TELEMETRY env). Best-effort: if
- * loading config or writing the event throws, we swallow it — telemetry must
- * never break a tool call.
- */
-async function recordTelemetrySafe(
-  name: string,
-  durationMs: number,
-  ok: boolean,
-  errorCode: string | undefined,
-  rootPath: string,
-): Promise<void> {
-  try {
-    const { config } = await loadConfig(rootPath);
-    await recordToolCall(name, durationMs, ok, errorCode, config.telemetry);
-  } catch {
-    // intentionally silent
-  }
 }
 
 export async function runMcpServer(rootPath: string): Promise<void> {

@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
-import { buildImportGraph } from '../core/importGraph.js';
+import { buildImportGraph, toPackageName } from '../core/importGraph.js';
+import { detectWorkspaces } from '../core/monorepo.js';
 import { findDependencyLines } from '../utils/packageJsonLocator.js';
 
 /**
@@ -72,14 +73,71 @@ function isImplicitlyUsed(pkg: string): boolean {
 }
 
 export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
-  const pkgPath = path.join(rootPath, 'package.json');
+  // Build the import graph once across the whole repo. We slice it per-package
+  // below for workspace-aware mode.
+  const fullGraph = await buildImportGraph(rootPath, files);
+
+  // Workspace detection. When the repo is a single package (kind 'none') or a
+  // root-only manifest with no real workspaces, we degrade to the original
+  // single-manifest path for full backward compatibility.
+  const ws = await detectWorkspaces(rootPath);
+  const realWorkspaces = ws.packages.filter((p) => !p.isRoot);
+  const isMonorepo = ws.kind !== 'none' && realWorkspaces.length > 0;
+
+  if (!isMonorepo) {
+    return await checkOnePackage(rootPath, '', fullGraph, files);
+  }
+
+  // Workspace-aware: check the root manifest (if any) AND each workspace package.
+  // Each gets its own deps-vs-imports comparison, scoped to the files that
+  // belong to that package by longest-prefix path matching.
+  const issues: Issue[] = [];
+  const rootPkg = ws.packages.find((p) => p.isRoot);
+  if (rootPkg) {
+    // Root manifest: only consider files NOT under any workspace package dir.
+    const claimedPrefixes = realWorkspaces
+      .map((p) => p.relativePath)
+      .filter((p) => p.length > 0);
+    const rootFiles = files.filter(
+      (f) => !claimedPrefixes.some((prefix) => f.relativePath.startsWith(prefix + '/')),
+    );
+    issues.push(...(await checkOnePackage(rootPath, '', fullGraph, rootFiles)));
+  }
+
+  for (const wp of realWorkspaces) {
+    const pkgDir = path.join(rootPath, wp.relativePath);
+    const prefix = wp.relativePath + '/';
+    const wpFiles = files.filter((f) => f.relativePath === wp.relativePath || f.relativePath.startsWith(prefix));
+    issues.push(...(await checkOnePackage(pkgDir, wp.relativePath, fullGraph, wpFiles)));
+  }
+
+  return issues;
+}
+
+/**
+ * Run the unused-dependency check against one package.json.
+ *
+ * @param packageDir absolute path to the directory containing package.json.
+ * @param locationPrefix path prefix (relative to repo root) used in issue
+ *   `locations.file`. Empty string for the repo root; e.g. `packages/foo` for
+ *   a workspace package - produces locations like `packages/foo/package.json`.
+ * @param fullGraph repo-wide import graph (built once and reused).
+ * @param scopedFiles file list this manifest is responsible for. We slice the
+ *   global graph down to imports from these files only.
+ */
+async function checkOnePackage(
+  packageDir: string,
+  locationPrefix: string,
+  fullGraph: Awaited<ReturnType<typeof buildImportGraph>>,
+  scopedFiles: FileEntry[],
+): Promise<Issue[]> {
+  const pkgPath = path.join(packageDir, 'package.json');
   let raw: string;
   try {
     raw = await fs.readFile(pkgPath, 'utf-8');
   } catch {
     return [];
   }
-
   let pkg: Record<string, unknown>;
   try {
     pkg = JSON.parse(raw) as Record<string, unknown>;
@@ -92,38 +150,41 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   const allDeclared = new Set([...Object.keys(dependencies), ...Object.keys(devDependencies)]);
   if (allDeclared.size === 0) return [];
 
-  const graph = await buildImportGraph(rootPath, files);
+  // Project per-package usage: walk only the files this manifest covers and
+  // collect their external package names from the full graph's byFile map.
+  const usedPackages = new Set<string>();
+  for (const f of scopedFiles) {
+    const specifiers = fullGraph.byFile.get(f.relativePath);
+    if (!specifiers) continue;
+    for (const spec of specifiers) {
+      const name = toPackageName(spec);
+      if (name) usedPackages.add(name);
+    }
+  }
 
-  // Also treat packages invoked from package.json scripts as used.
-  // e.g., "build": "tsc" means we should not flag typescript.
   const scriptUsedBinaries = extractScriptBinaries(pkg);
-
-  const locations = await findDependencyLines(rootPath);
+  const locations = await findDependencyLines(packageDir);
+  const locationFile = locationPrefix ? `${locationPrefix}/package.json` : 'package.json';
   const unused: Issue[] = [];
 
   for (const name of allDeclared) {
-    if (graph.externalPackages.has(name)) continue;
+    if (usedPackages.has(name)) continue;
     if (isImplicitlyUsed(name)) continue;
     if (scriptUsedBinaries.has(name)) continue;
-    // skip scoped bin lookups (e.g., "npx some-tool") - covered by scriptUsedBinaries
 
     const isDev = name in devDependencies;
     const line = locations?.lineOfDependency.get(name);
+    const inWorkspace = locationPrefix ? ` (workspace: ${locationPrefix})` : '';
 
     unused.push({
-      id: `unused-dependency-${name}`,
-      title: `Unused ${isDev ? 'dev' : ''} dependency: ${name}`.replace('  ', ' ').trim(),
-      description: `The package "${name}" is declared in package.json but never imported from source. If it's used only in package.json scripts or as a plugin, add it to the projscan allowlist via .projscanrc → disableRules.`,
+      id: locationPrefix ? `unused-dependency-${locationPrefix}-${name}` : `unused-dependency-${name}`,
+      title: `Unused ${isDev ? 'dev' : ''} dependency: ${name}${inWorkspace}`.replace('  ', ' ').trim(),
+      description: `The package "${name}" is declared in ${locationFile} but never imported from source files under that package. If it's used only in package.json scripts or as a plugin, add it to the projscan allowlist via .projscanrc → disableRules.`,
       severity: isDev ? 'info' : 'warning',
       category: 'dependencies',
       fixAvailable: false,
       locations: locations
-        ? [
-            {
-              file: 'package.json',
-              line: line ?? 1,
-            },
-          ]
+        ? [{ file: locationFile, line: line ?? 1 }]
         : undefined,
     });
   }

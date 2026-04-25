@@ -67,4 +67,88 @@ describe('detectOutdated', () => {
     expect(missing?.installed).toBeNull();
     expect(missing?.drift).toBe('unknown');
   });
+
+  describe('workspace-aware (monorepo)', () => {
+    it('attributes deps to each workspace package', async () => {
+      // Root manifest declares workspaces; each workspace has its own deps.
+      await writeJson(path.join(tmp, 'package.json'), {
+        name: 'root',
+        workspaces: ['packages/*'],
+        dependencies: { 'root-only': '^1.0.0' },
+      });
+      await writeJson(path.join(tmp, 'packages/a/package.json'), {
+        name: 'pkg-a',
+        dependencies: { 'a-dep': '^1.0.0' },
+      });
+      await writeJson(path.join(tmp, 'packages/b/package.json'), {
+        name: 'pkg-b',
+        dependencies: { 'b-dep': '^2.0.0' },
+      });
+
+      const workspaces = {
+        kind: 'npm' as const,
+        packages: [
+          { name: 'root', relativePath: '', isRoot: true },
+          { name: 'pkg-a', relativePath: 'packages/a', isRoot: false },
+          { name: 'pkg-b', relativePath: 'packages/b', isRoot: false },
+        ],
+      };
+
+      const report = await detectOutdated(tmp, { workspaces });
+      expect(report.available).toBe(true);
+      expect(report.totalPackages).toBe(3);
+
+      const rootDep = report.packages.find((p) => p.name === 'root-only');
+      const aDep = report.packages.find((p) => p.name === 'a-dep');
+      const bDep = report.packages.find((p) => p.name === 'b-dep');
+
+      expect(rootDep?.workspace).toBe('root');
+      expect(aDep?.workspace).toBe('pkg-a');
+      expect(bDep?.workspace).toBe('pkg-b');
+
+      expect(report.byWorkspace).toBeDefined();
+      expect(report.byWorkspace).toHaveLength(3);
+    });
+
+    it('workspaceFilter limits results to one package', async () => {
+      await writeJson(path.join(tmp, 'package.json'), {
+        name: 'root',
+        workspaces: ['packages/*'],
+      });
+      await writeJson(path.join(tmp, 'packages/a/package.json'), {
+        name: 'pkg-a',
+        dependencies: { 'a-dep': '^1.0.0' },
+      });
+      await writeJson(path.join(tmp, 'packages/b/package.json'), {
+        name: 'pkg-b',
+        dependencies: { 'b-dep': '^2.0.0' },
+      });
+
+      const workspaces = {
+        kind: 'npm' as const,
+        packages: [
+          { name: 'root', relativePath: '', isRoot: true },
+          { name: 'pkg-a', relativePath: 'packages/a', isRoot: false },
+          { name: 'pkg-b', relativePath: 'packages/b', isRoot: false },
+        ],
+      };
+
+      const report = await detectOutdated(tmp, { workspaces, workspaceFilter: 'pkg-a' });
+      expect(report.totalPackages).toBe(1);
+      expect(report.packages[0].workspace).toBe('pkg-a');
+      expect(report.packages[0].name).toBe('a-dep');
+    });
+
+    it('falls back to single-package mode when workspaces.kind is none', async () => {
+      await writeJson(path.join(tmp, 'package.json'), {
+        dependencies: { foo: '^1.0.0' },
+      });
+
+      const workspaces = { kind: 'none' as const, packages: [] };
+      const report = await detectOutdated(tmp, { workspaces });
+      expect(report.totalPackages).toBe(1);
+      expect(report.byWorkspace).toBeUndefined();
+      expect(report.packages[0].workspace).toBeUndefined();
+    });
+  });
 });

@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractGoImports } from './goImports.js';
 import { extractGoExports } from './goExports.js';
 import { extractGoCyclomatic } from './goCyclomatic.js';
+import { extractGoCallSites } from './goCallSites.js';
 import { detectGoProject, type GoProjectInfo } from './goManifests.js';
 import type {
   GraphFileLike,
@@ -25,7 +26,7 @@ export const goAdapter: LanguageAdapter = {
   id: 'go',
   extensions: GO_EXTENSIONS,
   sourceExtensions: GO_EXTENSIONS,
-  // Go has no analogue to JS `index.ts` or Python `__init__.py` — every .go
+  // Go has no analogue to JS `index.ts` or Python `__init__.py` - every .go
   // file in a directory contributes to the same package. Leave empty.
   barrelBasenames: new Set(),
   maxFileSize: MAX_GO_FILE,
@@ -49,11 +50,12 @@ export const goAdapter: LanguageAdapter = {
       const imports = extractGoImports(root);
       const exports = extractGoExports(root as Parameters<typeof extractGoExports>[0]);
       const cyclomaticComplexity = extractGoCyclomatic(root as Parameters<typeof extractGoCyclomatic>[0]);
+      const callSites = extractGoCallSites(root as Parameters<typeof extractGoCallSites>[0]);
       return {
         ok: true,
         imports,
         exports,
-        callSites: [],
+        callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
       };
@@ -82,8 +84,8 @@ export const goAdapter: LanguageAdapter = {
 
   toPackageName(source: string): string | null {
     if (!source) return null;
-    // Standard library imports like "fmt", "net/http" — package = first segment.
-    // Third-party like "github.com/foo/bar" — package = whole path.
+    // Standard library imports like "fmt", "net/http" - package = first segment.
+    // Third-party like "github.com/foo/bar" - package = whole path.
     if (source.startsWith('.')) return null; // local
     if (source.includes('/')) return source; // module path; treat as a single "package"
     return source;
@@ -135,7 +137,7 @@ function resolveGoImport(
 
 /**
  * Resolve an import to ANY .go file inside the target directory. Go packages
- * are directory-scoped — a single file is enough to anchor the edge in the
+ * are directory-scoped - a single file is enough to anchor the edge in the
  * graph. We pick the lexicographically first match for determinism.
  */
 function findPackageDir(

@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractPythonImports } from './pythonImports.js';
 import { extractPythonExports } from './pythonExports.js';
 import { extractPythonCyclomatic } from './pythonCyclomatic.js';
+import { extractPythonCallSites } from './pythonCallSites.js';
 import { detectPythonProject } from './pythonManifests.js';
 import type {
   GraphFileLike,
@@ -54,11 +55,14 @@ export const pythonAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractPythonCyclomatic(
         tree.rootNode as unknown as Parameters<typeof extractPythonCyclomatic>[0],
       );
+      const callSites = extractPythonCallSites(
+        tree.rootNode as unknown as Parameters<typeof extractPythonCallSites>[0],
+      );
       return {
         ok: true,
         imports,
         exports,
-        callSites: [],
+        callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
       };

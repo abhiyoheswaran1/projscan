@@ -30,7 +30,7 @@ export async function detectWorkspaces(rootPath: string): Promise<WorkspaceInfo>
     const patterns = readNpmYarnPatterns(rootPkg);
     if (patterns && patterns.length > 0) {
       const packages = await collectPackages(rootPath, patterns, rootPkg);
-      // Distinguish yarn from npm if a yarn.lock is present — affects nothing
+      // Distinguish yarn from npm if a yarn.lock is present - affects nothing
       // about discovery, just labelling.
       const kind: WorkspaceKind = (await fileExists(path.join(rootPath, 'yarn.lock')))
         ? 'yarn'
@@ -39,7 +39,7 @@ export async function detectWorkspaces(rootPath: string): Promise<WorkspaceInfo>
     }
   }
 
-  // 3) Lerna — its config has an explicit `packages` field with globs.
+  // 3) Lerna - its config has an explicit `packages` field with globs.
   const lernaPath = path.join(rootPath, 'lerna.json');
   if (await fileExists(lernaPath)) {
     const patterns = (await readJsonField<string[]>(lernaPath, 'packages')) ?? ['packages/*'];
@@ -49,7 +49,7 @@ export async function detectWorkspaces(rootPath: string): Promise<WorkspaceInfo>
     }
   }
 
-  // 4) Nx — workspaceLayout supplies appsDir/libsDir; project.json files
+  // 4) Nx - workspaceLayout supplies appsDir/libsDir; project.json files
   // anywhere identify packages. Older Nx variants used workspace.json (a
   // single file enumerating projects); we read its `projects` map too.
   const nxJsonPath = path.join(rootPath, 'nx.json');
@@ -62,7 +62,7 @@ export async function detectWorkspaces(rootPath: string): Promise<WorkspaceInfo>
     }
   }
 
-  // 5) Turbo — turbo.json defines task pipelines, NOT workspace layout.
+  // 5) Turbo - turbo.json defines task pipelines, NOT workspace layout.
   // Turbo always rides on top of npm/yarn/pnpm workspaces (handled above).
   // If we get here with a turbo.json but no workspace declaration, treat it
   // as a marker and fall back to the packages/* convention so we still
@@ -126,7 +126,7 @@ async function readPnpmPackages(manifestPath: string): Promise<string[]> {
       if (m) {
         patterns.push(m[1]);
       } else if (line.length > 0 && !line.startsWith(' ') && !line.startsWith('\t')) {
-        // New top-level key — packages section ended.
+        // New top-level key - packages section ended.
         inPackages = false;
       }
     }

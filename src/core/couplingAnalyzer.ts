@@ -14,7 +14,7 @@ import { findPackageForFile } from './monorepo.js';
  *
  * Fan-in is read directly from `graph.localImporters` (built during graph
  * construction). Fan-out is the count of distinct local files this file
- * imports — derived by inverting `localImporters` once. Instability is Bob
+ * imports - derived by inverting `localImporters` once. Instability is Bob
  * Martin's I = Ce / (Ca + Ce); a file with zero in/out gets 0.
  *
  * Cycles are strongly-connected components of size >= 2 in the directed
@@ -46,7 +46,7 @@ export function computeCoupling(
     files.push({ relativePath, fanIn, fanOut, instability });
   }
 
-  // Stable order: by fanIn desc, then path asc — gives the most-depended-on
+  // Stable order: by fanIn desc, then path asc - gives the most-depended-on
   // files first, matching how a reviewer scans for coupling risk.
   files.sort((a, b) => {
     if (b.fanIn !== a.fanIn) return b.fanIn - a.fanIn;
@@ -142,7 +142,7 @@ function findCycles(adj: Map<string, Set<string>>): ImportCycle[] {
           lowlink.set(top.node, Math.min(lowlink.get(top.node)!, index.get(w)!));
         }
       } else {
-        // All successors processed — finalize this frame.
+        // All successors processed - finalize this frame.
         if (lowlink.get(top.node) === index.get(top.node)) {
           const component: string[] = [];
           while (true) {

@@ -16,7 +16,7 @@ interface TsNode {
  *   communication_case  +1 (each non-default arm of a select)
  *   binary_expression with operator `&&` or `||`  +1 each
  *
- * Goroutine `go` and `defer` are NOT branches — they don't count.
+ * Goroutine `go` and `defer` are NOT branches - they don't count.
  */
 export function extractGoCyclomatic(root: TsNode): number {
   let decisions = 0;
@@ -42,7 +42,7 @@ function isDecisionPoint(n: TsNode): boolean {
       // application, this is precise.
       const t = n.text;
       // Use small windows: an `&&` or `||` appears as two ASCII chars.
-      // No false positives possible — strings are themselves leaf nodes
+      // No false positives possible - strings are themselves leaf nodes
       // (interpreted_string_literal) and would parent-up through other paths.
       // Still, guard against operators inside string literals by checking
       // that this particular binary_expression's first/second child is not

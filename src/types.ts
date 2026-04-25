@@ -216,6 +216,8 @@ export interface OutdatedPackage {
   latest: string | null;
   drift: SemverDrift;
   scope: 'dependency' | 'devDependency';
+  /** Workspace package this dep was declared in. Empty/undefined when not a monorepo. */
+  workspace?: string;
 }
 
 export interface OutdatedReport {
@@ -223,6 +225,8 @@ export interface OutdatedReport {
   reason?: string;
   totalPackages: number;
   packages: OutdatedPackage[];
+  /** Per-workspace breakdown when scanning a monorepo. Empty for single-package repos. */
+  byWorkspace?: Array<{ workspace: string; relativePath: string; total: number }>;
 }
 
 export type AuditSeverity = 'critical' | 'high' | 'moderate' | 'low' | 'info';
@@ -309,12 +313,6 @@ export interface ProjscanConfig {
   ignore?: string[];
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
-  /** Opt-in telemetry (0.14). Off unless explicitly enabled. */
-  telemetry?: {
-    enabled?: boolean;
-    /** Path or "stderr". Default: ~/.projscan/telemetry.jsonl. */
-    sink?: string;
-  };
 }
 
 export interface LoadedConfig {

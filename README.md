@@ -190,7 +190,7 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 
 ## What It Detects
 
-**Languages**: TypeScript, JavaScript, Python, and Go (full AST analysis for all four), plus file-level detection for Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more.
+**Languages**: TypeScript, JavaScript, Python, Go, Java, and Ruby (full AST analysis for all six), plus file-level detection for Rust, C/C++, PHP, Swift, Kotlin, and 20+ more.
 
 **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, and more
 
@@ -206,35 +206,55 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 
 `projscan_upgrade` remains Node-only for now - a Python equivalent (reading pip / poetry metadata) is on the roadmap.
 
-### Bundle (0.11)
+### Go (0.11)
 
-0.11.0 is a multi-theme bundle. Five releases of work shipped under one version:
+Go flows through the same pipeline as JS/TS and Python:
 
-- **Signal Quality (was 0.11)** - the hotspot risk score now uses AST-derived **cyclomatic complexity** instead of a line-count proxy. Per-file CC is exposed via `projscan_file` and the new `projscan_coupling` tool. Coupling metrics (fan-in / fan-out / instability) and **circular-import detection** (Tarjan SCC) ship as a first-class `projscan coupling` command and MCP tool.
-- **PR Native (was 0.12)** - new `projscan_pr_diff` tool returns the **structural** diff between two refs: exports added/removed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Stands up a temporary git worktree at the base ref to get a clean second graph. What an agent reviewing a PR actually wants to know.
-- **Monorepo (was 0.13)** - workspace detection for npm/yarn workspaces, pnpm-workspace.yaml, and Nx/Turbo/Lerna fallback. New `projscan workspaces` command lists every package; `--package <name>` (and the `package` MCP arg) scope `hotspots` and `coupling` to a single workspace.
-- **Observability (was 0.14)** - **opt-in**, privacy-preserving telemetry. Records only tool name, duration, success, version, timestamp; never source content, paths, or arguments. Off by default; enable via `.projscanrc` `telemetry.enabled` or `PROJSCAN_TELEMETRY=1`. Sink is a local JSONL file you control. New `projscan_telemetry` tool surfaces effective state.
-- **Second Language (was 0.15)** - **Go** via tree-sitter-go. Go files now flow through the same graph / hotspot / coupling / pr-diff pipeline as JS/TS and Python. `go.mod` parsed for module-path resolution; capitalization rule applied for export visibility.
+- **AST-accurate import graph** via tree-sitter-go. Single-line and parenthesized import blocks, aliased imports, dot-imports.
+- **Capitalization-rule export visibility** - uppercase identifiers are public, lowercase are private. Captures `func`, method, `var`, `const`, `type` (struct/interface).
+- **`go.mod` module-path resolution** - imports prefixed with the module path resolve into the repo; stdlib and third-party are external.
+- **Cyclomatic complexity** counted from `if`, `for`, `switch` cases, select communication cases, `&&`/`||`. Default cases and `defer`/`go` don't count.
 
-Cache version bumped 2 → 3 (CC stored per file). Existing v2 caches are discarded on first 0.11 run and rebuilt automatically.
+### Coupling and cycles (0.11)
 
-**Issues**:
-- Missing linting (ESLint) and formatting (Prettier) configuration
-- Missing test framework
-- Missing `.editorconfig`
-- Large utility directories (architecture smell)
-- Excessive, deprecated, or wildcard-versioned dependencies
-- Missing lockfile
-- Committed `.env` files and private keys (security)
-- Hardcoded secrets - AWS keys, GitHub tokens, Slack tokens, generic passwords (security)
-- Missing `.env` in `.gitignore` (security)
+`projscan coupling` (CLI + MCP tool) reports per-file fan-in / fan-out / instability (Bob Martin's I = Ce / (Ca + Ce)) and detects circular imports via Tarjan SCC. Cross-package edges are flagged when running on a monorepo.
+
+### PR-aware structural diff (0.11)
+
+`projscan pr-diff` returns the structural diff between two refs: exports added/removed/renamed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Spins up a temporary git worktree at the base ref to build a clean second graph. Renames are detected via similarity scoring (max of normalized Levenshtein and shared-affix fraction, threshold 0.5).
+
+### Monorepo support (0.11)
+
+Detects npm/yarn workspaces, `pnpm-workspace.yaml`, Lerna, modern Nx (`nx.json#workspaceLayout` + `project.json` scan), legacy Nx (`workspace.json#projects`), and a `packages/*` + `apps/*` + `libs/*` fallback. `projscan workspaces` lists every package; `--package <name>` (or the `package` MCP arg) scopes most commands to a single workspace.
+
+Cache version bumped 2 → 3 in 0.11 (CC stored per file). Existing v2 caches are discarded on first run and rebuilt automatically.
 
 ## Performance
 
-- **5,000 files** analyzed in under 1.5 seconds
-- **20,000 files** analyzed in under 3 seconds
+Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25:
+
+| Repo | Files | analyze | doctor | hotspots | coupling | search |
+|------|-------|---------|--------|----------|----------|--------|
+| projscan itself | ~120 | 320–470 ms | 320–340 ms | 360–470 ms | 140–260 ms | 200–320 ms |
+| Synthetic medium | 500 | 200–220 ms | 190 ms | 220–230 ms | 150–190 ms | 170–210 ms |
+
+Cold-cache times shown; warm-cache times are similar because most commands rebuild the graph anyway. Run `npm run bench` against your own machine to recalibrate.
+
 - **Zero network requests** - everything runs locally
-- **9 runtime dependencies** - still minimal (the three tree-sitter packages bring ~850 KB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB)
+- **11 runtime dependencies** - still minimal (the five tree-sitter grammars bring ~3.3 MB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB, tree-sitter-java ~405 KB, tree-sitter-ruby ~2.0 MB)
+
+## Optional features
+
+projscan keeps the install slim by default. One feature is gated behind an optional peer dependency:
+
+- **Semantic search** uses local embeddings via `@xenova/transformers` (~25 MB quantized model, downloads on first use, then cached). Without it, `projscan search` falls back to BM25 lexical search and prints a one-line tip pointing here. Install when you want it:
+
+  ```bash
+  npm install @xenova/transformers
+  projscan search "cache invalidation" --semantic
+  ```
+
+  See [AI Agent Integration → Semantic search](#semantic-search-090-opt-in) for details.
 
 ## CI/CD Integration
 
@@ -441,9 +461,9 @@ claude mcp add projscan -- npx projscan mcp
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 17 MCP tools
+### The 16 MCP tools
 
-**Structural (0.6.0 / 0.11 — agent-native):**
+**Structural (0.6.0 / 0.11 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
 - **`projscan_search`** - fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Replaces the temptation to shell out to grep.
 - **`projscan_coupling`** *(0.11)* - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
@@ -464,9 +484,8 @@ claude mcp add projscan -- npx projscan mcp
 - `projscan_audit` - normalized `npm audit`
 - `projscan_upgrade` - upgrade preview (CHANGELOG + importers, offline)
 
-**Workspace + observability (0.11):**
+**Workspace (0.11):**
 - `projscan_workspaces` - list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna). Use the `name` as the `package` arg on `projscan_hotspots` / `projscan_coupling` to scope.
-- `projscan_telemetry` - inspect opt-in telemetry state (enabled?, sink path, env override).
 
 ### Context-window budgeting
 

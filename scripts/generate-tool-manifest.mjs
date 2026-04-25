@@ -47,7 +47,7 @@ const { getToolDefinitions } = await import(path.join(distDir, 'mcp', 'tools.js'
 const tools = getToolDefinitions();
 
 // MCP protocol version is declared in dist/mcp/server.js but not exported.
-// Read it from source instead — cheap and always-current.
+// Read it from source instead - cheap and always-current.
 const serverSource = await readFile(path.join(distDir, 'mcp', 'server.js'), 'utf-8');
 const protoMatch = /SUPPORTED_PROTOCOL_VERSIONS\s*=\s*\[\s*['"]([^'"]+)['"]/.exec(serverSource);
 const mcpProtocolVersion = protoMatch ? protoMatch[1] : null;

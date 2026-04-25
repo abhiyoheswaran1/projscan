@@ -83,7 +83,7 @@ export async function computePrDiff(
   return diffGraphs(baseRef, baseSha, headRef, headSha, baseGraph, headGraph);
 }
 
-/** Pure function — exported for unit testing without a real git repo. */
+/** Pure function - exported for unit testing without a real git repo. */
 export function diffGraphs(
   baseRef: string,
   baseSha: string | null,
@@ -261,7 +261,7 @@ function levenshtein(a: string, b: string): number {
   const n = b.length;
   if (m === 0) return n;
   if (n === 0) return m;
-  // Two-row DP — small allocations keep this cheap on the realistic name sizes.
+  // Two-row DP - small allocations keep this cheap on the realistic name sizes.
   let prev = new Array<number>(n + 1);
   let curr = new Array<number>(n + 1);
   for (let j = 0; j <= n; j++) prev[j] = j;

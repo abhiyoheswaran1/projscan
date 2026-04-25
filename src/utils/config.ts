@@ -109,14 +109,6 @@ function normalize(input: unknown): ProjscanConfig {
     if (Object.keys(overrides).length) out.severityOverrides = overrides;
   }
 
-  if (obj.telemetry && typeof obj.telemetry === 'object') {
-    const t = obj.telemetry as Record<string, unknown>;
-    const telemetry: NonNullable<ProjscanConfig['telemetry']> = {};
-    if (typeof t.enabled === 'boolean') telemetry.enabled = t.enabled;
-    if (typeof t.sink === 'string' && t.sink.trim()) telemetry.sink = t.sink.trim();
-    if (Object.keys(telemetry).length) out.telemetry = telemetry;
-  }
-
   return out;
 }
 

@@ -207,7 +207,7 @@ BM25-ranked search across content, symbol names, and path tokens. No embeddings,
 **Output includes:** file path, line number, a one-line excerpt centered on the first matching line, the match score, and which tokens matched.
 
 **Limitations:**
-- No real semantic understanding by default. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) shipped in 0.9.0 as an opt-in peer dep — install `@xenova/transformers` and pass `--mode semantic` (or `--mode hybrid` for BM25 + semantic via reciprocal rank fusion).
+- No real semantic understanding by default. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) shipped in 0.9.0 as an opt-in peer dep - install `@xenova/transformers` and pass `--mode semantic` (or `--mode hybrid` for BM25 + semantic via reciprocal rank fusion).
 - Index is rebuilt on every run (fast - the AST is already parsed from the code-graph cache).
 
 ### file
@@ -1152,7 +1152,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 17 MCP tools
+│   ├── tools.ts                 # 16 MCP tools
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

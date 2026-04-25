@@ -16,8 +16,16 @@ describe('language registry', () => {
     expect(getAdapterFor('a.rs')).toBeUndefined();
   });
 
-  it('returns the Go adapter for .go (0.15)', () => {
+  it('returns the Go adapter for .go', () => {
     expect(getAdapterFor('cmd/main.go')?.id).toBe('go');
+  });
+
+  it('returns the Java adapter for .java', () => {
+    expect(getAdapterFor('src/main/java/com/foo/Bar.java')?.id).toBe('java');
+  });
+
+  it('returns the Ruby adapter for .rb', () => {
+    expect(getAdapterFor('lib/foo.rb')?.id).toBe('ruby');
   });
 
   it('is case-insensitive on extension', () => {

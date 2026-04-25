@@ -2,9 +2,11 @@ import path from 'node:path';
 import { javascriptAdapter } from './javascriptAdapter.js';
 import { pythonAdapter } from './pythonAdapter.js';
 import { goAdapter } from './goAdapter.js';
+import { javaAdapter } from './javaAdapter.js';
+import { rubyAdapter } from './rubyAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
-const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter];
+const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter, javaAdapter, rubyAdapter];
 const byExtension = new Map<string, LanguageAdapter>();
 
 function rebuildIndex(): void {

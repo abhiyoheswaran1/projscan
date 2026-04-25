@@ -90,6 +90,18 @@ As of 0.10, projscan has a `LanguageAdapter` interface (`src/core/languages/Lang
 - Keep dependencies minimal - avoid adding new runtime dependencies unless necessary
 - Write tests for new analyzers and fixers
 
+## Areas wanting help
+
+Concrete on-ramps for new contributors. Each is scoped to fit a first PR. Look for the `good first issue` label on GitHub for tracked instances.
+
+- **New language adapters.** The `LanguageAdapter` interface (`src/core/languages/LanguageAdapter.ts`) is the cleanest entry point. JS/TS, Python, and Go are wired; Java and Ruby are next on the roadmap. The Python adapter (`pythonAdapter.ts`) is the reference. Each adapter is ~200 LOC plus walkers (imports, exports, CC, callSites) and a vendored tree-sitter grammar wasm. See `docs/ROADMAP.md` for what's planned.
+- **New analyzers.** Issue checkers live in `src/analyzers/`. Each is a pure function `(scan, opts) => Issue[]`. Existing ones (`testCheck`, `lintCheck`, `securityCheck`, `dependencyRiskCheck`) are good shape templates. Wire into `src/core/issueEngine.ts`. Tests in `tests/analyzers/`.
+- **New reporters.** Output formatters in `src/reporters/`. Implement the same surface as `consoleReporter.ts` / `markdownReporter.ts` / `jsonReporter.ts`. Wire via `getFormat()` in `src/cli/index.ts`.
+- **MCP tools.** Each tool is a `{name, description, inputSchema, handler}` object in `src/mcp/tools.ts`. Mirror an existing one (e.g. `projscan_coupling`). Add to the `tools/list` test in `tests/mcp/server.test.ts`.
+- **Documentation gaps.** The `docs/GUIDE.md` is exhaustive but not exhaustive enough - example sections we'd like to expand: per-analyzer "what triggers it / how to silence it" tables, per-MCP-tool "agent prompt example" snippets, monorepo setup walkthroughs.
+
+For larger work (refactors, cross-cutting changes), open an issue first to discuss the approach. We'd rather agree on the shape before you spend a weekend on it.
+
 ## Releasing
 
 A release is a six-step ritual. Skipping any step leaves something out of sync.
@@ -104,9 +116,9 @@ A release is a six-step ritual. Skipping any step leaves something out of sync.
    - `EXPECTED.minVersion` → the new version
    - `EXPECTED.requiredTools` → append any new MCP tool names the release added
 
-   The website build refuses to run until all three edits are in. That friction is the feature — it prevents the docs page from drifting out of sync with the published tool surface.
+   The website build refuses to run until all three edits are in. That friction is the feature - it prevents the docs page from drifting out of sync with the published tool surface.
 
-   The changelog page does NOT need a manual bump — it pulls `CHANGELOG.md` from `main` at build time, so the next site build after the release naturally picks up the new entry.
+   The changelog page does NOT need a manual bump - it pulls `CHANGELOG.md` from `main` at build time, so the next site build after the release naturally picks up the new entry.
 
 The MCP-tool count, runtime-dep count, and any "X tools" / "Y languages" claims in `README.md` and `docs/` are hand-edited; sweep for them when the release adds tools or languages.
 
