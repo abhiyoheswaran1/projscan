@@ -23,6 +23,8 @@ import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { computePrDiff } from '../core/prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from '../core/monorepo.js';
+import { describeTelemetryConfig } from '../core/telemetry.js';
+import { loadConfig } from '../utils/config.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -554,6 +556,20 @@ const tools: McpTool[] = [
         nextCursor: page.nextCursor,
         total: page.total,
       };
+    },
+  },
+
+  {
+    name: 'projscan_telemetry',
+    description:
+      'Inspect projscan telemetry state: whether it is enabled, where events are written, and what overrides are active. Telemetry is opt-in (off by default), records only tool name + duration + success/version/timestamp (never source content or paths), and writes to a local JSONL file the user controls.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (_args, rootPath) => {
+      const { config } = await loadConfig(rootPath);
+      return describeTelemetryConfig(config.telemetry);
     },
   },
 

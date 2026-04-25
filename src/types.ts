@@ -309,6 +309,12 @@ export interface ProjscanConfig {
   ignore?: string[];
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
+  /** Opt-in telemetry (0.14). Off unless explicitly enabled. */
+  telemetry?: {
+    enabled?: boolean;
+    /** Path or "stderr". Default: ~/.projscan/telemetry.jsonl. */
+    sink?: string;
+  };
 }
 
 export interface LoadedConfig {
