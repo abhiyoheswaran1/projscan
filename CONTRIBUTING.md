@@ -99,11 +99,14 @@ A release is a six-step ritual. Skipping any step leaves something out of sync.
 3. **Verify the build artifact** locally: `npm run build && npm run test`. The build runs `tsc + copy-wasm + generate-tool-manifest`; all three must succeed. Tests must be green.
 4. **Tag and publish.** Merge to `main`, then `git tag vX.Y.Z && git push origin vX.Y.Z && npm publish`.
 5. **Create the GitHub Release** at the new tag and **attach `dist/tool-manifest.json`** as a release asset (`gh release create vX.Y.Z dist/tool-manifest.json --title ... --notes ...`). The website's docs page reads this asset.
-6. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit two constants:
+6. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
+   - The hardcoded **manifest URL pin** → swap `releases/download/vX.Y.Z/tool-manifest.json` for the new tag
    - `EXPECTED.minVersion` → the new version
    - `EXPECTED.requiredTools` → append any new MCP tool names the release added
 
-   The website build refuses to run until both edits are in. That friction is the feature — it prevents the docs page from drifting out of sync with the published tool surface.
+   The website build refuses to run until all three edits are in. That friction is the feature — it prevents the docs page from drifting out of sync with the published tool surface.
+
+   The changelog page does NOT need a manual bump — it pulls `CHANGELOG.md` from `main` at build time, so the next site build after the release naturally picks up the new entry.
 
 The MCP-tool count, runtime-dep count, and any "X tools" / "Y languages" claims in `README.md` and `docs/` are hand-edited; sweep for them when the release adds tools or languages.
 
