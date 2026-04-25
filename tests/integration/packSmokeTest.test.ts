@@ -18,6 +18,7 @@ describe('npm pack smoke test', () => {
     expect(existsSync(distGrammars), 'dist/grammars missing — run `npm run build`').toBe(true);
     expect(existsSync(path.join(distGrammars, 'web-tree-sitter.wasm'))).toBe(true);
     expect(existsSync(path.join(distGrammars, 'tree-sitter-python.wasm'))).toBe(true);
+    expect(existsSync(path.join(distGrammars, 'tree-sitter-go.wasm'))).toBe(true);
 
     const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'projscan-pack-'));
     try {
@@ -34,6 +35,7 @@ describe('npm pack smoke test', () => {
       const listing = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf-8' });
       expect(listing).toContain('package/dist/grammars/web-tree-sitter.wasm');
       expect(listing).toContain('package/dist/grammars/tree-sitter-python.wasm');
+      expect(listing).toContain('package/dist/grammars/tree-sitter-go.wasm');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

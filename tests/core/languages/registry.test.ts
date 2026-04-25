@@ -13,7 +13,11 @@ describe('language registry', () => {
   it('returns undefined for unknown extensions', () => {
     expect(getAdapterFor('README.md')).toBeUndefined();
     expect(getAdapterFor('Makefile')).toBeUndefined();
-    expect(getAdapterFor('a.go')).toBeUndefined();
+    expect(getAdapterFor('a.rs')).toBeUndefined();
+  });
+
+  it('returns the Go adapter for .go (0.15)', () => {
+    expect(getAdapterFor('cmd/main.go')?.id).toBe('go');
   });
 
   it('is case-insensitive on extension', () => {

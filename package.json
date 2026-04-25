@@ -58,6 +58,7 @@
     "commander": "^12.1.0",
     "fast-glob": "^3.3.2",
     "ora": "^8.1.0",
+    "tree-sitter-go": "^0.25.0",
     "tree-sitter-python": "^0.25.0",
     "web-tree-sitter": "^0.26.8"
   },

@@ -25,7 +25,8 @@ function grammarDirs(): string[] {
   const repoRoot = path.resolve(here, '..', '..', '..');
   const nodeModulesWebTs = path.join(repoRoot, 'node_modules', 'web-tree-sitter');
   const nodeModulesPy = path.join(repoRoot, 'node_modules', 'tree-sitter-python');
-  return [distDir, nodeModulesWebTs, nodeModulesPy];
+  const nodeModulesGo = path.join(repoRoot, 'node_modules', 'tree-sitter-go');
+  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo];
 }
 
 function findWasm(filename: string): string {
