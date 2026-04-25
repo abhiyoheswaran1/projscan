@@ -21,6 +21,7 @@ import {
 } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
+import { computePrDiff } from '../core/prDiff.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -533,6 +534,39 @@ const tools: McpTool[] = [
         nextCursor: page.nextCursor,
         total: page.total,
       };
+    },
+  },
+
+  {
+    name: 'projscan_pr_diff',
+    description:
+      'Structural (AST) diff between two refs — what changed in exports, imports, call sites, cyclomatic complexity, and fan-in. Not a text diff: this surfaces the symbols and edges that an agent reviewing a PR actually cares about. Defaults: base=origin/main (falls back to main/master/HEAD~1), head=HEAD. Spins up a throwaway git worktree at the base ref to get a clean second graph.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        base: {
+          type: 'string',
+          description: 'Base ref (branch, tag, sha). Default: origin/main, falling back to main/master/HEAD~1.',
+        },
+        head: {
+          type: 'string',
+          description: 'Head ref. Default: HEAD.',
+        },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap the response to roughly this many tokens.',
+        },
+      },
+    },
+    handler: async (args, rootPath) => {
+      emitProgress(0, 3, 'resolving refs');
+      const base = typeof args.base === 'string' ? args.base : undefined;
+      const head = typeof args.head === 'string' ? args.head : undefined;
+      emitProgress(1, 3, 'building base + head graphs');
+      const report = await computePrDiff(rootPath, { base, head });
+      emitProgress(2, 3, 'diffing');
+      emitProgress(3, 3, 'done');
+      return report;
     },
   },
 

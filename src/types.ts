@@ -377,6 +377,34 @@ export interface CouplingReport {
   totalCycles: number;
 }
 
+// === PR-Native AST Diff (0.12) ===
+
+export interface FileAstDiff {
+  relativePath: string;
+  status: 'added' | 'removed' | 'modified';
+  exportsAdded: string[];
+  exportsRemoved: string[];
+  importsAdded: string[];
+  importsRemoved: string[];
+  callsAdded: string[];
+  callsRemoved: string[];
+  /** CC(head) - CC(base). null when either side wasn't AST-parsed. */
+  cyclomaticDelta: number | null;
+  /** fanIn(head) - fanIn(base). null when graph entry missing on either side. */
+  fanInDelta: number | null;
+}
+
+export interface PrDiffReport {
+  available: boolean;
+  reason?: string;
+  base: { ref: string; resolvedSha: string | null };
+  head: { ref: string; resolvedSha: string | null };
+  filesAdded: string[];
+  filesRemoved: string[];
+  filesModified: FileAstDiff[];
+  totalFilesChanged: number;
+}
+
 // === Per-file Inspection ===
 
 export interface FileInspection {

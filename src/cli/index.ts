@@ -26,6 +26,7 @@ import { joinCoverageWithHotspots } from '../core/coverageJoin.js';
 import { buildCodeGraph } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
+import { computePrDiff } from '../core/prDiff.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -66,6 +67,7 @@ import {
   reportUpgrade,
   reportCoverage,
   reportCoupling,
+  reportPrDiff,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -84,6 +86,7 @@ import {
   reportUpgradeJson,
   reportCoverageJson,
   reportCouplingJson,
+  reportPrDiffJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -102,6 +105,7 @@ import {
   reportUpgradeMarkdown,
   reportCoverageMarkdown,
   reportCouplingMarkdown,
+  reportPrDiffMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import {
@@ -826,6 +830,41 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('Coupling analysis failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: pr-diff ──────────────────────────────────────
+
+program
+  .command('pr-diff')
+  .description('Structural (AST) diff between two refs - what changed in exports, imports, calls, CC, fan-in')
+  .option('--base <ref>', 'base ref (default: origin/main, falling back to main/master/HEAD~1)')
+  .option('--head <ref>', 'head ref (default: HEAD)')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    const spinner = format === 'console' ? ora('Computing structural PR diff...').start() : null;
+
+    try {
+      const report = await computePrDiff(rootPath, { base: cmdOpts.base, head: cmdOpts.head });
+      if (spinner) spinner.stop();
+
+      switch (format) {
+        case 'json':
+          reportPrDiffJson(report);
+          break;
+        case 'markdown':
+          reportPrDiffMarkdown(report);
+          break;
+        default:
+          reportPrDiff(report);
+      }
+    } catch (error) {
+      if (spinner) spinner.fail('PR diff failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

@@ -12,6 +12,7 @@ import type {
   DiffResult,
   HotspotReport,
   OutdatedReport,
+  PrDiffReport,
   UpgradePreview,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -110,4 +111,8 @@ export function reportCoverageJson(report: CoverageJoinedReport): void {
 
 export function reportCouplingJson(report: CouplingReport): void {
   console.log(JSON.stringify({ coupling: report }, null, 2));
+}
+
+export function reportPrDiffJson(report: PrDiffReport): void {
+  console.log(JSON.stringify({ prDiff: report }, null, 2));
 }

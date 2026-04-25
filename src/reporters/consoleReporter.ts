@@ -15,6 +15,7 @@ import type {
   DiffResult,
   HotspotReport,
   OutdatedReport,
+  PrDiffReport,
   UpgradePreview,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -758,4 +759,62 @@ export function reportCoupling(report: CouplingReport): void {
     }
     console.log('');
   }
+}
+
+// ── Report: PR diff ───────────────────────────────────────
+
+export function reportPrDiff(report: PrDiffReport): void {
+  console.log(header('PR Structural Diff'));
+
+  if (!report.available) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'PR diff unavailable.'}\n`);
+    return;
+  }
+
+  console.log(
+    chalk.dim(
+      `\n  base ${report.base.ref} (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head ${report.head.ref} (${report.head.resolvedSha?.slice(0, 7) ?? '?'})\n`,
+    ),
+  );
+  console.log(
+    `  ${chalk.bold(report.totalFilesChanged.toString())} file${report.totalFilesChanged === 1 ? '' : 's'} changed: ${chalk.green(`+${report.filesAdded.length}`)} ${chalk.red(`-${report.filesRemoved.length}`)} ${chalk.yellow(`~${report.filesModified.length}`)}\n`,
+  );
+
+  if (report.filesAdded.length > 0) {
+    console.log(chalk.bold('  Added:'));
+    for (const f of report.filesAdded) console.log(`    ${chalk.green('+')} ${f}`);
+    console.log('');
+  }
+  if (report.filesRemoved.length > 0) {
+    console.log(chalk.bold('  Removed:'));
+    for (const f of report.filesRemoved) console.log(`    ${chalk.red('-')} ${f}`);
+    console.log('');
+  }
+  if (report.filesModified.length > 0) {
+    console.log(chalk.bold('  Modified:'));
+    for (const m of report.filesModified) {
+      const ccDelta = m.cyclomaticDelta;
+      const fiDelta = m.fanInDelta;
+      const ccStr = ccDelta === null ? '' : `, ΔCC ${signed(ccDelta)}`;
+      const finStr = fiDelta === null || fiDelta === 0 ? '' : `, Δfan-in ${signed(fiDelta)}`;
+      console.log(`    ${chalk.yellow('~')} ${chalk.cyan(m.relativePath)}${chalk.dim(ccStr + finStr)}`);
+      if (m.exportsAdded.length > 0) {
+        console.log(`      ${chalk.green('+exports:')} ${m.exportsAdded.join(', ')}`);
+      }
+      if (m.exportsRemoved.length > 0) {
+        console.log(`      ${chalk.red('-exports:')} ${m.exportsRemoved.join(', ')}`);
+      }
+      if (m.importsAdded.length > 0) {
+        console.log(`      ${chalk.green('+imports:')} ${m.importsAdded.join(', ')}`);
+      }
+      if (m.importsRemoved.length > 0) {
+        console.log(`      ${chalk.red('-imports:')} ${m.importsRemoved.join(', ')}`);
+      }
+    }
+    console.log('');
+  }
+}
+
+function signed(n: number): string {
+  return n >= 0 ? `+${n}` : String(n);
 }
