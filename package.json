@@ -13,7 +13,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && node scripts/copy-wasm.mjs",
+    "build": "tsc && node scripts/copy-wasm.mjs && node scripts/generate-tool-manifest.mjs",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
