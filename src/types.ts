@@ -309,6 +309,12 @@ export interface ProjscanConfig {
   ignore?: string[];
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
+  /** Opt-in telemetry (0.14). Off unless explicitly enabled. */
+  telemetry?: {
+    enabled?: boolean;
+    /** Path or "stderr". Default: ~/.projscan/telemetry.jsonl. */
+    sink?: string;
+  };
 }
 
 export interface LoadedConfig {
@@ -330,6 +336,8 @@ export interface FileHotspot {
   distinctAuthors: number;
   daysSinceLastChange: number | null;
   lineCount: number;
+  /** AST-derived McCabe complexity. null when no language adapter parsed this file. */
+  cyclomaticComplexity: number | null;
   sizeBytes: number;
   issueCount: number;
   issueIds: string[];
@@ -350,6 +358,109 @@ export interface HotspotReport {
   totalFilesRanked: number;
 }
 
+// === Coupling + Cycles (0.11) ===
+
+export interface FileCoupling {
+  relativePath: string;
+  /** Number of files that import this one. */
+  fanIn: number;
+  /** Number of locally-resolved imports this file makes. */
+  fanOut: number;
+  /** Bob Martin's instability: fanOut / (fanIn + fanOut). 0 when both are zero. */
+  instability: number;
+}
+
+export interface ImportCycle {
+  /** Member files of a strongly-connected component (size >= 2). */
+  files: string[];
+  size: number;
+}
+
+export interface CrossPackageEdge {
+  /** Importing file + the workspace package it belongs to. */
+  from: { file: string; package: string };
+  /** Imported file + the workspace package it belongs to. */
+  to: { file: string; package: string };
+}
+
+export interface CouplingReport {
+  files: FileCoupling[];
+  cycles: ImportCycle[];
+  /**
+   * Edges where importer and imported live in different workspace packages
+   * (0.11). Empty when no workspace info was supplied or when all edges are
+   * intra-package. Useful for spotting unauthorized deep imports across
+   * package boundaries.
+   */
+  crossPackageEdges: CrossPackageEdge[];
+  totalFiles: number;
+  totalCycles: number;
+  totalCrossPackageEdges: number;
+}
+
+// === Monorepo / Workspaces (0.13) ===
+
+export type WorkspaceKind = 'npm' | 'yarn' | 'pnpm' | 'nx' | 'turbo' | 'lerna' | 'none';
+
+export interface WorkspacePackage {
+  /** package.json `name` field, or directory basename when missing. */
+  name: string;
+  /** Workspace-relative path of the package root (no leading `/`, no trailing `/`). */
+  relativePath: string;
+  /** package.json `version` if available. */
+  version?: string;
+  /** True when this is the workspace root itself. */
+  isRoot: boolean;
+}
+
+export interface WorkspaceInfo {
+  kind: WorkspaceKind;
+  /** All packages, including the root if it has its own package.json. */
+  packages: WorkspacePackage[];
+  /** Source manifest used to discover packages, e.g. "package.json#workspaces" or "pnpm-workspace.yaml". */
+  source?: string;
+}
+
+// === PR-Native AST Diff (0.12) ===
+
+export interface ExportRename {
+  from: string;
+  to: string;
+}
+
+export interface FileAstDiff {
+  relativePath: string;
+  status: 'added' | 'removed' | 'modified';
+  exportsAdded: string[];
+  exportsRemoved: string[];
+  /**
+   * Heuristically-detected renames (0.11). When an export disappears from
+   * base AND a similar new name appears in head AND no other export matches,
+   * we report it here instead of as a +/- pair. Removed/added lists exclude
+   * any names that ended up in renames.
+   */
+  exportsRenamed: ExportRename[];
+  importsAdded: string[];
+  importsRemoved: string[];
+  callsAdded: string[];
+  callsRemoved: string[];
+  /** CC(head) - CC(base). null when either side wasn't AST-parsed. */
+  cyclomaticDelta: number | null;
+  /** fanIn(head) - fanIn(base). null when graph entry missing on either side. */
+  fanInDelta: number | null;
+}
+
+export interface PrDiffReport {
+  available: boolean;
+  reason?: string;
+  base: { ref: string; resolvedSha: string | null };
+  head: { ref: string; resolvedSha: string | null };
+  filesAdded: string[];
+  filesRemoved: string[];
+  filesModified: FileAstDiff[];
+  totalFilesChanged: number;
+}
+
 // === Per-file Inspection ===
 
 export interface FileInspection {
@@ -364,6 +475,12 @@ export interface FileInspection {
   potentialIssues: string[];
   hotspot: FileHotspot | null;
   issues: Issue[];
+  /** AST-derived McCabe complexity. null when no language adapter parsed this file. */
+  cyclomaticComplexity?: number | null;
+  /** Number of files that import this one. null when graph unavailable. */
+  fanIn?: number | null;
+  /** Number of locally-resolved imports this file makes. null when graph unavailable. */
+  fanOut?: number | null;
   /** Adapter id (e.g. 'javascript', 'python'). Set when the graph was available. */
   language?: string;
 }

@@ -4,6 +4,7 @@ import type { AstResult } from '../ast.js';
 import { createParserFor } from './treeSitterLoader.js';
 import { extractPythonImports } from './pythonImports.js';
 import { extractPythonExports } from './pythonExports.js';
+import { extractPythonCyclomatic } from './pythonCyclomatic.js';
 import { detectPythonProject } from './pythonManifests.js';
 import type {
   GraphFileLike,
@@ -45,16 +46,21 @@ export const pythonAdapter: LanguageAdapter = {
           exports: [],
           callSites: [],
           lineCount: content ? content.split('\n').length : 0,
+          cyclomaticComplexity: 0,
         };
       }
       const imports = extractPythonImports(tree.rootNode as unknown as Parameters<typeof extractPythonImports>[0]);
       const exports = extractPythonExports(tree.rootNode as unknown as Parameters<typeof extractPythonExports>[0]);
+      const cyclomaticComplexity = extractPythonCyclomatic(
+        tree.rootNode as unknown as Parameters<typeof extractPythonCyclomatic>[0],
+      );
       return {
         ok: true,
         imports,
         exports,
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
+        cyclomaticComplexity,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -65,6 +71,7 @@ export const pythonAdapter: LanguageAdapter = {
         exports: [],
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
+        cyclomaticComplexity: 0,
       };
     }
   },

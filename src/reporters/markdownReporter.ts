@@ -2,6 +2,7 @@ import type {
   AnalysisReport,
   AuditReport,
   CoverageJoinedReport,
+  CouplingReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -11,7 +12,9 @@ import type {
   DiffResult,
   HotspotReport,
   OutdatedReport,
+  PrDiffReport,
   UpgradePreview,
+  WorkspaceInfo,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
@@ -266,6 +269,12 @@ export function reportFileMarkdown(insp: FileInspection): void {
 
   lines.push(`**Purpose:** ${insp.purpose}`);
   lines.push(`**Lines:** ${insp.lineCount}  |  **Size:** ${insp.sizeBytes} B`);
+  if (typeof insp.cyclomaticComplexity === 'number') {
+    lines.push(`**Cyclomatic complexity:** ${insp.cyclomaticComplexity}`);
+  }
+  if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
+    lines.push(`**Coupling:** fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`);
+  }
 
   if (insp.hotspot) {
     const h = insp.hotspot;
@@ -327,16 +336,122 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
     return;
   }
 
-  lines.push('| # | Score | File | Churn | Lines | Issues | Reasons |');
-  lines.push('| --- | ---: | --- | ---: | ---: | ---: | --- |');
+  lines.push('| # | Score | File | Churn | CC | Lines | Issues | Reasons |');
+  lines.push('| --- | ---: | --- | ---: | ---: | ---: | ---: | --- |');
   for (let i = 0; i < report.hotspots.length; i++) {
     const h = report.hotspots[i];
     const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '-';
+    const cc = typeof h.cyclomaticComplexity === 'number' ? String(h.cyclomaticComplexity) : '-';
     lines.push(
-      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
+      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${cc} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
     );
   }
 
+  console.log(lines.join('\n'));
+}
+
+export function reportCouplingMarkdown(report: CouplingReport): void {
+  const lines: string[] = ['# Coupling + Cycles', ''];
+  const xpkg = report.totalCrossPackageEdges;
+  lines.push(
+    `_${report.totalFiles} file(s) in graph · ${report.totalCycles} cycle(s)${xpkg > 0 ? ` · ${xpkg} cross-package edge(s)` : ''}_`,
+    '',
+  );
+
+  if (report.cycles.length > 0) {
+    lines.push('## Import cycles', '');
+    for (const c of report.cycles) {
+      lines.push(`- **${c.size}-file cycle:** ${c.files.map((f) => `\`${f}\``).join(' → ')} → …`);
+    }
+    lines.push('');
+  }
+
+  if (report.crossPackageEdges.length > 0) {
+    lines.push('## Cross-package edges', '');
+    lines.push('| From package | From file | To package | To file |');
+    lines.push('| --- | --- | --- | --- |');
+    for (const e of report.crossPackageEdges) {
+      lines.push(`| \`${e.from.package}\` | \`${e.from.file}\` | \`${e.to.package}\` | \`${e.to.file}\` |`);
+    }
+    lines.push('');
+  }
+
+  if (report.files.length > 0) {
+    lines.push('## Files', '');
+    lines.push('| File | Fan-in | Fan-out | Instability |');
+    lines.push('| --- | ---: | ---: | ---: |');
+    for (const f of report.files) {
+      lines.push(
+        `| \`${f.relativePath}\` | ${f.fanIn} | ${f.fanOut} | ${f.instability.toFixed(2)} |`,
+      );
+    }
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportPrDiffMarkdown(report: PrDiffReport): void {
+  const lines: string[] = ['# PR Structural Diff', ''];
+  if (!report.available) {
+    lines.push(`> ${report.reason ?? 'PR diff unavailable.'}`);
+    console.log(lines.join('\n'));
+    return;
+  }
+  lines.push(
+    `_base **${report.base.ref}** (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head **${report.head.ref}** (${report.head.resolvedSha?.slice(0, 7) ?? '?'})_`,
+    '',
+    `**${report.totalFilesChanged}** file(s) changed: +${report.filesAdded.length} added, -${report.filesRemoved.length} removed, ~${report.filesModified.length} modified`,
+    '',
+  );
+  if (report.filesAdded.length > 0) {
+    lines.push('## Added', '');
+    for (const f of report.filesAdded) lines.push(`- \`${f}\``);
+    lines.push('');
+  }
+  if (report.filesRemoved.length > 0) {
+    lines.push('## Removed', '');
+    for (const f of report.filesRemoved) lines.push(`- \`${f}\``);
+    lines.push('');
+  }
+  if (report.filesModified.length > 0) {
+    lines.push('## Modified', '');
+    for (const m of report.filesModified) {
+      const ccDelta = m.cyclomaticDelta;
+      const fiDelta = m.fanInDelta;
+      const dCC = ccDelta === null ? '' : ` · ΔCC ${signed(ccDelta)}`;
+      const dFI = fiDelta === null || fiDelta === 0 ? '' : ` · Δfan-in ${signed(fiDelta)}`;
+      lines.push(`### \`${m.relativePath}\`${dCC}${dFI}`, '');
+      if (m.exportsAdded.length > 0) lines.push(`- **+exports:** ${m.exportsAdded.map((s) => `\`${s}\``).join(', ')}`);
+      if (m.exportsRemoved.length > 0) lines.push(`- **-exports:** ${m.exportsRemoved.map((s) => `\`${s}\``).join(', ')}`);
+      if (m.exportsRenamed.length > 0) {
+        const pairs = m.exportsRenamed.map((r) => `\`${r.from}\` → \`${r.to}\``).join(', ');
+        lines.push(`- **~exports:** ${pairs}`);
+      }
+      if (m.importsAdded.length > 0) lines.push(`- **+imports:** ${m.importsAdded.map((s) => `\`${s}\``).join(', ')}`);
+      if (m.importsRemoved.length > 0) lines.push(`- **-imports:** ${m.importsRemoved.map((s) => `\`${s}\``).join(', ')}`);
+      lines.push('');
+    }
+  }
+  console.log(lines.join('\n'));
+}
+
+function signed(n: number): string {
+  return n >= 0 ? `+${n}` : String(n);
+}
+
+export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
+  const lines: string[] = ['# Workspaces', ''];
+  lines.push(`_kind: **${info.kind}**${info.source ? ` · source: ${info.source}` : ''} · ${info.packages.length} package(s)_`, '');
+  if (info.packages.length === 0) {
+    lines.push('No packages detected.');
+    console.log(lines.join('\n'));
+    return;
+  }
+  lines.push('| Package | Path | Version | Root |');
+  lines.push('| --- | --- | --- | :-: |');
+  for (const p of info.packages) {
+    lines.push(`| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`);
+  }
   console.log(lines.join('\n'));
 }
 

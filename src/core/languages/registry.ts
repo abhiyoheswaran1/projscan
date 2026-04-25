@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { javascriptAdapter } from './javascriptAdapter.js';
 import { pythonAdapter } from './pythonAdapter.js';
+import { goAdapter } from './goAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
-const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter];
+const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter];
 const byExtension = new Map<string, LanguageAdapter>();
 
 function rebuildIndex(): void {

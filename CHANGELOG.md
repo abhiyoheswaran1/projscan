@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-04-25
+
+### Theme - "Six-month bundle"
+
+0.11.0 ships the entire 0.11 → 0.15 themed roadmap as one release. Five themes, one version: Signal Quality, PR Native, Monorepo, Observability, Second Language. The original per-version sequence is in [docs/ROADMAP.md] for context, but it has been consumed by this release. The deferred backlog there is still authoritative for "what's next."
+
+### Added — Signal Quality (was 0.11)
+
+- **AST-derived cyclomatic complexity** is now part of the `LanguageAdapter.parse()` output for JS/TS (Babel decision-point counter) and Python (tree-sitter walk). Per-file CC is persisted in the code graph and the index cache. Counted decision points: `if`, `else if`/`elif`, `for`/`for-in`/`for-of`/`for_in_clause`, `while`/`do-while`, `case` (default does not count), `catch`/`except`, `?:`, `&&`/`||`/`??`, `and`/`or`, comprehension `if`. Optional chaining and `else` do not count.
+- **Replaces LOC in the hotspot risk score.** `complexityWeight` and `hotChurnXComplexity` terms now read CC. Files outside the language-adapter set (`.rb`, `.go` files in non-Go projects, `.java`, etc.) keep the LOC fallback so behaviour degrades gracefully.
+- **`projscan_coupling` MCP tool + `projscan coupling` CLI** - per-file fan-in / fan-out / instability (Bob Martin's I = Ce / (Ca + Ce)) and circular-import cycles (iterative Tarjan SCC, size ≥ 2). Filters: `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file <path>`.
+- **`projscan_file` enriched** with `cyclomaticComplexity`, `fanIn`, `fanOut` fields. Markdown reporter shows a CC column on the hotspots table.
+
+### Added — PR Native (was 0.12)
+
+- **`projscan_pr_diff` MCP tool + `projscan pr-diff` CLI** - structural diff between two refs. Spins up a temporary git worktree at the base ref, builds a CodeGraph there, diffs against the head graph. Per file: added / removed / modified plus explicit lists of exports added/removed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Default base resolution: `origin/main` → `main` → `origin/master` → `master` → `HEAD~1`.
+- `diffGraphs()` exported as a pure function so callers can run the diff on graphs they already have without the worktree round-trip.
+
+### Added — Monorepo (was 0.13)
+
+- **`detectWorkspaces()`** handles npm/yarn workspaces (`package.json#workspaces`), pnpm (`pnpm-workspace.yaml`, parsed with a tiny YAML subset reader to avoid pulling in a full YAML dep), and an Nx/Turbo/Lerna fallback (`packages/*` + `apps/*` + `libs/*`).
+- **`projscan_workspaces` MCP tool + `projscan workspaces` CLI** list every package (name, relative path, version, root flag).
+- **`--package <name>` flag on `projscan hotspots` and `projscan coupling`** (CLI and MCP `package` arg) scopes results to a single workspace via longest-prefix matching. `findPackageForFile()` correctly handles the `packages/a` vs `packages/ab` ambiguity.
+
+### Added — Observability (was 0.14)
+
+- **Opt-in privacy-preserving telemetry.** Off by default. Enable via `.projscanrc` `telemetry: { enabled: true, sink?: "..." }` block, or `PROJSCAN_TELEMETRY=1` env. `PROJSCAN_TELEMETRY=0` is a per-machine kill switch even when rc opts in.
+- Records exactly: tool name, duration ms, success, projscan version, ISO timestamp. Optional `errorCode` on failure. Never records: source content, file paths, arguments, repo identifiers, machine identifiers.
+- Sink: local JSONL file (default `~/.projscan/telemetry.jsonl`). No remote endpoint in this release.
+- Wired into the MCP `tools/call` dispatch as fire-and-forget; sink failures are swallowed so telemetry can never break a tool call.
+- **`projscan_telemetry` MCP tool** surfaces effective config so agents can introspect state without reading config files.
+
+### Added — Second Language (was 0.15)
+
+- **Go via tree-sitter-go 0.25.0** (ships WASM in the npm tarball, ~210 KB). `goAdapter` mirrors the Python adapter shape.
+- `goImports.ts` handles single-line and parenthesized import blocks, including aliased forms (`util "github.com/foo/util"`).
+- `goExports.ts` applies Go's mechanical export rule (leading uppercase Unicode letter), distinguishing struct/interface/type and capturing func, method, var, const at top level.
+- `goCyclomatic.ts` counts decision points: `if`, `for`, `expression_case`, `type_case`, `communication_case`, and `binary_expression` with `&&` / `||`. Default cases and `defer`/`go` statements do not count.
+- `goManifests.ts` reads `go.mod` for the module path. Imports prefixed with the module path resolve into the repo; everything else (stdlib, third-party) is treated as external. Local dot-imports also supported.
+- Find-package logic resolves a Go import to any `.go` file in the target directory (Go packages are directory-scoped).
+
+### Changed
+
+- **`indexCache` bumped to v3.** Cache entries now carry `cyclomaticComplexity`. v2 caches are discarded on first 0.11 run and rebuilt automatically — no user action required.
+- **`projscan_hotspots`** description updated to mention "AST cyclomatic complexity" instead of generic "complexity." Hotspot reasons line says "high complexity (CC X)" / "moderate complexity (CC X)" instead of "large file (X lines)" when AST data is available.
+- **`projscan_file`** returns `cyclomaticComplexity`, `fanIn`, `fanOut` fields. Existing fields unchanged.
+- **MCP tool count: 13 → 17** (new: `projscan_coupling`, `projscan_pr_diff`, `projscan_workspaces`, `projscan_telemetry`).
+
+### Score-magnitude shift
+
+CC is much smaller than LOC for the same file (a 200-line file might have CC of 10–20 vs LOC of 200). Absolute hotspot scores will drop for adapter-parsed files (JS/TS, Python, Go), even though *rankings* improve. If your CI uses a hard threshold against `riskScore`, recalibrate it after the first 0.11 run.
+
+### Runtime dependencies
+
+Added `tree-sitter-go@^0.25.0` (~210 KB vendored wasm). Total runtime deps: 9 (was 8). Total vendored wasm: ~850 KB.
+
+### Gap-fill pass (closes the bundling shortcuts that landed in earlier 0.11 commits)
+
+A self-audit caught five gaps versus the original 0.11→0.15 roadmap text. All closed before release:
+
+- **Export rename detection in `projscan_pr_diff`.** `FileAstDiff` now carries an `exportsRenamed: [{from, to}]` list. A removed/added pair is reclassified as a rename when their similarity (max of normalized Levenshtein and shared-affix fraction) exceeds 0.5. Greedy best-score-first pairing; each name participates in at most one pair. Anything below threshold stays in the +/- lists. Reporters surface renames as `~exports: foo → fooBar`.
+- **Real Nx + Lerna config parsing.** `lerna.json#packages` is read directly. `nx.json#workspaceLayout` (custom appsDir/libsDir) is honoured, then `project.json` files are scanned in the layout dirs (modern Nx) and `workspace.json#projects` is read for legacy Nx. `turbo.json` stays as a marker (turbo doesn't declare workspaces — it always rides on top of npm/yarn/pnpm).
+- **`--package` scope on more commands.** Previously only on `hotspots` and `coupling`; now also on `analyze`, `doctor`, `structure`, `coverage`, `search`, and `pr-diff` (CLI flag and MCP `package` arg). `dependencies`/`outdated`/`audit` stay project-level — they read root manifests and per-package scoping would require workspace-aware lockfile parsing (deferred).
+- **Cross-package graph edges.** `CouplingReport` now carries `crossPackageEdges: [{from: {file, package}, to: {file, package}}]`, computed when workspace info is available and at least two non-root packages exist. Surfaces in `projscan_coupling` MCP output and console / markdown coupling reports. Useful for spotting unauthorized deep imports across package boundaries.
+- **Telemetry histograms.** New `aggregateTelemetry()` reads the JSONL sink and returns per-tool `{count, errorCount, errorRate, p50Ms, p95Ms, p99Ms, meanMs, minMs, maxMs}`. Exposed via `projscan_telemetry { aggregate: true }` MCP tool and `projscan telemetry --aggregate` CLI command. Linear-interpolation percentiles; malformed JSONL lines are skipped silently.
+
+### Notes
+
+- **659 tests passing** (+61 over 0.10). New coverage: AST CC for JS/TS + Python, Python CC node types (incl. comprehensions and match/case), coupling fan-in/out/instability + Tarjan SCC (DAG, 2-cycle, 3-cycle, disjoint, self-loop ignored) + cross-package-edge detection, hotspot LOC→CC switch + LOC fallback regression, monorepo detection (npm/yarn/pnpm/Nx project.json/Nx workspace.json/Lerna packages/Turbo fallback), prefix-matching against `packages/a` vs `packages/ab`, telemetry config + env override + JSONL append + sink-failure silence + aggregation (percentiles + ordering + malformed-line skip), Go parser/imports/exports/CC + end-to-end fixture (example.com/widget module with main + internal/util), export rename detector (similar pairs vs unrelated), pack-smoke test extended for tree-sitter-go.wasm.
+- All previous behaviour preserved for non-AST languages; existing JS/TS and Python paths only see the LOC→CC swap in hotspot scoring.
+- Bundling-tradeoff acknowledged: this release loses the 0.14 telemetry → 0.15 language-pick feedback loop the original roadmap envisioned. Future "what next?" decisions will have to lean on issues / PR feedback rather than telemetry until enough 0.11 users opt in.
+
 ## [0.10.0] - 2026-04-24
 
 ### Theme - "Beyond JS"

@@ -11,6 +11,8 @@ export interface GraphFile {
   exports: AstExport[];
   callSites: string[];
   lineCount: number;
+  /** File-level McCabe cyclomatic complexity from the adapter. 0 when unparsed. */
+  cyclomaticComplexity: number;
   mtimeMs: number;
   parseOk: boolean;
   parseReason?: string;
@@ -90,6 +92,7 @@ export async function buildCodeGraph(
           exports: [],
           callSites: [],
           lineCount: 0,
+          cyclomaticComplexity: 0,
         };
       }
 
@@ -99,6 +102,7 @@ export async function buildCodeGraph(
         exports: result.exports,
         callSites: result.callSites,
         lineCount: result.lineCount,
+        cyclomaticComplexity: result.cyclomaticComplexity,
         mtimeMs,
         parseOk: result.ok,
         parseReason: result.reason,

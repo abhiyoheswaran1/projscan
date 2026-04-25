@@ -86,6 +86,7 @@ export function makeHotspotReport(): HotspotReport {
         distinctAuthors: 3,
         daysSinceLastChange: 2,
         lineCount: 500,
+        cyclomaticComplexity: 23,
         sizeBytes: 10000,
         issueCount: 1,
         issueIds: ['missing-readme'],

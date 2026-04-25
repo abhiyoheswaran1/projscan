@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AuthorShare, FileEntry, Issue, FileHotspot, HotspotReport } from '../types.js';
+import type { CodeGraph } from './codeGraph.js';
 
 const CODE_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
@@ -19,6 +20,12 @@ export interface HotspotOptions {
   since?: string;
   limit?: number;
   coverage?: Map<string, number>;
+  /**
+   * Code graph for AST-derived complexity. When present, the risk score uses
+   * cyclomatic complexity instead of the LOC proxy. Files outside the graph
+   * (no language adapter) still fall back to LOC.
+   */
+  graph?: CodeGraph;
 }
 
 export async function analyzeHotspots(
@@ -85,9 +92,16 @@ export async function analyzeHotspots(
     const coverage = options.coverage?.get(file.relativePath);
     const coverageValue = typeof coverage === 'number' ? coverage : null;
 
+    // Prefer AST cyclomatic complexity when the graph parsed this file.
+    // Files in the graph but with parseOk:false fall back to LOC too — a
+    // failed parse means we can't trust the (zero) CC value.
+    const graphEntry = options.graph?.files.get(file.relativePath);
+    const cc = graphEntry?.parseOk ? graphEntry.cyclomaticComplexity : null;
+
     const riskScore = computeRiskScore({
       churn,
       lines,
+      complexity: cc,
       authors,
       daysSinceLastChange,
       issueCount: issueIds.length,
@@ -98,6 +112,7 @@ export async function analyzeHotspots(
     const reasons = buildReasons({
       churn,
       lines,
+      complexity: cc,
       authors,
       daysSinceLastChange,
       issueCount: issueIds.length,
@@ -112,6 +127,7 @@ export async function analyzeHotspots(
       distinctAuthors: authors,
       daysSinceLastChange,
       lineCount: lines,
+      cyclomaticComplexity: cc,
       sizeBytes: file.sizeBytes,
       issueCount: issueIds.length,
       issueIds,
@@ -394,6 +410,12 @@ function isPathBoundary(code: number): boolean {
 interface ScoreInputs {
   churn: number;
   lines: number;
+  /**
+   * AST cyclomatic complexity. When null (no adapter parsed this file or
+   * parse failed), the score falls back to `lines` so non-AST languages
+   * like Ruby/Go/Java still rank.
+   */
+  complexity?: number | null;
   authors: number;
   daysSinceLastChange: number | null;
   issueCount: number;
@@ -402,9 +424,14 @@ interface ScoreInputs {
 }
 
 export function computeRiskScore(i: ScoreInputs): number {
+  // 0.11: complexity replaces LOC as the second-axis "scariness" signal.
+  // CC is a tighter proxy for control-flow risk than raw line count, but a
+  // 200-line file might score CC=15 instead of LOC=200, so absolute scores
+  // shift down for adapter-parsed files. Rankings are what matter.
+  const cx = typeof i.complexity === 'number' ? i.complexity : i.lines;
   const churnWeight = Math.log2(1 + i.churn) * 20;
-  const complexityWeight = Math.log2(1 + i.lines) * 4;
-  const hotChurnXComplexity = Math.log2(1 + i.churn) * Math.log2(1 + i.lines) * 3;
+  const complexityWeight = Math.log2(1 + cx) * 4;
+  const hotChurnXComplexity = Math.log2(1 + i.churn) * Math.log2(1 + cx) * 3;
   const authorWeight = Math.log2(1 + i.authors) * 5;
   const issueWeight = i.issueCount * 12;
   const busFactorPenalty = i.busFactorOne ? 15 : 0;
@@ -449,8 +476,15 @@ function buildReasons(i: ReasonInputs): string[] {
   else if (i.churn >= 8) reasons.push(`frequent changes (${i.churn} commits)`);
   else if (i.churn > 0) reasons.push(`${i.churn} commit${i.churn === 1 ? '' : 's'}`);
 
-  if (i.lines >= 500) reasons.push(`large file (${i.lines} lines)`);
-  else if (i.lines >= 250) reasons.push(`${i.lines} lines`);
+  // When CC is available, prefer it over raw line count — it's the more
+  // honest signal. Fall back to "large file (lines)" for non-AST languages.
+  if (typeof i.complexity === 'number') {
+    if (i.complexity >= 30) reasons.push(`high complexity (CC ${i.complexity})`);
+    else if (i.complexity >= 15) reasons.push(`moderate complexity (CC ${i.complexity})`);
+  } else {
+    if (i.lines >= 500) reasons.push(`large file (${i.lines} lines)`);
+    else if (i.lines >= 250) reasons.push(`${i.lines} lines`);
+  }
 
   if (i.authors >= 5) reasons.push(`${i.authors} contributors`);
   else if (i.authors >= 2) reasons.push(`${i.authors} contributors`);

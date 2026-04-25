@@ -49,6 +49,8 @@ export interface AstResult {
   exports: AstExport[];
   callSites: string[];
   lineCount: number;
+  /** File-level McCabe cyclomatic complexity: decision points + 1. 0 when unparsed. */
+  cyclomaticComplexity: number;
 }
 
 const EMPTY: AstResult = {
@@ -58,6 +60,7 @@ const EMPTY: AstResult = {
   exports: [],
   callSites: [],
   lineCount: 0,
+  cyclomaticComplexity: 0,
 };
 
 const SOURCE_EXTENSIONS = new Set([
@@ -118,13 +121,14 @@ export function parseSource(filePath: string, content: string): AstResult {
   const imports: AstImport[] = [];
   const exports: AstExport[] = [];
   const callSites: string[] = [];
+  let decisionPoints = 0;
 
   for (const node of ast.program.body) {
     visitTopLevel(node, imports, exports);
   }
 
-  // Second pass: extract dynamic imports + call sites. Walk the whole tree
-  // (cheap - we already have the AST in memory).
+  // Second pass: extract dynamic imports + call sites + cyclomatic decision
+  // points. Walk the whole tree (cheap - we already have the AST in memory).
   walk(ast.program, (n) => {
     if (n.type === 'CallExpression') {
       const callee = n.callee;
@@ -157,6 +161,7 @@ export function parseSource(filePath: string, content: string): AstResult {
         });
       }
     }
+    if (isDecisionPoint(n)) decisionPoints++;
   });
 
   return {
@@ -165,7 +170,37 @@ export function parseSource(filePath: string, content: string): AstResult {
     exports,
     callSites: [...new Set(callSites)],
     lineCount: content ? content.split('\n').length : 0,
+    cyclomaticComplexity: decisionPoints + 1,
   };
+}
+
+/**
+ * McCabe decision points for JavaScript/TypeScript. Default switch cases and
+ * optional-chaining do NOT count - this matches eslint's `complexity` rule
+ * and most static analyzers. The result is summed across the whole file
+ * (module + all nested functions) and offset by +1 in the caller.
+ */
+function isDecisionPoint(n: Node): boolean {
+  switch (n.type) {
+    case 'IfStatement':
+    case 'ConditionalExpression':
+    case 'ForStatement':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+    case 'CatchClause':
+      return true;
+    case 'SwitchCase':
+      // Default case is the fall-through path, not a branch.
+      return (n as { test: unknown }).test !== null;
+    case 'LogicalExpression': {
+      const op = (n as { operator: string }).operator;
+      return op === '&&' || op === '||' || op === '??';
+    }
+    default:
+      return false;
+  }
 }
 
 function visitTopLevel(

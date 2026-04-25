@@ -20,7 +20,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 13 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots - without loading the file tree into its context.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 17 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, and surface coupling/cycle hotspots - without loading the file tree into its context.
 
 Humans get the same thing through the CLI.
 
@@ -190,7 +190,7 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 
 ## What It Detects
 
-**Languages**: TypeScript, JavaScript, Python (full AST analysis for all three), plus file-level detection for Go, Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more.
+**Languages**: TypeScript, JavaScript, Python, and Go (full AST analysis for all four), plus file-level detection for Rust, Java, Ruby, C/C++, PHP, Swift, Kotlin, and 20+ more.
 
 **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, and more
 
@@ -205,6 +205,18 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 - **MCP tools work unchanged.** `projscan_graph`, `projscan_search`, `projscan_doctor`, `projscan_hotspots`, etc. all accept Python projects. Agents can ask "which files import `pkg.core`?" and get an answer in milliseconds.
 
 `projscan_upgrade` remains Node-only for now - a Python equivalent (reading pip / poetry metadata) is on the roadmap.
+
+### Bundle (0.11)
+
+0.11.0 is a multi-theme bundle. Five releases of work shipped under one version:
+
+- **Signal Quality (was 0.11)** - the hotspot risk score now uses AST-derived **cyclomatic complexity** instead of a line-count proxy. Per-file CC is exposed via `projscan_file` and the new `projscan_coupling` tool. Coupling metrics (fan-in / fan-out / instability) and **circular-import detection** (Tarjan SCC) ship as a first-class `projscan coupling` command and MCP tool.
+- **PR Native (was 0.12)** - new `projscan_pr_diff` tool returns the **structural** diff between two refs: exports added/removed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Stands up a temporary git worktree at the base ref to get a clean second graph. What an agent reviewing a PR actually wants to know.
+- **Monorepo (was 0.13)** - workspace detection for npm/yarn workspaces, pnpm-workspace.yaml, and Nx/Turbo/Lerna fallback. New `projscan workspaces` command lists every package; `--package <name>` (and the `package` MCP arg) scope `hotspots` and `coupling` to a single workspace.
+- **Observability (was 0.14)** - **opt-in**, privacy-preserving telemetry. Records only tool name, duration, success, version, timestamp; never source content, paths, or arguments. Off by default; enable via `.projscanrc` `telemetry.enabled` or `PROJSCAN_TELEMETRY=1`. Sink is a local JSONL file you control. New `projscan_telemetry` tool surfaces effective state.
+- **Second Language (was 0.15)** - **Go** via tree-sitter-go. Go files now flow through the same graph / hotspot / coupling / pr-diff pipeline as JS/TS and Python. `go.mod` parsed for module-path resolution; capitalization rule applied for export visibility.
+
+Cache version bumped 2 → 3 (CC stored per file). Existing v2 caches are discarded on first 0.11 run and rebuilt automatically.
 
 **Issues**:
 - Missing linting (ESLint) and formatting (Prettier) configuration
@@ -222,7 +234,7 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 - **5,000 files** analyzed in under 1.5 seconds
 - **20,000 files** analyzed in under 3 seconds
 - **Zero network requests** - everything runs locally
-- **8 runtime dependencies** - still minimal (the two tree-sitter packages added in 0.10 bring ~640 KB of vendored wasm)
+- **9 runtime dependencies** - still minimal (the three tree-sitter packages bring ~850 KB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB)
 
 ## CI/CD Integration
 
@@ -429,17 +441,19 @@ claude mcp add projscan -- npx projscan mcp
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 13 MCP tools
+### The 17 MCP tools
 
-**Structural (0.6.0 - new, agent-native):**
+**Structural (0.6.0 / 0.11 — agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
 - **`projscan_search`** - fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Replaces the temptation to shell out to grep.
+- **`projscan_coupling`** *(0.11)* - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
+- **`projscan_pr_diff`** *(0.11)* - structural diff between two git refs. Returns added/removed/modified files with explicit lists of exports, imports, and call sites that changed, plus ΔCC and Δfan-in.
 
 **Analysis:**
 - `projscan_analyze` - full project report
 - `projscan_doctor` - health score + issues
-- `projscan_hotspots` - risk-ranked files (churn × complexity × issues × ownership × coverage)
-- `projscan_file` - per-file risk + ownership + related issues
+- `projscan_hotspots` - risk-ranked files (churn × **AST cyclomatic complexity** × issues × ownership × coverage; falls back to LOC for non-AST languages)
+- `projscan_file` - per-file risk + ownership + related issues + CC + fan-in/fan-out
 - `projscan_explain` - per-file purpose, imports, exports, smells
 - `projscan_structure` - directory tree
 - `projscan_coverage` - scariest untested files (coverage × hotspots)
@@ -449,6 +463,10 @@ claude mcp add projscan -- npx projscan mcp
 - `projscan_outdated` - declared-vs-installed drift (offline)
 - `projscan_audit` - normalized `npm audit`
 - `projscan_upgrade` - upgrade preview (CHANGELOG + importers, offline)
+
+**Workspace + observability (0.11):**
+- `projscan_workspaces` - list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna). Use the `name` as the `package` arg on `projscan_hotspots` / `projscan_coupling` to scope.
+- `projscan_telemetry` - inspect opt-in telemetry state (enabled?, sink path, env override).
 
 ### Context-window budgeting
 

@@ -143,7 +143,7 @@ describe('markdownReporter', () => {
     it('renders the hotspots table with risk columns', async () => {
       const out = await captureStdout(() => reportHotspotsMarkdown(makeHotspotReport()));
       expect(out).toContain('# Project Hotspots');
-      expect(out).toContain('| # | Score | File | Churn | Lines | Issues | Reasons |');
+      expect(out).toContain('| # | Score | File | Churn | CC | Lines | Issues | Reasons |');
       expect(out).toContain('`src/big.ts`');
       expect(out).toContain('| 1 | 85.0 |');
     });

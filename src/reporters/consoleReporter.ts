@@ -3,6 +3,7 @@ import type {
   AnalysisReport,
   AuditReport,
   CoverageJoinedReport,
+  CouplingReport,
   Issue,
   Fix,
   FixResult,
@@ -14,7 +15,9 @@ import type {
   DiffResult,
   HotspotReport,
   OutdatedReport,
+  PrDiffReport,
   UpgradePreview,
+  WorkspaceInfo,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -450,6 +453,14 @@ export function reportFileInspection(insp: FileInspection): void {
   console.log(`  ${chalk.bold('Purpose:')}  ${insp.purpose}`);
   console.log(`  ${chalk.bold('Lines:')}    ${insp.lineCount}`);
   console.log(`  ${chalk.bold('Size:')}     ${formatSize(insp.sizeBytes)}`);
+  if (typeof insp.cyclomaticComplexity === 'number') {
+    console.log(`  ${chalk.bold('CC:')}       ${insp.cyclomaticComplexity}`);
+  }
+  if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
+    console.log(
+      `  ${chalk.bold('Coupling:')} fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`,
+    );
+  }
 
   if (insp.hotspot) {
     const h = insp.hotspot;
@@ -714,4 +725,140 @@ function formatCoverage(pct: number): string {
 function formatAuthorEmail(email: string): string {
   const at = email.indexOf('@');
   return at > 0 ? email.slice(0, at) : email;
+}
+
+// ── Report: coupling ──────────────────────────────────────
+
+export function reportCoupling(report: CouplingReport): void {
+  console.log(header('Coupling + Cycles'));
+
+  if (report.totalFiles === 0) {
+    console.log(`\n  ${chalk.yellow('⚠')} No files in the code graph (no language adapter matched).\n`);
+    return;
+  }
+
+  const xpkg = report.totalCrossPackageEdges;
+  console.log(
+    chalk.dim(
+      `\n  ${report.totalFiles} file${report.totalFiles === 1 ? '' : 's'} in graph · ${report.totalCycles} cycle${report.totalCycles === 1 ? '' : 's'}${xpkg > 0 ? ` · ${xpkg} cross-package edge${xpkg === 1 ? '' : 's'}` : ''}\n`,
+    ),
+  );
+
+  if (report.cycles.length > 0) {
+    console.log(chalk.bold('  Import cycles:'));
+    for (const c of report.cycles) {
+      console.log(`    ${chalk.red('●')} cycle of ${c.size} files: ${c.files.join(' → ')} → …`);
+    }
+    console.log('');
+  }
+
+  if (report.crossPackageEdges.length > 0) {
+    console.log(chalk.bold('  Cross-package edges:'));
+    for (const e of report.crossPackageEdges.slice(0, 25)) {
+      console.log(
+        `    ${chalk.yellow('→')} ${chalk.cyan(e.from.file)} ${chalk.dim(`(${e.from.package})`)}  →  ${chalk.cyan(e.to.file)} ${chalk.dim(`(${e.to.package})`)}`,
+      );
+    }
+    if (report.crossPackageEdges.length > 25) {
+      console.log(chalk.dim(`    … and ${report.crossPackageEdges.length - 25} more`));
+    }
+    console.log('');
+  }
+
+  if (report.files.length > 0) {
+    console.log(chalk.bold('  Files (sorted by request):'));
+    const colHeader = `    ${'fan-in'.padStart(6)}  ${'fan-out'.padStart(7)}  ${'instab'.padStart(6)}  file`;
+    console.log(chalk.dim(colHeader));
+    for (const f of report.files) {
+      console.log(
+        `    ${String(f.fanIn).padStart(6)}  ${String(f.fanOut).padStart(7)}  ${f.instability.toFixed(2).padStart(6)}  ${chalk.cyan(f.relativePath)}`,
+      );
+    }
+    console.log('');
+  }
+}
+
+// ── Report: PR diff ───────────────────────────────────────
+
+export function reportPrDiff(report: PrDiffReport): void {
+  console.log(header('PR Structural Diff'));
+
+  if (!report.available) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'PR diff unavailable.'}\n`);
+    return;
+  }
+
+  console.log(
+    chalk.dim(
+      `\n  base ${report.base.ref} (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head ${report.head.ref} (${report.head.resolvedSha?.slice(0, 7) ?? '?'})\n`,
+    ),
+  );
+  console.log(
+    `  ${chalk.bold(report.totalFilesChanged.toString())} file${report.totalFilesChanged === 1 ? '' : 's'} changed: ${chalk.green(`+${report.filesAdded.length}`)} ${chalk.red(`-${report.filesRemoved.length}`)} ${chalk.yellow(`~${report.filesModified.length}`)}\n`,
+  );
+
+  if (report.filesAdded.length > 0) {
+    console.log(chalk.bold('  Added:'));
+    for (const f of report.filesAdded) console.log(`    ${chalk.green('+')} ${f}`);
+    console.log('');
+  }
+  if (report.filesRemoved.length > 0) {
+    console.log(chalk.bold('  Removed:'));
+    for (const f of report.filesRemoved) console.log(`    ${chalk.red('-')} ${f}`);
+    console.log('');
+  }
+  if (report.filesModified.length > 0) {
+    console.log(chalk.bold('  Modified:'));
+    for (const m of report.filesModified) {
+      const ccDelta = m.cyclomaticDelta;
+      const fiDelta = m.fanInDelta;
+      const ccStr = ccDelta === null ? '' : `, ΔCC ${signed(ccDelta)}`;
+      const finStr = fiDelta === null || fiDelta === 0 ? '' : `, Δfan-in ${signed(fiDelta)}`;
+      console.log(`    ${chalk.yellow('~')} ${chalk.cyan(m.relativePath)}${chalk.dim(ccStr + finStr)}`);
+      if (m.exportsAdded.length > 0) {
+        console.log(`      ${chalk.green('+exports:')} ${m.exportsAdded.join(', ')}`);
+      }
+      if (m.exportsRemoved.length > 0) {
+        console.log(`      ${chalk.red('-exports:')} ${m.exportsRemoved.join(', ')}`);
+      }
+      if (m.exportsRenamed.length > 0) {
+        const pairs = m.exportsRenamed.map((r) => `${r.from} → ${r.to}`).join(', ');
+        console.log(`      ${chalk.yellow('~exports:')} ${pairs}`);
+      }
+      if (m.importsAdded.length > 0) {
+        console.log(`      ${chalk.green('+imports:')} ${m.importsAdded.join(', ')}`);
+      }
+      if (m.importsRemoved.length > 0) {
+        console.log(`      ${chalk.red('-imports:')} ${m.importsRemoved.join(', ')}`);
+      }
+    }
+    console.log('');
+  }
+}
+
+function signed(n: number): string {
+  return n >= 0 ? `+${n}` : String(n);
+}
+
+// ── Report: workspaces ────────────────────────────────────
+
+export function reportWorkspaces(info: WorkspaceInfo): void {
+  console.log(header('Workspaces'));
+
+  if (info.kind === 'none') {
+    console.log(`\n  ${chalk.dim('Single-package repo (no monorepo workspaces detected).')}\n`);
+    if (info.packages.length === 1) {
+      const p = info.packages[0];
+      console.log(`  ${chalk.bold(p.name)} ${chalk.dim(p.version ?? '')}\n`);
+    }
+    return;
+  }
+
+  console.log(chalk.dim(`\n  Kind: ${info.kind} · Source: ${info.source ?? '?'} · ${info.packages.length} package(s)\n`));
+  for (const p of info.packages) {
+    const tag = p.isRoot ? chalk.dim('(root)') : '';
+    const ver = p.version ? chalk.dim(` v${p.version}`) : '';
+    console.log(`  ${chalk.bold(p.name)}${ver}  ${chalk.cyan(p.relativePath || '.')} ${tag}`);
+  }
+  console.log('');
 }
