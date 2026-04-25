@@ -25,6 +25,7 @@ function makeHotspotReport(
       distinctAuthors: 1,
       daysSinceLastChange: 10,
       lineCount: 100,
+      cyclomaticComplexity: null,
       sizeBytes: 1000,
       issueCount: 0,
       issueIds: [],

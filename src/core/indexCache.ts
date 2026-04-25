@@ -4,9 +4,10 @@ import type { CodeGraph, GraphFile } from './codeGraph.js';
 
 const CACHE_DIR = '.projscan-cache';
 const CACHE_FILE = 'graph.json';
-// v2: added `adapterId` to entries for multi-language routing. v1 caches are
-// discarded on load so a file that switched adapters can't reuse a stale parse.
-const CACHE_VERSION = 2;
+// v2: added `adapterId` for multi-language routing.
+// v3: added `cyclomaticComplexity` per file (0.11 "Signal Quality"). Older
+// caches are discarded on load so we never read back missing CC as 0.
+const CACHE_VERSION = 3;
 
 interface SerializedGraph {
   version: number;
@@ -17,6 +18,7 @@ interface SerializedGraph {
     exports: GraphFile['exports'];
     callSites: string[];
     lineCount: number;
+    cyclomaticComplexity: number;
     mtimeMs: number;
     parseOk: boolean;
     parseReason?: string;
@@ -55,6 +57,7 @@ export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | und
       exports: entry.exports,
       callSites: entry.callSites,
       lineCount: entry.lineCount,
+      cyclomaticComplexity: entry.cyclomaticComplexity,
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,
@@ -94,6 +97,7 @@ export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promi
       exports: entry.exports,
       callSites: entry.callSites,
       lineCount: entry.lineCount,
+      cyclomaticComplexity: entry.cyclomaticComplexity,
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,

@@ -2,6 +2,7 @@ import type {
   AnalysisReport,
   AuditReport,
   CoverageJoinedReport,
+  CouplingReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -266,6 +267,12 @@ export function reportFileMarkdown(insp: FileInspection): void {
 
   lines.push(`**Purpose:** ${insp.purpose}`);
   lines.push(`**Lines:** ${insp.lineCount}  |  **Size:** ${insp.sizeBytes} B`);
+  if (typeof insp.cyclomaticComplexity === 'number') {
+    lines.push(`**Cyclomatic complexity:** ${insp.cyclomaticComplexity}`);
+  }
+  if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
+    lines.push(`**Coupling:** fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`);
+  }
 
   if (insp.hotspot) {
     const h = insp.hotspot;
@@ -327,14 +334,44 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
     return;
   }
 
-  lines.push('| # | Score | File | Churn | Lines | Issues | Reasons |');
-  lines.push('| --- | ---: | --- | ---: | ---: | ---: | --- |');
+  lines.push('| # | Score | File | Churn | CC | Lines | Issues | Reasons |');
+  lines.push('| --- | ---: | --- | ---: | ---: | ---: | ---: | --- |');
   for (let i = 0; i < report.hotspots.length; i++) {
     const h = report.hotspots[i];
     const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '-';
+    const cc = typeof h.cyclomaticComplexity === 'number' ? String(h.cyclomaticComplexity) : '-';
     lines.push(
-      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
+      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${cc} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
     );
+  }
+
+  console.log(lines.join('\n'));
+}
+
+export function reportCouplingMarkdown(report: CouplingReport): void {
+  const lines: string[] = ['# Coupling + Cycles', ''];
+  lines.push(
+    `_${report.totalFiles} file(s) in graph · ${report.totalCycles} cycle(s)_`,
+    '',
+  );
+
+  if (report.cycles.length > 0) {
+    lines.push('## Import cycles', '');
+    for (const c of report.cycles) {
+      lines.push(`- **${c.size}-file cycle:** ${c.files.map((f) => `\`${f}\``).join(' → ')} → …`);
+    }
+    lines.push('');
+  }
+
+  if (report.files.length > 0) {
+    lines.push('## Files', '');
+    lines.push('| File | Fan-in | Fan-out | Instability |');
+    lines.push('| --- | ---: | ---: | ---: |');
+    for (const f of report.files) {
+      lines.push(
+        `| \`${f.relativePath}\` | ${f.fanIn} | ${f.fanOut} | ${f.instability.toFixed(2)} |`,
+      );
+    }
   }
 
   console.log(lines.join('\n'));

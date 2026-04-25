@@ -330,6 +330,8 @@ export interface FileHotspot {
   distinctAuthors: number;
   daysSinceLastChange: number | null;
   lineCount: number;
+  /** AST-derived McCabe complexity. null when no language adapter parsed this file. */
+  cyclomaticComplexity: number | null;
   sizeBytes: number;
   issueCount: number;
   issueIds: string[];
@@ -350,6 +352,31 @@ export interface HotspotReport {
   totalFilesRanked: number;
 }
 
+// === Coupling + Cycles (0.11) ===
+
+export interface FileCoupling {
+  relativePath: string;
+  /** Number of files that import this one. */
+  fanIn: number;
+  /** Number of locally-resolved imports this file makes. */
+  fanOut: number;
+  /** Bob Martin's instability: fanOut / (fanIn + fanOut). 0 when both are zero. */
+  instability: number;
+}
+
+export interface ImportCycle {
+  /** Member files of a strongly-connected component (size >= 2). */
+  files: string[];
+  size: number;
+}
+
+export interface CouplingReport {
+  files: FileCoupling[];
+  cycles: ImportCycle[];
+  totalFiles: number;
+  totalCycles: number;
+}
+
 // === Per-file Inspection ===
 
 export interface FileInspection {
@@ -364,6 +391,12 @@ export interface FileInspection {
   potentialIssues: string[];
   hotspot: FileHotspot | null;
   issues: Issue[];
+  /** AST-derived McCabe complexity. null when no language adapter parsed this file. */
+  cyclomaticComplexity?: number | null;
+  /** Number of files that import this one. null when graph unavailable. */
+  fanIn?: number | null;
+  /** Number of locally-resolved imports this file makes. null when graph unavailable. */
+  fanOut?: number | null;
   /** Adapter id (e.g. 'javascript', 'python'). Set when the graph was available. */
   language?: string;
 }

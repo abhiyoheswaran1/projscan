@@ -9,6 +9,7 @@ function hotspot(path: string, riskScore: number, extra: Partial<FileHotspot> = 
     distinctAuthors: 2,
     daysSinceLastChange: 5,
     lineCount: 100,
+    cyclomaticComplexity: null,
     sizeBytes: 5000,
     issueCount: 0,
     issueIds: [],

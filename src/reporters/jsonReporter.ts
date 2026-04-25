@@ -2,6 +2,7 @@ import type {
   AnalysisReport,
   AuditReport,
   CoverageJoinedReport,
+  CouplingReport,
   Issue,
   FileExplanation,
   FileInspection,
@@ -105,4 +106,8 @@ export function reportUpgradeJson(preview: UpgradePreview): void {
 
 export function reportCoverageJson(report: CoverageJoinedReport): void {
   console.log(JSON.stringify({ coverage: report }, null, 2));
+}
+
+export function reportCouplingJson(report: CouplingReport): void {
+  console.log(JSON.stringify({ coupling: report }, null, 2));
 }

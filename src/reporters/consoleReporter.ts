@@ -3,6 +3,7 @@ import type {
   AnalysisReport,
   AuditReport,
   CoverageJoinedReport,
+  CouplingReport,
   Issue,
   Fix,
   FixResult,
@@ -450,6 +451,14 @@ export function reportFileInspection(insp: FileInspection): void {
   console.log(`  ${chalk.bold('Purpose:')}  ${insp.purpose}`);
   console.log(`  ${chalk.bold('Lines:')}    ${insp.lineCount}`);
   console.log(`  ${chalk.bold('Size:')}     ${formatSize(insp.sizeBytes)}`);
+  if (typeof insp.cyclomaticComplexity === 'number') {
+    console.log(`  ${chalk.bold('CC:')}       ${insp.cyclomaticComplexity}`);
+  }
+  if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
+    console.log(
+      `  ${chalk.bold('Coupling:')} fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`,
+    );
+  }
 
   if (insp.hotspot) {
     const h = insp.hotspot;
@@ -714,4 +723,39 @@ function formatCoverage(pct: number): string {
 function formatAuthorEmail(email: string): string {
   const at = email.indexOf('@');
   return at > 0 ? email.slice(0, at) : email;
+}
+
+// ── Report: coupling ──────────────────────────────────────
+
+export function reportCoupling(report: CouplingReport): void {
+  console.log(header('Coupling + Cycles'));
+
+  if (report.totalFiles === 0) {
+    console.log(`\n  ${chalk.yellow('⚠')} No files in the code graph (no language adapter matched).\n`);
+    return;
+  }
+
+  console.log(
+    chalk.dim(`\n  ${report.totalFiles} file${report.totalFiles === 1 ? '' : 's'} in graph · ${report.totalCycles} cycle${report.totalCycles === 1 ? '' : 's'}\n`),
+  );
+
+  if (report.cycles.length > 0) {
+    console.log(chalk.bold('  Import cycles:'));
+    for (const c of report.cycles) {
+      console.log(`    ${chalk.red('●')} cycle of ${c.size} files: ${c.files.join(' → ')} → …`);
+    }
+    console.log('');
+  }
+
+  if (report.files.length > 0) {
+    console.log(chalk.bold('  Files (sorted by request):'));
+    const colHeader = `    ${'fan-in'.padStart(6)}  ${'fan-out'.padStart(7)}  ${'instab'.padStart(6)}  file`;
+    console.log(chalk.dim(colHeader));
+    for (const f of report.files) {
+      console.log(
+        `    ${String(f.fanIn).padStart(6)}  ${String(f.fanOut).padStart(7)}  ${f.instability.toFixed(2).padStart(6)}  ${chalk.cyan(f.relativePath)}`,
+      );
+    }
+    console.log('');
+  }
 }

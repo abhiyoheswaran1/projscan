@@ -13,7 +13,8 @@ import { scanRepository } from './repositoryScanner.js';
 import { collectIssues } from './issueEngine.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { getAdapterFor } from './languages/registry.js';
-import type { CodeGraph } from './codeGraph.js';
+import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
+import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
 
 export interface InspectOptions {
   scan?: { files: FileEntry[] };
@@ -87,13 +88,40 @@ export async function inspectFile(
 
   const files = options.scan?.files ?? (await scanRepository(resolvedRoot)).files;
   const issues = options.issues ?? (await collectIssues(resolvedRoot, files));
+
+  // Build the graph if not provided. Powers AST cyclomatic complexity, fan-in,
+  // fan-out, and feeds the hotspot analyzer's CC-based risk score.
+  let graph = options.graph;
+  if (!graph) {
+    const cached = await loadCachedGraph(resolvedRoot);
+    graph = await buildCodeGraph(resolvedRoot, files, cached);
+    await saveCachedGraph(resolvedRoot, graph);
+  }
+
   const hotspotReport =
-    options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100 }));
+    options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100, graph }));
 
   const hotspot = findHotspotForFile(hotspotReport, relativePath);
   const relatedIssues = issues.filter((issue) =>
     (issue.title + '\n' + issue.description).includes(relativePath),
   );
+
+  // Coupling: fan-in is direct from the graph; fan-out scans localImporters
+  // for entries where this file is the importer. O(N) over local edges, fine
+  // for a single-file inspection.
+  let cyclomaticComplexity: number | null = null;
+  let fanIn: number | null = null;
+  let fanOut: number | null = null;
+  const graphFileEntry = graph.files.get(relativePath);
+  if (graphFileEntry) {
+    cyclomaticComplexity = graphFileEntry.parseOk ? graphFileEntry.cyclomaticComplexity : null;
+    fanIn = graph.localImporters.get(relativePath)?.size ?? 0;
+    let fo = 0;
+    for (const importers of graph.localImporters.values()) {
+      if (importers.has(relativePath)) fo++;
+    }
+    fanOut = fo;
+  }
 
   return {
     relativePath,
@@ -106,6 +134,9 @@ export async function inspectFile(
     potentialIssues,
     hotspot,
     issues: relatedIssues,
+    cyclomaticComplexity,
+    fanIn,
+    fanOut,
     language,
   };
 }

@@ -20,6 +20,7 @@ import {
   importsOf,
 } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
+import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -136,7 +137,7 @@ const tools: McpTool[] = [
   {
     name: 'projscan_hotspots',
     description:
-      'Rank files by risk using git churn × complexity × open issues. Returns the most dangerous files to touch. Supports cursor-based pagination: pass the `nextCursor` from a previous response back as `cursor` to fetch the next page.',
+      'Rank files by risk using git churn × AST cyclomatic complexity × open issues. Returns the most dangerous files to touch. Each hotspot includes `cyclomaticComplexity` (null for non-AST languages, where line count is used as fallback). Supports cursor-based pagination: pass the `nextCursor` from a previous response back as `cursor` to fetch the next page.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -163,17 +164,23 @@ const tools: McpTool[] = [
       },
     },
     handler: async (args, rootPath) => {
-      emitProgress(0, 4, 'scanning repository');
+      emitProgress(0, 5, 'scanning repository');
       const scan = await scanRepository(rootPath);
-      emitProgress(1, 4, 'collecting issues');
+      emitProgress(1, 5, 'collecting issues');
       const issues = await collectIssues(rootPath, scan.files);
       const limit = typeof args.limit === 'number' ? args.limit : 100;
       const since = typeof args.since === 'string' ? args.since : undefined;
-      emitProgress(2, 4, 'analyzing git churn + risk');
-      const report = await analyzeHotspots(rootPath, scan.files, issues, { limit, since });
-      emitProgress(3, 4, 'paginating');
+      emitProgress(2, 5, 'building code graph');
+      // Graph powers AST cyclomatic complexity in the risk score (0.11).
+      // Cache hit makes this nearly free on repeat runs.
+      const cached = await loadCachedGraph(rootPath);
+      const graph = await buildCodeGraph(rootPath, scan.files, cached);
+      await saveCachedGraph(rootPath, graph);
+      emitProgress(3, 5, 'analyzing git churn + risk');
+      const report = await analyzeHotspots(rootPath, scan.files, issues, { limit, since, graph });
+      emitProgress(4, 5, 'paginating');
       const page = paginate(report.hotspots, readPageParams(args), listChecksum(report.hotspots));
-      emitProgress(4, 4, 'done');
+      emitProgress(5, 5, 'done');
       return {
         available: report.available,
         reason: report.reason,
@@ -218,7 +225,7 @@ const tools: McpTool[] = [
   {
     name: 'projscan_file',
     description:
-      'Drill into a single file: purpose, imports, exports, AND its churn/risk/ownership plus any related health issues. Use this after projscan_hotspots when deciding how to approach a specific risky file.',
+      'Drill into a single file: purpose, imports, exports, churn/risk/ownership, related health issues, AST cyclomatic complexity, and coupling (fan-in / fan-out). Use this after projscan_hotspots when deciding how to approach a specific risky file.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -467,6 +474,65 @@ const tools: McpTool[] = [
         default:
           throw new Error(`unknown direction: ${direction}`);
       }
+    },
+  },
+
+  {
+    name: 'projscan_coupling',
+    description:
+      'Per-file coupling metrics (fan-in, fan-out, instability) and circular-import cycles, derived from the AST code graph. Use `direction` to focus the result: "all" returns every file sorted by fan-in; "high_fan_in" / "high_fan_out" sort accordingly; "cycles_only" returns just the files participating in import cycles. Cycles are reported separately as strongly-connected components of size >= 2.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: 'Optional. When set, the response includes only this file\'s coupling row (cycles list still returned in full).',
+        },
+        direction: {
+          type: 'string',
+          description: 'Filter/sort applied to `files`. Default "all".',
+          enum: ['all', 'high_fan_in', 'high_fan_out', 'cycles_only'],
+        },
+        limit: {
+          type: 'number',
+          description: 'Max file rows returned (default 25, max 500).',
+        },
+        max_tokens: {
+          type: 'number',
+          description: 'Cap the response to roughly this many tokens.',
+        },
+      },
+    },
+    handler: async (args, rootPath) => {
+      emitProgress(0, 3, 'building code graph');
+      const scan = await scanRepository(rootPath);
+      const cached = await loadCachedGraph(rootPath);
+      const graph = await buildCodeGraph(rootPath, scan.files, cached);
+      await saveCachedGraph(rootPath, graph);
+      emitProgress(1, 3, 'computing coupling + cycles');
+      const report = computeCoupling(graph);
+      const direction = (typeof args.direction === 'string' ? args.direction : 'all') as
+        | 'all'
+        | 'high_fan_in'
+        | 'high_fan_out'
+        | 'cycles_only';
+      const limit = Math.max(1, Math.min(500, typeof args.limit === 'number' ? args.limit : 25));
+      const file = typeof args.file === 'string' ? args.file : undefined;
+
+      let files = filterCoupling(report, direction);
+      if (file) files = files.filter((f) => f.relativePath === file);
+      files = files.slice(0, limit);
+      emitProgress(2, 3, 'paginating');
+      const page = paginate(files, readPageParams(args), listChecksum(files));
+      emitProgress(3, 3, 'done');
+      return {
+        files: page.items,
+        cycles: report.cycles,
+        totalFiles: report.totalFiles,
+        totalCycles: report.totalCycles,
+        nextCursor: page.nextCursor,
+        total: page.total,
+      };
     },
   },
 

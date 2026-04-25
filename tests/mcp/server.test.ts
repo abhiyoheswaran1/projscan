@@ -44,6 +44,7 @@ describe('MCP server', () => {
     expect(names).toContain('projscan_doctor');
     expect(names).toContain('projscan_hotspots');
     expect(names).toContain('projscan_explain');
+    expect(names).toContain('projscan_coupling');
     expect(names.length).toBe(getToolDefinitions().length);
   });
 

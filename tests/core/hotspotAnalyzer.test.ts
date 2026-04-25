@@ -123,4 +123,46 @@ describe('computeRiskScore', () => {
     expect(withBus).toBeGreaterThan(base);
     expect(withBus - base).toBeGreaterThanOrEqual(10);
   });
+
+  // ── 0.11 LOC -> CC swap ─────────────────────────────────
+
+  it('0.11: when complexity is provided, score uses it instead of lines', () => {
+    // Same churn etc., big-file-but-low-CC vs small-file-but-high-CC: CC wins.
+    const bigFileSimple = computeRiskScore({
+      churn: 10,
+      lines: 800,
+      complexity: 5,
+      authors: 1,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+    });
+    const smallFileGnarly = computeRiskScore({
+      churn: 10,
+      lines: 80,
+      complexity: 60,
+      authors: 1,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+    });
+    expect(smallFileGnarly).toBeGreaterThan(bigFileSimple);
+  });
+
+  it('0.11: complexity=null falls back to lines (non-AST language behavior)', () => {
+    const withFallback = computeRiskScore({
+      churn: 10,
+      lines: 200,
+      complexity: null,
+      authors: 1,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+    });
+    const withoutComplexityField = computeRiskScore({
+      churn: 10,
+      lines: 200,
+      authors: 1,
+      daysSinceLastChange: 30,
+      issueCount: 0,
+    });
+    expect(withFallback).toBe(withoutComplexityField);
+  });
 });
