@@ -10,37 +10,36 @@ The tool is repositioning. The MCP server is the product; the CLI is a consumer 
 
 ## Planned
 
-This is the six-month plan coming out of the 0.10 product review. Each version is a themed release with a single headline bet. Order is deliberate: signal quality first (0.11), then the PR-native use case that agents actually need (0.12), then enterprise ceilings (0.13 / 0.14), then a second language proof (0.15).
-
-### 0.11.0 - "Signal Quality"
-Replace the LOC proxy in the hotspot score with **AST-derived cyclomatic complexity**. Add **coupling & cycle detection** (per-file fan-in / fan-out from the code graph, circular-dependency flagging). The adapter-per-language work from 0.10 makes both language-agnostic. Low effort, high signal; collects the check on the AST investment.
-
-### 0.12.0 - "PR Native"
-Ship a new MCP tool + CLI command that answers **"what changed structurally in this PR?"** Not a text diff - an AST-diff: functions added/removed, export renames, import surface changes, callsite shifts. Positions projscan as the agent's eyes during code review. Strongest under-built agent use case.
-
-### 0.13.0 - "Monorepo"
-**Workspace awareness.** Detect pnpm / npm / yarn workspaces, Nx, Turborepo, Lerna. Per-package scoping on every command. Cross-package graph edges (an import from package A's src into package B's published entry). Removes the single-package ceiling; becomes credible at mid-size companies.
-
-### 0.14.0 - "Observability"
-**Opt-in, privacy-preserving telemetry.** Tool-call counts, latency histograms, zero source content ever. Stops the guessing - after 0.14 we make data-driven calls instead of intuition-driven ones. Must be easy to turn on and off; off by default; never blocking.
-
-### 0.15.0 - "Second Language"
-**Add Go support** via tree-sitter-go (same adapter pattern as Python). Serves two purposes: unlocks the Go backend market, and proves the `LanguageAdapter` interface scales to a second non-JS language. Unblocks Rust / Java as follow-ons.
+The original 0.11 → 0.15 themed sequence shipped together as **0.11.0** (a six-month bundle). What's left is the deferred backlog below. The next versioned release will be picked from it based on user issues + PR feedback, since the per-release feedback loop the original plan envisioned was traded away in the bundle.
 
 ### Backlog / under consideration
 
-- **Sub-file embeddings** - chunk large files (per-export, per-function, per-class) so semantic search points at specific code blocks. Deferred until 0.14 telemetry shows demand.
+- **Sub-file embeddings** - chunk large files (per-export, per-function, per-class) so semantic search points at specific code blocks. Highest-value remaining item; cleanest follow-on to 0.11's CC + coupling work.
 - **Registry-aware upgrade preview** - `projscan upgrade <pkg>` optionally fetches `latest` from npm registry; Python equivalent reads pip/poetry metadata.
 - **Fix generation via the driving agent** - `projscan fix` today is rule-based; extend with `projscan_fix_suggest` that returns a prompt the agent can act on (agent-native fixes without embedding an LLM in projscan itself).
 - **SAST-style security rules** - extend securityCheck with AST-based path-traversal, SQL-injection, XSS rules. Careful - do not turn into a Snyk competitor.
-- **Plugin API** - third-party analyzers and reporters. Needs multi-language + monorepo stable first.
-- **Multi-repo dashboard / SaaS** - upload baselines, team health trends, org-wide hotspots. Needs telemetry (0.14) first.
+- **Plugin API** - third-party analyzers and reporters. Multi-language + monorepo are now stable, so this is unblocked.
+- **Multi-repo dashboard / SaaS** - upload baselines, team health trends, org-wide hotspots. 0.11 telemetry is the prerequisite; needs adoption data before scoping.
+- **Per-package dependencies/outdated/audit** - workspace-aware lockfile parsing. The `--package` flag covers everything *except* these three commands today.
+- **Third language adapter** - Rust or Java, riding the same `LanguageAdapter` interface that proved out for Python (0.10) and Go (0.11).
+- **Per-function CC** instead of file-level. Useful but needs per-function storage in the graph + cache; deferred until requested.
+- **Cycle promotion to issues** - lift `projscan_coupling`'s circular-import findings into `projscan_doctor`'s issue list. Trivial after some real-world cycle counts come in via telemetry.
 - **HTML report export** - standalone HTML health report.
 - **Watch mode** - re-scan on file changes.
 
 ---
 
 ## Recently Shipped
+
+### v0.11.x - "Six-month bundle" (Signal Quality + PR Native + Monorepo + Observability + Go)
+- **Signal Quality.** AST cyclomatic complexity replaces LOC in the hotspot risk score (per-file McCabe via Babel walker for JS/TS, tree-sitter walker for Python + Go). New `projscan_coupling` MCP tool + CLI command surfaces fan-in / fan-out / instability and Tarjan-detected import cycles. `projscan_file` enriched with CC + fan-in/fan-out.
+- **PR Native.** New `projscan_pr_diff` returns the structural diff between two refs (exports + imports + callsites + ΔCC + Δfan-in). Stands up a temporary git worktree at the base ref. Heuristic export-rename detection (max of normalized Levenshtein and shared-affix; threshold 0.5) reclassifies +/- pairs as `~` renames.
+- **Monorepo.** Detection for npm/yarn workspaces (`package.json#workspaces`), pnpm (`pnpm-workspace.yaml`), Lerna (`lerna.json#packages`), Nx (`workspaceLayout` + `project.json` scan + legacy `workspace.json#projects`). Turbo as marker (it doesn't declare workspaces). New `projscan_workspaces` tool. `--package <name>` scope on hotspots, coupling, analyze, doctor, structure, coverage, search, pr-diff. Cross-package graph edges flagged in coupling output.
+- **Observability.** Opt-in privacy-preserving telemetry (off by default; `.projscanrc` + `PROJSCAN_TELEMETRY` env override + kill-switch). Records only tool name, duration, success, version, timestamp. Local JSONL sink. New `projscan_telemetry` MCP tool with `aggregate: true` arg returns per-tool histograms (count, p50/p95/p99, error rate). `projscan telemetry --aggregate` CLI mirror.
+- **Go.** `goAdapter` mirrors the Python adapter pattern. Tree-sitter-go (~210 KB vendored wasm). Module-path resolution via `go.mod`. Capitalization-rule export visibility. Full pipeline parity with JS/TS and Python.
+- **Cache v2 → v3** (CC persisted per file; v2 caches discarded on first 0.11 run). MCP tool count: 13 → 17. Runtime deps: 8 → 9. Vendored wasm: ~640 KB → ~850 KB.
+- **Bundling tradeoff:** loses the original 0.14 telemetry → 0.15 language-pick feedback loop. Future "what next?" decisions lean on issues + PR feedback until enough 0.11 users opt into telemetry.
+- 659 tests passing (+61 over 0.10).
 
 ### v0.10.x - "Beyond JS"
 - Python is a first-class language. `LanguageAdapter` interface; tree-sitter-python (wasm, offline); Python parser + imports + exports + resolver; package-root detection from pyproject.toml / setup.py / setup.cfg / `__init__.py` walk.

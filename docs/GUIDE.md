@@ -207,7 +207,7 @@ BM25-ranked search across content, symbol names, and path tokens. No embeddings,
 **Output includes:** file path, line number, a one-line excerpt centered on the first matching line, the match score, and which tokens matched.
 
 **Limitations:**
-- No real semantic understanding. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) is on the 0.9.0 roadmap as an opt-in peer dep.
+- No real semantic understanding by default. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) shipped in 0.9.0 as an opt-in peer dep — install `@xenova/transformers` and pass `--mode semantic` (or `--mode hybrid` for BM25 + semantic via reciprocal rank fusion).
 - Index is rebuilt on every run (fast - the AST is already parsed from the code-graph cache).
 
 ### file
@@ -851,7 +851,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 | Signal | Weight | Intuition |
 |--------|--------|-----------|
 | Churn | 0.40 | Files that change often are more likely to harbor bugs |
-| Complexity (LOC) | 0.30 | Bigger files = more surface area |
+| Complexity (AST CC) | 0.30 | Files with more decision points are harder to reason about. **0.11+: AST-derived McCabe cyclomatic complexity for JS/TS, Python, and Go; falls back to LOC for non-AST languages** (.rb, .java, etc.). |
 | Issue density | 0.20 | Files that already have open issues need help |
 | Recency | 0.10 | Recently touched hot files deserve attention first |
 | Bus factor | penalty tag | Single-author + high churn = organizational risk |
@@ -1152,7 +1152,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 13 MCP tools
+│   ├── tools.ts                 # 17 MCP tools
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing
