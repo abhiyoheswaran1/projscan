@@ -90,6 +90,23 @@ As of 0.10, projscan has a `LanguageAdapter` interface (`src/core/languages/Lang
 - Keep dependencies minimal - avoid adding new runtime dependencies unless necessary
 - Write tests for new analyzers and fixers
 
+## Releasing
+
+A release is a six-step ritual. Skipping any step leaves something out of sync.
+
+1. **Bump version** in `package.json` (semver: patch for fixes, minor for features, major if anything breaks).
+2. **Write the CHANGELOG entry** at the top of `CHANGELOG.md` using the existing Keep-a-Changelog format. Cover Added / Changed / Removed / Notes. Be honest about tradeoffs.
+3. **Verify the build artifact** locally: `npm run build && npm run test`. The build runs `tsc + copy-wasm + generate-tool-manifest`; all three must succeed. Tests must be green.
+4. **Tag and publish.** Merge to `main`, then `git tag vX.Y.Z && git push origin vX.Y.Z && npm publish`.
+5. **Create the GitHub Release** at the new tag and **attach `dist/tool-manifest.json`** as a release asset (`gh release create vX.Y.Z dist/tool-manifest.json --title ... --notes ...`). The website's docs page reads this asset.
+6. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit two constants:
+   - `EXPECTED.minVersion` → the new version
+   - `EXPECTED.requiredTools` → append any new MCP tool names the release added
+
+   The website build refuses to run until both edits are in. That friction is the feature — it prevents the docs page from drifting out of sync with the published tool surface.
+
+The MCP-tool count, runtime-dep count, and any "X tools" / "Y languages" claims in `README.md` and `docs/` are hand-edited; sweep for them when the release adds tools or languages.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
