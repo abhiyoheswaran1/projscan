@@ -14,6 +14,7 @@ import type {
   OutdatedReport,
   PrDiffReport,
   UpgradePreview,
+  WorkspaceInfo,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -115,4 +116,8 @@ export function reportCouplingJson(report: CouplingReport): void {
 
 export function reportPrDiffJson(report: PrDiffReport): void {
   console.log(JSON.stringify({ prDiff: report }, null, 2));
+}
+
+export function reportWorkspacesJson(info: WorkspaceInfo): void {
+  console.log(JSON.stringify({ workspaces: info }, null, 2));
 }

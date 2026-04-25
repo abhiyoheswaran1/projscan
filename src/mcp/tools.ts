@@ -22,6 +22,7 @@ import {
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { computePrDiff } from '../core/prDiff.js';
+import { detectWorkspaces, filterFilesByPackage } from '../core/monorepo.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -162,6 +163,10 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'Cap response to roughly this many tokens.',
         },
+        package: {
+          type: 'string',
+          description: 'Optional. Workspace package name (from projscan_workspaces) to scope hotspots to one package only.',
+        },
       },
     },
     handler: async (args, rootPath) => {
@@ -179,6 +184,12 @@ const tools: McpTool[] = [
       await saveCachedGraph(rootPath, graph);
       emitProgress(3, 5, 'analyzing git churn + risk');
       const report = await analyzeHotspots(rootPath, scan.files, issues, { limit, since, graph });
+      // Optional --package scoping (0.13 monorepo).
+      if (typeof args.package === 'string' && args.package.length > 0) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, args.package, report.hotspots.map((h) => h.relativePath)));
+        report.hotspots = report.hotspots.filter((h) => allowed.has(h.relativePath));
+      }
       emitProgress(4, 5, 'paginating');
       const page = paginate(report.hotspots, readPageParams(args), listChecksum(report.hotspots));
       emitProgress(5, 5, 'done');
@@ -502,6 +513,10 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'Cap the response to roughly this many tokens.',
         },
+        package: {
+          type: 'string',
+          description: 'Optional. Workspace package name (from projscan_workspaces) to scope coupling rows to one package only.',
+        },
       },
     },
     handler: async (args, rootPath) => {
@@ -522,6 +537,11 @@ const tools: McpTool[] = [
 
       let files = filterCoupling(report, direction);
       if (file) files = files.filter((f) => f.relativePath === file);
+      if (typeof args.package === 'string' && args.package.length > 0) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, args.package, files.map((f) => f.relativePath)));
+        files = files.filter((f) => allowed.has(f.relativePath));
+      }
       files = files.slice(0, limit);
       emitProgress(2, 3, 'paginating');
       const page = paginate(files, readPageParams(args), listChecksum(files));
@@ -534,6 +554,19 @@ const tools: McpTool[] = [
         nextCursor: page.nextCursor,
         total: page.total,
       };
+    },
+  },
+
+  {
+    name: 'projscan_workspaces',
+    description:
+      'List monorepo workspace packages (npm/yarn workspaces, pnpm-workspace.yaml, Nx/Turbo/Lerna fallback). Returns one row per package with name, relative path, and version. Use the package `name` as the `package` argument on projscan_hotspots / projscan_coupling to scope those tools to a single package.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    handler: async (_args, rootPath) => {
+      return await detectWorkspaces(rootPath);
     },
   },
 

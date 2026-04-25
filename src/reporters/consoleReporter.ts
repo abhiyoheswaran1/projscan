@@ -17,6 +17,7 @@ import type {
   OutdatedReport,
   PrDiffReport,
   UpgradePreview,
+  WorkspaceInfo,
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -817,4 +818,27 @@ export function reportPrDiff(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+// ── Report: workspaces ────────────────────────────────────
+
+export function reportWorkspaces(info: WorkspaceInfo): void {
+  console.log(header('Workspaces'));
+
+  if (info.kind === 'none') {
+    console.log(`\n  ${chalk.dim('Single-package repo (no monorepo workspaces detected).')}\n`);
+    if (info.packages.length === 1) {
+      const p = info.packages[0];
+      console.log(`  ${chalk.bold(p.name)} ${chalk.dim(p.version ?? '')}\n`);
+    }
+    return;
+  }
+
+  console.log(chalk.dim(`\n  Kind: ${info.kind} · Source: ${info.source ?? '?'} · ${info.packages.length} package(s)\n`));
+  for (const p of info.packages) {
+    const tag = p.isRoot ? chalk.dim('(root)') : '';
+    const ver = p.version ? chalk.dim(` v${p.version}`) : '';
+    console.log(`  ${chalk.bold(p.name)}${ver}  ${chalk.cyan(p.relativePath || '.')} ${tag}`);
+  }
+  console.log('');
 }

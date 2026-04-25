@@ -14,6 +14,7 @@ import type {
   OutdatedReport,
   PrDiffReport,
   UpgradePreview,
+  WorkspaceInfo,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
@@ -421,6 +422,22 @@ export function reportPrDiffMarkdown(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
+  const lines: string[] = ['# Workspaces', ''];
+  lines.push(`_kind: **${info.kind}**${info.source ? ` · source: ${info.source}` : ''} · ${info.packages.length} package(s)_`, '');
+  if (info.packages.length === 0) {
+    lines.push('No packages detected.');
+    console.log(lines.join('\n'));
+    return;
+  }
+  lines.push('| Package | Path | Version | Root |');
+  lines.push('| --- | --- | --- | :-: |');
+  for (const p of info.packages) {
+    lines.push(`| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`);
+  }
+  console.log(lines.join('\n'));
 }
 
 export function reportOutdatedMarkdown(report: OutdatedReport): void {

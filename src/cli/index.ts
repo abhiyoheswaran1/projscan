@@ -27,6 +27,7 @@ import { buildCodeGraph } from '../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { computePrDiff } from '../core/prDiff.js';
+import { detectWorkspaces, filterFilesByPackage } from '../core/monorepo.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -68,6 +69,7 @@ import {
   reportCoverage,
   reportCoupling,
   reportPrDiff,
+  reportWorkspaces,
 } from '../reporters/consoleReporter.js';
 
 import {
@@ -87,6 +89,7 @@ import {
   reportCoverageJson,
   reportCouplingJson,
   reportPrDiffJson,
+  reportWorkspacesJson,
 } from '../reporters/jsonReporter.js';
 
 import {
@@ -106,6 +109,7 @@ import {
   reportCoverageMarkdown,
   reportCouplingMarkdown,
   reportPrDiffMarkdown,
+  reportWorkspacesMarkdown,
 } from '../reporters/markdownReporter.js';
 
 import {
@@ -715,9 +719,10 @@ program
 
 program
   .command('hotspots')
-  .description('Rank files by risk (git churn × complexity × open issues)')
+  .description('Rank files by risk (git churn × AST cyclomatic complexity × open issues)')
   .option('--limit <n>', 'number of hotspots to show')
   .option('--since <when>', 'git history window (e.g. "6 months ago", "2024-01-01")')
+  .option('--package <name>', 'monorepo: scope to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -749,6 +754,12 @@ program
         graph,
       });
 
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, report.hotspots.map((h) => h.relativePath)));
+        report.hotspots = report.hotspots.filter((h) => allowed.has(h.relativePath));
+      }
+
       if (spinner) spinner.stop();
 
       switch (format) {
@@ -778,6 +789,7 @@ program
   .option('--high-fan-in', 'sort by fan-in (most-depended-on first)')
   .option('--high-fan-out', 'sort by fan-out (most-coupled first)')
   .option('--file <path>', 'restrict output to a single file')
+  .option('--package <name>', 'monorepo: scope to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -807,6 +819,11 @@ program
       );
       let files = filterCoupling(report, direction);
       if (cmdOpts.file) files = files.filter((f) => f.relativePath === cmdOpts.file);
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, files.map((f) => f.relativePath)));
+        files = files.filter((f) => allowed.has(f.relativePath));
+      }
       files = files.slice(0, limit);
 
       const filtered = {
@@ -865,6 +882,34 @@ program
       }
     } catch (error) {
       if (spinner) spinner.fail('PR diff failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: workspaces ───────────────────────────────────
+
+program
+  .command('workspaces')
+  .description('List monorepo workspace packages (npm/yarn workspaces, pnpm-workspace.yaml, Nx/Turbo/Lerna fallback)')
+  .action(async () => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    try {
+      const info = await detectWorkspaces(rootPath);
+      switch (format) {
+        case 'json':
+          reportWorkspacesJson(info);
+          break;
+        case 'markdown':
+          reportWorkspacesMarkdown(info);
+          break;
+        default:
+          reportWorkspaces(info);
+      }
+    } catch (error) {
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }
