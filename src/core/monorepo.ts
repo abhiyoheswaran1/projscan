@@ -39,19 +39,38 @@ export async function detectWorkspaces(rootPath: string): Promise<WorkspaceInfo>
     }
   }
 
-  // 3) Nx / Turbo / Lerna marker files. They almost always layer on top of
-  // npm/yarn workspaces, but if they don't (some Nx setups), fall back to
-  // a `packages/*` glob.
-  for (const [marker, kind] of [
-    ['nx.json', 'nx'],
-    ['turbo.json', 'turbo'],
-    ['lerna.json', 'lerna'],
-  ] as const) {
-    if (await fileExists(path.join(rootPath, marker))) {
-      const packages = await collectPackages(rootPath, ['packages/*', 'apps/*', 'libs/*'], rootPkg);
-      if (packages.length > 0) {
-        return { kind, packages, source: marker };
-      }
+  // 3) Lerna — its config has an explicit `packages` field with globs.
+  const lernaPath = path.join(rootPath, 'lerna.json');
+  if (await fileExists(lernaPath)) {
+    const patterns = (await readJsonField<string[]>(lernaPath, 'packages')) ?? ['packages/*'];
+    const packages = await collectPackages(rootPath, patterns, rootPkg);
+    if (packages.length > 0) {
+      return { kind: 'lerna', packages, source: 'lerna.json#packages' };
+    }
+  }
+
+  // 4) Nx — workspaceLayout supplies appsDir/libsDir; project.json files
+  // anywhere identify packages. Older Nx variants used workspace.json (a
+  // single file enumerating projects); we read its `projects` map too.
+  const nxJsonPath = path.join(rootPath, 'nx.json');
+  if (await fileExists(nxJsonPath)) {
+    const nxPackages = await collectNxPackages(rootPath, nxJsonPath);
+    if (nxPackages.length > 0 || rootPkg) {
+      const merged = rootPkg ? [rootPackageOnly(rootPkg), ...nxPackages] : nxPackages;
+      merged.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+      return { kind: 'nx', packages: merged, source: 'nx.json + project.json scan' };
+    }
+  }
+
+  // 5) Turbo — turbo.json defines task pipelines, NOT workspace layout.
+  // Turbo always rides on top of npm/yarn/pnpm workspaces (handled above).
+  // If we get here with a turbo.json but no workspace declaration, treat it
+  // as a marker and fall back to the packages/* convention so we still
+  // surface something useful.
+  if (await fileExists(path.join(rootPath, 'turbo.json'))) {
+    const packages = await collectPackages(rootPath, ['packages/*', 'apps/*'], rootPkg);
+    if (packages.length > 0) {
+      return { kind: 'turbo', packages, source: 'turbo.json (fallback glob)' };
     }
   }
 
@@ -171,6 +190,85 @@ async function fileExists(absPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Read a JSON file and return one named field (or undefined). Best-effort. */
+async function readJsonField<T>(absPath: string, field: string): Promise<T | undefined> {
+  try {
+    const raw = await fs.readFile(absPath, 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const v = parsed[field];
+    return v as T | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Discover Nx workspace packages.
+ *
+ * Modern Nx (16+) puts a `project.json` next to every project. Older Nx
+ * (<= 15) maintains a single `workspace.json` listing them. We try both:
+ * scan for project.json files first (covers anything modern), then read
+ * workspace.json's `projects` map and treat its directories as packages.
+ *
+ * `nx.json#workspaceLayout` provides default `appsDir` / `libsDir` hints
+ * that we use to scope the project.json scan. When unspecified Nx defaults
+ * to "apps" and "libs"; we honor that.
+ */
+async function collectNxPackages(
+  rootPath: string,
+  nxJsonPath: string,
+): Promise<WorkspacePackage[]> {
+  const layout = (await readJsonField<{ appsDir?: string; libsDir?: string }>(
+    nxJsonPath,
+    'workspaceLayout',
+  )) ?? {};
+  const appsDir = (layout.appsDir ?? 'apps').replace(/\/+$/, '');
+  const libsDir = (layout.libsDir ?? 'libs').replace(/\/+$/, '');
+
+  const found = new Map<string, WorkspacePackage>();
+
+  // 1) Scan for project.json files. Look in the layout dirs first, then in
+  // a wider `**/project.json` search bounded by reasonable globs.
+  const patterns = Array.from(
+    new Set([
+      `${appsDir}/**/project.json`,
+      `${libsDir}/**/project.json`,
+      'packages/**/project.json',
+    ]),
+  );
+  const matches = await fg(patterns, {
+    cwd: rootPath,
+    onlyFiles: true,
+    ignore: ['**/node_modules/**'],
+    deep: 4,
+  });
+  for (const rel of matches) {
+    const projectJsonPath = path.join(rootPath, rel);
+    const name = (await readJsonField<string>(projectJsonPath, 'name')) ?? path.posix.basename(path.posix.dirname(rel.split(path.sep).join('/')));
+    const dir = path.posix.dirname(rel.split(path.sep).join('/'));
+    if (!found.has(dir)) {
+      found.set(dir, { name, relativePath: dir, isRoot: false });
+    }
+  }
+
+  // 2) Older Nx: read workspace.json projects map.
+  const workspaceJsonPath = path.join(rootPath, 'workspace.json');
+  if (await fileExists(workspaceJsonPath)) {
+    const projects =
+      (await readJsonField<Record<string, string | { root?: string }>>(workspaceJsonPath, 'projects')) ?? {};
+    for (const [name, val] of Object.entries(projects)) {
+      const root = typeof val === 'string' ? val : val.root;
+      if (!root) continue;
+      const dir = root.replace(/\/+$/, '');
+      if (!found.has(dir)) {
+        found.set(dir, { name, relativePath: dir, isRoot: false });
+      }
+    }
+  }
+
+  return [...found.values()];
 }
 
 /**

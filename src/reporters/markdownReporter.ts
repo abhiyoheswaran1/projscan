@@ -352,8 +352,9 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
 
 export function reportCouplingMarkdown(report: CouplingReport): void {
   const lines: string[] = ['# Coupling + Cycles', ''];
+  const xpkg = report.totalCrossPackageEdges;
   lines.push(
-    `_${report.totalFiles} file(s) in graph · ${report.totalCycles} cycle(s)_`,
+    `_${report.totalFiles} file(s) in graph · ${report.totalCycles} cycle(s)${xpkg > 0 ? ` · ${xpkg} cross-package edge(s)` : ''}_`,
     '',
   );
 
@@ -361,6 +362,16 @@ export function reportCouplingMarkdown(report: CouplingReport): void {
     lines.push('## Import cycles', '');
     for (const c of report.cycles) {
       lines.push(`- **${c.size}-file cycle:** ${c.files.map((f) => `\`${f}\``).join(' → ')} → …`);
+    }
+    lines.push('');
+  }
+
+  if (report.crossPackageEdges.length > 0) {
+    lines.push('## Cross-package edges', '');
+    lines.push('| From package | From file | To package | To file |');
+    lines.push('| --- | --- | --- | --- |');
+    for (const e of report.crossPackageEdges) {
+      lines.push(`| \`${e.from.package}\` | \`${e.from.file}\` | \`${e.to.package}\` | \`${e.to.file}\` |`);
     }
     lines.push('');
   }
@@ -412,6 +423,10 @@ export function reportPrDiffMarkdown(report: PrDiffReport): void {
       lines.push(`### \`${m.relativePath}\`${dCC}${dFI}`, '');
       if (m.exportsAdded.length > 0) lines.push(`- **+exports:** ${m.exportsAdded.map((s) => `\`${s}\``).join(', ')}`);
       if (m.exportsRemoved.length > 0) lines.push(`- **-exports:** ${m.exportsRemoved.map((s) => `\`${s}\``).join(', ')}`);
+      if (m.exportsRenamed.length > 0) {
+        const pairs = m.exportsRenamed.map((r) => `\`${r.from}\` → \`${r.to}\``).join(', ');
+        lines.push(`- **~exports:** ${pairs}`);
+      }
       if (m.importsAdded.length > 0) lines.push(`- **+imports:** ${m.importsAdded.map((s) => `\`${s}\``).join(', ')}`);
       if (m.importsRemoved.length > 0) lines.push(`- **-imports:** ${m.importsRemoved.map((s) => `\`${s}\``).join(', ')}`);
       lines.push('');

@@ -6,6 +6,7 @@ import {
   recordToolCall,
   resolveTelemetryConfig,
   describeTelemetryConfig,
+  aggregateTelemetry,
   _resetTelemetryConfigForTests,
 } from '../../src/core/telemetry.js';
 
@@ -119,5 +120,67 @@ describe('describeTelemetryConfig', () => {
     expect(desc.envOverride).toBe('1');
     expect(desc.defaultSink).toContain('.projscan');
     expect(desc.defaultSink).toContain('telemetry.jsonl');
+  });
+});
+
+describe('aggregateTelemetry', () => {
+  it('returns available:false when sink does not exist', async () => {
+    const sink = path.join(tmp, 'never-written.jsonl');
+    const agg = await aggregateTelemetry({ enabled: true, sink });
+    expect(agg.available).toBe(false);
+    expect(agg.reason).toContain('No telemetry sink');
+  });
+
+  it('aggregates a small recorded set into per-tool histograms', async () => {
+    const sink = path.join(tmp, 'tel.jsonl');
+    // Three calls of doctor, two of audit, one failure.
+    await recordToolCall('projscan_doctor', 100, true, undefined, { enabled: true, sink });
+    await recordToolCall('projscan_doctor', 200, true, undefined, { enabled: true, sink });
+    await recordToolCall('projscan_doctor', 300, true, undefined, { enabled: true, sink });
+    await recordToolCall('projscan_audit', 500, true, undefined, { enabled: true, sink });
+    await recordToolCall('projscan_audit', 1500, false, 'TimeoutError', { enabled: true, sink });
+
+    const agg = await aggregateTelemetry({ enabled: true, sink });
+    expect(agg.available).toBe(true);
+    expect(agg.totalEvents).toBe(5);
+    const doctor = agg.byTool.find((t) => t.tool === 'projscan_doctor')!;
+    expect(doctor.count).toBe(3);
+    expect(doctor.errorCount).toBe(0);
+    expect(doctor.minMs).toBe(100);
+    expect(doctor.maxMs).toBe(300);
+    expect(doctor.p50Ms).toBe(200); // median of 100/200/300
+    expect(doctor.meanMs).toBe(200);
+
+    const audit = agg.byTool.find((t) => t.tool === 'projscan_audit')!;
+    expect(audit.count).toBe(2);
+    expect(audit.errorCount).toBe(1);
+    expect(audit.errorRate).toBe(0.5);
+  });
+
+  it('orders byTool by count descending', async () => {
+    const sink = path.join(tmp, 'tel.jsonl');
+    await recordToolCall('rare', 10, true, undefined, { enabled: true, sink });
+    for (let i = 0; i < 5; i++) {
+      await recordToolCall('common', 10, true, undefined, { enabled: true, sink });
+    }
+    const agg = await aggregateTelemetry({ enabled: true, sink });
+    expect(agg.byTool[0].tool).toBe('common');
+    expect(agg.byTool[1].tool).toBe('rare');
+  });
+
+  it('skips malformed JSONL lines without throwing', async () => {
+    const sink = path.join(tmp, 'tel.jsonl');
+    await fs.writeFile(
+      sink,
+      [
+        JSON.stringify({ ts: '2026-04-25T00:00:00Z', tool: 'projscan_doctor', durationMs: 50, ok: true, version: '0.11.0' }),
+        '{not valid json',
+        '',
+        JSON.stringify({ ts: '2026-04-25T00:01:00Z', tool: 'projscan_doctor', durationMs: 70, ok: true, version: '0.11.0' }),
+      ].join('\n'),
+    );
+    const agg = await aggregateTelemetry({ enabled: true, sink });
+    expect(agg.available).toBe(true);
+    expect(agg.totalEvents).toBe(2);
   });
 });

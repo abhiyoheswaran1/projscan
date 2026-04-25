@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeCoupling, filterCoupling } from '../../src/core/couplingAnalyzer.js';
 import type { CodeGraph, GraphFile } from '../../src/core/codeGraph.js';
+import type { WorkspaceInfo } from '../../src/types.js';
 
 function file(relativePath: string, importing: string[] = []): GraphFile {
   return {
@@ -141,6 +142,56 @@ describe('computeCoupling: cycle detection (Tarjan SCC)', () => {
     ]));
     expect(r.cycles).toHaveLength(1);
     expect(r.cycles[0].files.sort()).toEqual(['b.ts', 'c.ts']);
+  });
+});
+
+describe('cross-package edges', () => {
+  const ws: WorkspaceInfo = {
+    kind: 'npm',
+    packages: [
+      { name: 'root', relativePath: '', isRoot: true },
+      { name: 'pkg-a', relativePath: 'packages/a', isRoot: false },
+      { name: 'pkg-b', relativePath: 'packages/b', isRoot: false },
+    ],
+  };
+
+  it('flags edges that cross workspace package boundaries', () => {
+    const g = graph([
+      ['packages/a/src/x.ts', ['packages/b/src/y.ts']],
+      ['packages/b/src/y.ts', []],
+      // intra-package edge — should NOT be flagged.
+      ['packages/a/src/x2.ts', ['packages/a/src/x.ts']],
+    ]);
+    const r = computeCoupling(g, ws);
+    expect(r.crossPackageEdges).toHaveLength(1);
+    expect(r.crossPackageEdges[0]).toEqual({
+      from: { file: 'packages/a/src/x.ts', package: 'pkg-a' },
+      to: { file: 'packages/b/src/y.ts', package: 'pkg-b' },
+    });
+    expect(r.totalCrossPackageEdges).toBe(1);
+  });
+
+  it('returns no cross-package edges when no workspaces are passed', () => {
+    const g = graph([
+      ['packages/a/x.ts', ['packages/b/y.ts']],
+      ['packages/b/y.ts', []],
+    ]);
+    const r = computeCoupling(g);
+    expect(r.crossPackageEdges).toEqual([]);
+    expect(r.totalCrossPackageEdges).toBe(0);
+  });
+
+  it('returns no cross-package edges when only one non-root package exists', () => {
+    const single: WorkspaceInfo = {
+      kind: 'none',
+      packages: [{ name: 'only', relativePath: '', isRoot: true }],
+    };
+    const g = graph([
+      ['a.ts', ['b.ts']],
+      ['b.ts', []],
+    ]);
+    const r = computeCoupling(g, single);
+    expect(r.crossPackageEdges).toEqual([]);
   });
 });
 

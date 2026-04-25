@@ -129,3 +129,146 @@ export function describeTelemetryConfig(rcConfig?: {
     envOverride: env,
   };
 }
+
+// ── Aggregation (histograms) ──────────────────────────────
+
+export interface ToolHistogram {
+  tool: string;
+  count: number;
+  errorCount: number;
+  errorRate: number;
+  /** Latency percentiles (ms). null when count is 0 (shouldn't happen post-filter). */
+  p50Ms: number | null;
+  p95Ms: number | null;
+  p99Ms: number | null;
+  meanMs: number;
+  minMs: number;
+  maxMs: number;
+}
+
+export interface TelemetryAggregate {
+  available: boolean;
+  reason?: string;
+  sink: string;
+  totalEvents: number;
+  windowFrom: string | null;
+  windowTo: string | null;
+  byTool: ToolHistogram[];
+}
+
+/**
+ * Read the JSONL sink and bucket events by tool, returning latency
+ * percentiles per tool. Returns available:false (with a reason) when the
+ * sink doesn't exist yet — typical case for users who haven't enabled
+ * telemetry or haven't run anything yet.
+ */
+export async function aggregateTelemetry(rcConfig?: {
+  enabled?: boolean;
+  sink?: string;
+}): Promise<TelemetryAggregate> {
+  const config = resolveTelemetryConfig(rcConfig);
+  const sinkPath = config.sink === 'stderr' ? '' : config.sink;
+
+  if (!sinkPath) {
+    return {
+      available: false,
+      reason: 'Sink is "stderr"; nothing to aggregate from disk.',
+      sink: config.sink,
+      totalEvents: 0,
+      windowFrom: null,
+      windowTo: null,
+      byTool: [],
+    };
+  }
+
+  let raw: string;
+  try {
+    raw = await fs.readFile(sinkPath, 'utf-8');
+  } catch {
+    return {
+      available: false,
+      reason: `No telemetry sink found at ${sinkPath}. Enable telemetry and run a few tools first.`,
+      sink: sinkPath,
+      totalEvents: 0,
+      windowFrom: null,
+      windowTo: null,
+      byTool: [],
+    };
+  }
+
+  const events: TelemetryEvent[] = [];
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const obj = JSON.parse(trimmed) as TelemetryEvent;
+      if (typeof obj?.tool === 'string' && typeof obj?.durationMs === 'number') {
+        events.push(obj);
+      }
+    } catch {
+      // Skip malformed lines silently — JSONL files can be partially written
+      // when a process is killed mid-append.
+    }
+  }
+
+  if (events.length === 0) {
+    return {
+      available: true,
+      sink: sinkPath,
+      totalEvents: 0,
+      windowFrom: null,
+      windowTo: null,
+      byTool: [],
+    };
+  }
+
+  const byToolMap = new Map<string, TelemetryEvent[]>();
+  let windowFrom = events[0].ts;
+  let windowTo = events[0].ts;
+  for (const e of events) {
+    if (e.ts < windowFrom) windowFrom = e.ts;
+    if (e.ts > windowTo) windowTo = e.ts;
+    if (!byToolMap.has(e.tool)) byToolMap.set(e.tool, []);
+    byToolMap.get(e.tool)!.push(e);
+  }
+
+  const byTool: ToolHistogram[] = [];
+  for (const [tool, toolEvents] of byToolMap) {
+    const durations = toolEvents.map((e) => e.durationMs).sort((a, b) => a - b);
+    const errorCount = toolEvents.filter((e) => e.ok === false).length;
+    byTool.push({
+      tool,
+      count: toolEvents.length,
+      errorCount,
+      errorRate: Math.round((errorCount / toolEvents.length) * 1000) / 1000,
+      p50Ms: percentile(durations, 50),
+      p95Ms: percentile(durations, 95),
+      p99Ms: percentile(durations, 99),
+      meanMs: Math.round(durations.reduce((s, n) => s + n, 0) / durations.length),
+      minMs: durations[0],
+      maxMs: durations[durations.length - 1],
+    });
+  }
+  byTool.sort((a, b) => b.count - a.count);
+
+  return {
+    available: true,
+    sink: sinkPath,
+    totalEvents: events.length,
+    windowFrom,
+    windowTo,
+    byTool,
+  };
+}
+
+/** Linear-interpolation percentile over a pre-sorted ascending array. */
+function percentile(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null;
+  if (sorted.length === 1) return sorted[0];
+  const rank = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  if (lo === hi) return sorted[lo];
+  const frac = rank - lo;
+  return Math.round(sorted[lo] * (1 - frac) + sorted[hi] * frac);
+}

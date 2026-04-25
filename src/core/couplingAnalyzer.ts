@@ -1,5 +1,12 @@
 import type { CodeGraph } from './codeGraph.js';
-import type { CouplingReport, FileCoupling, ImportCycle } from '../types.js';
+import type {
+  CouplingReport,
+  CrossPackageEdge,
+  FileCoupling,
+  ImportCycle,
+  WorkspaceInfo,
+} from '../types.js';
+import { findPackageForFile } from './monorepo.js';
 
 /**
  * Per-file coupling metrics + circular-import detection from the local code
@@ -14,7 +21,10 @@ import type { CouplingReport, FileCoupling, ImportCycle } from '../types.js';
  * import graph (file -> imported file). Computed via Tarjan's SCC, iterative
  * to survive deep monorepos.
  */
-export function computeCoupling(graph: CodeGraph): CouplingReport {
+export function computeCoupling(
+  graph: CodeGraph,
+  workspaces?: WorkspaceInfo,
+): CouplingReport {
   // Build outgoing local-edge adjacency by inverting localImporters.
   // (localImporters[X] = files that import X. Invert to get
   //  localImports[Y] = files that Y imports.)
@@ -45,11 +55,38 @@ export function computeCoupling(graph: CodeGraph): CouplingReport {
 
   const cycles = findCycles(outgoing);
 
+  // Cross-package edges: requires workspace info AND at least two non-root
+  // packages to be meaningful. We tag each edge with the resolved package
+  // name on each end and keep the edge only when those names differ.
+  const crossPackageEdges: CrossPackageEdge[] = [];
+  if (workspaces && workspaces.packages.filter((p) => !p.isRoot).length >= 2) {
+    for (const [from, tos] of outgoing) {
+      const fromPkg = findPackageForFile(workspaces, from);
+      if (!fromPkg) continue;
+      for (const to of tos) {
+        const toPkg = findPackageForFile(workspaces, to);
+        if (!toPkg || toPkg.name === fromPkg.name) continue;
+        crossPackageEdges.push({
+          from: { file: from, package: fromPkg.name },
+          to: { file: to, package: toPkg.name },
+        });
+      }
+    }
+    // Stable order: by source package then file then target.
+    crossPackageEdges.sort((a, b) => {
+      if (a.from.package !== b.from.package) return a.from.package.localeCompare(b.from.package);
+      if (a.from.file !== b.from.file) return a.from.file.localeCompare(b.from.file);
+      return a.to.file.localeCompare(b.to.file);
+    });
+  }
+
   return {
     files,
     cycles,
+    crossPackageEdges,
     totalFiles: files.length,
     totalCycles: cycles.length,
+    totalCrossPackageEdges: crossPackageEdges.length,
   };
 }
 

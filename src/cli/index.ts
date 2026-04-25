@@ -28,6 +28,7 @@ import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { computePrDiff } from '../core/prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from '../core/monorepo.js';
+import { describeTelemetryConfig, aggregateTelemetry } from '../core/telemetry.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
   buildSemanticIndex,
@@ -236,6 +237,19 @@ function maybeCompactBanner(): void {
   }
 }
 
+/** Walk a DirectoryNode to find the node whose `path` matches targetPath. */
+function sliceCliTree(
+  node: import('../types.js').DirectoryNode,
+  targetPath: string,
+): import('../types.js').DirectoryNode | null {
+  if (node.path === targetPath) return node;
+  for (const child of node.children) {
+    const hit = sliceCliTree(child, targetPath);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 // ── Command: analyze (default) ────────────────────────────
 
 program
@@ -243,6 +257,7 @@ program
   .description('Analyze repository and show project report')
   .option('--changed-only', 'only report issues on files changed vs base ref')
   .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+  .option('--package <name>', 'monorepo: scope issues to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeBanner();
@@ -267,6 +282,11 @@ program
       issues = applyConfigToIssues(issues, config);
       if (cmdOpts.changedOnly) {
         issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+      }
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, scan.files.map((f) => f.relativePath)));
+        issues = issues.filter((i) => (i.locations ?? []).some((l) => l.file && allowed.has(l.file)));
       }
 
       if (spinner) spinner.stop();
@@ -309,6 +329,7 @@ program
   .description('Evaluate project health and detect issues')
   .option('--changed-only', 'only report issues on files changed vs base ref')
   .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+  .option('--package <name>', 'monorepo: scope issues to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -323,6 +344,11 @@ program
       issues = applyConfigToIssues(issues, config);
       if (cmdOpts.changedOnly) {
         issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+      }
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, scan.files.map((f) => f.relativePath)));
+        issues = issues.filter((i) => (i.locations ?? []).some((l) => l.file && allowed.has(l.file)));
       }
 
       if (spinner) spinner.stop();
@@ -646,7 +672,8 @@ program
 program
   .command('structure')
   .description('Show project directory structure')
-  .action(async () => {
+  .option('--package <name>', 'monorepo: scope tree to a single workspace package')
+  .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
     const rootPath = getRootPath();
@@ -656,18 +683,31 @@ program
 
     try {
       const scan = await scanRepository(rootPath, { ignore: config.ignore });
+      let tree = scan.directoryTree;
+      let title = path.basename(rootPath);
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const pkg = ws.packages.find((p) => p.name === cmdOpts.package);
+        if (pkg && !pkg.isRoot && pkg.relativePath) {
+          const sliced = sliceCliTree(tree, pkg.relativePath);
+          if (sliced) {
+            tree = sliced;
+            title = pkg.name;
+          }
+        }
+      }
 
       if (spinner) spinner.stop();
 
       switch (format) {
         case 'json':
-          reportStructureJson(scan.directoryTree);
+          reportStructureJson(tree);
           break;
         case 'markdown':
-          reportStructureMarkdown(scan.directoryTree);
+          reportStructureMarkdown(tree);
           break;
         default:
-          reportStructure(scan.directoryTree, path.basename(rootPath));
+          reportStructure(tree, title);
       }
     } catch (error) {
       if (spinner) spinner.fail('Structure scan failed');
@@ -803,7 +843,8 @@ program
       const cached = await loadCachedGraph(rootPath);
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
-      const report = computeCoupling(graph);
+      const ws = await detectWorkspaces(rootPath);
+      const report = computeCoupling(graph, ws);
 
       const direction: 'all' | 'high_fan_in' | 'high_fan_out' | 'cycles_only' = cmdOpts.cyclesOnly
         ? 'cycles_only'
@@ -829,8 +870,10 @@ program
       const filtered = {
         files,
         cycles: report.cycles,
+        crossPackageEdges: report.crossPackageEdges,
         totalFiles: report.totalFiles,
         totalCycles: report.totalCycles,
+        totalCrossPackageEdges: report.totalCrossPackageEdges,
       };
 
       if (spinner) spinner.stop();
@@ -859,6 +902,7 @@ program
   .description('Structural (AST) diff between two refs - what changed in exports, imports, calls, CC, fan-in')
   .option('--base <ref>', 'base ref (default: origin/main, falling back to main/master/HEAD~1)')
   .option('--head <ref>', 'head ref (default: HEAD)')
+  .option('--package <name>', 'monorepo: scope diff to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -868,6 +912,20 @@ program
 
     try {
       const report = await computePrDiff(rootPath, { base: cmdOpts.base, head: cmdOpts.head });
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const collected = [
+          ...report.filesAdded,
+          ...report.filesRemoved,
+          ...report.filesModified.map((f) => f.relativePath),
+        ];
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, collected));
+        report.filesAdded = report.filesAdded.filter((f) => allowed.has(f));
+        report.filesRemoved = report.filesRemoved.filter((f) => allowed.has(f));
+        report.filesModified = report.filesModified.filter((f) => allowed.has(f.relativePath));
+        report.totalFilesChanged =
+          report.filesAdded.length + report.filesRemoved.length + report.filesModified.length;
+      }
       if (spinner) spinner.stop();
 
       switch (format) {
@@ -908,6 +966,67 @@ program
           break;
         default:
           reportWorkspaces(info);
+      }
+    } catch (error) {
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+// ── Command: telemetry ────────────────────────────────────
+
+program
+  .command('telemetry')
+  .description('Inspect projscan opt-in telemetry: config state, or per-tool histograms with --aggregate')
+  .option('--aggregate', 'read the local sink and print per-tool latency histograms (count, p50/p95/p99, error rate)')
+  .action(async (cmdOpts) => {
+    setupLogLevel();
+    maybeCompactBanner();
+    const rootPath = getRootPath();
+    const format = getFormat();
+    try {
+      const { config } = await loadConfig(rootPath);
+      const out = cmdOpts.aggregate
+        ? await aggregateTelemetry(config.telemetry)
+        : describeTelemetryConfig(config.telemetry);
+
+      if (format === 'json') {
+        console.log(JSON.stringify(out, null, 2));
+        return;
+      }
+
+      // Console: hand-formatted summary so users don't have to read raw JSON.
+      if (cmdOpts.aggregate) {
+        const agg = out as Awaited<ReturnType<typeof aggregateTelemetry>>;
+        if (!agg.available) {
+          console.log(chalk.yellow(`\n  ${agg.reason ?? 'No telemetry available.'}\n`));
+          return;
+        }
+        console.log(chalk.bold('\n  Telemetry histograms'));
+        console.log(chalk.dim(`  sink: ${agg.sink}`));
+        console.log(chalk.dim(`  ${agg.totalEvents} event(s) · ${agg.windowFrom ?? '?'} → ${agg.windowTo ?? '?'}\n`));
+        if (agg.byTool.length === 0) {
+          console.log(chalk.dim('  (no events recorded yet)\n'));
+          return;
+        }
+        const colHead = `    ${'count'.padStart(6)}  ${'err%'.padStart(5)}  ${'p50'.padStart(6)}  ${'p95'.padStart(6)}  ${'p99'.padStart(6)}  tool`;
+        console.log(chalk.dim(colHead));
+        for (const t of agg.byTool) {
+          const errPct = (t.errorRate * 100).toFixed(1) + '%';
+          console.log(
+            `    ${String(t.count).padStart(6)}  ${errPct.padStart(5)}  ${(t.p50Ms ?? 0).toString().padStart(6)}  ${(t.p95Ms ?? 0).toString().padStart(6)}  ${(t.p99Ms ?? 0).toString().padStart(6)}  ${chalk.cyan(t.tool)}`,
+          );
+        }
+        console.log('');
+      } else {
+        const cfg = out as ReturnType<typeof describeTelemetryConfig>;
+        console.log(chalk.bold('\n  Telemetry'));
+        console.log(`    enabled: ${cfg.enabled ? chalk.green('yes') : chalk.dim('no (default)')}`);
+        console.log(`    sink:    ${cfg.sink}`);
+        console.log(`    default: ${cfg.defaultSink}`);
+        console.log(`    PROJSCAN_TELEMETRY env: ${cfg.envOverride ?? chalk.dim('(unset)')}`);
+        console.log(chalk.dim('\n    Records: tool, durationMs, ok, version, ts. Never source/paths/args.'));
+        console.log(chalk.dim('    Re-run with --aggregate to see histograms over the recorded events.\n'));
       }
     } catch (error) {
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
@@ -1033,6 +1152,7 @@ program
   .option('--mode <mode>', 'lexical | semantic | hybrid (content/auto scope only)', 'lexical')
   .option('--semantic', 'shortcut for --mode semantic')
   .option('--limit <n>', 'max results', '15')
+  .option('--package <name>', 'monorepo: scope to a single workspace package')
   .action(async (queryParts: string[], cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -1055,6 +1175,21 @@ program
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
 
+      // Build a (file -> bool) filter once if --package is set; reused below.
+      let passes: ((file: string) => boolean) | null = null;
+      if (cmdOpts.package) {
+        const ws = await detectWorkspaces(rootPath);
+        const pkg = ws.packages.find((p) => p.name === cmdOpts.package);
+        if (!pkg) {
+          passes = () => false;
+        } else if (pkg.isRoot) {
+          passes = () => true;
+        } else {
+          const prefix = pkg.relativePath + '/';
+          passes = (f: string) => f === pkg.relativePath || f.startsWith(prefix);
+        }
+      }
+
       if (spinner) spinner.text = 'Searching...';
 
       let results: unknown;
@@ -1062,6 +1197,7 @@ program
         const q = query.toLowerCase();
         const matches: Array<{ symbol: string; kind: string; file: string; line: number }> = [];
         for (const [file, entry] of graph.files) {
+          if (passes && !passes(file)) continue;
           for (const exp of entry.exports) {
             if (exp.name.toLowerCase().includes(q)) {
               matches.push({ symbol: exp.name, kind: exp.kind, file, line: exp.line });
@@ -1078,13 +1214,15 @@ program
         const q = query.toLowerCase();
         const matches = scan.files
           .filter((f) => f.relativePath.toLowerCase().includes(q))
+          .filter((f) => !passes || passes(f.relativePath))
           .slice(0, limit)
           .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
         results = { scope, query, matches, total: matches.length };
       } else {
         const mode = cmdOpts.semantic ? 'semantic' : String(cmdOpts.mode ?? 'lexical');
         const index = await buildSearchIndex(rootPath, scan.files, graph);
-        const lexicalHits = searchIndex(index, query, { limit });
+        const lexicalHitsAll = searchIndex(index, query, { limit });
+        const lexicalHits = passes ? lexicalHitsAll.filter((h) => passes!(h.file)) : lexicalHitsAll;
         const tokens = expandQuery(query);
 
         if (mode === 'lexical') {
@@ -1121,7 +1259,8 @@ program
             process.exit(1);
           }
           if (spinner) spinner.text = 'Searching...';
-          const semHits = await semanticSearch(semIndex, query, { limit });
+          const semHitsAll = await semanticSearch(semIndex, query, { limit });
+          const semHits = passes ? semHitsAll.filter((h) => passes!(h.file)) : semHitsAll;
 
           if (mode === 'semantic') {
             const enriched = await attachExcerpts(
@@ -1239,6 +1378,7 @@ program
   .command('coverage')
   .description('Join test coverage with hotspots - surface the scariest untested files')
   .option('--limit <n>', 'limit number of entries shown', '30')
+  .option('--package <name>', 'monorepo: scope to a single workspace package')
   .action(async (cmdOpts) => {
     setupLogLevel();
     maybeCompactBanner();
@@ -1259,6 +1399,11 @@ program
       });
 
       const joined = joinCoverageWithHotspots(hotspots, coverage);
+      if (cmdOpts.package && joined.available) {
+        const ws = await detectWorkspaces(rootPath);
+        const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, joined.entries.map((e) => e.relativePath)));
+        joined.entries = joined.entries.filter((e) => allowed.has(e.relativePath));
+      }
 
       if (spinner) spinner.stop();
 

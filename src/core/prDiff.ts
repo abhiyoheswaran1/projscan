@@ -119,8 +119,16 @@ export function diffGraphs(
     const callsBase = new Set(baseEntry.callSites);
     const callsHead = new Set(headEntry.callSites);
 
-    const exportsAdded = [...exportsHead].filter((x) => !exportsBase.has(x));
-    const exportsRemoved = [...exportsBase].filter((x) => !exportsHead.has(x));
+    const rawExportsAdded = [...exportsHead].filter((x) => !exportsBase.has(x));
+    const rawExportsRemoved = [...exportsBase].filter((x) => !exportsHead.has(x));
+    // Pull out renames first; whatever's left stays as +/-.
+    const { renames, addedAfter, removedAfter } = detectRenames(
+      rawExportsRemoved,
+      rawExportsAdded,
+    );
+    const exportsAdded = addedAfter;
+    const exportsRemoved = removedAfter;
+    const exportsRenamed = renames;
     const importsAdded = [...importsHead].filter((x) => !importsBase.has(x));
     const importsRemoved = [...importsBase].filter((x) => !importsHead.has(x));
     const callsAdded = [...callsHead].filter((x) => !callsBase.has(x));
@@ -137,6 +145,7 @@ export function diffGraphs(
     const hasChange =
       exportsAdded.length +
         exportsRemoved.length +
+        exportsRenamed.length +
         importsAdded.length +
         importsRemoved.length +
         callsAdded.length +
@@ -152,6 +161,7 @@ export function diffGraphs(
       status: 'modified',
       exportsAdded: exportsAdded.sort(),
       exportsRemoved: exportsRemoved.sort(),
+      exportsRenamed,
       importsAdded: importsAdded.sort(),
       importsRemoved: importsRemoved.sort(),
       callsAdded: callsAdded.sort(),
@@ -174,6 +184,110 @@ export function diffGraphs(
     filesModified,
     totalFilesChanged: filesAdded.length + filesRemoved.length + filesModified.length,
   };
+}
+
+// ── rename detection ──────────────────────────────────────
+
+/**
+ * Pair removed/added export names that look like renames. A pair counts as a
+ * rename when it's the best-scoring match on both sides AND the similarity
+ * exceeds a threshold. Each name participates in at most one pair (greedy by
+ * descending score). Whatever isn't paired stays in the +/- lists.
+ *
+ * Similarity blends two signals (each in [0,1]): normalized Levenshtein
+ * distance and longest-common-affix fraction. Threshold of 0.6 chosen to
+ * pair "fooBar" → "fooBaz" and "Widget" → "WidgetThing" without pairing
+ * unrelated names like "save" → "load".
+ */
+import type { ExportRename } from '../types.js';
+
+interface RenameSplit {
+  renames: ExportRename[];
+  removedAfter: string[];
+  addedAfter: string[];
+}
+
+export function detectRenames(removed: string[], added: string[]): RenameSplit {
+  if (removed.length === 0 || added.length === 0) {
+    return { renames: [], removedAfter: removed.sort(), addedAfter: added.sort() };
+  }
+
+  type Candidate = { from: string; to: string; score: number };
+  const candidates: Candidate[] = [];
+  for (const from of removed) {
+    for (const to of added) {
+      const score = similarity(from, to);
+      if (score >= 0.5) candidates.push({ from, to, score });
+    }
+  }
+  // Greedy: pick highest scores first; each name can only be paired once.
+  candidates.sort((a, b) => b.score - a.score);
+  const usedFrom = new Set<string>();
+  const usedTo = new Set<string>();
+  const renames: ExportRename[] = [];
+  for (const c of candidates) {
+    if (usedFrom.has(c.from) || usedTo.has(c.to)) continue;
+    usedFrom.add(c.from);
+    usedTo.add(c.to);
+    renames.push({ from: c.from, to: c.to });
+  }
+  renames.sort((a, b) => a.from.localeCompare(b.from));
+
+  return {
+    renames,
+    removedAfter: removed.filter((n) => !usedFrom.has(n)).sort(),
+    addedAfter: added.filter((n) => !usedTo.has(n)).sort(),
+  };
+}
+
+function similarity(a: string, b: string): number {
+  if (a === b) return 1;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1;
+  const dist = levenshtein(a, b);
+  const editScore = 1 - dist / maxLen;
+  const prefix = sharedPrefix(a, b);
+  const suffix = sharedSuffix(a, b);
+  const affixScore = Math.max(prefix, suffix) / maxLen;
+  // Take the stronger signal. Either evidence alone is enough to suspect a
+  // rename: a name that's mostly the same characters (high edit score) OR a
+  // name that shares a long prefix/suffix (e.g. `fetch` -> `fetchUser`).
+  return Math.max(editScore, affixScore);
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  // Two-row DP — small allocations keep this cheap on the realistic name sizes.
+  let prev = new Array<number>(n + 1);
+  let curr = new Array<number>(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+function sharedPrefix(a: string, b: string): number {
+  const cap = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < cap && a.charCodeAt(i) === b.charCodeAt(i)) i++;
+  return i;
+}
+
+function sharedSuffix(a: string, b: string): number {
+  const cap = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < cap && a.charCodeAt(a.length - 1 - i) === b.charCodeAt(b.length - 1 - i)) i++;
+  return i;
 }
 
 // ── git helpers ───────────────────────────────────────────

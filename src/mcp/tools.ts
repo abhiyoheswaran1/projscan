@@ -23,7 +23,7 @@ import { loadCachedGraph, saveCachedGraph } from '../core/indexCache.js';
 import { computeCoupling, filterCoupling } from '../core/couplingAnalyzer.js';
 import { computePrDiff } from '../core/prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from '../core/monorepo.js';
-import { describeTelemetryConfig } from '../core/telemetry.js';
+import { describeTelemetryConfig, aggregateTelemetry } from '../core/telemetry.js';
 import { loadConfig } from '../utils/config.js';
 import { buildSearchIndex, search as searchIndex, attachExcerpts, expandQuery } from '../core/searchIndex.js';
 import {
@@ -81,6 +81,45 @@ export interface McpTool extends McpToolDefinition {
   handler: McpToolHandler;
 }
 
+/**
+ * Resolve the `package` arg to a (file -> boolean) filter, or null when
+ * scoping wasn't requested. Returns a "rejects everything" filter when the
+ * package name doesn't match any workspace — agents get an empty result
+ * with a diagnostic surface rather than a confusing whole-repo response.
+ */
+async function resolvePackageFilter(
+  rootPath: string,
+  args: Record<string, unknown>,
+): Promise<((file: string) => boolean) | null> {
+  const name = typeof args.package === 'string' && args.package.length > 0 ? args.package : null;
+  if (!name) return null;
+  const ws = await detectWorkspaces(rootPath);
+  const pkg = ws.packages.find((p) => p.name === name);
+  if (!pkg) return () => false;
+  if (pkg.isRoot) return () => true;
+  const prefix = pkg.relativePath + '/';
+  return (file: string) => file === pkg.relativePath || file.startsWith(prefix);
+}
+
+const PACKAGE_ARG_SCHEMA = {
+  type: 'string',
+  description:
+    'Optional. Workspace package name (from projscan_workspaces) to scope results to one package only.',
+} as const;
+
+/** Walk a DirectoryNode tree to find the node whose `path` equals targetPath. */
+function sliceTree(
+  node: import('../types.js').DirectoryNode,
+  targetPath: string,
+): import('../types.js').DirectoryNode | null {
+  if (node.path === targetPath) return node;
+  for (const child of node.children) {
+    const hit = sliceTree(child, targetPath);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 const tools: McpTool[] = [
   {
     name: 'projscan_analyze',
@@ -88,9 +127,11 @@ const tools: McpTool[] = [
       'Run a full projscan analysis of the project: languages, frameworks, dependencies, issues, and health score. Use this to understand a codebase before making changes.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        package: PACKAGE_ARG_SCHEMA,
+      },
     },
-    handler: async (_args, rootPath) => {
+    handler: async (args, rootPath) => {
       emitProgress(0, 5, 'scanning repository');
       const scan = await scanRepository(rootPath);
       emitProgress(1, 5, 'detecting languages + frameworks');
@@ -99,7 +140,17 @@ const tools: McpTool[] = [
       emitProgress(2, 5, 'analyzing dependencies');
       const dependencies = await analyzeDependencies(rootPath);
       emitProgress(3, 5, 'running analyzers');
-      const issues = await collectIssues(rootPath, scan.files);
+      let issues = await collectIssues(rootPath, scan.files);
+      // 0.11 monorepo: --package scopes the issue list (analysis runs over
+      // the whole repo; the report drops issues outside the chosen package).
+      const passes = await resolvePackageFilter(rootPath, args);
+      if (passes) {
+        issues = issues.filter((i) => {
+          const locs = i.locations ?? [];
+          if (locs.length === 0) return false;
+          return locs.some((l) => l.file && passes(l.file));
+        });
+      }
       emitProgress(4, 5, 'scoring');
       const health = calculateScore(issues);
       emitProgress(5, 5, 'done');
@@ -125,11 +176,21 @@ const tools: McpTool[] = [
       'Run a health check on the project. Returns a 0-100 score, letter grade, and the list of issues (linting, formatting, tests, security, architecture).',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        package: PACKAGE_ARG_SCHEMA,
+      },
     },
-    handler: async (_args, rootPath) => {
+    handler: async (args, rootPath) => {
       const scan = await scanRepository(rootPath);
-      const issues = await collectIssues(rootPath, scan.files);
+      let issues = await collectIssues(rootPath, scan.files);
+      const passes = await resolvePackageFilter(rootPath, args);
+      if (passes) {
+        issues = issues.filter((i) => {
+          const locs = i.locations ?? [];
+          if (locs.length === 0) return false;
+          return locs.some((l) => l.file && passes(l.file));
+        });
+      }
       const health = calculateScore(issues);
       return {
         health,
@@ -262,11 +323,31 @@ const tools: McpTool[] = [
     description: 'Return the project directory tree with file counts.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        package: PACKAGE_ARG_SCHEMA,
+      },
     },
-    handler: async (_args, rootPath) => {
+    handler: async (args, rootPath) => {
       const scan = await scanRepository(rootPath);
-      return { structure: scan.directoryTree, totalFiles: scan.totalFiles };
+      const pkgName = typeof args.package === 'string' && args.package.length > 0 ? args.package : null;
+      if (!pkgName) {
+        return { structure: scan.directoryTree, totalFiles: scan.totalFiles };
+      }
+      const ws = await detectWorkspaces(rootPath);
+      const pkg = ws.packages.find((p) => p.name === pkgName);
+      if (!pkg || pkg.isRoot || !pkg.relativePath) {
+        return { structure: scan.directoryTree, totalFiles: scan.totalFiles };
+      }
+      // Walk the existing tree to find the package subdir. Returning the
+      // sub-node preserves all the existing fileCount/totalFileCount math.
+      const sliced = sliceTree(scan.directoryTree, pkg.relativePath);
+      if (!sliced) {
+        return {
+          structure: { name: pkg.name, path: pkg.relativePath, children: [], fileCount: 0, totalFileCount: 0 },
+          totalFiles: 0,
+        };
+      }
+      return { structure: sliced, totalFiles: sliced.totalFileCount };
     },
   },
 
@@ -395,6 +476,7 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'Cap the response size to roughly this many tokens (~4 chars/token). Truncates the entries array to fit.',
         },
+        package: PACKAGE_ARG_SCHEMA,
       },
     },
     handler: async (args, rootPath) => {
@@ -409,7 +491,11 @@ const tools: McpTool[] = [
       });
       const joined = joinCoverageWithHotspots(hotspots, coverage);
       if (!joined.available) return joined;
-      const page = paginate(joined.entries, readPageParams(args), listChecksum(joined.entries));
+      const passes = await resolvePackageFilter(rootPath, args);
+      const filteredEntries = passes
+        ? joined.entries.filter((e) => passes(e.relativePath))
+        : joined.entries;
+      const page = paginate(filteredEntries, readPageParams(args), listChecksum(filteredEntries));
       return {
         available: true,
         coverageSource: joined.coverageSource,
@@ -528,7 +614,10 @@ const tools: McpTool[] = [
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
       emitProgress(1, 3, 'computing coupling + cycles');
-      const report = computeCoupling(graph);
+      // Cross-package edges only meaningful in monorepos. detectWorkspaces
+      // returns kind='none' otherwise; computeCoupling no-ops the section.
+      const ws = await detectWorkspaces(rootPath);
+      const report = computeCoupling(graph, ws);
       const direction = (typeof args.direction === 'string' ? args.direction : 'all') as
         | 'all'
         | 'high_fan_in'
@@ -551,8 +640,10 @@ const tools: McpTool[] = [
       return {
         files: page.items,
         cycles: report.cycles,
+        crossPackageEdges: report.crossPackageEdges,
         totalFiles: report.totalFiles,
         totalCycles: report.totalCycles,
+        totalCrossPackageEdges: report.totalCrossPackageEdges,
         nextCursor: page.nextCursor,
         total: page.total,
       };
@@ -562,13 +653,21 @@ const tools: McpTool[] = [
   {
     name: 'projscan_telemetry',
     description:
-      'Inspect projscan telemetry state: whether it is enabled, where events are written, and what overrides are active. Telemetry is opt-in (off by default), records only tool name + duration + success/version/timestamp (never source content or paths), and writes to a local JSONL file the user controls.',
+      'Inspect projscan telemetry state: whether it is enabled, where events are written, and what overrides are active. Telemetry is opt-in (off by default), records only tool name + duration + success/version/timestamp (never source content or paths), and writes to a local JSONL file the user controls. Pass `aggregate: true` to read the sink and return per-tool latency histograms (count, p50/p95/p99, error rate) instead of just the config.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        aggregate: {
+          type: 'boolean',
+          description: 'When true, read the sink and return per-tool histograms instead of just config state.',
+        },
+      },
     },
-    handler: async (_args, rootPath) => {
+    handler: async (args, rootPath) => {
       const { config } = await loadConfig(rootPath);
+      if (args.aggregate === true) {
+        return await aggregateTelemetry(config.telemetry);
+      }
       return describeTelemetryConfig(config.telemetry);
     },
   },
@@ -605,6 +704,7 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'Cap the response to roughly this many tokens.',
         },
+        package: PACKAGE_ARG_SCHEMA,
       },
     },
     handler: async (args, rootPath) => {
@@ -614,6 +714,14 @@ const tools: McpTool[] = [
       emitProgress(1, 3, 'building base + head graphs');
       const report = await computePrDiff(rootPath, { base, head });
       emitProgress(2, 3, 'diffing');
+      const passes = await resolvePackageFilter(rootPath, args);
+      if (passes) {
+        report.filesAdded = report.filesAdded.filter(passes);
+        report.filesRemoved = report.filesRemoved.filter(passes);
+        report.filesModified = report.filesModified.filter((f) => passes(f.relativePath));
+        report.totalFilesChanged =
+          report.filesAdded.length + report.filesRemoved.length + report.filesModified.length;
+      }
       emitProgress(3, 3, 'done');
       return report;
     },
@@ -648,6 +756,7 @@ const tools: McpTool[] = [
           type: 'number',
           description: 'Cap the response to roughly this many tokens.',
         },
+        package: PACKAGE_ARG_SCHEMA,
       },
       required: ['query'],
     },
@@ -661,12 +770,14 @@ const tools: McpTool[] = [
       const cached = await loadCachedGraph(rootPath);
       const graph = await buildCodeGraph(rootPath, scan.files, cached);
       await saveCachedGraph(rootPath, graph);
+      const passes = await resolvePackageFilter(rootPath, args);
 
       // Files scope - simple substring scan; ranking adds no value
       if (scope === 'files') {
         const q = query.toLowerCase();
         const all = scan.files
           .filter((f) => f.relativePath.toLowerCase().includes(q))
+          .filter((f) => !passes || passes(f.relativePath))
           .map((f) => ({ file: f.relativePath, sizeBytes: f.sizeBytes }));
         const page = paginate(all, readPageParams(args), listChecksum(all));
         return { scope, query, matches: page.items, total: page.total, nextCursor: page.nextCursor };
@@ -677,6 +788,7 @@ const tools: McpTool[] = [
         const q = query.toLowerCase();
         const rawMatches: Array<{ symbol: string; kind: string; file: string; line: number; rank: number }> = [];
         for (const [file, entry] of graph.files) {
+          if (passes && !passes(file)) continue;
           for (const exp of entry.exports) {
             const name = exp.name.toLowerCase();
             if (!name.includes(q)) continue;
@@ -698,7 +810,8 @@ const tools: McpTool[] = [
       // Content or auto scope - lexical BM25 by default, optionally semantic or hybrid
       const mode = String(args.mode ?? 'lexical');
       const index = await buildSearchIndex(rootPath, scan.files, graph);
-      const lexicalHits = searchIndex(index, query, { limit });
+      const lexicalHitsAll = searchIndex(index, query, { limit });
+      const lexicalHits = passes ? lexicalHitsAll.filter((h) => passes(h.file)) : lexicalHitsAll;
       const tokens = expandQuery(query);
 
       if (mode === 'lexical') {
@@ -743,7 +856,8 @@ const tools: McpTool[] = [
         };
       }
 
-      const semHits = await semanticSearch(semIndex, query, { limit });
+      const semHitsAll = await semanticSearch(semIndex, query, { limit });
+      const semHits = passes ? semHitsAll.filter((h) => passes(h.file)) : semHitsAll;
 
       if (mode === 'semantic') {
         const enriched = await attachExcerpts(

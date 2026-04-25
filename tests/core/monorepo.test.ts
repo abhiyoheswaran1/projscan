@@ -79,12 +79,72 @@ describe('detectWorkspaces', () => {
     expect(names).toEqual(['lib', 'root', 'web']);
   });
 
-  it('falls back to packages/* + apps/* + libs/* when only nx.json is present', async () => {
-    await writeText('nx.json', '{}');
-    await writeJson('packages/lib/package.json', { name: 'lib' });
+  it('reads lerna.json packages field directly', async () => {
+    await writeJson('lerna.json', { packages: ['modules/*', 'tools/*'] });
+    await writeJson('modules/api/package.json', { name: 'api' });
+    await writeJson('tools/cli/package.json', { name: 'cli' });
+    // Decoy in packages/ that lerna.json explicitly does NOT list.
+    await writeJson('packages/x/package.json', { name: 'should-not-appear' });
+    const info = await detectWorkspaces(tmp);
+    expect(info.kind).toBe('lerna');
+    const names = info.packages.map((p) => p.name).sort();
+    expect(names).toEqual(['api', 'cli']);
+  });
+
+  it('lerna.json without explicit packages field defaults to packages/*', async () => {
+    await writeJson('lerna.json', {});
+    await writeJson('packages/a/package.json', { name: 'a' });
+    const info = await detectWorkspaces(tmp);
+    expect(info.kind).toBe('lerna');
+    expect(info.packages.find((p) => p.name === 'a')).toBeDefined();
+  });
+
+  it('detects Nx projects via project.json scan (modern Nx)', async () => {
+    await writeJson('nx.json', {});
+    await writeJson('apps/web/project.json', { name: 'web' });
+    await writeJson('libs/shared/project.json', { name: 'shared' });
     const info = await detectWorkspaces(tmp);
     expect(info.kind).toBe('nx');
-    expect(info.packages.find((p) => p.name === 'lib')).toBeDefined();
+    const names = info.packages.map((p) => p.name).sort();
+    expect(names).toContain('web');
+    expect(names).toContain('shared');
+  });
+
+  it('honors nx.json workspaceLayout (custom appsDir / libsDir)', async () => {
+    await writeJson('nx.json', { workspaceLayout: { appsDir: 'applications', libsDir: 'libraries' } });
+    await writeJson('applications/portal/project.json', { name: 'portal' });
+    await writeJson('libraries/utils/project.json', { name: 'utils' });
+    const info = await detectWorkspaces(tmp);
+    expect(info.kind).toBe('nx');
+    const paths = info.packages.map((p) => p.relativePath).sort();
+    expect(paths).toContain('applications/portal');
+    expect(paths).toContain('libraries/utils');
+  });
+
+  it('detects Nx projects via legacy workspace.json projects map', async () => {
+    await writeJson('nx.json', {});
+    await writeJson('workspace.json', {
+      projects: {
+        legacyApp: 'apps/legacy-app',
+        legacyLib: { root: 'libs/legacy-lib' },
+      },
+    });
+    const info = await detectWorkspaces(tmp);
+    expect(info.kind).toBe('nx');
+    const names = info.packages.map((p) => p.name).sort();
+    expect(names).toContain('legacyApp');
+    expect(names).toContain('legacyLib');
+  });
+
+  it('treats turbo.json as a marker that falls back to packages/* + apps/*', async () => {
+    await writeJson('turbo.json', { pipeline: {} });
+    await writeJson('packages/core/package.json', { name: 'core' });
+    await writeJson('apps/web/package.json', { name: 'web' });
+    const info = await detectWorkspaces(tmp);
+    expect(info.kind).toBe('turbo');
+    const names = info.packages.map((p) => p.name).sort();
+    expect(names).toContain('core');
+    expect(names).toContain('web');
   });
 });
 

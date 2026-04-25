@@ -376,11 +376,26 @@ export interface ImportCycle {
   size: number;
 }
 
+export interface CrossPackageEdge {
+  /** Importing file + the workspace package it belongs to. */
+  from: { file: string; package: string };
+  /** Imported file + the workspace package it belongs to. */
+  to: { file: string; package: string };
+}
+
 export interface CouplingReport {
   files: FileCoupling[];
   cycles: ImportCycle[];
+  /**
+   * Edges where importer and imported live in different workspace packages
+   * (0.11). Empty when no workspace info was supplied or when all edges are
+   * intra-package. Useful for spotting unauthorized deep imports across
+   * package boundaries.
+   */
+  crossPackageEdges: CrossPackageEdge[];
   totalFiles: number;
   totalCycles: number;
+  totalCrossPackageEdges: number;
 }
 
 // === Monorepo / Workspaces (0.13) ===
@@ -408,11 +423,23 @@ export interface WorkspaceInfo {
 
 // === PR-Native AST Diff (0.12) ===
 
+export interface ExportRename {
+  from: string;
+  to: string;
+}
+
 export interface FileAstDiff {
   relativePath: string;
   status: 'added' | 'removed' | 'modified';
   exportsAdded: string[];
   exportsRemoved: string[];
+  /**
+   * Heuristically-detected renames (0.11). When an export disappears from
+   * base AND a similar new name appears in head AND no other export matches,
+   * we report it here instead of as a +/- pair. Removed/added lists exclude
+   * any names that ended up in renames.
+   */
+  exportsRenamed: ExportRename[];
   importsAdded: string[];
   importsRemoved: string[];
   callsAdded: string[];

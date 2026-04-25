@@ -737,14 +737,30 @@ export function reportCoupling(report: CouplingReport): void {
     return;
   }
 
+  const xpkg = report.totalCrossPackageEdges;
   console.log(
-    chalk.dim(`\n  ${report.totalFiles} file${report.totalFiles === 1 ? '' : 's'} in graph · ${report.totalCycles} cycle${report.totalCycles === 1 ? '' : 's'}\n`),
+    chalk.dim(
+      `\n  ${report.totalFiles} file${report.totalFiles === 1 ? '' : 's'} in graph · ${report.totalCycles} cycle${report.totalCycles === 1 ? '' : 's'}${xpkg > 0 ? ` · ${xpkg} cross-package edge${xpkg === 1 ? '' : 's'}` : ''}\n`,
+    ),
   );
 
   if (report.cycles.length > 0) {
     console.log(chalk.bold('  Import cycles:'));
     for (const c of report.cycles) {
       console.log(`    ${chalk.red('●')} cycle of ${c.size} files: ${c.files.join(' → ')} → …`);
+    }
+    console.log('');
+  }
+
+  if (report.crossPackageEdges.length > 0) {
+    console.log(chalk.bold('  Cross-package edges:'));
+    for (const e of report.crossPackageEdges.slice(0, 25)) {
+      console.log(
+        `    ${chalk.yellow('→')} ${chalk.cyan(e.from.file)} ${chalk.dim(`(${e.from.package})`)}  →  ${chalk.cyan(e.to.file)} ${chalk.dim(`(${e.to.package})`)}`,
+      );
+    }
+    if (report.crossPackageEdges.length > 25) {
+      console.log(chalk.dim(`    … and ${report.crossPackageEdges.length - 25} more`));
     }
     console.log('');
   }
@@ -804,6 +820,10 @@ export function reportPrDiff(report: PrDiffReport): void {
       }
       if (m.exportsRemoved.length > 0) {
         console.log(`      ${chalk.red('-exports:')} ${m.exportsRemoved.join(', ')}`);
+      }
+      if (m.exportsRenamed.length > 0) {
+        const pairs = m.exportsRenamed.map((r) => `${r.from} → ${r.to}`).join(', ');
+        console.log(`      ${chalk.yellow('~exports:')} ${pairs}`);
       }
       if (m.importsAdded.length > 0) {
         console.log(`      ${chalk.green('+imports:')} ${m.importsAdded.join(', ')}`);
