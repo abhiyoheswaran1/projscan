@@ -112,6 +112,7 @@ export async function inspectFile(
   let cyclomaticComplexity: number | null = null;
   let fanIn: number | null = null;
   let fanOut: number | null = null;
+  let functions: FileInspection['functions'];
   const graphFileEntry = graph.files.get(relativePath);
   if (graphFileEntry) {
     cyclomaticComplexity = graphFileEntry.parseOk ? graphFileEntry.cyclomaticComplexity : null;
@@ -121,6 +122,16 @@ export async function inspectFile(
       if (importers.has(relativePath)) fo++;
     }
     fanOut = fo;
+    if (graphFileEntry.functions && graphFileEntry.functions.length > 0) {
+      functions = [...graphFileEntry.functions]
+        .sort((a, b) => b.cyclomaticComplexity - a.cyclomaticComplexity)
+        .map((f) => ({
+          name: f.name,
+          line: f.line,
+          endLine: f.endLine,
+          cyclomaticComplexity: f.cyclomaticComplexity,
+        }));
+    }
   }
 
   return {
@@ -138,6 +149,7 @@ export async function inspectFile(
     fanIn,
     fanOut,
     language,
+    functions,
   };
 }
 

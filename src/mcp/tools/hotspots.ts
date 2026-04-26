@@ -11,7 +11,7 @@ import type { McpTool } from './_shared.js';
 export const hotspotsTool: McpTool = {
   name: 'projscan_hotspots',
   description:
-    'Rank files by risk using git churn × AST cyclomatic complexity × open issues. Returns the most dangerous files to touch. Each hotspot includes `cyclomaticComplexity` (null for non-AST languages, where line count is used as fallback). Supports cursor-based pagination: pass the `nextCursor` from a previous response back as `cursor` to fetch the next page.',
+    'Rank files by risk using git churn × AST cyclomatic complexity × open issues. Returns the most dangerous files to touch. Each hotspot includes `cyclomaticComplexity` (null for non-AST languages, where line count is used as fallback). Supports cursor-based pagination: pass the `nextCursor` from a previous response back as `cursor` to fetch the next page. Pass `view: "functions"` to flatten results into the top-N riskiest individual functions across all hotspots, ranked by per-function CC.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -29,6 +29,11 @@ export const hotspotsTool: McpTool = {
       package: {
         type: 'string',
         description: 'Optional. Workspace package name (from projscan_workspaces) to scope hotspots to one package only.',
+      },
+      view: {
+        type: 'string',
+        enum: ['files', 'functions'],
+        description: 'Output shape. "files" (default) returns ranked hotspot files. "functions" returns the top-N individual functions across all hotspots, sorted by per-function CC desc.',
       },
     },
   },
@@ -50,6 +55,49 @@ export const hotspotsTool: McpTool = {
       const allowed = new Set(filterFilesByPackage(ws, args.package, report.hotspots.map((h) => h.relativePath)));
       report.hotspots = report.hotspots.filter((h) => allowed.has(h.relativePath));
     }
+
+    // 0.13.0: function-level view. Flattens per-file `functions` lists into a
+    // single ranked list. Skips files with no per-function CC (e.g. ones the
+    // adapter parsed but found no function definitions, or non-AST languages).
+    if (args.view === 'functions') {
+      type RankedFunction = {
+        file: string;
+        name: string;
+        line: number;
+        endLine: number;
+        cyclomaticComplexity: number;
+        fileRiskScore?: number;
+      };
+      const ranked: RankedFunction[] = [];
+      for (const h of report.hotspots) {
+        const gf = graph.files.get(h.relativePath);
+        if (!gf || !gf.functions || gf.functions.length === 0) continue;
+        for (const fn of gf.functions) {
+          ranked.push({
+            file: h.relativePath,
+            name: fn.name,
+            line: fn.line,
+            endLine: fn.endLine,
+            cyclomaticComplexity: fn.cyclomaticComplexity,
+            fileRiskScore: h.riskScore,
+          });
+        }
+      }
+      ranked.sort((a, b) => b.cyclomaticComplexity - a.cyclomaticComplexity);
+      const page = paginate(ranked, readPageParams(args), listChecksum(ranked));
+      emitProgress(5, 5, 'done');
+      return {
+        available: report.available,
+        reason: report.reason,
+        window: report.window,
+        view: 'functions',
+        functions: page.items,
+        totalFunctionsRanked: ranked.length,
+        nextCursor: page.nextCursor,
+        total: page.total,
+      };
+    }
+
     emitProgress(4, 5, 'paginating');
     const page = paginate(report.hotspots, readPageParams(args), listChecksum(report.hotspots));
     emitProgress(5, 5, 'done');

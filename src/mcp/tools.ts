@@ -24,6 +24,9 @@ import { graphTool } from './tools/graph.js';
 import { couplingTool } from './tools/coupling.js';
 import { workspacesTool } from './tools/workspaces.js';
 import { prDiffTool } from './tools/prDiff.js';
+import { reviewTool } from './tools/review.js';
+import { fixSuggestTool } from './tools/fixSuggest.js';
+import { explainIssueTool } from './tools/explainIssue.js';
 import { searchTool } from './tools/search.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
@@ -46,6 +49,9 @@ const tools: McpTool[] = [
   couplingTool,
   workspacesTool,
   prDiffTool,
+  reviewTool,
+  fixSuggestTool,
+  explainIssueTool,
   searchTool,
 ];
 

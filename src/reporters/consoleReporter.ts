@@ -16,6 +16,9 @@ import type {
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
+  ReviewReport,
+  FixSuggestion,
+  IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
@@ -153,6 +156,9 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
   for (const issue of issues) {
     console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
     console.log(`    ${chalk.dim(issue.description)}`);
+    if (issue.suggestedAction) {
+      console.log(`    ${chalk.cyan('→')} ${chalk.dim(issue.suggestedAction.summary)} ${chalk.dim(`(projscan fix-suggest ${issue.id})`)}`);
+    }
   }
 
   // Recommendations
@@ -517,6 +523,20 @@ export function reportFileInspection(insp: FileInspection): void {
     }
   }
 
+  if (insp.functions && insp.functions.length > 0) {
+    console.log(header('Functions (top by CC)'));
+    const top = insp.functions.slice(0, 10);
+    for (const fn of top) {
+      const ccColor = fn.cyclomaticComplexity >= 10 ? chalk.red : fn.cyclomaticComplexity >= 5 ? chalk.yellow : chalk.dim;
+      console.log(
+        `  ${ccColor(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)}  ${chalk.bold(fn.name)} ${chalk.dim(`L${fn.line}-${fn.endLine}`)}`,
+      );
+    }
+    if (insp.functions.length > 10) {
+      console.log(chalk.dim(`  ... and ${insp.functions.length - 10} more`));
+    }
+  }
+
   console.log('');
 }
 
@@ -838,6 +858,181 @@ export function reportPrDiff(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+// ── Report: fix-suggest ───────────────────────────────────
+
+export function reportFixSuggest(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
+  console.log(header('Fix Suggestion'));
+  if (!result.matched || !result.fix) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${result.reason ?? 'No suggestion available.'}\n`);
+    return;
+  }
+  const fix = result.fix;
+  const sevColor = fix.severity === 'error' ? chalk.red : fix.severity === 'warning' ? chalk.yellow : chalk.dim;
+  console.log(`\n  ${chalk.bold(fix.headline)}\n`);
+  console.log(
+    chalk.dim(
+      `  ${sevColor(fix.severity)} · ${fix.category} · ${fix.issueId}${result.synthetic ? ' (synthetic)' : ''}\n`,
+    ),
+  );
+  console.log(chalk.bold('  Why'));
+  for (const line of wrapLines(fix.why, 76)) console.log(`  ${line}`);
+  if (fix.where.length > 0) {
+    console.log('\n' + chalk.bold('  Where'));
+    for (const w of fix.where) {
+      const loc = w.line ? `${w.file}:${w.line}` : w.file;
+      console.log(`    ${chalk.cyan(loc)}`);
+    }
+  }
+  console.log('\n' + chalk.bold('  Action'));
+  for (const line of wrapLines(fix.instruction, 76)) console.log(`  ${line}`);
+  if (fix.suggestedTest) {
+    console.log('\n' + chalk.bold('  Verify'));
+    for (const line of wrapLines(fix.suggestedTest, 76)) console.log(`  ${line}`);
+  }
+  if (fix.relatedFiles && fix.relatedFiles.length > 0) {
+    console.log('\n' + chalk.bold('  Related files'));
+    for (const f of fix.relatedFiles) console.log(`    ${chalk.cyan(f)}`);
+  }
+  console.log('');
+}
+
+export function reportExplainIssue(e: IssueExplanation): void {
+  console.log(header('Issue Explanation'));
+  console.log(`\n  ${chalk.bold(e.title)} ${chalk.dim(`(${e.issueId})`)}`);
+  console.log(`  ${chalk.dim(`severity: ${e.severity} · category: ${e.category}`)}\n`);
+  console.log(`  ${chalk.bold(e.headline)}\n`);
+  if (e.excerpt) {
+    console.log(chalk.bold(`  Code (${e.excerpt.file} L${e.excerpt.startLine}-${e.excerpt.endLine})`));
+    for (let i = 0; i < e.excerpt.lines.length; i++) {
+      const ln = e.excerpt.startLine + i;
+      console.log(`    ${chalk.dim(String(ln).padStart(4))}  ${e.excerpt.lines[i]}`);
+    }
+    console.log('');
+  }
+  if (e.relatedIssues.length > 0) {
+    console.log(chalk.bold('  Related issues in the same area:'));
+    for (const r of e.relatedIssues) console.log(`    ${chalk.dim('•')} ${r.id}: ${r.title}`);
+    console.log('');
+  }
+  if (e.similarFixes.length > 0) {
+    console.log(chalk.bold('  Past commits referencing this rule:'));
+    for (const f of e.similarFixes) console.log(`    ${chalk.dim(f.sha.slice(0, 7))} ${chalk.dim(`(${f.date})`)} ${f.subject}`);
+    console.log('');
+  }
+  if (e.fix) {
+    console.log(chalk.bold('  Suggested action:'));
+    for (const line of wrapLines(e.fix.instruction, 76)) console.log(`  ${line}`);
+    if (e.fix.suggestedTest) {
+      console.log('\n  ' + chalk.bold('Verify:') + ' ' + e.fix.suggestedTest);
+    }
+    console.log('');
+  }
+}
+
+function wrapLines(text: string, maxWidth: number): string[] {
+  const out: string[] = [];
+  for (const para of text.split(/\n+/)) {
+    if (para.length <= maxWidth) {
+      out.push(para);
+      continue;
+    }
+    const words = para.split(/\s+/);
+    let cur = '';
+    for (const w of words) {
+      if ((cur + ' ' + w).trim().length > maxWidth) {
+        if (cur) out.push(cur);
+        cur = w;
+      } else {
+        cur = cur ? `${cur} ${w}` : w;
+      }
+    }
+    if (cur) out.push(cur);
+  }
+  return out;
+}
+
+// ── Report: review ────────────────────────────────────────
+
+export function reportReview(report: ReviewReport): void {
+  console.log(header('PR Review'));
+
+  if (!report.available) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'Review unavailable.'}\n`);
+    return;
+  }
+
+  console.log(
+    chalk.dim(
+      `\n  base ${report.base.ref} (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head ${report.head.ref} (${report.head.resolvedSha?.slice(0, 7) ?? '?'})\n`,
+    ),
+  );
+
+  const verdictColor = report.verdict === 'block' ? chalk.red : report.verdict === 'review' ? chalk.yellow : chalk.green;
+  const verdictLabel = report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
+  console.log(`  ${chalk.bold('Verdict:')} ${verdictColor(verdictLabel)}\n`);
+
+  for (const s of report.summary) {
+    console.log(`  ${chalk.dim('•')} ${s}`);
+  }
+  if (report.summary.length > 0) console.log('');
+
+  if (report.changedFiles.length > 0) {
+    console.log(chalk.bold('  Changed files (top by risk):'));
+    for (const f of report.changedFiles.slice(0, 15)) {
+      const risk = f.riskScore !== null ? f.riskScore.toFixed(1).padStart(6) : '   -  ';
+      const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity).padStart(3) : '  -';
+      const dcc = f.cyclomaticDelta === null ? '   ' : signed(f.cyclomaticDelta).padStart(3);
+      const statusColor = f.status === 'added' ? chalk.green : f.status === 'removed' ? chalk.red : chalk.yellow;
+      console.log(
+        `    ${statusColor(f.status.padEnd(8))} risk ${risk}  CC ${cc} (Δ${dcc})  ${chalk.cyan(f.relativePath)}`,
+      );
+    }
+    if (report.changedFiles.length > 15) {
+      console.log(chalk.dim(`    ... and ${report.changedFiles.length - 15} more`));
+    }
+    console.log('');
+  }
+
+  if (report.newCycles.length > 0) {
+    console.log(chalk.bold(`  New / expanded cycles (${report.newCycles.length}):`));
+    for (const c of report.newCycles.slice(0, 5)) {
+      const tag = c.classification === 'new' ? chalk.red('NEW') : chalk.yellow('EXP');
+      console.log(`    ${tag} (${c.size}): ${c.files.join(' → ')}`);
+    }
+    if (report.newCycles.length > 5) {
+      console.log(chalk.dim(`    ... and ${report.newCycles.length - 5} more`));
+    }
+    console.log('');
+  }
+
+  if (report.riskyFunctions.length > 0) {
+    console.log(chalk.bold(`  Risky functions (${report.riskyFunctions.length}):`));
+    for (const fn of report.riskyFunctions.slice(0, 10)) {
+      const cc = fn.cyclomaticComplexity >= 15 ? chalk.red : chalk.yellow;
+      const transition = fn.baseCc === null ? `(new)` : `(${fn.baseCc} → ${fn.cyclomaticComplexity})`;
+      console.log(
+        `    ${cc(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)} ${chalk.bold(fn.name)}  ${chalk.dim(`${fn.file}:${fn.line}`)} ${chalk.dim(`[${fn.reason}] ${transition}`)}`,
+      );
+    }
+    if (report.riskyFunctions.length > 10) {
+      console.log(chalk.dim(`    ... and ${report.riskyFunctions.length - 10} more`));
+    }
+    console.log('');
+  }
+
+  if (report.dependencyChanges.length > 0) {
+    console.log(chalk.bold('  Dependency changes:'));
+    for (const d of report.dependencyChanges) {
+      const wsLabel = d.workspace ? ` (${d.workspace})` : '';
+      console.log(`    ${chalk.cyan(d.manifestFile)}${chalk.dim(wsLabel)}`);
+      for (const a of d.added) console.log(`      ${chalk.green('+')} ${a.name}@${a.version} ${chalk.dim(`(${a.kind})`)}`);
+      for (const r of d.removed) console.log(`      ${chalk.red('-')} ${r.name}@${r.version} ${chalk.dim(`(${r.kind})`)}`);
+      for (const b of d.bumped) console.log(`      ${chalk.yellow('~')} ${b.name}: ${b.from} → ${b.to} ${chalk.dim(`(${b.kind})`)}`);
+    }
+    console.log('');
+  }
 }
 
 // ── Report: workspaces ────────────────────────────────────

@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AuditFinding, AuditReport, AuditSeverity } from '../types.js';
+import { detectWorkspaces } from './monorepo.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,6 +18,14 @@ const EMPTY_SUMMARY: Record<AuditSeverity, number> = {
 export interface AuditOptions {
   /** Seconds before giving up on npm audit. */
   timeoutMs?: number;
+  /**
+   * Optional workspace package name (or relative path) to scope findings to.
+   * The audit command itself runs against the root lockfile (which is what
+   * npm/yarn/pnpm need for transitive resolution), but findings are then
+   * filtered to vulnerabilities whose name appears as a direct dependency or
+   * dev-dependency of the named workspace's manifest.
+   */
+  packageFilter?: string;
 }
 
 /**
@@ -81,7 +90,59 @@ export async function runAudit(
     return unavailable('npm audit returned invalid JSON');
   }
 
-  return normalize(payload);
+  const report = normalize(payload);
+  if (options.packageFilter && report.available) {
+    return await scopeReportToWorkspace(rootPath, options.packageFilter, report);
+  }
+  return report;
+}
+
+/**
+ * Filter audit findings to the direct dependencies of a single workspace's
+ * package.json. Findings whose name doesn't appear in that manifest are
+ * dropped. If the workspace can't be located the original report is returned
+ * with a `reason` annotation rather than failing.
+ */
+async function scopeReportToWorkspace(
+  rootPath: string,
+  packageFilter: string,
+  report: AuditReport,
+): Promise<AuditReport> {
+  const ws = await detectWorkspaces(rootPath);
+  const target = ws.packages.find(
+    (p) => p.name === packageFilter || p.relativePath === packageFilter,
+  );
+  if (!target) {
+    return {
+      ...report,
+      reason: `Workspace not found: ${packageFilter}`,
+    };
+  }
+  const manifestPath = path.join(rootPath, target.relativePath, 'package.json');
+  let raw: string;
+  try {
+    raw = await fs.readFile(manifestPath, 'utf-8');
+  } catch {
+    return { ...report, reason: `Cannot read ${target.relativePath}/package.json` };
+  }
+  let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  try {
+    pkg = JSON.parse(raw) as typeof pkg;
+  } catch {
+    return { ...report, reason: `Invalid JSON in ${target.relativePath}/package.json` };
+  }
+  const allowed = new Set([
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.devDependencies ?? {}),
+  ]);
+  const findings = report.findings.filter((f) => allowed.has(f.name));
+  const summary: Record<AuditSeverity, number> = { ...EMPTY_SUMMARY };
+  for (const f of findings) summary[f.severity]++;
+  return {
+    available: true,
+    summary,
+    findings,
+  };
 }
 
 function normalize(payload: Record<string, unknown>): AuditReport {

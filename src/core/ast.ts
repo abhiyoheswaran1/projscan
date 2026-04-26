@@ -42,6 +42,21 @@ export interface AstExport {
   line: number;
 }
 
+/**
+ * Per-function cyclomatic complexity entry. `name` is qualified with the
+ * containing class for methods (`Class.method`), bare for top-level functions,
+ * and `<anonymous>` for unnamed function expressions / arrows assigned to
+ * non-trivially-named bindings.
+ */
+export interface FunctionInfo {
+  name: string;
+  /** 1-based start line (function keyword / arrow). */
+  line: number;
+  /** 1-based end line. Equal to `line` for adapters that don't track end. */
+  endLine: number;
+  cyclomaticComplexity: number;
+}
+
 export interface AstResult {
   ok: boolean;
   reason?: string;
@@ -51,6 +66,12 @@ export interface AstResult {
   lineCount: number;
   /** File-level McCabe cyclomatic complexity: decision points + 1. 0 when unparsed. */
   cyclomaticComplexity: number;
+  /**
+   * Per-function CC. May be empty when the adapter doesn't yet support
+   * per-function granularity or when the file has no function definitions.
+   * 0.13.0+ all six adapters populate this for parsed files.
+   */
+  functions: FunctionInfo[];
 }
 
 const EMPTY: AstResult = {
@@ -61,6 +82,7 @@ const EMPTY: AstResult = {
   callSites: [],
   lineCount: 0,
   cyclomaticComplexity: 0,
+  functions: [],
 };
 
 const SOURCE_EXTENSIONS = new Set([
@@ -164,6 +186,8 @@ export function parseSource(filePath: string, content: string): AstResult {
     if (isDecisionPoint(n)) decisionPoints++;
   });
 
+  const functions = extractFunctionsFromBabel(ast.program);
+
   return {
     ok: true,
     imports,
@@ -171,7 +195,204 @@ export function parseSource(filePath: string, content: string): AstResult {
     callSites: [...new Set(callSites)],
     lineCount: content ? content.split('\n').length : 0,
     cyclomaticComplexity: decisionPoints + 1,
+    functions,
   };
+}
+
+/**
+ * Walk a Babel program and emit one FunctionInfo per function-like node:
+ * FunctionDeclaration, FunctionExpression, ArrowFunctionExpression,
+ * ClassMethod, ObjectMethod. Each function's CC is computed over its own
+ * body only - decision points inside a nested function belong to that
+ * nested function, not its parent. This matches eslint's `complexity` rule
+ * and most static analyzers.
+ */
+function extractFunctionsFromBabel(program: Node): FunctionInfo[] {
+  const out: FunctionInfo[] = [];
+  collectFunctions(program, null, null, out);
+  return out;
+}
+
+const FUNCTION_TYPES = new Set([
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+  'ClassMethod',
+  'ObjectMethod',
+  'ClassPrivateMethod',
+]);
+
+function isFunctionNode(n: Node): boolean {
+  return FUNCTION_TYPES.has(n.type);
+}
+
+interface NodeWithLoc {
+  type: string;
+  loc?: { start: { line: number }; end: { line: number } };
+}
+
+function collectFunctions(
+  node: Node,
+  parentClassName: string | null,
+  bindingName: string | null,
+  out: FunctionInfo[],
+): void {
+  if (!node || typeof node !== 'object') return;
+
+  if (isFunctionNode(node)) {
+    const name = nameForFunctionNode(node, parentClassName, bindingName);
+    const line = (node as NodeWithLoc).loc?.start.line ?? 0;
+    const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
+    const cc = countCcInBody(node);
+    out.push({ name, line, endLine, cyclomaticComplexity: cc });
+
+    // Recurse into nested functions so they emit their own entries. The body
+    // walker (`countCcInBody`) skips nested functions for CC, but we still need
+    // to descend the whole tree to find all functions.
+    descendForNestedFunctions(node, parentClassName, out);
+    return;
+  }
+
+  // Track context so nested functions get a useful name.
+  if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+    const className = (node as { id?: { name?: string } }).id?.name ?? null;
+    const body = (node as { body?: Node }).body;
+    if (body) collectFunctions(body, className, null, out);
+    return;
+  }
+
+  if (node.type === 'VariableDeclarator') {
+    const id = (node as { id?: { type: string; name?: string } }).id;
+    const init = (node as { init?: Node | null }).init;
+    const name = id && id.type === 'Identifier' ? (id.name ?? null) : null;
+    if (init) collectFunctions(init, parentClassName, name, out);
+    return;
+  }
+
+  if (node.type === 'AssignmentExpression') {
+    const left = (node as { left?: { type: string; name?: string } }).left;
+    const right = (node as { right?: Node }).right;
+    const name = left && left.type === 'Identifier' ? (left.name ?? null) : null;
+    if (right) collectFunctions(right, parentClassName, name, out);
+    return;
+  }
+
+  if (node.type === 'ExportDefaultDeclaration') {
+    const decl = (node as { declaration?: Node }).declaration;
+    if (decl) collectFunctions(decl, parentClassName, 'default', out);
+    return;
+  }
+
+  for (const key of Object.keys(node)) {
+    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments') continue;
+    const child = (node as unknown as Record<string, unknown>)[key];
+    if (!child) continue;
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof item === 'object' && 'type' in item) {
+          collectFunctions(item as Node, parentClassName, null, out);
+        }
+      }
+    } else if (typeof child === 'object' && 'type' in child) {
+      collectFunctions(child as Node, parentClassName, null, out);
+    }
+  }
+}
+
+function descendForNestedFunctions(
+  fnNode: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+): void {
+  const body = (fnNode as { body?: Node }).body;
+  if (!body) return;
+  // Body of a function expression/declaration is a BlockStatement (or, for
+  // arrows, possibly an Expression). Either way, walk it.
+  walkChildren(body, (child) => collectFunctions(child, parentClassName, null, out));
+}
+
+function nameForFunctionNode(
+  node: Node,
+  parentClassName: string | null,
+  bindingName: string | null,
+): string {
+  // FunctionDeclaration: function foo() {}
+  if (node.type === 'FunctionDeclaration') {
+    const id = (node as { id?: { name?: string } }).id;
+    return id?.name ?? bindingName ?? '<anonymous>';
+  }
+  // ClassMethod / ObjectMethod / ClassPrivateMethod
+  if (node.type === 'ClassMethod' || node.type === 'ObjectMethod' || node.type === 'ClassPrivateMethod') {
+    const key = (node as { key?: { type: string; name?: string; value?: string } }).key;
+    let methodName = '<anonymous>';
+    if (key) {
+      if (key.type === 'Identifier') methodName = key.name ?? '<anonymous>';
+      else if (key.type === 'StringLiteral') methodName = key.value ?? '<anonymous>';
+      else if (key.type === 'PrivateName') {
+        const inner = (key as unknown as { id?: { name?: string } }).id;
+        methodName = inner?.name ? `#${inner.name}` : '<anonymous>';
+      }
+    }
+    return parentClassName ? `${parentClassName}.${methodName}` : methodName;
+  }
+  // FunctionExpression with an inner id: const x = function named() {}
+  if (node.type === 'FunctionExpression') {
+    const id = (node as { id?: { name?: string } }).id;
+    if (id?.name) return id.name;
+  }
+  // Arrow / unnamed function expression: use the binding name if we have it.
+  return bindingName ?? '<anonymous>';
+}
+
+/**
+ * Count McCabe decision points in a function body, treating nested functions
+ * as opaque (their decision points belong to them, not the enclosing function).
+ */
+function countCcInBody(fnNode: Node): number {
+  const body = (fnNode as { body?: Node }).body;
+  if (!body) return 1;
+  let decisions = 0;
+  walkSkippingNestedFunctions(body, (n) => {
+    if (isDecisionPoint(n)) decisions++;
+  });
+  return decisions + 1;
+}
+
+function walkChildren(node: Node, visit: (n: Node) => void): void {
+  if (!node || typeof node !== 'object') return;
+  for (const key of Object.keys(node)) {
+    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments') continue;
+    const child = (node as unknown as Record<string, unknown>)[key];
+    if (!child) continue;
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof item === 'object' && 'type' in item) visit(item as Node);
+      }
+    } else if (typeof child === 'object' && 'type' in child) {
+      visit(child as Node);
+    }
+  }
+}
+
+function walkSkippingNestedFunctions(node: Node, visit: (n: Node) => void): void {
+  if (!node || typeof node !== 'object') return;
+  visit(node);
+  for (const key of Object.keys(node)) {
+    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments') continue;
+    const child = (node as unknown as Record<string, unknown>)[key];
+    if (!child) continue;
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof item === 'object' && 'type' in item) {
+          if (isFunctionNode(item as Node)) continue;
+          walkSkippingNestedFunctions(item as Node, visit);
+        }
+      }
+    } else if (typeof child === 'object' && 'type' in child) {
+      if (isFunctionNode(child as Node)) continue;
+      walkSkippingNestedFunctions(child as Node, visit);
+    }
+  }
 }
 
 /**

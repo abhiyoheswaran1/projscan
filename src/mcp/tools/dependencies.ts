@@ -3,14 +3,21 @@ import type { McpTool } from './_shared.js';
 
 export const dependenciesTool: McpTool = {
   name: 'projscan_dependencies',
-  description: 'Analyze package.json dependencies and return counts and risks (deprecated packages, wildcard versions, etc.).',
+  description:
+    'Analyze package.json dependencies and return counts and risks (deprecated packages, wildcard versions, etc.). In a monorepo, returns aggregated totals plus a `byWorkspace` breakdown; pass `package` to scope to one workspace.',
   inputSchema: {
     type: 'object',
-    properties: {},
+    properties: {
+      package: {
+        type: 'string',
+        description: 'Optional. Workspace package name to scope analysis to one workspace only.',
+      },
+    },
   },
-  handler: async (_args, rootPath) => {
-    const report = await analyzeDependencies(rootPath);
-    if (!report) return { available: false, reason: 'No package.json found' };
+  handler: async (args, rootPath) => {
+    const filter = typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
+    const report = await analyzeDependencies(rootPath, { packageFilter: filter });
+    if (!report) return { available: false, reason: filter ? `Workspace not found: ${filter}` : 'No package.json found' };
     return { available: true, ...report };
   },
 };

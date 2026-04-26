@@ -10,7 +10,7 @@ These are versioned. We will not break them without a major bump. After the proj
 
 ### CLI
 
-- **Command names**: `analyze`, `doctor`, `ci`, `hotspots`, `coupling`, `pr-diff`, `dependencies`, `outdated`, `audit`, `coverage`, `search`, `structure`, `explain`, `badge`, `diff`, `workspaces`, `mcp`. New commands may be added; existing names will not be renamed or removed.
+- **Command names**: `analyze`, `doctor`, `ci`, `hotspots`, `coupling`, `pr-diff`, `review`, `dependencies`, `outdated`, `audit`, `coverage`, `search`, `structure`, `explain`, `explain-issue`, `fix-suggest`, `badge`, `diff`, `workspaces`, `mcp`. New commands may be added; existing names will not be renamed or removed.
 - **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`. The `--format` flag will continue to accept these names. Per-format guarantees:
@@ -22,7 +22,7 @@ These are versioned. We will not break them without a major bump. After the proj
 ### MCP server
 
 - **Protocol versions advertised**: `2025-03-26` (current), with backward negotiation for `2024-11-05`. We will continue to support at least one prior protocol version when we move to a newer one.
-- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_search`, `projscan_graph`, `projscan_file`, `projscan_audit`, `projscan_outdated`, `projscan_dependencies`, `projscan_upgrade`, `projscan_coverage`, `projscan_structure`, `projscan_coupling`, `projscan_pr_diff`, `projscan_workspaces`. New tools may be added without a major bump; existing names will not be renamed or removed.
+- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_search`, `projscan_graph`, `projscan_file`, `projscan_audit`, `projscan_outdated`, `projscan_dependencies`, `projscan_upgrade`, `projscan_coverage`, `projscan_structure`, `projscan_coupling`, `projscan_pr_diff`, `projscan_workspaces`, `projscan_review`, `projscan_fix_suggest`, `projscan_explain_issue`. New tools may be added without a major bump; existing names will not be renamed or removed.
 - **Input schemas**: documented argument names and types are stable. New optional arguments may be added; existing ones will not change name or type, and required arguments will not become required mid-release-line.
 - **Output shapes**: top-level keys returned by each tool are stable. New optional fields may appear; existing fields will not change name, type, or semantic meaning. Pagination cursors are stable across a single major.
 - **Tool manifest**: `dist/tool-manifest.json` is shipped on every release as a GitHub Release asset. External consumers can pin to `releases/download/v<version>/tool-manifest.json` and rely on the schema (`name`, `version`, `mcpProtocolVersion`, `toolCount`, `tools[{name, description, inputSchema}]`).

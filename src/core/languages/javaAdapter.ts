@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractJavaImports } from './javaImports.js';
 import { extractJavaExports } from './javaExports.js';
 import { extractJavaCyclomatic } from './javaCyclomatic.js';
+import { extractJavaFunctions } from './javaFunctions.js';
 import { extractJavaCallSites } from './javaCallSites.js';
 import { detectJavaProject, type JavaProjectInfo } from './javaManifests.js';
 import type {
@@ -44,6 +45,7 @@ export const javaAdapter: LanguageAdapter = {
           callSites: [],
           lineCount: content ? content.split('\n').length : 0,
           cyclomaticComplexity: 0,
+          functions: [],
         };
       }
       const root = tree.rootNode as unknown as Parameters<typeof extractJavaImports>[0];
@@ -55,6 +57,9 @@ export const javaAdapter: LanguageAdapter = {
       const callSites = extractJavaCallSites(
         root as Parameters<typeof extractJavaCallSites>[0],
       );
+      const functions = extractJavaFunctions(
+        root as Parameters<typeof extractJavaFunctions>[0],
+      );
       return {
         ok: true,
         imports,
@@ -62,6 +67,7 @@ export const javaAdapter: LanguageAdapter = {
         callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
+        functions,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -73,6 +79,7 @@ export const javaAdapter: LanguageAdapter = {
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity: 0,
+        functions: [],
       };
     }
   },

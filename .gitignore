@@ -3,6 +3,7 @@ dist/
 coverage/
 .cache/
 .projscan-cache/
+.bench-cache/
 *.tgz
 .DS_Store
 .env

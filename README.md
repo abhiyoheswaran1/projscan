@@ -20,7 +20,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 17 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, and surface coupling/cycle hotspots - without loading the file tree into its context.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 19 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get a one-call PR review, and request structured fix-action prompts for any open issue - without loading the file tree into its context.
 
 Humans get the same thing through the CLI.
 
@@ -231,14 +231,16 @@ Cache version bumped 2 → 3 in 0.11 (CC stored per file). Existing v2 caches ar
 
 ## Performance
 
-Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25:
+Reference numbers from `npm run bench` (projscan repo + synthetic) on an Apple M3 Pro running Node 25:
 
 | Repo | Files | analyze | doctor | hotspots | coupling | search |
 |------|-------|---------|--------|----------|----------|--------|
-| projscan itself | ~120 | 320–470 ms | 320–340 ms | 360–470 ms | 140–260 ms | 200–320 ms |
-| Synthetic medium | 500 | 200–220 ms | 190 ms | 220–230 ms | 150–190 ms | 170–210 ms |
+| projscan itself | ~120 | 415–578 ms | 404–498 ms | 462–637 ms | 164–326 ms | 234–393 ms |
+| Synthetic medium | 500 | 244–273 ms | 248–262 ms | 264–293 ms | 165–208 ms | 182–225 ms |
 
-Cold-cache times shown; warm-cache times are similar because most commands rebuild the graph anyway. Run `npm run bench` against your own machine to recalibrate.
+For real-world numbers against larger codebases, `npm run bench:references` shallow-clones TypeScript, Django, and kubernetes/client-go into `.bench-cache/` (gitignored) and runs the same suite. First run is network-bound; later runs reuse the cache. Restrict to one target with `-- --only ts|django|k8s-client-go`.
+
+Cold-cache and warm-cache times shown side by side. Run `npm run bench` against your own machine to recalibrate.
 
 - **Zero network requests** - everything runs locally
 - **11 runtime dependencies** - still minimal (the five tree-sitter grammars bring ~3.3 MB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB, tree-sitter-java ~405 KB, tree-sitter-ruby ~2.0 MB)
@@ -461,27 +463,30 @@ claude mcp add projscan -- npx projscan mcp
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 16 MCP tools
+### The 19 MCP tools
 
-**Structural (0.6.0 / 0.11 - agent-native):**
+**Structural (0.6.0 / 0.11 / 0.13 / 0.14 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
 - **`projscan_search`** - fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Replaces the temptation to shell out to grep.
 - **`projscan_coupling`** *(0.11)* - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
 - **`projscan_pr_diff`** *(0.11)* - structural diff between two git refs. Returns added/removed/modified files with explicit lists of exports, imports, and call sites that changed, plus ΔCC and Δfan-in.
+- **`projscan_review`** *(0.13)* - one-call PR review. Composes `pr_diff` + per-changed-file risk + new/expanded import cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
+- **`projscan_fix_suggest`** *(0.14)* - structured action prompt for any open issue: headline, why it matters, where, one-paragraph instruction, optional suggested test. Closes the diagnose → fix loop.
+- **`projscan_explain_issue`** *(0.14)* - deep dive on one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 
 **Analysis:**
 - `projscan_analyze` - full project report
-- `projscan_doctor` - health score + issues
-- `projscan_hotspots` - risk-ranked files (churn × **AST cyclomatic complexity** × issues × ownership × coverage; falls back to LOC for non-AST languages)
-- `projscan_file` - per-file risk + ownership + related issues + CC + fan-in/fan-out
+- `projscan_doctor` - health score + issues (now includes `cycle-detected-N` for circular imports as of 0.13)
+- `projscan_hotspots` - risk-ranked files (churn × **AST cyclomatic complexity** × issues × ownership × coverage; falls back to LOC for non-AST languages). Pass `view: "functions"` *(0.13)* for top-N risky individual functions.
+- `projscan_file` - per-file risk + ownership + related issues + CC + fan-in/fan-out + per-function CC table *(0.13)*
 - `projscan_explain` - per-file purpose, imports, exports, smells
 - `projscan_structure` - directory tree
 - `projscan_coverage` - scariest untested files (coverage × hotspots)
 
 **Dependencies:**
-- `projscan_dependencies` - declared deps, risks
-- `projscan_outdated` - declared-vs-installed drift (offline)
-- `projscan_audit` - normalized `npm audit`
+- `projscan_dependencies` - declared deps, risks. In a monorepo: aggregated totals + `byWorkspace` breakdown; `package` arg scopes to one *(0.13)*.
+- `projscan_outdated` - declared-vs-installed drift (offline). Per-package `byWorkspace`; `package` arg.
+- `projscan_audit` - normalized `npm audit`. `package` arg scopes findings to one workspace's direct deps *(0.13)*.
 - `projscan_upgrade` - upgrade preview (CHANGELOG + importers, offline)
 
 **Workspace (0.11):**

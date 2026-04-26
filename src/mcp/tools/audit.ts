@@ -6,18 +6,23 @@ import type { McpTool } from './_shared.js';
 export const auditTool: McpTool = {
   name: 'projscan_audit',
   description:
-    'Run `npm audit` and return a normalized summary of vulnerabilities (critical / high / moderate / low / info). Requires package-lock.json. Supports cursor pagination on the findings array.',
+    'Run `npm audit` and return a normalized summary of vulnerabilities (critical / high / moderate / low / info). Requires package-lock.json. Supports cursor pagination on the findings array. Pass `package` in a monorepo to scope findings to direct deps of one workspace package.',
   inputSchema: {
     type: 'object',
     properties: {
       cursor: { type: 'string', description: 'Opaque cursor from a previous response.' },
       page_size: { type: 'number', description: 'Items per page (default 50).' },
       max_tokens: { type: 'number', description: 'Cap response size.' },
+      package: {
+        type: 'string',
+        description: 'Optional. Workspace package name to scope audit findings to one workspace only.',
+      },
     },
   },
   handler: async (args, rootPath) => {
     emitProgress(0, 2, 'running npm audit');
-    const report = await runAudit(rootPath);
+    const filter = typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
+    const report = await runAudit(rootPath, filter ? { packageFilter: filter } : {});
     if (!report.available) return report;
     emitProgress(1, 2, 'normalizing findings');
     const page = paginate(report.findings, readPageParams(args), listChecksum(report.findings));

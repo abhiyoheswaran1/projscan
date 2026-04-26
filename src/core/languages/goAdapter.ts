@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractGoImports } from './goImports.js';
 import { extractGoExports } from './goExports.js';
 import { extractGoCyclomatic } from './goCyclomatic.js';
+import { extractGoFunctions } from './goFunctions.js';
 import { extractGoCallSites } from './goCallSites.js';
 import { detectGoProject, type GoProjectInfo } from './goManifests.js';
 import type {
@@ -44,6 +45,7 @@ export const goAdapter: LanguageAdapter = {
           callSites: [],
           lineCount: content ? content.split('\n').length : 0,
           cyclomaticComplexity: 0,
+          functions: [],
         };
       }
       const root = tree.rootNode as unknown as Parameters<typeof extractGoImports>[0];
@@ -51,6 +53,7 @@ export const goAdapter: LanguageAdapter = {
       const exports = extractGoExports(root as Parameters<typeof extractGoExports>[0]);
       const cyclomaticComplexity = extractGoCyclomatic(root as Parameters<typeof extractGoCyclomatic>[0]);
       const callSites = extractGoCallSites(root as Parameters<typeof extractGoCallSites>[0]);
+      const functions = extractGoFunctions(root as Parameters<typeof extractGoFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -58,6 +61,7 @@ export const goAdapter: LanguageAdapter = {
         callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
+        functions,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -69,6 +73,7 @@ export const goAdapter: LanguageAdapter = {
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity: 0,
+        functions: [],
       };
     }
   },

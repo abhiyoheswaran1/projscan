@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type {
+  ImportPolicyRule,
   Issue,
   IssueSeverity,
   LoadedConfig,
@@ -107,6 +108,29 @@ function normalize(input: unknown): ProjscanConfig {
       }
     }
     if (Object.keys(overrides).length) out.severityOverrides = overrides;
+  }
+
+  if (obj.monorepo && typeof obj.monorepo === 'object') {
+    const m = obj.monorepo as Record<string, unknown>;
+    const monorepo: NonNullable<ProjscanConfig['monorepo']> = {};
+    if (Array.isArray(m.importPolicy)) {
+      const rules: ImportPolicyRule[] = [];
+      for (const entry of m.importPolicy) {
+        if (!entry || typeof entry !== 'object') continue;
+        const e = entry as Record<string, unknown>;
+        if (typeof e.from !== 'string' || !e.from) continue;
+        const rule: ImportPolicyRule = { from: e.from };
+        if (Array.isArray(e.allow)) {
+          rule.allow = e.allow.filter((v): v is string => typeof v === 'string');
+        }
+        if (Array.isArray(e.deny)) {
+          rule.deny = e.deny.filter((v): v is string => typeof v === 'string');
+        }
+        if (rule.allow || rule.deny) rules.push(rule);
+      }
+      if (rules.length > 0) monorepo.importPolicy = rules;
+    }
+    if (Object.keys(monorepo).length) out.monorepo = monorepo;
   }
 
   return out;

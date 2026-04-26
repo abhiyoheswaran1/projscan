@@ -13,6 +13,9 @@ import type {
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
+  ReviewReport,
+  FixSuggestion,
+  IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
@@ -116,6 +119,18 @@ export function reportCouplingJson(report: CouplingReport): void {
 
 export function reportPrDiffJson(report: PrDiffReport): void {
   console.log(JSON.stringify({ prDiff: report }, null, 2));
+}
+
+export function reportReviewJson(report: ReviewReport): void {
+  console.log(JSON.stringify({ review: report }, null, 2));
+}
+
+export function reportFixSuggestJson(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
+  console.log(JSON.stringify({ fixSuggest: result }, null, 2));
+}
+
+export function reportExplainIssueJson(explanation: IssueExplanation): void {
+  console.log(JSON.stringify({ issueExplanation: explanation }, null, 2));
 }
 
 export function reportWorkspacesJson(info: WorkspaceInfo): void {

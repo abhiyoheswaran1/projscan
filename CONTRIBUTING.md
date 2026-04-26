@@ -90,6 +90,20 @@ As of 0.10, projscan has a `LanguageAdapter` interface (`src/core/languages/Lang
 - Keep dependencies minimal - avoid adding new runtime dependencies unless necessary
 - Write tests for new analyzers and fixers
 
+## Stable surface
+
+The MCP tool inventory, CLI command list, and exit codes documented in `docs/STABILITY.md` are the **public contract**. CI runs `npm run check:stability` which compares the current build against `stability-baseline.json` checked into the repo root.
+
+- **Adding** a new MCP tool, optional argument, or CLI command is fine - the guard prints additions but does not fail.
+- **Removing** or **renaming** anything in the stable surface fails the guard. Either restore the surface or, if the change is intentional and warrants a major version bump, regenerate the baseline:
+
+  ```sh
+  npm run build
+  node scripts/check-stability.mjs --update
+  ```
+
+  Only run `--update` when you genuinely intend to break the contract (i.e. a major-version release). The friction is the point.
+
 ## Areas wanting help
 
 Concrete on-ramps for new contributors. Each is scoped to fit a first PR. Look for the `good first issue` label on GitHub for tracked instances.

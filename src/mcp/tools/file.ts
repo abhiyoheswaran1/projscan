@@ -4,7 +4,7 @@ import type { McpTool } from './_shared.js';
 export const fileTool: McpTool = {
   name: 'projscan_file',
   description:
-    'Drill into a single file: purpose, imports, exports, churn/risk/ownership, related health issues, AST cyclomatic complexity, and coupling (fan-in / fan-out). Use this after projscan_hotspots when deciding how to approach a specific risky file.',
+    'Drill into a single file: purpose, imports, exports, churn/risk/ownership, related health issues, AST cyclomatic complexity, coupling (fan-in / fan-out), and per-function CC ranked by complexity. Use this after projscan_hotspots when deciding how to approach a specific risky file.',
   inputSchema: {
     type: 'object',
     properties: {

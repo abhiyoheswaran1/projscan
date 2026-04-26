@@ -13,6 +13,9 @@ import type {
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
+  ReviewReport,
+  FixSuggestion,
+  IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
@@ -82,6 +85,9 @@ export function reportHealthMarkdown(issues: Issue[]): void {
     for (const issue of issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
       lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
+      if (issue.suggestedAction) {
+        lines.push(`  - **Action:** ${issue.suggestedAction.summary} _(\`projscan fix-suggest ${issue.id}\`)_`);
+      }
     }
   }
 
@@ -314,6 +320,18 @@ export function reportFileMarkdown(insp: FileInspection): void {
     }
   }
 
+  if (insp.functions && insp.functions.length > 0) {
+    lines.push('', '## Functions (top by CC)', '');
+    lines.push('| CC | Name | Lines |');
+    lines.push('| ---: | --- | --- |');
+    for (const fn of insp.functions.slice(0, 20)) {
+      lines.push(`| ${fn.cyclomaticComplexity} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
+    }
+    if (insp.functions.length > 20) {
+      lines.push('', `_... and ${insp.functions.length - 20} more_`);
+    }
+  }
+
   console.log(lines.join('\n'));
 }
 
@@ -437,6 +455,130 @@ export function reportPrDiffMarkdown(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+export function reportFixSuggestMarkdown(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
+  const lines: string[] = ['# Fix Suggestion', ''];
+  if (!result.matched || !result.fix) {
+    lines.push(`> ${result.reason ?? 'No suggestion available.'}`);
+    console.log(lines.join('\n'));
+    return;
+  }
+  const fix = result.fix;
+  lines.push(`**${fix.headline}**`, '');
+  lines.push(`_severity: ${fix.severity} · category: ${fix.category} · issue: \`${fix.issueId}\`${result.synthetic ? ' (synthetic)' : ''}_`, '');
+  lines.push('## Why', '', fix.why, '');
+  if (fix.where.length > 0) {
+    lines.push('## Where', '');
+    for (const w of fix.where) {
+      const loc = w.line ? `${w.file}:${w.line}` : w.file;
+      lines.push(`- \`${loc}\``);
+    }
+    lines.push('');
+  }
+  lines.push('## Action', '', fix.instruction, '');
+  if (fix.suggestedTest) lines.push('## Verify', '', fix.suggestedTest, '');
+  if (fix.relatedFiles && fix.relatedFiles.length > 0) {
+    lines.push('## Related files', '');
+    for (const f of fix.relatedFiles) lines.push(`- \`${f}\``);
+    lines.push('');
+  }
+  if (fix.references && fix.references.length > 0) {
+    lines.push('## References', '');
+    for (const r of fix.references) lines.push(`- ${r}`);
+    lines.push('');
+  }
+  console.log(lines.join('\n'));
+}
+
+export function reportExplainIssueMarkdown(e: IssueExplanation): void {
+  const lines: string[] = [`# Issue: ${e.title}`, ''];
+  lines.push(`_severity: ${e.severity} · category: ${e.category} · id: \`${e.issueId}\`_`, '');
+  lines.push(`**${e.headline}**`, '');
+  if (e.excerpt) {
+    lines.push(`## Code (\`${e.excerpt.file}\` L${e.excerpt.startLine}-${e.excerpt.endLine})`, '', '```');
+    for (const l of e.excerpt.lines) lines.push(l);
+    lines.push('```', '');
+  }
+  if (e.relatedIssues.length > 0) {
+    lines.push('## Related issues in the same area', '');
+    for (const r of e.relatedIssues) lines.push(`- \`${r.id}\`: ${r.title}`);
+    lines.push('');
+  }
+  if (e.similarFixes.length > 0) {
+    lines.push('## Past commits referencing this rule', '');
+    for (const f of e.similarFixes) lines.push(`- ${f.sha.slice(0, 7)} (${f.date}) ${f.subject}`);
+    lines.push('');
+  }
+  if (e.fix) {
+    lines.push('## Suggested action', '', e.fix.instruction, '');
+    if (e.fix.suggestedTest) lines.push('**Verify:** ' + e.fix.suggestedTest, '');
+  }
+  console.log(lines.join('\n'));
+}
+
+export function reportReviewMarkdown(report: ReviewReport): void {
+  const lines: string[] = ['# PR Review', ''];
+  if (!report.available) {
+    lines.push(`> ${report.reason ?? 'Review unavailable.'}`);
+    console.log(lines.join('\n'));
+    return;
+  }
+  const verdictBadge = report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
+  lines.push(
+    `_base **${report.base.ref}** (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head **${report.head.ref}** (${report.head.resolvedSha?.slice(0, 7) ?? '?'})_`,
+    '',
+    `**Verdict:** ${verdictBadge}`,
+    '',
+  );
+  if (report.summary.length > 0) {
+    for (const s of report.summary) lines.push(`- ${s}`);
+    lines.push('');
+  }
+  if (report.changedFiles.length > 0) {
+    lines.push('## Changed files', '');
+    lines.push('| File | Status | Risk | CC | ΔCC |');
+    lines.push('| --- | --- | ---: | ---: | ---: |');
+    for (const f of report.changedFiles.slice(0, 50)) {
+      const risk = f.riskScore !== null ? f.riskScore.toFixed(1) : '-';
+      const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity) : '-';
+      const dcc = f.cyclomaticDelta === null ? '-' : signed(f.cyclomaticDelta);
+      lines.push(`| \`${f.relativePath}\` | ${f.status} | ${risk} | ${cc} | ${dcc} |`);
+    }
+    if (report.changedFiles.length > 50) {
+      lines.push('', `_... and ${report.changedFiles.length - 50} more files_`);
+    }
+    lines.push('');
+  }
+  if (report.newCycles.length > 0) {
+    lines.push('## New / expanded import cycles', '');
+    for (const c of report.newCycles) {
+      lines.push(`- **${c.classification}** (${c.size} files): ${c.files.map((f) => `\`${f}\``).join(' → ')}`);
+    }
+    lines.push('');
+  }
+  if (report.riskyFunctions.length > 0) {
+    lines.push('## Risky functions', '');
+    lines.push('| Function | File | CC | Reason | Δ from base |');
+    lines.push('| --- | --- | ---: | --- | --- |');
+    for (const fn of report.riskyFunctions.slice(0, 30)) {
+      const baseInfo = fn.baseCc === null ? 'new' : `${fn.baseCc} → ${fn.cyclomaticComplexity}`;
+      lines.push(`| \`${fn.name}\` | \`${fn.file}\`:L${fn.line} | ${fn.cyclomaticComplexity} | ${fn.reason} | ${baseInfo} |`);
+    }
+    lines.push('');
+  }
+  if (report.dependencyChanges.length > 0) {
+    lines.push('## Dependency changes', '');
+    for (const d of report.dependencyChanges) {
+      const wsLabel = d.workspace ? ` (${d.workspace})` : '';
+      lines.push(`### \`${d.manifestFile}\`${wsLabel}`, '');
+      for (const a of d.added) lines.push(`- ➕ \`${a.name}@${a.version}\` (${a.kind})`);
+      for (const r of d.removed) lines.push(`- ➖ \`${r.name}@${r.version}\` (${r.kind})`);
+      for (const b of d.bumped) lines.push(`- 🔄 \`${b.name}\`: \`${b.from}\` → \`${b.to}\` (${b.kind})`);
+      lines.push('');
+    }
+  }
+  console.log(lines.join('\n'));
 }
 
 export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {

@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractPythonImports } from './pythonImports.js';
 import { extractPythonExports } from './pythonExports.js';
 import { extractPythonCyclomatic } from './pythonCyclomatic.js';
+import { extractPythonFunctions } from './pythonFunctions.js';
 import { extractPythonCallSites } from './pythonCallSites.js';
 import { detectPythonProject } from './pythonManifests.js';
 import type {
@@ -48,6 +49,7 @@ export const pythonAdapter: LanguageAdapter = {
           callSites: [],
           lineCount: content ? content.split('\n').length : 0,
           cyclomaticComplexity: 0,
+          functions: [],
         };
       }
       const imports = extractPythonImports(tree.rootNode as unknown as Parameters<typeof extractPythonImports>[0]);
@@ -58,6 +60,9 @@ export const pythonAdapter: LanguageAdapter = {
       const callSites = extractPythonCallSites(
         tree.rootNode as unknown as Parameters<typeof extractPythonCallSites>[0],
       );
+      const functions = extractPythonFunctions(
+        tree.rootNode as unknown as Parameters<typeof extractPythonFunctions>[0],
+      );
       return {
         ok: true,
         imports,
@@ -65,6 +70,7 @@ export const pythonAdapter: LanguageAdapter = {
         callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
+        functions,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -76,6 +82,7 @@ export const pythonAdapter: LanguageAdapter = {
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity: 0,
+        functions: [],
       };
     }
   },

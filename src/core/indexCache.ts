@@ -7,7 +7,9 @@ const CACHE_FILE = 'graph.json';
 // v2: added `adapterId` for multi-language routing.
 // v3: added `cyclomaticComplexity` per file (0.11 "Signal Quality"). Older
 // caches are discarded on load so we never read back missing CC as 0.
-const CACHE_VERSION = 3;
+// v4: added `functions: [{name, line, endLine, cyclomaticComplexity}]` per
+// file (0.13 "Agent Review"). v3 caches are discarded on first 0.13 run.
+const CACHE_VERSION = 4;
 
 interface SerializedGraph {
   version: number;
@@ -19,6 +21,7 @@ interface SerializedGraph {
     callSites: string[];
     lineCount: number;
     cyclomaticComplexity: number;
+    functions: GraphFile['functions'];
     mtimeMs: number;
     parseOk: boolean;
     parseReason?: string;
@@ -58,6 +61,7 @@ export async function loadCachedGraph(rootPath: string): Promise<CodeGraph | und
       callSites: entry.callSites,
       lineCount: entry.lineCount,
       cyclomaticComplexity: entry.cyclomaticComplexity,
+      functions: entry.functions ?? [],
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,
@@ -98,6 +102,7 @@ export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promi
       callSites: entry.callSites,
       lineCount: entry.lineCount,
       cyclomaticComplexity: entry.cyclomaticComplexity,
+      functions: entry.functions ?? [],
       mtimeMs: entry.mtimeMs,
       parseOk: entry.parseOk,
       parseReason: entry.parseReason,

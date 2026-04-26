@@ -10,8 +10,9 @@ import { reportDependenciesMarkdown } from '../../reporters/markdownReporter.js'
 export function registerDependencies(): void {
   program
     .command('dependencies')
-    .description('Analyze project dependencies')
-    .action(async () => {
+    .description('Analyze project dependencies (workspace-aware in monorepos)')
+    .option('--package <name>', 'monorepo: scope analysis to a single workspace package')
+    .action(async (cmdOpts: { package?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
@@ -19,7 +20,7 @@ export function registerDependencies(): void {
       const spinner = format === 'console' ? ora('Analyzing dependencies...').start() : null;
 
       try {
-        const report = await analyzeDependencies(rootPath);
+        const report = await analyzeDependencies(rootPath, { packageFilter: cmdOpts.package });
 
         if (spinner) spinner.stop();
 

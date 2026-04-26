@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "mcpTools": {
+    "projscan_analyze": {
+      "args": [
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_doctor": {
+      "args": [
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_hotspots": {
+      "args": [
+        "cursor",
+        "limit",
+        "max_tokens",
+        "package",
+        "page_size",
+        "since",
+        "view"
+      ],
+      "required": []
+    },
+    "projscan_explain": {
+      "args": [
+        "file"
+      ],
+      "required": [
+        "file"
+      ]
+    },
+    "projscan_file": {
+      "args": [
+        "file"
+      ],
+      "required": [
+        "file"
+      ]
+    },
+    "projscan_structure": {
+      "args": [
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_dependencies": {
+      "args": [
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_outdated": {
+      "args": [
+        "cursor",
+        "max_tokens",
+        "package",
+        "page_size"
+      ],
+      "required": []
+    },
+    "projscan_audit": {
+      "args": [
+        "cursor",
+        "max_tokens",
+        "package",
+        "page_size"
+      ],
+      "required": []
+    },
+    "projscan_upgrade": {
+      "args": [
+        "package"
+      ],
+      "required": [
+        "package"
+      ]
+    },
+    "projscan_coverage": {
+      "args": [
+        "limit",
+        "max_tokens",
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_graph": {
+      "args": [
+        "direction",
+        "file",
+        "limit",
+        "max_tokens",
+        "symbol"
+      ],
+      "required": [
+        "direction"
+      ]
+    },
+    "projscan_coupling": {
+      "args": [
+        "direction",
+        "file",
+        "limit",
+        "max_tokens",
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_workspaces": {
+      "args": [],
+      "required": []
+    },
+    "projscan_pr_diff": {
+      "args": [
+        "base",
+        "head",
+        "max_tokens",
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_review": {
+      "args": [
+        "base",
+        "head",
+        "max_tokens",
+        "package"
+      ],
+      "required": []
+    },
+    "projscan_search": {
+      "args": [
+        "limit",
+        "max_tokens",
+        "mode",
+        "package",
+        "query",
+        "scope"
+      ],
+      "required": [
+        "query"
+      ]
+    }
+  },
+  "cliCommands": [
+    "analyze",
+    "audit",
+    "badge",
+    "ci",
+    "coupling",
+    "coverage",
+    "dependencies",
+    "diff",
+    "doctor",
+    "explain",
+    "hotspots",
+    "mcp",
+    "outdated",
+    "pr-diff",
+    "review",
+    "search",
+    "structure",
+    "workspaces"
+  ],
+  "exitCodes": {
+    "success": 0,
+    "issues": 1,
+    "invalidUsage": 2
+  }
+}

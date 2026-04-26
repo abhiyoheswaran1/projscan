@@ -12,6 +12,7 @@ export { previewUpgrade, isValidPackageName } from './core/upgradePreview.js';
 export { parseCoverage, coverageMap } from './core/coverageParser.js';
 export { joinCoverageWithHotspots } from './core/coverageJoin.js';
 export { parseSource, isParseable } from './core/ast.js';
+export type { FunctionInfo } from './core/ast.js';
 export {
   buildCodeGraph,
   filesImportingFile,
@@ -52,6 +53,9 @@ export { walkFiles } from './utils/fileWalker.js';
 export { loadConfig, applyConfigToIssues } from './utils/config.js';
 export { getChangedFiles } from './utils/changedFiles.js';
 export { issuesToSarif } from './reporters/sarifReporter.js';
+export { computeReview } from './core/review.js';
+export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
+export { explainIssue } from './core/explainIssue.js';
 export { createMcpServer, runMcpServer } from './mcp/server.js';
 export { getToolDefinitions } from './mcp/tools.js';
 export { getPromptDefinitions } from './mcp/prompts.js';
@@ -74,6 +78,7 @@ export type {
   FixResult,
   FileExplanation,
   FileInspection,
+  FunctionDetail,
   ImportInfo,
   ExportInfo,
   ArchitectureLayer,
@@ -102,4 +107,12 @@ export type {
   CoverageReport,
   CoverageJoinedHotspot,
   CoverageJoinedReport,
+  ReviewReport,
+  ReviewFile,
+  ReviewCycle,
+  ReviewFunction,
+  ReviewDependencyChange,
+  FixSuggestion,
+  IssueExplanation,
+  ImportPolicyRule,
 } from './types.js';

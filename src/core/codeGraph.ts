@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../types.js';
-import type { AstImport, AstExport, AstResult } from './ast.js';
+import type { AstImport, AstExport, AstResult, FunctionInfo } from './ast.js';
 import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 
@@ -13,6 +13,12 @@ export interface GraphFile {
   lineCount: number;
   /** File-level McCabe cyclomatic complexity from the adapter. 0 when unparsed. */
   cyclomaticComplexity: number;
+  /**
+   * Per-function McCabe CC from the adapter (0.13.0+). Optional for
+   * backward compatibility with code paths that build GraphFile records
+   * without function metadata. Treat absence as "no per-function data".
+   */
+  functions?: FunctionInfo[];
   mtimeMs: number;
   parseOk: boolean;
   parseReason?: string;
@@ -93,6 +99,7 @@ export async function buildCodeGraph(
           callSites: [],
           lineCount: 0,
           cyclomaticComplexity: 0,
+          functions: [],
         };
       }
 
@@ -103,6 +110,7 @@ export async function buildCodeGraph(
         callSites: result.callSites,
         lineCount: result.lineCount,
         cyclomaticComplexity: result.cyclomaticComplexity,
+        functions: result.functions ?? [],
         mtimeMs,
         parseOk: result.ok,
         parseReason: result.reason,

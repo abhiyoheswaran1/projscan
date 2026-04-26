@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-04-26
+
+Theme: **"Agent Fix Loop"** - the second of five releases on the path to v1.0. Closes the diagnose → fix half of the agent's loop: projscan was already great at telling agents *what's wrong*, now it tells them *what to do about it*, in structured form. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+
+### Added
+
+- **`projscan_fix_suggest` MCP tool + `projscan fix-suggest` CLI - the headline.** Rule-driven action prompt for any open issue. Input: an `issue_id` (from `projscan_doctor` / `projscan_analyze`) OR a `file` + `rule` pair when the agent wants guidance for a class of issue without first running doctor. Output: a structured `FixSuggestion` with `headline` (one-line "what's wrong"), `why` (severity-anchored explanation), `where` (issue locations), `instruction` (one-paragraph "what to do" the agent can paste into its plan), and optional `suggestedTest` / `relatedFiles` / `references`. Hand-tuned templates for ~12 common issue id families (unused-dependency, dep-risk-no-lockfile, audit-*, cycle-detected-*, large-*-dir, dead-code, missing-test/lint/format, cross-package-violation-*) plus a severity-anchored generic fallback so every issue gets *some* useful guidance. **No LLM inside projscan**: the driving agent is the LLM, and projscan supplies the structured prompt.
+- **`projscan_explain_issue` MCP tool + `projscan explain-issue` CLI.** Deep-dive on one open issue: severity, surrounding code excerpt (3 lines either side, configurable), other open issues touching the same file, **similar past commits via `git log --grep=<rule>`** (so an agent can see how teammates have addressed this issue type before), plus the structured `FixSuggestion`. Use this when an agent wants more context than `projscan_doctor` gives - typically before applying a fix.
+- **Inline `suggestedAction` in `projscan_doctor`.** Each issue returned by `projscan_doctor` and `projscan_analyze` now carries an optional `suggestedAction: { summary }` field - a one-line hint pointing at the fix-suggest pipeline. Console + markdown reporters surface it inline (`→ <hint> (projscan fix-suggest <id>)`); JSON output includes the structured field. Field is absent for issues with no template match (preserves backward compatibility).
+- **Cross-package import policy analyzer.** New `crossPackageImportCheck` analyzer runs in monorepos. Reads `.projscanrc` `monorepo.importPolicy: [{from, allow?, deny?}]` and walks the cross-package edges already detected by `computeCoupling`. Each policy violation becomes one `cross-package-violation-N` issue (severity warning, category architecture). Allow-list semantics: if `allow` is set and the target isn't in it, the edge is denied. Glob support: `*`, `pkg/*`, `*/sub`. Off by default - the analyzer is a no-op until you configure rules. Capped at 50 violations per run to keep doctor output bounded.
+
+### Changed
+
+- **MCP tool count: 17 → 19** (added `projscan_fix_suggest`, `projscan_explain_issue`).
+- **`Issue`** type gains an optional `suggestedAction?: { summary: string }` field.
+- **`ProjscanConfig`** gains an optional `monorepo?: { importPolicy?: ImportPolicyRule[] }` block (additive).
+- **`projscan_doctor`** description unchanged but the response shape is enriched with `suggestedAction` per issue. Agents already calling doctor get the new field automatically; clients that don't read it see no behavior change.
+- **Console reporter** for `doctor` now shows the fix hint and the `projscan fix-suggest <id>` callable on every actionable issue. Markdown reporter emits a `**Action:** ... (\`projscan fix-suggest <id>\`)` bullet.
+
+### Notes
+
+- **+21 tests** (759 → 780). New coverage: fix-suggest template registry across 11 issue families + fallback (11), `explainIssue` with synthetic git fixtures (5), cross-package import policy across allow/deny/allow-list-miss/single-package (5).
+- **No new runtime dependencies.** The fix-suggest registry is plain TS; explainIssue shells out to `git log --grep` (which projscan already uses for hotspots).
+- **Stable surface unchanged for existing tools.** The two new tools are additions; the new `Issue.suggestedAction` field is optional and additive. `npm run check:stability` reports the additions but does not fail.
+- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 "Reach" next (transitive call-graph reachability + sub-file embeddings).
+
+## [0.13.0] - 2026-04-26
+
+Theme: **"Agent Review + Stability Proof"** - the first of five releases on the path to v1.0. Each release in that path is additive against the [stable surface](docs/STABILITY.md) so the v1.0 commitment stands on a track record, not just intent. See `docs/ROADMAP.md` for the full plan (0.13 → 0.14 "Agent Fix Loop" → 0.15 "Reach" → 0.16 "Live" → 0.17 "RC + Docs" → 1.0).
+
+### Added
+
+- **`projscan_review` MCP tool + `projscan review` CLI - the headline.** One-call PR review for the agent: composes the structural diff (`pr_diff`) with per-changed-file risk scores (hotspot semantics), new/expanded import cycles, risky function additions (high-CC adds or significant CC jumps), and dependency changes across the root + every workspace manifest. Returns a verdict (`ok` | `review` | `block`) and a one-line summary. Defaults: `base=origin/main` (falls back to main/master/HEAD~1), `head=HEAD`. `--package <name>` (or `package` MCP arg) scopes every section to a single workspace. Markdown reporter output is suitable for posting as a PR comment.
+- **Per-function cyclomatic complexity.** `LanguageAdapter.parse()` now returns `functions: [{name, line, endLine, cyclomaticComplexity}]` for all six adapters (JS/TS via Babel, Python/Go/Java/Ruby via tree-sitter walkers). Names are qualified for methods (`Class.method`), constructors (`Class.<init>` for Java), and Go methods (`Receiver.Method`). Each function's CC is computed over its own body only; nested functions emit their own entries and don't inflate the parent's CC. Persisted in the code graph and the index cache (`.projscan-cache/` bumps from v3 to v4; v3 caches are discarded silently and rebuilt). Surfaced in `projscan_file` (new `functions` field, sorted by CC desc) and via a new `view: "functions"` arg on `projscan_hotspots` that flattens results into the top-N riskiest functions across hotspot files.
+- **Cycle promotion to `projscan_doctor`.** `cycleCheck` analyzer lifts Tarjan-detected circular imports from the coupling output into the doctor issue list as new `cycle-detected-N` issues (severity warning, category architecture). Each cycle yields one issue with up to 8 file locations; runs cap at 20 cycles to keep doctor output bounded on pathological codebases. Agents that call `projscan_doctor` (which previously didn't surface cycles) now see them inline.
+- **Workspace-aware `dependencies` and `audit`.** Closes the 0.11 monorepo carry-over.
+  - `analyzeDependencies` walks every workspace manifest plus the root, returning aggregate totals across all manifests plus a `byWorkspace` breakdown (`{workspace, relativePath, isRoot, totalDependencies, totalDevDependencies, risks}`). `DependencyRisk` gains an optional `workspace` field. Single-package repos see no `byWorkspace` field (backward-compatible).
+  - `projscan dependencies` CLI gains `--package <name>`; `projscan_dependencies` MCP tool gains a `package` arg.
+  - `projscan audit` CLI gains `--package <name>`; `projscan_audit` MCP tool gains a `package` arg. The audit itself still runs against the root lockfile (which is what npm needs for transitive resolution); when `package` is supplied, findings are filtered to those whose name appears as a direct dep or dev-dep in the named workspace's manifest.
+- **Stable-surface CI guard (`scripts/check-stability.mjs`).** Diffs the live MCP tool inventory + CLI command list + exit codes against a checked-in `stability-baseline.json`. Additions print but pass; removals or renames fail the check. Wired into CI (`npm run check:stability`). The guard is what *proves* the [stability contract](docs/STABILITY.md) holds across a release cycle - the v1.0 gate. Baseline is regenerated only on deliberate major-version bumps via `node scripts/check-stability.mjs --update`.
+- **Reference-repo benchmark (`scripts/bench-references.mjs`, `npm run bench:references`).** Shallow-clones microsoft/TypeScript, django/django, and kubernetes/client-go into `.bench-cache/` (gitignored) and runs the standard suite (analyze, doctor, hotspots, coupling, search) against each. Restrict to one target with `-- --only ts|django|k8s-client-go`. Designed to be reproducible on the maintainer's machine; numbers in the README's Performance section come from this script over time.
+
+### Changed
+
+- **MCP tool count: 16 → 17** (added `projscan_review`).
+- **Cache version: v3 → v4** (per-function CC persisted; v3 caches discarded on first 0.13 run, rebuilt automatically - no user action required).
+- **`projscan_file`** returns an additional `functions` field (sorted by CC desc; absent when the file has no AST-parsed functions). Console + markdown reporters surface a "Functions (top by CC)" section.
+- **`projscan_hotspots`** gains a `view: "files" | "functions"` arg. The default (`"files"`) is unchanged. With `"functions"`, the response shape becomes `{available, view: "functions", functions: [{file, name, line, endLine, cyclomaticComplexity, fileRiskScore}], totalFunctionsRanked, ...}` (paginated).
+- **`projscan_dependencies`** description updated to mention the `byWorkspace` breakdown.
+- **`projscan_audit`** description updated to mention the `package` scope.
+- **`DependencyReport`** gains an optional `byWorkspace` field. **`DependencyRisk`** gains an optional `workspace` field. Both are absent for single-package repos (backward-compatible).
+
+### Roadmap
+
+`docs/ROADMAP.md` rewritten with the **Path to v1.0** - five themed releases (0.13 → 0.17) plus a label-only 1.0. Each gates v1.0 by being additive against the stable surface; together they answer the four questions an agent has at every PR or refactor moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?*
+
+### Notes
+
+- **+5 MCP tool args, +1 MCP tool, +1 CLI command** vs 0.12.0. Stable-surface guard reports these as additions; no removals or renames.
+- **No new runtime dependencies.** Reuses the existing tree-sitter grammars + Babel parser.
+- **+40 tests** (719 → 759). New coverage: per-function CC across all six adapters (24), cycle promotion (4), workspace-aware dependencies (7), `computeReview` integration against real git fixtures (5).
+- **Behavior preserved** for all single-package repos. Non-monorepo `projscan dependencies` / `projscan audit` runs are byte-identical to 0.12.
+
 ## [0.12.0] - 2026-04-25
 
 ### Added

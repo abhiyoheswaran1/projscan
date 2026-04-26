@@ -5,6 +5,7 @@ import { createParserFor } from './treeSitterLoader.js';
 import { extractRubyImports } from './rubyImports.js';
 import { extractRubyExports } from './rubyExports.js';
 import { extractRubyCyclomatic } from './rubyCyclomatic.js';
+import { extractRubyFunctions } from './rubyFunctions.js';
 import { extractRubyCallSites } from './rubyCallSites.js';
 import { detectRubyProject } from './rubyManifests.js';
 import type {
@@ -43,6 +44,7 @@ export const rubyAdapter: LanguageAdapter = {
           callSites: [],
           lineCount: content ? content.split('\n').length : 0,
           cyclomaticComplexity: 0,
+          functions: [],
         };
       }
       const root = tree.rootNode as unknown as Parameters<typeof extractRubyImports>[0];
@@ -54,6 +56,9 @@ export const rubyAdapter: LanguageAdapter = {
       const callSites = extractRubyCallSites(
         root as Parameters<typeof extractRubyCallSites>[0],
       );
+      const functions = extractRubyFunctions(
+        root as Parameters<typeof extractRubyFunctions>[0],
+      );
       return {
         ok: true,
         imports,
@@ -61,6 +66,7 @@ export const rubyAdapter: LanguageAdapter = {
         callSites,
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity,
+        functions,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -72,6 +78,7 @@ export const rubyAdapter: LanguageAdapter = {
         callSites: [],
         lineCount: content ? content.split('\n').length : 0,
         cyclomaticComplexity: 0,
+        functions: [],
       };
     }
   },

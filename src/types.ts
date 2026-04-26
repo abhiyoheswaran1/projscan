@@ -62,12 +62,29 @@ export interface DependencyReport {
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
   risks: DependencyRisk[];
+  /**
+   * Per-workspace breakdown when scanning a monorepo (0.13.0+). Absent for
+   * single-package repos. The top-level `totalDependencies`,
+   * `totalDevDependencies`, `dependencies`, `devDependencies`, and `risks`
+   * fields aggregate across all workspaces (root manifest + each package).
+   * For per-package detail, read this array.
+   */
+  byWorkspace?: Array<{
+    workspace: string;
+    relativePath: string;
+    isRoot: boolean;
+    totalDependencies: number;
+    totalDevDependencies: number;
+    risks: DependencyRisk[];
+  }>;
 }
 
 export interface DependencyRisk {
   name: string;
   reason: string;
   severity: 'low' | 'medium' | 'high';
+  /** Workspace package name when found in a monorepo workspace manifest. Absent for the root. */
+  workspace?: string;
 }
 
 // === Issues / Health ===
@@ -91,6 +108,67 @@ export interface Issue {
   fixAvailable: boolean;
   fixId?: string;
   locations?: IssueLocation[];
+  /**
+   * One-line hint shown inline in projscan_doctor output (0.14.0+). Points
+   * at the fix-suggest pipeline. Absent when no template matches the issue.
+   */
+  suggestedAction?: { summary: string };
+}
+
+// === Fix Suggest (0.14) ===
+
+/**
+ * Structured action prompt the agent can paste into its plan. Returned by
+ * projscan_fix_suggest. projscan does not run an LLM - this is rule-driven
+ * guidance with the issue, the location, and a one-paragraph instruction
+ * the agent (LLM) is expected to act on.
+ */
+export interface FixSuggestion {
+  /** Echoes the input issue id when matched. */
+  issueId: string;
+  /** Severity level passed through from the source issue. */
+  severity: IssueSeverity;
+  /** Issue category passed through. */
+  category: string;
+  /** One-line "what is wrong". */
+  headline: string;
+  /** 2-4 sentences of why this matters. Severity-anchored. */
+  why: string;
+  /** Affected locations (mirrors Issue.locations when known). */
+  where: IssueLocation[];
+  /** One-paragraph instruction for the driving agent. */
+  instruction: string;
+  /** Optional "verify the fix by..." note. */
+  suggestedTest?: string;
+  /** Optional related files (importers, peer rules) for context. */
+  relatedFiles?: string[];
+  /** Optional documentation links. */
+  references?: string[];
+}
+
+/**
+ * Markdown-rendered deep dive for a single issue. Returned by
+ * projscan_explain_issue. Includes the surrounding code excerpt and any
+ * git-log evidence of similar fixes already merged in this repo.
+ */
+export interface IssueExplanation {
+  issueId: string;
+  title: string;
+  severity: IssueSeverity;
+  category: string;
+  headline: string;
+  /** Source-code excerpt around the primary location. Empty when no location. */
+  excerpt: { file: string; startLine: number; endLine: number; lines: string[] } | null;
+  /** Other open issues touching the same file (id + title pairs). */
+  relatedIssues: Array<{ id: string; title: string }>;
+  /**
+   * Git log references where this issue id (or its rule prefix) appears in a
+   * commit message - hints at how teammates have addressed it before.
+   * Empty when none found or git history unavailable.
+   */
+  similarFixes: Array<{ sha: string; subject: string; date: string }>;
+  /** The full FixSuggestion if a template matched; null otherwise. */
+  fix: FixSuggestion | null;
 }
 
 // === Fix System ===
@@ -313,6 +391,30 @@ export interface ProjscanConfig {
   ignore?: string[];
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
+  /**
+   * Monorepo-specific configuration (0.14.0+). Currently scopes the
+   * cross-package import policy: each entry says "package P may only import
+   * from these listed packages, or specifically may NOT import from these
+   * listed packages." Edges that violate become `cross-package-violation-*`
+   * issues in projscan_doctor.
+   */
+  monorepo?: {
+    importPolicy?: ImportPolicyRule[];
+  };
+}
+
+/**
+ * One cross-package import rule. `from` is the package name (matches
+ * WorkspacePackage.name). Exactly one of `allow` / `deny` is required. Both
+ * lists are package-name globs - a leading `!` negates a single entry, and a
+ * single `*` is the wildcard. When both `allow` and `deny` are set, allow
+ * is checked first and a hit short-circuits as ALLOWED; otherwise deny is
+ * checked.
+ */
+export interface ImportPolicyRule {
+  from: string;
+  allow?: string[];
+  deny?: string[];
 }
 
 export interface LoadedConfig {
@@ -459,6 +561,93 @@ export interface PrDiffReport {
   totalFilesChanged: number;
 }
 
+// === PR Review (0.13) ===
+
+/**
+ * One changed file enriched with risk signals. The agent calling
+ * projscan_review uses these to decide which files need careful review.
+ */
+export interface ReviewFile {
+  relativePath: string;
+  status: 'added' | 'removed' | 'modified';
+  /** Hotspot risk score for the head version. null when file isn't in the hotspot scope. */
+  riskScore: number | null;
+  /** Cyclomatic complexity at head. null when no AST adapter parsed it. */
+  cyclomaticComplexity: number | null;
+  /** Delta from the structural diff (mirrors FileAstDiff.cyclomaticDelta). null when file was added/removed. */
+  cyclomaticDelta: number | null;
+  /** Number of exports added in this PR. */
+  exportsAdded: number;
+  /** Number of exports removed in this PR. */
+  exportsRemoved: number;
+  /** Number of imports added. */
+  importsAdded: number;
+  /** Number of imports removed. */
+  importsRemoved: number;
+}
+
+/**
+ * A circular import that exists at head and either didn't exist at base or
+ * grew. Surfaced separately from the file list so reviewers see at-a-glance
+ * whether the PR introduces new architectural debt.
+ */
+export interface ReviewCycle {
+  files: string[];
+  size: number;
+  /**
+   * 'new' = no overlap with any base cycle; 'expanded' = at least one new
+   * file added to an existing cycle.
+   */
+  classification: 'new' | 'expanded';
+}
+
+/**
+ * A function whose CC newly crossed a worry threshold (>= 10) at head, or
+ * was added with high CC, or jumped by 5+ since base.
+ */
+export interface ReviewFunction {
+  file: string;
+  name: string;
+  line: number;
+  endLine: number;
+  cyclomaticComplexity: number;
+  /** CC at base. null when the function did not exist at base. */
+  baseCc: number | null;
+  /** Why this function shows up. */
+  reason: 'added' | 'jumped' | 'crossed-threshold';
+}
+
+/** Workspace-package-scoped dependency change. Aggregates root + workspaces. */
+export interface ReviewDependencyChange {
+  /** Workspace name; '' for the root manifest. */
+  workspace: string;
+  manifestFile: string;
+  added: Array<{ name: string; version: string; kind: 'dep' | 'dev' }>;
+  removed: Array<{ name: string; version: string; kind: 'dep' | 'dev' }>;
+  bumped: Array<{ name: string; from: string; to: string; kind: 'dep' | 'dev' }>;
+}
+
+export interface ReviewReport {
+  available: boolean;
+  reason?: string;
+  base: { ref: string; resolvedSha: string | null };
+  head: { ref: string; resolvedSha: string | null };
+  /** The structural diff (same shape as projscan_pr_diff). */
+  prDiff: PrDiffReport;
+  /** Each changed file annotated with risk + CC + delta. Sorted by risk desc. */
+  changedFiles: ReviewFile[];
+  /** Cycles introduced or expanded by this PR. Empty when none. */
+  newCycles: ReviewCycle[];
+  /** Functions that meaningfully grew or were added with high CC. Sorted by CC desc. */
+  riskyFunctions: ReviewFunction[];
+  /** package.json deltas across root + workspaces. */
+  dependencyChanges: ReviewDependencyChange[];
+  /** 'ok' = ship it; 'review' = needs careful look; 'block' = strongly suggests rework. */
+  verdict: 'ok' | 'review' | 'block';
+  /** One-line bullets explaining the verdict. */
+  summary: string[];
+}
+
 // === Per-file Inspection ===
 
 export interface FileInspection {
@@ -481,6 +670,25 @@ export interface FileInspection {
   fanOut?: number | null;
   /** Adapter id (e.g. 'javascript', 'python'). Set when the graph was available. */
   language?: string;
+  /**
+   * Per-function McCabe CC (0.13.0+). Sorted by cyclomaticComplexity desc.
+   * Empty array when the file has no functions or the adapter doesn't yet
+   * support per-function granularity.
+   */
+  functions?: FunctionDetail[];
+}
+
+/**
+ * Per-function CC entry exposed via projscan_file. Mirrors the internal
+ * `FunctionInfo` from `core/ast.ts` but is part of the stable API surface.
+ */
+export interface FunctionDetail {
+  name: string;
+  /** 1-based start line. */
+  line: number;
+  /** 1-based end line. */
+  endLine: number;
+  cyclomaticComplexity: number;
 }
 
 // === MCP ===

@@ -1,7 +1,7 @@
 {
   "name": "projscan",
-  "version": "0.12.0",
-  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, and Ruby; code graph, AST cyclomatic complexity, coupling + cycle detection, structural PR diff, monorepo workspace awareness with per-package outdated, BM25 + optional semantic search, cursor pagination, progress notifications, and context-budgeted output. CLI on the side.",
+  "version": "0.14.0",
+  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, and Ruby; code graph, file + per-function AST cyclomatic complexity, coupling + cycle detection, structural PR diff, one-call PR review (projscan_review), rule-driven fix suggestions (projscan_fix_suggest, projscan_explain_issue) closing the diagnose-fix loop, monorepo workspace awareness with cross-package import policy + per-package dependencies / outdated / audit, BM25 + optional semantic search, cursor pagination, progress notifications, context-budgeted output, and a stable-surface CI guard. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,6 +20,8 @@
     "lint": "eslint src/",
     "format": "prettier --write .",
     "bench": "node scripts/bench.mjs",
+    "bench:references": "node scripts/bench-references.mjs",
+    "check:stability": "node scripts/check-stability.mjs",
     "prepare": "npm run build"
   },
   "keywords": [

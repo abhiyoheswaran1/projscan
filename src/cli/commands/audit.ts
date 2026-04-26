@@ -11,9 +11,10 @@ import { issuesToSarif } from '../../reporters/sarifReporter.js';
 export function registerAudit(): void {
   program
     .command('audit')
-    .description('Run npm audit and surface vulnerabilities (SARIF supported)')
+    .description('Run npm audit and surface vulnerabilities (SARIF supported; --package scopes findings to a single workspace)')
     .option('--timeout <ms>', 'override npm audit timeout (default 60000)')
-    .action(async (cmdOpts) => {
+    .option('--package <name>', 'monorepo: scope findings to direct deps of one workspace package')
+    .action(async (cmdOpts: { timeout?: string; package?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
@@ -22,7 +23,10 @@ export function registerAudit(): void {
 
       try {
         const timeoutMs = cmdOpts.timeout ? Math.max(5_000, parseInt(cmdOpts.timeout, 10)) : undefined;
-        const report = await runAudit(rootPath, timeoutMs !== undefined ? { timeoutMs } : {});
+        const auditOpts: import('../../core/auditRunner.js').AuditOptions = {};
+        if (timeoutMs !== undefined) auditOpts.timeoutMs = timeoutMs;
+        if (cmdOpts.package) auditOpts.packageFilter = cmdOpts.package;
+        const report = await runAudit(rootPath, auditOpts);
         if (spinner) spinner.stop();
 
         switch (format) {
