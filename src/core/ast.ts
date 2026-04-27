@@ -55,6 +55,14 @@ export interface FunctionInfo {
   /** 1-based end line. Equal to `line` for adapters that don't track end. */
   endLine: number;
   cyclomaticComplexity: number;
+  /**
+   * Approximate per-function fan-in (0.15.0+): count of OTHER files whose
+   * `callSites` includes this function's bare name. Populated post-parse in
+   * `buildCodeGraph`; absent right after `parse()` since it requires the
+   * full graph. Name-based: shared function names across files cannot be
+   * disambiguated and will be attributed to all definitions.
+   */
+  fanIn?: number;
 }
 
 export interface AstResult {

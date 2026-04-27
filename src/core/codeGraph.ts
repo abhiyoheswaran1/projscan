@@ -149,6 +149,36 @@ export async function buildCodeGraph(
     }
   }
 
+  // 0.15.0: per-function fan-in. For each function name across the graph,
+  // count how many OTHER files include the name in their callSites. The
+  // result is attached to the function entry in-place. Approximate: shared
+  // names across files attribute to every definition.
+  const callerFilesByName = new Map<string, Set<string>>();
+  for (const gf of graphFiles.values()) {
+    for (const name of gf.callSites ?? []) {
+      let set = callerFilesByName.get(name);
+      if (!set) {
+        set = new Set();
+        callerFilesByName.set(name, set);
+      }
+      set.add(gf.relativePath);
+    }
+  }
+  for (const gf of graphFiles.values()) {
+    if (!gf.functions || gf.functions.length === 0) continue;
+    for (const fn of gf.functions) {
+      const bare = bareName(fn.name);
+      const callers = callerFilesByName.get(bare);
+      if (!callers) {
+        fn.fanIn = 0;
+        continue;
+      }
+      // Subtract self if the function's own file appears in the caller set
+      // (self-call from within the same file).
+      fn.fanIn = callers.size - (callers.has(gf.relativePath) ? 1 : 0);
+    }
+  }
+
   return {
     files: graphFiles,
     packageImporters,
@@ -156,6 +186,19 @@ export async function buildCodeGraph(
     symbolDefs,
     scannedFiles: graphFiles.size,
   };
+}
+
+/**
+ * Function names in the graph are sometimes qualified (`Class.method` for
+ * methods, `Class.<init>` for Java constructors). callSites only carries
+ * the bare name (the called identifier), so we strip the class/receiver
+ * prefix to do the lookup. Falls back to the original on names without a
+ * dot.
+ */
+function bareName(qualified: string): string {
+  const dot = qualified.lastIndexOf('.');
+  if (dot < 0) return qualified;
+  return qualified.slice(dot + 1);
 }
 
 /**

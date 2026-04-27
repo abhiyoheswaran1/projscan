@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-04-27
+
+Theme: **"Reach"** - the third of five releases on the path to v1.0. Answers the question *what breaks if I change this?* before the agent commits to a refactor. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+
+### Added
+
+- **`projscan_impact` MCP tool + `projscan impact` CLI - the headline.** Transitive blast-radius analysis. Two modes:
+  - **File mode**: pass a repo-relative path; returns every file that transitively imports it, ranked by BFS distance (1 = direct importer, 2 = importer of an importer, etc.). Cycle-safe; depth-bounded by `max_distance` (default 10) with a `truncated` flag when the limit is hit.
+  - **Symbol mode**: pass a symbol (export) name; returns the file(s) that define it, the files that directly call it (their `callSites` includes the name), and the transitive importers of those callers. Use this BEFORE renaming or deleting an export.
+  Use the CLI with `--symbol` to switch modes; the MCP tool takes mutually-exclusive `file` or `symbol` args. Supports cursor pagination on the `reachable` array.
+- **Per-function fan-in.** `FunctionInfo` (per-file ASTs) and `FunctionDetail` (public type, surfaced via `projscan_file`) gain an optional `fanIn?: number` field. Computed in `buildCodeGraph` after parse: for each function name, count the OTHER files whose `callSites` include the bare name. Self-calls within the defining file don't count. Class methods (`Class.method`) match against bare-name callSites. The number is approximate (shared names attribute to every definition) and documented as such; useful as a "is anyone using this?" / "what's load-bearing?" signal.
+- **Sub-file embeddings (per-function semantic chunks).** Opt-in semantic-search mode that embeds each function separately instead of each file. Set `sub_file: true` on `projscan_search` (or `--sub-file` on the CLI) when running in `mode: "semantic"`. Cache key per chunk is `<file>#<fn-name>`, so editing one function doesn't re-embed siblings. Hits return a `function: { name, startLine, endLine }` field pointing at the matched function. Files with no extracted functions (configs, READMEs) still get a file-level embedding so coverage is uniform. Backward-compatible: file-level remains the default.
+
+### Changed
+
+- **MCP tool count: 19 → 20** (added `projscan_impact`).
+- **`projscan_search`** input schema gains `sub_file?: boolean`. Output `matches[]` gain optional `function` field on semantic-mode hits when sub-file is enabled.
+- **`projscan_file`** `functions[]` entries gain optional `fanIn?: number`. Console + markdown reporters surface a fan-in column in the per-function table.
+- **`SearchHit`** type gains optional `function` field (mirrors the semantic-mode hit shape).
+- **Semantic-search cache version: v1 → v2**. v1 caches are discarded silently and rebuilt on first 0.15 run - no user action required. The schema change is the composite-key + per-chunk function-context fields.
+- **`FunctionInfo`** (internal) gains optional `fanIn?: number`. **`FunctionDetail`** (public) mirrors it.
+
+### Notes
+
+- **+22 tests** (780 → 802). New coverage: `computeImpact` file + symbol modes including cycles + truncation + missing definitions (12), per-function fan-in across multi-file graphs (4), `buildChunks` extraction including subFile-without-graph fallback and per-function chunk hashing (6).
+- **No new runtime dependencies.** Sub-file embeddings reuse the existing `@xenova/transformers` peer dep; impact analysis is pure graph traversal.
+- **Stable surface unchanged for existing tools.** The new tool, the new arg, and the new optional fields are all additions. `npm run check:stability` reports the additions but does not fail.
+- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓. Two more themed releases (0.16 "Live", 0.17 "RC + Docs") then the 1.0 label.
+
 ## [0.14.0] - 2026-04-26
 
 Theme: **"Agent Fix Loop"** - the second of five releases on the path to v1.0. Closes the diagnose → fix half of the agent's loop: projscan was already great at telling agents *what's wrong*, now it tells them *what to do about it*, in structured form. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.

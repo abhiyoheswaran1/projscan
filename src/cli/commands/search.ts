@@ -33,6 +33,7 @@ export function registerSearch(): void {
     .option('--scope <scope>', 'auto | content | symbols | files', 'auto')
     .option('--mode <mode>', 'lexical | semantic | hybrid (content/auto scope only)', 'lexical')
     .option('--semantic', 'shortcut for --mode semantic')
+    .option('--sub-file', 'semantic mode only: chunk per-function instead of per-file (0.15+)')
     .option('--limit <n>', 'max results', '15')
     .option('--package <name>', 'monorepo: scope to a single workspace package')
     .action(async (queryParts: string[], cmdOpts) => {
@@ -133,9 +134,11 @@ export function registerSearch(): void {
 
             if (spinner) spinner.text = 'Building semantic index (first run may take ~10s + model download)...';
             const semIndex = await buildSemanticIndex(rootPath, scan.files, {
+              subFile: Boolean(cmdOpts.subFile),
+              graph,
               onFirstLoad: (m) => spinner?.text && (spinner.text = m),
               onProgress: (d, t) => {
-                if (spinner) spinner.text = `Embedding files... ${d}/${t}`;
+                if (spinner) spinner.text = `Embedding chunks... ${d}/${t}`;
               },
             });
             if (!semIndex) {
@@ -156,7 +159,8 @@ export function registerSearch(): void {
                   symbolMatch: false,
                   pathMatch: false,
                   excerpt: '',
-                  line: 0,
+                  line: h.function?.startLine ?? 0,
+                  function: h.function,
                 })),
                 tokens,
               );

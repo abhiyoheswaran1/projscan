@@ -68,6 +68,11 @@ export interface SearchHit {
   pathMatch: boolean;
   excerpt: string;
   line: number;
+  /**
+   * Function context, set when the hit came from a sub-file semantic chunk
+   * (0.15.0+). Absent for file-level / lexical hits.
+   */
+  function?: { name: string; startLine: number; endLine: number };
 }
 
 export interface SearchOptions {

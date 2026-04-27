@@ -130,6 +130,7 @@ export async function inspectFile(
           line: f.line,
           endLine: f.endLine,
           cyclomaticComplexity: f.cyclomaticComplexity,
+          fanIn: f.fanIn,
         }));
     }
   }

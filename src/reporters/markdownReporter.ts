@@ -15,6 +15,7 @@ import type {
   PrDiffReport,
   ReviewReport,
   FixSuggestion,
+  ImpactReport,
   IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
@@ -322,10 +323,11 @@ export function reportFileMarkdown(insp: FileInspection): void {
 
   if (insp.functions && insp.functions.length > 0) {
     lines.push('', '## Functions (top by CC)', '');
-    lines.push('| CC | Name | Lines |');
-    lines.push('| ---: | --- | --- |');
+    lines.push('| CC | Fan-in | Name | Lines |');
+    lines.push('| ---: | ---: | --- | --- |');
     for (const fn of insp.functions.slice(0, 20)) {
-      lines.push(`| ${fn.cyclomaticComplexity} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
+      const fi = typeof fn.fanIn === 'number' ? String(fn.fanIn) : '-';
+      lines.push(`| ${fn.cyclomaticComplexity} | ${fi} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
     }
     if (insp.functions.length > 20) {
       lines.push('', `_... and ${insp.functions.length - 20} more_`);
@@ -455,6 +457,43 @@ export function reportPrDiffMarkdown(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+export function reportImpactMarkdown(report: ImpactReport): void {
+  const lines: string[] = [`# Impact: ${report.target.kind} \`${report.target.value}\``, ''];
+  if (!report.available) {
+    lines.push(`> ${report.reason ?? 'Impact unavailable.'}`);
+    console.log(lines.join('\n'));
+    return;
+  }
+  if (report.target.kind === 'symbol') {
+    lines.push(
+      `_definitions: ${report.definitionFiles.length} · direct callers: ${report.directCallers.length}_`,
+      '',
+    );
+    if (report.definitionFiles.length > 0) {
+      lines.push('## Defined in', '');
+      for (const f of report.definitionFiles) lines.push(`- \`${f}\``);
+      lines.push('');
+    }
+  }
+  lines.push(
+    `**${report.totalReachable}** file(s) reachable within distance ${report.maxDistance}${report.truncated ? ' (truncated; more files exist beyond)' : ''}.`,
+    '',
+  );
+  if (report.reachable.length === 0) {
+    lines.push('_No reachable files._');
+    console.log(lines.join('\n'));
+    return;
+  }
+  lines.push('| Distance | File |', '| ---: | --- |');
+  for (const n of report.reachable.slice(0, 200)) {
+    lines.push(`| ${n.distance} | \`${n.file}\` |`);
+  }
+  if (report.reachable.length > 200) {
+    lines.push('', `_... and ${report.reachable.length - 200} more_`);
+  }
+  console.log(lines.join('\n'));
 }
 
 export function reportFixSuggestMarkdown(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {

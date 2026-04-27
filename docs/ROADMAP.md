@@ -86,6 +86,12 @@ Picked up if user demand surfaces.
 
 ## Recently Shipped
 
+### v0.15.x - "Reach"
+- **`projscan_impact` MCP tool + `projscan impact` CLI** - transitive blast-radius for files and symbols. File mode = BFS over reverse imports. Symbol mode = direct callers (from callSites) + transitive importers. Cycle-safe; depth-bounded.
+- **Per-function fan-in** computed in `buildCodeGraph` from cross-file callSites. Surfaced in `projscan_file`'s functions list. Approximate (name-based) and documented as such.
+- **Sub-file embeddings** - opt-in `sub_file: true` on `projscan_search` chunks files at function boundaries. Cache key per chunk = `<file>#<fn-name>` so editing one function doesn't re-embed siblings. Semantic cache version v1 → v2.
+- MCP tool count: 19 → 20. 802 tests passing (+22 over 0.14).
+
 ### v0.14.x - "Agent Fix Loop"
 - **`projscan_fix_suggest` MCP tool + `projscan fix-suggest` CLI** - rule-driven action prompts for open issues. Hand-tuned templates for ~12 common issue families plus a severity-anchored generic fallback. No LLM inside projscan; the agent is the LLM.
 - **`projscan_explain_issue` MCP tool + `projscan explain-issue` CLI** - deep dive: code excerpt around the location, related issues touching the same file, similar past commits via `git log --grep=<rule>`, plus the structured FixSuggestion.

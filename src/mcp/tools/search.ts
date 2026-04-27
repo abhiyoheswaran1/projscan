@@ -38,6 +38,10 @@ export const searchTool: McpTool = {
           '"lexical" (default, BM25) | "semantic" (embeddings, requires peer dep) | "hybrid" (BM25 + semantic via reciprocal rank fusion). Ignored for "symbols" and "files" scopes.',
         enum: ['lexical', 'semantic', 'hybrid'],
       },
+      sub_file: {
+        type: 'boolean',
+        description: '0.15.0+: when true, build the semantic index per-function instead of per-file (where the language adapter extracted functions). Hits return a `function` field with name + line range. Ignored in lexical mode. Default false.',
+      },
       limit: { type: 'number', description: 'Max matches returned (default 30).' },
       max_tokens: { type: 'number', description: 'Cap the response to roughly this many tokens.' },
       package: PACKAGE_ARG_SCHEMA,
@@ -123,7 +127,8 @@ export const searchTool: McpTool = {
       };
     }
 
-    const semIndex = await buildSemanticIndex(rootPath, scan.files);
+    const subFile = args.sub_file === true;
+    const semIndex = await buildSemanticIndex(rootPath, scan.files, { subFile, graph });
     if (!semIndex) {
       return {
         scope: scope === 'auto' ? 'content' : scope,
@@ -149,7 +154,8 @@ export const searchTool: McpTool = {
           symbolMatch: false,
           pathMatch: false,
           excerpt: '',
-          line: 0,
+          line: h.function?.startLine ?? 0,
+          function: h.function,
         })),
         tokens,
       );
@@ -157,6 +163,7 @@ export const searchTool: McpTool = {
       return {
         scope: scope === 'auto' ? 'content' : scope,
         mode: 'semantic',
+        subFile,
         query,
         model: semIndex.model,
         matches: page.items,

@@ -56,6 +56,9 @@ export { issuesToSarif } from './reporters/sarifReporter.js';
 export { computeReview } from './core/review.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
+export { computeImpact } from './core/impact.js';
+export { buildChunks } from './core/semanticSearch.js';
+export type { SemanticChunk } from './core/semanticSearch.js';
 export { createMcpServer, runMcpServer } from './mcp/server.js';
 export { getToolDefinitions } from './mcp/tools.js';
 export { getPromptDefinitions } from './mcp/prompts.js';
@@ -115,4 +118,6 @@ export type {
   FixSuggestion,
   IssueExplanation,
   ImportPolicyRule,
+  ImpactReport,
+  ImpactNode,
 } from './types.js';

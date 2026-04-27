@@ -18,6 +18,7 @@ import type {
   PrDiffReport,
   ReviewReport,
   FixSuggestion,
+  ImpactReport,
   IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
@@ -528,8 +529,9 @@ export function reportFileInspection(insp: FileInspection): void {
     const top = insp.functions.slice(0, 10);
     for (const fn of top) {
       const ccColor = fn.cyclomaticComplexity >= 10 ? chalk.red : fn.cyclomaticComplexity >= 5 ? chalk.yellow : chalk.dim;
+      const fiStr = typeof fn.fanIn === 'number' ? `fan-in ${String(fn.fanIn).padStart(2)}` : '         ';
       console.log(
-        `  ${ccColor(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)}  ${chalk.bold(fn.name)} ${chalk.dim(`L${fn.line}-${fn.endLine}`)}`,
+        `  ${ccColor(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)}  ${chalk.dim(fiStr)}  ${chalk.bold(fn.name)} ${chalk.dim(`L${fn.line}-${fn.endLine}`)}`,
       );
     }
     if (insp.functions.length > 10) {
@@ -858,6 +860,52 @@ export function reportPrDiff(report: PrDiffReport): void {
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+// ── Report: impact ────────────────────────────────────────
+
+export function reportImpact(report: ImpactReport): void {
+  console.log(header('Impact'));
+  if (!report.available) {
+    console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'Impact unavailable.'}\n`);
+    return;
+  }
+  console.log(
+    `\n  ${chalk.bold(report.target.kind)}: ${chalk.cyan(report.target.value)}\n`,
+  );
+  if (report.target.kind === 'symbol') {
+    console.log(
+      `  ${chalk.dim(`definitions: ${report.definitionFiles.length} · direct callers: ${report.directCallers.length}`)}`,
+    );
+    if (report.definitionFiles.length > 0) {
+      console.log(chalk.bold('\n  Defined in:'));
+      for (const f of report.definitionFiles) console.log(`    ${chalk.cyan(f)}`);
+    }
+    console.log('');
+  }
+  const truncatedNote = report.truncated
+    ? chalk.yellow(' (truncated; more files exist beyond)')
+    : '';
+  console.log(
+    `  ${chalk.bold(report.totalReachable.toString())} file(s) reachable within distance ${report.maxDistance}${truncatedNote}\n`,
+  );
+  if (report.reachable.length === 0) {
+    console.log(chalk.dim('  No reachable files.\n'));
+    return;
+  }
+  let lastDistance = -1;
+  for (const n of report.reachable.slice(0, 50)) {
+    if (n.distance !== lastDistance) {
+      console.log(chalk.bold(`  Distance ${n.distance}:`));
+      lastDistance = n.distance;
+    }
+    console.log(`    ${chalk.cyan(n.file)}`);
+  }
+  if (report.reachable.length > 50) {
+    console.log(chalk.dim(`    ... and ${report.reachable.length - 50} more\n`));
+  } else {
+    console.log('');
+  }
 }
 
 // ── Report: fix-suggest ───────────────────────────────────

@@ -648,6 +648,48 @@ export interface ReviewReport {
   summary: string[];
 }
 
+// === Impact / Reachability (0.15) ===
+
+/**
+ * One reachable file in an impact analysis. `distance` is BFS-hops from the
+ * input target (1 = direct dependent, 2 = dependent-of-dependent, etc).
+ * `target` itself is not included in the reachable list.
+ */
+export interface ImpactNode {
+  file: string;
+  distance: number;
+}
+
+export interface ImpactReport {
+  available: boolean;
+  reason?: string;
+  /** What was queried. */
+  target: { kind: 'file' | 'symbol'; value: string };
+  /**
+   * For symbol mode: every file the graph claims defines the symbol. Empty
+   * for file mode. Useful when an agent needs to know whether a name is
+   * defined in multiple places before treating impact as authoritative.
+   */
+  definitionFiles: string[];
+  /**
+   * For symbol mode: files that directly call the symbol (their callSites
+   * contains the name). The reachable set is computed from these as roots.
+   * Empty for file mode.
+   */
+  directCallers: string[];
+  /** Sorted by distance asc, then file asc. */
+  reachable: ImpactNode[];
+  /** Convenience count of reachable files (== reachable.length). */
+  totalReachable: number;
+  /**
+   * True when traversal hit `maxDistance` before exhausting the graph.
+   * Items beyond the limit are omitted from `reachable`.
+   */
+  truncated: boolean;
+  /** The maxDistance value used for the traversal. */
+  maxDistance: number;
+}
+
 // === Per-file Inspection ===
 
 export interface FileInspection {
@@ -689,6 +731,12 @@ export interface FunctionDetail {
   /** 1-based end line. */
   endLine: number;
   cyclomaticComplexity: number;
+  /**
+   * Approximate fan-in (0.15.0+): count of other files whose `callSites`
+   * include this function's bare name. Name-based and approximate; absent
+   * when the graph couldn't compute it.
+   */
+  fanIn?: number;
 }
 
 // === MCP ===

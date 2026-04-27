@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { FileEntry } from '../types.js';
+import type { CodeGraph } from './codeGraph.js';
 import {
   embedBatch,
   embedText,
@@ -12,22 +13,30 @@ import {
 } from './embeddings.js';
 
 /**
- * File-level semantic search over source files.
+ * Semantic search over source files.
  *
- * v1 design decisions:
- *   - One embedding per file. Sub-file (per-export, per-function) chunking
- *     is a bigger project; file-level is sufficient to answer "which file
- *     implements X?"
- *   - Input text is the first 4KB of the file (captures most semantic
- *     signal without blowing the context window of small embedding models).
- *   - Path is prepended as a weak signal: `<file>\n\n<content>`.
- *   - Cache persisted to .projscan-cache/embeddings.bin, keyed by
- *     (model, file mtime, content hash). Invalidates on any of those changing.
+ * Two modes:
+ *   - File-level (v1, default): one embedding per file. Input is the path
+ *     plus the first 4KB of content. Good enough for "which file
+ *     implements X?".
+ *   - Sub-file / per-function (v2, opt-in via `subFile: true` + a graph
+ *     that has `functions` populated): one embedding per function. Input is
+ *     the function's source range (capped at 4KB). Cache key is
+ *     `<file>#<fn-name>`, so editing one function does not re-embed
+ *     siblings. Files without function-level info still get a file-level
+ *     embedding, so coverage is uniform.
+ *
+ * Cache persisted to .projscan-cache/embeddings.bin, keyed by composite key
+ * + model + content hash + mtime. Invalidates on any of those changing.
+ *
+ * v1 → v2: cache schema change to support composite keys and optional
+ * function-context. v1 caches are discarded silently and rebuilt on first
+ * 0.15 run.
  */
 
 const CACHE_DIR = '.projscan-cache';
 const CACHE_FILE = 'embeddings.bin';
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 const MAX_FILE_BYTES_FOR_EMBED = 4 * 1024;
 const MAX_FILE_SIZE = 512 * 1024;
@@ -39,7 +48,18 @@ const INDEXABLE_EXTS = new Set([
 ]);
 
 export interface SemanticEntry {
+  /**
+   * Composite key. Equals `relativePath` for file-level entries; equals
+   * `<relativePath>#<function-name>` for sub-file entries. Used as the
+   * `entries` Map key.
+   */
+  key: string;
   relativePath: string;
+  /**
+   * Function context, present only on sub-file entries. Lets search hits
+   * point at the matched function's line range without a second lookup.
+   */
+  function?: { name: string; startLine: number; endLine: number };
   contentHash: string;
   mtimeMs: number;
   vector: Float32Array;
@@ -56,11 +76,122 @@ export interface BuildOptions {
   rebuild?: boolean;
   onProgress?: (done: number, total: number, message?: string) => void;
   onFirstLoad?: (message: string) => void;
+  /**
+   * 0.15.0+: when true and `graph` is provided, chunk source files by
+   * function boundary and emit one embedding per function (plus one
+   * file-level embedding for files with no extracted functions). Default
+   * false (file-level only - backward compatible).
+   */
+  subFile?: boolean;
+  /**
+   * 0.15.0+: optional code graph. Required for `subFile: true`; ignored
+   * otherwise. Provides the per-function line ranges used for chunk
+   * extraction.
+   */
+  graph?: CodeGraph;
 }
 
 export interface SemanticHit {
   file: string;
   score: number;
+  /** Function context when the hit came from a sub-file chunk. */
+  function?: { name: string; startLine: number; endLine: number };
+}
+
+/**
+ * One chunk descriptor produced by `buildChunks`. Chunks are the unit of
+ * embedding: one embedding per chunk. Exported for testing - allows
+ * verifying chunk extraction without needing the embedding model.
+ */
+export interface SemanticChunk {
+  key: string;
+  relativePath: string;
+  function?: { name: string; startLine: number; endLine: number };
+  text: string;
+  hash: string;
+  mtimeMs: number;
+}
+
+/**
+ * Produce embedding chunk descriptors for the indexable files. Pure-ish:
+ * does file IO but no embedding work. Exported so tests can verify chunk
+ * extraction without invoking the embedding model.
+ *
+ * Behavior:
+ *   - File-level (default, or `subFile: false`, or no graph): one chunk
+ *     per file. Key = relativePath. Text = `<file>\n\n<first 4KB>`.
+ *   - Sub-file (`subFile: true` + graph): one chunk per function, plus
+ *     one file-level chunk for files where the graph reports no
+ *     functions. Per-function chunk key = `<file>#<fn-name>`. Text =
+ *     `<file>#<fn-name> (lines a-b)\n\n<extracted lines>` (capped at 4KB).
+ */
+export async function buildChunks(
+  rootPath: string,
+  files: FileEntry[],
+  options: BuildOptions = {},
+): Promise<SemanticChunk[]> {
+  const indexable = files.filter(
+    (f) => INDEXABLE_EXTS.has(f.extension) && f.sizeBytes <= MAX_FILE_SIZE,
+  );
+  const useSubFile = options.subFile === true && options.graph !== undefined;
+  const chunks: SemanticChunk[] = [];
+
+  for (const file of indexable) {
+    const abs = path.isAbsolute(file.absolutePath)
+      ? file.absolutePath
+      : path.resolve(rootPath, file.relativePath);
+    let content: string;
+    try {
+      content = await fs.readFile(abs, 'utf-8');
+    } catch {
+      continue;
+    }
+    let mtimeMs = 0;
+    try {
+      const stat = await fs.stat(abs);
+      mtimeMs = stat.mtimeMs;
+    } catch {
+      // ignore
+    }
+
+    if (useSubFile) {
+      const gf = options.graph!.files.get(file.relativePath);
+      const fns = gf?.functions ?? [];
+      if (fns.length > 0) {
+        const lines = content.split('\n');
+        for (const fn of fns) {
+          const start = Math.max(1, fn.line);
+          const end = Math.max(start, fn.endLine);
+          const slice = lines.slice(start - 1, end).join('\n').slice(0, MAX_FILE_BYTES_FOR_EMBED);
+          const text = `${file.relativePath}#${fn.name} (lines ${start}-${end})\n\n${slice}`;
+          const hash = sha256(text);
+          chunks.push({
+            key: `${file.relativePath}#${fn.name}`,
+            relativePath: file.relativePath,
+            function: { name: fn.name, startLine: start, endLine: end },
+            text,
+            hash,
+            mtimeMs,
+          });
+        }
+        continue;
+      }
+      // Fall through to file-level when the file has no extracted functions
+      // (e.g. config files, README, type-only modules).
+    }
+
+    const text = `${file.relativePath}\n\n${content.slice(0, MAX_FILE_BYTES_FOR_EMBED)}`;
+    const hash = sha256(text);
+    chunks.push({
+      key: file.relativePath,
+      relativePath: file.relativePath,
+      text,
+      hash,
+      mtimeMs,
+    });
+  }
+
+  return chunks;
 }
 
 /**
@@ -82,46 +213,19 @@ export async function buildSemanticIndex(
   const cached = options.rebuild ? null : await loadCache(rootPath, model);
   const entries = cached?.entries ?? new Map<string, SemanticEntry>();
 
-  const indexable = files.filter(
-    (f) => INDEXABLE_EXTS.has(f.extension) && f.sizeBytes <= MAX_FILE_SIZE,
-  );
+  const chunks = await buildChunks(rootPath, files, options);
 
-  // Determine which files still need embedding
-  const toEmbed: Array<{ file: FileEntry; hash: string; text: string }> = [];
+  // Determine which chunks still need embedding (cache hit when key + hash + mtime match).
+  const toEmbed: SemanticChunk[] = [];
   const keep = new Set<string>();
-
-  for (const file of indexable) {
-    const abs = path.isAbsolute(file.absolutePath)
-      ? file.absolutePath
-      : path.resolve(rootPath, file.relativePath);
-    let content: string;
-    try {
-      content = await fs.readFile(abs, 'utf-8');
-    } catch {
+  for (const chunk of chunks) {
+    keep.add(chunk.key);
+    const existing = entries.get(chunk.key);
+    if (existing && existing.contentHash === chunk.hash && existing.mtimeMs === chunk.mtimeMs) {
       continue;
     }
-    const text = `${file.relativePath}\n\n${content.slice(0, MAX_FILE_BYTES_FOR_EMBED)}`;
-    const hash = sha256(text);
-    const existing = entries.get(file.relativePath);
-
-    let mtimeMs = 0;
-    try {
-      const stat = await fs.stat(abs);
-      mtimeMs = stat.mtimeMs;
-    } catch {
-      // ignore
-    }
-
-    if (existing && existing.contentHash === hash && existing.mtimeMs === mtimeMs) {
-      keep.add(file.relativePath);
-      continue;
-    }
-
-    toEmbed.push({ file, hash, text });
-    keep.add(file.relativePath);
+    toEmbed.push(chunk);
   }
-
-  // Drop cached entries for files that no longer exist
   for (const key of [...entries.keys()]) {
     if (!keep.has(key)) entries.delete(key);
   }
@@ -130,9 +234,8 @@ export async function buildSemanticIndex(
     return { model, dim: cached?.dim ?? EMBEDDING_DIM, entries };
   }
 
-  options.onProgress?.(0, toEmbed.length, 'embedding files');
+  options.onProgress?.(0, toEmbed.length, 'embedding chunks');
 
-  // Batch embeddings in chunks of 32 to cap peak memory
   const BATCH = 32;
   for (let i = 0; i < toEmbed.length; i += BATCH) {
     const slice = toEmbed.slice(i, i + BATCH);
@@ -141,9 +244,6 @@ export async function buildSemanticIndex(
       { model, onFirstLoad: options.onFirstLoad },
     );
     if (!vectors) {
-      // Peer loaded at start of the build but embedBatch now returns null.
-      // This is rare (module unloaded, OOM, etc.); log to stderr so operators
-      // can diagnose instead of silently losing the semantic capability.
       process.stderr.write(
         `[projscan] semantic index build aborted at batch ${Math.floor(i / BATCH) + 1}/${Math.ceil(toEmbed.length / BATCH)} (peer dep became unavailable)\n`,
       );
@@ -152,19 +252,12 @@ export async function buildSemanticIndex(
 
     for (let j = 0; j < slice.length; j++) {
       const s = slice[j];
-      const abs = path.isAbsolute(s.file.absolutePath)
-        ? s.file.absolutePath
-        : path.resolve(rootPath, s.file.relativePath);
-      let mtimeMs = 0;
-      try {
-        mtimeMs = (await fs.stat(abs)).mtimeMs;
-      } catch {
-        // ignore
-      }
-      entries.set(s.file.relativePath, {
-        relativePath: s.file.relativePath,
+      entries.set(s.key, {
+        key: s.key,
+        relativePath: s.relativePath,
+        function: s.function,
         contentHash: s.hash,
-        mtimeMs,
+        mtimeMs: s.mtimeMs,
         vector: vectors[j],
       });
     }
@@ -185,8 +278,9 @@ export async function buildSemanticIndex(
 }
 
 /**
- * Query a semantic index. Returns top-K files by cosine similarity.
- * Returns an empty array if no files are indexed.
+ * Query a semantic index. Returns top-K hits by cosine similarity. Hits
+ * carry `function` context when matched against a sub-file chunk.
+ * Returns an empty array if the index is empty.
  */
 export async function semanticSearch(
   index: SemanticIndex,
@@ -201,7 +295,12 @@ export async function semanticSearch(
   const scored: SemanticHit[] = [];
   for (const entry of index.entries.values()) {
     const score = cosineSimilarity(vector, entry.vector);
-    scored.push({ file: entry.relativePath, score: Math.round(score * 1000) / 1000 });
+    const hit: SemanticHit = {
+      file: entry.relativePath,
+      score: Math.round(score * 1000) / 1000,
+    };
+    if (entry.function) hit.function = entry.function;
+    scored.push(hit);
   }
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, limit);
@@ -214,7 +313,9 @@ interface CachePayload {
   model: string;
   dim: number;
   entries: Array<{
+    key: string;
     relativePath: string;
+    function?: { name: string; startLine: number; endLine: number };
     contentHash: string;
     mtimeMs: number;
     vector: number[];
@@ -241,8 +342,10 @@ async function loadCache(rootPath: string, expectedModel: string): Promise<Seman
 
   const entries = new Map<string, SemanticEntry>();
   for (const e of parsed.entries) {
-    entries.set(e.relativePath, {
+    entries.set(e.key, {
+      key: e.key,
       relativePath: e.relativePath,
+      function: e.function,
       contentHash: e.contentHash,
       mtimeMs: e.mtimeMs,
       vector: new Float32Array(e.vector),
@@ -259,7 +362,9 @@ async function saveCache(rootPath: string, index: SemanticIndex): Promise<void> 
     model: index.model,
     dim: index.dim,
     entries: [...index.entries.values()].map((e) => ({
+      key: e.key,
       relativePath: e.relativePath,
+      function: e.function,
       contentHash: e.contentHash,
       mtimeMs: e.mtimeMs,
       vector: [...e.vector],

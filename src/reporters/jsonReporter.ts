@@ -15,6 +15,7 @@ import type {
   PrDiffReport,
   ReviewReport,
   FixSuggestion,
+  ImpactReport,
   IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
@@ -131,6 +132,10 @@ export function reportFixSuggestJson(result: { matched: boolean; fix?: FixSugges
 
 export function reportExplainIssueJson(explanation: IssueExplanation): void {
   console.log(JSON.stringify({ issueExplanation: explanation }, null, 2));
+}
+
+export function reportImpactJson(report: ImpactReport): void {
+  console.log(JSON.stringify({ impact: report }, null, 2));
 }
 
 export function reportWorkspacesJson(info: WorkspaceInfo): void {
