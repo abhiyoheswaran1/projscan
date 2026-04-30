@@ -18,6 +18,7 @@ import { loadCachedGraph, saveCachedGraph } from '../../core/indexCache.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { reportHotspots } from '../../reporters/consoleReporter.js';
+import { reportHotspotsHtml } from '../../reporters/htmlReporter.js';
 import { reportHotspotsJson } from '../../reporters/jsonReporter.js';
 import { reportHotspotsMarkdown } from '../../reporters/markdownReporter.js';
 
@@ -73,6 +74,9 @@ export function registerHotspots(): void {
             break;
           case 'markdown':
             reportHotspotsMarkdown(report);
+            break;
+          case 'html':
+            reportHotspotsHtml(report);
             break;
           default:
             reportHotspots(report);

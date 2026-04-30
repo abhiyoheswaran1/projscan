@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-04-30
+
+Theme: **"Live"** - the fourth of five releases on the path to v1.0. Keeps the index fresh while the agent works, and unblocks PR-comment / CI-artifact sharing with a standalone HTML report. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+
+### Added
+
+- **`projscan watch` CLI command - the headline.** Long-running watcher over the repo. Uses `node:fs.watch` (no new runtime dep) with recursive mode. On file change, debounces 200ms then runs the incremental graph update and re-runs `doctor`, printing a one-line status (`[time] N change(s) · score X/100 (grade) · err / warn / info`) plus the changed paths when ≤5. Filters out `.git`, `node_modules`, `dist`, `.projscan-cache`, etc., so noise doesn't trigger re-scans. Clean shutdown on SIGINT/SIGTERM.
+- **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** public API. Targeted re-parse of the listed paths (re-stat → re-parse if changed → drop deletions), followed by an O(N) rebuild of the cross-file derived indexes (`localImporters`, `packageImporters`, `symbolDefs`, per-function `fanIn`). Returns the same graph reference (in-place update). Used by `projscan watch` and exported for callers maintaining their own state.
+- **HTML report export (`--format html`).** New `htmlReporter.ts` with renderers for `doctor`, `hotspots`, `coupling`, `review`, and `impact`. Output is a single self-contained HTML document with inline CSS, no external assets, no JavaScript framework, and a `prefers-color-scheme` aware palette so it renders cleanly in light or dark mode. Suitable for posting as a PR comment or CI artifact.
+
+### Changed
+
+- **`ReportFormat`** type widened from `'console' | 'json' | 'markdown' | 'sarif'` to also include `'html'`. The `--format` CLI flag accepts the new value; commands that don't have an HTML renderer continue to fall through to console (no behavior change for those commands).
+- **CLI command list:** `watch` added.
+
+### Notes
+
+- **+18 tests** (802 → 820). New coverage: HTML reporter for all 5 supported commands plus the shell-escape path (9), `incrementallyUpdateGraph` for added / edited / deleted / fan-in-recompute / in-place-reference cases (5), `startWatcher` for initial-build / debounced-edit / noise-filter / clean-close (4).
+- **No new runtime dependencies.** `node:fs.watch` is built-in. The HTML reporter is plain template strings; no template engine.
+- **Stable surface:** the new HTML format value, the new CLI command, the new public `incrementallyUpdateGraph` are all additions. `npm run check:stability` reports the additions but does not fail.
+- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓, 0.16 ✓. One more themed release (0.17 "RC + Docs") then the 1.0 label.
+
 ## [0.15.0] - 2026-04-27
 
 Theme: **"Reach"** - the third of five releases on the path to v1.0. Answers the question *what breaks if I change this?* before the agent commits to a refactor. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.

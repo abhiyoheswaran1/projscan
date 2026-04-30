@@ -211,6 +211,167 @@ export function toPackageName(specifier: string): string | null {
   return jsAdapter ? jsAdapter.toPackageName(specifier) : null;
 }
 
+/**
+ * 0.16.0: targeted incremental update for watch mode. Given a graph and a
+ * list of repo-relative paths that may have changed (added, modified, or
+ * deleted), update the graph in place: re-stat each path, re-parse changed
+ * ones, drop deleted ones, and fix up the cross-file derived indexes
+ * (`localImporters`, `packageImporters`, `symbolDefs`, per-function
+ * `fanIn`).
+ *
+ * Returns the same `graph` reference. Cheap: O(changedPaths) for the parse
+ * pass; the fan-in recomputation is O(graph.files) but it's a single
+ * walk over already-parsed entries (no IO).
+ *
+ * `changedPaths` should be repo-relative (forward-slash). Files that don't
+ * exist are treated as deletions; files that do exist are re-parsed.
+ */
+export async function incrementallyUpdateGraph(
+  graph: CodeGraph,
+  rootPath: string,
+  changedPaths: string[],
+): Promise<CodeGraph> {
+  if (changedPaths.length === 0) return graph;
+
+  // Per-adapter context. We re-prepare since changedPaths may include
+  // manifest edits (pyproject.toml, go.mod) that would shift package roots.
+  // Run once for the whole batch; cheap relative to parsing.
+  const contextByAdapter = new Map<LanguageAdapter, LanguageResolveContext>();
+  // We need a FileEntry-shaped argument for preparePackageRoots; build one
+  // from the current graph plus the changed-path stat info as a stand-in.
+  const fakeFiles: FileEntry[] = [...graph.files.values()].map((gf) => ({
+    relativePath: gf.relativePath,
+    absolutePath: path.resolve(rootPath, gf.relativePath),
+    directory: path.dirname(gf.relativePath),
+    extension: path.extname(gf.relativePath),
+    sizeBytes: 0,
+  }));
+  for (const adapter of listAdapters()) {
+    contextByAdapter.set(adapter, await adapter.preparePackageRoots(rootPath, fakeFiles));
+  }
+
+  // Step 1: re-parse or delete each changed path.
+  await Promise.all(
+    changedPaths.map(async (rel) => {
+      const adapter = getAdapterFor(rel);
+      if (!adapter) {
+        // Not a parseable file (e.g. README). If we previously had it in the
+        // graph drop the entry; otherwise nothing to do.
+        if (graph.files.has(rel)) graph.files.delete(rel);
+        return;
+      }
+
+      const abs = path.resolve(rootPath, rel);
+      let mtimeMs: number;
+      try {
+        const stat = await fs.stat(abs);
+        mtimeMs = stat.mtimeMs;
+      } catch {
+        // File doesn't exist anymore - treat as deletion.
+        graph.files.delete(rel);
+        // Strip its old contributions when we rebuild the indexes below.
+        return;
+      }
+
+      let content: string;
+      try {
+        content = await fs.readFile(abs, 'utf-8');
+      } catch {
+        graph.files.delete(rel);
+        return;
+      }
+
+      let result: AstResult;
+      try {
+        result = await adapter.parse(rel, content);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        result = {
+          ok: false,
+          reason: `adapter ${adapter.id} threw: ${msg.slice(0, 120)}`,
+          imports: [],
+          exports: [],
+          callSites: [],
+          lineCount: 0,
+          cyclomaticComplexity: 0,
+          functions: [],
+        };
+      }
+
+      graph.files.set(rel, {
+        relativePath: rel,
+        imports: result.imports,
+        exports: result.exports,
+        callSites: result.callSites,
+        lineCount: result.lineCount,
+        cyclomaticComplexity: result.cyclomaticComplexity,
+        functions: result.functions ?? [],
+        mtimeMs,
+        parseOk: result.ok,
+        parseReason: result.reason,
+        adapterId: adapter.id,
+      });
+    }),
+  );
+
+  // Step 2: rebuild the cross-file derived indexes from scratch. The graph
+  // is small relative to parse cost; rebuilding edges in O(N) keeps the
+  // logic simple and correct (no orphan-edge bugs from in-place patching).
+  graph.localImporters.clear();
+  graph.packageImporters.clear();
+  graph.symbolDefs.clear();
+
+  for (const [importingFile, entry] of graph.files) {
+    const adapter = getAdapterFor(importingFile);
+    if (!adapter) continue;
+    const context = contextByAdapter.get(adapter) ?? {};
+
+    for (const imp of entry.imports) {
+      const resolved = adapter.resolveImport(importingFile, imp.source, graph.files, context);
+      if (resolved) {
+        if (!graph.localImporters.has(resolved)) graph.localImporters.set(resolved, new Set());
+        graph.localImporters.get(resolved)!.add(importingFile);
+        continue;
+      }
+      const pkg = adapter.toPackageName(imp.source);
+      if (pkg) {
+        if (!graph.packageImporters.has(pkg)) graph.packageImporters.set(pkg, new Set());
+        graph.packageImporters.get(pkg)!.add(importingFile);
+      }
+    }
+    for (const exp of entry.exports) {
+      if (!exp.name) continue;
+      if (!graph.symbolDefs.has(exp.name)) graph.symbolDefs.set(exp.name, new Set());
+      graph.symbolDefs.get(exp.name)!.add(importingFile);
+    }
+  }
+
+  // Step 3: recompute per-function fan-in. Cheap: iterates files twice.
+  const callerFilesByName = new Map<string, Set<string>>();
+  for (const gf of graph.files.values()) {
+    for (const name of gf.callSites ?? []) {
+      let set = callerFilesByName.get(name);
+      if (!set) {
+        set = new Set();
+        callerFilesByName.set(name, set);
+      }
+      set.add(gf.relativePath);
+    }
+  }
+  for (const gf of graph.files.values()) {
+    if (!gf.functions || gf.functions.length === 0) continue;
+    for (const fn of gf.functions) {
+      const bare = bareName(fn.name);
+      const callers = callerFilesByName.get(bare);
+      fn.fanIn = !callers ? 0 : callers.size - (callers.has(gf.relativePath) ? 1 : 0);
+    }
+  }
+
+  graph.scannedFiles = graph.files.size;
+  return graph;
+}
+
+
 // ── Query API ──────────────────────────────────────────────
 
 export function packagesUsed(graph: CodeGraph): Set<string> {

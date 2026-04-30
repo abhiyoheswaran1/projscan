@@ -34,7 +34,7 @@ program
   .name('projscan')
   .description('Instant codebase insights - doctor, x-ray, and architecture map for any repository')
   .version(pkg.version)
-  .option('--format <type>', 'output format: console, json, markdown, sarif', 'console')
+  .option('--format <type>', 'output format: console, json, markdown, sarif, html', 'console')
   .option('--config <path>', 'path to .projscanrc config file')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
@@ -42,7 +42,7 @@ program
 export function getFormat(): ReportFormat {
   const opts = program.opts();
   const f = opts.format as string;
-  if (f === 'json' || f === 'markdown' || f === 'sarif') return f;
+  if (f === 'json' || f === 'markdown' || f === 'sarif' || f === 'html') return f;
   return 'console';
 }
 

@@ -7,6 +7,7 @@ import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportReview } from '../../reporters/consoleReporter.js';
 import { reportReviewJson } from '../../reporters/jsonReporter.js';
 import { reportReviewMarkdown } from '../../reporters/markdownReporter.js';
+import { reportReviewHtml } from '../../reporters/htmlReporter.js';
 
 export function registerReview(): void {
   program
@@ -55,6 +56,9 @@ export function registerReview(): void {
             break;
           case 'markdown':
             reportReviewMarkdown(report);
+            break;
+          case 'html':
+            reportReviewHtml(report);
             break;
           default:
             reportReview(report);

@@ -42,7 +42,7 @@ const baselinePath = path.join(root, 'stability-baseline.json');
 // the baseline-diff path automatically.
 const STABLE_CLI_COMMANDS = [
   'analyze', 'doctor', 'ci', 'hotspots', 'coupling', 'pr-diff', 'review',
-  'fix-suggest', 'explain-issue', 'impact',
+  'fix-suggest', 'explain-issue', 'impact', 'watch',
   'dependencies', 'outdated', 'audit', 'coverage', 'search', 'structure',
   'explain', 'badge', 'diff', 'workspaces', 'mcp',
 ];

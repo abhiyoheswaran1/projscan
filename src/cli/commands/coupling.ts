@@ -17,6 +17,7 @@ import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportCoupling } from '../../reporters/consoleReporter.js';
 import { reportCouplingJson } from '../../reporters/jsonReporter.js';
 import { reportCouplingMarkdown } from '../../reporters/markdownReporter.js';
+import { reportCouplingHtml } from '../../reporters/htmlReporter.js';
 
 export function registerCoupling(): void {
   program
@@ -82,6 +83,9 @@ export function registerCoupling(): void {
             break;
           case 'markdown':
             reportCouplingMarkdown(filtered);
+            break;
+          case 'html':
+            reportCouplingHtml(filtered);
             break;
           default:
             reportCoupling(filtered);

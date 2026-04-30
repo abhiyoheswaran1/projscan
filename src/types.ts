@@ -281,7 +281,7 @@ export interface DiffResult {
 
 // === Reporter Interface ===
 
-export type ReportFormat = 'console' | 'json' | 'markdown' | 'sarif';
+export type ReportFormat = 'console' | 'json' | 'markdown' | 'sarif' | 'html';
 
 // === Dependency Health (0.4.0) ===
 

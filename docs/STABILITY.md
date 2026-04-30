@@ -10,13 +10,14 @@ These are versioned. We will not break them without a major bump. After the proj
 
 ### CLI
 
-- **Command names**: `analyze`, `doctor`, `ci`, `hotspots`, `coupling`, `pr-diff`, `review`, `dependencies`, `outdated`, `audit`, `coverage`, `search`, `structure`, `explain`, `explain-issue`, `fix-suggest`, `impact`, `badge`, `diff`, `workspaces`, `mcp`. New commands may be added; existing names will not be renamed or removed.
+- **Command names**: `analyze`, `doctor`, `ci`, `hotspots`, `coupling`, `pr-diff`, `review`, `dependencies`, `outdated`, `audit`, `coverage`, `search`, `structure`, `explain`, `explain-issue`, `fix-suggest`, `impact`, `watch`, `badge`, `diff`, `workspaces`, `mcp`. New commands may be added; existing names will not be renamed or removed.
 - **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`. The `--format` flag will continue to accept these names. Per-format guarantees:
   - **JSON**: top-level keys (`issues`, `hotspots`, `coverage`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
   - **SARIF**: schema is the [SARIF 2.1.0 spec](https://sarifweb.azurewebsites.net/). We are bound by it.
   - **Markdown**: section headings are stable. Whitespace and column widths inside tables are not.
+  - **HTML** *(0.16+)*: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
   - **Console**: see "unstable surface" below.
 
 ### MCP server

@@ -15,6 +15,7 @@ export { parseSource, isParseable } from './core/ast.js';
 export type { FunctionInfo } from './core/ast.js';
 export {
   buildCodeGraph,
+  incrementallyUpdateGraph,
   filesImportingFile,
   filesImportingPackage,
   filesDefiningSymbol,
@@ -22,6 +23,8 @@ export {
   importsOf,
   importersOf,
 } from './core/codeGraph.js';
+export { startWatcher } from './core/watcher.js';
+export type { WatchEvent, WatchOptions, WatchHandle } from './core/watcher.js';
 export { loadCachedGraph, saveCachedGraph, invalidateCache } from './core/indexCache.js';
 export { applyBudget, estimateTokens } from './mcp/tokenBudget.js';
 export { paginate, encodeCursor, decodeCursor, listChecksum, readPageParams } from './mcp/pagination.js';

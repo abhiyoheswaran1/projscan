@@ -19,6 +19,7 @@ import { reportHealth } from '../../reporters/consoleReporter.js';
 import { reportHealthJson } from '../../reporters/jsonReporter.js';
 import { reportHealthMarkdown } from '../../reporters/markdownReporter.js';
 import { reportHealthSarif } from '../../reporters/sarifReporter.js';
+import { reportHealthHtml } from '../../reporters/htmlReporter.js';
 
 export function registerDoctor(): void {
   program
@@ -59,6 +60,9 @@ export function registerDoctor(): void {
             break;
           case 'sarif':
             reportHealthSarif(issues, pkg.version);
+            break;
+          case 'html':
+            reportHealthHtml(issues);
             break;
           default:
             reportHealth(issues, scan.scanDurationMs);

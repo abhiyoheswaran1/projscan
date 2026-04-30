@@ -86,6 +86,12 @@ Picked up if user demand surfaces.
 
 ## Recently Shipped
 
+### v0.16.x - "Live"
+- **`projscan watch` CLI** — long-running watcher (`node:fs.watch`, no new dep). 200ms debounce; re-runs doctor on each batch; one-line status output.
+- **`incrementallyUpdateGraph` public API** — targeted re-parse + in-place index rebuild. Used by `watch`; exported for callers maintaining their own state.
+- **HTML report export (`--format html`)** — standalone single-file HTML with inline CSS, dark-mode aware. Renderers for doctor / hotspots / coupling / review / impact. Suitable for PR comments and CI artifacts.
+- 820 tests passing (+18 over 0.15). MCP tool count unchanged; CLI gains `watch`.
+
 ### v0.15.x - "Reach"
 - **`projscan_impact` MCP tool + `projscan impact` CLI** - transitive blast-radius for files and symbols. File mode = BFS over reverse imports. Symbol mode = direct callers (from callSites) + transitive importers. Cycle-safe; depth-bounded.
 - **Per-function fan-in** computed in `buildCodeGraph` from cross-file callSites. Surfaced in `projscan_file`'s functions list. Approximate (name-based) and documented as such.

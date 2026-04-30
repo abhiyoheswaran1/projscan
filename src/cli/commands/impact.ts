@@ -9,6 +9,7 @@ import { computeImpact } from '../../core/impact.js';
 import { reportImpact } from '../../reporters/consoleReporter.js';
 import { reportImpactJson } from '../../reporters/jsonReporter.js';
 import { reportImpactMarkdown } from '../../reporters/markdownReporter.js';
+import { reportImpactHtml } from '../../reporters/htmlReporter.js';
 
 export function registerImpact(): void {
   program
@@ -42,6 +43,9 @@ export function registerImpact(): void {
             break;
           case 'markdown':
             reportImpactMarkdown(report);
+            break;
+          case 'html':
+            reportImpactHtml(report);
             break;
           default:
             reportImpact(report);
