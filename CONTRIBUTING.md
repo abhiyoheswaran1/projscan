@@ -106,13 +106,48 @@ The MCP tool inventory, CLI command list, and exit codes documented in `docs/STA
 
 ## Areas wanting help
 
-Concrete on-ramps for new contributors. Each is scoped to fit a first PR. Look for the `good first issue` label on GitHub for tracked instances.
+Concrete on-ramps for new contributors. Each is scoped to fit a first PR. Pre-drafted starter tasks live under [`.github/seed-issues/`](.github/seed-issues/) — pick one and either claim its corresponding GitHub issue or open one and link the file.
 
-- **New language adapters.** The `LanguageAdapter` interface (`src/core/languages/LanguageAdapter.ts`) is the cleanest entry point. JS/TS, Python, and Go are wired; Java and Ruby are next on the roadmap. The Python adapter (`pythonAdapter.ts`) is the reference. Each adapter is ~200 LOC plus walkers (imports, exports, CC, callSites) and a vendored tree-sitter grammar wasm. See `docs/ROADMAP.md` for what's planned.
-- **New analyzers.** Issue checkers live in `src/analyzers/`. Each is a pure function `(scan, opts) => Issue[]`. Existing ones (`testCheck`, `lintCheck`, `securityCheck`, `dependencyRiskCheck`) are good shape templates. Wire into `src/core/issueEngine.ts`. Tests in `tests/analyzers/`.
-- **New reporters.** Output formatters in `src/reporters/`. Implement the same surface as `consoleReporter.ts` / `markdownReporter.ts` / `jsonReporter.ts`. Wire via `getFormat()` in `src/cli/index.ts`.
-- **MCP tools.** Each tool is a `{name, description, inputSchema, handler}` object in `src/mcp/tools.ts`. Mirror an existing one (e.g. `projscan_coupling`). Add to the `tools/list` test in `tests/mcp/server.test.ts`.
-- **Documentation gaps.** The `docs/GUIDE.md` is exhaustive but not exhaustive enough - example sections we'd like to expand: per-analyzer "what triggers it / how to silence it" tables, per-MCP-tool "agent prompt example" snippets, monorepo setup walkthroughs.
+- **New language adapters.** The `LanguageAdapter` interface (`src/core/languages/LanguageAdapter.ts`) is the cleanest entry point. Six languages are wired today (JS, TS, Python, Go, Java, Ruby). The Python adapter is the reference. Each adapter is ~200 LOC plus walkers (imports, exports, CC, per-fn CC, callSites) and a vendored tree-sitter grammar wasm. Pre-drafted tickets: [Rust](.github/seed-issues/01-add-rust-language-adapter.md), [PHP](.github/seed-issues/02-add-php-language-adapter.md), [C#](.github/seed-issues/03-add-c-sharp-language-adapter.md). Plus a [step-by-step walkthrough doc](.github/seed-issues/08-doc-walkthrough-language-adapter.md) is itself an open issue.
+- **New analyzers.** Issue checkers live in `src/analyzers/`. Each is a pure function `(rootPath, files) => Promise<Issue[]>`. Existing ones (`testCheck`, `prettierCheck`, `securityCheck`, `dependencyRiskCheck`, `cycleCheck`) are good shape templates. Wire into `src/core/issueEngine.ts`. Tests in `tests/analyzers/`.
+- **New reporters.** Output formatters in `src/reporters/`. Implement the same surface as `consoleReporter.ts` / `markdownReporter.ts` / `jsonReporter.ts` / `htmlReporter.ts`. Pre-drafted tickets: [HTML for `pr-diff`](.github/seed-issues/04-html-reporter-for-pr-diff.md), [HTML for `coverage`](.github/seed-issues/05-html-reporter-for-coverage.md).
+- **MCP tools.** Each tool is a `{name, description, inputSchema, handler}` object exported from `src/mcp/tools/<name>.ts` and registered in `src/mcp/tools.ts`. Mirror an existing one (e.g. `src/mcp/tools/coupling.ts` is a clean shape). Add a `tools/list` assertion to `tests/mcp/server.test.ts`.
+- **Fix-suggest templates.** The rule-driven action-prompt registry in `src/core/fixSuggest.ts` covers ~12 issue families. Each new template is ~25 LOC. Pre-drafted ticket: [eslint-* template](.github/seed-issues/06-eslint-fix-suggest-template.md).
+- **UX polish.** Small, high-leverage CLI ergonomics. Pre-drafted ticket: [impact-symbol disambiguation warning](.github/seed-issues/07-impact-cli-symbol-disambiguation.md).
+- **Documentation.** `docs/GUIDE.md` covers the agent journey + per-command reference; tighter sections still wanted: per-analyzer "what triggers / how to silence" tables, monorepo setup walkthroughs, framework-specific guides.
+
+### First-time contributor walkthrough
+
+If you've never landed a PR on this repo before, the smallest possible loop:
+
+```sh
+# 1. Fork on GitHub, then locally:
+git clone git@github.com:<your-username>/projscan.git
+cd projscan
+
+# 2. Verify the baseline works (no code changes yet)
+npm install
+npm test                              # 800+ tests, ~6s
+npm run lint                          # eslint, no errors expected
+npm run build                         # tsc + wasm copy + manifest generation
+npm run check:stability               # baseline diff; should be clean
+
+# 3. Pick a seed issue, mirror the template it points at
+#    e.g. .github/seed-issues/06-eslint-fix-suggest-template.md
+#    -> open src/core/fixSuggest.ts, find the existing templates,
+#       mirror one, write tests, run npm test
+
+# 4. Commit + push to your fork
+git checkout -b feat/eslint-fix-template
+git add -A
+git commit -m "Add fix-suggest template for eslint-* rules"
+git push origin feat/eslint-fix-template
+
+# 5. Open a PR back to abhiyoheswaran1/projscan:main
+#    Reference the seed issue file in the PR description.
+```
+
+CI runs the same checks (`npm test`, `npm run lint`, `npm run check:stability`) on every PR. As long as those pass, a maintainer will review.
 
 For larger work (refactors, cross-cutting changes), open an issue first to discuss the approach. We'd rather agree on the shape before you spend a weekend on it.
 

@@ -131,6 +131,34 @@
       ],
       "required": []
     },
+    "projscan_fix_suggest": {
+      "args": [
+        "file",
+        "issue_id",
+        "rule",
+        "severity"
+      ],
+      "required": []
+    },
+    "projscan_explain_issue": {
+      "args": [
+        "issue_id"
+      ],
+      "required": [
+        "issue_id"
+      ]
+    },
+    "projscan_impact": {
+      "args": [
+        "cursor",
+        "file",
+        "max_distance",
+        "max_tokens",
+        "page_size",
+        "symbol"
+      ],
+      "required": []
+    },
     "projscan_search": {
       "args": [
         "limit",
@@ -138,7 +166,8 @@
         "mode",
         "package",
         "query",
-        "scope"
+        "scope",
+        "sub_file"
       ],
       "required": [
         "query"
@@ -156,13 +185,17 @@
     "diff",
     "doctor",
     "explain",
+    "explain-issue",
+    "fix-suggest",
     "hotspots",
+    "impact",
     "mcp",
     "outdated",
     "pr-diff",
     "review",
     "search",
     "structure",
+    "watch",
     "workspaces"
   ],
   "exitCodes": {

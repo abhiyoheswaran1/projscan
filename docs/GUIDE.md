@@ -10,6 +10,7 @@ As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interfac
 
 - [Installation](#installation)
 - [Your First Scan](#your-first-scan)
+- [The agent journey](#the-agent-journey)
 - [Commands In Depth](#commands-in-depth)
   - [analyze](#analyze)
   - [doctor](#doctor)
@@ -97,6 +98,61 @@ This runs the default `analyze` command. Within a second or two you'll see a ful
 3. **Frameworks detected** - with confidence levels and categories
 4. **Dependency summary** - production vs. dev count, package manager, lock file status
 5. **Issues found** - grouped by severity (error, warning, info)
+
+---
+
+## The agent journey
+
+projscan is structured around the four questions an AI coding agent (or a careful human reviewer) asks at every code-change moment. Each phase has a small set of tools that compose well; the deeper reference for each tool is in the [Commands In Depth](#commands-in-depth) section below. Mapping the question to the tool is what this section is for.
+
+### 1. Diagnose — "what's wrong here?"
+
+When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
+
+- **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
+- **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
+- **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
+- **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
+
+**Typical agent flow:** call `projscan_doctor` first; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files; drill into one with `projscan_file`.
+
+### 2. Review — "is this PR safe to merge?"
+
+When the agent has changes in flight (or is asked to review someone else's), the question shifts from "what's wrong globally" to "what changed, and does the change introduce risk?"
+
+- **`projscan_pr_diff` / `projscan pr-diff`** *(0.11+)* — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
+- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+
+**Typical agent flow:** start with `projscan_review` for the verdict + summary; if it returns `review` or `block`, drill into the `riskyFunctions` and `newCycles` arrays for specifics.
+
+### 3. Fix — "what should I do about it?"
+
+projscan diagnoses but does not run an LLM. The agent (the LLM) is what writes the fix. projscan's job in this phase is to package the issue context into something the agent can act on.
+
+- **`projscan_fix_suggest` / `projscan fix-suggest`** *(0.14+)* — given an issue id (or a `file` + `rule` pair), return a structured action prompt: headline, why it matters, where to change, one-paragraph instruction, optional suggested test. Hand-tuned templates for ~12 common issue families plus a severity-anchored generic fallback.
+- **`projscan_explain_issue` / `projscan explain-issue`** *(0.14+)* — deep dive: code excerpt around the location, related issues touching the same file, similar past commits via `git log --grep=<rule>`. Use when an agent wants more context than `doctor` gave.
+- **`projscan fix`** — rule-based auto-fix (ESLint, Prettier, Vitest scaffolding, EditorConfig). Pre-dates the `fix_suggest` flow; useful for the no-LLM-required class of fixes.
+
+**Typical agent flow:** read an issue from `projscan_doctor`, call `projscan_fix_suggest` with its id, paste the `instruction` field into the agent's plan.
+
+### 4. Reach — "what breaks if I change this?"
+
+Before the agent commits to a refactor (or accepts a name-rename suggestion), the question is: *who depends on this thing, transitively?*
+
+- **`projscan_impact` / `projscan impact`** *(0.15+)* — transitive blast-radius. File mode returns every file that transitively imports the target, ranked by BFS distance. Symbol mode returns the symbol's definition file(s), the files that directly call it (their callSites match), and the transitive importers of those callers. Cycle-safe; depth-bounded.
+- **`projscan_graph` / `projscan graph`** — direct one-hop queries: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer.
+
+**Typical agent flow:** before renaming or deleting an export, call `projscan_impact --symbol <name>` to see the dependent set; before deleting a file, call `projscan_impact <path>`. The truncated flag tells you whether the actual blast radius extends beyond what you saw.
+
+### 5. Live — "keep the index fresh while I work"
+
+Long agent sessions edit files repeatedly. Each edit could otherwise cost a full repo re-scan. The watch infrastructure keeps the graph current at low cost.
+
+- **`projscan watch`** *(0.16+)* — long-running CLI command. On file change, debounces 200ms then runs the incremental graph update + re-runs `doctor`, printing a one-line status. Uses `node:fs.watch`, no new runtime dep. Filters out `node_modules`, `.git`, build dirs, etc.
+- **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** — the public API the watcher uses; exported so callers maintaining their own state can patch the graph in place after handling their own change events.
+- **`--format html`** *(0.16+)* — for sharing review snapshots: `projscan doctor --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `doctor`, `hotspots`, `coupling`, `review`, and `impact`.
+
+**Typical workflow:** start `projscan watch` in a side terminal at the start of a long session; subsequent agent tool calls hit a warm graph cache.
 
 ---
 

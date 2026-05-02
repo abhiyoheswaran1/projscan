@@ -86,6 +86,15 @@ Picked up if user demand surfaces.
 
 ## Recently Shipped
 
+### v0.17.x - "RC + Docs"
+- **GUIDE rewrite around the agent journey** — new top-of-doc section organizing the product around diagnose → review → fix → reach → live. Existing per-command reference preserved.
+- **README "Security & trust" section** — direct, structural answer to supply-chain scanner alerts. Five subsections covering what projscan does and doesn't do.
+- **Surface freeze** — `stability-baseline.json` re-baselined. The 0.17 surface is what 1.0 will commit to.
+- **Performance baseline refresh** — fresh `npm run bench` numbers in README.
+- **Contributor on-ramp** — `.github/ISSUE_TEMPLATE/good_first_issue.md`, eight seed-issue drafts under `.github/seed-issues/`, "First-time contributor walkthrough" in `CONTRIBUTING.md`.
+- **Deprecation tagging** — `extractImports` / `extractExports` regex helpers marked `@deprecated`; scheduled for removal post-1.0.
+- 820 tests passing (no new code paths). MCP tools, CLI commands, runtime deps unchanged.
+
 ### v0.16.x - "Live"
 - **`projscan watch` CLI** — long-running watcher (`node:fs.watch`, no new dep). 200ms debounce; re-runs doctor on each batch; one-line status output.
 - **`incrementallyUpdateGraph` public API** — targeted re-parse + in-place index rebuild. Used by `watch`; exported for callers maintaining their own state.

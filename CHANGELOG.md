@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-05-02
+
+Theme: **"RC + Docs"** - the fifth and final release on the path to v1.0. No new MCP tools, no new CLI commands. The work is documentation, surface freeze, contributor on-ramp, and a baseline performance number 1.0 will commit to. Everything in 0.17 is preparation for the label-only 1.0 release.
+
+### Added
+
+- **`docs/GUIDE.md` "The agent journey" section.** Reorganizes the docs around the four-question framing the rest of the product is built around: *diagnose → review → fix → reach → live*. Each phase lists the relevant tools, an explainer, and a typical agent flow. The existing per-command reference is preserved below as the deep-dive section. Contributors and agents can now read the GUIDE top-down without first knowing every tool name.
+- **`README.md` "Security & trust" section.** Direct, structural answer to the supply-chain-scanner alerts every npm package surfaces. Five subsections: what projscan does NOT do (no source exfil, no env-secret reading, no eval, no telemetry, no unprompted writes), what it DOES do with a network-touch table, why supply-chain scanners flag certain patterns and why they're benign here, and how to audit it yourself.
+- **`.github/ISSUE_TEMPLATE/good_first_issue.md`** plus **`.github/seed-issues/`** — eight pre-drafted starter contributor tasks (three new language adapters, two HTML-reporter extensions, one fix-suggest template, one CLI UX polish, one documentation walkthrough). Each is self-contained with mirror-target file paths, a "done" condition, and a difficulty estimate.
+- **`CONTRIBUTING.md` "First-time contributor walkthrough"** - a step-by-step "fork → test → branch → ship" loop for contributors who've never landed a PR on this repo before. Pairs with the seeded issues.
+
+### Changed
+
+- **Surface freeze (`stability-baseline.json` re-baselined).** The cumulative-additions report from 0.13 (`+ MCP tool: projscan_review`, etc.) is now the new zero point. Future check-stability runs report only changes vs. 0.17. This is the surface 1.0 will commit to without modification.
+- **Performance baseline refreshed.** README's Performance table updated with 0.17 numbers from `npm run bench` (cold/warm ms): projscan-itself 612/463 (analyze) ... 439/258 (search); 500-file synthetic 278/268 ... 238/193. These are the reference 1.0 will inherit.
+
+### Deprecated
+
+- **`extractImports` / `extractExports` regex helpers in `src/core/fileInspector.ts`** are now annotated `@deprecated`. They remain in place because two `projscan_explain` callers still use them as a JS/TS-only fallback when a code graph isn't supplied. The graph-based path is strictly better and is already the primary path in `inspectFile`. These regex extractors are scheduled for removal in a future release (likely 1.1.0 once all `explain` callers are graph-aware). Pre-1.0 deprecation moves fast — no warning cycle until 1.0 ships.
+
+### Notes
+
+- **No new tests in this release** (820 passing). 0.17 is documentation, deprecation tagging, and contributor scaffolding; no new code paths were added.
+- **No new runtime dependencies.**
+- **No new MCP tools, CLI commands, or stable-surface additions.** The check-stability guard reports a clean diff against the freshly re-baselined `stability-baseline.json`.
+- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓, 0.16 ✓, 0.17 ✓. Next is **1.0.0 "Stable"** — a label-only release that bumps the version, drops the "0.x" hedging from README, and makes the public no-break commitment. The two outstanding 1.0 gates are (a) the CI stability guard staying green across 0.13–0.17 (✓ passed) and (b) at least one external-contributor non-trivial PR merged. The seed-issues directory is the on-ramp for (b).
+
 ## [0.16.0] - 2026-04-30
 
 Theme: **"Live"** - the fourth of five releases on the path to v1.0. Keeps the index fresh while the agent works, and unblocks PR-comment / CI-artifact sharing with a standalone HTML report. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.

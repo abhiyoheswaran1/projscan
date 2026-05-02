@@ -196,7 +196,16 @@ function findHotspotForFile(report: HotspotReport | undefined, relativePath: str
 }
 
 // ── Parsing (shared with CLI/MCP) ─────────────────────────
+//
+// 0.17.0: `extractImports` and `extractExports` below are JS/TS-only regex
+// parsers kept for backward compatibility with `projscan_explain` and the
+// CLI `analyzeFile` / `explainFile` helpers. The AST-based code graph
+// (`buildCodeGraph` + `LanguageAdapter.parse`) is strictly better and is
+// already used as the primary path in `inspectFile` above. These regex
+// helpers are scheduled for removal in a future release once all
+// `projscan_explain` paths take a graph; do not add new callers.
 
+/** @deprecated 0.17.0 — prefer `graphFile.imports` from `buildCodeGraph`. */
 export function extractImports(content: string): ImportInfo[] {
   const imports: ImportInfo[] = [];
   const seen = new Set<string>();
@@ -241,6 +250,7 @@ export function extractImports(content: string): ImportInfo[] {
   return imports;
 }
 
+/** @deprecated 0.17.0 — prefer `graphFile.exports` from `buildCodeGraph`. */
 export function extractExports(content: string): ExportInfo[] {
   const exports: ExportInfo[] = [];
 

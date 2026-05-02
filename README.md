@@ -231,16 +231,16 @@ Cache version bumped 2 → 3 in 0.11 (CC stored per file). Existing v2 caches ar
 
 ## Performance
 
-Reference numbers from `npm run bench` (projscan repo + synthetic) on an Apple M3 Pro running Node 25:
+Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25 (cold / warm cache, milliseconds). These are the 0.17 numbers and form the baseline 1.0 will commit to:
 
 | Repo | Files | analyze | doctor | hotspots | coupling | search |
 |------|-------|---------|--------|----------|----------|--------|
-| projscan itself | ~120 | 415–578 ms | 404–498 ms | 462–637 ms | 164–326 ms | 234–393 ms |
-| Synthetic medium | 500 | 244–273 ms | 248–262 ms | 264–293 ms | 165–208 ms | 182–225 ms |
+| projscan itself | ~135 | 612 / 463 | 557 / 509 | 673 / 507 | 364 / 173 | 439 / 258 |
+| Synthetic medium | 500 | 278 / 268 | 274 / 260 | 300 / 297 | 217 / 174 | 238 / 193 |
 
 For real-world numbers against larger codebases, `npm run bench:references` shallow-clones TypeScript, Django, and kubernetes/client-go into `.bench-cache/` (gitignored) and runs the same suite. First run is network-bound; later runs reuse the cache. Restrict to one target with `-- --only ts|django|k8s-client-go`.
 
-Cold-cache and warm-cache times shown side by side. Run `npm run bench` against your own machine to recalibrate.
+Run `npm run bench` against your own machine to recalibrate.
 
 - **Zero network requests** - everything runs locally
 - **11 runtime dependencies** - still minimal (the five tree-sitter grammars bring ~3.3 MB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB, tree-sitter-java ~405 KB, tree-sitter-ruby ~2.0 MB)
@@ -257,6 +257,44 @@ projscan keeps the install slim by default. One feature is gated behind an optio
   ```
 
   See [AI Agent Integration → Semantic search](#semantic-search-090-opt-in) for details.
+
+## Security & trust
+
+projscan reads your source code so it can be useful; it does not send your source code anywhere. This section explains exactly what's happening, because supply-chain scanners (Socket, Snyk, npm audit, etc.) will flag a few patterns in any tool that wraps `git` and `npm`, and we want you to be able to verify our claims rather than trust them.
+
+### What projscan does NOT do
+
+- **Send your source code off-machine.** Zero network calls in any code path projscan owns. File contents stay local; AST analysis runs in-process.
+- **Read environment variables for secrets.** `process.env` is forwarded to child processes (`git`, `npm`) so they can find their `PATH` — we never inspect `.env` values, API keys, or session tokens.
+- **Execute user input dynamically.** No `eval`, no `new Function(...)`, no shell-string composition. The two `await import('...')` sites in our code (`core/embeddings.ts` and `core/review.ts`) take literal string arguments and exist for lazy-loading optional code paths, not for running user-supplied code.
+- **Phone home with telemetry.** The opt-in JSONL telemetry shipped in 0.11 was removed entirely in 0.12. Future telemetry, if any, will be remote-sink-with-dashboard and explicitly opt-in.
+- **Modify your repo without an explicit command.** `projscan fix` is the only command that writes to source files, and only when invoked. The cache directory `.projscan-cache/` is local-only and gitignored.
+
+### What projscan DOES do, and what it costs
+
+| Action | When | Network? | Notes |
+|---|---|---|---|
+| Read source files | every command | no | parses with tree-sitter / Babel; results cached at `.projscan-cache/` |
+| Spawn `git` | `hotspots`, `pr-diff`, `review`, `diff` | git itself may fetch if you run `git fetch` separately; **projscan never invokes `git fetch`** | `env: process.env` is passed so `git` can find its config |
+| Spawn `npm audit` | `audit` only | yes — by `npm`, not by projscan | runs against your local lockfile |
+| Load wasm grammars | first parse of a non-JS file | no | served from `dist/grammars/` inside the package; no fetch |
+| Build embeddings | semantic search opt-in only | yes — by `@xenova/transformers`, on first use | model cached locally after first download; remove the peer dep to remove this code path entirely |
+
+### Patterns supply-chain scanners flag, and why they're benign here
+
+If you read projscan's [Socket report](https://socket.dev/npm/package/projscan), you'll see four supply-chain alerts. Here's a one-line answer to each:
+
+- **"Network access"** — comes from `web-tree-sitter`'s internal API surface; we feed it local wasm files at `dist/grammars/`. No outbound traffic.
+- **"Dynamic require"** — two static `await import('literal-string')` sites for optional code paths. No user-input-driven require.
+- **"Environment variable access"** — `env: process.env` is forwarded to child processes (`git`, `npm audit`). We don't read env contents.
+- **"URL strings"** — the strings are documentation references (`github.com`, `registry.npmjs.org`) shown in error messages and CHANGELOGs, not runtime fetch targets.
+
+### Audit it yourself
+
+- **Source is open** at [github.com/abhiyoheswaran1/projscan](https://github.com/abhiyoheswaran1/projscan). The npm tarball matches the `dist/` produced by `npm run build` at the matching tag.
+- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](docs/STABILITY.md).
+- **Run it offline:** `npm install -g projscan` followed by anything except `audit` and `--mode semantic` works without network.
+- **Drop privilege further:** in CI, run projscan in a sandbox that disallows network egress; everything except `audit` will pass.
 
 ## CI/CD Integration
 
