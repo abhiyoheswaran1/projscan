@@ -6,85 +6,44 @@ Planned features and improvements. Community suggestions welcome - open an issue
 
 ## Big bet: "Agent-First"
 
-The tool is repositioning. The MCP server is the product; the CLI is a consumer of the same primitives.
+projscan is built for AI coding agents first; the CLI is a consumer of the same primitives.
 
-## Path to v1.0 — five releases, one ship
+## Stable since 1.0
 
-v1.0 ships when (a) the [stability contract](STABILITY.md) has survived one full release cycle without a stable-surface break, (b) at least one external contributor has merged a non-trivial PR, and (c) we publicly commit to no stable-surface break without a major bump.
+**v1.0.0 shipped 2026-05-04. The stability contract is in force.** The MCP tool inventory, CLI command names + documented flags, exit codes, JSON output keys, and the `dist/tool-manifest.json` schema are now under semver protection — see [`docs/STABILITY.md`](STABILITY.md). Breaking any of it requires a 2.0 bump preceded by a deprecation cycle (one minor release with a stderr warning, then removal in the next major). The CI guard (`scripts/check-stability.mjs`) enforces this on every PR.
 
-The five releases below stage that path. Each is additive against the stable surface; together they answer the four questions an agent has at every code-review or refactor moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?*
+The 1.0 surface was earned across five additive minor releases (0.13 → 0.17), each scoped around one of the four questions an agent has at every code-change moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?* The five themes were "Agent Review", "Agent Fix Loop", "Reach", "Live", and "RC + Docs"; full per-release notes live in [Recently Shipped](#recently-shipped) below.
 
-### v0.13.0 - "Agent Review + Stability Proof"
+## Planned (1.x.y — additive only)
 
-**Headline:** `projscan_review` so an agent gets a full PR risk picture in one tool call.
+These are candidates for future minor releases. They're additive against the stable surface; they will not break the 1.0 contract.
 
-- **`projscan_review` MCP tool + `projscan review` CLI.** Composes `pr_diff` + per-changed-file risk + new cycles introduced + new high-CC functions + dep changes. One call returns the full review picture.
-- **Per-function cyclomatic complexity.** `LanguageAdapter.parse()` returns `functions: [{name, line, cc}]`; persisted in the graph + cache (cache v3 → v4). Surfaced via new `projscan_file` field and "top-N risky functions" view in `projscan_hotspots`.
-- **Cycle promotion to `projscan_doctor`.** `cycle-detected` issue type lifted from `projscan_coupling` so doctor callers don't miss circular imports.
-- **Workspace-aware `dependencies` and `audit`.** Closes the 0.11 monorepo carry-over: `dependencies` (unused-dep) runs per-package; `audit` fans out per-workspace where the lockfile structure allows; root manifest catches files not claimed by any workspace.
-- **Stable-surface CI guard.** `scripts/check-stability.mjs` diffs the live tool manifest + documented JSON keys + exit codes against a checked-in baseline; CI fails on regression. The baseline is bumped only on majors. This is what *proves* the contract held this cycle.
-- **Reference-repo perf numbers.** Run `npm run bench` against TypeScript, a large Python repo (Django), and a large Go repo (kubernetes/client-go); publish cold/warm numbers in the README. Defends "scales" with real data.
+- **Additional language adapters.** Rust, PHP, C# via the same `LanguageAdapter` pattern. Pre-drafted issue stubs under `.github/seed-issues/` are the on-ramp.
+- **More fix-suggest templates.** The rule registry covers ~12 issue families today; expanding to ESLint rules, Python type-error patterns, and Go vet output is mostly mechanical.
+- **HTML reporter coverage.** Five commands have HTML output; extending to `pr-diff` and `coverage` is in `.github/seed-issues/`.
+- **Registry-aware upgrade preview.** `projscan upgrade <pkg>` optionally fetches `latest` from npm registry; Python equivalent reads pip/poetry metadata. Behind a network-required flag.
+- **MCP-side watch notifications.** 0.16's `projscan watch` is CLI-only. A future minor could emit `notifications/file_changed` over MCP so long-running agent sessions get a push instead of polling.
+- **Per-function fan-out.** 0.15 added per-function fan-in. Fan-out requires per-function `callSites` tracking — bigger lift across all six adapters.
 
-### v0.14.0 - "Agent Fix Loop"
+## Under consideration (2.0 — breaking)
 
-**Headline:** close the find→fix loop. Today projscan diagnoses; agents have to invent the fix.
+These are candidates for the next major version. They are NOT planned for any 1.x release because they would break the stability contract.
 
-- **`projscan_fix_suggest` MCP tool + `projscan fix-suggest` CLI.** Given an issue ID (or file + rule), return a structured action prompt: what's wrong, why it matters, where to change, and a one-paragraph instruction the agent can paste into its plan. Rule-driven (no LLM inside projscan); the agent is the LLM.
-- **`projscan_explain_issue`.** Deep dive on a single issue: surrounding code excerpt, related issues, similar fixes already merged in this repo (via git log search), suggested test to pin the fix.
-- **Actionable hints inline in `projscan_doctor`.** Each issue carries an optional `suggestedAction` field referencing the fix-suggest pipeline.
-- **Cross-package import policy analyzer.** New analyzer warns when one workspace package deep-imports another's internals (anything outside the importee's published `main`/`exports`). Configurable via `.projscanrc` `monorepo.importPolicy`.
-
-### v0.15.0 - "Reach"
-
-**Headline:** blast-radius analysis. Before the agent edits `foo()`, what breaks?
-
-- **`projscan_impact <symbol>`.** Transitive call-graph reachability: who calls foo, who calls those callers, etc. Returns ranked-by-distance file list with cycle-safe traversal.
-- **Reverse impact (`projscan_impact <file>`).** Same idea at file granularity: every file transitively depending on this one. Pairs with `pr_diff`.
-- **Per-function fan-in/fan-out.** Once per-function CC lands in 0.13, lift fan-in/fan-out to the same granularity using callSites.
-- **Sub-file embeddings.** Chunk large files per-function for semantic search; embedding cache keyed by function-hash so edits don't re-embed the whole file.
-
-### v0.16.0 - "Live"
-
-**Headline:** keep the index fresh while the agent works.
-
-- **Watch mode (`projscan watch`).** Re-scan on file changes; emits MCP notifications so an agent's view stays current across a long session.
-- **Incremental graph rebuild.** Today every command rebuilds. Instead: only re-parse changed files; patch the graph in place. Foundational for watch mode.
-- **HTML report export (`--format html`).** Standalone single-file HTML; useful for sharing a snapshot in a PR comment or CI artifact.
-- **Long-session perf hardening.** Profile + fix any leaks/regressions surfaced by watch-mode dogfooding.
-
-### v0.17.0 - "RC + Docs"
-
-**Headline:** lock the surface, polish the docs, prove the contract.
-
-- **1.0 documentation pass.** GUIDE rewrite around the agent journey (diagnose → review → fix → reach → live). Reference docs auto-generated from the tool manifest.
-- **Deprecation cleanup.** Anything pre-1.0 that we want to leave behind, removed now (with a CHANGELOG entry); after this nothing further until 2.0.
-- **Surface freeze.** Re-baseline `scripts/check-stability.mjs`; nothing in the stable surface may move until 2.0.
-- **Final perf pass.** Refresh reference-repo benches; publish a "what to expect at scale" matrix.
-- **External contributor gate work.** "Good first issue" pipeline filled and a documented `LanguageAdapter` walkthrough in CONTRIBUTING; if at least one non-trivial external PR has merged by the end of 0.17, we ship 1.0.
-
-### v1.0.0 - "Stable"
-
-**Headline:** the public commitment.
-
-- **No code change vs 0.17.x.** 1.0 is a label release: bump version, drop "0.x" hedging from README, announce the semver commitment.
-- **Public commitment.** README + STABILITY.md updated to declare: from this point, breaking the stable surface requires a 2.0 bump and one minor of deprecation warning.
-- **Announcement post.** What projscan is, what it isn't, the agent journey, the language matrix, the perf numbers.
-
----
-
-## Backlog (post-1.0)
-
-Picked up if user demand surfaces.
-
-- **Registry-aware upgrade preview** - `projscan upgrade <pkg>` optionally fetches `latest` from npm registry; Python equivalent reads pip/poetry metadata.
-- **SAST-style security rules** - extend securityCheck with AST-based path-traversal, SQL-injection, XSS rules. Stays minimal; not competing with Snyk.
-- **Plugin API** - third-party analyzers and reporters.
-- **Multi-repo dashboard / SaaS** - upload baselines, team health trends, org-wide hotspots.
-- **Additional languages** - Rust, C#, PHP, Kotlin via the same adapter pattern.
+- **Removing the deprecated regex extractors** (`extractImports` / `extractExports` in `src/core/fileInspector.ts`, marked `@deprecated` in 0.17). The graph-based path is strictly better; once all `projscan_explain` callers take a graph, the regex helpers can go.
+- **JSON output schema refactors.** Some response shapes accumulated optional fields across 0.6 → 1.0 that would be cleaner as discriminated unions. Worth doing only if there's a real consumer pain point.
+- **SAST-style security rules.** Extending `securityCheck` with AST-based path-traversal, SQL-injection, XSS rules. Stays minimal; not competing with Snyk. Not a 2.0 requirement, but if added it changes the issue-id namespace.
+- **Plugin API.** Third-party analyzers and reporters. Would land as part of a 2.0 if it requires interface changes; otherwise additive.
+- **Multi-repo dashboard / SaaS.** Upload baselines, team health trends, org-wide hotspots. Out of scope for projscan-the-tool; a separate product surface if it ever happens.
 
 ---
 
 ## Recently Shipped
+
+### v1.0.0 - "Stable" (2026-05-04)
+- **Public no-break commitment.** STABILITY.md and README updated to declarative present-tense: the stable surface is under semver protection, deprecation cycle in effect, breaking changes require 2.0.
+- **No code changes vs 0.17.0.** The 1.0 git tree is identical to v0.17.0 except for `package.json#version`, this CHANGELOG entry, and the README/STABILITY language touch-ups.
+- **CI publish workflow** made tolerant of pre-published versions — the false-red ❌ on releases that were published locally before the GitHub Release event triggered CI is gone.
+- 820 tests passing, unchanged. 20 MCP tools, 22 CLI commands, 6 languages, 11 runtime deps, ~5.8 MB total install. The reference numbers in [Performance](../README.md#performance) are the 1.0 reference.
 
 ### v0.17.x - "RC + Docs"
 - **GUIDE rewrite around the agent journey** — new top-of-doc section organizing the product around diagnose → review → fix → reach → live. Existing per-command reference preserved.

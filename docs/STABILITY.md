@@ -2,11 +2,11 @@
 
 This document defines the projscan public surface - what users and AI agents can depend on across releases, and what may change without notice. It exists so you can build on projscan without surprise.
 
-projscan follows [Semantic Versioning](https://semver.org/). Breaking changes to the **stable surface** require a major-version bump. Changes to the **unstable surface** can land in any release.
+projscan follows [Semantic Versioning](https://semver.org/). **As of v1.0, breaking changes to the stable surface require a major-version bump (2.0+) and a deprecation cycle (one minor release with a warning, then removal in the next major).** Changes to the **unstable surface** can land in any release.
 
 ## Stable surface
 
-These are versioned. We will not break them without a major bump. After the project hits v1.0, removing or breaking anything in this list requires a deprecation cycle (one minor release with a warning, then removal in the next major).
+These are versioned. Removing or breaking anything in this list requires a deprecation cycle: one minor release with a stderr warning (CLI) or a `deprecated` flag in the tool description (MCP), then removal in the next major version.
 
 ### CLI
 
@@ -51,13 +51,13 @@ These can change in any release without a major bump.
 
 ## Deprecation policy
 
-Once v1.0 ships, anything in the **stable surface** marked as deprecated will:
+Anything in the **stable surface** marked as deprecated will:
 
 1. Print a deprecation warning to stderr from the CLI / a `deprecated` flag in MCP tool descriptions.
 2. Continue to work for at least one full minor release after the warning lands.
 3. Be removed in the next major.
 
-Pre-v1.0, deprecations may move faster; the CHANGELOG will always call them out.
+The CHANGELOG will always call out deprecations under a dedicated `Deprecated` heading on the release that introduces them.
 
 ## How to verify
 
@@ -68,7 +68,7 @@ If you depend on a specific command, flag, MCP tool, or output field, you can lo
 projscan ci --min-score 70; test $? -le 1
 
 # MCP tool inventory contract
-curl -fsSL https://github.com/abhiyoheswaran1/projscan/releases/download/v0.11.0/tool-manifest.json \
+curl -fsSL https://github.com/abhiyoheswaran1/projscan/releases/download/v1.0.0/tool-manifest.json \
   | jq '.tools[].name' | grep -q projscan_hotspots
 ```
 

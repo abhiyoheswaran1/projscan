@@ -231,7 +231,7 @@ Cache version bumped 2 → 3 in 0.11 (CC stored per file). Existing v2 caches ar
 
 ## Performance
 
-Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25 (cold / warm cache, milliseconds). These are the 0.17 numbers and form the baseline 1.0 will commit to:
+Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25 (cold / warm cache, milliseconds). These are the 1.0 reference numbers:
 
 | Repo | Files | analyze | doctor | hotspots | coupling | search |
 |------|-------|---------|--------|----------|----------|--------|

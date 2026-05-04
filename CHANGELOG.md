@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-05-04
+
+**Stable. The public no-break commitment release.**
+
+projscan is **agent-first code intelligence**: an MCP server (2025-03-26) plus CLI that lets AI coding agents (Claude Code, Cursor, Windsurf) and humans query a codebase through 20 structured tools. AST parsing for six languages (JavaScript, TypeScript, Python, Go, Java, Ruby). Zero network calls. Eleven runtime dependencies. ~5.8 MB total install.
+
+### What 1.0 means
+
+- **The stable surface — MCP tool names + input schemas, CLI command names + documented flags, exit codes, JSON output keys, the `dist/tool-manifest.json` schema — is now under semver protection.** Breaking any of it requires a 2.0 bump preceded by a deprecation cycle (one minor release with a stderr warning or `deprecated` MCP-tool flag, then removal in the next major). See [`docs/STABILITY.md`](docs/STABILITY.md) for the exact list.
+- **The CI stability guard** (`scripts/check-stability.mjs`) enforces this on every PR. Any rename or removal in the stable surface fails the build. Additions still pass.
+- **The 1.0 surface was earned, not declared.** It survived five additive minor releases (0.13 "Agent Review + Stability Proof" → 0.14 "Agent Fix Loop" → 0.15 "Reach" → 0.16 "Live" → 0.17 "RC + Docs") without a single break. The CI guard never failed. The `stability-baseline.json` shipped in 0.17 is the 1.0 commitment file.
+
+### What's in 1.0
+
+Every feature introduced from 0.1 through 0.17 ships in 1.0. Nothing was removed for the major bump. The 20 MCP tools, 22 CLI commands, six languages, monorepo workspace awareness, per-function cyclomatic complexity, transitive blast-radius analysis, fix-suggest, watch mode, HTML reports — all stable, all under contract.
+
+### Code changes vs. 0.17.0
+
+- **None.** This is a label release. The git tree at `v1.0.0` is identical to `v0.17.0` except for `package.json#version`, the CHANGELOG entry below, ROADMAP closure, and small declarative-language touch-ups in README.md and docs/STABILITY.md (replacing future-tense "after v1.0 ships..." with present-tense "the contract").
+- **One CI workflow improvement** in `.github/workflows/publish.yml`: the publish job now skips with success when the version is already on the npm registry, instead of erroring. This avoids the false-red ❌ that appeared when a release was published locally before the GitHub Release event triggered CI. No effect on the published artifact.
+
+### Tests
+
+820 passing, unchanged from 0.17.0.
+
+### Looking ahead
+
+1.0 is not the end of projscan's roadmap; it's the contract that makes the next chapter sustainable. The post-1.0 backlog (separate `Backlog` section in `docs/ROADMAP.md`) tracks 1.x.y candidates (additive features like new language adapters, more fix-suggest templates, sub-file embedding upgrades) and 2.0 candidates (breaking changes that warrant a major bump, e.g. removing the deprecated regex extractors or refactoring the JSON output schemas).
+
+If you depended on a 0.x release, you can keep using it — npm has all of them. If you upgrade to 1.0, you get the stability guarantee.
+
 ## [0.17.0] - 2026-05-02
 
 Theme: **"RC + Docs"** - the fifth and final release on the path to v1.0. No new MCP tools, no new CLI commands. The work is documentation, surface freeze, contributor on-ramp, and a baseline performance number 1.0 will commit to. Everything in 0.17 is preparation for the label-only 1.0 release.

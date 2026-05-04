@@ -74,7 +74,13 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Publish to npm (skip if version is already on the registry)
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "projscan@${version}" version > /dev/null 2>&1; then
+            echo "projscan@${version} is already published - skipping (likely published locally before the GitHub release)."
+            exit 0
+          fi
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
