@@ -153,14 +153,15 @@ For larger work (refactors, cross-cutting changes), open an issue first to discu
 
 ## Releasing
 
-A release is a six-step ritual. Skipping any step leaves something out of sync.
+A release is a seven-step ritual. Skipping any step leaves something out of sync.
 
 1. **Bump version** in `package.json` (semver: patch for fixes, minor for features, major if anything breaks).
 2. **Write the CHANGELOG entry** at the top of `CHANGELOG.md` using the existing Keep-a-Changelog format. Cover Added / Changed / Removed / Notes. Be honest about tradeoffs.
 3. **Verify the build artifact** locally: `npm run build && npm run test`. The build runs `tsc + copy-wasm + generate-tool-manifest`; all three must succeed. Tests must be green.
 4. **Tag and publish.** Merge to `main`, then `git tag vX.Y.Z && git push origin vX.Y.Z && npm publish`.
 5. **Create the GitHub Release** at the new tag and **attach `dist/tool-manifest.json`** as a release asset (`gh release create vX.Y.Z dist/tool-manifest.json --title ... --notes ...`). The website's docs page reads this asset.
-6. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
+6. **Republish to the MCP Registry.** Edit `.github/mcp-registry/server.json` and bump both `version` fields (top-level and `packages[0].version`) to the new version. Then run `/tmp/mcp-publisher publish .github/mcp-registry/server.json` (or wherever the publisher binary lives — see `.github/mcp-registry/SUBMIT.md`). The registry stores all published versions; not republishing means the registry's "latest" pointer drifts behind npm. Validation should pass before any publish: `mcp-publisher validate .github/mcp-registry/server.json`.
+7. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
    - The hardcoded **manifest URL pin** → swap `releases/download/vX.Y.Z/tool-manifest.json` for the new tag
    - `EXPECTED.minVersion` → the new version
    - `EXPECTED.requiredTools` → append any new MCP tool names the release added
