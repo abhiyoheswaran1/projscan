@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.abhiyoheswaran1/projscan",
-  "description": "Agent-first code intelligence over MCP. AST parsing for JavaScript, TypeScript, Python, Go, Java, and Ruby. 20 tools covering project structure, hotspot ranking, cyclomatic complexity, coupling and cycle detection, structural PR diff, one-call PR review, rule-driven fix suggestions, transitive blast-radius analysis, monorepo workspace awareness, and BM25 plus optional semantic search. Zero network calls. Offline-first. 11 runtime dependencies.",
+  "description": "Agent-first code intelligence over MCP. AST for 7 languages. 20 tools. Offline.",
   "repository": {
     "url": "https://github.com/abhiyoheswaran1/projscan",
     "source": "github"
