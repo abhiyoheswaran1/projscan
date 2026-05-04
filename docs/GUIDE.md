@@ -936,7 +936,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 | Signal | Weight | Intuition |
 |--------|--------|-----------|
 | Churn | 0.40 | Files that change often are more likely to harbor bugs |
-| Complexity (AST CC) | 0.30 | Files with more decision points are harder to reason about. **0.11+: AST-derived McCabe cyclomatic complexity for JS/TS, Python, and Go; falls back to LOC for non-AST languages** (.rb, .java, etc.). |
+| Complexity (AST CC) | 0.30 | Files with more decision points are harder to reason about. **AST-derived McCabe cyclomatic complexity for JS/TS, Python, Go, Java, Ruby, Rust, PHP, and C#; falls back to LOC for non-AST languages.** |
 | Issue density | 0.20 | Files that already have open issues need help |
 | Recency | 0.10 | Recently touched hot files deserve attention first |
 | Bus factor | penalty tag | Single-author + high churn = organizational risk |

@@ -43,8 +43,8 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
     const qualifiedName = className ? `${className}.${fnName}` : fnName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
-    const cc = countDecisions(node);
-    out.push({ name: qualifiedName, line, endLine, cyclomaticComplexity: cc });
+    const { cc, callSites } = analyzeBody(node);
+    out.push({ name: qualifiedName, line, endLine, cyclomaticComplexity: cc, callSites });
 
     // Recurse into the body to find nested functions only - the CC for THIS
     // function already correctly excluded them via the body-walker.
@@ -73,17 +73,42 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
 }
 
 /**
- * Count decision points inside a function body, skipping nested function /
- * class definitions so they don't pollute the enclosing function's CC.
+ * Count decision points and collect call sites inside a function body,
+ * skipping nested function / class definitions.
  */
-function countDecisions(fnNode: TsNode): number {
+function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
+  const calls = new Set<string>();
   const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : null;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
-    if (PY_DECISION_NODES.has(n.type)) count++;
+    if (PY_DECISION_NODES.has(n.type)) {
+      count++;
+      return;
+    }
+    if (n.type === 'call') {
+      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const name = pyCalleeName(fn);
+      if (name) calls.add(name);
+    }
   });
-  return count + 1;
+  return { cc: count + 1, callSites: [...calls] };
+}
+
+function pyCalleeName(node: TsNode | null): string | null {
+  if (!node) return null;
+  switch (node.type) {
+    case 'identifier':
+      return node.text;
+    case 'attribute': {
+      const attr = node.childForFieldName ? node.childForFieldName('attribute') : null;
+      if (attr) return pyCalleeName(attr);
+      const named = node.namedChildren;
+      return named.length > 0 ? pyCalleeName(named[named.length - 1]) : null;
+    }
+    default:
+      return null;
+  }
 }
 
 function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {

@@ -32,6 +32,14 @@ describe('language registry', () => {
     expect(getAdapterFor('src/main.rs')?.id).toBe('rust');
   });
 
+  it('returns the PHP adapter for .php', () => {
+    expect(getAdapterFor('src/Models/User.php')?.id).toBe('php');
+  });
+
+  it('returns the C# adapter for .cs', () => {
+    expect(getAdapterFor('Models/User.cs')?.id).toBe('csharp');
+  });
+
   it('is case-insensitive on extension', () => {
     expect(getAdapterFor('src/a.TS')?.id).toBe('javascript');
     expect(getAdapterFor('src/a.TSX')?.id).toBe('javascript');

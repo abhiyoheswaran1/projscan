@@ -5,9 +5,11 @@ import { goAdapter } from './goAdapter.js';
 import { javaAdapter } from './javaAdapter.js';
 import { rubyAdapter } from './rubyAdapter.js';
 import { rustAdapter } from './rustAdapter.js';
+import { phpAdapter } from './phpAdapter.js';
+import { csharpAdapter } from './csharpAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
-const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter, javaAdapter, rubyAdapter, rustAdapter];
+const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter, javaAdapter, rubyAdapter, rustAdapter, phpAdapter, csharpAdapter];
 const byExtension = new Map<string, LanguageAdapter>();
 
 function rebuildIndex(): void {

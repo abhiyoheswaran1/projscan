@@ -71,27 +71,25 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
     const fnName = ownerName ? `${ownerName}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
-    const cc = countDecisions(node);
-    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc });
+    const { cc, callSites } = analyzeBody(node);
+    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc, callSites });
     return;
   }
 
   for (const child of node.namedChildren) walk(child, ownerName, out);
 }
 
-function countDecisions(fnNode: TsNode): number {
+function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
+  const calls = new Set<string>();
   const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : null;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
     if (RUST_DECISION_NODES.has(n.type)) {
       count++;
       return;
     }
     if (n.type === 'match_arm') {
-      // Mirror the file-level rust cyclomatic check: skip the `_ =>` arm
-      // (wrapped in `match_pattern` with `_` as anonymous content), count
-      // any other arm.
       const arm = n.namedChildren[0];
       if (!arm) {
         count++;
@@ -112,9 +110,44 @@ function countDecisions(fnNode: TsNode): number {
     }
     if (n.type === 'binary_expression' && /(\s|^)(\|\||&&)(\s|$)/.test(n.text)) {
       count++;
+      return;
+    }
+    if (n.type === 'call_expression') {
+      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const name = rustCalleeName(fn);
+      if (name) calls.add(name);
     }
   });
-  return count + 1;
+  return { cc: count + 1, callSites: [...calls] };
+}
+
+function rustCalleeName(node: TsNode | null): string | null {
+  if (!node) return null;
+  switch (node.type) {
+    case 'identifier':
+    case 'field_identifier':
+      return node.text;
+    case 'scoped_identifier': {
+      let last: string | null = null;
+      for (const c of node.namedChildren) {
+        if (c.type === 'identifier') last = c.text;
+      }
+      return last;
+    }
+    case 'field_expression': {
+      const field = node.childForFieldName ? node.childForFieldName('field') : null;
+      if (field) return rustCalleeName(field);
+      const named = node.namedChildren;
+      return named.length > 0 ? rustCalleeName(named[named.length - 1]) : null;
+    }
+    case 'generic_function': {
+      // foo::<T>(args) — the function child holds the name.
+      const fn = node.childForFieldName ? node.childForFieldName('function') : null;
+      return rustCalleeName(fn);
+    }
+    default:
+      return null;
+  }
 }
 
 function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {

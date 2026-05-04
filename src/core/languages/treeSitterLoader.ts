@@ -29,7 +29,9 @@ function grammarDirs(): string[] {
   const nodeModulesJava = path.join(repoRoot, 'node_modules', 'tree-sitter-java');
   const nodeModulesRuby = path.join(repoRoot, 'node_modules', 'tree-sitter-ruby');
   const nodeModulesRust = path.join(repoRoot, 'node_modules', 'tree-sitter-rust');
-  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo, nodeModulesJava, nodeModulesRuby, nodeModulesRust];
+  const nodeModulesPhp = path.join(repoRoot, 'node_modules', 'tree-sitter-php');
+  const nodeModulesCSharp = path.join(repoRoot, 'node_modules', 'tree-sitter-c-sharp');
+  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo, nodeModulesJava, nodeModulesRuby, nodeModulesRust, nodeModulesPhp, nodeModulesCSharp];
 }
 
 function findWasm(filename: string): string {

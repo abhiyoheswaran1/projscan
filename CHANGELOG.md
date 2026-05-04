@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-05
+
+Theme: **"Reporter Parity"** — second minor on the post-1.0 path. Two new languages, HTML reporters across the diff/coverage commands, and per-function fan-out to round out the per-function metrics started in 0.15.
+
+### Added
+
+- **PHP as a first-class language.** New `phpAdapter` parses `.php` via tree-sitter-php (~785 KB vendored wasm). Ships the same primitives as the other seven (imports, exports, file-level CC, per-function CC, callSites). Imports cover `use Foo\Bar;`, aliases `use Foo\Bar as Baz`, brace lists `use Foo\{Bar, Baz, Qux}`, `function` / `const` qualifiers, plus `require` / `include` (literal string paths only). Exports are top-level `function_definition`, `class_declaration`, `interface_declaration`, `trait_declaration`, `enum_declaration` — all public at namespace scope by language semantics. Cyclomatic decision points: `if` / `elseif`, `for` / `foreach`, `while` / `do`, each non-default `case` arm, each non-default `match` arm, `catch`, ternary `?:`, and `&&` / `||` / `??` plus the word forms `and` / `or` in `binary_expression`. Per-function CC names methods inside `class` / `interface` / `trait` / `enum` containers as `Type.method`. Project layout reads `composer.json` autoload (PSR-4 prefix → source root, longest-prefix-match resolution); namespace `App\Models\User` lands on `src/Models/User.php` with the conventional layout.
+- **C# as a first-class language.** New `csharpAdapter` parses `.cs` via tree-sitter-c-sharp (~5.2 MB vendored wasm). Imports cover `using System;`, dotted `using System.Collections.Generic;`, aliased `using IntList = System.Collections.Generic.List<int>;`, and `using static System.Console;`. Exports are public top-level `class_declaration` / `record_declaration` / `struct_declaration` / `interface_declaration` / `enum_declaration` / `delegate_declaration`. Cyclomatic decision points: `if`, `for` / `foreach`, `while` / `do`, each non-default `switch_section`, each non-discard `switch_expression_arm`, `catch`, ternary, and `&&` / `||` / `??`. Per-function CC names methods inside types as `Type.method`; constructors are `Type.Type`. Resolution reads `.csproj` files; the project's filename stem is treated as the root namespace and stripped from imports before mapping to a file path.
+- **HTML reporter for `projscan pr-diff`.** A self-contained HTML page with a sortable table of changed files (file / status / hotspot delta / coverage delta / risk delta) plus the diff hotlist. Pass `--format html` to emit. Same data shape as the JSON report; meant for CI artifact uploads where you want a clickable summary.
+- **HTML reporter for `projscan coverage`.** Lists files ordered by priority with coverage percentage, risk score, hotspot rank, and source attribution (LCOV / cobertura / inferred). Rows where `coverage < 50%` AND `risk > 50` get a `danger` class — the "scariest untested files" surface as red. `coverage --format html` emits.
+- **Per-function fan-out across all eight adapters.** `FunctionInfo.callSites` now carries the bare names of internal callees from each function body (deduped, nested-function bodies excluded). `FunctionInfo.fanOut` is the count of those callees that resolve to a function defined elsewhere in the graph (libraries / unknown methods drop). Computed in `buildCodeGraph` after parse, using the same name-based attribution as `fanIn`.
+
+### Changed
+
+- **MCP tool count: 20** (unchanged — 1.2 adds languages, reporter formats, and a per-function metric, not new tools).
+- **Languages with full AST: 7 → 9** (PHP and C# added).
+- **Runtime dependencies: 12 → 14** (`tree-sitter-php@^0.23`, `tree-sitter-c-sharp@^0.23`).
+- **Vendored wasm footprint: ~4.5 MB → ~10.5 MB** (`tree-sitter-php.wasm` ~785 KB, `tree-sitter-c_sharp.wasm` ~5.2 MB — the C# grammar is the biggest of the bunch).
+- **`LanguageId` type widened** to `'javascript' | 'python' | 'go' | 'java' | 'ruby' | 'rust' | 'php' | 'csharp'`. Internal type, not part of the stable surface.
+- **`scripts/copy-wasm.mjs`** copies the new php and c-sharp grammars into `dist/grammars/`.
+- **`stability-baseline.json`** unchanged — 1.2 surface is a strict superset of 1.1; the CI guard reports a clean diff.
+
+### Notes
+
+- **+67 tests** (858 → 925). New coverage: phpAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package routing (24), php end-to-end fixture (4), csharpAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package routing (23), c# end-to-end fixture (4), language registry lookup for `.php` and `.cs` (2), per-function fan-out (4), HTML reporter prDiff + coverage (6).
+- **No new MCP tools or CLI commands.** Two new HTML formats land under existing `--format` flags; the two new adapters are invoked transparently by every command that takes a file path.
+- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The new `LanguageId` cases and grammar deps are additive.
+
 ## [1.1.1] - 2026-05-04
 
 A dogfood patch. We ran `projscan doctor` against the projscan repo itself and found four false-positive `unused-dependency` warnings on `tree-sitter-go`, `tree-sitter-java`, `tree-sitter-ruby`, `tree-sitter-rust`. These packages ship a `.wasm` grammar that consumers vendor via a build script (`scripts/copy-wasm.mjs` in our case), not via `import` statements — so the unused-dep analyzer couldn't see the usage. Affected every consumer with tree-sitter dependencies, not just us.

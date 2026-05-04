@@ -1,0 +1,10 @@
+{
+  "name": "projscan/php-small-fixture",
+  "description": "Tiny PSR-4 PHP project used by projscan's integration tests.",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "App\\": "src"
+    }
+  }
+}

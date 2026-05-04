@@ -190,7 +190,7 @@ This outputs a [shields.io](https://shields.io) badge URL and markdown snippet y
 
 ## What It Detects
 
-**Languages**: TypeScript, JavaScript, Python, Go, Java, and Ruby (full AST analysis for all six), plus file-level detection for Rust, C/C++, PHP, Swift, Kotlin, and 20+ more.
+**Languages**: TypeScript, JavaScript, Python, Go, Java, Ruby, Rust, PHP, and C# (full AST analysis for all nine), plus file-level detection for C/C++, Swift, Kotlin, and 20+ more.
 
 **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, and more
 
@@ -243,8 +243,8 @@ For real-world numbers against larger codebases, `npm run bench:references` shal
 Run `npm run bench` against your own machine to recalibrate.
 
 - **Zero network requests** — everything runs locally
-- **12 runtime dependencies** — still minimal
-- **~4.5 MB of vendored tree-sitter grammars**, broken down:
+- **14 runtime dependencies** — still minimal
+- **~10.5 MB of vendored tree-sitter grammars**, broken down:
 
 | Grammar | Size | Languages |
 |---|---:|---|
@@ -254,6 +254,8 @@ Run `npm run bench` against your own machine to recalibrate.
 | `tree-sitter-java` | ~405 KB | Java |
 | `tree-sitter-ruby` | ~2.0 MB | Ruby |
 | `tree-sitter-rust` | ~1.1 MB | Rust |
+| `tree-sitter-php` | ~785 KB | PHP |
+| `tree-sitter-c-sharp` | ~5.2 MB | C# |
 
 JavaScript and TypeScript use the bundled `@babel/parser` instead of a tree-sitter grammar, so they don't appear in this table.
 

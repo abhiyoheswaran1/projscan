@@ -63,6 +63,20 @@ export interface FunctionInfo {
    * disambiguated and will be attributed to all definitions.
    */
   fanIn?: number;
+  /**
+   * Per-function call sites (1.2.0+): bare names of functions called from
+   * within this function's body. Nested functions / lambdas are NOT
+   * included (their calls fold into their own entries). Populated by each
+   * language adapter's per-function walker.
+   */
+  callSites?: string[];
+  /**
+   * Per-function fan-out (1.2.0+): count of distinct callee names from
+   * `callSites`, restricted to names that are defined as functions
+   * SOMEWHERE in the graph. External / library / unresolved calls do not
+   * count. Populated post-parse in `buildCodeGraph`.
+   */
+  fanOut?: number;
 }
 
 export interface AstResult {
@@ -251,8 +265,8 @@ function collectFunctions(
     const name = nameForFunctionNode(node, parentClassName, bindingName);
     const line = (node as NodeWithLoc).loc?.start.line ?? 0;
     const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const cc = countCcInBody(node);
-    out.push({ name, line, endLine, cyclomaticComplexity: cc });
+    const { cc, callSites } = analyzeBabelBody(node);
+    out.push({ name, line, endLine, cyclomaticComplexity: cc, callSites });
 
     // Recurse into nested functions so they emit their own entries. The body
     // walker (`countCcInBody`) skips nested functions for CC, but we still need
@@ -353,17 +367,37 @@ function nameForFunctionNode(
 }
 
 /**
- * Count McCabe decision points in a function body, treating nested functions
- * as opaque (their decision points belong to them, not the enclosing function).
+ * Count McCabe decision points and collect call-site bare names in a
+ * function body. Nested functions are opaque (their decisions and calls
+ * belong to them). Used to populate per-function CC + fan-out.
  */
-function countCcInBody(fnNode: Node): number {
+function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[] } {
   const body = (fnNode as { body?: Node }).body;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   let decisions = 0;
+  const calls = new Set<string>();
   walkSkippingNestedFunctions(body, (n) => {
-    if (isDecisionPoint(n)) decisions++;
+    if (isDecisionPoint(n)) {
+      decisions++;
+      return;
+    }
+    if (n.type === 'CallExpression' || n.type === 'OptionalCallExpression' || n.type === 'NewExpression') {
+      const callee = (n as { callee?: Node }).callee;
+      const name = babelCalleeName(callee);
+      if (name) calls.add(name);
+    }
   });
-  return decisions + 1;
+  return { cc: decisions + 1, callSites: [...calls] };
+}
+
+function babelCalleeName(node: Node | null | undefined): string | null {
+  if (!node) return null;
+  if (node.type === 'Identifier') return (node as { name?: string }).name ?? null;
+  if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') {
+    const property = (node as { property?: Node }).property;
+    if (property) return babelCalleeName(property);
+  }
+  return null;
 }
 
 function walkChildren(node: Node, visit: (n: Node) => void): void {

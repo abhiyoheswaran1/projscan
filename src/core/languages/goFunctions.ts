@@ -35,10 +35,8 @@ function walk(node: TsNode, out: FunctionInfo[]): void {
     const fnName = nameOfGoFunction(node);
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
-    const cc = countDecisions(node);
-    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc });
-    // Don't recurse into the body for FunctionInfo - we don't track func
-    // literals separately in 0.13.0 (they're not addressable by name anyway).
+    const { cc, callSites } = analyzeBody(node);
+    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc, callSites });
     return;
   }
   for (const child of node.namedChildren) walk(child, out);
@@ -73,10 +71,11 @@ function extractReceiverType(text: string): string | null {
   return m ? m[1] : null;
 }
 
-function countDecisions(fnNode: TsNode): number {
+function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
+  const calls = new Set<string>();
   const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : null;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
     if (GO_DECISION_NODES.has(n.type)) {
       count++;
@@ -84,9 +83,32 @@ function countDecisions(fnNode: TsNode): number {
     }
     if (n.type === 'binary_expression') {
       if (/(\s|^)(\|\||&&)(\s|$)/.test(n.text)) count++;
+      return;
+    }
+    if (n.type === 'call_expression') {
+      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const name = goCalleeName(fn);
+      if (name) calls.add(name);
     }
   });
-  return count + 1;
+  return { cc: count + 1, callSites: [...calls] };
+}
+
+function goCalleeName(node: TsNode | null): string | null {
+  if (!node) return null;
+  switch (node.type) {
+    case 'identifier':
+    case 'field_identifier':
+      return node.text;
+    case 'selector_expression': {
+      const field = node.childForFieldName ? node.childForFieldName('field') : null;
+      if (field) return goCalleeName(field);
+      const named = node.namedChildren;
+      return named.length > 0 ? goCalleeName(named[named.length - 1]) : null;
+    }
+    default:
+      return null;
+  }
 }
 
 function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {

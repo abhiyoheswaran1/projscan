@@ -51,18 +51,19 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
     const fnName = className ? `${className}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
-    const cc = countDecisions(node);
-    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc });
+    const { cc, callSites } = analyzeBody(node);
+    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc, callSites });
     return;
   }
 
   for (const child of node.namedChildren) walk(child, className, out);
 }
 
-function countDecisions(fnNode: TsNode): number {
+function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
+  const calls = new Set<string>();
   const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : null;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
     if (RUBY_DECISION_NODES.has(n.type)) {
       count++;
@@ -70,9 +71,38 @@ function countDecisions(fnNode: TsNode): number {
     }
     if (n.type === 'binary') {
       if (/(\s|^)(\|\||&&)(\s|$)/.test(n.text) || /\b(and|or)\b/.test(n.text)) count++;
+      return;
+    }
+    if (n.type === 'call' || n.type === 'method_call') {
+      const name = rubyCalleeName(n);
+      if (name) calls.add(name);
+      return;
+    }
+    if (n.type === 'identifier') {
+      // Ruby allows calling methods without parens or receiver: `foo` is a
+      // call. Distinguishing identifier-as-call vs identifier-as-local is
+      // beyond what we can do without scope tracking; skip the bare-id case
+      // and rely on `call` / `method_call` shapes (which cover `foo()`,
+      // `obj.foo`, and `foo arg` per the grammar).
+      return;
     }
   });
-  return count + 1;
+  return { cc: count + 1, callSites: [...calls] };
+}
+
+function rubyCalleeName(node: TsNode): string | null {
+  // tree-sitter-ruby's `call` has a `method` field for the called name.
+  const m = node.childForFieldName ? node.childForFieldName('method') : null;
+  if (m) {
+    if (m.type === 'identifier' || m.type === 'constant') return m.text;
+    return m.text;
+  }
+  // Fallback: last identifier-bearing child.
+  for (let i = node.namedChildren.length - 1; i >= 0; i--) {
+    const c = node.namedChildren[i];
+    if (c.type === 'identifier' || c.type === 'constant') return c.text;
+  }
+  return null;
 }
 
 function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {

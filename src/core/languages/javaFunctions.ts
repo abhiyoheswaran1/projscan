@@ -55,18 +55,19 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
     const fnName = className ? `${className}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
-    const cc = countDecisions(node);
-    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc });
+    const { cc, callSites } = analyzeBody(node);
+    out.push({ name: fnName, line, endLine, cyclomaticComplexity: cc, callSites });
     return;
   }
 
   for (const child of node.namedChildren) walk(child, className, out);
 }
 
-function countDecisions(fnNode: TsNode): number {
+function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
+  const calls = new Set<string>();
   const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : null;
-  if (!body) return 1;
+  if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
     if (JAVA_DECISION_NODES.has(n.type)) {
       count++;
@@ -78,9 +79,14 @@ function countDecisions(fnNode: TsNode): number {
     }
     if (n.type === 'binary_expression' && /(\s|^)(\|\||&&)(\s|$)/.test(n.text)) {
       count++;
+      return;
+    }
+    if (n.type === 'method_invocation') {
+      const name = n.childForFieldName ? n.childForFieldName('name') : null;
+      if (name) calls.add(name.text);
     }
   });
-  return count + 1;
+  return { cc: count + 1, callSites: [...calls] };
 }
 
 function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {

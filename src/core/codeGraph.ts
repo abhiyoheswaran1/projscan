@@ -171,11 +171,40 @@ export async function buildCodeGraph(
       const callers = callerFilesByName.get(bare);
       if (!callers) {
         fn.fanIn = 0;
+      } else {
+        // Subtract self if the function's own file appears in the caller set
+        // (self-call from within the same file).
+        fn.fanIn = callers.size - (callers.has(gf.relativePath) ? 1 : 0);
+      }
+    }
+  }
+
+  // 1.2.0: per-function fan-out. For each function with per-function
+  // callSites, count how many distinct callee names match a function name
+  // defined SOMEWHERE in the graph. Names that don't resolve (libraries,
+  // constructors, unknown methods) are dropped — fan-out is "internal"
+  // coupling, not raw call count.
+  const definedNames = new Set<string>();
+  for (const gf of graphFiles.values()) {
+    if (!gf.functions) continue;
+    for (const fn of gf.functions) definedNames.add(bareName(fn.name));
+  }
+  for (const gf of graphFiles.values()) {
+    if (!gf.functions || gf.functions.length === 0) continue;
+    for (const fn of gf.functions) {
+      if (!fn.callSites) {
+        fn.fanOut = 0;
         continue;
       }
-      // Subtract self if the function's own file appears in the caller set
-      // (self-call from within the same file).
-      fn.fanIn = callers.size - (callers.has(gf.relativePath) ? 1 : 0);
+      let count = 0;
+      const seen = new Set<string>();
+      for (const callee of fn.callSites) {
+        if (seen.has(callee)) continue;
+        seen.add(callee);
+        if (callee === bareName(fn.name)) continue; // self-recursion
+        if (definedNames.has(callee)) count++;
+      }
+      fn.fanOut = count;
     }
   }
 
@@ -364,6 +393,31 @@ export async function incrementallyUpdateGraph(
       const bare = bareName(fn.name);
       const callers = callerFilesByName.get(bare);
       fn.fanIn = !callers ? 0 : callers.size - (callers.has(gf.relativePath) ? 1 : 0);
+    }
+  }
+
+  // Per-function fan-out — see buildCodeGraph for shape rationale.
+  const definedNames = new Set<string>();
+  for (const gf of graph.files.values()) {
+    if (!gf.functions) continue;
+    for (const fn of gf.functions) definedNames.add(bareName(fn.name));
+  }
+  for (const gf of graph.files.values()) {
+    if (!gf.functions || gf.functions.length === 0) continue;
+    for (const fn of gf.functions) {
+      if (!fn.callSites) {
+        fn.fanOut = 0;
+        continue;
+      }
+      let count = 0;
+      const seen = new Set<string>();
+      for (const callee of fn.callSites) {
+        if (seen.has(callee)) continue;
+        seen.add(callee);
+        if (callee === bareName(fn.name)) continue;
+        if (definedNames.has(callee)) count++;
+      }
+      fn.fanOut = count;
     }
   }
 
