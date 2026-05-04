@@ -235,6 +235,54 @@ const TEMPLATES: Template[] = [
         '(c) widen the .projscanrc importPolicy `allow` list if this edge is intentional. Prefer (a) or (b) - the policy exists to keep refactoring options open.',
     }),
   },
+  // ── ESLint rule failures (1.1.0) ─────────────────────────
+  {
+    match: (i) => i.id.startsWith('eslint-'),
+    render: (i) => {
+      const ruleName = i.id.slice('eslint-'.length);
+      return {
+        issueId: i.id,
+        severity: i.severity,
+        category: i.category,
+        headline: `ESLint rule failed: \`${ruleName}\``,
+        why:
+          'ESLint rules represent codified team agreement about how the codebase should look and behave. A failing rule means either the code is wrong by the team\'s own standard, or the rule itself is wrong for this project — both deserve resolution rather than silencing.',
+        where: i.locations ?? [],
+        instruction:
+          `Three valid moves, in order of preference: ` +
+          `(a) fix the violation per the rule's documented intent — start at the docs link below; ` +
+          `(b) if this specific occurrence is justified, add \`// eslint-disable-next-line ${ruleName}\` ON the offending line with a one-sentence comment explaining why the local exception holds; ` +
+          `(c) if the rule itself is wrong for this project, propose a config change in \`eslint.config.js\` (or the legacy \`.eslintrc\`) and run \`npm run lint -- --fix\` to baseline. ` +
+          `Don't reach for (b) or (c) without reading the docs first.`,
+        suggestedTest: `After: \`npm run lint\` should not flag this rule on this file.`,
+        references: [`https://eslint.org/docs/latest/rules/${ruleName}`],
+      };
+    },
+  },
+  // ── Python type errors (1.1.0) ────────────────────────────
+  {
+    match: (i) => i.id.startsWith('python-type-error-'),
+    render: (i) => ({
+      issueId: i.id,
+      severity: i.severity,
+      category: i.category,
+      headline: `Python type error: ${i.title}`,
+      why:
+        'Type errors flagged by mypy / pyright catch bugs the runtime would only catch later — `None` reaching code that expects a concrete value, mismatched return types, callers passing the wrong shape. Fixing the type usually fixes the latent bug.',
+      where: i.locations ?? [],
+      instruction:
+        'Three valid moves, in order of preference: ' +
+        '(a) add or refine the type annotation on the offending name so the checker sees what you mean (often the right move when the function signature was incomplete); ' +
+        '(b) narrow the type at the call site with an `assert isinstance(x, T)` / `if x is not None` guard so the checker can prove the case is safe; ' +
+        '(c) if the checker is genuinely wrong, add `# type: ignore[<error-code>]` on the line with a comment explaining why. ' +
+        'Avoid bare `# type: ignore` (no error code) — pinning the code keeps the ignore narrow.',
+      suggestedTest: 'After: `mypy <file>` (or `pyright <file>`) should not flag this line.',
+      references: [
+        'https://mypy.readthedocs.io/en/stable/error_code_list.html',
+        'https://microsoft.github.io/pyright/#/configuration',
+      ],
+    }),
+  },
 ];
 
 const FALLBACK: Template = {
@@ -319,6 +367,11 @@ function staticHeadlineFor(issue: Issue): string | null {
   )
     return issue.id.includes('python') ? 'Add ruff and run `ruff check . --fix` once.' : 'Add eslint + prettier; baseline with `--fix`.';
   if (issue.id.startsWith('cross-package-violation-')) return 'Use the package\'s public entry, or widen the importPolicy.';
+  if (issue.id.startsWith('eslint-')) {
+    const ruleName = issue.id.slice('eslint-'.length);
+    return `Fix per docs, or scope a disable to the line with a reason: \`${ruleName}\`.`;
+  }
+  if (issue.id.startsWith('python-type-error-')) return 'Refine the annotation, narrow at the call site, or pin a `# type: ignore[code]`.';
   return null;
 }
 

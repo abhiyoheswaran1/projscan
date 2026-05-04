@@ -114,6 +114,13 @@ If you've adopted projscan and want something specific:
 
 ## Recently Shipped
 
+### v1.1.0 - "On the Map" (2026-05-04)
+- **Rust as a first-class language.** `rustAdapter` parses `.rs` via tree-sitter-rust; full primitive parity with the other six (imports / exports / file CC / per-fn CC / callSites). `crate::` / `self::` / `super::` paths resolve into the workspace; standard-library and crates.io paths classify as external.
+- **`projscan_fix_suggest` template for `eslint-*`** — pulls the rule name out of the issue id, links to the canonical eslint docs URL.
+- **`projscan_fix_suggest` template for `python-type-error-*`** — covers mypy / pyright output with annotation / narrowing / typed-ignore guidance.
+- **Tree-sitter loader** widened to find `tree-sitter-rust` in `node_modules` for dev/test mode.
+- 858 tests passing (+38). MCP tools unchanged at 20. Languages with full AST: 6 → 7. Runtime deps 11 → 12 (+`tree-sitter-rust`). Vendored wasm ~3.4 MB → ~4.5 MB.
+
 ### v1.0.0 - "Stable" (2026-05-04)
 - **Public no-break commitment.** STABILITY.md and README updated to declarative present-tense: the stable surface is under semver protection, deprecation cycle in effect, breaking changes require 2.0.
 - **No code changes vs 0.17.0.** The 1.0 git tree is identical to v0.17.0 except for `package.json#version`, this CHANGELOG entry, and the README/STABILITY language touch-ups.

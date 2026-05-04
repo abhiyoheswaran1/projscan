@@ -1,7 +1,7 @@
 import type { FileEntry } from '../../types.js';
 import type { AstResult } from '../ast.js';
 
-export type LanguageId = 'javascript' | 'python' | 'go' | 'java' | 'ruby';
+export type LanguageId = 'javascript' | 'python' | 'go' | 'java' | 'ruby' | 'rust';
 
 export interface LanguageResolveContext {
   /** Language-specific root dirs used during import resolution. */

@@ -64,6 +64,58 @@ describe('previewSuggestionForIssue (inline doctor preview)', () => {
   });
 });
 
+describe('eslint-* template (1.1.0)', () => {
+  it('extracts the rule name into the headline', async () => {
+    const f = await suggestFixForIssue(issue({ id: 'eslint-no-unused-vars' }), '/tmp');
+    expect(f.headline).toContain('no-unused-vars');
+  });
+
+  it('emits a docs link as a reference', async () => {
+    const f = await suggestFixForIssue(issue({ id: 'eslint-prefer-const' }), '/tmp');
+    expect(f.references?.[0]).toBe('https://eslint.org/docs/latest/rules/prefer-const');
+  });
+
+  it('instruction includes both fix-it and disable-with-justification options', async () => {
+    const f = await suggestFixForIssue(issue({ id: 'eslint-no-unused-vars' }), '/tmp');
+    expect(f.instruction).toMatch(/eslint-disable-next-line no-unused-vars/);
+    expect(f.instruction).toMatch(/fix the violation/i);
+  });
+
+  it('preview returns the rule-name hint for inline doctor display', () => {
+    const p = previewSuggestionForIssue(issue({ id: 'eslint-no-unused-vars' }));
+    expect(p?.summary).toContain('no-unused-vars');
+  });
+});
+
+describe('python-type-error-* template (1.1.0)', () => {
+  it('matches python-type-error- prefixed ids', async () => {
+    const f = await suggestFixForIssue(
+      issue({ id: 'python-type-error-arg-type', title: 'Argument 1 has incompatible type' }),
+      '/tmp',
+    );
+    expect(f.headline).toMatch(/Python type error/i);
+    expect(f.headline).toContain('Argument 1');
+  });
+
+  it('instruction covers annotation / narrowing / typed-ignore', async () => {
+    const f = await suggestFixForIssue(issue({ id: 'python-type-error-arg-type' }), '/tmp');
+    expect(f.instruction).toMatch(/annotation/i);
+    expect(f.instruction).toMatch(/isinstance|narrow/i);
+    expect(f.instruction).toMatch(/type: ignore/);
+  });
+
+  it('references mypy + pyright docs', async () => {
+    const f = await suggestFixForIssue(issue({ id: 'python-type-error-return-value' }), '/tmp');
+    expect(f.references?.some((r) => r.includes('mypy.readthedocs.io'))).toBe(true);
+    expect(f.references?.some((r) => r.includes('microsoft.github.io/pyright'))).toBe(true);
+  });
+
+  it('preview returns a one-line hint for inline doctor display', () => {
+    const p = previewSuggestionForIssue(issue({ id: 'python-type-error-return-value' }));
+    expect(p?.summary).toMatch(/annotation|narrow|type: ignore/i);
+  });
+});
+
 describe('syntheticIssue + findIssue', () => {
   it('synthesizes an issue with the requested rule + file', () => {
     const s = syntheticIssue('cycle-detected', 'src/a.ts');

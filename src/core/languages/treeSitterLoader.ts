@@ -28,7 +28,8 @@ function grammarDirs(): string[] {
   const nodeModulesGo = path.join(repoRoot, 'node_modules', 'tree-sitter-go');
   const nodeModulesJava = path.join(repoRoot, 'node_modules', 'tree-sitter-java');
   const nodeModulesRuby = path.join(repoRoot, 'node_modules', 'tree-sitter-ruby');
-  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo, nodeModulesJava, nodeModulesRuby];
+  const nodeModulesRust = path.join(repoRoot, 'node_modules', 'tree-sitter-rust');
+  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo, nodeModulesJava, nodeModulesRuby, nodeModulesRust];
 }
 
 function findWasm(filename: string): string {

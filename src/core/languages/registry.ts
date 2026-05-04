@@ -4,9 +4,10 @@ import { pythonAdapter } from './pythonAdapter.js';
 import { goAdapter } from './goAdapter.js';
 import { javaAdapter } from './javaAdapter.js';
 import { rubyAdapter } from './rubyAdapter.js';
+import { rustAdapter } from './rustAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
-const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter, javaAdapter, rubyAdapter];
+const adapters: LanguageAdapter[] = [javascriptAdapter, pythonAdapter, goAdapter, javaAdapter, rubyAdapter, rustAdapter];
 const byExtension = new Map<string, LanguageAdapter>();
 
 function rebuildIndex(): void {

@@ -19,11 +19,14 @@ If a task here looks stale or already done, it probably is — check `git log` a
 
 ## Index
 
-- [01-add-rust-language-adapter.md](./01-add-rust-language-adapter.md) — second-language scaffold (medium)
 - [02-add-php-language-adapter.md](./02-add-php-language-adapter.md) — second-language scaffold (medium)
 - [03-add-c-sharp-language-adapter.md](./03-add-c-sharp-language-adapter.md) — second-language scaffold (medium)
 - [04-html-reporter-for-pr-diff.md](./04-html-reporter-for-pr-diff.md) — extend HTML output (small)
 - [05-html-reporter-for-coverage.md](./05-html-reporter-for-coverage.md) — extend HTML output (small)
-- [06-eslint-fix-suggest-template.md](./06-eslint-fix-suggest-template.md) — add a fix-suggest template (small)
 - [07-impact-cli-symbol-disambiguation.md](./07-impact-cli-symbol-disambiguation.md) — UX polish (small)
 - [08-doc-walkthrough-language-adapter.md](./08-doc-walkthrough-language-adapter.md) — documentation (small)
+
+### Shipped (kept for reference; the corresponding GitHub issues, if opened, can be closed):
+
+- ~~01-add-rust-language-adapter.md~~ — shipped in 1.1.0.
+- ~~06-eslint-fix-suggest-template.md~~ — shipped in 1.1.0.

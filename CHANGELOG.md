@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-05-04
+
+Theme: **"On the Map"** — first minor on the post-1.0 path. Closes the highest-leverage parity gaps. Additive against the [stable surface](docs/STABILITY.md).
+
+### Added
+
+- **Rust as a first-class language.** New `rustAdapter` parses `.rs` files via tree-sitter-rust (~1.1 MB vendored wasm). The adapter ships the same primitives as the other six (imports, exports, file-level CC, per-function CC, callSites). Imports cover plain `use foo::bar;`, brace lists `use foo::{a, b}`, aliases `use foo::bar as baz`, glob `use foo::*`, and re-exports `pub use foo::bar`. Exports are public-by-keyword: any item with a `visibility_modifier` (`pub`, `pub(crate)`, `pub(super)`, `pub(in path)`) — `fn`, `struct`, `enum`, `union`, `trait`, `type`, `const`, `static`, `mod`. Cyclomatic decision points: `if`, `for`, `while`, `loop`, `?` (try expression), each non-wildcard `match` arm, and `&&` / `||` operators in `binary_expression`. Wildcard arms (`_`) and `else` do not count. Per-function CC names methods inside `impl Type { fn m() }` as `Type.m` and trait methods as `Trait.method`. Project layout detection reads `[package] name` from `Cargo.toml` and supports `[workspace]` member resolution. `crate::`, `self::`, `super::` paths resolve into the repo's `src/` tree; standard-library and crates.io paths classify as external.
+- **`projscan_fix_suggest` template for `eslint-*` issue ids.** Pulls the rule name out of the id (`eslint-no-unused-vars` → `no-unused-vars`), produces a tailored headline, and includes the canonical `https://eslint.org/docs/latest/rules/<rule>` URL in `references`. Instruction covers three valid moves in priority order: fix per docs, scoped `eslint-disable-next-line` with a one-sentence rationale, or propose a config change in `eslint.config.js`. Doctor's inline `suggestedAction` hint includes the rule name.
+- **`projscan_fix_suggest` template for `python-type-error-*` issue ids.** Covers mypy / pyright type-checker output. Instruction walks through annotation refinement, type narrowing via `isinstance` / `is not None`, and the typed-ignore form `# type: ignore[<error-code>]` (preferring pinned codes over bare ignores). References mypy and pyright docs.
+- **`tree-sitter-loader` widened** to look in `node_modules/tree-sitter-rust` for the wasm grammar in dev / test mode (production already finds it under `dist/grammars/`).
+
+### Changed
+
+- **MCP tool count: 20** (unchanged — 1.1 adds languages and templates, not new tools).
+- **Languages with full AST: 6 → 7** (Rust added).
+- **Runtime dependencies: 11 → 12** (`tree-sitter-rust@^0.23.3`).
+- **Vendored wasm footprint: ~3.4 MB → ~4.5 MB** (`tree-sitter-rust.wasm` ~1.1 MB).
+- **`LanguageId` type widened** from `'javascript' | 'python' | 'go' | 'java' | 'ruby'` to also include `'rust'`. Internal type, not part of the stable surface.
+- **`scripts/copy-wasm.mjs`** copies the rust grammar into `dist/grammars/`.
+- **`stability-baseline.json`** unchanged — 1.1 surface is a strict superset of 1.0; the CI guard reports a clean diff.
+
+### Notes
+
+- **+38 tests** (820 → 858). New coverage: rustAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package-name routing (25), rust end-to-end fixture (graph + coupling + match-arm CC) (4), eslint-* fix-suggest template (4), python-type-error-* fix-suggest template (4), language registry adapter lookup for `.rs` (1).
+- **No new MCP tools or CLI commands.** The two new fix-suggest templates land inside the existing `projscan_fix_suggest` API; the Rust adapter is invoked transparently by every command that takes a file path.
+- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The `LanguageId` widening and the new tree-sitter-rust runtime dep are additive.
+
 ## [1.0.0] - 2026-05-04
 
 **Stable. The public no-break commitment release.**

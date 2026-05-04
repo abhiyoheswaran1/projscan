@@ -243,8 +243,8 @@ For real-world numbers against larger codebases, `npm run bench:references` shal
 Run `npm run bench` against your own machine to recalibrate.
 
 - **Zero network requests** — everything runs locally
-- **11 runtime dependencies** — still minimal
-- **~3.4 MB of vendored tree-sitter grammars**, broken down:
+- **12 runtime dependencies** — still minimal
+- **~4.5 MB of vendored tree-sitter grammars**, broken down:
 
 | Grammar | Size | Languages |
 |---|---:|---|
@@ -253,6 +253,7 @@ Run `npm run bench` against your own machine to recalibrate.
 | `tree-sitter-go` | ~210 KB | Go |
 | `tree-sitter-java` | ~405 KB | Java |
 | `tree-sitter-ruby` | ~2.0 MB | Ruby |
+| `tree-sitter-rust` | ~1.1 MB | Rust |
 
 JavaScript and TypeScript use the bundled `@babel/parser` instead of a tree-sitter grammar, so they don't appear in this table.
 

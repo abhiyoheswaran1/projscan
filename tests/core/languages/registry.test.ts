@@ -13,7 +13,7 @@ describe('language registry', () => {
   it('returns undefined for unknown extensions', () => {
     expect(getAdapterFor('README.md')).toBeUndefined();
     expect(getAdapterFor('Makefile')).toBeUndefined();
-    expect(getAdapterFor('a.rs')).toBeUndefined();
+    expect(getAdapterFor('a.swift')).toBeUndefined();
   });
 
   it('returns the Go adapter for .go', () => {
@@ -26,6 +26,10 @@ describe('language registry', () => {
 
   it('returns the Ruby adapter for .rb', () => {
     expect(getAdapterFor('lib/foo.rb')?.id).toBe('ruby');
+  });
+
+  it('returns the Rust adapter for .rs', () => {
+    expect(getAdapterFor('src/main.rs')?.id).toBe('rust');
   });
 
   it('is case-insensitive on extension', () => {

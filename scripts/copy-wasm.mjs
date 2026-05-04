@@ -26,6 +26,10 @@ const targets = [
     from: path.join(root, 'node_modules/tree-sitter-ruby/tree-sitter-ruby.wasm'),
     to: path.join(root, 'dist/grammars/tree-sitter-ruby.wasm'),
   },
+  {
+    from: path.join(root, 'node_modules/tree-sitter-rust/tree-sitter-rust.wasm'),
+    to: path.join(root, 'dist/grammars/tree-sitter-rust.wasm'),
+  },
 ];
 
 await mkdir(path.join(root, 'dist/grammars'), { recursive: true });
