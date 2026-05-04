@@ -38,7 +38,7 @@ Run `projscan doctor` for a focused health check:
 npx projscan doctor
 ```
 
-<img src="docs/npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
+<img src="docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 ## Install
 
@@ -76,7 +76,7 @@ projscan structure                  # Directory tree
 projscan mcp                        # Run as an MCP server for AI coding agents
 ```
 
-<img src="docs/npx%20projscan%20--help.png" alt="npx projscan --help" width="700">
+<img src="docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
 
 For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 
@@ -114,31 +114,31 @@ projscan --help
 <details>
 <summary><strong>projscan structure</strong> - Directory tree with file counts</summary>
 
-<img src="docs/npx%20projscan%20structure.png" alt="npx projscan structure" width="700">
+<img src="docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
 </details>
 
 <details>
 <summary><strong>projscan diagram</strong> - Architecture visualization</summary>
 
-<img src="docs/npx%20projscan%20diagram.png" alt="npx projscan diagram" width="700">
+<img src="docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
 </details>
 
 <details>
 <summary><strong>projscan dependencies</strong> - Dependency analysis</summary>
 
-<img src="docs/npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
+<img src="docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
 </details>
 
 <details>
 <summary><strong>projscan explain</strong> - File explanation</summary>
 
-<img src="docs/npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
+<img src="docs/npx%20projscan%20explain.gif" alt="npx projscan explain" width="700">
 </details>
 
 <details>
 <summary><strong>projscan badge</strong> - Health badge generation</summary>
 
-<img src="docs/npx%20projscan%20badge.png" alt="npx projscan badge" width="700">
+<img src="docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
 </details>
 
 ### Output Formats
@@ -344,7 +344,7 @@ projscan ci --changed-only                     # Gate only on this PR's diff
 projscan ci --format sarif > projscan.sarif    # SARIF for Code Scanning
 ```
 
-<img src="docs/npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci --min-score 70" width="700">
+<img src="docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
 
 ### GitHub Action (recommended)
 
@@ -426,7 +426,7 @@ projscan diff                       # Compare against baseline
 projscan diff --format markdown     # Markdown diff for PRs
 ```
 
-<img src="docs/npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
+<img src="docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
 
 ## Hotspots - Where to Fix First
 

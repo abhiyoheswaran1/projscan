@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-05-05
+
+A docs-only patch. Replaces the nine static `docs/*.png` command screenshots with animated GIFs generated programmatically via [`charmbracelet/vhs`](https://github.com/charmbracelet/vhs), bringing them in line with the three website-hosted recordings (`hero`, `hotspots`, `search`) used at [abhiyoheswaran.com/apps/projscan](https://abhiyoheswaran.com/apps/projscan).
+
+### Changed
+
+- **`docs/*.gif` replace `docs/*.png`** for the nine command demos in the README: `doctor`, `--help`, `structure`, `diagram`, `dependencies`, `explain`, `badge`, `ci --min-score 70`, `diff --save-baseline`. Same `<img>` tags, `.png` → `.gif` swap, ~907 KB total. Recorded with JetBrains Mono 18pt, Catppuccin Latte, 1400×900 frame. Tape sources are throwaway scripts at `/tmp/projscan-{command}.tape`, mirroring the house style established for `hero`, `hotspots`, and `search`.
+
+### Notes
+
+- **No code changes.** Runtime behavior, MCP tool surface, and dependency tree are identical to 1.2.0.
+- **No tarball impact.** `docs/` is not in `package.json#files`, so the npm tarball is unchanged in size.
+- **Why a patch release at all?** The npm-rendered README on npmjs.com points at the static PNGs in 1.2.0; refreshing the README on npm requires a new published version. Bumping to 1.2.1 lets the new GIFs land both in GitHub's repo view and on npm's package page.
+
 ## [1.2.0] - 2026-05-05
 
 Theme: **"Reporter Parity"** — second minor on the post-1.0 path. Two new languages, HTML reporters across the diff/coverage commands, and per-function fan-out to round out the per-function metrics started in 0.15.
