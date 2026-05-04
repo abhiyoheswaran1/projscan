@@ -7,6 +7,7 @@ import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportPrDiff } from '../../reporters/consoleReporter.js';
 import { reportPrDiffJson } from '../../reporters/jsonReporter.js';
 import { reportPrDiffMarkdown } from '../../reporters/markdownReporter.js';
+import { reportPrDiffHtml } from '../../reporters/htmlReporter.js';
 
 export function registerPrDiff(): void {
   program
@@ -46,6 +47,9 @@ export function registerPrDiff(): void {
             break;
           case 'markdown':
             reportPrDiffMarkdown(report);
+            break;
+          case 'html':
+            reportPrDiffHtml(report);
             break;
           default:
             reportPrDiff(report);

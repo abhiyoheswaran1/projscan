@@ -91,7 +91,7 @@ projscan
 
 This runs the default `analyze` command. Within a second or two you'll see a full report covering:
 
-<img src="npx%20projscan.png" alt="npx projscan" width="700">
+<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="npx projscan: banner, scan progress, full project report" width="700">
 
 1. **Project overview** - name, total files, total directories, scan time
 2. **Language breakdown** - primary language, percentages per language
@@ -182,7 +182,7 @@ The flagship command. Runs every detection module and produces the full project 
 | `--changed-only` | Only report issues on files changed vs base ref |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 
-<img src="npx%20projscan.png" alt="npx projscan analyze" width="700">
+<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="npx projscan analyze: banner, scan progress, full project report" width="700">
 
 ### doctor
 
@@ -214,6 +214,8 @@ Use this when you want a quick "is this project in good shape?" answer without t
 projscan hotspots
 ```
 
+<img src="https://abhiyoheswaran.com/images/projscan/hotspots-poster.png" alt="projscan hotspots output ranking files by composite risk score" width="700">
+
 Ranks files by **risk** - a combination of git churn, complexity (lines of code), open issues, recency, and ownership (bus-factor). Turns a flat health score into a prioritized "fix these first" list.
 
 **Options:**
@@ -242,6 +244,8 @@ projscan search "npm audit" --scope auto
 projscan search authenticate --scope symbols
 projscan search stripe --scope files
 ```
+
+<img src="https://abhiyoheswaran.com/images/projscan/search-poster.png" alt="projscan search output showing ranked results for the query ContactForm" width="700">
 
 BM25-ranked search across content, symbol names, and path tokens. No embeddings, no model download - just a solid classical IR implementation that beats substring matching for typical code queries.
 

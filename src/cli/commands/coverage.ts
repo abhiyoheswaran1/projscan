@@ -18,6 +18,7 @@ import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportCoverage } from '../../reporters/consoleReporter.js';
 import { reportCoverageJson } from '../../reporters/jsonReporter.js';
 import { reportCoverageMarkdown } from '../../reporters/markdownReporter.js';
+import { reportCoverageHtml } from '../../reporters/htmlReporter.js';
 
 export function registerCoverage(): void {
   program
@@ -59,6 +60,9 @@ export function registerCoverage(): void {
             break;
           case 'markdown':
             reportCoverageMarkdown(joined);
+            break;
+          case 'html':
+            reportCoverageHtml(joined);
             break;
           default:
             reportCoverage(joined);

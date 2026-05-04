@@ -5,13 +5,17 @@ import {
   reportCouplingHtml,
   reportReviewHtml,
   reportImpactHtml,
+  reportPrDiffHtml,
+  reportCoverageHtml,
   htmlShell,
 } from '../../src/reporters/htmlReporter.js';
 import type {
   CouplingReport,
+  CoverageJoinedReport,
   HotspotReport,
   ImpactReport,
   Issue,
+  PrDiffReport,
   ReviewReport,
 } from '../../src/types.js';
 
@@ -177,5 +181,147 @@ describe('reportImpactHtml', () => {
     expect(out).toContain('Impact:');
     expect(out).toContain('src/a.ts');
     expect(out).toContain('src/b.ts');
+  });
+});
+
+describe('reportPrDiffHtml', () => {
+  it('renders unavailable reason cleanly', () => {
+    const r: PrDiffReport = {
+      available: false,
+      reason: 'Not a git repo',
+      base: { ref: '', resolvedSha: null },
+      head: { ref: '', resolvedSha: null },
+      filesAdded: [],
+      filesRemoved: [],
+      filesModified: [],
+      totalFilesChanged: 0,
+    };
+    const out = captured(() => reportPrDiffHtml(r));
+    expect(out).toContain('Not a git repo');
+  });
+
+  it('renders three sections with their counts', () => {
+    const r: PrDiffReport = {
+      available: true,
+      base: { ref: 'main', resolvedSha: 'aaaaaaa' },
+      head: { ref: 'HEAD', resolvedSha: 'bbbbbbb' },
+      filesAdded: ['src/new.ts'],
+      filesRemoved: ['src/old.ts'],
+      filesModified: [
+        {
+          relativePath: 'src/edited.ts',
+          status: 'modified',
+          exportsAdded: ['foo'],
+          exportsRemoved: ['bar'],
+          exportsRenamed: [],
+          importsAdded: [],
+          importsRemoved: [],
+          callsAdded: [],
+          callsRemoved: [],
+          cyclomaticDelta: 3,
+          fanInDelta: -1,
+        },
+      ],
+      totalFilesChanged: 3,
+    };
+    const out = captured(() => reportPrDiffHtml(r));
+    expect(out).toMatch(/^<!DOCTYPE html>/);
+    expect(out).toContain('Added (1)');
+    expect(out).toContain('Removed (1)');
+    expect(out).toContain('Modified (1)');
+    expect(out).toContain('src/new.ts');
+    expect(out).toContain('src/old.ts');
+    expect(out).toContain('src/edited.ts');
+    expect(out).toContain('+exports');
+    expect(out).toContain('foo');
+    expect(out).toContain('bar');
+    expect(out).toContain('ΔCC +3');
+  });
+});
+
+describe('reportCoverageHtml', () => {
+  it('renders unavailable reason cleanly', () => {
+    const r: CoverageJoinedReport = {
+      available: false,
+      reason: 'No coverage source found',
+      coverageSource: null,
+      coverageSourceFile: null,
+      entries: [],
+    };
+    const out = captured(() => reportCoverageHtml(r));
+    expect(out).toContain('No coverage source found');
+  });
+
+  it('renders the entries table with priority + risk + coverage columns', () => {
+    const r: CoverageJoinedReport = {
+      available: true,
+      coverageSource: 'lcov',
+      coverageSourceFile: 'coverage/lcov.info',
+      entries: [
+        {
+          relativePath: 'src/scary.ts',
+          riskScore: 92.4,
+          churn: 30,
+          lineCount: 500,
+          issueCount: 5,
+          coverage: 0.12,
+          priority: 88.5,
+          reasons: ['high churn', 'low coverage'],
+        },
+        {
+          relativePath: 'src/safe.ts',
+          riskScore: 10.0,
+          churn: 1,
+          lineCount: 50,
+          issueCount: 0,
+          coverage: 0.95,
+          priority: 5.0,
+          reasons: ['well covered'],
+        },
+      ],
+    };
+    const out = captured(() => reportCoverageHtml(r));
+    expect(out).toMatch(/^<!DOCTYPE html>/);
+    expect(out).toContain('lcov');
+    expect(out).toContain('coverage/lcov.info');
+    expect(out).toContain('src/scary.ts');
+    expect(out).toContain('92.4');
+    expect(out).toContain('12%');
+    expect(out).toContain('88.5');
+    expect(out).toContain('src/safe.ts');
+    expect(out).toContain('95%');
+    // Split by </tr> so each row stands alone, then verify per-row class.
+    const rowsByPath: Record<string, string> = {};
+    for (const row of out.split('</tr>')) {
+      if (row.includes('src/scary.ts')) rowsByPath['scary'] = row;
+      if (row.includes('src/safe.ts')) rowsByPath['safe'] = row;
+    }
+    expect(rowsByPath['scary']).toMatch(/<tr class="severity-error">/);
+    expect(rowsByPath['safe']).toMatch(/<tr>/);
+    expect(rowsByPath['safe']).not.toMatch(/<tr class="severity-error">/);
+  });
+
+  it('handles entries with null coverage gracefully', () => {
+    const r: CoverageJoinedReport = {
+      available: true,
+      coverageSource: null,
+      coverageSourceFile: null,
+      entries: [
+        {
+          relativePath: 'src/x.ts',
+          riskScore: 50,
+          churn: 5,
+          lineCount: 100,
+          issueCount: 1,
+          coverage: null,
+          priority: 50,
+          reasons: [],
+        },
+      ],
+    };
+    const out = captured(() => reportCoverageHtml(r));
+    expect(out).toContain('src/x.ts');
+    // A null coverage should render as '-', not '0%'.
+    expect(out).toMatch(/<td class="right">-<\/td>/);
   });
 });

@@ -10,7 +10,7 @@
 
 [AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
-<img src="docs/hero.png" alt="projscan banner" width="600">
+<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="projscan running on the abhiyoheswaran.com repo: banner, scan progress, project report" width="600">
 
 </div>
 
@@ -30,7 +30,7 @@ Humans get the same thing through the CLI.
 npx projscan
 ```
 
-<img src="docs/npx%20projscan.png" alt="npx projscan" width="700">
+<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="npx projscan: banner, scan progress, full project report" width="700">
 
 Run `projscan doctor` for a focused health check:
 
@@ -429,6 +429,8 @@ projscan diff --format markdown     # Markdown diff for PRs
 ## Hotspots - Where to Fix First
 
 A flat health score doesn't tell you what to do. **`projscan hotspots`** combines `git log` churn, file complexity, open issues, recency, and **ownership** into a single risk score per file - so you know where refactoring or review will actually pay off.
+
+<img src="https://abhiyoheswaran.com/images/projscan/hotspots-poster.png" alt="projscan hotspots output ranking files by composite risk score" width="700">
 
 ```bash
 projscan hotspots                       # Top 10 hotspots
