@@ -12,9 +12,7 @@ Every agent (Claude Code, Cursor, Codex, Continue, custom orchestrations) needs 
 
 ## Stable since 1.0
 
-**v1.0.0 shipped 2026-05-04. The stability contract is in force.** The MCP tool inventory, CLI command names + documented flags, exit codes, JSON output keys, and the `dist/tool-manifest.json` schema are now under semver protection — see [`STABILITY.md`](STABILITY.md). Breaking any of it requires a 2.0 bump preceded by a deprecation cycle. The CI guard (`scripts/check-stability.mjs`) enforces this on every PR.
-
-The 1.0 surface was earned across five additive minor releases (0.13 → 0.17), each scoped around one of the four questions an agent has at every code-change moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?* Per-release notes live in [Recently Shipped](#recently-shipped) below.
+**v1.0.0 shipped 2026-05-04. The stability contract is in force.** See [`STABILITY.md`](STABILITY.md) for the contract and [`CHANGELOG.md`](../CHANGELOG.md) for the 1.0 announcement (what's covered, what was earned across 0.13–0.17, what's next).
 
 ## Strategic context (May 2026)
 

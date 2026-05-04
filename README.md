@@ -242,8 +242,19 @@ For real-world numbers against larger codebases, `npm run bench:references` shal
 
 Run `npm run bench` against your own machine to recalibrate.
 
-- **Zero network requests** - everything runs locally
-- **11 runtime dependencies** - still minimal (the five tree-sitter grammars bring ~3.3 MB of vendored wasm: web-tree-sitter ~190 KB, tree-sitter-python ~450 KB, tree-sitter-go ~210 KB, tree-sitter-java ~405 KB, tree-sitter-ruby ~2.0 MB)
+- **Zero network requests** — everything runs locally
+- **11 runtime dependencies** — still minimal
+- **~3.4 MB of vendored tree-sitter grammars**, broken down:
+
+| Grammar | Size | Languages |
+|---|---:|---|
+| `web-tree-sitter` | ~190 KB | runtime, all tree-sitter languages |
+| `tree-sitter-python` | ~450 KB | Python |
+| `tree-sitter-go` | ~210 KB | Go |
+| `tree-sitter-java` | ~405 KB | Java |
+| `tree-sitter-ruby` | ~2.0 MB | Ruby |
+
+JavaScript and TypeScript use the bundled `@babel/parser` instead of a tree-sitter grammar, so they don't appear in this table.
 
 ## Optional features
 
