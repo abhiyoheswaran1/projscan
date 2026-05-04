@@ -1,39 +1,116 @@
 # ProjScan Roadmap
 
-Planned features and improvements. Community suggestions welcome - open an issue or PR.
+Last reviewed 2026-05-04 (post-1.0).
 
 ---
 
-## Big bet: "Agent-First"
+## Vision
 
-projscan is built for AI coding agents first; the CLI is a consumer of the same primitives.
+**The shared code-intelligence substrate that AI coding agents stand on.**
+
+Every agent (Claude Code, Cursor, Codex, Continue, custom orchestrations) needs the same things from the codebase it's editing: structural awareness, change-impact analysis, health signals, fix guidance. None of them want to build that themselves. projscan is the open, offline, agent-native MCP server that gives every agent the same accurate view — so they can spend their context and inference budget on the actual reasoning, not on greping the repo.
 
 ## Stable since 1.0
 
-**v1.0.0 shipped 2026-05-04. The stability contract is in force.** The MCP tool inventory, CLI command names + documented flags, exit codes, JSON output keys, and the `dist/tool-manifest.json` schema are now under semver protection — see [`docs/STABILITY.md`](STABILITY.md). Breaking any of it requires a 2.0 bump preceded by a deprecation cycle (one minor release with a stderr warning, then removal in the next major). The CI guard (`scripts/check-stability.mjs`) enforces this on every PR.
+**v1.0.0 shipped 2026-05-04. The stability contract is in force.** The MCP tool inventory, CLI command names + documented flags, exit codes, JSON output keys, and the `dist/tool-manifest.json` schema are now under semver protection — see [`STABILITY.md`](STABILITY.md). Breaking any of it requires a 2.0 bump preceded by a deprecation cycle. The CI guard (`scripts/check-stability.mjs`) enforces this on every PR.
 
-The 1.0 surface was earned across five additive minor releases (0.13 → 0.17), each scoped around one of the four questions an agent has at every code-change moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?* The five themes were "Agent Review", "Agent Fix Loop", "Reach", "Live", and "RC + Docs"; full per-release notes live in [Recently Shipped](#recently-shipped) below.
+The 1.0 surface was earned across five additive minor releases (0.13 → 0.17), each scoped around one of the four questions an agent has at every code-change moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?* Per-release notes live in [Recently Shipped](#recently-shipped) below.
 
-## Planned (1.x.y — additive only)
+## Strategic context (May 2026)
 
-These are candidates for future minor releases. They're additive against the stable surface; they will not break the 1.0 contract.
+Three forces define the next 12 months for projscan:
 
-- **Additional language adapters.** Rust, PHP, C# via the same `LanguageAdapter` pattern. Pre-drafted issue stubs under `.github/seed-issues/` are the on-ramp.
-- **More fix-suggest templates.** The rule registry covers ~12 issue families today; expanding to ESLint rules, Python type-error patterns, and Go vet output is mostly mechanical.
-- **HTML reporter coverage.** Five commands have HTML output; extending to `pr-diff` and `coverage` is in `.github/seed-issues/`.
-- **Registry-aware upgrade preview.** `projscan upgrade <pkg>` optionally fetches `latest` from npm registry; Python equivalent reads pip/poetry metadata. Behind a network-required flag.
-- **MCP-side watch notifications.** 0.16's `projscan watch` is CLI-only. A future minor could emit `notifications/file_changed` over MCP so long-running agent sessions get a push instead of polling.
-- **Per-function fan-out.** 0.15 added per-function fan-in. Fan-out requires per-function `callSites` tracking — bigger lift across all six adapters.
+1. **MCP is the de-facto standard.** The ecosystem has 10,000+ public servers; Claude Code, Cursor, Continue, Windsurf, Codex all consume MCP. The protocol war is over; the value migrates to the *quality* of individual servers. Code-intelligence is one of the highest-value categories.
+2. **Multi-agent orchestration is the 2026 dominant pattern.** Claude Agent Teams, swarms, sub-agents. The new pain point is *coordination*: agents have separate context windows and need a shared source-of-truth about the codebase. projscan's graph + cache + budget-aware tools are uniquely positioned to BE that shared substrate.
+3. **Context-window cost compounds.** Token spend per turn is no longer the bottleneck — it's the *accumulated* cost of carrying tool results, AST excerpts, and prior turns through every inference call. Agents that retrieve narrowly and budget aggressively win. projscan's `max_tokens`-aware response shaping, cursor pagination, and per-function chunking are exactly the primitives this trend rewards.
 
-## Under consideration (2.0 — breaking)
+## The competitive picture
 
-These are candidates for the next major version. They are NOT planned for any 1.x release because they would break the stability contract.
+| Tool | Position | What they do well | What we beat them on |
+|---|---|---|---|
+| **Code Pathfinder** | Direct competitor (MCP code-intel) | Deep static analysis: AST + CFG + DFG, dataflow tracking, security focus. On Anthropic's official MCP registry. | Language coverage (6 vs 1: Python). Composed agent tools (review / fix-suggest / impact / watch). Health signals (churn × CC, hotspots). Monorepo workspace awareness. |
+| **Sourcegraph Cody / Amp** | Enterprise paid tier (Free killed July 2025) | Cross-repo indexing at org scale. Polished editor integrations. | Fully offline. Open source. No SaaS dependency. Free for everyone. |
+| **Continue.dev** | Configurable RAG + MCP client | Highly extensible context providers. Local-first. | We're a *server*, not a client; we feed Continue (and every other MCP client). Different category. |
+| **Aider** | Terminal-native pair programmer | Tight Git integration, conversational refactor flow. | Different category — we're not a coding agent; we're what coding agents stand on. |
+| **GitHub MCP server** | Adjacent (repo metadata, not code intel) | Issues / PRs / Actions surface. | We do code structure; they do collaboration metadata. Complementary, not competing. |
 
-- **Removing the deprecated regex extractors** (`extractImports` / `extractExports` in `src/core/fileInspector.ts`, marked `@deprecated` in 0.17). The graph-based path is strictly better; once all `projscan_explain` callers take a graph, the regex helpers can go.
-- **JSON output schema refactors.** Some response shapes accumulated optional fields across 0.6 → 1.0 that would be cleaner as discriminated unions. Worth doing only if there's a real consumer pain point.
-- **SAST-style security rules.** Extending `securityCheck` with AST-based path-traversal, SQL-injection, XSS rules. Stays minimal; not competing with Snyk. Not a 2.0 requirement, but if added it changes the issue-id namespace.
-- **Plugin API.** Third-party analyzers and reporters. Would land as part of a 2.0 if it requires interface changes; otherwise additive.
-- **Multi-repo dashboard / SaaS.** Upload baselines, team health trends, org-wide hotspots. Out of scope for projscan-the-tool; a separate product surface if it ever happens.
+**Where we're vulnerable:** Code Pathfinder has deeper analysis (CFG, DFG) and security-finding focus. They're on the official MCP registry; we're not.
+
+**Where we lead:** breadth (6 languages), agent-native composition (one-call review, fix-suggest, impact), monorepo support, and the 1.0 stability contract. We also have the cleaner agent-journey product story (diagnose → review → fix → reach → live).
+
+## Strategy
+
+Three plays, in order:
+
+1. **Defend the lead** — close the obvious gaps (Anthropic MCP registry listing, more languages, more fix-suggest templates) so users picking an MCP server for code intel have one less reason to go elsewhere.
+2. **Lean into multi-agent** — make projscan the *shared substrate* for agent swarms. This is where the market is moving and where our context-budget design pays off.
+3. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, sub-file embeddings, cross-repo views). Not everywhere; we're not trying to be Cody.
+
+We are *not* trying to be:
+- A coding agent (we're what agents call into).
+- A SaaS / dashboard product (out of scope; would dilute the open-source positioning).
+- A general-purpose static analyzer competing with SonarQube / Semgrep / Snyk.
+- A linting / formatting tool (we *invoke* eslint / prettier / pytest / ruff, we don't replace them).
+
+## Now / Next / Later
+
+### Now — 1.1 → 1.3 (Q3 2026)
+
+**Theme: "Defend & Discover"** — close the discoverability + parity gaps so projscan is the obvious pick for an agent picking a code-intel MCP server.
+
+| Release | Theme | Headlines |
+|---|---|---|
+| **1.1.0 "On the Map"** | Discoverability + first-language expansion | Submit to Anthropic's MCP registry. Rust adapter (closes the most-asked language gap). Two new fix-suggest templates (eslint-* and python-type-error-*). Pre-drafted issue stubs under `.github/seed-issues/` are the contributor on-ramp. |
+| **1.2.0 "Reporter Parity"** | Polish the surface | HTML reporters for `pr-diff` and `coverage` (closes the 0.16 gap). PHP and C# language adapters. Per-function fan-out (per-function `callSites` tracking added across all six adapters). |
+| **1.3.0 "Push, Don't Poll"** | Long-session UX | MCP-side `notifications/file_changed` from `projscan watch` so agents in long sessions get a push, not a poll. Registry-aware upgrade preview behind a network-required flag (default off). Stretch: persistent process mode for `projscan mcp` so multiple agents share one warm graph. |
+
+### Next — 1.4 → 1.6 (Q4 2026)
+
+**Theme: "Agent Substrate"** — make projscan the shared source-of-truth for multi-agent setups. This is the strategic bet.
+
+| Release | Theme | Bet |
+|---|---|---|
+| **1.4.0 "Session"** | Shared state across agents | New `projscan_session` MCP tool: a durable, cache-backed session that multiple agent invocations can attach to. Agents share a hot graph + a list of "what's been touched this session" without any one of them owning state. Pairs with multi-agent orchestrators (Claude Agent Teams, swarms). |
+| **1.5.0 "Budgeted by default"** | Cost-aware tool composition | Every tool reports a token-cost estimate alongside its result. New `max_cost_tokens` arg auto-degrades response depth. `projscan_review` becomes adaptive: full review on a budget, summarized review at half, verdict-only at quarter. |
+| **1.6.0 "Specialist prompts"** | Agent recipes, not tool docs | Ship a `prompts/` directory of MCP-protocol prompts that agents can invoke directly: `refactor-hotspot`, `triage-doctor-issues`, `review-this-pr`, `safely-rename-symbol`. Each is a tested composition of projscan tools with the right argument shape. Lowers integration friction from "which tools do I call in what order" to "ask the prompt by name". |
+
+### Later — 1.7 → 1.9 and 2.0 (2027)
+
+**Theme: "Depth and breadth"** — once we're the obvious pick for breadth + agent-native composition, sharpen the depth.
+
+- **Sub-file embedding refinements.** Better recall, faster rebuild, smarter chunking for very long functions.
+- **Read-only cross-repo view.** Useful for monorepo-of-monorepos and for agents that work across multiple repos (e.g. updating an SDK and its consumer apps in tandem).
+- **Kotlin, Swift, C++ adapters.** In that order. Demand-driven; if Rust + PHP + C# don't move the needle, we don't add more.
+- **Lightweight CFG/DFG hooks.** Not a full Pathfinder-style dataflow engine — just enough to answer "is this value tainted?" / "is this var used after assignment?" on hot paths inside `projscan_review`.
+- **HTML report theming.** White-label the HTML output with a project name + logo.
+
+**2.0 candidates** (breaking; do not promise dates):
+- Remove deprecated `extractImports` / `extractExports` regex helpers (marked `@deprecated` in 0.17).
+- Refactor JSON output schemas where optional-field accumulation became cluttered.
+- Plugin API (third-party analyzers + reporters), if it requires interface changes that break the 1.0 contract.
+
+## Non-goals
+
+- **Coding agent.** We don't write code; we tell agents what's there.
+- **SaaS / dashboard.** projscan is a local tool; cloud features (uploads, baselines, telemetry) are explicitly off the table for the 1.x line.
+- **Snyk / SonarQube competition.** SAST stays minimal; if we add CFG/DFG it's narrowly targeted at agent use cases (taint tracking inside a review), not general security scanning.
+- **IDE-specific extensions.** projscan is an MCP server. The CLI is for humans. No VS Code extension, no JetBrains plugin — those are someone else's product.
+- **LLM-inside-projscan.** `projscan_fix_suggest` is rule-driven by design. The driving agent is the LLM; we feed it structured prompts. We will not embed an inference call.
+
+## Risks
+
+- **Anthropic MCP registry approval.** 1.1's "On the Map" hinges on getting projscan onto the official registry. Process is opaque. Mitigation: submit early, in parallel with the 1.1 work; if rejected, lean harder on README + GitHub topics + MCP-server-listing sites.
+- **Code Pathfinder catches up on languages.** They're 1-language today (Python) but the AST + CFG infrastructure is solid. If they ship a JS/TS adapter, our breadth lead narrows. Mitigation: keep adding languages on the cadence (one per minor for the next three).
+- **Multi-agent orchestration matures faster than we can ship Session.** If Claude Agent Teams becomes the default and ships its own shared-state primitive, our 1.4 bet weakens. Mitigation: design Session as a *complement* to Agent Teams rather than a replacement; expose it as MCP resources so it composes with whatever orchestrator a user has.
+- **Single-maintainer velocity.** This roadmap assumes ~1 minor every 3-4 weeks. Sustainable if the seed-issues + good-first-issue pipeline brings in external PRs. If it doesn't, the 1.4 → 1.6 timeline slips.
+- **Context-cost trend reverses.** If models get cheaper / context windows get cheaper / smarter, our budget-aware design becomes table stakes rather than a differentiator. Mitigation: that's a good problem to have; the underlying primitives still work.
+
+## How to influence this roadmap
+
+If you've adopted projscan and want something specific:
+- **Open a GitHub issue** describing the use case. The "what an agent of mine couldn't answer" framing helps prioritize over generic feature requests.
+- **Pick up a seed issue** at [`.github/seed-issues/`](.github/seed-issues/) — eight pre-drafted starter tasks, three of which are language adapters that would directly accelerate the 1.1 / 1.2 work.
+- **For larger work** (a new MCP tool category, a refactor, a 2.0 candidate), open a discussion first so we can align on the shape before you spend a weekend on it.
 
 ---
 

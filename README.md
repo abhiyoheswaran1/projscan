@@ -332,7 +332,7 @@ jobs:
         with: { fetch-depth: 0 }  # needed for --changed-only
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - uses: abhiyoheswaran1/projscan@v0.3.0
+      - uses: abhiyoheswaran1/projscan@v1
         with:
           min-score: '70'
           changed-only: 'true'
@@ -374,6 +374,9 @@ Fields:
 - `disableRules` - silence rules by id; supports wildcard `prefix-*`
 - `severityOverrides` - remap a rule's severity (`info` / `warning` / `error`)
 - `hotspots.limit` / `hotspots.since` - defaults for the `hotspots` command
+- `monorepo.importPolicy` - cross-package import allow/deny rules in monorepos *(0.14+)*
+
+See [`docs/GUIDE.md` → Configuration](docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
 
 ## Tracking Health Over Time
 

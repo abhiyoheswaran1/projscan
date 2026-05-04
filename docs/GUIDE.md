@@ -695,6 +695,31 @@ If you prefer to keep everything in `package.json`:
 }
 ```
 
+### Monorepo: cross-package import policy *(0.14+)*
+
+In a monorepo, you can declare which packages may import which. Violations surface as `cross-package-violation-N` issues in `projscan_doctor` and on the CLI. The analyzer is **off by default**; adding any rule turns it on for the matching `from` package.
+
+```json
+{
+  "monorepo": {
+    "importPolicy": [
+      { "from": "web", "allow": ["shared", "ui-kit"] },
+      { "from": "shared", "deny": ["web", "api"] },
+      { "from": "scripts", "allow": ["*"] }
+    ]
+  }
+}
+```
+
+Each rule has a `from` (source package name, matches `WorkspacePackage.name`) plus exactly one of `allow` or `deny`:
+
+- **`allow`** is allow-list semantics: edges out of `from` are only permitted to packages in the list. Anything else is denied.
+- **`deny`** is deny-list semantics: edges out of `from` are permitted unless the target is in the list.
+
+Patterns support `*` (wildcard), `pkg/*` (suffix glob), `*/sub` (prefix glob), and exact package names. The check runs once per `buildCodeGraph` call; capped at 50 reported violations per run to keep doctor output bounded.
+
+**Why use it:** to keep refactoring options open inside a package. If `web` is only allowed to import from `shared` and `ui-kit`, then changes inside `api`'s internals can't break `web` no matter how aggressive. The rules document the intended layering and the CI guard enforces it.
+
 ---
 
 ## PR-Diff Mode (`--changed-only`)
@@ -721,7 +746,7 @@ Issues that carry a `location` (file path) are kept only if that file appears in
 Example GitHub Actions snippet:
 
 ```yaml
-- uses: abhiyoheswaran1/projscan@v0.3.0
+- uses: abhiyoheswaran1/projscan@v1
   with:
     min-score: ${{ github.event_name == 'pull_request' && '60' || '70' }}
     changed-only: ${{ github.event_name == 'pull_request' }}
@@ -933,22 +958,37 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
-**Tools (13):**
-- `projscan_graph` - **structural query over the AST code graph.** Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agent-native; milliseconds on a warm cache.
-- `projscan_search` - **BM25-ranked search.** Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Query tokens are split on camelCase/snake_case and lightly stemmed.
-- `projscan_analyze` - full project snapshot
-- `projscan_doctor` - health score + issue list
-- `projscan_hotspots` - ranked file risk (`limit`, `since` args)
-- `projscan_file` - per-file inspection (purpose, risk, ownership, related issues)
-- `projscan_explain` - purpose, imports, exports, smells
-- `projscan_structure` - directory tree
-- `projscan_dependencies` - package audit
-- `projscan_outdated` - declared-vs-installed drift (offline)
-- `projscan_audit` - npm audit, normalized (severity summary + findings)
-- `projscan_upgrade` - upgrade preview: drift + local CHANGELOG + importers (`package` arg required)
-- `projscan_coverage` - coverage × hotspots, ranked by "risk × uncovered fraction" (`limit` arg)
+**Tools (20):**
 
-**Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field.
+*Structural / agent-native:*
+- `projscan_graph` — structural query over the AST code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Milliseconds on a warm cache.
+- `projscan_search` — BM25-ranked search. Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Optional semantic mode + sub-file chunking with the `@xenova/transformers` peer dep.
+- `projscan_coupling` — per-file fan-in / fan-out / instability + Tarjan circular-import cycles.
+- `projscan_pr_diff` — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in.
+- `projscan_review` — one-call PR review composing `pr_diff` + per-changed-file risk + new/expanded cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
+- `projscan_fix_suggest` — rule-driven action prompt for any open issue: headline, why, where, instruction, optional suggested test.
+- `projscan_explain_issue` — deep dive on one issue: code excerpt, related issues, similar past commits via `git log --grep`, plus the structured FixSuggestion.
+- `projscan_impact` — transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Cycle-safe; depth-bounded.
+
+*Analysis:*
+- `projscan_analyze` — full project snapshot.
+- `projscan_doctor` — health score + issues with inline `suggestedAction` hints.
+- `projscan_hotspots` — ranked file risk (or top-N risky functions with `view: "functions"`).
+- `projscan_file` — per-file inspection (purpose, risk, ownership, related issues, CC, fan-in/out, per-function CC table).
+- `projscan_explain` — purpose, imports, exports, smells.
+- `projscan_structure` — directory tree.
+- `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction".
+
+*Dependencies (workspace-aware in monorepos):*
+- `projscan_dependencies` — declared deps + risks, with a `byWorkspace` breakdown.
+- `projscan_outdated` — declared-vs-installed drift (offline), per-package.
+- `projscan_audit` — npm audit, normalized; `package` arg scopes findings to one workspace's direct deps.
+- `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers.
+
+*Workspace:*
+- `projscan_workspaces` — list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna).
+
+**Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field. Tools that return arrays also support cursor pagination via `cursor` + `page_size`.
 
 **Incremental cache:** projscan caches parsed ASTs at `.projscan-cache/graph.json`. First run populates, subsequent runs re-parse only files whose `mtime` changed. Auto-gitignored. Delete the directory to force a rebuild.
 
@@ -1078,7 +1118,7 @@ jobs:
         with: { fetch-depth: 0 }   # needed for --changed-only
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - uses: abhiyoheswaran1/projscan@v0.3.0
+      - uses: abhiyoheswaran1/projscan@v1
         with:
           min-score: '70'
           changed-only: 'true'
