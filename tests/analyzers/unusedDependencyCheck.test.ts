@@ -95,6 +95,22 @@ describe('unusedDependencyCheck', () => {
     expect(issues).toEqual([]);
   });
 
+  it('allowlists tree-sitter-* packages (vendored via wasm, not imported)', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          'tree-sitter-python': '^0.25.0',
+          'tree-sitter-go': '^0.25.0',
+          'tree-sitter-rust': '^0.23.3',
+        },
+      }),
+    );
+    const files = [await writeFile(tmp, 'src/index.ts', '// nothing imported')];
+    const issues = await check(tmp, files);
+    expect(issues.map((i) => i.id)).toEqual([]);
+  });
+
   it('emits package.json location with line number', async () => {
     const pkg = [
       '{',

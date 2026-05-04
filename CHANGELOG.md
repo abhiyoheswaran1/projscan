@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-05-04
+
+A dogfood patch. We ran `projscan doctor` against the projscan repo itself and found four false-positive `unused-dependency` warnings on `tree-sitter-go`, `tree-sitter-java`, `tree-sitter-ruby`, `tree-sitter-rust`. These packages ship a `.wasm` grammar that consumers vendor via a build script (`scripts/copy-wasm.mjs` in our case), not via `import` statements — so the unused-dep analyzer couldn't see the usage. Affected every consumer with tree-sitter dependencies, not just us.
+
+### Fixed
+
+- **`unusedDependencyCheck` allowlists `tree-sitter-*`.** Added the prefix to `IMPLICIT_USE_PREFIXES` so language packages whose value is the vendored wasm grammar (the typical pattern) don't get flagged. New test asserts `tree-sitter-python` / `tree-sitter-go` / `tree-sitter-rust` are quiet when declared but not imported.
+
+### Dogfood
+
+- **CI now runs `projscan ci --min-score 90` against the projscan repo on every PR.** Before this fix the projscan codebase scored D (60/100) under its own analyzer, which would have made any meaningful CI threshold trip on its own false positives. After the fix: A (100/100), zero issues. The 90 threshold is tight enough that any genuine future regression fails the build, with ten points of headroom.
+- **README "Dogfooding" section** documents the loop: current score, the CI step that enforces it, and an honest acknowledgement of which hotspots projscan flags in itself (the reporters — known 2.0-era refactor candidates, not defects).
+
+### Notes
+
+- 859 tests passing (+1 — the new tree-sitter allowlist case).
+- No surface changes; the fix is purely behavioural inside one analyzer.
+- Cache version unchanged; existing caches still valid.
+
 ## [1.1.0] - 2026-05-04
 
 Theme: **"On the Map"** — first minor on the post-1.0 path. Closes the highest-leverage parity gaps. Additive against the [stable surface](docs/STABILITY.md).

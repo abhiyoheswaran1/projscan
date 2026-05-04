@@ -22,6 +22,12 @@ const IMPLICIT_USE_PREFIXES = [
   'babel-preset-',
   'stylelint-plugin-',
   'stylelint-config-',
+  // tree-sitter language packages ship a .wasm grammar that consumers
+  // typically vendor via a build script (copy to dist/grammars/) rather
+  // than `import`-ing. Without this prefix, every codebase using
+  // tree-sitter-python / tree-sitter-go / tree-sitter-rust / etc. via the
+  // wasm-vendor pattern hits a false positive.
+  'tree-sitter-',
 ];
 
 const IMPLICIT_USE_EXACT = new Set([

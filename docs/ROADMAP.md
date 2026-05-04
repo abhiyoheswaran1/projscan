@@ -114,6 +114,12 @@ If you've adopted projscan and want something specific:
 
 ## Recently Shipped
 
+### v1.1.1 - Dogfood patch (2026-05-04)
+- **`unusedDependencyCheck`** allowlists `tree-sitter-*` packages — they ship a `.wasm` grammar that consumers vendor rather than `import`, so the unused-dep analyzer was throwing false positives on every codebase using tree-sitter via the wasm-vendor pattern (including projscan itself).
+- **CI now runs `projscan ci --min-score 90`** against the projscan repo on every PR. The dogfood loop is visible.
+- **README "Dogfooding" section** documents the loop honestly — score, threshold, and an acknowledgement of the hotspots projscan flags in itself.
+- 859 tests passing (+1).
+
 ### v1.1.0 - "On the Map" (2026-05-04)
 - **Rust as a first-class language.** `rustAdapter` parses `.rs` via tree-sitter-rust; full primitive parity with the other six (imports / exports / file CC / per-fn CC / callSites). `crate::` / `self::` / `super::` paths resolve into the workspace; standard-library and crates.io paths classify as external.
 - **`projscan_fix_suggest` template for `eslint-*`** — pulls the rule name out of the issue id, links to the canonical eslint docs URL.

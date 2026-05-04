@@ -27,3 +27,9 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run check:stability
+
+      # Dogfood: run projscan against itself. The CLI is freshly built above.
+      # Threshold 90 because the false-positive ceiling we hit pre-1.1.1 is
+      # gone, and we want CI to fail on any genuine regression.
+      - name: Dogfood (projscan ci against the projscan repo)
+        run: node dist/cli/index.js ci --min-score 90

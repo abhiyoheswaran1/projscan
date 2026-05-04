@@ -308,6 +308,29 @@ If you read projscan's [Socket report](https://socket.dev/npm/package/projscan),
 - **Run it offline:** `npm install -g projscan` followed by anything except `audit` and `--mode semantic` works without network.
 - **Drop privilege further:** in CI, run projscan in a sandbox that disallows network egress; everything except `audit` will pass.
 
+## Dogfooding
+
+projscan runs against itself in CI on every PR. The dogfood loop is the most direct evidence we can offer that the tool works on real code, not just synthetic fixtures.
+
+```sh
+# .github/workflows/ci.yml — runs after the unit tests
+- run: node dist/cli/index.js ci --min-score 90
+```
+
+Current state of the projscan codebase as scored by projscan itself:
+
+| Metric | Value |
+|---|---|
+| Health score | **A (100 / 100)** |
+| Open issues | 0 errors, 0 warnings, 0 info |
+| Circular imports | 0 |
+| Top hotspot | `src/reporters/consoleReporter.ts` (CC 288, 1108 lines) — known refactor candidate, not a defect |
+| Dogfood threshold | `--min-score 90` (CI fails below this) |
+
+The `--min-score 90` threshold is deliberately tight: a regression that drops the score by more than ten points fails the build. The current ten-point margin (90 → 100) is for room to breathe, not slack.
+
+The hotspots projscan finds in itself are real signals — the reporters in particular have grown organically across releases and are candidates for a 2.0-era refactor (tracked in `docs/ROADMAP.md` "Under consideration"). We choose to ship the signal honestly rather than tune the score to hide it.
+
 ## CI/CD Integration
 
 Use `projscan ci` to gate your pipelines:
