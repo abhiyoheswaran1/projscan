@@ -144,6 +144,12 @@ export async function analyzeHotspots(
   hotspots.sort((a, b) => b.riskScore - a.riskScore);
 
   const ranked = hotspots.filter((h) => h.riskScore > 0);
+  const top = ranked.slice(0, limit);
+
+  // 1.5+ — Project Memory hotspot loop. Record the top-K into memory
+  // and back-tag `accepted: true` for files that have crossed the
+  // acceptance threshold. Best-effort; never breaks the report.
+  await markAcceptedHotspots(rootPath, top);
 
   return {
     available: true,
@@ -151,9 +157,33 @@ export async function analyzeHotspots(
       since,
       commitsScanned: countCommits(churnMap),
     },
-    hotspots: ranked.slice(0, limit),
+    hotspots: top,
     totalFilesRanked: ranked.length,
   };
+}
+
+async function markAcceptedHotspots(rootPath: string, top: FileHotspot[]): Promise<void> {
+  try {
+    const { loadMemory, saveMemory, recordHotspots, findAcceptedHotspots } = await import(
+      './memory.js'
+    );
+    const memory = await loadMemory(rootPath);
+    recordHotspots(
+      memory,
+      top.map((h) => ({
+        file: h.relativePath,
+        cc: h.cyclomaticComplexity,
+        churn: h.churn,
+      })),
+    );
+    const accepted = new Set(findAcceptedHotspots(memory).map((o) => o.file));
+    for (const h of top) {
+      if (accepted.has(h.relativePath)) h.accepted = true;
+    }
+    await saveMemory(rootPath, memory);
+  } catch {
+    // best-effort
+  }
 }
 
 // ── Git Integration ───────────────────────────────────────

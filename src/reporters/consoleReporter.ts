@@ -489,17 +489,34 @@ export function reportHotspots(report: HotspotReport): void {
   );
 
   const maxScore = report.hotspots[0]?.riskScore ?? 1;
+  let hasAccepted = false;
   for (let i = 0; i < report.hotspots.length; i++) {
     const h = report.hotspots[i];
     const rank = chalk.bold(String(i + 1).padStart(2, ' ') + '.');
     const scoreLabel = chalk.bold(h.riskScore.toFixed(1).padStart(5, ' '));
     const barPct = Math.min(100, Math.round((h.riskScore / maxScore) * 100));
-    console.log(`  ${rank} ${scoreLabel}  ${bar(barPct, 14)}  ${chalk.cyan(h.relativePath)}`);
+    // 1.5+ — accepted hotspots (Project Memory marked them as
+    // implicitly-accepted load-bearing debt) get a dim [accepted] tag
+    // so users aren't repeatedly pestered about the same files.
+    const acceptedTag = h.accepted ? ` ${chalk.dim('[accepted]')}` : '';
+    if (h.accepted) hasAccepted = true;
+    console.log(
+      `  ${rank} ${scoreLabel}  ${bar(barPct, 14)}  ${chalk.cyan(h.relativePath)}${acceptedTag}`,
+    );
     const reasonStr = h.reasons.length > 0 ? h.reasons.join(', ') : 'ranked by risk';
     console.log(`       ${chalk.dim(reasonStr)}`);
   }
 
-  console.log(chalk.dim(`\n  Tip: run ${chalk.bold.cyan('projscan file <file>')} to drill into a hotspot.\n`));
+  if (hasAccepted) {
+    console.log(
+      chalk.dim(
+        `\n  ${chalk.cyan('▲')} [accepted] = top-5 for ≥ 5 runs over ≥ 7 days without improving (Project Memory).`,
+      ),
+    );
+  }
+  console.log(
+    chalk.dim(`\n  Tip: run ${chalk.bold.cyan('projscan file <file>')} to drill into a hotspot.\n`),
+  );
 }
 
 // ── Report: file (drill-down) ─────────────────────────────

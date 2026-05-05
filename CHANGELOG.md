@@ -49,11 +49,32 @@ A local feedback loop that learns which analyzer rules this specific repo has be
 - **CLI commands: 23 → 24** (added `projscan memory` with three subcommands).
 - **MCP prompt count: 2 → 6.**
 
+### Added — extending the loop
+
+- **`projscan_doctor` adaptive shaping.** Same three-tier pattern that `projscan_review` shipped with: pass `max_cost_tokens` and the doctor reshapes its response *before* serializing. <3000 returns verdict-only (score + grade + per-severity counts); <7000 returns a summary (top-5 issues by severity, no descriptions); otherwise the full issue list. The chosen tier is surfaced as `tier` and lifted into `_cost.tier`.
+- **Doctor surfaces stable-rule tip from Project Memory.** When memory has accumulated ≥ 1 stable rules, the console doctor output includes a one-line tip: "N rules have been open across enough runs to count as accepted. Run `projscan memory stable` to review and silence them." Closes the feedback loop without requiring the agent to know about `projscan_memory`.
+- **`quiet_the_doctor` specialist prompt** *(prompt #7)*. Reads Project Memory's stable-rule list, frames a PR-ready proposal: per-rule rationale, the exact `.projscanrc.json` patch, a verification command, and a rollback note. Single MCP call → committable change.
+- **Hotspot acceptance memory (Project Memory's second loop).** `projscan hotspots` now records the top-K into memory on every run. Files that have ranked top-K for ≥ 5 runs over ≥ 7 days without their CC/churn improving are marked `accepted` — the hotspot reporter tags them as `[accepted]` instead of repeated noise. Surfaced via the new `projscan_memory { action: "accepted" }` subaction.
+
+### Security
+
+- **Pulled in CVE patches via `package.json` overrides.** Five transitive vulnerabilities patched without bumping any direct dependency: `protobufjs` 6.11.5 → 7.5.6 (CVE-2026-41242, RCE in protobuf decoders), `picomatch` 2.3.1 → 2.3.2 (ReDoS in extglob), `brace-expansion` 5.0.4 → 5.0.5 (ReDoS via zero-step), `flatted` 3.4.1 → 3.4.2 (prototype pollution), `postcss` 8.5.8 → 8.5.10 (XSS via stringify). Five remaining `npm audit` alerts are all in the vitest 2.1 dev chain — dev-only, never ships to end users.
+
+### Changed
+
+- `ReviewReport` gains optional `tier` field (1.5+; absent for legacy callers that don't pass `max_cost_tokens`).
+- `FileHotspot` gains optional `accepted: boolean` field (1.5+).
+- `ProjectMemory` gains optional `hotspots` field (1.5+; backward-compatible — older saves are migrated on load).
+- New public functions `selectReviewTier(maxCostTokens)`, `shapeReviewForTier(report, tier)`, `recordHotspots(memory, top)`, `findAcceptedHotspots(memory)`, `forgetHotspot(memory, file)`.
+- New public functions `loadMemory(rootPath)`, `saveMemory(rootPath, memory)`, `recordRun(memory, ids, suppressed)`, `findStableRules(memory)`, `forgetRule(memory, ruleId)` exported from the memory module.
+- **MCP tool count: 21 → 22** (added `projscan_memory`).
+- **CLI commands: 23 → 24** (added `projscan memory` with three subcommands).
+- **MCP prompt count: 2 → 7.**
+
 ### Notes
 
-- The `_cost` sidecar is additive; `max_cost_tokens` is a new optional arg on an existing tool; the four new prompts are additive in the `prompts/list` response; the new `projscan_memory` tool is additive. All pass the stability check.
-- Other tools (`projscan_doctor`, `projscan_hotspots`, etc.) get `_cost.estimatedTokens` automatically but don't yet implement adaptive shaping — they'll continue to honor `max_tokens` for post-hoc truncation. Per-tool adaptive shaping is incremental and lands in patch/minor releases as use cases surface.
-- Project Memory ships only the substrate (record + read + forget) plus the "stable rules" inference. Two further feedback loops — hotspot acceptance memory and per-rule confidence weighting — will land additively in 1.5.x patches as the substrate accumulates real-world signal.
+- The `_cost` sidecar is additive; `max_cost_tokens` is a new optional arg on existing tools; the new prompts are additive in the `prompts/list` response; the new `projscan_memory` tool is additive. All pass the stability check.
+- Project Memory now has both feedback loops in production: stable-rule detection and hotspot acceptance. Per-rule confidence weighting (the third loop) is still on the deferred list — needs more longitudinal data to tune.
 - No new runtime dependencies.
 
 ## [1.4.0] — 2026-05-05

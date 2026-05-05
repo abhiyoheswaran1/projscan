@@ -8,9 +8,14 @@ import {
   recordRun,
   findStableRules,
   forgetRule,
+  recordHotspots,
+  findAcceptedHotspots,
+  forgetHotspot,
   MEMORY_SCHEMA_VERSION,
   STABLE_RULE_RUN_COUNT,
   STABLE_RULE_DAYS,
+  HOT_RUN_COUNT,
+  HOT_DAYS,
 } from '../../src/core/memory.js';
 
 let tmp: string;
@@ -168,5 +173,71 @@ describe('forgetRule', () => {
   it('returns false for unknown rules', async () => {
     const m = await loadMemory(tmp);
     expect(forgetRule(m, 'never-existed')).toBe(false);
+  });
+});
+
+describe('recordHotspots + findAcceptedHotspots (1.5+ second loop)', () => {
+  it('inserts new hotspot observations on first sighting', async () => {
+    const m = await loadMemory(tmp);
+    recordHotspots(m, [
+      { file: 'src/a.ts', cc: 50, churn: 12 },
+      { file: 'src/b.ts', cc: 30, churn: 8 },
+    ]);
+    expect(m.hotspots?.['src/a.ts'].runCount).toBe(1);
+    expect(m.hotspots?.['src/a.ts'].lastCc).toBe(50);
+    expect(m.hotspots?.['src/b.ts'].runCount).toBe(1);
+  });
+
+  it('increments runCount and updates cc/churn on repeat sightings', async () => {
+    const m = await loadMemory(tmp);
+    recordHotspots(m, [{ file: 'src/a.ts', cc: 50, churn: 12 }]);
+    recordHotspots(m, [{ file: 'src/a.ts', cc: 55, churn: 15 }]);
+    recordHotspots(m, [{ file: 'src/a.ts', cc: 55, churn: 16 }]);
+    expect(m.hotspots?.['src/a.ts'].runCount).toBe(3);
+    expect(m.hotspots?.['src/a.ts'].lastCc).toBe(55);
+    expect(m.hotspots?.['src/a.ts'].lastChurn).toBe(16);
+  });
+
+  it('findAcceptedHotspots returns files that pass run-count + age threshold', async () => {
+    const m = await loadMemory(tmp);
+    const longAgo = new Date(Date.now() - (HOT_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+    m.hotspots = {
+      'src/old.ts': {
+        file: 'src/old.ts',
+        firstSeenAt: longAgo,
+        lastSeenAt: new Date().toISOString(),
+        runCount: HOT_RUN_COUNT,
+        lastCc: 60,
+        lastChurn: 20,
+      },
+      'src/recent.ts': {
+        file: 'src/recent.ts',
+        firstSeenAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+        runCount: HOT_RUN_COUNT,
+        lastCc: 60,
+        lastChurn: 20,
+      },
+    };
+    const accepted = findAcceptedHotspots(m);
+    expect(accepted.map((o) => o.file)).toEqual(['src/old.ts']);
+  });
+
+  it('findAcceptedHotspots returns empty when memory has no hotspots field (old save)', async () => {
+    const m = await loadMemory(tmp);
+    delete m.hotspots;
+    expect(findAcceptedHotspots(m)).toEqual([]);
+  });
+
+  it('forgetHotspot drops a single file and returns true', async () => {
+    const m = await loadMemory(tmp);
+    recordHotspots(m, [{ file: 'src/a.ts', cc: 30, churn: 5 }]);
+    expect(forgetHotspot(m, 'src/a.ts')).toBe(true);
+    expect(m.hotspots?.['src/a.ts']).toBeUndefined();
+  });
+
+  it('forgetHotspot returns false for unknown files', async () => {
+    const m = await loadMemory(tmp);
+    expect(forgetHotspot(m, 'src/never-existed.ts')).toBe(false);
   });
 });
