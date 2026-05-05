@@ -29,6 +29,7 @@ import { fixSuggestTool } from './tools/fixSuggest.js';
 import { explainIssueTool } from './tools/explainIssue.js';
 import { impactTool } from './tools/impact.js';
 import { searchTool } from './tools/search.js';
+import { sessionTool } from './tools/session.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -55,6 +56,7 @@ const tools: McpTool[] = [
   explainIssueTool,
   impactTool,
   searchTool,
+  sessionTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

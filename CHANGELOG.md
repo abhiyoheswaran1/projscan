@@ -4,6 +4,32 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-05-05
+
+Theme: **"Session"** — durable cross-invocation state so multiple agent calls (or multiple agents) can see what's been touched in the current session without re-querying git.
+
+### Added
+
+- **`projscan_session` MCP tool + `projscan session` CLI.** New durable session, persisted at `.projscan-cache/session.json`. A new session starts when no previous session exists or when the previous session has been idle for more than 1 hour (configurable). Multiple agents working in the same project share the same session. Subactions:
+  - `current` — session metadata (id, started/last-activity timestamps, touched-file count, event count).
+  - `touched` — list of files touched in this session, sorted by last-touched descending. Filterable by source (`tool-result`, `fs-watch`, `explicit`). Cursor-paginated.
+  - `events` — chronological event log, newest first. Bounded to the most recent 500 entries.
+  - `reset` — discard the current session and start a fresh one.
+- **Auto-touch from tool results.** Every MCP `tools/call` response is scanned for repo-relative file paths (under fields like `file`, `relativePath`, `paths`, `filePath`, `definitions`, `importers`, `reachable`). Found paths land in the session's `touchedFiles` map with source `tool-result`. The `projscan_session` tool itself is excluded so reading the session doesn't pollute it.
+- **Auto-touch from `notifications/file_changed`.** When `projscan mcp --watch` is on, every debounced batch from the file watcher also records the changed paths into the session with source `fs-watch`. Agents can now ask "what's changed on disk during my session?" via `projscan_session { action: "touched", source: "fs-watch" }`.
+- **CLI mirror.** `projscan session` (default subcommand: `current`), `projscan session touched`, `projscan session events`, `projscan session reset`. Supports `--format json` for scripting and `--limit N` on the list views.
+
+### Changed
+
+- **MCP tool count: 20 → 21** (added `projscan_session`).
+- **CLI commands: 22 → 23** (added `projscan session` with four subcommands).
+
+### Notes
+
+- The session is best-effort: write failures (full disk, permission issues) are swallowed so a transient error never breaks a tool call. Last-write-wins if two MCP servers run against the same repo concurrently.
+- Schema is versioned (`schemaVersion: 1`); future changes will detect and migrate older session files instead of crashing.
+- No new runtime dependencies. All session state lives in `.projscan-cache/session.json`, alongside the existing graph cache.
+
 ## [1.3.0] — 2026-05-05
 
 Theme: **"Push, Don't Poll"** — long-running agents stop polling for repo state; the MCP server pushes file-change notifications instead.

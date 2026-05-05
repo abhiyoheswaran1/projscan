@@ -9,6 +9,14 @@ import { applyBudget } from './tokenBudget.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
 import { toContentBlocks } from './chunker.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
+import {
+  loadSession,
+  recordTouch,
+  recordEvent,
+  saveSession,
+  type Session,
+} from '../core/session.js';
+import { extractTouchedPaths } from './sessionTouchScanner.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
@@ -77,6 +85,26 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   let watchHandle: WatchHandle | null = null;
   let watchStartPromise: Promise<void> | null = null;
   const watchEnabled = options.watch === true && options.notify !== undefined;
+
+  // 1.4 — durable cross-invocation session. Lazily loaded on first
+  // tool call, persisted after every touch. Skipping pre-load on init
+  // because the server might never receive a tool call (e.g., the
+  // client only does tools/list and disconnects).
+  let session: Session | null = null;
+  let sessionDirty = false;
+
+  async function ensureSession(): Promise<Session> {
+    if (session) return session;
+    const { session: loaded } = await loadSession(rootPath);
+    session = loaded;
+    return session;
+  }
+
+  async function persistSessionIfDirty(): Promise<void> {
+    if (!session || !sessionDirty) return;
+    await saveSession(rootPath, session);
+    sessionDirty = false;
+  }
 
   async function dispatch(request: JsonRpcRequest): Promise<JsonRpcResponse | null> {
     const id = request.id ?? null;
@@ -169,6 +197,26 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
                 : undefined;
 
             const result = await withProgress(emit, () => handler(args, rootPath));
+
+            // 1.4 — auto-record session touches from any file paths the
+            // tool returned, plus an event for the call itself. The
+            // session tool itself is excluded so reading the session
+            // doesn't pollute it.
+            if (name !== 'projscan_session') {
+              try {
+                const sess = await ensureSession();
+                recordEvent(sess, `tool-call:${name}`);
+                sessionDirty = true;
+                const paths = extractTouchedPaths(result);
+                for (const p of paths) {
+                  recordTouch(sess, p, 'tool-result');
+                }
+                await persistSessionIfDirty();
+              } catch {
+                // Session is best-effort — never break a tool call.
+              }
+            }
+
             const rawMaxTokens = args.max_tokens;
             const maxTokens =
               typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
@@ -279,7 +327,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     if (!options.notify) return;
     const notify = options.notify;
     watchHandle = startWatcher(rootPath, {
-      onChange: ({ paths, graph }) => {
+      onChange: async ({ paths, graph }) => {
         // The watcher fires once on startup with `paths: []` (the initial
         // graph build). Skip it — clients only care about deltas.
         if (paths.length === 0) return;
@@ -293,6 +341,19 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
           },
         });
         notify(payload);
+
+        // 1.4 — also record fs-watch touches in the session so an
+        // agent's later `projscan_session touched` query reflects what
+        // changed on disk during the session.
+        try {
+          const sess = await ensureSession();
+          for (const p of paths) recordTouch(sess, p, 'fs-watch');
+          recordEvent(sess, 'fs-watch:batch', { count: paths.length });
+          sessionDirty = true;
+          await persistSessionIfDirty();
+        } catch {
+          // Best-effort.
+        }
       },
     });
     try {

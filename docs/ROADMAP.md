@@ -52,13 +52,12 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.4 → 1.6 (Q3-Q4 2026)
+### Now — 1.5 → 1.6 (Q3-Q4 2026)
 
-**Theme: "Agent Substrate"** — make projscan the shared source-of-truth for multi-agent setups. This is the strategic bet.
+**Theme: "Agent Substrate"** — make projscan the shared source-of-truth for multi-agent setups. 1.4 "Session" shipped 2026-05-05; the remaining two complete the arc.
 
 | Release | Theme | Bet |
 |---|---|---|
-| **1.4.0 "Session"** | Shared state across agents | New `projscan_session` MCP tool: a durable, cache-backed session that multiple agent invocations can attach to. Agents share a hot graph and a list of "what's been touched this session" without any one of them owning state. Pairs with multi-agent orchestrators. |
 | **1.5.0 "Budgeted by default"** | Cost-aware tool composition | Every tool reports a token-cost estimate alongside its result. New `max_cost_tokens` arg auto-degrades response depth. `projscan_review` becomes adaptive: full review on a budget, summarized at half, verdict-only at quarter. |
 | **1.6.0 "Specialist prompts"** | Agent recipes, not tool docs | Ship a `prompts/` directory of MCP-protocol prompts agents invoke directly: `refactor-hotspot`, `triage-doctor-issues`, `review-this-pr`, `safely-rename-symbol`. Each is a tested composition of projscan tools with the right argument shape. |
 
@@ -106,6 +105,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **1.4.0** (2026-05-05) | Session | Durable cross-invocation session: `projscan_session` MCP tool, auto-touched files, event log |
 | **1.3.0** (2026-05-05) | Push, Don't Poll | MCP `notifications/file_changed` push and registry-aware upgrade preview |
 | **1.2.1** (2026-05-05) | Animated docs | Animated GIFs replace static command screenshots |
 | **1.2.0** (2026-05-05) | Reporter Parity | PHP and C# adapters, HTML reporters, per-function fan-out |

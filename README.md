@@ -20,7 +20,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 20 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get a one-call PR review, request structured fix-action prompts for any open issue, and ask "what breaks if I change this?" via transitive blast-radius analysis - without loading the file tree into its context.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 21 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get a one-call PR review, request structured fix-action prompts for any open issue, ask "what breaks if I change this?" via transitive blast-radius analysis, and share a durable session across multiple agent invocations - without loading the file tree into its context.
 
 Humans get the same thing through the CLI.
 
@@ -622,7 +622,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 20 MCP tools
+### The 21 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
@@ -651,6 +651,9 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 
 **Workspace (0.11):**
 - `projscan_workspaces` - list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna). Use the `name` as the `package` arg on `projscan_hotspots` / `projscan_coupling` to scope.
+
+**Session (1.4):**
+- **`projscan_session`** *(1.4)* - durable cross-invocation session. Subactions: `current` (id + counts), `touched` (files touched this session, sorted by recency, filterable by source: `tool-result` / `fs-watch` / `explicit`), `events` (chronological log), `reset` (start a fresh session). Auto-populated from every tool result and from `notifications/file_changed` push events when `--watch` is on. Lets multiple agents in the same project see "what's been touched here" without re-running git.
 
 ### Context-window budgeting
 
