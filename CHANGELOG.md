@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.5.0] — 2026-05-05
 
-Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, and `projscan_review` adapts its response shape to the budget the caller asks for.
+Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, `projscan_review` adapts its response shape to the budget the caller asks for, and a new set of specialist prompts lets agents invoke a tested composition of tools by name instead of orchestrating each step themselves.
 
-### Added
+### Added — cost-aware tool composition
 
 - **`_cost` sidecar on every tool result.** The MCP server attaches `_cost: { estimatedTokens: N }` to every `tools/call` response automatically. Agents can see what they paid for a call without counting tokens themselves, which makes it cheap to budget tool sequences. Cost is the chars-divided-by-4 approximation of the serialized payload — within roughly ±15% of GPT/Claude tokenizers for code-shaped output.
 - **`max_cost_tokens` arg on `projscan_review`** — adaptive shape budget. The tool picks a tier and reshapes the response *before* serializing, so an agent on a tight budget gets a response sized to fit instead of a truncated full one. Three tiers:
@@ -18,14 +18,24 @@ Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, a
   The chosen tier is surfaced as a top-level `tier` field on the response and lifted into `_cost.tier` so an agent sees it in one place.
 - **Coexistence with `max_tokens`.** `max_cost_tokens` shapes; `max_tokens` truncates. Agents can use either, both, or neither. When both fire, the shaped result is also truncated, and both `_cost` and `_budget` sidecars appear on the response.
 
+### Added — specialist prompts
+
+Four new MCP prompts that compose existing tools into a single agent-callable recipe. Each returns a templated user message pre-filled with live project data, so the agent gets a primed prompt instead of having to orchestrate the underlying tools itself:
+
+- **`refactor_hotspot`** — given a hotspot file, produces a step-by-step refactor plan. Pulls the file detail (purpose, risk score, ownership, per-function CC, related issues) and asks for ordered changes plus risk acknowledgement. Args: `file` (required).
+- **`triage_doctor_issues`** — orders the open health issues by what to fix first. Groups by category, surfaces score impact, and asks for a "critical / important / backlog" plan with a concrete next-action per item. Args: `severity` (optional: `error` / `warning` / `info` / `all`).
+- **`review_this_pr`** — primes the agent with the structural diff, per-file risk, new cycles, risky function additions, and the verdict from `projscan_review`. Asks for a PR-comment-ready review in priority order with an approve / request-changes / comment recommendation. Args: `base`, `head`, `package` (all optional).
+- **`safely_rename_symbol`** — produces an ordered safe-rename checklist for an exported symbol. Pulls the definition site(s), every direct caller, and the transitive blast radius via `projscan_impact`, then asks for a sequenced plan that minimizes risk. Args: `symbol` (required), `to` (optional new name).
+
 ### Changed
 
 - `ReviewReport` gains optional `tier` field (1.5+; absent for legacy callers that don't pass `max_cost_tokens`).
-- New public function `selectReviewTier(maxCostTokens)` and `shapeReviewForTier(report, tier)` exported from the review module.
+- New public functions `selectReviewTier(maxCostTokens)` and `shapeReviewForTier(report, tier)` exported from the review module.
+- **MCP prompt count: 2 → 6.**
 
 ### Notes
 
-- No new MCP tools or CLI commands. `_cost` is an additive sidecar; `max_cost_tokens` is a new optional arg on an existing tool. Both pass the stability check.
+- No new MCP tools or CLI commands. `_cost` is an additive sidecar; `max_cost_tokens` is a new optional arg on an existing tool; the four new prompts are additive in the `prompts/list` response. All pass the stability check.
 - Other tools (`projscan_doctor`, `projscan_hotspots`, etc.) get `_cost.estimatedTokens` automatically but don't yet implement adaptive shaping — they'll continue to honor `max_tokens` for post-hoc truncation. Per-tool adaptive shaping is incremental and lands in patch/minor releases as use cases surface.
 
 ## [1.4.0] — 2026-05-05

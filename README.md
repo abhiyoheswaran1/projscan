@@ -698,9 +698,13 @@ All opt-in - default behavior is unchanged.
 
 projscan caches parsed ASTs at `.projscan-cache/graph.json` (auto-gitignored). First run populates it; subsequent runs re-parse only files whose `mtime` changed. Agent queries on a warm cache are milliseconds, not seconds.
 
-### Prompts (2, parameterized with live project data)
+### Prompts (6, parameterized with live project data)
 - `prioritize_refactoring` - ranked plan grounded in current hotspots
 - `investigate_file` - senior-engineer brief for a specific file
+- **`refactor_hotspot`** *(1.5)* - step-by-step refactor plan for one hotspot file
+- **`triage_doctor_issues`** *(1.5)* - critical / important / backlog ordering of open issues
+- **`review_this_pr`** *(1.5)* - PR-comment-ready review primed with the structural diff and verdict
+- **`safely_rename_symbol`** *(1.5)* - ordered rename + verification checklist via `projscan_impact` blast radius
 
 ### Resources (3, readable on demand)
 - `projscan://health` · `projscan://hotspots` · `projscan://structure`

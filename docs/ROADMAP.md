@@ -52,28 +52,25 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.6 (Q4 2026)
+### Now — 1.6 → 1.9 (Q4 2026 — 2027)
 
-**Theme: "Agent Substrate"** — make projscan the shared source-of-truth for multi-agent setups. 1.4 "Session" and 1.5 "Budgeted by default" shipped 2026-05-05; 1.6 completes the arc.
+**Theme: "Depth and breadth"** — the Agent Substrate arc shipped (1.4 + 1.5). Next: sharpen the depth where it matters and broaden the language coverage where demand pulls us.
 
 | Release | Theme | Bet |
 |---|---|---|
-| **1.6.0 "Specialist prompts"** | Agent recipes, not tool docs | Ship a `prompts/` directory of MCP-protocol prompts agents invoke directly: `refactor-hotspot`, `triage-doctor-issues`, `review-this-pr`, `safely-rename-symbol`. Each is a tested composition of projscan tools with the right argument shape. |
+| **1.6.0 "Cross-repo view"** | Read-only multi-repo intelligence | Useful for monorepo-of-monorepos and for agents that work across multiple repos in tandem (e.g. updating an SDK and its consumer apps). |
+| **1.7.0 "Sub-file embedding refinements"** | Better recall and faster rebuild | Smarter chunking for very long functions; cache invalidation by per-function content hash. |
+| **1.8.0 "Lightweight CFG/DFG hooks"** | Targeted dataflow on hot paths | Not a full Pathfinder-style dataflow engine — just enough to answer "is this value tainted?" / "is this var used after assignment?" inside `projscan_review`. |
+| **1.9.0 "More languages"** | Demand-driven adapter expansion | Kotlin, Swift, C++ in that order. Only if Rust / PHP / C# uptake validates the breadth thesis. |
 
-### Later — 1.7 → 1.9 and 2.0 (2027)
-
-**Theme: "Depth and breadth"** — once we're the obvious pick for breadth and agent-native composition, sharpen the depth.
-
-- **Sub-file embedding refinements.** Better recall, faster rebuild, smarter chunking for very long functions.
-- **Read-only cross-repo view.** Useful for monorepo-of-monorepos and for agents that work across multiple repos in tandem.
-- **Kotlin, Swift, C++ adapters.** Demand-driven; if Rust + PHP + C# don't move the needle, we don't add more.
-- **Lightweight CFG/DFG hooks.** Not a full Pathfinder-style dataflow engine — just enough to answer "is this value tainted?" / "is this var used after assignment?" on hot paths inside `projscan_review`.
-- **HTML report theming.** White-label the HTML output with a project name and logo.
+### Later — 2.0 (2027+)
 
 **2.0 candidates** (breaking; no committed dates):
+
 - Remove deprecated regex-based import/export extractors.
 - Refactor JSON output schemas where optional-field accumulation became cluttered.
 - Plugin API for third-party analyzers and reporters, if it requires interface changes that break the 1.0 contract.
+- HTML report theming. White-label the HTML output with a project name and logo.
 
 ## Non-goals
 
