@@ -201,7 +201,7 @@ Use this when you want a quick "is this project in good shape?" answer without t
 | `--changed-only` | Only report issues on files changed vs base ref |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 
-<img src="npx%20projscan%20doctor.png" alt="npx projscan doctor" width="700">
+<img src="npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 **Severity levels:**
 - **error** (✖) - Problems that should be addressed immediately
@@ -310,7 +310,7 @@ $ projscan ci --min-score 80
 projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
 ```
 
-<img src="npx%20projscan%20ci%20--min-score%2070.png" alt="npx projscan ci" width="700">
+<img src="npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci" width="700">
 
 **Exit codes:**
 - `0` - Score meets or exceeds the threshold
@@ -369,7 +369,7 @@ $ projscan diff
 
 The diff reports four hotspot movements: files that **rose**, **fell**, **appeared**, or were **resolved** since the baseline - alongside the usual new/resolved issue lists.
 
-<img src="npx%20projscan%20diff%20--save-baseline.png" alt="npx projscan diff --save-baseline" width="700">
+<img src="npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
 
 ### fix
 
@@ -408,7 +408,7 @@ Analyzes a single file and explains what it does. Uses regex-based static analys
 - **Exports** - Functions, classes, variables, types, interfaces, default exports
 - **Potential issues** - Files over 500 lines, `console.log` statements, TODO/FIXME comments, usage of `any` type
 
-<img src="npx%20projscan%20explain.png" alt="npx projscan explain" width="700">
+<img src="npx%20projscan%20explain.gif" alt="npx projscan explain" width="700">
 
 ### diagram
 
@@ -418,7 +418,7 @@ projscan diagram
 
 Generates an ASCII architecture diagram. Scans your directory structure and framework detection results to identify architectural layers.
 
-<img src="npx%20projscan%20diagram.png" alt="npx projscan diagram" width="700">
+<img src="npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
 
 ### structure
 
@@ -428,7 +428,7 @@ projscan structure
 
 Renders a tree view of the project directory with file counts per directory.
 
-<img src="npx%20projscan%20structure.png" alt="npx projscan structure" width="700">
+<img src="npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
 
 ### dependencies
 
@@ -438,7 +438,7 @@ projscan dependencies
 
 Deep dive into your project's dependency graph - production/dev counts, package manager, lock file presence, and risk analysis (wildcard versions, `latest` tags, excessive counts).
 
-<img src="npx%20projscan%20dependencies.png" alt="npx projscan dependencies" width="700">
+<img src="npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
 
 ### outdated
 
@@ -553,7 +553,7 @@ projscan badge
 
 Calculates the project health score and generates a [shields.io](https://shields.io) badge you can add to your README.
 
-<img src="npx%20projscan%20badge.png" alt="npx projscan badge" width="700">
+<img src="npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
 
 ### mcp
 
