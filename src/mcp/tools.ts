@@ -30,6 +30,7 @@ import { explainIssueTool } from './tools/explainIssue.js';
 import { impactTool } from './tools/impact.js';
 import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
+import { memoryTool } from './tools/memory.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -57,6 +58,7 @@ const tools: McpTool[] = [
   impactTool,
   searchTool,
   sessionTool,
+  memoryTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

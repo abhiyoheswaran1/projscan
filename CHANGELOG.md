@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.5.0] — 2026-05-05
 
-Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, `projscan_review` adapts its response shape to the budget the caller asks for, and a new set of specialist prompts lets agents invoke a tested composition of tools by name instead of orchestrating each step themselves.
+Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, `projscan_review` adapts its response shape to the budget the caller asks for, a new set of specialist prompts lets agents invoke a tested composition of tools by name, and projscan now learns from how you use it on this specific repo and quiets down the noise over time.
 
 ### Added — cost-aware tool composition
 
@@ -27,16 +27,34 @@ Four new MCP prompts that compose existing tools into a single agent-callable re
 - **`review_this_pr`** — primes the agent with the structural diff, per-file risk, new cycles, risky function additions, and the verdict from `projscan_review`. Asks for a PR-comment-ready review in priority order with an approve / request-changes / comment recommendation. Args: `base`, `head`, `package` (all optional).
 - **`safely_rename_symbol`** — produces an ordered safe-rename checklist for an exported symbol. Pulls the definition site(s), every direct caller, and the transitive blast radius via `projscan_impact`, then asks for a sequenced plan that minimizes risk. Args: `symbol` (required), `to` (optional new name).
 
+### Added — Project Memory
+
+A local feedback loop that learns which analyzer rules this specific repo has been carrying across many runs and surfaces them as candidates to silence — without phoning home, without an LLM, without ever leaving your machine.
+
+- **Persistent on-disk store at `.projscan-memory/memory.json`** (auto-gitignored). Records, per analyzer rule id: when it first surfaced, when it was last seen, how many runs surfaced it, how many runs *fixed* it (rule appeared then disappeared), and whether the user explicitly suppressed it via `.projscanrc disableRules`. Schema is versioned for forward evolution.
+- **Auto-recorded on every `projscan doctor` / `projscan ci` / `projscan analyze` run.** The issue engine folds the run's rule ids into memory as a best-effort side effect; transient disk failures are swallowed so memory never breaks the analyzer pipeline. Stale rules (unseen for ≥ 90 days) are aged out automatically.
+- **`projscan_memory` MCP tool + `projscan memory` CLI.** Subactions:
+  - `current` — aggregate counts (total runs, rules tracked, stable-rule count, last update).
+  - `stable` — rules surfaced across ≥ 3 runs over ≥ 7 days without ever being fixed and not already suppressed. Returns the list plus a ready-to-paste `.projscanrc.json` `disableRules` snippet so you can quiet them in one move.
+  - `runs` — every tracked rule with its full observation history.
+  - `forget` — drop a single rule's history. Useful when you genuinely want a rule to start over.
+- **Privacy-preserving by design.** Memory only stores rule ids and timestamps. No source content, no agent identity, no machine identifiers. The store is a sibling of `.projscan-cache/` and follows the same privacy posture: local-only, gitignored, deletable.
+
 ### Changed
 
 - `ReviewReport` gains optional `tier` field (1.5+; absent for legacy callers that don't pass `max_cost_tokens`).
 - New public functions `selectReviewTier(maxCostTokens)` and `shapeReviewForTier(report, tier)` exported from the review module.
+- New public functions `loadMemory(rootPath)`, `saveMemory(rootPath, memory)`, `recordRun(memory, ids, suppressed)`, `findStableRules(memory)`, `forgetRule(memory, ruleId)` exported from the memory module.
+- **MCP tool count: 21 → 22** (added `projscan_memory`).
+- **CLI commands: 23 → 24** (added `projscan memory` with three subcommands).
 - **MCP prompt count: 2 → 6.**
 
 ### Notes
 
-- No new MCP tools or CLI commands. `_cost` is an additive sidecar; `max_cost_tokens` is a new optional arg on an existing tool; the four new prompts are additive in the `prompts/list` response. All pass the stability check.
+- The `_cost` sidecar is additive; `max_cost_tokens` is a new optional arg on an existing tool; the four new prompts are additive in the `prompts/list` response; the new `projscan_memory` tool is additive. All pass the stability check.
 - Other tools (`projscan_doctor`, `projscan_hotspots`, etc.) get `_cost.estimatedTokens` automatically but don't yet implement adaptive shaping — they'll continue to honor `max_tokens` for post-hoc truncation. Per-tool adaptive shaping is incremental and lands in patch/minor releases as use cases surface.
+- Project Memory ships only the substrate (record + read + forget) plus the "stable rules" inference. Two further feedback loops — hotspot acceptance memory and per-rule confidence weighting — will land additively in 1.5.x patches as the substrate accumulates real-world signal.
+- No new runtime dependencies.
 
 ## [1.4.0] — 2026-05-05
 

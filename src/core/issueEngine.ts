@@ -14,6 +14,7 @@ import { check as pythonTestCheck } from '../analyzers/pythonTestCheck.js';
 import { check as pythonLinterCheck } from '../analyzers/pythonLinterCheck.js';
 import { check as pythonDependencyRiskCheck } from '../analyzers/pythonDependencyRiskCheck.js';
 import { check as pythonUnusedDependencyCheck } from '../analyzers/pythonUnusedDependencyCheck.js';
+import { loadMemory, recordRun, saveMemory } from './memory.js';
 
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
 
@@ -57,5 +58,29 @@ export async function collectIssues(rootPath: string, files: FileEntry[]): Promi
     if (preview) issue.suggestedAction = preview;
   }
 
+  // 1.5.0: Project Memory. Record this run's issue ids so projscan can
+  // surface "stable across N runs" suggestions on future invocations.
+  // Best-effort: any disk failure here is swallowed and does not affect
+  // the returned issues. The user-visible output is unchanged at this
+  // layer; the memory is consumed by the projscan_memory tool / CLI.
+  void recordRunInMemory(rootPath, issues);
+
   return issues;
+}
+
+/**
+ * 1.5.0 — fire-and-forget memory recording. Loads the on-disk memory,
+ * folds in this run's rule ids (and any rule ids the user has
+ * suppressed via .projscanrc disableRules), and persists. Errors are
+ * swallowed; the analyzer pipeline never fails because of memory.
+ */
+async function recordRunInMemory(rootPath: string, issues: Issue[]): Promise<void> {
+  try {
+    const memory = await loadMemory(rootPath);
+    const ids = issues.map((i) => i.id).filter((id): id is string => typeof id === 'string');
+    recordRun(memory, ids);
+    await saveMemory(rootPath, memory);
+  } catch {
+    // best-effort
+  }
 }

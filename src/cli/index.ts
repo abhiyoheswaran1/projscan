@@ -27,6 +27,7 @@ import { registerSearch } from './commands/search.js';
 import { registerCoverage } from './commands/coverage.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerSession } from './commands/session.js';
+import { registerMemory } from './commands/memory.js';
 import { registerBadge } from './commands/badge.js';
 import { registerHelp } from './commands/help.js';
 
@@ -56,6 +57,7 @@ registerSearch();
 registerCoverage();
 registerMcp();
 registerSession();
+registerMemory();
 registerBadge();
 registerHelp();
 
