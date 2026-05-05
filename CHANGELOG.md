@@ -1,724 +1,410 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to projscan are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2026-05-05
+## [1.3.0] — 2026-05-05
 
-Theme: **"Push, Don't Poll"** — third minor on the post-1.0 path. Long-running agents stop polling for repo state; the MCP server pushes file-change notifications instead. Plus opt-in registry lookup for `projscan_upgrade` so the "is there a newer version?" question gets a real answer when the agent has network.
-
-### Added
-
-- **MCP `notifications/file_changed`.** Run `projscan mcp --watch` and the server starts a `node:fs.watch` over the repo. On every debounced batch (200 ms, mirrors the `projscan watch` CLI), the server emits a JSON-RPC notification with the changed paths, the post-update graph size, and a timestamp. Capability advertised under `experimental.fileChanged` on `initialize`, so clients can detect support before subscribing. Off by default — agents that don't ask for it pay nothing for the watcher.
-  - Notification shape: `{ method: "notifications/file_changed", params: { paths: string[], scannedFiles: number, timestampMs: number } }`.
-  - Reuses the `startWatcher` core from 0.16 plus the `incrementallyUpdateGraph` API: the graph is updated in place before each notification fires, so a follow-up `tools/call` sees the new state.
-  - Initial empty-paths tick from the watcher's startup scan is suppressed; clients only see deltas.
-- **`previewUpgrade` registry-fetch path.** New `checkRegistry: true` option (CLI: `projscan upgrade <pkg> --check-registry`; MCP: `projscan_upgrade { check_registry: true }`) hits `https://registry.npmjs.org/<pkg>/latest` for the actual latest version. Default stays offline — `latest` falls back to `installed`. Failures (timeout, non-2xx, malformed body) are non-fatal: the offline preview still returns, with `latestSource: "installed"` and a `registryError` field for the agent to inspect. New `latestSource` field is `"registry"` on success or `"installed"` on failure / when the flag was off.
-  - Scoped names are URL-encoded correctly (`@scope/pkg` → `@scope%2Fpkg`).
-  - 5-second timeout via `AbortController`; configurable via `fetchTimeoutMs`.
-  - Custom `registryUrl` for testing / corporate mirrors.
-
-### Changed
-
-- **`runMcpServer(rootPath, options)` now accepts `{ watch?: boolean }`.** Backwards-compatible — calling without options preserves 1.2 behavior exactly.
-- **`createMcpServer` returns a `close()` method** alongside `handleMessage`. Stops any active watcher; idempotent. Existing tests continue to work without calling close (Node will collect the inactive watcher on shutdown), but transports that own their lifetime should call it.
-- **MCP tool count: 20** (unchanged — no new tools, just an arg on `projscan_upgrade`).
-- **CLI commands: 22** (unchanged — `projscan mcp` gains a `--watch` flag; `projscan upgrade` gains `--check-registry`).
-
-### Deferred
-
-- **Persistent MCP process** (originally listed as a 1.3 stretch). Architectural overlap with the 1.4 "Session" work — durable session state with shared graph across agents is a more general primitive than a daemon socket. Punted to 1.4.
-
-### Notes
-
-- **+8 tests** (925 → 933). New coverage: MCP `notifications/file_changed` (capability advertisement, real fs.watch round-trip, watch-off silence) (4), registry-fetch path (offline default, success, non-2xx fallback, scoped-name encoding) (4).
-- **No new runtime dependencies.** The watcher uses `node:fs.watch` (zero-dep, already in 0.16). Registry fetch uses Node's built-in `fetch` (Node 18+, already required).
-- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The new MCP capability is under `experimental.*` (per the spec), the new fields on `UpgradePreview` are optional, and the new function options have defaults that preserve prior behavior.
-
-## [1.2.1] - 2026-05-05
-
-A docs-only patch. Replaces the nine static `docs/*.png` command screenshots with animated GIFs generated programmatically via [`charmbracelet/vhs`](https://github.com/charmbracelet/vhs), bringing them in line with the three website-hosted recordings (`hero`, `hotspots`, `search`) used at [abhiyoheswaran.com/apps/projscan](https://abhiyoheswaran.com/apps/projscan).
-
-### Changed
-
-- **`docs/*.gif` replace `docs/*.png`** for the nine command demos in the README: `doctor`, `--help`, `structure`, `diagram`, `dependencies`, `explain`, `badge`, `ci --min-score 70`, `diff --save-baseline`. Same `<img>` tags, `.png` → `.gif` swap, ~907 KB total. Recorded with JetBrains Mono 18pt, Catppuccin Latte, 1400×900 frame. Tape sources are throwaway scripts at `/tmp/projscan-{command}.tape`, mirroring the house style established for `hero`, `hotspots`, and `search`.
-
-### Notes
-
-- **No code changes.** Runtime behavior, MCP tool surface, and dependency tree are identical to 1.2.0.
-- **No tarball impact.** `docs/` is not in `package.json#files`, so the npm tarball is unchanged in size.
-- **Why a patch release at all?** The npm-rendered README on npmjs.com points at the static PNGs in 1.2.0; refreshing the README on npm requires a new published version. Bumping to 1.2.1 lets the new GIFs land both in GitHub's repo view and on npm's package page.
-
-## [1.2.0] - 2026-05-05
-
-Theme: **"Reporter Parity"** — second minor on the post-1.0 path. Two new languages, HTML reporters across the diff/coverage commands, and per-function fan-out to round out the per-function metrics started in 0.15.
+Theme: **"Push, Don't Poll"** — long-running agents stop polling for repo state; the MCP server pushes file-change notifications instead.
 
 ### Added
 
-- **PHP as a first-class language.** New `phpAdapter` parses `.php` via tree-sitter-php (~785 KB vendored wasm). Ships the same primitives as the other seven (imports, exports, file-level CC, per-function CC, callSites). Imports cover `use Foo\Bar;`, aliases `use Foo\Bar as Baz`, brace lists `use Foo\{Bar, Baz, Qux}`, `function` / `const` qualifiers, plus `require` / `include` (literal string paths only). Exports are top-level `function_definition`, `class_declaration`, `interface_declaration`, `trait_declaration`, `enum_declaration` — all public at namespace scope by language semantics. Cyclomatic decision points: `if` / `elseif`, `for` / `foreach`, `while` / `do`, each non-default `case` arm, each non-default `match` arm, `catch`, ternary `?:`, and `&&` / `||` / `??` plus the word forms `and` / `or` in `binary_expression`. Per-function CC names methods inside `class` / `interface` / `trait` / `enum` containers as `Type.method`. Project layout reads `composer.json` autoload (PSR-4 prefix → source root, longest-prefix-match resolution); namespace `App\Models\User` lands on `src/Models/User.php` with the conventional layout.
-- **C# as a first-class language.** New `csharpAdapter` parses `.cs` via tree-sitter-c-sharp (~5.2 MB vendored wasm). Imports cover `using System;`, dotted `using System.Collections.Generic;`, aliased `using IntList = System.Collections.Generic.List<int>;`, and `using static System.Console;`. Exports are public top-level `class_declaration` / `record_declaration` / `struct_declaration` / `interface_declaration` / `enum_declaration` / `delegate_declaration`. Cyclomatic decision points: `if`, `for` / `foreach`, `while` / `do`, each non-default `switch_section`, each non-discard `switch_expression_arm`, `catch`, ternary, and `&&` / `||` / `??`. Per-function CC names methods inside types as `Type.method`; constructors are `Type.Type`. Resolution reads `.csproj` files; the project's filename stem is treated as the root namespace and stripped from imports before mapping to a file path.
-- **HTML reporter for `projscan pr-diff`.** A self-contained HTML page with a sortable table of changed files (file / status / hotspot delta / coverage delta / risk delta) plus the diff hotlist. Pass `--format html` to emit. Same data shape as the JSON report; meant for CI artifact uploads where you want a clickable summary.
-- **HTML reporter for `projscan coverage`.** Lists files ordered by priority with coverage percentage, risk score, hotspot rank, and source attribution (LCOV / cobertura / inferred). Rows where `coverage < 50%` AND `risk > 50` get a `danger` class — the "scariest untested files" surface as red. `coverage --format html` emits.
-- **Per-function fan-out across all eight adapters.** `FunctionInfo.callSites` now carries the bare names of internal callees from each function body (deduped, nested-function bodies excluded). `FunctionInfo.fanOut` is the count of those callees that resolve to a function defined elsewhere in the graph (libraries / unknown methods drop). Computed in `buildCodeGraph` after parse, using the same name-based attribution as `fanIn`.
+- **MCP `notifications/file_changed`.** Run `projscan mcp --watch` and the server starts a debounced file watcher over the repo. On every batch it emits a JSON-RPC notification with the changed paths, post-update graph size, and a timestamp. Capability advertised under `experimental.fileChanged` on `initialize`. Off by default.
+- **`projscan upgrade --check-registry`.** Optional network fetch from `registry.npmjs.org/<pkg>/latest` so the preview's "latest" reflects what's actually current, not just what's installed. Default stays offline; failures fall back gracefully with a `registryError` field. Same opt-in works through MCP via `projscan_upgrade { check_registry: true }`.
 
 ### Changed
 
-- **MCP tool count: 20** (unchanged — 1.2 adds languages, reporter formats, and a per-function metric, not new tools).
-- **Languages with full AST: 7 → 9** (PHP and C# added).
-- **Runtime dependencies: 12 → 14** (`tree-sitter-php@^0.23`, `tree-sitter-c-sharp@^0.23`).
-- **Vendored wasm footprint: ~4.5 MB → ~10.5 MB** (`tree-sitter-php.wasm` ~785 KB, `tree-sitter-c_sharp.wasm` ~5.2 MB — the C# grammar is the biggest of the bunch).
-- **`LanguageId` type widened** to `'javascript' | 'python' | 'go' | 'java' | 'ruby' | 'rust' | 'php' | 'csharp'`. Internal type, not part of the stable surface.
-- **`scripts/copy-wasm.mjs`** copies the new php and c-sharp grammars into `dist/grammars/`.
-- **`stability-baseline.json`** unchanged — 1.2 surface is a strict superset of 1.1; the CI guard reports a clean diff.
+- `runMcpServer(rootPath, options)` accepts `{ watch?: boolean }`. Backwards-compatible.
+- `createMcpServer` returns a `close()` method to stop active watchers.
 
-### Notes
+## [1.2.1] — 2026-05-05
 
-- **+67 tests** (858 → 925). New coverage: phpAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package routing (24), php end-to-end fixture (4), csharpAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package routing (23), c# end-to-end fixture (4), language registry lookup for `.php` and `.cs` (2), per-function fan-out (4), HTML reporter prDiff + coverage (6).
-- **No new MCP tools or CLI commands.** Two new HTML formats land under existing `--format` flags; the two new adapters are invoked transparently by every command that takes a file path.
-- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The new `LanguageId` cases and grammar deps are additive.
+### Changed
 
-## [1.1.1] - 2026-05-04
+- Replaced the nine command-demo screenshots in the README with animated GIFs.
 
-A dogfood patch. We ran `projscan doctor` against the projscan repo itself and found four false-positive `unused-dependency` warnings on `tree-sitter-go`, `tree-sitter-java`, `tree-sitter-ruby`, `tree-sitter-rust`. These packages ship a `.wasm` grammar that consumers vendor via a build script (`scripts/copy-wasm.mjs` in our case), not via `import` statements — so the unused-dep analyzer couldn't see the usage. Affected every consumer with tree-sitter dependencies, not just us.
+## [1.2.0] — 2026-05-05
+
+Theme: **"Reporter Parity"** — two new languages, HTML reporters across diff and coverage, and per-function fan-out.
+
+### Added
+
+- **PHP as a first-class language.** AST analysis for `.php` files: imports (`use`, brace lists, aliases, `require`/`include`), public exports (`function`, `class`, `interface`, `trait`, `enum`), file-level and per-function cyclomatic complexity, and call sites. Resolves namespaces via `composer.json` PSR-4 autoload (longest-prefix-match).
+- **C# as a first-class language.** AST analysis for `.cs` files with the same primitives. Imports cover `using`, dotted, aliased, and `using static`. Exports are public top-level types (`class`, `record`, `struct`, `interface`, `enum`, `delegate`). Reads `.csproj` files; the project's filename stem is treated as the root namespace and stripped from imports before mapping to a path.
+- **HTML reporter for `projscan pr-diff`** (`--format html`). Self-contained page with a sortable table of changed files plus the diff hotlist. Suitable for CI artifact uploads.
+- **HTML reporter for `projscan coverage`** (`--format html`). Highlights "scariest untested files" — rows where coverage < 50% AND risk > 50 surface as a `danger` row.
+- **Per-function fan-out across all language adapters.** `FunctionInfo.callSites` carries the bare names of internal callees from each function body (deduped, nested functions excluded). `FunctionInfo.fanOut` is the count of those callees that resolve to a function defined elsewhere in the graph.
+
+### Changed
+
+- Languages with full AST: 7 → 9 (PHP and C# added).
+
+## [1.1.1] — 2026-05-04
 
 ### Fixed
 
-- **`unusedDependencyCheck` allowlists `tree-sitter-*`.** Added the prefix to `IMPLICIT_USE_PREFIXES` so language packages whose value is the vendored wasm grammar (the typical pattern) don't get flagged. New test asserts `tree-sitter-python` / `tree-sitter-go` / `tree-sitter-rust` are quiet when declared but not imported.
+- `unusedDependencyCheck` no longer flags `tree-sitter-*` packages. These ship a `.wasm` grammar that consumers vendor via a build script rather than `import`, so the analyzer couldn't see usage. Affects every project depending on tree-sitter through the wasm-vendor pattern.
 
-### Dogfood
+## [1.1.0] — 2026-05-04
 
-- **CI now runs `projscan ci --min-score 90` against the projscan repo on every PR.** Before this fix the projscan codebase scored D (60/100) under its own analyzer, which would have made any meaningful CI threshold trip on its own false positives. After the fix: A (100/100), zero issues. The 90 threshold is tight enough that any genuine future regression fails the build, with ten points of headroom.
-- **README "Dogfooding" section** documents the loop: current score, the CI step that enforces it, and an honest acknowledgement of which hotspots projscan flags in itself (the reporters — known 2.0-era refactor candidates, not defects).
-
-### Notes
-
-- 859 tests passing (+1 — the new tree-sitter allowlist case).
-- No surface changes; the fix is purely behavioural inside one analyzer.
-- Cache version unchanged; existing caches still valid.
-
-## [1.1.0] - 2026-05-04
-
-Theme: **"On the Map"** — first minor on the post-1.0 path. Closes the highest-leverage parity gaps. Additive against the [stable surface](docs/STABILITY.md).
+Theme: **"On the Map"** — closes the highest-leverage parity gaps.
 
 ### Added
 
-- **Rust as a first-class language.** New `rustAdapter` parses `.rs` files via tree-sitter-rust (~1.1 MB vendored wasm). The adapter ships the same primitives as the other six (imports, exports, file-level CC, per-function CC, callSites). Imports cover plain `use foo::bar;`, brace lists `use foo::{a, b}`, aliases `use foo::bar as baz`, glob `use foo::*`, and re-exports `pub use foo::bar`. Exports are public-by-keyword: any item with a `visibility_modifier` (`pub`, `pub(crate)`, `pub(super)`, `pub(in path)`) — `fn`, `struct`, `enum`, `union`, `trait`, `type`, `const`, `static`, `mod`. Cyclomatic decision points: `if`, `for`, `while`, `loop`, `?` (try expression), each non-wildcard `match` arm, and `&&` / `||` operators in `binary_expression`. Wildcard arms (`_`) and `else` do not count. Per-function CC names methods inside `impl Type { fn m() }` as `Type.m` and trait methods as `Trait.method`. Project layout detection reads `[package] name` from `Cargo.toml` and supports `[workspace]` member resolution. `crate::`, `self::`, `super::` paths resolve into the repo's `src/` tree; standard-library and crates.io paths classify as external.
-- **`projscan_fix_suggest` template for `eslint-*` issue ids.** Pulls the rule name out of the id (`eslint-no-unused-vars` → `no-unused-vars`), produces a tailored headline, and includes the canonical `https://eslint.org/docs/latest/rules/<rule>` URL in `references`. Instruction covers three valid moves in priority order: fix per docs, scoped `eslint-disable-next-line` with a one-sentence rationale, or propose a config change in `eslint.config.js`. Doctor's inline `suggestedAction` hint includes the rule name.
-- **`projscan_fix_suggest` template for `python-type-error-*` issue ids.** Covers mypy / pyright type-checker output. Instruction walks through annotation refinement, type narrowing via `isinstance` / `is not None`, and the typed-ignore form `# type: ignore[<error-code>]` (preferring pinned codes over bare ignores). References mypy and pyright docs.
-- **`tree-sitter-loader` widened** to look in `node_modules/tree-sitter-rust` for the wasm grammar in dev / test mode (production already finds it under `dist/grammars/`).
+- **Rust as a first-class language.** AST analysis for `.rs` files via tree-sitter-rust. Imports cover plain `use`, brace lists, aliases, glob (`use foo::*`), and re-exports (`pub use`). Exports are public-by-keyword for `fn`, `struct`, `enum`, `union`, `trait`, `type`, `const`, `static`, `mod`. Per-function CC names methods inside `impl Type { fn m() }` as `Type.m`. Reads `Cargo.toml`, including `[workspace]` member resolution. `crate::`, `self::`, `super::` paths resolve into the repo; standard-library and crates.io paths classify as external.
+- **`projscan_fix_suggest` template for `eslint-*` issue ids.** Pulls the rule name out of the id (`eslint-no-unused-vars` → `no-unused-vars`) and links to the canonical `https://eslint.org/docs/latest/rules/<rule>` page. Instruction covers fix-per-docs, scoped `eslint-disable-next-line` with rationale, or a config change in priority order.
+- **`projscan_fix_suggest` template for `python-type-error-*` issue ids.** Covers mypy and pyright output with annotation refinement, type narrowing (`isinstance`, `is not None`), and the typed-ignore form `# type: ignore[<error-code>]` (preferring pinned codes over bare ignores).
 
 ### Changed
 
-- **MCP tool count: 20** (unchanged — 1.1 adds languages and templates, not new tools).
-- **Languages with full AST: 6 → 7** (Rust added).
-- **Runtime dependencies: 11 → 12** (`tree-sitter-rust@^0.23.3`).
-- **Vendored wasm footprint: ~3.4 MB → ~4.5 MB** (`tree-sitter-rust.wasm` ~1.1 MB).
-- **`LanguageId` type widened** from `'javascript' | 'python' | 'go' | 'java' | 'ruby'` to also include `'rust'`. Internal type, not part of the stable surface.
-- **`scripts/copy-wasm.mjs`** copies the rust grammar into `dist/grammars/`.
-- **`stability-baseline.json`** unchanged — 1.1 surface is a strict superset of 1.0; the CI guard reports a clean diff.
+- Languages with full AST: 6 → 7 (Rust added).
 
-### Notes
+## [1.0.0] — 2026-05-04
 
-- **+38 tests** (820 → 858). New coverage: rustAdapter parse / imports / exports / cyclomatic / per-function CC / callSites / package-name routing (25), rust end-to-end fixture (graph + coupling + match-arm CC) (4), eslint-* fix-suggest template (4), python-type-error-* fix-suggest template (4), language registry adapter lookup for `.rs` (1).
-- **No new MCP tools or CLI commands.** The two new fix-suggest templates land inside the existing `projscan_fix_suggest` API; the Rust adapter is invoked transparently by every command that takes a file path.
-- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The `LanguageId` widening and the new tree-sitter-rust runtime dep are additive.
+The public no-break commitment release.
 
-## [1.0.0] - 2026-05-04
+The stable surface — MCP tool names + input schemas, CLI command names + documented flags, exit codes, and JSON output keys — is now under semver protection. Breaking it requires a 2.0 with a deprecation cycle (one minor with a stderr warning, then removal in the next major).
 
-**Stable. The public no-break commitment release.**
+This is a label release: the git tree at `v1.0.0` is identical to `v0.17.0` except for the version field and declarative-language touch-ups in the README.
 
-projscan is **agent-first code intelligence**: an MCP server (2025-03-26) plus CLI that lets AI coding agents (Claude Code, Cursor, Windsurf) and humans query a codebase through 20 structured tools. AST parsing for six languages (JavaScript, TypeScript, Python, Go, Java, Ruby). Zero network calls. Eleven runtime dependencies. ~5.8 MB total install.
-
-### What 1.0 means
-
-- **The stable surface — MCP tool names + input schemas, CLI command names + documented flags, exit codes, JSON output keys, the `dist/tool-manifest.json` schema — is now under semver protection.** Breaking any of it requires a 2.0 bump preceded by a deprecation cycle (one minor release with a stderr warning or `deprecated` MCP-tool flag, then removal in the next major). See [`docs/STABILITY.md`](docs/STABILITY.md) for the exact list.
-- **The CI stability guard** (`scripts/check-stability.mjs`) enforces this on every PR. Any rename or removal in the stable surface fails the build. Additions still pass.
-- **The 1.0 surface was earned, not declared.** It survived five additive minor releases (0.13 "Agent Review + Stability Proof" → 0.14 "Agent Fix Loop" → 0.15 "Reach" → 0.16 "Live" → 0.17 "RC + Docs") without a single break. The CI guard never failed. The `stability-baseline.json` shipped in 0.17 is the 1.0 commitment file.
-
-### What's in 1.0
-
-Every feature introduced from 0.1 through 0.17 ships in 1.0. Nothing was removed for the major bump. The 20 MCP tools, 22 CLI commands, six languages, monorepo workspace awareness, per-function cyclomatic complexity, transitive blast-radius analysis, fix-suggest, watch mode, HTML reports — all stable, all under contract.
-
-### Code changes vs. 0.17.0
-
-- **None.** This is a label release. The git tree at `v1.0.0` is identical to `v0.17.0` except for `package.json#version`, the CHANGELOG entry below, ROADMAP closure, and small declarative-language touch-ups in README.md and docs/STABILITY.md (replacing future-tense "after v1.0 ships..." with present-tense "the contract").
-- **One CI workflow improvement** in `.github/workflows/publish.yml`: the publish job now skips with success when the version is already on the npm registry, instead of erroring. This avoids the false-red ❌ that appeared when a release was published locally before the GitHub Release event triggered CI. No effect on the published artifact.
-
-### Tests
-
-820 passing, unchanged from 0.17.0.
-
-### Looking ahead
-
-1.0 is not the end of projscan's roadmap; it's the contract that makes the next chapter sustainable. The post-1.0 backlog (separate `Backlog` section in `docs/ROADMAP.md`) tracks 1.x.y candidates (additive features like new language adapters, more fix-suggest templates, sub-file embedding upgrades) and 2.0 candidates (breaking changes that warrant a major bump, e.g. removing the deprecated regex extractors or refactoring the JSON output schemas).
-
-If you depended on a 0.x release, you can keep using it — npm has all of them. If you upgrade to 1.0, you get the stability guarantee.
-
-## [0.17.0] - 2026-05-02
-
-Theme: **"RC + Docs"** - the fifth and final release on the path to v1.0. No new MCP tools, no new CLI commands. The work is documentation, surface freeze, contributor on-ramp, and a baseline performance number 1.0 will commit to. Everything in 0.17 is preparation for the label-only 1.0 release.
+## [0.17.0] — 2026-05-02
 
 ### Added
 
-- **`docs/GUIDE.md` "The agent journey" section.** Reorganizes the docs around the four-question framing the rest of the product is built around: *diagnose → review → fix → reach → live*. Each phase lists the relevant tools, an explainer, and a typical agent flow. The existing per-command reference is preserved below as the deep-dive section. Contributors and agents can now read the GUIDE top-down without first knowing every tool name.
-- **`README.md` "Security & trust" section.** Direct, structural answer to the supply-chain-scanner alerts every npm package surfaces. Five subsections: what projscan does NOT do (no source exfil, no env-secret reading, no eval, no telemetry, no unprompted writes), what it DOES do with a network-touch table, why supply-chain scanners flag certain patterns and why they're benign here, and how to audit it yourself.
-- **`.github/ISSUE_TEMPLATE/good_first_issue.md`** plus **`.github/seed-issues/`** — eight pre-drafted starter contributor tasks (three new language adapters, two HTML-reporter extensions, one fix-suggest template, one CLI UX polish, one documentation walkthrough). Each is self-contained with mirror-target file paths, a "done" condition, and a difficulty estimate.
-- **`CONTRIBUTING.md` "First-time contributor walkthrough"** - a step-by-step "fork → test → branch → ship" loop for contributors who've never landed a PR on this repo before. Pairs with the seeded issues.
-
-### Changed
-
-- **Surface freeze (`stability-baseline.json` re-baselined).** The cumulative-additions report from 0.13 (`+ MCP tool: projscan_review`, etc.) is now the new zero point. Future check-stability runs report only changes vs. 0.17. This is the surface 1.0 will commit to without modification.
-- **Performance baseline refreshed.** README's Performance table updated with 0.17 numbers from `npm run bench` (cold/warm ms): projscan-itself 612/463 (analyze) ... 439/258 (search); 500-file synthetic 278/268 ... 238/193. These are the reference 1.0 will inherit.
+- Documentation reorganized around the agent journey: diagnose → review → fix → reach → live.
 
 ### Deprecated
 
-- **`extractImports` / `extractExports` regex helpers in `src/core/fileInspector.ts`** are now annotated `@deprecated`. They remain in place because two `projscan_explain` callers still use them as a JS/TS-only fallback when a code graph isn't supplied. The graph-based path is strictly better and is already the primary path in `inspectFile`. These regex extractors are scheduled for removal in a future release (likely 1.1.0 once all `explain` callers are graph-aware). Pre-1.0 deprecation moves fast — no warning cycle until 1.0 ships.
+- `extractImports` / `extractExports` regex helpers in `fileInspector` are now annotated `@deprecated`. They remain in place because two `projscan_explain` callers still use them as a JS/TS-only fallback when a code graph isn't supplied. The graph-based path is strictly better and is already the primary path. Scheduled for removal in a future release.
 
-### Notes
+## [0.16.0] — 2026-04-30
 
-- **No new tests in this release** (820 passing). 0.17 is documentation, deprecation tagging, and contributor scaffolding; no new code paths were added.
-- **No new runtime dependencies.**
-- **No new MCP tools, CLI commands, or stable-surface additions.** The check-stability guard reports a clean diff against the freshly re-baselined `stability-baseline.json`.
-- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓, 0.16 ✓, 0.17 ✓. Next is **1.0.0 "Stable"** — a label-only release that bumps the version, drops the "0.x" hedging from README, and makes the public no-break commitment. The two outstanding 1.0 gates are (a) the CI stability guard staying green across 0.13–0.17 (✓ passed) and (b) at least one external-contributor non-trivial PR merged. The seed-issues directory is the on-ramp for (b).
-
-## [0.16.0] - 2026-04-30
-
-Theme: **"Live"** - the fourth of five releases on the path to v1.0. Keeps the index fresh while the agent works, and unblocks PR-comment / CI-artifact sharing with a standalone HTML report. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+Theme: **"Live"** — keeps the index fresh while the agent works, and unblocks PR-comment / CI-artifact sharing with a standalone HTML report.
 
 ### Added
 
-- **`projscan watch` CLI command - the headline.** Long-running watcher over the repo. Uses `node:fs.watch` (no new runtime dep) with recursive mode. On file change, debounces 200ms then runs the incremental graph update and re-runs `doctor`, printing a one-line status (`[time] N change(s) · score X/100 (grade) · err / warn / info`) plus the changed paths when ≤5. Filters out `.git`, `node_modules`, `dist`, `.projscan-cache`, etc., so noise doesn't trigger re-scans. Clean shutdown on SIGINT/SIGTERM.
-- **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** public API. Targeted re-parse of the listed paths (re-stat → re-parse if changed → drop deletions), followed by an O(N) rebuild of the cross-file derived indexes (`localImporters`, `packageImporters`, `symbolDefs`, per-function `fanIn`). Returns the same graph reference (in-place update). Used by `projscan watch` and exported for callers maintaining their own state.
-- **HTML report export (`--format html`).** New `htmlReporter.ts` with renderers for `doctor`, `hotspots`, `coupling`, `review`, and `impact`. Output is a single self-contained HTML document with inline CSS, no external assets, no JavaScript framework, and a `prefers-color-scheme` aware palette so it renders cleanly in light or dark mode. Suitable for posting as a PR comment or CI artifact.
+- **`projscan watch` CLI command.** Long-running watcher over the repo using `node:fs.watch` (no new runtime dependency). On change, debounces 200 ms then runs the incremental graph update and re-runs `doctor`, printing a one-line status. Filters `.git`, `node_modules`, `dist`, `.projscan-cache`, and similar so noise doesn't trigger re-scans. Clean shutdown on `SIGINT` / `SIGTERM`.
+- **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])` public API.** Targeted re-parse of the listed paths followed by an O(N) rebuild of the cross-file derived indexes. Returns the same graph reference (in-place update).
+- **HTML report export (`--format html`).** Renderers for `doctor`, `hotspots`, `coupling`, `review`, and `impact`. Single self-contained HTML document with inline CSS, no external assets, and a `prefers-color-scheme` aware palette.
 
 ### Changed
 
-- **`ReportFormat`** type widened from `'console' | 'json' | 'markdown' | 'sarif'` to also include `'html'`. The `--format` CLI flag accepts the new value; commands that don't have an HTML renderer continue to fall through to console (no behavior change for those commands).
-- **CLI command list:** `watch` added.
+- `ReportFormat` widened from `'console' | 'json' | 'markdown' | 'sarif'` to also include `'html'`.
 
-### Notes
+## [0.15.0] — 2026-04-27
 
-- **+18 tests** (802 → 820). New coverage: HTML reporter for all 5 supported commands plus the shell-escape path (9), `incrementallyUpdateGraph` for added / edited / deleted / fan-in-recompute / in-place-reference cases (5), `startWatcher` for initial-build / debounced-edit / noise-filter / clean-close (4).
-- **No new runtime dependencies.** `node:fs.watch` is built-in. The HTML reporter is plain template strings; no template engine.
-- **Stable surface:** the new HTML format value, the new CLI command, the new public `incrementallyUpdateGraph` are all additions. `npm run check:stability` reports the additions but does not fail.
-- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓, 0.16 ✓. One more themed release (0.17 "RC + Docs") then the 1.0 label.
-
-## [0.15.0] - 2026-04-27
-
-Theme: **"Reach"** - the third of five releases on the path to v1.0. Answers the question *what breaks if I change this?* before the agent commits to a refactor. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+Theme: **"Reach"** — answers the question *what breaks if I change this?* before the agent commits to a refactor.
 
 ### Added
 
-- **`projscan_impact` MCP tool + `projscan impact` CLI - the headline.** Transitive blast-radius analysis. Two modes:
-  - **File mode**: pass a repo-relative path; returns every file that transitively imports it, ranked by BFS distance (1 = direct importer, 2 = importer of an importer, etc.). Cycle-safe; depth-bounded by `max_distance` (default 10) with a `truncated` flag when the limit is hit.
-  - **Symbol mode**: pass a symbol (export) name; returns the file(s) that define it, the files that directly call it (their `callSites` includes the name), and the transitive importers of those callers. Use this BEFORE renaming or deleting an export.
-  Use the CLI with `--symbol` to switch modes; the MCP tool takes mutually-exclusive `file` or `symbol` args. Supports cursor pagination on the `reachable` array.
-- **Per-function fan-in.** `FunctionInfo` (per-file ASTs) and `FunctionDetail` (public type, surfaced via `projscan_file`) gain an optional `fanIn?: number` field. Computed in `buildCodeGraph` after parse: for each function name, count the OTHER files whose `callSites` include the bare name. Self-calls within the defining file don't count. Class methods (`Class.method`) match against bare-name callSites. The number is approximate (shared names attribute to every definition) and documented as such; useful as a "is anyone using this?" / "what's load-bearing?" signal.
-- **Sub-file embeddings (per-function semantic chunks).** Opt-in semantic-search mode that embeds each function separately instead of each file. Set `sub_file: true` on `projscan_search` (or `--sub-file` on the CLI) when running in `mode: "semantic"`. Cache key per chunk is `<file>#<fn-name>`, so editing one function doesn't re-embed siblings. Hits return a `function: { name, startLine, endLine }` field pointing at the matched function. Files with no extracted functions (configs, READMEs) still get a file-level embedding so coverage is uniform. Backward-compatible: file-level remains the default.
+- **`projscan_impact` MCP tool + `projscan impact` CLI.** Transitive blast-radius analysis. Two modes:
+  - **File mode**: pass a repo-relative path; returns every file that transitively imports it, ranked by BFS distance.
+  - **Symbol mode**: pass a symbol name; returns the file(s) that define it, the files that directly call it, and the transitive importers of those callers.
+  Cycle-safe; depth-bounded by `max_distance` (default 10) with a `truncated` flag when the limit is hit. Use this BEFORE renaming or deleting an export.
+- **Per-function fan-in.** `FunctionInfo` and `FunctionDetail` gain optional `fanIn?: number`. Counts how many other files include the function's bare name in their call sites. Useful as a "is anyone using this?" signal.
+- **Sub-file embeddings.** Opt-in semantic-search mode that embeds each function separately instead of each file. Set `sub_file: true` on `projscan_search` (or `--sub-file` on the CLI) when running in semantic mode. Hits return a `function: { name, startLine, endLine }` field pointing at the matched function.
 
 ### Changed
 
-- **MCP tool count: 19 → 20** (added `projscan_impact`).
-- **`projscan_search`** input schema gains `sub_file?: boolean`. Output `matches[]` gain optional `function` field on semantic-mode hits when sub-file is enabled.
-- **`projscan_file`** `functions[]` entries gain optional `fanIn?: number`. Console + markdown reporters surface a fan-in column in the per-function table.
-- **`SearchHit`** type gains optional `function` field (mirrors the semantic-mode hit shape).
-- **Semantic-search cache version: v1 → v2**. v1 caches are discarded silently and rebuilt on first 0.15 run - no user action required. The schema change is the composite-key + per-chunk function-context fields.
-- **`FunctionInfo`** (internal) gains optional `fanIn?: number`. **`FunctionDetail`** (public) mirrors it.
+- MCP tool count: 19 → 20 (added `projscan_impact`).
+- Semantic-search cache version bumped; old caches are discarded silently and rebuilt on first run.
 
-### Notes
+## [0.14.0] — 2026-04-26
 
-- **+22 tests** (780 → 802). New coverage: `computeImpact` file + symbol modes including cycles + truncation + missing definitions (12), per-function fan-in across multi-file graphs (4), `buildChunks` extraction including subFile-without-graph fallback and per-function chunk hashing (6).
-- **No new runtime dependencies.** Sub-file embeddings reuse the existing `@xenova/transformers` peer dep; impact analysis is pure graph traversal.
-- **Stable surface unchanged for existing tools.** The new tool, the new arg, and the new optional fields are all additions. `npm run check:stability` reports the additions but does not fail.
-- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 ✓. Two more themed releases (0.16 "Live", 0.17 "RC + Docs") then the 1.0 label.
-
-## [0.14.0] - 2026-04-26
-
-Theme: **"Agent Fix Loop"** - the second of five releases on the path to v1.0. Closes the diagnose → fix half of the agent's loop: projscan was already great at telling agents *what's wrong*, now it tells them *what to do about it*, in structured form. Additive against the [stable surface](docs/STABILITY.md); the v1.0 stability proof continues.
+Theme: **"Agent Fix Loop"** — closes the diagnose → fix half of the agent's loop. projscan was already great at telling agents *what's wrong*; now it tells them *what to do about it*, in structured form.
 
 ### Added
 
-- **`projscan_fix_suggest` MCP tool + `projscan fix-suggest` CLI - the headline.** Rule-driven action prompt for any open issue. Input: an `issue_id` (from `projscan_doctor` / `projscan_analyze`) OR a `file` + `rule` pair when the agent wants guidance for a class of issue without first running doctor. Output: a structured `FixSuggestion` with `headline` (one-line "what's wrong"), `why` (severity-anchored explanation), `where` (issue locations), `instruction` (one-paragraph "what to do" the agent can paste into its plan), and optional `suggestedTest` / `relatedFiles` / `references`. Hand-tuned templates for ~12 common issue id families (unused-dependency, dep-risk-no-lockfile, audit-*, cycle-detected-*, large-*-dir, dead-code, missing-test/lint/format, cross-package-violation-*) plus a severity-anchored generic fallback so every issue gets *some* useful guidance. **No LLM inside projscan**: the driving agent is the LLM, and projscan supplies the structured prompt.
-- **`projscan_explain_issue` MCP tool + `projscan explain-issue` CLI.** Deep-dive on one open issue: severity, surrounding code excerpt (3 lines either side, configurable), other open issues touching the same file, **similar past commits via `git log --grep=<rule>`** (so an agent can see how teammates have addressed this issue type before), plus the structured `FixSuggestion`. Use this when an agent wants more context than `projscan_doctor` gives - typically before applying a fix.
-- **Inline `suggestedAction` in `projscan_doctor`.** Each issue returned by `projscan_doctor` and `projscan_analyze` now carries an optional `suggestedAction: { summary }` field - a one-line hint pointing at the fix-suggest pipeline. Console + markdown reporters surface it inline (`→ <hint> (projscan fix-suggest <id>)`); JSON output includes the structured field. Field is absent for issues with no template match (preserves backward compatibility).
-- **Cross-package import policy analyzer.** New `crossPackageImportCheck` analyzer runs in monorepos. Reads `.projscanrc` `monorepo.importPolicy: [{from, allow?, deny?}]` and walks the cross-package edges already detected by `computeCoupling`. Each policy violation becomes one `cross-package-violation-N` issue (severity warning, category architecture). Allow-list semantics: if `allow` is set and the target isn't in it, the edge is denied. Glob support: `*`, `pkg/*`, `*/sub`. Off by default - the analyzer is a no-op until you configure rules. Capped at 50 violations per run to keep doctor output bounded.
+- **`projscan_fix_suggest` MCP tool + `projscan fix-suggest` CLI.** Rule-driven action prompt for any open issue. Input: an `issue_id` (from `projscan_doctor` / `projscan_analyze`) OR a `file` + `rule` pair. Output: a structured `FixSuggestion` with `headline`, `why`, `where`, `instruction`, and optional `suggestedTest` / `relatedFiles` / `references`. Hand-tuned templates for ~12 common issue id families plus a severity-anchored generic fallback. **No LLM inside projscan** — the driving agent is the LLM, and projscan supplies the structured prompt.
+- **`projscan_explain_issue` MCP tool + `projscan explain-issue` CLI.** Deep-dive on one open issue: severity, surrounding code excerpt, other open issues touching the same file, similar past commits via `git log --grep=<rule>`, plus the structured `FixSuggestion`.
+- **Inline `suggestedAction` on issues.** Each issue from `projscan_doctor` and `projscan_analyze` carries an optional `suggestedAction: { summary }` field. Console and markdown reporters surface it inline (`→ <hint> (projscan fix-suggest <id>)`).
+- **Cross-package import policy analyzer for monorepos.** Reads `.projscanrc` `monorepo.importPolicy: [{from, allow?, deny?}]` and walks cross-package edges. Each violation surfaces as a `cross-package-violation-N` issue (severity warning, category architecture). Glob support: `*`, `pkg/*`, `*/sub`. Off by default; capped at 50 violations per run.
 
 ### Changed
 
-- **MCP tool count: 17 → 19** (added `projscan_fix_suggest`, `projscan_explain_issue`).
-- **`Issue`** type gains an optional `suggestedAction?: { summary: string }` field.
-- **`ProjscanConfig`** gains an optional `monorepo?: { importPolicy?: ImportPolicyRule[] }` block (additive).
-- **`projscan_doctor`** description unchanged but the response shape is enriched with `suggestedAction` per issue. Agents already calling doctor get the new field automatically; clients that don't read it see no behavior change.
-- **Console reporter** for `doctor` now shows the fix hint and the `projscan fix-suggest <id>` callable on every actionable issue. Markdown reporter emits a `**Action:** ... (\`projscan fix-suggest <id>\`)` bullet.
+- MCP tool count: 17 → 19 (added `projscan_fix_suggest`, `projscan_explain_issue`).
 
-### Notes
+## [0.13.0] — 2026-04-26
 
-- **+21 tests** (759 → 780). New coverage: fix-suggest template registry across 11 issue families + fallback (11), `explainIssue` with synthetic git fixtures (5), cross-package import policy across allow/deny/allow-list-miss/single-package (5).
-- **No new runtime dependencies.** The fix-suggest registry is plain TS; explainIssue shells out to `git log --grep` (which projscan already uses for hotspots).
-- **Stable surface unchanged for existing tools.** The two new tools are additions; the new `Issue.suggestedAction` field is optional and additive. `npm run check:stability` reports the additions but does not fail.
-- **Path to 1.0:** 0.13 ✓, 0.14 ✓, 0.15 "Reach" next (transitive call-graph reachability + sub-file embeddings).
-
-## [0.13.0] - 2026-04-26
-
-Theme: **"Agent Review + Stability Proof"** - the first of five releases on the path to v1.0. Each release in that path is additive against the [stable surface](docs/STABILITY.md) so the v1.0 commitment stands on a track record, not just intent. See `docs/ROADMAP.md` for the full plan (0.13 → 0.14 "Agent Fix Loop" → 0.15 "Reach" → 0.16 "Live" → 0.17 "RC + Docs" → 1.0).
+Theme: **"Agent Review"**
 
 ### Added
 
-- **`projscan_review` MCP tool + `projscan review` CLI - the headline.** One-call PR review for the agent: composes the structural diff (`pr_diff`) with per-changed-file risk scores (hotspot semantics), new/expanded import cycles, risky function additions (high-CC adds or significant CC jumps), and dependency changes across the root + every workspace manifest. Returns a verdict (`ok` | `review` | `block`) and a one-line summary. Defaults: `base=origin/main` (falls back to main/master/HEAD~1), `head=HEAD`. `--package <name>` (or `package` MCP arg) scopes every section to a single workspace. Markdown reporter output is suitable for posting as a PR comment.
-- **Per-function cyclomatic complexity.** `LanguageAdapter.parse()` now returns `functions: [{name, line, endLine, cyclomaticComplexity}]` for all six adapters (JS/TS via Babel, Python/Go/Java/Ruby via tree-sitter walkers). Names are qualified for methods (`Class.method`), constructors (`Class.<init>` for Java), and Go methods (`Receiver.Method`). Each function's CC is computed over its own body only; nested functions emit their own entries and don't inflate the parent's CC. Persisted in the code graph and the index cache (`.projscan-cache/` bumps from v3 to v4; v3 caches are discarded silently and rebuilt). Surfaced in `projscan_file` (new `functions` field, sorted by CC desc) and via a new `view: "functions"` arg on `projscan_hotspots` that flattens results into the top-N riskiest functions across hotspot files.
-- **Cycle promotion to `projscan_doctor`.** `cycleCheck` analyzer lifts Tarjan-detected circular imports from the coupling output into the doctor issue list as new `cycle-detected-N` issues (severity warning, category architecture). Each cycle yields one issue with up to 8 file locations; runs cap at 20 cycles to keep doctor output bounded on pathological codebases. Agents that call `projscan_doctor` (which previously didn't surface cycles) now see them inline.
-- **Workspace-aware `dependencies` and `audit`.** Closes the 0.11 monorepo carry-over.
-  - `analyzeDependencies` walks every workspace manifest plus the root, returning aggregate totals across all manifests plus a `byWorkspace` breakdown (`{workspace, relativePath, isRoot, totalDependencies, totalDevDependencies, risks}`). `DependencyRisk` gains an optional `workspace` field. Single-package repos see no `byWorkspace` field (backward-compatible).
-  - `projscan dependencies` CLI gains `--package <name>`; `projscan_dependencies` MCP tool gains a `package` arg.
-  - `projscan audit` CLI gains `--package <name>`; `projscan_audit` MCP tool gains a `package` arg. The audit itself still runs against the root lockfile (which is what npm needs for transitive resolution); when `package` is supplied, findings are filtered to those whose name appears as a direct dep or dev-dep in the named workspace's manifest.
-- **Stable-surface CI guard (`scripts/check-stability.mjs`).** Diffs the live MCP tool inventory + CLI command list + exit codes against a checked-in `stability-baseline.json`. Additions print but pass; removals or renames fail the check. Wired into CI (`npm run check:stability`). The guard is what *proves* the [stability contract](docs/STABILITY.md) holds across a release cycle - the v1.0 gate. Baseline is regenerated only on deliberate major-version bumps via `node scripts/check-stability.mjs --update`.
-- **Reference-repo benchmark (`scripts/bench-references.mjs`, `npm run bench:references`).** Shallow-clones microsoft/TypeScript, django/django, and kubernetes/client-go into `.bench-cache/` (gitignored) and runs the standard suite (analyze, doctor, hotspots, coupling, search) against each. Restrict to one target with `-- --only ts|django|k8s-client-go`. Designed to be reproducible on the maintainer's machine; numbers in the README's Performance section come from this script over time.
+- **`projscan_review` MCP tool + `projscan review` CLI.** One-call PR review for the agent: composes the structural diff with per-changed-file risk scores, new/expanded import cycles, risky function additions (high-CC adds or significant CC jumps), and dependency changes across the root and every workspace manifest. Returns a verdict (`ok` | `review` | `block`) and a one-line summary. Defaults: `base=origin/main` (falls back to main/master/`HEAD~1`), `head=HEAD`. `--package <name>` (or `package` MCP arg) scopes to a single workspace. Markdown reporter output is suitable for posting as a PR comment.
+- **Per-function cyclomatic complexity.** `LanguageAdapter.parse()` returns `functions: [{name, line, endLine, cyclomaticComplexity}]` for every adapter. Names are qualified for methods (`Class.method`), constructors (`Class.<init>` for Java), and Go methods (`Receiver.Method`). Surfaced via `projscan_file` and a new `view: "functions"` arg on `projscan_hotspots` that flattens results into the top-N riskiest functions.
+- **Cycle promotion to `projscan_doctor`.** Tarjan-detected circular imports lift from coupling output into the doctor issue list as `cycle-detected-N` issues (severity warning, category architecture). Each cycle yields one issue with up to 8 file locations; capped at 20 cycles per run.
+- **Workspace-aware `dependencies` and `audit`.** `--package <name>` flag (CLI) and `package` arg (MCP) scope to a single workspace. `DependencyReport` gains an optional `byWorkspace` field; `DependencyRisk` gains an optional `workspace` field. Backwards-compatible — both absent for single-package repos.
 
 ### Changed
 
-- **MCP tool count: 16 → 17** (added `projscan_review`).
-- **Cache version: v3 → v4** (per-function CC persisted; v3 caches discarded on first 0.13 run, rebuilt automatically - no user action required).
-- **`projscan_file`** returns an additional `functions` field (sorted by CC desc; absent when the file has no AST-parsed functions). Console + markdown reporters surface a "Functions (top by CC)" section.
-- **`projscan_hotspots`** gains a `view: "files" | "functions"` arg. The default (`"files"`) is unchanged. With `"functions"`, the response shape becomes `{available, view: "functions", functions: [{file, name, line, endLine, cyclomaticComplexity, fileRiskScore}], totalFunctionsRanked, ...}` (paginated).
-- **`projscan_dependencies`** description updated to mention the `byWorkspace` breakdown.
-- **`projscan_audit`** description updated to mention the `package` scope.
-- **`DependencyReport`** gains an optional `byWorkspace` field. **`DependencyRisk`** gains an optional `workspace` field. Both are absent for single-package repos (backward-compatible).
+- MCP tool count: 16 → 17 (added `projscan_review`).
+- Cache version bumped to persist per-function CC; old caches discarded on first run.
 
-### Roadmap
-
-`docs/ROADMAP.md` rewritten with the **Path to v1.0** - five themed releases (0.13 → 0.17) plus a label-only 1.0. Each gates v1.0 by being additive against the stable surface; together they answer the four questions an agent has at every PR or refactor moment: *what's wrong, is this PR safe, what should I change, and what breaks if I do?*
-
-### Notes
-
-- **+5 MCP tool args, +1 MCP tool, +1 CLI command** vs 0.12.0. Stable-surface guard reports these as additions; no removals or renames.
-- **No new runtime dependencies.** Reuses the existing tree-sitter grammars + Babel parser.
-- **+40 tests** (719 → 759). New coverage: per-function CC across all six adapters (24), cycle promotion (4), workspace-aware dependencies (7), `computeReview` integration against real git fixtures (5).
-- **Behavior preserved** for all single-package repos. Non-monorepo `projscan dependencies` / `projscan audit` runs are byte-identical to 0.12.
-
-## [0.12.0] - 2026-04-25
+## [0.12.0] — 2026-04-25
 
 ### Added
 
-- **Java as a first-class language.** `javaAdapter` parses `.java` files via tree-sitter-java (~405 KB vendored wasm). Imports cover typed (`import java.util.List;`), wildcard (`import java.util.*;`), and static (`import static java.lang.Math.PI;`) forms. Exports are public top-level types: `class`, `interface`, `enum`, `record` (Java 14+), `annotation_type`. Cyclomatic complexity counts `if`, `ternary`, `for`, `enhanced_for`, `while`, `do`, `case` (default does not count), `catch`, and `binary_expression` with `&&`/`||`. Call sites cover `method_invocation` and `object_creation_expression` (constructor calls). Source-root resolution prefers conventional Maven/Gradle layouts (`src/main/java`, `src/test/java`); falls back to file-layout inference. Imports prefixed by a known source root resolve into the repo; stdlib and third-party imports are external.
-- **Ruby as a first-class language.** `rubyAdapter` parses `.rb` files via tree-sitter-ruby (~2.0 MB vendored wasm). Imports cover `require`, `require_relative`, `load`, and `autoload`. Exports are top-level `class`, `module`, and `def`. Cyclomatic complexity counts `if`, `elsif`, `unless`, `while`, `until`, `for`, each `when` (the `case` itself does not count), `rescue`, `conditional` (ternary), and `binary` with `&&`/`||`/`and`/`or`. Call sites exclude the `require` family so they don't pollute "who calls X" lookups. Project layout detection covers gem (`Gemfile` / `*.gemspec` → `lib/`), Rails (`config/application.rb` → `app/`, `lib/`, `config/`), and plain. `require_relative` resolves against the importing file's directory; `require` probes each detected source root.
-- **`callSites` extraction for Python and Go.** tree-sitter `call_expression` walkers mirror the existing JS/TS behaviour. "Who calls `foo()`?" now works on Python and Go repos, not just JavaScript.
-- **Workspace-aware `outdated`.** In a monorepo, `projscan outdated` (and `projscan_outdated` MCP tool) now scans each workspace package's `package.json` individually. Each result entry carries the workspace it came from. The `--package <name>` flag (CLI) and `package` argument (MCP) scope to one workspace. `OutdatedReport.byWorkspace` provides per-package counts.
-- **Workspace-aware unused-dependency check.** When a monorepo is detected, `unusedDependencyCheck` runs once per workspace package: each manifest is checked against imports from only the source files under that package's directory. Issue locations point at the right `<workspace>/package.json:<line>` so GitHub Code Scanning annotations land where the dep is declared. The root manifest is checked against files NOT claimed by any workspace package. `audit` continues to use `npm audit`, which already reads the root lockfile and so covers all npm/yarn workspace deps automatically; pnpm-per-package audit fan-out is deferred.
-- **Semantic-search discoverability hint.** When `projscan search` runs without `@xenova/transformers` installed (the optional peer that powers semantic mode), it prints a one-line tip on stderr after the BM25 results. README gains an `## Optional features` section so users learn the option exists.
-- **Performance benchmark suite.** New `npm run bench` (`scripts/bench.mjs`) measures cold/warm timing for `analyze`, `doctor`, `hotspots`, `coupling`, `search` against the projscan repo and a 500-file synthetic fixture. Reference numbers published in the README.
-- **`docs/STABILITY.md`.** Documents the stable surface (CLI command + flag names, MCP tool names + input schemas, JSON output keys, exit codes, tool-manifest schema) vs the unstable surface (internal modules, score magnitudes, console-format whitespace, cache layout). Sets the contract that v1.0 will commit to.
-- **`CONTRIBUTING.md` "Areas wanting help" section.** Concrete on-ramps for new contributors - language adapters, analyzers, reporters, MCP tools, documentation gaps - each scoped to fit a first PR.
-
-### Internal restructure
-
-- **`src/cli/index.ts` split**: 1,582-line god-file → 50-line dispatcher + `src/cli/_shared.ts` (helpers, `program`, banner / config wiring) + `src/cli/commands/<cmd>.ts` (one file per CLI subcommand, 11–263 LOC each). Public CLI surface is unchanged; only the internal layout moved.
-- **`src/mcp/tools.ts` split**: 925-line god-file → 58-line barrel + `src/mcp/tools/_shared.ts` (helpers like `PACKAGE_ARG_SCHEMA`, `resolvePackageFilter`, `isPythonDominated`, `sliceTree`) + `src/mcp/tools/<tool>.ts` (one file per MCP tool, 15–194 LOC each). The exported `getToolDefinitions` / `getToolHandler` API and the `tools.ts` import path are unchanged.
+- **Java as a first-class language.** AST analysis for `.java` files via tree-sitter-java. Imports cover typed (`import java.util.List;`), wildcard (`import java.util.*;`), and static (`import static java.lang.Math.PI;`) forms. Exports are public top-level types (`class`, `interface`, `enum`, `record`, `annotation_type`). Source-root resolution prefers conventional Maven/Gradle layouts (`src/main/java`, `src/test/java`).
+- **Ruby as a first-class language.** AST analysis for `.rb` files via tree-sitter-ruby. Imports cover `require`, `require_relative`, `load`, `autoload`. Exports are top-level `class`, `module`, `def`. Project layout detection covers gem (`Gemfile` / `*.gemspec` → `lib/`), Rails (`config/application.rb` → `app/`, `lib/`, `config/`), and plain.
+- **`callSites` extraction for Python and Go.** "Who calls `foo()`?" now works on Python and Go repos.
+- **Workspace-aware `outdated`.** Per-package result entries; `--package <name>` flag (CLI) and `package` arg (MCP) to scope.
+- **Workspace-aware unused-dependency check.** Each manifest is checked against imports under that package's directory.
+- **Semantic-search discoverability hint.** `projscan search` prints a one-line tip on stderr when the optional semantic peer is missing.
 
 ### Removed
 
-- **Telemetry subsystem.** `projscan_telemetry` MCP tool, `projscan telemetry` CLI command, `src/core/telemetry.ts`, the `.projscanrc` `telemetry` config block, and the `PROJSCAN_TELEMETRY` env override are all gone. The opt-in local JSONL writer was paying disk-write cost and code-maintenance cost without an aggregation pipeline behind it. If telemetry returns it will be remote-sink-with-dashboard or not at all. **Migration**: nothing required if telemetry was off (the default). If you opted in via `.projscanrc` `telemetry.enabled: true`, that key is now silently ignored. Delete any accumulated JSONL events at `~/.projscan/telemetry.jsonl` if you want to reclaim the space.
+- **Telemetry subsystem.** `projscan_telemetry`, `projscan telemetry`, the `.projscanrc` `telemetry` block, and the `PROJSCAN_TELEMETRY` env override are gone. The opt-in local JSONL writer was paying maintenance cost without an aggregation pipeline behind it.
+  - **Migration**: nothing required if telemetry was off (the default). If enabled, the config key is now silently ignored. Delete any accumulated JSONL events at `~/.projscan/telemetry.jsonl` to reclaim the space.
 
 ### Changed
 
-- **MCP tool count: 17 → 16** (dropped `projscan_telemetry`; added none).
-- **Supported languages with full AST: 4 → 6** (Java, Ruby added).
-- **Runtime dependencies: 9 → 11** (`tree-sitter-java@^0.23.5`, `tree-sitter-ruby@^0.23.1`).
-- **Vendored wasm footprint: ~850 KB → ~3.3 MB** (tree-sitter-ruby is the bulk at ~2 MB; the grammar covers Ruby's complex syntax).
-- **`OutdatedPackage` interface** gains an optional `workspace?: string` field. `OutdatedReport` gains an optional `byWorkspace?` summary array. Both are absent for non-monorepo single-package scans (backward-compatible).
-- **`LanguageId` type** widened from `'javascript' | 'python' | 'go'` to include `'java' | 'ruby'`.
+- MCP tool count: 17 → 16 (dropped `projscan_telemetry`).
+- Languages with full AST: 4 → 6 (Java, Ruby added).
 
-### Notes
-
-- 719 tests passing (+60 over 0.11). New coverage: Java imports/exports/CC/callSites/resolveImport (+27), Ruby imports/exports/CC/callSites/resolveImport (+29), Python callSites (+8), Go callSites (+6), workspace-aware outdated (+3), language registry adapter lookups for Java/Ruby (+2). Removed: telemetry tests (−15).
-- No behaviour change for existing JS/TS/Python/Go projects beyond the `callSites` enrichment for Python and Go (additive).
-- Cache version unchanged at v3.
-
-## [0.11.0] - 2026-04-25
+## [0.11.0] — 2026-04-25
 
 ### Added
 
-- **AST-derived cyclomatic complexity** in `LanguageAdapter.parse()` for JS/TS (Babel decision-point counter) and Python (tree-sitter walk). Per-file CC is persisted in the code graph and the index cache. Counted decision points: `if`, `else if`/`elif`, `for`/`for-in`/`for-of`/`for_in_clause`, `while`/`do-while`, `case` (default does not count), `catch`/`except`, `?:`, `&&`/`||`/`??`, `and`/`or`, comprehension `if`. Optional chaining and `else` do not count.
-- **CC replaces LOC in the hotspot risk score.** `complexityWeight` and `hotChurnXComplexity` terms now read CC. Files outside the language-adapter set keep the LOC fallback so behaviour degrades gracefully.
-- **`projscan_coupling` MCP tool + `projscan coupling` CLI** - per-file fan-in / fan-out / instability (Bob Martin's I = Ce / (Ca + Ce)) and circular-import cycles (iterative Tarjan SCC, size ≥ 2). Filters: `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file <path>`. Cross-package edges (`{from: {file, package}, to: {file, package}}`) surface when workspace info is available and at least two non-root packages exist - useful for spotting unauthorized deep imports across package boundaries.
-- **`projscan_file` enriched** with `cyclomaticComplexity`, `fanIn`, `fanOut` fields. Markdown reporter shows a CC column on the hotspots table.
-- **`projscan_pr_diff` MCP tool + `projscan pr-diff` CLI** - structural diff between two refs. Spins up a temporary git worktree at the base ref, builds a CodeGraph there, diffs against the head graph. Per file: added / removed / modified plus explicit lists of exports added/removed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Default base resolution: `origin/main` → `main` → `origin/master` → `master` → `HEAD~1`. `FileAstDiff` carries `exportsRenamed: [{from, to}]`; removed/added pairs are reclassified as renames when their similarity (max of normalized Levenshtein and shared-affix fraction) exceeds 0.5. Greedy best-score-first pairing; each name participates in at most one pair. Reporters surface renames as `~exports: foo → fooBar`.
-- `diffGraphs()` exported as a pure function so callers can run the diff on graphs they already have without the worktree round-trip.
-- **`detectWorkspaces()`** handles npm/yarn workspaces (`package.json#workspaces`), pnpm (`pnpm-workspace.yaml`, parsed with a tiny YAML subset reader to avoid pulling in a full YAML dep), Lerna (`lerna.json#packages`), modern Nx (`nx.json#workspaceLayout` + `project.json` scan), legacy Nx (`workspace.json#projects`), and a `packages/*` + `apps/*` + `libs/*` fallback. Turbo is treated as a marker - it always rides on top of npm/yarn/pnpm.
-- **`projscan_workspaces` MCP tool + `projscan workspaces` CLI** list every package (name, relative path, version, root flag).
-- **`--package <name>` flag** on `hotspots`, `coupling`, `analyze`, `doctor`, `structure`, `coverage`, `search`, and `pr-diff` (CLI flag and MCP `package` arg). Scopes results to a single workspace via longest-prefix matching. `findPackageForFile()` correctly handles the `packages/a` vs `packages/ab` ambiguity. `dependencies`/`outdated`/`audit` stay project-level - they read root manifests; per-package scoping requires workspace-aware lockfile parsing.
-- **Opt-in privacy-preserving telemetry.** Off by default. Enable via `.projscanrc` `telemetry: { enabled: true, sink?: "..." }` block, or `PROJSCAN_TELEMETRY=1` env. `PROJSCAN_TELEMETRY=0` is a per-machine kill switch. Records exactly: tool name, duration ms, success, projscan version, ISO timestamp; never source content, file paths, arguments, repo identifiers, or machine identifiers. Local JSONL sink (default `~/.projscan/telemetry.jsonl`); no remote endpoint. Sink failures are swallowed so telemetry can never break a tool call. `projscan_telemetry` MCP tool surfaces effective config and aggregates the JSONL into per-tool `{count, errorCount, errorRate, p50Ms, p95Ms, p99Ms, meanMs, minMs, maxMs}` (linear-interpolation percentiles; malformed lines skipped silently).
-- **Go via tree-sitter-go 0.25.0** (ships WASM in the npm tarball, ~210 KB). `goAdapter` mirrors the Python adapter shape. Single-line and parenthesized import blocks including aliased forms (`util "github.com/foo/util"`). Go's mechanical export rule (leading uppercase Unicode letter), distinguishing struct/interface/type and capturing func, method, var, const at top level. CC counts: `if`, `for`, `expression_case`, `type_case`, `communication_case`, and `binary_expression` with `&&` / `||`. Default cases and `defer`/`go` statements do not count. `go.mod` provides the module path; imports prefixed with the module path resolve into the repo, everything else (stdlib, third-party) is treated as external. Local dot-imports also supported. Find-package logic resolves a Go import to any `.go` file in the target directory.
+- **AST-derived cyclomatic complexity** for JS/TS and Python. Per-file CC is persisted in the code graph and the index cache. Counted decision points: `if`, `else if`/`elif`, `for`/`for-in`/`for-of`, `while`/`do-while`, `case` (default does not count), `catch`/`except`, `?:`, `&&`/`||`/`??`, `and`/`or`, comprehension `if`. Optional chaining and `else` do not count.
+- **CC replaces LOC in the hotspot risk score.** Files outside the language-adapter set keep the LOC fallback so behavior degrades gracefully.
+- **`projscan_coupling` MCP tool + `projscan coupling` CLI.** Per-file fan-in / fan-out / instability (Bob Martin's I = Ce / (Ca + Ce)) and circular-import cycles (iterative Tarjan SCC, size ≥ 2). Filters: `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file <path>`. Cross-package edges surface in monorepos.
+- **`projscan_pr_diff` MCP tool + `projscan pr-diff` CLI.** Structural diff between two refs. Per file: added / removed / modified plus explicit lists of exports added/removed, imports added/removed, call sites added/removed, ΔCC, Δfan-in. Greedy similarity-based rename detection on exports.
+- **Monorepo workspace detection.** Handles npm/yarn workspaces, pnpm (`pnpm-workspace.yaml`), Lerna, modern and legacy Nx, and a `packages/*` + `apps/*` + `libs/*` fallback. Turbo is treated as a marker on top of npm/yarn/pnpm.
+- **`projscan_workspaces` MCP tool + `projscan workspaces` CLI.** Lists every package (name, relative path, version, root flag).
+- **`--package <name>` flag** on `hotspots`, `coupling`, `analyze`, `doctor`, `structure`, `coverage`, `search`, and `pr-diff` (CLI flag and MCP `package` arg). Scopes results to a single workspace.
+- **Go as a first-class language.** AST analysis for `.go` files via tree-sitter-go. Single-line and parenthesized import blocks including aliased forms. Go's mechanical export rule (leading uppercase Unicode letter) for `func`, `method`, `var`, `const`, plus struct/interface/type. `go.mod` provides the module path; matching imports resolve into the repo, everything else is external.
 
 ### Changed
 
-- **`indexCache` bumped to v3.** Cache entries now carry `cyclomaticComplexity`. v2 caches are discarded on first 0.11 run and rebuilt automatically - no user action required.
-- **`projscan_hotspots`** description updated to mention "AST cyclomatic complexity" instead of generic "complexity." Hotspot reasons line says "high complexity (CC X)" / "moderate complexity (CC X)" instead of "large file (X lines)" when AST data is available.
-- **`projscan_file`** returns `cyclomaticComplexity`, `fanIn`, `fanOut` fields. Existing fields unchanged.
-- **MCP tool count: 13 → 17** (new: `projscan_coupling`, `projscan_pr_diff`, `projscan_workspaces`, `projscan_telemetry`).
+- MCP tool count: 13 → 17.
+- Cache bumped to v3; old caches discarded on first 0.11 run.
 
-### Score-magnitude shift
+### Migration note on hotspot scores
 
 CC is much smaller than LOC for the same file (a 200-line file might have CC of 10–20 vs LOC of 200). Absolute hotspot scores will drop for adapter-parsed files (JS/TS, Python, Go), even though *rankings* improve. If your CI uses a hard threshold against `riskScore`, recalibrate it after the first 0.11 run.
 
-### Runtime dependencies
+## [0.10.0] — 2026-04-24
 
-Added `tree-sitter-go@^0.25.0` (~210 KB vendored wasm). Total runtime deps: 9 (was 8). Total vendored wasm: ~850 KB.
-
-### Notes
-
-- **659 tests passing.** New coverage: AST CC for JS/TS + Python, Python CC node types (incl. comprehensions and match/case), coupling fan-in/out/instability + Tarjan SCC (DAG, 2-cycle, 3-cycle, disjoint, self-loop ignored) + cross-package-edge detection, hotspot LOC→CC switch + LOC fallback regression, monorepo detection (npm/yarn/pnpm/Nx project.json/Nx workspace.json/Lerna packages/Turbo fallback), prefix-matching against `packages/a` vs `packages/ab`, telemetry config + env override + JSONL append + sink-failure silence + aggregation, Go parser/imports/exports/CC + end-to-end fixture, export rename detector, pack-smoke test extended for tree-sitter-go.wasm.
-- All previous behaviour preserved for non-AST languages; existing JS/TS and Python paths only see the LOC→CC swap in hotspot scoring.
-
-## [0.10.0] - 2026-04-24
-
-### Theme - "Beyond JS"
-
-Python is now a first-class language. The import graph, code search, hotspot analysis, dead-code detection, and MCP tools all work on Python repos. JavaScript and TypeScript behavior is unchanged. This is the first step toward a multi-language projscan; Go and Rust are planned for 0.11+.
+Theme: **"Beyond JS"** — Python is now a first-class language. The import graph, code search, hotspot analysis, dead-code detection, and MCP tools all work on Python repos.
 
 ### Added
 
-- **`LanguageAdapter` interface** (`src/core/languages/LanguageAdapter.ts`) - abstraction that lets every core primitive (parse, resolve imports, detect packages) be implemented per-language. The existing babel-based code is wrapped as the `javascript` adapter; the new tree-sitter-based Python implementation is the `python` adapter. Registration is extension-keyed via `src/core/languages/registry.ts`. Third parties can add new languages by implementing the interface and calling `registerAdapter`.
-- **Python parser via tree-sitter** - `web-tree-sitter` 0.26.8 runtime (wasm, pure Node; no native compile) plus a pinned `tree-sitter-python` 0.25.0 grammar. Both wasm artifacts are vendored into `dist/grammars/` at build time via `scripts/copy-wasm.mjs`, so there is zero network activity at runtime (still offline-first). First use of a `.py` file lazy-loads the grammar.
-- **Python imports / exports / resolver** - captures `import`, `from ... import`, relative imports (`from . import`, `from ..mod import`), aliased imports, `from x import *`, and conditional imports inside `try/except ImportError` blocks. `__future__` imports are filtered. Exports cover top-level `def` / `async def` / `class`, assignments to identifiers and tuple patterns, re-exports from `from .mod import x`, decorated functions/classes, and honors `__all__` as an authoritative allowlist when declared as a literal list/tuple. Underscore-prefixed names are private unless listed in `__all__`.
-- **Python package-root detection** - reads `pyproject.toml` (PEP 621, Poetry, setuptools `packages.find` / `package-dir`), `setup.py` `install_requires`, `setup.cfg` `[options] install_requires`, `requirements*.txt`. Falls back to walking `__init__.py` placement, then the repo root. Resolver handles absolute imports against detected roots and relative imports with dot-walks; probes module-as-`.py` then module-as-`/__init__.py`.
-- **Four new Python analyzers**, wired into the issue engine:
-  - `pythonTestCheck` - detects pytest / unittest / nose / ward via manifests, `pytest.ini`, `tox.ini`, `[tool.pytest.ini_options]`, or `import unittest` in test files. Emits `missing-python-test-framework` (warning) or `no-python-test-files` (info).
-  - `pythonLinterCheck` - detects ruff / flake8 / pylint and black / ruff-format / autopep8 / yapf via config files and manifests. Emits `missing-python-linter` and/or `missing-python-formatter` (warning).
-  - `pythonDependencyRiskCheck` - flags deprecated packages (nose, simplejson, pycrypto, mysql-python), soft-deprecated (python-dateutil), heavy (pandas, numpy, torch, tensorflow), unpinned requirements.txt entries, and missing lockfiles. Anchored to `pyproject.toml` / `requirements.txt` lines for GitHub Code Scanning PR annotations.
-  - `pythonUnusedDependencyCheck` - diffs declared Python deps against packages actually imported. Implicit-use allowlist covers pytest, ruff, black, mypy, coverage, wheel, build, setuptools, pip, pip-tools, twine, flake8, pylint, isort, bandit, tox, pre-commit, hatch, maturin, and related tooling. PEP 503 name normalization (case-insensitive, `_` / `-` / `.` equivalence).
-- **`DEFAULT_IGNORE` extended for Python noise** - `venv/`, `.venv/`, `env/`, `.env/`, `__pycache__/`, `.tox/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.eggs/`, `*.egg-info/`. Without this, a repo with a committed virtualenv would scan thousands of third-party files and destroy the health score.
-- **`FileInspection.language`** - new optional field exposing which adapter parsed the file.
-- **MCP `projscan_upgrade` Python fallback** - returns `available:false` with a clear "unsupported for Python" reason on Python-dominated repos rather than hitting the node_modules CHANGELOG pipeline.
-- **Public API:** `LanguageAdapter`, `LanguageResolveContext`, `getAdapterFor`, `isAdapterParseable`, `listAdapters`, `registerAdapter`, `pythonAdapter`, `javascriptAdapter`, `detectPythonProject`, `parsePyproject`, `parseRequirements`, `splitPep508`.
+- **`LanguageAdapter` interface.** Abstraction that lets every core primitive (parse, resolve imports, detect packages) be implemented per-language. The existing Babel-based code is wrapped as the `javascript` adapter; the new tree-sitter-based Python implementation is the `python` adapter. Third parties can add new languages by implementing the interface and calling `registerAdapter`.
+- **Python parser via tree-sitter.** `web-tree-sitter` 0.26.8 runtime plus `tree-sitter-python` 0.25.0 grammar. Both wasm artifacts are vendored at build time; zero network at runtime.
+- **Python imports / exports / resolver.** Captures `import`, `from ... import`, relative imports (`from .`, `from ..mod`), aliased imports, `from x import *`, conditional imports inside `try/except ImportError`. `__future__` imports are filtered. Honors `__all__` as the authoritative export allowlist when declared as a literal list/tuple.
+- **Python package-root detection.** Reads `pyproject.toml` (PEP 621, Poetry, setuptools), `setup.py`, `setup.cfg`, `requirements*.txt`. Falls back to `__init__.py` placement, then the repo root.
+- **Four new Python analyzers.** `pythonTestCheck` (pytest / unittest / nose / ward), `pythonLinterCheck` (ruff / flake8 / pylint and black / ruff-format / autopep8 / yapf), `pythonDependencyRiskCheck` (deprecated, soft-deprecated, heavy, unpinned, missing-lockfile), `pythonUnusedDependencyCheck` (with PEP 503 name normalization).
+- **Default ignore list extended** for Python noise: `venv/`, `.venv/`, `env/`, `__pycache__/`, `.tox/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.eggs/`, `*.egg-info/`.
 
 ### Changed
 
-- **`deadCodeCheck` rewritten to use `buildCodeGraph` directly** - language-agnostic. `__init__.py` is treated as a barrel equivalent (like `index.ts`); pytest test-file conventions (`test_*.py`, `*_test.py`, and files under `tests/`) are skipped. Message uses "names" for Python vs "exports" for JS/TS.
-- **`fileInspector` prefers graph-derived imports/exports** when a `CodeGraph` is supplied. Running the JS-only regex against Python source would emit garbage; now Python files without a graph return empty imports/exports instead.
-- **`codeGraph` resolution order flipped to local-first** - previously JS-optimized (relative = local, bare = package). Python's `pkg.core` could be either. Now every adapter's `resolveImport` gets a shot at local resolution before the specifier is classified as a third-party package.
-- **`indexCache` bumped to v2** - entries carry `adapterId`, so a file switching adapters (unlikely in practice) invalidates cleanly.
-- **`searchIndex` keyword filter** now includes Python keywords (`def`, `class`, `self`, `lambda`, `yield`, `pass`, `elif`, etc.) so they don't pollute BM25 scoring.
-- **README, ROADMAP, GUIDE, CONTRIBUTING** updated to reflect multi-language support. ROADMAP moves sub-file embeddings from "Planned 0.10" down to Under Consideration / 0.11+.
+- `deadCodeCheck` rewritten language-agnostic. `__init__.py` is treated as a barrel equivalent (like `index.ts`); pytest test-file conventions are skipped.
+- `codeGraph` resolution order flipped to local-first. Every adapter's `resolveImport` gets a shot at local resolution before the specifier is classified as a third-party package.
 
-### Runtime dependencies
-
-Added `web-tree-sitter` (~200 KB wasm runtime) and `tree-sitter-python` (~450 KB grammar). Total footprint is ~640 KB of vendored wasm. Runtime deps go from 4 to 6. No network at runtime; wasm ships in the published tarball.
-
-### Notes
-
-- **~600 tests passing** (+90 over 0.9.2). New coverage: adapter registry, Python parser/imports/exports/resolver/package-roots, manifest parsing, 4 new analyzers, mixed-language graph sanity, Python integration test, pack-smoke test for vendored wasm.
-- All JS/TS tests unchanged; zero behavior change for JS/TS projects.
-- No Python interpreter required anywhere. Tests, CI, and runtime all stay pure Node.
-
-## [0.9.2] - 2026-04-20
+## [0.9.2] — 2026-04-20
 
 ### Security
 
-Fixes a **path traversal / arbitrary file read** in the `projscan_upgrade` MCP tool (CVE assignment pending).
+Fixes a **path traversal / arbitrary file read** in the `projscan_upgrade` MCP tool.
 
-Severity: **HIGH**. Users who expose `projscan mcp` to an AI agent that processes untrusted content should upgrade.
+**Severity: HIGH.** Users who expose `projscan mcp` to an AI agent that processes untrusted content should upgrade.
 
-**What was wrong.** The `package` argument to `projscan_upgrade` was forwarded to `previewUpgrade` without validation. The implementation called `path.join(rootPath, 'node_modules', name, ...)` which normalizes `..` segments. A name like `../../../other-project` escaped `node_modules/` and caused the tool to return the contents of an arbitrary `CHANGELOG.md` / `CHANGELOG` / `History.md` / `HISTORY.md` file plus the `version` from any `package.json` in the traversed directory.
+**What was wrong.** The `package` argument to `projscan_upgrade` was forwarded to `previewUpgrade` without validation. The implementation called `path.join(rootPath, 'node_modules', name, ...)` which normalizes `..` segments. A name like `../../../other-project` escaped `node_modules/` and caused the tool to return the contents of an arbitrary `CHANGELOG.md` / `History.md` file plus the `version` from any `package.json` in the traversed directory.
 
-**Exploit model.** An AI agent using projscan over MCP processes untrusted content (README, issue body, web page, etc.). That content contains a prompt-injection payload instructing the agent to call `projscan_upgrade` with an attacker-chosen `package` argument. Without the fix, the returned `changelogExcerpt` exfiltrates files outside the project root.
+**Exploit model.** An AI agent using projscan over MCP processes untrusted content (README, issue body, web page) that contains a prompt-injection payload instructing it to call `projscan_upgrade` with an attacker-chosen `package` argument. Without the fix, the returned `changelogExcerpt` exfiltrates files outside the project root.
 
 **Fix (defense in depth).**
 
-1. `isValidPackageName(name)` rejects anything not matching the npm package-name grammar: `^(?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$`. This rejects `..`, `/` (except the single scope separator), `\`, whitespace, null bytes, absolute paths, and overlong names.
-2. Even if a future regression let a bad name through the first check, `readInstalledVersion` and `readChangelog` now resolve the target against `node_modules/` and refuse any path that escapes it (the same containment pattern already used in `projscan_explain` / `inspectFile`).
-3. 5 new regression tests cover the traversal-rejection path with realistic attacker payloads.
+1. `isValidPackageName(name)` rejects anything not matching the npm package-name grammar: `^(?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$`. Rejects `..`, `/` (except the single scope separator), `\`, whitespace, null bytes, absolute paths, and overlong names.
+2. Even if a future regression let a bad name through, `readInstalledVersion` and `readChangelog` now resolve the target against `node_modules/` and refuse any path that escapes it.
 
-**Scope.** Only `previewUpgrade` (and the `projscan_upgrade` MCP tool / CLI `projscan upgrade <pkg>`) was affected. Other MCP tools (`projscan_file`, `projscan_explain`) already enforced root containment.
+**Scope.** Only `previewUpgrade` (and the `projscan_upgrade` MCP tool / CLI) was affected. Other MCP tools (`projscan_file`, `projscan_explain`) already enforced root containment.
 
-**Public API.** `isValidPackageName` is exported for downstream users who want the same check.
+`isValidPackageName` is exported for downstream users who want the same check.
 
-No behavior change for any well-formed package name. 276 tests passing (+5 new).
-
-## [0.9.1] - 2026-04-20
+## [0.9.1] — 2026-04-20
 
 ### Changed
 
-Docs polish. No behavior changes, no API changes.
+- Removed em dashes from all public-facing surfaces (documentation, `package.json` description, CLI banner/help, MCP prompt text). Replaced with hyphens, colons, or periods depending on context.
 
-- Removed em dashes from all public-facing documentation (README, CHANGELOG, CONTRIBUTING, ROADMAP, GUIDE), the `package.json` description, the CLI banner/help output, and MCP prompt text. Replaced with hyphens, colons, or periods depending on context. Em dashes are a common "tell" that text was AI-generated, and we care about the tool reading like it was written by a person.
-- Also cleaned up JSDoc comments in source since those surface in IDE tooltips.
+## [0.9.0] — 2026-04-20
 
-No runtime changes. 271 tests still passing.
-
-## [0.9.0] - 2026-04-20
-
-### Theme - "True Semantic Search (opt-in)"
-
-Real embeddings-based search via `@xenova/transformers` as an **optional peer dependency**. projscan's default install remains small; users who want semantic search opt in by installing the peer (~50MB + ~25MB first-run model download).
+Theme: **"True Semantic Search (opt-in)"** — embeddings-based search via an optional peer dependency. Default install stays small.
 
 ### Added
 
-- **Optional peer dep** `@xenova/transformers` declared with `peerDependenciesMeta.optional: true`. Not pulled unless the user explicitly installs it. Default installs get a npm warning but no actual download - exactly as intended.
-- **`src/core/embeddings.ts`** - dynamic-import wrapper around the peer. `isSemanticAvailable()`, `embedText()`, `embedBatch()`, `cosineSimilarity()`. Model: `Xenova/all-MiniLM-L6-v2` (384-dim, quantized, ~25MB). Graceful `ERR_MODULE_NOT_FOUND` handling.
-- **`src/core/semanticSearch.ts`** - file-level embeddings, cosine similarity retrieval, disk cache at `.projscan-cache/embeddings.bin` (keyed by model + mtime + content hash, invalidates on any change). Incremental builds reuse cached vectors.
-- **Upgraded `projscan_search` MCP tool** - new `mode` argument:
-  - `lexical` (default) - BM25 only, no peer needed. Unchanged from 0.7.
-  - `semantic` - embeddings only. Requires peer. Returns helpful error if missing.
-  - `hybrid` - BM25 + semantic via Reciprocal Rank Fusion (RRF). Files ranked near the top of *both* lists win.
-- **Upgraded CLI `projscan search`** - `--mode semantic|lexical|hybrid` and `--semantic` shortcut.
-- **Public API:** `isSemanticAvailable`, `embedText`, `embedBatch`, `cosineSimilarity`, `DEFAULT_MODEL`, `EMBEDDING_DIM`, `buildSemanticIndex`, `semanticSearch`, `reciprocalRankFusion`.
+- **`@xenova/transformers` declared as an optional peer dependency.** Default installs are unaffected; users who want semantic search opt in.
+- **File-level embeddings** via `Xenova/all-MiniLM-L6-v2` (384-dim, quantized, ~25 MB). Disk cache at `.projscan-cache/embeddings.bin` keyed by model + mtime + content hash; invalidates on any change.
+- **`projscan_search` gains a `mode` argument:** `lexical` (default, BM25 only — no peer needed), `semantic` (embeddings only — requires peer), `hybrid` (BM25 + semantic via Reciprocal Rank Fusion).
+- **CLI: `projscan search --mode <m>`** and the `--semantic` shortcut.
 
-### Fixed (bug-hunt round 3)
+### Fixed
 
-- **Progress emitter context could leak between concurrent tool calls.** The previous implementation stored the current emitter on a module-level variable - when two tool calls overlapped (common under MCP pipelining), call A's progress events would route to call B's client mid-flight, and vice versa. Rewrote using Node's `AsyncLocalStorage` so every `withProgress` call gets an isolated context. A regression test covers the interleaved case.
-- **Semantic index build aborted silently if the peer dep disappeared mid-batch.** Now writes a stderr diagnostic so operators can tell the capability was disabled, not that it returned zero results.
+- **Progress emitter context could leak between concurrent tool calls.** Previous implementation stored the current emitter on a module-level variable; under MCP pipelining, call A's progress events would route to call B's client. Rewrote using `AsyncLocalStorage` so every `withProgress` call gets an isolated context.
 
-### Notes on the peer-dep model
+### Migration
 
-If you just want the CLI, do nothing - `projscan` still works end to end. Your install stays ~7MB.
+If you just want the CLI, do nothing — `projscan` still works end to end.
 
 If you want semantic search:
+
 ```bash
 npm install @xenova/transformers
 projscan search "which file implements auth" --mode semantic
 ```
 
-The first run downloads the model (~25MB). Subsequent runs hit the local HuggingFace cache. All queries stay offline after that - no API calls, ever.
+The first run downloads the model (~25 MB) into the local HuggingFace cache. All queries stay offline after that.
 
-### Stats
+## [0.8.0] — 2026-04-20
 
-- 271 tests passing (+11 new, including the concurrency regression)
-- 2 new runtime-optional packages (only if opted in): `@xenova/transformers`, `@babel/parser` + `@babel/types` stay the same
-- All semantic search is offline after first-run model download
-
-## [0.8.0] - 2026-04-20
-
-### Theme - "Streaming & Pagination"
-
-MCP agents can now consume large responses incrementally: cursor-based pagination, progress notifications during long-running tools, and opt-in response chunking. Protocol bumped to 2025-03-26 with backward negotiation for 2024-11-05 clients.
+Theme: **"Streaming & Pagination"** — MCP agents can now consume large responses incrementally.
 
 ### Added
 
-- **MCP protocol 2025-03-26** with version negotiation. Clients requesting 2024-11-05 still work - the server echoes their version when supported.
-- **Cursor-based pagination** on list-returning MCP tools: `projscan_hotspots`, `projscan_search`, `projscan_audit`, `projscan_outdated`, `projscan_coverage`. Accept `cursor` + `page_size`; return `nextCursor` when more results exist. Cursor is opaque base64; includes a checksum so shape-changes across calls reset to offset=0 safely.
-- **Progress notifications** (`notifications/progress`) during long-running tools: `projscan_analyze` (5 milestones), `projscan_hotspots` (4 milestones), `projscan_audit` (2 milestones). Agents that set `_meta.progressToken` on the request get per-milestone updates they can display or use to cancel.
-- **Opt-in response chunking** - when the caller sets `stream: true`, tool output is split into multiple MCP `content` blocks: one header with scalar fields, then N chunk blocks containing 20 records each. Default behavior (single block) unchanged for backward compatibility.
-- **New public API:** `paginate`, `encodeCursor`, `decodeCursor`, `listChecksum`, `readPageParams`, `toContentBlocks`, `emitProgress`, `withProgress`.
-- **`createMcpServer` gains an options object** with `notify: (payload) => void` for transports that want to emit out-of-band JSON-RPC notifications. `runMcpServer` wires this to stdout automatically.
+- **MCP protocol 2025-03-26** with version negotiation. Clients on 2024-11-05 still work — the server echoes their version when supported.
+- **Cursor-based pagination** on list-returning MCP tools: `projscan_hotspots`, `projscan_search`, `projscan_audit`, `projscan_outdated`, `projscan_coverage`. Accept `cursor` + `page_size`; return `nextCursor` when more results exist.
+- **Progress notifications (`notifications/progress`)** during long-running tools. Agents that set `_meta.progressToken` on the request get per-milestone updates.
+- **Opt-in response chunking.** When the caller sets `stream: true`, tool output is split into multiple MCP `content` blocks. Default behavior unchanged.
+- **`createMcpServer` gains a `notify` option** for transports that want to emit out-of-band JSON-RPC notifications.
 
 ### Fixed
 
-- **`--changed-only` silently dropped issues without file locations.** Now emits a stderr message: `"N issue(s) filtered out; X had no file location"` so users can tell the difference between "no problems in this PR" and "filter dropped everything."
-- **Hotspot substring fallback had incomplete path-boundary chars.** Added `.`, `?`, `!`, `>`, `<` so cases like *"see src/a.ts."* (sentence end) correctly link to `src/a.ts`. The location-based path still takes priority when analyzers supply it.
+- **`--changed-only` silently dropped issues without file locations.** Now emits a stderr message: `"N issue(s) filtered out; X had no file location"`.
+- **Hotspot substring fallback had incomplete path-boundary chars.** Added `.`, `?`, `!`, `>`, `<` so cases like *"see src/a.ts."* (sentence end) correctly link to `src/a.ts`.
 
-### Notes
+## [0.7.0] — 2026-04-20
 
-- 260 tests passing (+11 new covering pagination, progress, chunking).
-- Zero new runtime dependencies.
-- Clients on old protocol version: no action required - negotiation is transparent.
-
-## [0.7.0] - 2026-04-20
-
-### Theme - "Smart Search"
-
-Ranked local search across content, symbols, and paths. No embeddings, no API calls, no 100MB model downloads - just a solid BM25 implementation that beats substring matching for most code-search queries.
-
-**Why not embeddings in 0.7?** The only credible local-embeddings path in Node.js (`@xenova/transformers`) pulls a ~100MB ONNX model. For code search - where queries and identifiers share vocabulary (`auth`, `jwt`, `token`, `session`) - BM25 + symbol weighting captures most of the semantic value at 0% of the install-size cost. True semantic search is deferred; the door is explicitly left open as a future opt-in peer dep.
+Theme: **"Smart Search"** — ranked local search across content, symbols, and paths. No embeddings, no API calls.
 
 ### Added
 
-- **`src/core/searchIndex.ts`** - BM25-ranked inverted index over source files. Indexes content, exported symbol names, and path tokens separately, each with its own weight.
-- **Query expansion** - camelCase / snake_case / digit splitting, light stemming (strip trailing `-s` / `-ing` / `-ed`), stopword + TS-keyword filtering. `userAuthToken` indexes as `user`, `auth`, `token`.
-- **Symbol-match boost** - files that export a name matching the query rank higher than files that merely mention it. `authenticate` as a function name beats `authenticate` as a comment.
-- **Upgraded `projscan_search` MCP tool** - scope `auto` (default, BM25-ranked content + excerpt) joins existing `symbols` / `files` / `content` scopes. Returns ranked matches with file + line + excerpt.
-- **New CLI command `projscan search <query>`** - same ranked search from the terminal. Supports `--scope`, `--limit`, and all three output formats.
-- **Public API:** `buildSearchIndex`, `search`, `tokenize`, `expandQuery`, `attachExcerpts`.
+- **BM25-ranked inverted index** over source files. Indexes content, exported symbol names, and path tokens separately, each with its own weight.
+- **Query expansion.** camelCase / snake_case / digit splitting, light stemming (strip trailing `-s` / `-ing` / `-ed`), stopword + keyword filtering. `userAuthToken` indexes as `user`, `auth`, `token`.
+- **Symbol-match boost.** Files that export a name matching the query rank higher than files that merely mention it.
+- **`projscan_search` gains the `auto` scope** (default, BM25-ranked content + excerpt) joining the existing `symbols` / `files` / `content` scopes.
+- **`projscan search <query>` CLI command.** Supports `--scope`, `--limit`, and all output formats.
 
 ### Fixed
 
-- **MCP budget sidecar corrupted array responses.** When a tool handler returned an array and the budget truncated it, the server spread the array into `{ ...value, _budget }` - producing `{ "0": …, "1": …, _budget }` garbage. Now wraps non-object values as `{ value, _budget }`.
-- **Hotspot ↔ issue linking used fragile substring matching.** Issues about `src/ab.ts` could falsely attach to `src/a.ts`. Now prefers `issue.locations` when present and uses path-boundary guards for the legacy substring fallback.
-- **Dead `src/utils/cache.ts` removed** - our own dead-code analyzer flagged it; deleting resolves the finding.
+- **MCP budget sidecar corrupted array responses.** When a handler returned an array and the budget truncated it, the server spread the array into `{ ...value, _budget }` — producing `{ "0": …, "1": …, _budget }` garbage. Now wraps non-object values as `{ value, _budget }`.
+- **Hotspot ↔ issue linking used fragile substring matching.** Issues about `src/ab.ts` could falsely attach to `src/a.ts`. Now prefers `issue.locations` when present.
 
-### Changed (dogfooding)
+## [0.6.0] — 2026-04-20
 
-- Added **`.projscanrc.json`** to the repo - ignores the hardcoded-secret test fixture (`tests/analyzers/securityCheck.test.ts`) and disables the `large-utils-dir` rule that we intentionally trip. Demonstrates the config loader on real code.
-- Added **`.prettierrc`** and **`.editorconfig`** to resolve the two lingering "missing config" warnings on projscan itself.
-- Our own `projscan doctor` score goes from D/51 → A/100. The tool is now healthy by its own standards.
-
-### Notes
-
-- 249 tests passing (+14 new).
-- Zero new runtime dependencies.
-- All offline, no network.
-
-## [0.6.0] - 2026-04-20
-
-### Theme - "Agent-First"
-
-**projscan is repositioning as an MCP-native code-intelligence tool.** The CLI still works identically; nothing breaks. But the product center of gravity moves to the MCP server, and everything below is in service of that: AI coding agents (Claude Code, Cursor, Windsurf, custom) are now first-class consumers, not an afterthought.
+Theme: **"Agent-First"** — projscan repositions as an MCP-native code-intelligence tool. The CLI still works identically.
 
 ### Added
 
-- **Real AST parsing** via [`@babel/parser`](https://babeljs.io/docs/babel-parser) - replaces regex in `src/core/fileInspector.ts`. Handles JS/TS/JSX/MJS/CTS with decorator, dynamic-import, top-level-await, and error-recovery support. `import type`, re-exports, and dynamic `import()` now captured correctly (regex was missing all three).
-- **Code graph** (`src/core/codeGraph.ts`) - new core primitive. Files + exports + imports + call sites, bidirectional edges, built from real ASTs. Relative import resolution covers extension inference, barrel files (`foo/index.ts`), and `.js` specifiers that resolve to `.ts` under NodeNext.
-- **Incremental index cache** (`src/core/indexCache.ts`) - mtime-keyed parse cache at `.projscan-cache/graph.json` (auto-gitignored). First run populates; subsequent runs re-parse only changed files. Agent queries against warm caches are millisecond-fast, not second-slow.
-- **MCP context-token budgeter** (`src/mcp/tokenBudget.ts`) - every MCP tool call accepts an optional `max_tokens` argument. When set, projscan serializes the result and, if over budget, truncates the largest array field record-by-record until it fits. Ships a `_budget` sidecar on truncated responses so the agent knows it got a partial view.
-- **New MCP tool `projscan_graph`** - query the code graph directly. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Agents can ask "who imports this file?" or "where is `runAudit` defined?" and get an answer in milliseconds without loading 11 other tools.
-- **New MCP tool `projscan_search`** - fast structural search. Scopes: `symbols` (exports), `files` (path substring), `content` (source substring with line + excerpt). Replaces the temptation to shell out to `grep`.
-- **Public API:** `parseSource`, `isParseable`, `buildCodeGraph`, `filesImportingFile`, `filesImportingPackage`, `filesDefiningSymbol`, `exportsOf`, `importsOf`, `importersOf`, `loadCachedGraph`, `saveCachedGraph`, `invalidateCache`, `applyBudget`, `estimateTokens`.
+- **Real AST parsing via `@babel/parser`** — replaces regex in `fileInspector`. Handles JS/TS/JSX/MJS/CTS with decorator, dynamic-import, top-level-await, and error-recovery support.
+- **Code graph primitive.** Files + exports + imports + call sites with bidirectional edges, built from real ASTs. Relative-import resolution covers extension inference, barrel files (`foo/index.ts`), and `.js` specifiers that resolve to `.ts` under NodeNext.
+- **Incremental index cache.** mtime-keyed parse cache at `.projscan-cache/graph.json` (auto-gitignored). First run populates; subsequent runs re-parse only changed files.
+- **MCP context-token budgeter.** Every MCP tool call accepts an optional `max_tokens` argument. Over-budget responses are truncated record-by-record with a `_budget` sidecar.
+- **`projscan_graph` MCP tool.** Query the code graph directly. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`.
+- **`projscan_search` MCP tool.** Fast structural search. Scopes: `symbols` (exports), `files` (path substring), `content` (source substring with line + excerpt).
 
 ### Changed
 
-- **`buildImportGraph` is now a compat shim** - backed by AST-based `buildCodeGraph` internally. Accuracy improves (no more regex false negatives), API is unchanged.
-- **MCP tools now advertise `max_tokens`** - the new two explicitly, but the dispatcher applies the budget to every tool call whether the schema mentions it or not. Agents can set `max_tokens` on any existing tool (`projscan_hotspots`, `projscan_coverage`, etc.) and get right-sized output.
-- **Two new runtime dependencies:** `@babel/parser` (~1.5MB) and `@babel/types`. Deliberate trade-off - regex hit an accuracy ceiling and every downstream analyzer was building on sand. "Real AST parsing" is a 0.6 headline; the zero-heavy-deps claim ends here.
+- `buildImportGraph` is now backed by the AST-based `buildCodeGraph` internally. API unchanged; accuracy improves.
+- Two new runtime dependencies: `@babel/parser` and `@babel/types`.
 
 ### Fixed (from the AST migration)
 
-- `import type { X }` now captured everywhere. Was silently dropped by the old regex, under-reporting imports in the graph.
+- `import type { X }` now captured everywhere. Was silently dropped by the old regex.
 - Dynamic `import('./lazy.js')` now captured.
 - `export * as ns from './foo.js'` and other re-export shapes now captured.
-- Unused-dependency and unused-exports analyzers are measurably more accurate as a side effect - no more flagging files that are reachable via type-only imports or dynamic loads.
 
-### Notes
+## [0.5.0] — 2026-04-20
 
-- **202 → 235 tests** (+33). Every new primitive has dedicated coverage.
-- All offline. Cache file is the only disk artifact, lives at `.projscan-cache/`, is gitignored automatically.
-- CLI output is unchanged. If you use projscan-the-CLI today, 0.6.0 is a no-op feature bump (with faster subsequent runs thanks to the cache).
+Theme: **"Deeper Signal"**
 
-## [0.5.0] - 2026-04-20
+### Added
 
-### Added - "Deeper Signal" theme
-
-- **`projscan coverage`** - parses test coverage from `coverage/lcov.info`, `coverage/coverage-final.json`, or `coverage/coverage-summary.json`, joins it with the hotspot ranking, and surfaces the **scariest untested files**: high-risk × low-coverage. Works with Vitest, Jest, c8, Istanbul - any tool that emits one of the three standard formats.
-- **Coverage-weighted hotspot risk** - `computeRiskScore` now takes an optional `coverage` input. Uncovered churning files bubble up the ranking; fully covered files see no change. New reason tags: `low coverage (X%)`, `moderate coverage (X%)`.
-- **Dead-code analyzer** - new issue type `unused-exports-<file>`. Builds the full import graph across source, and flags non-barrel / non-test source files whose exports nothing imports. Respects `package.json#main`, `#exports`, `#bin`, `#types`. Handles ESM `import type`, dynamic `import()`, re-exports (`export { x } from ...`), and `.js` specifiers that resolve to `.ts` files under NodeNext.
-- **Existing `projscan hotspots` now surfaces coverage** - when a coverage file exists, `hotspots` automatically reads it and includes per-file coverage in the output (no flag needed).
-- **`FileHotspot.coverage`** - new optional field on hotspot entries.
-- **New MCP tool:** `projscan_coverage`.
-- **Public API:** `parseCoverage`, `coverageMap`, `joinCoverageWithHotspots`.
-- **New types:** `CoverageSource`, `FileCoverage`, `CoverageReport`, `CoverageJoinedHotspot`, `CoverageJoinedReport`.
+- **`projscan coverage` command.** Parses test coverage from `coverage/lcov.info`, `coverage/coverage-final.json`, or `coverage/coverage-summary.json`. Joins coverage with the hotspot ranking to surface the **scariest untested files**: high-risk × low-coverage. Works with Vitest, Jest, c8, Istanbul.
+- **Coverage-weighted hotspot risk.** Uncovered churning files bubble up the ranking; fully covered files see no change.
+- **Dead-code analyzer.** Builds the full import graph; flags non-barrel / non-test source files whose exports nothing imports. Respects `package.json#main`, `#exports`, `#bin`, `#types`.
+- **`projscan_coverage` MCP tool.**
 
 ### Fixed
 
-- **`extractImports` regex was missing type-only imports** - `import type { X } from './foo.js'` wasn't being captured, which silently under-counted imports in the graph. Now handles:
-  - ESM `import type`
-  - ESM re-exports (`export { x } from ...`, `export * as y from ...`)
-  - Dynamic `import('...')`
-  This makes the unused-dependency and unused-export analyzers more accurate.
+- **`extractImports` regex was missing type-only imports** (`import type { X } from './foo.js'`), dynamic imports, and re-export shapes (`export { x } from ...`, `export * as y from ...`). Now handled.
 
-### Notes
+## [0.4.0] — 2026-04-20
 
-- All coverage parsing is offline and file-based. No runners invoked, no network.
-- Coverage is additive - projects without a coverage file get the same hotspot output as before.
-- Tests: 202 passing (+17 new).
-- Zero new runtime dependencies. Still 4 packages in `dependencies`.
-
-## [0.4.0] - 2026-04-20
-
-### Added - "Dependency Health" theme
-
-- **`projscan outdated`** - offline outdated check. Compares versions declared in `package.json` against the versions actually installed under `node_modules/` and classifies drift (patch / minor / major / same / unknown). No network calls.
-- **`projscan audit`** - runs `npm audit --json` and normalizes the output into a projscan-shaped report: severity summary, per-package findings with title/URL/range/fix-available. SARIF output routes every finding into GitHub Code Scanning with `audit-<pkg>` rule IDs, anchored to `package.json`. Graceful messages for yarn/pnpm projects.
-- **`projscan upgrade <pkg>`** - preview the impact of upgrading a package, fully offline. Reports semver drift, extracts the relevant section of the package's own `CHANGELOG.md` from `node_modules/<pkg>/`, highlights breaking-change markers (`BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`), and lists every file in your source that imports the package.
-- **Unused-dependency analyzer** - new issue type `unused-dependency-<name>`. Builds an import graph across all source files (ES imports + CommonJS requires), diffs against declared dependencies, and emits issues anchored to the exact line in `package.json`. Implicit-use allowlist covers typescript, eslint/prettier/vite plugins, types packages, and packages invoked via `package.json` scripts - with a `disableRules` escape hatch for the rest.
-- **`package.json` locations on every dependency-related issue** - `dep-risk-*` and `unused-dependency-*` issues now carry `locations: [{ file: 'package.json', line }]`. SARIF upload to GitHub Code Scanning annotates the offending dependency line directly in PR review.
-- **3 new MCP tools**: `projscan_outdated`, `projscan_audit`, `projscan_upgrade`.
-- **Public API:** `buildImportGraph`, `toPackageName`, `isPackageUsed`, `filesImporting`, `detectOutdated`, `runAudit`, `auditFindingsToIssues`, `previewUpgrade`, `findDependencyLines`, `parseSemver`, `compareSemver`, `semverDrift`.
-- **New types:** `SemverDrift`, `OutdatedPackage`, `OutdatedReport`, `AuditSeverity`, `AuditFinding`, `AuditReport`, `UpgradePreview`.
-
-### Changed
-
-- Issue engine now includes the unused-dependency analyzer alongside the six existing checks.
-- `dep-risk-*` issues now carry `package.json` locations (line-level for package-specific risks, file-level for project-level risks like `excessive-dependencies`).
-
-### Notes
-
-- Everything in 0.4.0 is **offline-first** - no registry calls, no changelog fetching from GitHub. `projscan upgrade` reads the CHANGELOG that npm already placed in your `node_modules/<pkg>/`. Network-fetching upgrade preview is deferred to a later release.
-- Zero new runtime dependencies. Still 4 packages in `dependencies`.
-- Tests: 185 passing (+37 new).
-
-## [0.3.1] - 2026-04-20
-
-### Changed
-
-- **Docs: thorough pass for 0.3.0 features.** `docs/GUIDE.md` rewritten to cover `hotspots`, `file`, `mcp`, SARIF output, `.projscanrc` config, and `--changed-only` PR-diff mode - plus a dedicated Configuration section, an updated Global Options table, an expanded CI/CD Integration section covering the first-party GitHub Action, and a refreshed Project Internals directory map. Fixed a stale note that claimed "no `.projscanrc` file needed."
-- **README: quick-start examples surface `--changed-only` and `--format sarif`** so 0.3.0's CI-native story is visible above the fold.
-- **CLI banner and help text refreshed:** `projscan help` now lists `hotspots`, `file`, `mcp`, `ci --changed-only`, and `ci --format sarif`; global-options table now documents `--config`, `--changed-only`, `--base-ref`, and `sarif` as a valid `--format`. "What's new" panel updated to 0.3.0's headline features.
-- **CONTRIBUTING.md:** project structure tree fixed (`fixers/` → `fixes/`, added `core/` and `mcp/`, listed the new SARIF reporter, config loader, and changed-files helper).
-
-### CI
-
-- **Publish workflow hardened** - checks out the tagged ref (not HEAD of main), verifies `package.json` version matches the tag before publishing, adds `workflow_dispatch` so a failed publish can be retried without cutting a new release, and adds a concurrency guard against racing re-runs.
-- **Node bumped to 22** across the publish workflow and the CI matrix (now 20 / 22 / 24). Node 20 is being deprecated on GitHub-hosted runners in June 2026. `engines` stays at `>=18` for install compatibility.
-
-No runtime behavior changes. No API changes.
-
-## [0.3.0] - 2026-04-20
+Theme: **"Dependency Health"**
 
 ### Added
 
-- **SARIF output** (`--format sarif`) - emit SARIF 2.1.0 from `analyze`, `doctor`, and `ci`. Feeds directly into GitHub Code Scanning (and any other SARIF consumer), so projscan findings show up in the Security tab as annotated results with file/line locations.
-- **`--changed-only` mode** - restrict `analyze`, `doctor`, and `ci` to issues in files changed vs a base ref. `--base-ref <ref>` overrides the default (auto-detects `origin/main` → `origin/master` → `main` → `master` → `HEAD~1`). Makes PR CI runs ~10× faster and only gates on issues the PR introduced.
-- **`.projscanrc` config** - load project-wide defaults from `.projscanrc.json`, `.projscanrc`, or a `"projscan"` key in `package.json`. Supports:
-  - `minScore` - default threshold for `ci`.
-  - `baseRef` - default base ref for `--changed-only`.
-  - `hotspots.limit`, `hotspots.since` - defaults for `hotspots`.
-  - `ignore` - extra glob patterns layered onto the built-in ignore list.
-  - `disableRules` - silence rules by id (supports `rule-id` or wildcard `prefix-*`).
-  - `severityOverrides` - remap a rule's severity (`info` / `warning` / `error`).
+- **`projscan outdated`.** Offline outdated check. Compares declared versions in `package.json` against versions installed under `node_modules/` and classifies drift (patch / minor / major / same / unknown). No network calls.
+- **`projscan audit`.** Runs `npm audit --json` and normalizes the output into a projscan-shaped report. SARIF output routes findings into GitHub Code Scanning. Graceful messages for yarn/pnpm projects.
+- **`projscan upgrade <pkg>`.** Preview the impact of upgrading a package, fully offline. Reports semver drift, extracts the relevant CHANGELOG section from `node_modules/<pkg>/`, highlights breaking-change markers (`BREAKING CHANGE`, `deprecated`, `removed support`), and lists every file that imports the package.
+- **Unused-dependency analyzer.** Builds an import graph (ES imports + CommonJS requires); diffs against declared dependencies; emits `unused-dependency-<name>` issues anchored to the exact line in `package.json`. Implicit-use allowlist for typescript, eslint/prettier/vite plugins, types packages, and packages invoked via `package.json` scripts.
+- **`package.json` line-level locations** on every dependency-related issue. SARIF upload to GitHub Code Scanning annotates the offending dependency line directly in PR review.
+- Three new MCP tools: `projscan_outdated`, `projscan_audit`, `projscan_upgrade`.
+
+## [0.3.1] — 2026-04-20
+
+### Changed
+
+- Documentation pass for 0.3.0 features (hotspots, file, mcp, SARIF output, `.projscanrc` config, `--changed-only`).
+- CLI banner and help text refreshed.
+
+## [0.3.0] — 2026-04-20
+
+### Added
+
+- **SARIF output (`--format sarif`)** for `analyze`, `doctor`, and `ci`. Feeds directly into GitHub Code Scanning, so projscan findings show up in the Security tab as annotated results with file/line locations.
+- **`--changed-only` mode.** Restricts `analyze`, `doctor`, and `ci` to issues in files changed vs. a base ref. `--base-ref <ref>` overrides the default (auto-detects `origin/main` → `origin/master` → `main` → `master` → `HEAD~1`). Makes PR CI runs ~10× faster.
+- **`.projscanrc` config.** Loads project-wide defaults from `.projscanrc.json`, `.projscanrc`, or a `"projscan"` key in `package.json`. Supports:
+  - `minScore` — default threshold for `ci`.
+  - `baseRef` — default base ref for `--changed-only`.
+  - `hotspots.limit`, `hotspots.since` — defaults for `hotspots`.
+  - `ignore` — extra glob patterns layered onto the built-in ignore list.
+  - `disableRules` — silence rules by id (supports `rule-id` or wildcard `prefix-*`).
+  - `severityOverrides` — remap a rule's severity (`info` / `warning` / `error`).
 
   CLI flags always win over config; use `--config <path>` to load a specific file.
-- **First-party GitHub Action** (`action.yml`) - composite action that installs projscan, runs `projscan ci --format sarif` (optionally `--changed-only`), writes a SARIF file, uploads to GitHub Code Scanning, and exposes `score` / `grade` outputs plus a Job Summary.
-- **Issue locations** - `Issue` now carries optional `locations: IssueLocation[]` (file, line, column). Security checks populate real file/line locations (including line numbers for hardcoded secrets), and architecture checks anchor large-dir issues to their directory. Used by SARIF, `--changed-only`, and future file-centric outputs.
-- Public API: `loadConfig`, `applyConfigToIssues`, `getChangedFiles`, `issuesToSarif`.
-- New types: `IssueLocation`, `ProjscanConfig`, `LoadedConfig`.
+- **First-party GitHub Action (`action.yml`).** Composite action that installs projscan, runs `projscan ci --format sarif` (optionally `--changed-only`), uploads SARIF to GitHub Code Scanning, and exposes `score` / `grade` outputs plus a Job Summary.
+- **Issue locations.** `Issue` carries optional `locations: IssueLocation[]` (file, line, column). Security checks populate real file/line locations (including line numbers for hardcoded secrets).
 
 ### Changed
 
-- `scanRepository(rootPath, { ignore })` now accepts optional ignore globs that layer onto the built-in list. The CLI passes `config.ignore` through automatically.
+- `scanRepository(rootPath, { ignore })` accepts optional ignore globs that layer onto the built-in list.
 - `projscan ci` no longer hard-codes `--min-score 70`; missing flag falls back to `config.minScore`, then to 70.
-- `ReportFormat` type now includes `'sarif'`.
 
-## [0.2.0] - 2026-04-19
+## [0.2.0] — 2026-04-19
 
 ### Added
 
-- **`projscan hotspots`** - ranks files by risk using `git log` churn × complexity (lines of code) × open issues × recency. Turns a flat health score into a prioritized "fix these first" list. Graceful fallback when the project is not a git repository.
-- **`projscan file <path>`** - per-file drill-down combining the file's purpose, imports, exports, hotspot risk data, ownership, and the health issues that reference it. Natural follow-up to `projscan hotspots`.
-- **`projscan mcp`** - runs projscan as an MCP (Model Context Protocol) server over stdio. Now exposes:
-  - **Tools** (7): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_file`, `projscan_explain`, `projscan_structure`, `projscan_dependencies`.
-  - **Prompts** (2): `prioritize_refactoring` (ranked plan grounded in live hotspots), `investigate_file` (senior-engineer brief for a specific file).
-  - **Resources** (3): `projscan://health`, `projscan://hotspots`, `projscan://structure` - readable by agents on demand.
-- **Ownership / bus-factor analysis** - hotspots now include `primaryAuthor`, `primaryAuthorShare`, `topAuthors`, and a `busFactorOne` flag (single-author + high churn ⇒ organizational risk). Bus-factor-1 files add a score penalty and a reason tag.
-- **Hotspot trend tracking** - `.projscan-baseline.json` now snapshots top hotspots; `projscan diff` reports hotspots that *rose*, *fell*, *appeared*, or were *resolved* since the baseline (alongside existing issue deltas).
-- Public API: `analyzeHotspots`, `computeRiskScore`, `inspectFile`, `createMcpServer`, `runMcpServer`, `getToolDefinitions`, `getPromptDefinitions`, `getResourceDefinitions`.
-- New types: `FileHotspot`, `HotspotReport`, `AuthorShare`, `FileInspection`, `BaselineHotspot`, `HotspotDelta`, `HotspotDiffSummary`, `McpToolDefinition`, `McpPromptDefinition`, `McpResourceDefinition`.
+- **`projscan hotspots`.** Ranks files by risk using `git log` churn × complexity (lines of code) × open issues × recency. Turns a flat health score into a prioritized "fix these first" list. Graceful fallback when the project is not a git repository.
+- **`projscan file <path>`.** Per-file drill-down combining purpose, imports, exports, hotspot risk data, ownership, and the health issues that reference it.
+- **`projscan mcp`.** Runs projscan as an MCP server over stdio. Exposes 7 tools (`projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_file`, `projscan_explain`, `projscan_structure`, `projscan_dependencies`), 2 prompts (`prioritize_refactoring`, `investigate_file`), and 3 resources (`projscan://health`, `projscan://hotspots`, `projscan://structure`).
+- **Ownership / bus-factor analysis** on hotspots. `primaryAuthor`, `primaryAuthorShare`, `topAuthors`, and a `busFactorOne` flag (single-author + high churn ⇒ organizational risk).
+- **Hotspot trend tracking.** `.projscan-baseline.json` snapshots top hotspots; `projscan diff` reports hotspots that *rose*, *fell*, *appeared*, or were *resolved* since the baseline.
 
 ### Changed
 
-- `projscan diff --save-baseline` now captures a hotspot snapshot too, enabling trend analysis on subsequent diffs.
-- Explain/file parsing logic (imports, exports, purpose inference) extracted into a shared `fileInspector` module used by both the CLI and MCP server - removes ~150 lines of duplication.
+- `projscan diff --save-baseline` now captures a hotspot snapshot, enabling trend analysis on subsequent diffs.
 
-## [0.1.3] - 2026-03-11
-
-### Added
-
-- Health scoring system: every `projscan doctor` run now shows an A/B/C/D/F grade (0–100 score)
-- `projscan badge` command: generates shields.io badge URL and markdown for READMEs
-- Score integrated into all output formats (console, JSON, markdown)
-- Automated npm publish workflow (GitHub Actions on Release)
-- CONTRIBUTING.md, CHANGELOG.md, GitHub issue templates, CI workflow
-
-## [0.1.0] - 2026-03-11
+## [0.1.3] — 2026-03-11
 
 ### Added
 
-- `projscan analyze` - full project analysis (languages, frameworks, dependencies, issues)
-- `projscan doctor` - project health check with actionable recommendations
-- `projscan fix` - auto-fix for missing ESLint, Prettier, Vitest, and .editorconfig
-- `projscan explain <file>` - file-level explanation (purpose, imports, exports)
-- `projscan diagram` - ASCII architecture diagram
-- `projscan structure` - directory tree visualization
-- `projscan dependencies` - dependency audit and risk analysis
-- Multiple output formats: console, JSON, markdown
-- Detection for 30+ languages and 15+ frameworks
-- Performance: 5k files in <1.5s, 20k files in <3s
+- **Health scoring.** Every `projscan doctor` run shows an A/B/C/D/F grade (0–100 score).
+- **`projscan badge`.** Generates shields.io badge URL and markdown for READMEs.
+- Score integrated into all output formats (console, JSON, markdown).
+
+## [0.1.0] — 2026-03-11
+
+Initial release.
+
+- `projscan analyze` — full project analysis (languages, frameworks, dependencies, issues).
+- `projscan doctor` — project health check with actionable recommendations.
+- `projscan fix` — auto-fix for missing ESLint, Prettier, Vitest, and `.editorconfig`.
+- `projscan explain <file>` — file-level explanation (purpose, imports, exports).
+- `projscan diagram` — ASCII architecture diagram.
+- `projscan structure` — directory tree visualization.
+- `projscan dependencies` — dependency audit and risk analysis.
+- Output formats: console, JSON, markdown.
+- Detection for 30+ languages and 15+ frameworks.
