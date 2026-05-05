@@ -48,8 +48,14 @@ function collectUsing(node: TsNode, out: AstImport[]): void {
   if (named.length === 0) return;
 
   let alias: string | undefined;
-  let pathNode: TsNode | null = null;
-  if (named.length >= 2 && named[0].type === 'identifier' && (named[1].type === 'qualified_name' || named[1].type === 'identifier' || named[1].type === 'generic_name')) {
+  let pathNode: TsNode;
+  if (
+    named.length >= 2 &&
+    named[0].type === 'identifier' &&
+    (named[1].type === 'qualified_name' ||
+      named[1].type === 'identifier' ||
+      named[1].type === 'generic_name')
+  ) {
     alias = named[0].text;
     pathNode = named[1];
   } else {
@@ -57,7 +63,6 @@ function collectUsing(node: TsNode, out: AstImport[]): void {
     // grammar may surface as a name).
     pathNode = named[named.length - 1];
   }
-  if (!pathNode) return;
   const source = readPath(pathNode);
   if (!source) return;
   out.push({

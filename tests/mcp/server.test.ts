@@ -124,6 +124,72 @@ describe('MCP server', () => {
     expect(response.result.content[0].text).toMatch(/inside the project root|ENOENT/);
   });
 
+  it('error responses short-circuit budget + cost sidecars', async () => {
+    // When a tool throws, the dispatcher returns isError:true with the
+    // bare error text. The cost / budget sidecars (which only make
+    // sense for real result payloads) must not appear inside the error
+    // content — otherwise an agent inspecting `result.content[0].text`
+    // would see a JSON envelope instead of the error message.
+    const server = createMcpServer(process.cwd());
+    const response = (await send(server, {
+      jsonrpc: '2.0',
+      id: 99,
+      method: 'tools/call',
+      params: {
+        name: 'projscan_explain',
+        arguments: { file: '../../../etc/passwd', max_tokens: 5 },
+      },
+    })) as {
+      result: { content: Array<{ text: string }>; isError: boolean };
+    };
+    expect(response.result.isError).toBe(true);
+    const text = response.result.content[0].text;
+    expect(text).toMatch(/^Error:/);
+    expect(text).not.toContain('_cost');
+    expect(text).not.toContain('_budget');
+  });
+
+  it('returns method-not-found for unknown tools without crashing the dispatcher', async () => {
+    const server = createMcpServer(process.cwd());
+    const response = (await send(server, {
+      jsonrpc: '2.0',
+      id: 100,
+      method: 'tools/call',
+      params: { name: 'projscan_nonexistent', arguments: {} },
+    })) as { error?: { code: number; message: string }; result?: unknown };
+    expect(response.error?.code).toBe(-32601);
+    expect(response.error?.message).toMatch(/Unknown tool/);
+    // Dispatcher must still respond to subsequent valid calls.
+    const followup = (await send(server, {
+      jsonrpc: '2.0',
+      id: 101,
+      method: 'tools/list',
+    })) as { result: { tools: unknown[] } };
+    expect(Array.isArray(followup.result.tools)).toBe(true);
+  });
+
+  it('returns invalid-params for tools/call with no name', async () => {
+    const server = createMcpServer(process.cwd());
+    const response = (await send(server, {
+      jsonrpc: '2.0',
+      id: 102,
+      method: 'tools/call',
+      params: { arguments: {} },
+    })) as { error?: { code: number; message: string } };
+    expect(response.error?.code).toBe(-32602);
+    expect(response.error?.message).toMatch(/Missing tool name/);
+  });
+
+  it('returns method-not-found for entirely unknown JSON-RPC method', async () => {
+    const server = createMcpServer(process.cwd());
+    const response = (await send(server, {
+      jsonrpc: '2.0',
+      id: 103,
+      method: 'totally/made/up',
+    })) as { error?: { code: number; message: string } };
+    expect(response.error?.code).toBe(-32601);
+  });
+
   it('all tool definitions have valid inputSchema', () => {
     for (const tool of getToolDefinitions()) {
       expect(tool.inputSchema.type).toBe('object');

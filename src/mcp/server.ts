@@ -108,193 +108,31 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
 
   async function dispatch(request: JsonRpcRequest): Promise<JsonRpcResponse | null> {
     const id = request.id ?? null;
-
-    // Notifications (no id) - no response expected.
     const isNotification = request.id === undefined || request.id === null;
 
     try {
       switch (request.method) {
-        case 'initialize': {
-          const params = (request.params ?? {}) as { protocolVersion?: string };
-          initialized = true;
-          // Negotiate: echo the client's version if we support it; otherwise
-          // respond with our newest version.
-          const requested = params.protocolVersion;
-          const negotiated =
-            requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
-              ? requested
-              : PROTOCOL_VERSION;
-          if (watchEnabled && !watchStartPromise) {
-            watchStartPromise = startFileWatcher();
-          }
-          return ok(id, {
-            protocolVersion: negotiated,
-            serverInfo: {
-              name: 'projscan',
-              version: serverVersion,
-            },
-            capabilities: {
-              tools: { listChanged: false },
-              prompts: { listChanged: false },
-              resources: { listChanged: false, subscribe: false },
-              logging: {},
-              ...(watchEnabled
-                ? { experimental: { fileChanged: { method: 'notifications/file_changed' } } }
-                : {}),
-            },
-          });
-        }
-
+        case 'initialize':
+          return handleInitialize(id, request.params);
         case 'notifications/initialized':
         case 'initialized':
           return null;
-
         case 'ping':
           return ok(id, {});
-
         case 'shutdown':
           return ok(id, null);
-
-        case 'tools/list': {
+        case 'tools/list':
           return ok(id, { tools: getToolDefinitions() });
-        }
-
-        case 'tools/call': {
-          const params = (request.params ?? {}) as {
-            name?: string;
-            arguments?: Record<string, unknown>;
-            _meta?: { progressToken?: string | number };
-          };
-          const name = params.name;
-          if (!name) {
-            return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing tool name');
-          }
-          const handler = getToolHandler(name);
-          if (!handler) {
-            return fail(id, JSONRPC_ERROR.MethodNotFound, `Unknown tool: ${name}`);
-          }
-          try {
-            const args = params.arguments ?? {};
-
-            // Progress emitter: if the client supplied a progressToken AND
-            // the transport gave us a notify channel, forward progress events.
-            const progressToken = params._meta?.progressToken;
-            const emit: ProgressEmitter | undefined =
-              progressToken !== undefined && options.notify
-                ? (progress, total, message) => {
-                    const payload = JSON.stringify({
-                      jsonrpc: '2.0',
-                      method: 'notifications/progress',
-                      params: {
-                        progressToken,
-                        progress,
-                        ...(total !== undefined ? { total } : {}),
-                        ...(message !== undefined ? { message } : {}),
-                      },
-                    });
-                    options.notify!(payload);
-                  }
-                : undefined;
-
-            const result = await withProgress(emit, () => handler(args, rootPath));
-
-            // 1.4 — auto-record session touches from any file paths the
-            // tool returned, plus an event for the call itself. The
-            // session tool itself is excluded so reading the session
-            // doesn't pollute it.
-            if (name !== 'projscan_session') {
-              try {
-                const sess = await ensureSession();
-                recordEvent(sess, `tool-call:${name}`);
-                sessionDirty = true;
-                const paths = extractTouchedPaths(result);
-                for (const p of paths) {
-                  recordTouch(sess, p, 'tool-result');
-                }
-                await persistSessionIfDirty();
-              } catch {
-                // Session is best-effort — never break a tool call.
-              }
-            }
-
-            const rawMaxTokens = args.max_tokens;
-            const maxTokens =
-              typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
-                ? rawMaxTokens
-                : undefined;
-            const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
-            const withBudget = budgeted.truncated
-              ? attachBudgetSidecar(budgeted.value, {
-                  truncated: true,
-                  estimatedTokens: budgeted.estimatedTokens,
-                  maxTokens,
-                })
-              : budgeted.value;
-            // 1.5 — every result gets a `_cost` sidecar with the
-            // estimated token count of the post-budget payload, so
-            // agents can see what they actually paid for the call.
-            const finalEstimatedTokens = estimateTokens(JSON.stringify(withBudget) ?? '');
-            const payload = attachCostSidecar(withBudget, finalEstimatedTokens);
-
-            // Opt-in response chunking: agents that want streaming set
-            // `stream: true`. Default stays single-block for backcompat.
-            const wantsStreaming = args.stream === true;
-            const content = wantsStreaming
-              ? toContentBlocks(payload)
-              : [{ type: 'text', text: safeStringify(payload) }];
-
-            return ok(id, {
-              content,
-              isError: false,
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return ok(id, {
-              content: [{ type: 'text', text: `Error: ${message}` }],
-              isError: true,
-            });
-          }
-        }
-
-        case 'prompts/list': {
+        case 'tools/call':
+          return await handleToolsCall(id, request.params);
+        case 'prompts/list':
           return ok(id, { prompts: getPromptDefinitions() });
-        }
-
-        case 'prompts/get': {
-          const params = (request.params ?? {}) as {
-            name?: string;
-            arguments?: Record<string, unknown>;
-          };
-          if (!params.name) {
-            return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing prompt name');
-          }
-          try {
-            const result = await getPrompt(params.name, params.arguments ?? {}, rootPath);
-            return ok(id, result);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return fail(id, JSONRPC_ERROR.InvalidParams, message);
-          }
-        }
-
-        case 'resources/list': {
+        case 'prompts/get':
+          return await handlePromptsGet(id, request.params);
+        case 'resources/list':
           return ok(id, { resources: getResourceDefinitions() });
-        }
-
-        case 'resources/read': {
-          const params = (request.params ?? {}) as { uri?: string };
-          if (!params.uri) {
-            return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing resource uri');
-          }
-          try {
-            const content = await readResource(params.uri, rootPath);
-            return ok(id, { contents: [content] });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return fail(id, JSONRPC_ERROR.InvalidParams, message);
-          }
-        }
-
+        case 'resources/read':
+          return await handleResourcesRead(id, request.params);
         default:
           if (isNotification) return null;
           return fail(id, JSONRPC_ERROR.MethodNotFound, `Method not found: ${request.method}`);
@@ -306,6 +144,171 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     } finally {
       void initialized;
     }
+  }
+
+  function handleInitialize(id: string | number | null, rawParams: unknown): JsonRpcResponse {
+    const params = (rawParams ?? {}) as { protocolVersion?: string };
+    initialized = true;
+    const requested = params.protocolVersion;
+    const negotiated =
+      requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSION;
+    if (watchEnabled && !watchStartPromise) {
+      watchStartPromise = startFileWatcher();
+    }
+    return ok(id, {
+      protocolVersion: negotiated,
+      serverInfo: { name: 'projscan', version: serverVersion },
+      capabilities: {
+        tools: { listChanged: false },
+        prompts: { listChanged: false },
+        resources: { listChanged: false, subscribe: false },
+        logging: {},
+        ...(watchEnabled
+          ? { experimental: { fileChanged: { method: 'notifications/file_changed' } } }
+          : {}),
+      },
+    });
+  }
+
+  async function handleToolsCall(
+    id: string | number | null,
+    rawParams: unknown,
+  ): Promise<JsonRpcResponse> {
+    const params = (rawParams ?? {}) as {
+      name?: string;
+      arguments?: Record<string, unknown>;
+      _meta?: { progressToken?: string | number };
+    };
+    const name = params.name;
+    if (!name) return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing tool name');
+    const handler = getToolHandler(name);
+    if (!handler) return fail(id, JSONRPC_ERROR.MethodNotFound, `Unknown tool: ${name}`);
+
+    try {
+      const args = params.arguments ?? {};
+      const emit = buildProgressEmitter(params._meta?.progressToken);
+      const result = await withProgress(emit, () => handler(args, rootPath));
+      await recordSessionTouches(name, result);
+      const payload = applyBudgetAndCost(result, args);
+      const content = formatToolContent(payload, args.stream === true);
+      return ok(id, { content, isError: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return ok(id, {
+        content: [{ type: 'text', text: `Error: ${message}` }],
+        isError: true,
+      });
+    }
+  }
+
+  async function handlePromptsGet(
+    id: string | number | null,
+    rawParams: unknown,
+  ): Promise<JsonRpcResponse> {
+    const params = (rawParams ?? {}) as { name?: string; arguments?: Record<string, unknown> };
+    if (!params.name) return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing prompt name');
+    try {
+      const result = await getPrompt(params.name, params.arguments ?? {}, rootPath);
+      return ok(id, result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return fail(id, JSONRPC_ERROR.InvalidParams, message);
+    }
+  }
+
+  async function handleResourcesRead(
+    id: string | number | null,
+    rawParams: unknown,
+  ): Promise<JsonRpcResponse> {
+    const params = (rawParams ?? {}) as { uri?: string };
+    if (!params.uri) return fail(id, JSONRPC_ERROR.InvalidParams, 'Missing resource uri');
+    try {
+      const content = await readResource(params.uri, rootPath);
+      return ok(id, { contents: [content] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return fail(id, JSONRPC_ERROR.InvalidParams, message);
+    }
+  }
+
+  /**
+   * Build a progress emitter that forwards progress events to the
+   * client over the notify channel — IFF the client supplied a
+   * progressToken AND the transport gave us a notify channel.
+   */
+  function buildProgressEmitter(
+    progressToken: string | number | undefined,
+  ): ProgressEmitter | undefined {
+    if (progressToken === undefined || !options.notify) return undefined;
+    const notify = options.notify;
+    return (progress, total, message) => {
+      const payload = JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'notifications/progress',
+        params: {
+          progressToken,
+          progress,
+          ...(total !== undefined ? { total } : {}),
+          ...(message !== undefined ? { message } : {}),
+        },
+      });
+      notify(payload);
+    };
+  }
+
+  /**
+   * 1.4 — record session touches from any file paths the tool surfaced,
+   * plus an event for the call itself. Skipped when the call IS for
+   * `projscan_session` (don't pollute the read with the read).
+   * Best-effort: failures here never break the tool call.
+   */
+  async function recordSessionTouches(name: string, result: unknown): Promise<void> {
+    if (name === 'projscan_session') return;
+    try {
+      const sess = await ensureSession();
+      recordEvent(sess, `tool-call:${name}`);
+      sessionDirty = true;
+      const paths = extractTouchedPaths(result);
+      for (const p of paths) recordTouch(sess, p, 'tool-result');
+      await persistSessionIfDirty();
+    } catch {
+      // Session is best-effort.
+    }
+  }
+
+  /**
+   * Apply the agent's `max_tokens` budget (post-hoc truncation) then
+   * attach the `_cost` sidecar (1.5+) reflecting the final payload.
+   * Budget and cost coexist when both fire; both are non-destructive.
+   */
+  function applyBudgetAndCost(result: unknown, args: Record<string, unknown>): unknown {
+    const rawMaxTokens = args.max_tokens;
+    const maxTokens =
+      typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
+        ? rawMaxTokens
+        : undefined;
+    const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
+    const withBudget = budgeted.truncated
+      ? attachBudgetSidecar(budgeted.value, {
+          truncated: true,
+          estimatedTokens: budgeted.estimatedTokens,
+          maxTokens,
+        })
+      : budgeted.value;
+    const finalEstimatedTokens = estimateTokens(JSON.stringify(withBudget) ?? '');
+    return attachCostSidecar(withBudget, finalEstimatedTokens);
+  }
+
+  /**
+   * Format the post-budget payload into MCP content blocks. With
+   * `stream: true` the payload is split into multiple blocks (header
+   * + N record blocks); the default is a single text block for
+   * backwards compatibility.
+   */
+  function formatToolContent(payload: unknown, wantsStreaming: boolean): unknown[] {
+    return wantsStreaming
+      ? toContentBlocks(payload)
+      : [{ type: 'text', text: safeStringify(payload) }];
   }
 
   async function handleMessage(line: string): Promise<string | null> {
