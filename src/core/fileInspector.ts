@@ -287,38 +287,57 @@ export function extractExports(content: string): ExportInfo[] {
   return exports;
 }
 
+/**
+ * Filename-keyword rules. Order matters — first match wins. Each pred
+ * runs against the lowercase basename (without extension).
+ */
+const NAME_RULES: ReadonlyArray<{
+  pred: (name: string) => boolean;
+  label: string;
+}> = [
+  { pred: (n) => n.includes('test') || n.includes('spec'), label: 'Test file' },
+  { pred: (n) => n.includes('config') || n.includes('rc'), label: 'Configuration file' },
+  { pred: (n) => n === 'index', label: 'Module entry point / barrel file' },
+  { pred: (n) => n === 'main' || n === 'app', label: 'Application entry point' },
+  { pred: (n) => n.includes('route') || n.includes('router'), label: 'Route definitions' },
+  { pred: (n) => n.includes('middleware'), label: 'Middleware handler' },
+  { pred: (n) => n.includes('controller'), label: 'Request controller' },
+  { pred: (n) => n.includes('service'), label: 'Service layer logic' },
+  { pred: (n) => n.includes('model') || n.includes('schema'), label: 'Data model / schema definition' },
+  { pred: (n) => n.includes('util') || n.includes('helper'), label: 'Utility functions' },
+  { pred: (n) => n.includes('hook'), label: 'Custom hook' },
+  { pred: (n) => n.includes('context') || n.includes('provider'), label: 'Context / state provider' },
+  { pred: (n) => n.includes('type') || n.includes('interface'), label: 'Type definitions' },
+  { pred: (n) => n.includes('constant'), label: 'Constants / configuration' },
+  { pred: (n) => n.includes('migration'), label: 'Database migration' },
+  { pred: (n) => n.includes('seed'), label: 'Database seed data' },
+  { pred: (n) => n.includes('auth'), label: 'Authentication logic' },
+  { pred: (n) => n.includes('api'), label: 'API endpoint handler' },
+];
+
+/** Directory-segment rules. Same first-match-wins semantics. */
+const DIR_RULES: ReadonlyArray<{
+  pred: (dir: string) => boolean;
+  label: string;
+}> = [
+  { pred: (d) => d.includes('component') || d.includes('pages'), label: 'UI component' },
+  { pred: (d) => d.includes('service'), label: 'Service module' },
+  { pred: (d) => d.includes('model'), label: 'Data model' },
+  { pred: (d) => d.includes('util') || d.includes('lib'), label: 'Library / utility module' },
+];
+
 export function inferPurpose(filePath: string, exports: ExportInfo[]): string {
   const name = path.basename(filePath, path.extname(filePath)).toLowerCase();
   const dir = path.dirname(filePath).toLowerCase();
+  for (const rule of NAME_RULES) if (rule.pred(name)) return rule.label;
+  for (const rule of DIR_RULES) if (rule.pred(dir)) return rule.label;
+  return inferPurposeFromExports(exports);
+}
 
-  if (name.includes('test') || name.includes('spec')) return 'Test file';
-  if (name.includes('config') || name.includes('rc')) return 'Configuration file';
-  if (name === 'index') return 'Module entry point / barrel file';
-  if (name === 'main' || name === 'app') return 'Application entry point';
-  if (name.includes('route') || name.includes('router')) return 'Route definitions';
-  if (name.includes('middleware')) return 'Middleware handler';
-  if (name.includes('controller')) return 'Request controller';
-  if (name.includes('service')) return 'Service layer logic';
-  if (name.includes('model') || name.includes('schema')) return 'Data model / schema definition';
-  if (name.includes('util') || name.includes('helper')) return 'Utility functions';
-  if (name.includes('hook')) return 'Custom hook';
-  if (name.includes('context') || name.includes('provider')) return 'Context / state provider';
-  if (name.includes('type') || name.includes('interface')) return 'Type definitions';
-  if (name.includes('constant')) return 'Constants / configuration';
-  if (name.includes('migration')) return 'Database migration';
-  if (name.includes('seed')) return 'Database seed data';
-  if (name.includes('auth')) return 'Authentication logic';
-  if (name.includes('api')) return 'API endpoint handler';
-
-  if (dir.includes('component') || dir.includes('pages')) return 'UI component';
-  if (dir.includes('service')) return 'Service module';
-  if (dir.includes('model')) return 'Data model';
-  if (dir.includes('util') || dir.includes('lib')) return 'Library / utility module';
-
+function inferPurposeFromExports(exports: ExportInfo[]): string {
   const exportTypes = exports.map((e) => e.type);
   if (exportTypes.includes('class')) return 'Class-based module';
   if (exportTypes.filter((t) => t === 'function').length > 2) return 'Function library';
-
   return 'Source module';
 }
 

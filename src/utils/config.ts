@@ -68,72 +68,92 @@ function normalize(input: unknown): ProjscanConfig {
   if (!input || typeof input !== 'object') return {};
   const obj = input as Record<string, unknown>;
   const out: ProjscanConfig = {};
+  applyMinScore(obj, out);
+  applyBaseRef(obj, out);
+  applyHotspots(obj, out);
+  applyIgnore(obj, out);
+  applyDisableRules(obj, out);
+  applySeverityOverrides(obj, out);
+  applyMonorepo(obj, out);
+  return out;
+}
 
+function applyMinScore(obj: Record<string, unknown>, out: ProjscanConfig): void {
   if (typeof obj.minScore === 'number' && Number.isFinite(obj.minScore)) {
     out.minScore = Math.max(0, Math.min(100, Math.floor(obj.minScore)));
   }
+}
 
+function applyBaseRef(obj: Record<string, unknown>, out: ProjscanConfig): void {
   if (typeof obj.baseRef === 'string' && obj.baseRef.trim()) {
     out.baseRef = obj.baseRef.trim();
   }
+}
 
-  if (obj.hotspots && typeof obj.hotspots === 'object') {
-    const h = obj.hotspots as Record<string, unknown>;
-    const hotspots: NonNullable<ProjscanConfig['hotspots']> = {};
-    if (typeof h.limit === 'number' && Number.isFinite(h.limit)) {
-      hotspots.limit = Math.max(1, Math.min(100, Math.floor(h.limit)));
+function applyHotspots(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  if (!obj.hotspots || typeof obj.hotspots !== 'object') return;
+  const h = obj.hotspots as Record<string, unknown>;
+  const hotspots: NonNullable<ProjscanConfig['hotspots']> = {};
+  if (typeof h.limit === 'number' && Number.isFinite(h.limit)) {
+    hotspots.limit = Math.max(1, Math.min(100, Math.floor(h.limit)));
+  }
+  if (typeof h.since === 'string' && h.since.trim()) {
+    hotspots.since = h.since.trim();
+  }
+  if (Object.keys(hotspots).length) out.hotspots = hotspots;
+}
+
+function applyIgnore(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  if (!Array.isArray(obj.ignore)) return;
+  out.ignore = obj.ignore.filter((v): v is string => typeof v === 'string' && v.length > 0);
+}
+
+function applyDisableRules(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  if (!Array.isArray(obj.disableRules)) return;
+  out.disableRules = obj.disableRules.filter(
+    (v): v is string => typeof v === 'string' && v.length > 0,
+  );
+}
+
+function applySeverityOverrides(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  if (!obj.severityOverrides || typeof obj.severityOverrides !== 'object') return;
+  const raw = obj.severityOverrides as Record<string, unknown>;
+  const overrides: Record<string, IssueSeverity> = {};
+  for (const [key, val] of Object.entries(raw)) {
+    if (typeof val === 'string' && (VALID_SEVERITIES as string[]).includes(val)) {
+      overrides[key] = val as IssueSeverity;
     }
-    if (typeof h.since === 'string' && h.since.trim()) {
-      hotspots.since = h.since.trim();
+  }
+  if (Object.keys(overrides).length) out.severityOverrides = overrides;
+}
+
+function applyMonorepo(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  if (!obj.monorepo || typeof obj.monorepo !== 'object') return;
+  const m = obj.monorepo as Record<string, unknown>;
+  const monorepo: NonNullable<ProjscanConfig['monorepo']> = {};
+  if (Array.isArray(m.importPolicy)) {
+    const rules = parseImportPolicyRules(m.importPolicy);
+    if (rules.length > 0) monorepo.importPolicy = rules;
+  }
+  if (Object.keys(monorepo).length) out.monorepo = monorepo;
+}
+
+function parseImportPolicyRules(raw: unknown[]): ImportPolicyRule[] {
+  const rules: ImportPolicyRule[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.from !== 'string' || !e.from) continue;
+    const rule: ImportPolicyRule = { from: e.from };
+    if (Array.isArray(e.allow)) {
+      rule.allow = e.allow.filter((v): v is string => typeof v === 'string');
     }
-    if (Object.keys(hotspots).length) out.hotspots = hotspots;
-  }
-
-  if (Array.isArray(obj.ignore)) {
-    out.ignore = obj.ignore.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  }
-
-  if (Array.isArray(obj.disableRules)) {
-    out.disableRules = obj.disableRules.filter(
-      (v): v is string => typeof v === 'string' && v.length > 0,
-    );
-  }
-
-  if (obj.severityOverrides && typeof obj.severityOverrides === 'object') {
-    const raw = obj.severityOverrides as Record<string, unknown>;
-    const overrides: Record<string, IssueSeverity> = {};
-    for (const [key, val] of Object.entries(raw)) {
-      if (typeof val === 'string' && (VALID_SEVERITIES as string[]).includes(val)) {
-        overrides[key] = val as IssueSeverity;
-      }
+    if (Array.isArray(e.deny)) {
+      rule.deny = e.deny.filter((v): v is string => typeof v === 'string');
     }
-    if (Object.keys(overrides).length) out.severityOverrides = overrides;
+    if (rule.allow || rule.deny) rules.push(rule);
   }
-
-  if (obj.monorepo && typeof obj.monorepo === 'object') {
-    const m = obj.monorepo as Record<string, unknown>;
-    const monorepo: NonNullable<ProjscanConfig['monorepo']> = {};
-    if (Array.isArray(m.importPolicy)) {
-      const rules: ImportPolicyRule[] = [];
-      for (const entry of m.importPolicy) {
-        if (!entry || typeof entry !== 'object') continue;
-        const e = entry as Record<string, unknown>;
-        if (typeof e.from !== 'string' || !e.from) continue;
-        const rule: ImportPolicyRule = { from: e.from };
-        if (Array.isArray(e.allow)) {
-          rule.allow = e.allow.filter((v): v is string => typeof v === 'string');
-        }
-        if (Array.isArray(e.deny)) {
-          rule.deny = e.deny.filter((v): v is string => typeof v === 'string');
-        }
-        if (rule.allow || rule.deny) rules.push(rule);
-      }
-      if (rules.length > 0) monorepo.importPolicy = rules;
-    }
-    if (Object.keys(monorepo).length) out.monorepo = monorepo;
-  }
-
-  return out;
+  return rules;
 }
 
 /**

@@ -41,12 +41,7 @@ export async function buildCodeGraph(
   files: FileEntry[],
   previousGraph?: CodeGraph,
 ): Promise<CodeGraph> {
-  // Per-adapter setup (e.g. Python package-root detection).
-  const contextByAdapter = new Map<LanguageAdapter, LanguageResolveContext>();
-  for (const adapter of listAdapters()) {
-    contextByAdapter.set(adapter, await adapter.preparePackageRoots(rootPath, files));
-  }
-
+  const contextByAdapter = await prepareAdapterContexts(rootPath, files);
   const parseable = files
     .map((f) => ({ file: f, adapter: getAdapterFor(f.relativePath) }))
     .filter(
@@ -55,69 +50,150 @@ export async function buildCodeGraph(
     );
 
   const graphFiles = new Map<string, GraphFile>();
-  const packageImporters = new Map<string, Set<string>>();
-  const localImporters = new Map<string, Set<string>>();
-  const symbolDefs = new Map<string, Set<string>>();
-
   await Promise.all(
     parseable.map(async ({ file, adapter }) => {
-      const absolutePath = path.isAbsolute(file.absolutePath)
-        ? file.absolutePath
-        : path.resolve(rootPath, file.relativePath);
-
-      let mtimeMs: number;
-      try {
-        const stat = await fs.stat(absolutePath);
-        mtimeMs = stat.mtimeMs;
-      } catch {
-        return;
-      }
-
-      const cached = previousGraph?.files.get(file.relativePath);
-      if (cached && cached.mtimeMs === mtimeMs && cached.adapterId === adapter.id) {
-        graphFiles.set(file.relativePath, cached);
-        return;
-      }
-
-      let content: string;
-      try {
-        content = await fs.readFile(absolutePath, 'utf-8');
-      } catch {
-        return;
-      }
-
-      let result: AstResult;
-      try {
-        result = await adapter.parse(file.relativePath, content);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        result = {
-          ok: false,
-          reason: `adapter ${adapter.id} threw: ${msg.slice(0, 120)}`,
-          imports: [],
-          exports: [],
-          callSites: [],
-          lineCount: 0,
-          cyclomaticComplexity: 0,
-          functions: [],
-        };
-      }
-
-      graphFiles.set(file.relativePath, {
-        relativePath: file.relativePath,
-        imports: result.imports,
-        exports: result.exports,
-        callSites: result.callSites,
-        lineCount: result.lineCount,
-        cyclomaticComplexity: result.cyclomaticComplexity,
-        functions: result.functions ?? [],
-        mtimeMs,
-        parseOk: result.ok,
-        parseReason: result.reason,
-        adapterId: adapter.id,
-      });
+      const entry = await parseFileToGraphEntry(rootPath, file, adapter, previousGraph);
+      if (entry) graphFiles.set(file.relativePath, entry);
     }),
   );
+
+  const { localImporters, packageImporters, symbolDefs } = rebuildCrossFileIndexes(
+    graphFiles,
+    contextByAdapter,
+  );
+  computeFanIn(graphFiles);
+  computeFanOut(graphFiles);
+
+  return {
+    files: graphFiles,
+    packageImporters,
+    localImporters,
+    symbolDefs,
+    scannedFiles: graphFiles.size,
+  };
+}
+
+/**
+ * Per-adapter setup (e.g. Python package-root detection from
+ * pyproject.toml, Rust workspace detection from Cargo.toml). Run once
+ * per graph build; cheap relative to parsing.
+ */
+async function prepareAdapterContexts(
+  rootPath: string,
+  files: FileEntry[],
+): Promise<Map<LanguageAdapter, LanguageResolveContext>> {
+  const contextByAdapter = new Map<LanguageAdapter, LanguageResolveContext>();
+  for (const adapter of listAdapters()) {
+    contextByAdapter.set(adapter, await adapter.preparePackageRoots(rootPath, files));
+  }
+  return contextByAdapter;
+}
+
+/**
+ * Parse one file into a graph entry, honoring the previous graph's
+ * mtime cache. Returns null when the file cannot be stat'd or read
+ * (treat as missing). Adapter parse errors do NOT skip — we record an
+ * `ok: false` entry so callers can see what failed.
+ */
+async function parseFileToGraphEntry(
+  rootPath: string,
+  file: FileEntry,
+  adapter: LanguageAdapter,
+  previousGraph: CodeGraph | undefined,
+): Promise<GraphFile | null> {
+  const absolutePath = path.isAbsolute(file.absolutePath)
+    ? file.absolutePath
+    : path.resolve(rootPath, file.relativePath);
+
+  let mtimeMs: number;
+  try {
+    const stat = await fs.stat(absolutePath);
+    mtimeMs = stat.mtimeMs;
+  } catch {
+    return null;
+  }
+
+  const cached = previousGraph?.files.get(file.relativePath);
+  if (cached && cached.mtimeMs === mtimeMs && cached.adapterId === adapter.id) {
+    return cached;
+  }
+
+  let content: string;
+  try {
+    content = await fs.readFile(absolutePath, 'utf-8');
+  } catch {
+    return null;
+  }
+
+  const result = await safeAdapterParse(adapter, file.relativePath, content);
+  return graphFileFromResult(file.relativePath, adapter.id, result, mtimeMs);
+}
+
+/** Run the adapter's parse and convert any throw into an `ok: false` AstResult. */
+async function safeAdapterParse(
+  adapter: LanguageAdapter,
+  relativePath: string,
+  content: string,
+): Promise<AstResult> {
+  try {
+    return await adapter.parse(relativePath, content);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      reason: `adapter ${adapter.id} threw: ${msg.slice(0, 120)}`,
+      imports: [],
+      exports: [],
+      callSites: [],
+      lineCount: 0,
+      cyclomaticComplexity: 0,
+      functions: [],
+    };
+  }
+}
+
+function graphFileFromResult(
+  relativePath: string,
+  adapterId: string,
+  result: AstResult,
+  mtimeMs: number,
+): GraphFile {
+  return {
+    relativePath,
+    imports: result.imports,
+    exports: result.exports,
+    callSites: result.callSites,
+    lineCount: result.lineCount,
+    cyclomaticComplexity: result.cyclomaticComplexity,
+    functions: result.functions ?? [],
+    mtimeMs,
+    parseOk: result.ok,
+    parseReason: result.reason,
+    adapterId: adapterId as GraphFile['adapterId'],
+  };
+}
+
+/**
+ * Rebuild the three cross-file derived indexes from scratch:
+ *   - localImporters: target file → set of files importing it
+ *   - packageImporters: package name → set of files importing it
+ *   - symbolDefs: exported name → set of files defining it
+ *
+ * Each adapter gets a shot at local resolution first (matters for
+ * Python's `pkg.core` which may be local OR third-party); falls back
+ * to package-name classification.
+ */
+function rebuildCrossFileIndexes(
+  graphFiles: Map<string, GraphFile>,
+  contextByAdapter: Map<LanguageAdapter, LanguageResolveContext>,
+): {
+  localImporters: Map<string, Set<string>>;
+  packageImporters: Map<string, Set<string>>;
+  symbolDefs: Map<string, Set<string>>;
+} {
+  const localImporters = new Map<string, Set<string>>();
+  const packageImporters = new Map<string, Set<string>>();
+  const symbolDefs = new Map<string, Set<string>>();
 
   for (const [importingFile, entry] of graphFiles) {
     const adapter = getAdapterFor(importingFile);
@@ -125,10 +201,6 @@ export async function buildCodeGraph(
     const context = contextByAdapter.get(adapter) ?? {};
 
     for (const imp of entry.imports) {
-      // Try local resolution first. For JS/TS this is a no-op on bare specifiers
-      // (resolveImport short-circuits on non-relative paths). For Python it
-      // matters: `pkg.core` could be either a local module or third-party.
-      // Local takes precedence when it resolves; otherwise fall back to pkg.
       const resolved = adapter.resolveImport(importingFile, imp.source, graphFiles, context);
       if (resolved) {
         if (!localImporters.has(resolved)) localImporters.set(resolved, new Set());
@@ -149,10 +221,16 @@ export async function buildCodeGraph(
     }
   }
 
-  // 0.15.0: per-function fan-in. For each function name across the graph,
-  // count how many OTHER files include the name in their callSites. The
-  // result is attached to the function entry in-place. Approximate: shared
-  // names across files attribute to every definition.
+  return { localImporters, packageImporters, symbolDefs };
+}
+
+/**
+ * 0.15.0+ — per-function fan-in. For each function name across the
+ * graph, count how many OTHER files include the name in their
+ * `callSites`. Mutates `functions[*].fanIn` in place. Approximate:
+ * shared names across files attribute to every definition.
+ */
+function computeFanIn(graphFiles: Map<string, GraphFile>): void {
   const callerFilesByName = new Map<string, Set<string>>();
   for (const gf of graphFiles.values()) {
     for (const name of gf.callSites ?? []) {
@@ -169,21 +247,21 @@ export async function buildCodeGraph(
     for (const fn of gf.functions) {
       const bare = bareName(fn.name);
       const callers = callerFilesByName.get(bare);
-      if (!callers) {
-        fn.fanIn = 0;
-      } else {
-        // Subtract self if the function's own file appears in the caller set
-        // (self-call from within the same file).
-        fn.fanIn = callers.size - (callers.has(gf.relativePath) ? 1 : 0);
-      }
+      // Subtract self if the function's own file appears in the caller
+      // set (self-call from within the same file).
+      fn.fanIn = !callers ? 0 : callers.size - (callers.has(gf.relativePath) ? 1 : 0);
     }
   }
+}
 
-  // 1.2.0: per-function fan-out. For each function with per-function
-  // callSites, count how many distinct callee names match a function name
-  // defined SOMEWHERE in the graph. Names that don't resolve (libraries,
-  // constructors, unknown methods) are dropped — fan-out is "internal"
-  // coupling, not raw call count.
+/**
+ * 1.2.0+ — per-function fan-out. For each function with per-function
+ * callSites, count how many distinct callee names match a function
+ * defined SOMEWHERE in the graph. Library / constructor / unknown
+ * method calls drop — fan-out is "internal" coupling, not raw call
+ * count. Mutates `functions[*].fanOut` in place.
+ */
+function computeFanOut(graphFiles: Map<string, GraphFile>): void {
   const definedNames = new Set<string>();
   for (const gf of graphFiles.values()) {
     if (!gf.functions) continue;
@@ -207,14 +285,6 @@ export async function buildCodeGraph(
       fn.fanOut = count;
     }
   }
-
-  return {
-    files: graphFiles,
-    packageImporters,
-    localImporters,
-    symbolDefs,
-    scannedFiles: graphFiles.size,
-  };
 }
 
 /**
@@ -262,167 +332,86 @@ export async function incrementallyUpdateGraph(
 ): Promise<CodeGraph> {
   if (changedPaths.length === 0) return graph;
 
-  // Per-adapter context. We re-prepare since changedPaths may include
-  // manifest edits (pyproject.toml, go.mod) that would shift package roots.
-  // Run once for the whole batch; cheap relative to parsing.
-  const contextByAdapter = new Map<LanguageAdapter, LanguageResolveContext>();
-  // We need a FileEntry-shaped argument for preparePackageRoots; build one
-  // from the current graph plus the changed-path stat info as a stand-in.
-  const fakeFiles: FileEntry[] = [...graph.files.values()].map((gf) => ({
+  const contextByAdapter = await prepareAdapterContexts(rootPath, fakeFilesFromGraph(graph, rootPath));
+  await Promise.all(changedPaths.map((rel) => processChangedPath(graph, rootPath, rel)));
+  rebuildIndexesIntoGraph(graph, contextByAdapter);
+  computeFanIn(graph.files);
+  computeFanOut(graph.files);
+  graph.scannedFiles = graph.files.size;
+  return graph;
+}
+
+/**
+ * Build a FileEntry[]-shaped stand-in from the current graph, used as
+ * the input to `preparePackageRoots` during incremental update — the
+ * adapters need a complete view of repo layout to detect manifest
+ * edits (pyproject.toml, go.mod) that would shift package roots.
+ */
+function fakeFilesFromGraph(graph: CodeGraph, rootPath: string): FileEntry[] {
+  return [...graph.files.values()].map((gf) => ({
     relativePath: gf.relativePath,
     absolutePath: path.resolve(rootPath, gf.relativePath),
     directory: path.dirname(gf.relativePath),
     extension: path.extname(gf.relativePath),
     sizeBytes: 0,
   }));
-  for (const adapter of listAdapters()) {
-    contextByAdapter.set(adapter, await adapter.preparePackageRoots(rootPath, fakeFiles));
+}
+
+/**
+ * Re-parse one changed path, OR drop it from the graph if it's been
+ * deleted / become unreadable / is no longer parseable. Mutates graph
+ * in place.
+ */
+async function processChangedPath(graph: CodeGraph, rootPath: string, rel: string): Promise<void> {
+  const adapter = getAdapterFor(rel);
+  if (!adapter) {
+    // Not a parseable file (e.g. README). Drop any prior entry; otherwise no-op.
+    if (graph.files.has(rel)) graph.files.delete(rel);
+    return;
   }
 
-  // Step 1: re-parse or delete each changed path.
-  await Promise.all(
-    changedPaths.map(async (rel) => {
-      const adapter = getAdapterFor(rel);
-      if (!adapter) {
-        // Not a parseable file (e.g. README). If we previously had it in the
-        // graph drop the entry; otherwise nothing to do.
-        if (graph.files.has(rel)) graph.files.delete(rel);
-        return;
-      }
+  const abs = path.resolve(rootPath, rel);
+  let mtimeMs: number;
+  try {
+    const stat = await fs.stat(abs);
+    mtimeMs = stat.mtimeMs;
+  } catch {
+    graph.files.delete(rel);
+    return;
+  }
 
-      const abs = path.resolve(rootPath, rel);
-      let mtimeMs: number;
-      try {
-        const stat = await fs.stat(abs);
-        mtimeMs = stat.mtimeMs;
-      } catch {
-        // File doesn't exist anymore - treat as deletion.
-        graph.files.delete(rel);
-        // Strip its old contributions when we rebuild the indexes below.
-        return;
-      }
+  let content: string;
+  try {
+    content = await fs.readFile(abs, 'utf-8');
+  } catch {
+    graph.files.delete(rel);
+    return;
+  }
 
-      let content: string;
-      try {
-        content = await fs.readFile(abs, 'utf-8');
-      } catch {
-        graph.files.delete(rel);
-        return;
-      }
+  const result = await safeAdapterParse(adapter, rel, content);
+  graph.files.set(rel, graphFileFromResult(rel, adapter.id, result, mtimeMs));
+}
 
-      let result: AstResult;
-      try {
-        result = await adapter.parse(rel, content);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        result = {
-          ok: false,
-          reason: `adapter ${adapter.id} threw: ${msg.slice(0, 120)}`,
-          imports: [],
-          exports: [],
-          callSites: [],
-          lineCount: 0,
-          cyclomaticComplexity: 0,
-          functions: [],
-        };
-      }
-
-      graph.files.set(rel, {
-        relativePath: rel,
-        imports: result.imports,
-        exports: result.exports,
-        callSites: result.callSites,
-        lineCount: result.lineCount,
-        cyclomaticComplexity: result.cyclomaticComplexity,
-        functions: result.functions ?? [],
-        mtimeMs,
-        parseOk: result.ok,
-        parseReason: result.reason,
-        adapterId: adapter.id,
-      });
-    }),
+/**
+ * Rebuild the graph's cross-file indexes in place — clear, then refill
+ * from scratch. The graph is small relative to parse cost so rebuilding
+ * edges in O(N) keeps the logic simple and avoids orphan-edge bugs from
+ * in-place patching.
+ */
+function rebuildIndexesIntoGraph(
+  graph: CodeGraph,
+  contextByAdapter: Map<LanguageAdapter, LanguageResolveContext>,
+): void {
+  const { localImporters, packageImporters, symbolDefs } = rebuildCrossFileIndexes(
+    graph.files,
+    contextByAdapter,
   );
-
-  // Step 2: rebuild the cross-file derived indexes from scratch. The graph
-  // is small relative to parse cost; rebuilding edges in O(N) keeps the
-  // logic simple and correct (no orphan-edge bugs from in-place patching).
   graph.localImporters.clear();
+  for (const [k, v] of localImporters) graph.localImporters.set(k, v);
   graph.packageImporters.clear();
+  for (const [k, v] of packageImporters) graph.packageImporters.set(k, v);
   graph.symbolDefs.clear();
-
-  for (const [importingFile, entry] of graph.files) {
-    const adapter = getAdapterFor(importingFile);
-    if (!adapter) continue;
-    const context = contextByAdapter.get(adapter) ?? {};
-
-    for (const imp of entry.imports) {
-      const resolved = adapter.resolveImport(importingFile, imp.source, graph.files, context);
-      if (resolved) {
-        if (!graph.localImporters.has(resolved)) graph.localImporters.set(resolved, new Set());
-        graph.localImporters.get(resolved)!.add(importingFile);
-        continue;
-      }
-      const pkg = adapter.toPackageName(imp.source);
-      if (pkg) {
-        if (!graph.packageImporters.has(pkg)) graph.packageImporters.set(pkg, new Set());
-        graph.packageImporters.get(pkg)!.add(importingFile);
-      }
-    }
-    for (const exp of entry.exports) {
-      if (!exp.name) continue;
-      if (!graph.symbolDefs.has(exp.name)) graph.symbolDefs.set(exp.name, new Set());
-      graph.symbolDefs.get(exp.name)!.add(importingFile);
-    }
-  }
-
-  // Step 3: recompute per-function fan-in. Cheap: iterates files twice.
-  const callerFilesByName = new Map<string, Set<string>>();
-  for (const gf of graph.files.values()) {
-    for (const name of gf.callSites ?? []) {
-      let set = callerFilesByName.get(name);
-      if (!set) {
-        set = new Set();
-        callerFilesByName.set(name, set);
-      }
-      set.add(gf.relativePath);
-    }
-  }
-  for (const gf of graph.files.values()) {
-    if (!gf.functions || gf.functions.length === 0) continue;
-    for (const fn of gf.functions) {
-      const bare = bareName(fn.name);
-      const callers = callerFilesByName.get(bare);
-      fn.fanIn = !callers ? 0 : callers.size - (callers.has(gf.relativePath) ? 1 : 0);
-    }
-  }
-
-  // Per-function fan-out — see buildCodeGraph for shape rationale.
-  const definedNames = new Set<string>();
-  for (const gf of graph.files.values()) {
-    if (!gf.functions) continue;
-    for (const fn of gf.functions) definedNames.add(bareName(fn.name));
-  }
-  for (const gf of graph.files.values()) {
-    if (!gf.functions || gf.functions.length === 0) continue;
-    for (const fn of gf.functions) {
-      if (!fn.callSites) {
-        fn.fanOut = 0;
-        continue;
-      }
-      let count = 0;
-      const seen = new Set<string>();
-      for (const callee of fn.callSites) {
-        if (seen.has(callee)) continue;
-        seen.add(callee);
-        if (callee === bareName(fn.name)) continue;
-        if (definedNames.has(callee)) count++;
-      }
-      fn.fanOut = count;
-    }
-  }
-
-  graph.scannedFiles = graph.files.size;
-  return graph;
+  for (const [k, v] of symbolDefs) graph.symbolDefs.set(k, v);
 }
 
 
