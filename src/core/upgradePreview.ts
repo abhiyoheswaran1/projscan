@@ -39,10 +39,26 @@ export function isValidPackageName(name: string): boolean {
   return PACKAGE_NAME_RE.test(name);
 }
 
+export interface PreviewUpgradeOptions {
+  /**
+   * 1.3+ — when true, fetch the actual latest version from the npm
+   * registry. Default false; the offline path uses `installed` as a
+   * stand-in for `latest`. Behind an explicit flag because every other
+   * code path in projscan is offline and we want that posture preserved
+   * by default.
+   */
+  checkRegistry?: boolean;
+  /** Registry URL override — defaults to https://registry.npmjs.org. */
+  registryUrl?: string;
+  /** Network timeout in ms. Default 5000. */
+  fetchTimeoutMs?: number;
+}
+
 export async function previewUpgrade(
   rootPath: string,
   pkgName: string,
   files: FileEntry[],
+  options: PreviewUpgradeOptions = {},
 ): Promise<UpgradePreview> {
   if (!isValidPackageName(pkgName)) {
     return {
@@ -60,7 +76,18 @@ export async function previewUpgrade(
 
   const declaredVersions = await readDeclaredVersion(rootPath, pkgName);
   const installed = await readInstalledVersion(rootPath, pkgName);
-  const latest = installed; // offline mode: best we know without a registry
+  // Offline default: `latest = installed`. With --check-registry, hit npm
+  // and replace with the registry's view.
+  let latest = installed;
+  let registryError: string | undefined;
+  if (options.checkRegistry) {
+    const fetched = await fetchLatestFromRegistry(pkgName, options);
+    if (fetched.ok) {
+      latest = fetched.version;
+    } else {
+      registryError = fetched.error;
+    }
+  }
 
   if (!declaredVersions && !installed) {
     return {
@@ -108,6 +135,12 @@ export async function previewUpgrade(
   const graph = await buildImportGraph(rootPath, files);
   const importers = filesImporting(graph, pkgName);
 
+  const latestSource: 'registry' | 'installed' | undefined = options.checkRegistry
+    ? registryError
+      ? 'installed'
+      : 'registry'
+    : undefined;
+
   return {
     available: true,
     name: pkgName,
@@ -118,7 +151,50 @@ export async function previewUpgrade(
     breakingMarkers,
     changelogExcerpt: changelog,
     importers,
+    ...(latestSource ? { latestSource } : {}),
+    ...(registryError ? { registryError } : {}),
   };
+}
+
+/**
+ * Fetch the latest version of `pkgName` from the npm registry. Uses
+ * Node's built-in fetch (Node 18+). Network-only; the caller must have
+ * opted in via `checkRegistry: true`.
+ *
+ * Returns `{ ok: true, version }` on success or `{ ok: false, error }` on
+ * timeout / non-2xx / network error. Failures are non-fatal — the offline
+ * `latest = installed` fallback still produces a valid preview.
+ */
+async function fetchLatestFromRegistry(
+  pkgName: string,
+  options: PreviewUpgradeOptions,
+): Promise<{ ok: true; version: string } | { ok: false; error: string }> {
+  const registry = (options.registryUrl ?? 'https://registry.npmjs.org').replace(/\/+$/, '');
+  // npm encodes the scope's `/` as `%2F` for the abbreviated metadata path.
+  const encoded = pkgName.startsWith('@') ? pkgName.replace('/', '%2F') : pkgName;
+  const url = `${registry}/${encoded}/latest`;
+  const timeoutMs = options.fetchTimeoutMs ?? 5000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      return { ok: false, error: `registry returned HTTP ${res.status}` };
+    }
+    const body = (await res.json()) as { version?: unknown };
+    if (typeof body.version !== 'string') {
+      return { ok: false, error: 'registry response missing "version" field' };
+    }
+    return { ok: true, version: body.version };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `registry fetch failed: ${msg.slice(0, 120)}` };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function readDeclaredVersion(rootPath: string, name: string): Promise<string | null> {

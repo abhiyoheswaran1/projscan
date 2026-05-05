@@ -18,8 +18,9 @@ import { reportUpgradeMarkdown } from '../../reporters/markdownReporter.js';
 export function registerUpgrade(): void {
   program
     .command('upgrade <package>')
-    .description('Preview the impact of upgrading a package (offline - reads local CHANGELOG + importers)')
-    .action(async (pkgName: string) => {
+    .description('Preview the impact of upgrading a package (offline by default - reads local CHANGELOG + importers)')
+    .option('--check-registry', 'fetch the actual latest version from npm (1.3+; otherwise latest = installed)')
+    .action(async (pkgName: string, opts: { checkRegistry?: boolean }) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
@@ -29,7 +30,9 @@ export function registerUpgrade(): void {
 
       try {
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
-        const preview = await previewUpgrade(rootPath, pkgName, scan.files);
+        const preview = await previewUpgrade(rootPath, pkgName, scan.files, {
+          checkRegistry: opts.checkRegistry === true,
+        });
         if (spinner) spinner.stop();
 
         switch (format) {

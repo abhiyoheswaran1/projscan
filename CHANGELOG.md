@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-05
+
+Theme: **"Push, Don't Poll"** — third minor on the post-1.0 path. Long-running agents stop polling for repo state; the MCP server pushes file-change notifications instead. Plus opt-in registry lookup for `projscan_upgrade` so the "is there a newer version?" question gets a real answer when the agent has network.
+
+### Added
+
+- **MCP `notifications/file_changed`.** Run `projscan mcp --watch` and the server starts a `node:fs.watch` over the repo. On every debounced batch (200 ms, mirrors the `projscan watch` CLI), the server emits a JSON-RPC notification with the changed paths, the post-update graph size, and a timestamp. Capability advertised under `experimental.fileChanged` on `initialize`, so clients can detect support before subscribing. Off by default — agents that don't ask for it pay nothing for the watcher.
+  - Notification shape: `{ method: "notifications/file_changed", params: { paths: string[], scannedFiles: number, timestampMs: number } }`.
+  - Reuses the `startWatcher` core from 0.16 plus the `incrementallyUpdateGraph` API: the graph is updated in place before each notification fires, so a follow-up `tools/call` sees the new state.
+  - Initial empty-paths tick from the watcher's startup scan is suppressed; clients only see deltas.
+- **`previewUpgrade` registry-fetch path.** New `checkRegistry: true` option (CLI: `projscan upgrade <pkg> --check-registry`; MCP: `projscan_upgrade { check_registry: true }`) hits `https://registry.npmjs.org/<pkg>/latest` for the actual latest version. Default stays offline — `latest` falls back to `installed`. Failures (timeout, non-2xx, malformed body) are non-fatal: the offline preview still returns, with `latestSource: "installed"` and a `registryError` field for the agent to inspect. New `latestSource` field is `"registry"` on success or `"installed"` on failure / when the flag was off.
+  - Scoped names are URL-encoded correctly (`@scope/pkg` → `@scope%2Fpkg`).
+  - 5-second timeout via `AbortController`; configurable via `fetchTimeoutMs`.
+  - Custom `registryUrl` for testing / corporate mirrors.
+
+### Changed
+
+- **`runMcpServer(rootPath, options)` now accepts `{ watch?: boolean }`.** Backwards-compatible — calling without options preserves 1.2 behavior exactly.
+- **`createMcpServer` returns a `close()` method** alongside `handleMessage`. Stops any active watcher; idempotent. Existing tests continue to work without calling close (Node will collect the inactive watcher on shutdown), but transports that own their lifetime should call it.
+- **MCP tool count: 20** (unchanged — no new tools, just an arg on `projscan_upgrade`).
+- **CLI commands: 22** (unchanged — `projscan mcp` gains a `--watch` flag; `projscan upgrade` gains `--check-registry`).
+
+### Deferred
+
+- **Persistent MCP process** (originally listed as a 1.3 stretch). Architectural overlap with the 1.4 "Session" work — durable session state with shared graph across agents is a more general primitive than a daemon socket. Punted to 1.4.
+
+### Notes
+
+- **+8 tests** (925 → 933). New coverage: MCP `notifications/file_changed` (capability advertisement, real fs.watch round-trip, watch-off silence) (4), registry-fetch path (offline default, success, non-2xx fallback, scoped-name encoding) (4).
+- **No new runtime dependencies.** The watcher uses `node:fs.watch` (zero-dep, already in 0.16). Registry fetch uses Node's built-in `fetch` (Node 18+, already required).
+- **Stable surface unchanged** — `npm run check:stability` reports 0 regressions. The new MCP capability is under `experimental.*` (per the spec), the new fields on `UpgradePreview` are optional, and the new function options have defaults that preserve prior behavior.
+
 ## [1.2.1] - 2026-05-05
 
 A docs-only patch. Replaces the nine static `docs/*.png` command screenshots with animated GIFs generated programmatically via [`charmbracelet/vhs`](https://github.com/charmbracelet/vhs), bringing them in line with the three website-hosted recordings (`hero`, `hotspots`, `search`) used at [abhiyoheswaran.com/apps/projscan](https://abhiyoheswaran.com/apps/projscan).

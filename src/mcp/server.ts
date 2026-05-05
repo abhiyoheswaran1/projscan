@@ -8,6 +8,7 @@ import { getResourceDefinitions, readResource } from './resources.js';
 import { applyBudget } from './tokenBudget.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
 import { toContentBlocks } from './chunker.js';
+import { startWatcher, type WatchHandle } from '../core/watcher.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
@@ -50,20 +51,32 @@ function readPackageVersion(): string {
 
 export interface McpServerHandle {
   handleMessage(line: string): Promise<string | null>;
+  /** Stop any active watchers (1.3+). Idempotent. */
+  close(): void;
 }
 
 export interface McpServerOptions {
   /**
    * Called when the server wants to emit a JSON-RPC notification (e.g.,
-   * `notifications/progress`) out of band from the normal request/response
-   * cycle. The transport layer is responsible for writing the payload.
+   * `notifications/progress`, `notifications/file_changed`) out of band
+   * from the normal request/response cycle. The transport layer is
+   * responsible for writing the payload.
    */
   notify?: (payload: string) => void;
+  /**
+   * 1.3+ — when true, start a fs.watch on `rootPath` and emit
+   * `notifications/file_changed` on each debounced batch. Off by default;
+   * agents that don't ask for it pay nothing for it.
+   */
+  watch?: boolean;
 }
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readPackageVersion();
   let initialized = false;
+  let watchHandle: WatchHandle | null = null;
+  let watchStartPromise: Promise<void> | null = null;
+  const watchEnabled = options.watch === true && options.notify !== undefined;
 
   async function dispatch(request: JsonRpcRequest): Promise<JsonRpcResponse | null> {
     const id = request.id ?? null;
@@ -83,6 +96,9 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
             requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
               ? requested
               : PROTOCOL_VERSION;
+          if (watchEnabled && !watchStartPromise) {
+            watchStartPromise = startFileWatcher();
+          }
           return ok(id, {
             protocolVersion: negotiated,
             serverInfo: {
@@ -94,6 +110,9 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
               prompts: { listChanged: false },
               resources: { listChanged: false, subscribe: false },
               logging: {},
+              ...(watchEnabled
+                ? { experimental: { fileChanged: { method: 'notifications/file_changed' } } }
+                : {}),
             },
           });
         }
@@ -256,7 +275,42 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     return JSON.stringify(response);
   }
 
-  return { handleMessage };
+  async function startFileWatcher(): Promise<void> {
+    if (!options.notify) return;
+    const notify = options.notify;
+    watchHandle = startWatcher(rootPath, {
+      onChange: ({ paths, graph }) => {
+        // The watcher fires once on startup with `paths: []` (the initial
+        // graph build). Skip it — clients only care about deltas.
+        if (paths.length === 0) return;
+        const payload = JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'notifications/file_changed',
+          params: {
+            paths,
+            scannedFiles: graph.scannedFiles,
+            timestampMs: Date.now(),
+          },
+        });
+        notify(payload);
+      },
+    });
+    try {
+      await watchHandle.ready;
+    } catch {
+      // Initial scan failure shouldn't take the server down; the agent can
+      // still call tools, they just won't get push notifications.
+    }
+  }
+
+  function close(): void {
+    if (watchHandle) {
+      watchHandle.close();
+      watchHandle = null;
+    }
+  }
+
+  return { handleMessage, close };
 }
 
 function ok(id: string | number | null, result: unknown): JsonRpcResponse {
@@ -300,14 +354,24 @@ function attachBudgetSidecar(value: unknown, info: BudgetInfo): unknown {
   return { ...(value as Record<string, unknown>), _budget: info };
 }
 
-export async function runMcpServer(rootPath: string): Promise<void> {
+export interface RunMcpServerOptions {
+  /** 1.3+ — emit notifications/file_changed on source-file changes. */
+  watch?: boolean;
+}
+
+export async function runMcpServer(
+  rootPath: string,
+  runOptions: RunMcpServerOptions = {},
+): Promise<void> {
   const server = createMcpServer(rootPath, {
     notify: (payload) => {
       process.stdout.write(payload + '\n');
     },
+    watch: runOptions.watch,
   });
 
-  process.stderr.write(`[projscan-mcp] listening on stdio (root=${rootPath})\n`);
+  const watchSuffix = runOptions.watch ? ' [watch on]' : '';
+  process.stderr.write(`[projscan-mcp] listening on stdio (root=${rootPath})${watchSuffix}\n`);
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -332,4 +396,6 @@ export async function runMcpServer(rootPath: string): Promise<void> {
     rl.on('close', resolve);
     process.stdin.on('end', resolve);
   });
+
+  server.close();
 }

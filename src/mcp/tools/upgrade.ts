@@ -5,7 +5,7 @@ import { isPythonDominated, type McpTool } from './_shared.js';
 export const upgradeTool: McpTool = {
   name: 'projscan_upgrade',
   description:
-    'Preview the impact of upgrading a package: semver drift, breaking-change markers from the local CHANGELOG, and the files in your repo that import it. Offline.',
+    'Preview the impact of upgrading a package: semver drift, breaking-change markers from the local CHANGELOG, and the files in your repo that import it. Offline by default; pass `check_registry: true` (1.3+) to fetch the actual latest version from npm.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -13,12 +13,18 @@ export const upgradeTool: McpTool = {
         type: 'string',
         description: 'Name of the package to preview.',
       },
+      check_registry: {
+        type: 'boolean',
+        description:
+          '1.3+ — when true, fetch the latest version from registry.npmjs.org (network-required). Default false: latest is treated as the installed version.',
+      },
     },
     required: ['package'],
   },
   handler: async (args, rootPath) => {
     const pkgName = typeof args.package === 'string' ? args.package : '';
     if (!pkgName) throw new Error('package argument is required');
+    const checkRegistry = args.check_registry === true;
     const scan = await scanRepository(rootPath);
 
     if (await isPythonDominated(rootPath, scan.files)) {
@@ -36,6 +42,6 @@ export const upgradeTool: McpTool = {
       };
     }
 
-    return await previewUpgrade(rootPath, pkgName, scan.files);
+    return await previewUpgrade(rootPath, pkgName, scan.files, { checkRegistry });
   },
 };

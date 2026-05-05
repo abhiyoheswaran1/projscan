@@ -52,23 +52,25 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.1 → 1.3 (Q3 2026)
+### Now — 1.4 → 1.6 (Q3-Q4 2026)
 
-**Theme: "Defend & Discover"** — close the discoverability + parity gaps so projscan is the obvious pick for an agent picking a code-intel MCP server.
+The "Defend & Discover" arc (1.1-1.3) is **shipped**. Next up is the strategic bet — **Agent Substrate** — making projscan the shared source-of-truth for multi-agent setups. See the table below; was previously the "Next" arc, promoted now that 1.3 is out.
+
+#### Defend & Discover (shipped)
 
 | Release | Theme | Headlines |
 |---|---|---|
-| **1.1.0 "On the Map"** | Discoverability + first-language expansion | Submit to Anthropic's MCP registry. Rust adapter (closes the most-asked language gap). Two new fix-suggest templates (eslint-* and python-type-error-*). Pre-drafted issue stubs under `.github/seed-issues/` are the contributor on-ramp. |
-| **1.2.0 "Reporter Parity"** | Polish the surface | HTML reporters for `pr-diff` and `coverage` (closes the 0.16 gap). PHP and C# language adapters. Per-function fan-out (per-function `callSites` tracking added across all six adapters). |
-| **1.3.0 "Push, Don't Poll"** | Long-session UX | MCP-side `notifications/file_changed` from `projscan watch` so agents in long sessions get a push, not a poll. Registry-aware upgrade preview behind a network-required flag (default off). Stretch: persistent process mode for `projscan mcp` so multiple agents share one warm graph. |
+| **1.1.0 "On the Map"** | Discoverability + first-language expansion | Anthropic MCP registry submission. Rust adapter. Two fix-suggest templates (`eslint-*`, `python-type-error-*`). Seed-issue contributor on-ramp. |
+| **1.2.0 "Reporter Parity"** | Polish the surface | HTML reporters for `pr-diff` + `coverage`. PHP and C# adapters. Per-function fan-out across all 8 adapters. |
+| **1.3.0 "Push, Don't Poll"** | Long-session UX | MCP `notifications/file_changed` (off by default; `--watch` to opt in). Registry-aware `projscan upgrade --check-registry`. Persistent-process stretch deferred to 1.4. |
 
-### Next — 1.4 → 1.6 (Q4 2026)
+#### Agent Substrate (now)
 
-**Theme: "Agent Substrate"** — make projscan the shared source-of-truth for multi-agent setups. This is the strategic bet.
+**Theme:** make projscan the shared source-of-truth for multi-agent setups. This is the strategic bet.
 
 | Release | Theme | Bet |
 |---|---|---|
-| **1.4.0 "Session"** | Shared state across agents | New `projscan_session` MCP tool: a durable, cache-backed session that multiple agent invocations can attach to. Agents share a hot graph + a list of "what's been touched this session" without any one of them owning state. Pairs with multi-agent orchestrators (Claude Agent Teams, swarms). |
+| **1.4.0 "Session"** | Shared state across agents | New `projscan_session` MCP tool: a durable, cache-backed session that multiple agent invocations can attach to. Agents share a hot graph + a list of "what's been touched this session" without any one of them owning state. Absorbs the deferred 1.3 persistent-process work. Pairs with multi-agent orchestrators (Claude Agent Teams, swarms). |
 | **1.5.0 "Budgeted by default"** | Cost-aware tool composition | Every tool reports a token-cost estimate alongside its result. New `max_cost_tokens` arg auto-degrades response depth. `projscan_review` becomes adaptive: full review on a budget, summarized review at half, verdict-only at quarter. |
 | **1.6.0 "Specialist prompts"** | Agent recipes, not tool docs | Ship a `prompts/` directory of MCP-protocol prompts that agents can invoke directly: `refactor-hotspot`, `triage-doctor-issues`, `review-this-pr`, `safely-rename-symbol`. Each is a tested composition of projscan tools with the right argument shape. Lowers integration friction from "which tools do I call in what order" to "ask the prompt by name". |
 
@@ -113,6 +115,21 @@ If you've adopted projscan and want something specific:
 ---
 
 ## Recently Shipped
+
+### v1.3.0 - "Push, Don't Poll" (2026-05-05)
+- **MCP `notifications/file_changed`.** `projscan mcp --watch` starts an in-process file watcher and pushes JSON-RPC notifications on every debounced batch (paths + post-update graph size + timestamp). Capability advertised under `experimental.fileChanged`. Long-session agents stop polling.
+- **`projscan upgrade --check-registry`.** Optional network fetch from `registry.npmjs.org/<pkg>/latest` so the preview's "latest" reflects what's actually current, not just what's installed. Default off; failures fall back to the offline preview with a `registryError` field. Same opt-in works through MCP via `projscan_upgrade { check_registry: true }`.
+- **Persistent MCP process punted to 1.4.** Architectural overlap with "Session"; revisit once the durable-session primitive is in place.
+- 933 tests passing (+8). MCP tools unchanged at 20. CLI commands unchanged at 22. No new runtime dependencies (uses `node:fs.watch` and built-in `fetch`).
+
+### v1.2.1 - Animated docs (2026-05-05)
+- **Animated GIFs replace nine static command screenshots** in `docs/`, generated programmatically via `charmbracelet/vhs` to match the house style of the website-hosted recordings (hero / hotspots / search). README markup unchanged — `.png` → `.gif` swap, ~907 KB total. Docs-only patch; no code changes.
+
+### v1.2.0 - "Reporter Parity" (2026-05-05)
+- **PHP and C# as full-AST languages.** Eight tree-sitter adapters now (was six in 1.1). PHP resolves PSR-4 namespaces via `composer.json`; C# strips the `.csproj` root namespace before mapping to a path. Vendored wasm grew ~4.5 MB → ~10.5 MB (the C# grammar is ~5.2 MB on its own).
+- **Per-function fan-out across all eight adapters.** `FunctionInfo.callSites` now carries the bare names of internal callees (deduped, nested functions excluded); `fanOut` counts the ones that resolve to a function defined in the graph. Computed in `buildCodeGraph` alongside the existing `fanIn`.
+- **HTML reporters for `pr-diff` and `coverage`.** `--format html` emits a self-contained page; the coverage reporter highlights "scariest untested files" with a `danger` class where coverage < 50% and risk > 50.
+- 925 tests passing (+67). Languages with full AST: 7 → 9. Runtime deps 12 → 14.
 
 ### v1.1.1 - Dogfood patch (2026-05-04)
 - **`unusedDependencyCheck`** allowlists `tree-sitter-*` packages — they ship a `.wasm` grammar that consumers vendor rather than `import`, so the unused-dep analyzer was throwing false positives on every codebase using tree-sitter via the wasm-vendor pattern (including projscan itself).

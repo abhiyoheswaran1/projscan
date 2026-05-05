@@ -338,6 +338,15 @@ export interface UpgradePreview {
   breakingMarkers: string[];
   changelogExcerpt?: string;
   importers: string[];
+  /**
+   * 1.3+ — set when `previewUpgrade` was called with `checkRegistry: true`.
+   * "registry" if the latest came from npm; "installed" if we fell back to
+   * the locally-installed version (either offline mode or a registry fetch
+   * that failed). Absent when no registry attempt was made.
+   */
+  latestSource?: 'registry' | 'installed';
+  /** 1.3+ — set when a registry fetch was attempted and failed. */
+  registryError?: string;
 }
 
 // === Coverage (0.5.0) ===
