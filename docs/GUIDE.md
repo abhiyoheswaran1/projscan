@@ -151,8 +151,10 @@ Long agent sessions edit files repeatedly. Each edit could otherwise cost a full
 - **`projscan watch`** *(0.16+)* — long-running CLI command. On file change, debounces 200ms then runs the incremental graph update + re-runs `doctor`, printing a one-line status. Uses `node:fs.watch`, no new runtime dep. Filters out `node_modules`, `.git`, build dirs, etc.
 - **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** — the public API the watcher uses; exported so callers maintaining their own state can patch the graph in place after handling their own change events.
 - **`--format html`** *(0.16+)* — for sharing review snapshots: `projscan doctor --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `doctor`, `hotspots`, `coupling`, `review`, and `impact`.
+- **`projscan mcp --watch`** *(1.3+)* — when projscan runs as an MCP server with this flag, it pushes JSON-RPC `notifications/file_changed` events to the connected agent on every debounced batch. Long-session agents stop polling. The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support.
+- **`projscan_session` MCP tool + `projscan session` CLI** *(1.4+)* — durable cross-invocation session. Auto-records every file path that any tool returned (`tool-result` source) and every fs-watch batch (`fs-watch` source), so multiple agent invocations against the same project share a "what's been touched here" view without re-running git. Idle window 1 hour by default; subactions: `current` / `touched` / `events` / `reset`. State lives at `.projscan-cache/session.json`.
 
-**Typical workflow:** start `projscan watch` in a side terminal at the start of a long session; subsequent agent tool calls hit a warm graph cache.
+**Typical workflow:** start `projscan watch` in a side terminal at the start of a long session; subsequent agent tool calls hit a warm graph cache. With multi-agent setups, every MCP tool call additionally records into the session, so a coordinator agent can ask `projscan_session { action: "touched" }` to see what its peers have touched.
 
 ---
 
@@ -559,11 +561,34 @@ Calculates the project health score and generates a [shields.io](https://shields
 
 ```bash
 projscan mcp
+projscan mcp --watch    # 1.3+: also push notifications/file_changed on every batch
 ```
 
 Runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents (Claude Code, Cursor, Windsurf, any MCP client) can call ProjScan during a session to ground their suggestions in live project state.
 
+With `--watch`, the server starts an in-process file watcher and emits a JSON-RPC `notifications/file_changed` notification on every debounced batch (paths + post-update graph size + timestamp). The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support before subscribing. Off by default — agents that don't need push updates pay nothing for it.
+
 See [MCP Server for AI Agents](#mcp-server-for-ai-agents).
+
+### session *(1.4+)*
+
+```bash
+projscan session                        # current session summary
+projscan session touched                # files touched this session, newest-first
+projscan session touched --source fs-watch
+projscan session events                 # event log, newest-first
+projscan session reset                  # discard the current session
+```
+
+Inspects the durable cross-invocation session that the MCP server populates as agents work. State lives at `.projscan-cache/session.json` and is shared by every agent invocation against the same project. A new session starts when no previous session exists or when the previous one has been idle for more than an hour.
+
+Touches come from three sources:
+
+- **`tool-result`** — every MCP `tools/call` result is scanned for repo-relative file paths under known fields (`file`, `relativePath`, `paths`, `definitions`, `importers`, `reachable`, etc.) and each is auto-recorded.
+- **`fs-watch`** — when `projscan mcp --watch` is on, every debounced file-change batch also records each changed path.
+- **`explicit`** — reserved for future "agent says it edited X" hooks.
+
+`projscan_session { action: "current" | "touched" | "events" | "reset" }` is the MCP-side mirror.
 
 ---
 
@@ -992,13 +1017,30 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 *Workspace:*
 - `projscan_workspaces` — list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna).
 
+*Session (1.4+):*
+- `projscan_session` — durable cross-invocation session. Subactions: `current`, `touched`, `events`, `reset`. Auto-populated from every tool result and from `notifications/file_changed` push events when `--watch` is on.
+
 **Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field. Tools that return arrays also support cursor pagination via `cursor` + `page_size`.
+
+**Every tool result also carries a `_cost` sidecar (1.5+).** `_cost: { estimatedTokens: N }` lets agents see what they paid for a call without counting tokens themselves — useful for budgeting tool sequences. Cost is the chars-divided-by-4 approximation of the serialized payload (within ~±15% of GPT/Claude tokenizers for code-shaped output).
+
+**`projscan_review` accepts `max_cost_tokens` (1.5+).** Adaptive shape budget. The tool picks a tier based on the value and reshapes the response *before* serializing — different from `max_tokens` (post-hoc truncation):
+
+- **full** (no budget, or ≥ 7000): everything — full structural diff + per-changed-file lists + all cycles + risky functions + dependency changes.
+- **summary** (3000–6999): verdict + summary + top-5 changed files + top-3 of each list, with the heavy per-file expansion arrays stripped.
+- **verdict-only** (<3000): verdict + summary + base/head + aggregate `totals`. Roughly 500 tokens.
+
+The chosen tier is surfaced as a top-level `tier` field on the response and lifted into `_cost.tier` so an agent sees it in one place. Both `_cost` and `_budget` can appear on the same response when both `max_cost_tokens` and `max_tokens` are passed.
 
 **Incremental cache:** projscan caches parsed ASTs at `.projscan-cache/graph.json`. First run populates, subsequent runs re-parse only files whose `mtime` changed. Auto-gitignored. Delete the directory to force a rebuild.
 
-**Prompts (2, parameterized with live project data):**
-- `prioritize_refactoring` - ranked plan grounded in current hotspots
-- `investigate_file` - senior-engineer brief for a specific file
+**Prompts (6, parameterized with live project data):**
+- `prioritize_refactoring` — ranked plan grounded in current hotspots
+- `investigate_file` — senior-engineer brief for a specific file
+- `refactor_hotspot` *(1.5+)* — step-by-step refactor plan for one hotspot file
+- `triage_doctor_issues` *(1.5+)* — critical / important / backlog ordering of open issues
+- `review_this_pr` *(1.5+)* — PR-comment-ready review primed with the structural diff and verdict
+- `safely_rename_symbol` *(1.5+)* — ordered rename + verification checklist via `projscan_impact` blast radius
 
 **Resources (3, readable on demand):**
 - `projscan://health`
