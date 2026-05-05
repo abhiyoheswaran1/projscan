@@ -19,7 +19,11 @@ export const explainIssueTool: McpTool = {
   },
   handler: async (args, rootPath) => {
     const issueId = typeof args.issue_id === 'string' ? args.issue_id : '';
-    if (!issueId) throw new Error('issue_id is required');
+    if (!issueId) {
+      throw new Error(
+        'issue_id is required. Get one from projscan_doctor or projscan_analyze (each issue has an `id` field).',
+      );
+    }
     const scan = await scanRepository(rootPath);
     const issues = await collectIssues(rootPath, scan.files);
     const explanation = await explainIssue(rootPath, issues, issueId);

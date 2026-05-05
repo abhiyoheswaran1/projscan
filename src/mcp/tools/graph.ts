@@ -49,28 +49,50 @@ export const graphTool: McpTool = {
 
     switch (direction) {
       case 'imports': {
-        if (!file) throw new Error('file argument is required for direction=imports');
+        if (!file) {
+          throw new Error(
+            'direction=imports requires a `file` argument (repo-relative path, e.g. "src/auth.ts").',
+          );
+        }
         return { file, imports: importsOf(graph, file).slice(0, limit) };
       }
       case 'exports': {
-        if (!file) throw new Error('file argument is required for direction=exports');
+        if (!file) {
+          throw new Error(
+            'direction=exports requires a `file` argument (repo-relative path).',
+          );
+        }
         return { file, exports: exportsOf(graph, file).slice(0, limit) };
       }
       case 'importers': {
-        if (!file) throw new Error('file argument is required for direction=importers');
+        if (!file) {
+          throw new Error(
+            'direction=importers requires a `file` argument (repo-relative path).',
+          );
+        }
         return { file, importers: filesImportingFile(graph, file).slice(0, limit) };
       }
       case 'symbol_defs': {
-        if (!symbol) throw new Error('symbol argument is required for direction=symbol_defs');
+        if (!symbol) {
+          throw new Error(
+            'direction=symbol_defs requires a `symbol` argument (the exported name to look up, e.g. "authenticate").',
+          );
+        }
         return { symbol, definedIn: filesDefiningSymbol(graph, symbol).slice(0, limit) };
       }
       case 'package_importers': {
         const pkg = symbol ?? file;
-        if (!pkg) throw new Error('symbol (or file) argument is required for direction=package_importers');
+        if (!pkg) {
+          throw new Error(
+            'direction=package_importers requires either `symbol` or `file` arg (the npm package name, e.g. "chalk").',
+          );
+        }
         return { package: pkg, importers: filesImportingPackage(graph, pkg).slice(0, limit) };
       }
       default:
-        throw new Error(`unknown direction: ${direction}`);
+        throw new Error(
+          `unknown direction "${direction}". Valid: imports, exports, importers, symbol_defs, package_importers.`,
+        );
     }
   },
 };

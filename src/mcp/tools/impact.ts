@@ -34,10 +34,14 @@ export const impactTool: McpTool = {
     const file = typeof args.file === 'string' && args.file.length > 0 ? args.file : null;
     const symbol = typeof args.symbol === 'string' && args.symbol.length > 0 ? args.symbol : null;
     if (!file && !symbol) {
-      throw new Error('Provide either `file` or `symbol`.');
+      throw new Error(
+        'projscan_impact needs exactly one of `file` (a repo-relative path) or `symbol` (an exported name). Pass `file` for "what files transitively import this?" and `symbol` for "what calls this exported name?"',
+      );
     }
     if (file && symbol) {
-      throw new Error('`file` and `symbol` are mutually exclusive - pass exactly one.');
+      throw new Error(
+        '`file` and `symbol` are mutually exclusive — pass exactly one. Use `file` for file-level blast radius, `symbol` for symbol-level callers.',
+      );
     }
     const maxDistance = typeof args.max_distance === 'number' ? args.max_distance : undefined;
 

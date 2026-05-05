@@ -17,7 +17,11 @@ export const fileTool: McpTool = {
   },
   handler: async (args, rootPath) => {
     const rel = typeof args.file === 'string' ? args.file : '';
-    if (!rel) throw new Error('file argument is required');
+    if (!rel) {
+      throw new Error(
+        'file argument is required: pass a repo-relative path (e.g. "src/auth.ts"). Use projscan_search { scope: "files" } to find one.',
+      );
+    }
     return await inspectFile(rootPath, rel);
   },
 };

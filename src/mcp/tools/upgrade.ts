@@ -23,7 +23,11 @@ export const upgradeTool: McpTool = {
   },
   handler: async (args, rootPath) => {
     const pkgName = typeof args.package === 'string' ? args.package : '';
-    if (!pkgName) throw new Error('package argument is required');
+    if (!pkgName) {
+      throw new Error(
+        'package argument is required: pass an npm package name (e.g. "chalk" or "@types/node"). List candidates with projscan_outdated or projscan_dependencies.',
+      );
+    }
     const checkRegistry = args.check_registry === true;
     const scan = await scanRepository(rootPath);
 

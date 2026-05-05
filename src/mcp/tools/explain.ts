@@ -18,11 +18,17 @@ export const explainTool: McpTool = {
   },
   handler: async (args, rootPath) => {
     const rel = typeof args.file === 'string' ? args.file : '';
-    if (!rel) throw new Error('file argument is required');
+    if (!rel) {
+      throw new Error(
+        'file argument is required: pass a repo-relative path (e.g. "src/auth.ts").',
+      );
+    }
     const absolutePath = path.resolve(rootPath, rel);
     const resolvedRoot = path.resolve(rootPath);
     if (!absolutePath.startsWith(resolvedRoot + path.sep) && absolutePath !== resolvedRoot) {
-      throw new Error('file must be inside the project root');
+      throw new Error(
+        `file must be inside the project root (got "${rel}"; absolute or "../" paths are rejected for security).`,
+      );
     }
     const content = await fs.readFile(absolutePath, 'utf-8');
     return explainFile(absolutePath, content, rootPath);
