@@ -636,6 +636,15 @@ export interface ReviewDependencyChange {
   bumped: Array<{ name: string; from: string; to: string; kind: 'dep' | 'dev' }>;
 }
 
+/**
+ * 1.5+ — `projscan_review` can shape its response at three tiers based
+ * on a `max_cost_tokens` budget passed by the caller: full (no budget
+ * or large budget), summary (3K-7K tokens), verdict-only (<3K).
+ * Selected by `selectReviewTier` and surfaced as the `tier` field on
+ * the response.
+ */
+export type ReviewTier = 'full' | 'summary' | 'verdict-only';
+
 export interface ReviewReport {
   available: boolean;
   reason?: string;
@@ -655,6 +664,11 @@ export interface ReviewReport {
   verdict: 'ok' | 'review' | 'block';
   /** One-line bullets explaining the verdict. */
   summary: string[];
+  /**
+   * 1.5+ — which tier this report was shaped at. Absent when the full
+   * report is returned without budget shaping.
+   */
+  tier?: ReviewTier;
 }
 
 // === Impact / Reachability (0.15) ===

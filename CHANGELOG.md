@@ -4,6 +4,30 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-05-05
+
+Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, and `projscan_review` adapts its response shape to the budget the caller asks for.
+
+### Added
+
+- **`_cost` sidecar on every tool result.** The MCP server attaches `_cost: { estimatedTokens: N }` to every `tools/call` response automatically. Agents can see what they paid for a call without counting tokens themselves, which makes it cheap to budget tool sequences. Cost is the chars-divided-by-4 approximation of the serialized payload — within roughly ±15% of GPT/Claude tokenizers for code-shaped output.
+- **`max_cost_tokens` arg on `projscan_review`** — adaptive shape budget. The tool picks a tier and reshapes the response *before* serializing, so an agent on a tight budget gets a response sized to fit instead of a truncated full one. Three tiers:
+  - **full** (no budget, or budget ≥ 7000): everything — full structural diff, per-changed-file lists, all cycles, all risky functions, all dependency changes.
+  - **summary** (3000-6999): verdict + summary + top-5 changed files + top-3 of each list (cycles, risky functions, deps), with the heavy per-file expansion arrays (exports added/removed, imports added/removed, calls added/removed) stripped. Aggregate `totals` included.
+  - **verdict-only** (<3000): verdict + summary + base/head + aggregate `totals`. Roughly 500 tokens, suitable for very tight budgets.
+  The chosen tier is surfaced as a top-level `tier` field on the response and lifted into `_cost.tier` so an agent sees it in one place.
+- **Coexistence with `max_tokens`.** `max_cost_tokens` shapes; `max_tokens` truncates. Agents can use either, both, or neither. When both fire, the shaped result is also truncated, and both `_cost` and `_budget` sidecars appear on the response.
+
+### Changed
+
+- `ReviewReport` gains optional `tier` field (1.5+; absent for legacy callers that don't pass `max_cost_tokens`).
+- New public function `selectReviewTier(maxCostTokens)` and `shapeReviewForTier(report, tier)` exported from the review module.
+
+### Notes
+
+- No new MCP tools or CLI commands. `_cost` is an additive sidecar; `max_cost_tokens` is a new optional arg on an existing tool. Both pass the stability check.
+- Other tools (`projscan_doctor`, `projscan_hotspots`, etc.) get `_cost.estimatedTokens` automatically but don't yet implement adaptive shaping — they'll continue to honor `max_tokens` for post-hoc truncation. Per-tool adaptive shaping is incremental and lands in patch/minor releases as use cases surface.
+
 ## [1.4.0] — 2026-05-05
 
 Theme: **"Session"** — durable cross-invocation state so multiple agent calls (or multiple agents) can see what's been touched in the current session without re-querying git.

@@ -14,6 +14,7 @@ import type {
   ReviewFile,
   ReviewFunction,
   ReviewReport,
+  ReviewTier,
 } from '../types.js';
 
 export interface ReviewOptions {
@@ -544,4 +545,95 @@ function runGit(cwd: string, args: string[]): Promise<GitResult> {
     child.on('error', reject);
     child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
   });
+}
+
+/**
+ * 1.5+ — pick a review tier based on the caller's token budget.
+ *
+ *   <3000  → 'verdict-only'  (verdict + summary + totals)
+ *   <7000  → 'summary'       (verdict + summary + top files / top cycles / etc.)
+ *   else   → 'full'          (everything)
+ *
+ * `0`, `undefined`, and any non-positive value all mean "no budget given"
+ * — the caller wants the full report. The tier names are stable (clients
+ * can read them off the response and key behavior off them).
+ */
+export function selectReviewTier(maxCostTokens: number | undefined): ReviewTier {
+  if (typeof maxCostTokens !== 'number' || !Number.isFinite(maxCostTokens) || maxCostTokens <= 0) {
+    return 'full';
+  }
+  if (maxCostTokens < 3000) return 'verdict-only';
+  if (maxCostTokens < 7000) return 'summary';
+  return 'full';
+}
+
+/**
+ * Reshape a full ReviewReport for the chosen tier. The caller passes a
+ * fully-populated report from `computeReview`; we return a plain object
+ * sized for the tier. Returning `Record<string, unknown>` (rather than
+ * narrowing the ReviewReport type) keeps the type contract simple for
+ * the dispatcher and avoids an over-engineered union.
+ *
+ * `unavailable` reports (no diff, missing base, etc.) pass through as-is
+ * — there's nothing to shape; the verdict + reason already convey
+ * everything the agent needs.
+ */
+export function shapeReviewForTier(
+  report: ReviewReport,
+  tier: ReviewTier,
+): Record<string, unknown> {
+  if (!report.available || tier === 'full') {
+    return { ...report, tier };
+  }
+
+  const filesChanged = report.changedFiles.length;
+  const cyclesAdded = report.newCycles.length;
+  const riskyFunctionsAdded = report.riskyFunctions.length;
+  const depsChanged = report.dependencyChanges.length;
+  const totals = { filesChanged, cyclesAdded, riskyFunctionsAdded, depsChanged };
+
+  if (tier === 'verdict-only') {
+    return {
+      available: report.available,
+      base: report.base,
+      head: report.head,
+      verdict: report.verdict,
+      summary: report.summary,
+      totals,
+      tier,
+    };
+  }
+
+  // summary tier: keep the verdict, the top-N of each list, and aggregate totals.
+  // Drop per-file expansion lists in prDiff that bloat the response.
+  const TOP = 5;
+  const trimmedPrDiff = {
+    available: report.prDiff.available,
+    base: report.prDiff.base,
+    head: report.prDiff.head,
+    totalFilesChanged: report.prDiff.totalFilesChanged,
+    filesAdded: report.prDiff.filesAdded.slice(0, TOP),
+    filesRemoved: report.prDiff.filesRemoved.slice(0, TOP),
+    filesModified: report.prDiff.filesModified.slice(0, TOP).map((f) => ({
+      relativePath: f.relativePath,
+      // Keep the deltas; drop the heavy added/removed export & import arrays.
+      cyclomaticDelta: f.cyclomaticDelta,
+      fanInDelta: f.fanInDelta,
+    })),
+  };
+
+  return {
+    available: report.available,
+    base: report.base,
+    head: report.head,
+    prDiff: trimmedPrDiff,
+    changedFiles: report.changedFiles.slice(0, TOP),
+    newCycles: report.newCycles.slice(0, 3),
+    riskyFunctions: report.riskyFunctions.slice(0, 3),
+    dependencyChanges: report.dependencyChanges.slice(0, 3),
+    verdict: report.verdict,
+    summary: report.summary,
+    totals,
+    tier,
+  };
 }

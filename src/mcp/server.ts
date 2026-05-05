@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { getToolDefinitions, getToolHandler } from './tools.js';
 import { getPromptDefinitions, getPrompt } from './prompts.js';
 import { getResourceDefinitions, readResource } from './resources.js';
-import { applyBudget } from './tokenBudget.js';
+import { applyBudget, attachCostSidecar, estimateTokens } from './tokenBudget.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
 import { toContentBlocks } from './chunker.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
@@ -223,13 +223,18 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
                 ? rawMaxTokens
                 : undefined;
             const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
-            const payload = budgeted.truncated
+            const withBudget = budgeted.truncated
               ? attachBudgetSidecar(budgeted.value, {
                   truncated: true,
                   estimatedTokens: budgeted.estimatedTokens,
                   maxTokens,
                 })
               : budgeted.value;
+            // 1.5 — every result gets a `_cost` sidecar with the
+            // estimated token count of the post-budget payload, so
+            // agents can see what they actually paid for the call.
+            const finalEstimatedTokens = estimateTokens(JSON.stringify(withBudget) ?? '');
+            const payload = attachCostSidecar(withBudget, finalEstimatedTokens);
 
             // Opt-in response chunking: agents that want streaming set
             // `stream: true`. Default stays single-block for backcompat.
