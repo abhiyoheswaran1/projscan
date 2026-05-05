@@ -517,22 +517,97 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 ### Claude Code
 
+One-liner — adds projscan as an MCP server in the current project:
+
 ```bash
-claude mcp add projscan -- npx projscan mcp
+claude mcp add projscan -- npx -y projscan mcp
 ```
 
-### Cursor / Windsurf / any MCP client
+### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project):
 
 ```json
 {
   "mcpServers": {
     "projscan": {
       "command": "npx",
-      "args": ["projscan", "mcp"]
+      "args": ["-y", "projscan", "mcp"]
     }
   }
 }
 ```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "projscan": {
+      "command": "npx",
+      "args": ["-y", "projscan", "mcp"]
+    }
+  }
+}
+```
+
+### Cline (VS Code extension)
+
+In Cline's MCP settings panel (or the underlying `cline_mcp_settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "projscan": {
+      "command": "npx",
+      "args": ["-y", "projscan", "mcp"]
+    }
+  }
+}
+```
+
+### Continue.dev
+
+Add to `~/.continue/config.yaml`:
+
+```yaml
+mcpServers:
+  - name: projscan
+    command: npx
+    args:
+      - -y
+      - projscan
+      - mcp
+```
+
+### Zed
+
+Add to `~/.config/zed/settings.json` under `context_servers`:
+
+```json
+{
+  "context_servers": {
+    "projscan": {
+      "command": {
+        "path": "npx",
+        "args": ["-y", "projscan", "mcp"]
+      }
+    }
+  }
+}
+```
+
+### Any other MCP-aware client
+
+The transport is **stdio**. Wire your client to invoke `npx -y projscan mcp` as a subprocess; the server speaks JSON-RPC 2.0 over stdin/stdout. If your client wants `notifications/file_changed` push notifications when the repo changes, append `--watch`:
+
+```bash
+npx -y projscan mcp --watch
+```
+
+Capability is advertised under `experimental.fileChanged` on `initialize` so clients can detect support.
 
 ### What agents can ask
 
