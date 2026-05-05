@@ -20,6 +20,7 @@ import { reportHealthJson } from '../../reporters/jsonReporter.js';
 import { reportHealthMarkdown } from '../../reporters/markdownReporter.js';
 import { reportHealthSarif } from '../../reporters/sarifReporter.js';
 import { reportHealthHtml } from '../../reporters/htmlReporter.js';
+import { findStableRules, loadMemory } from '../../core/memory.js';
 
 export function registerDoctor(): void {
   program
@@ -64,8 +65,22 @@ export function registerDoctor(): void {
           case 'html':
             reportHealthHtml(issues);
             break;
-          default:
-            reportHealth(issues, scan.scanDurationMs);
+          default: {
+            // 1.5+ — surface a Project Memory tip when stable rules
+            // have accumulated. Best-effort: a memory load failure
+            // never blocks the doctor output.
+            let stableRuleCount = 0;
+            try {
+              const memory = await loadMemory(rootPath);
+              stableRuleCount = findStableRules(memory).length;
+            } catch {
+              // best-effort
+            }
+            reportHealth(issues, {
+              scanTimeMs: scan.scanDurationMs,
+              stableRuleCount,
+            });
+          }
         }
       } catch (error) {
         if (spinner) spinner.fail('Health check failed');

@@ -7,6 +7,7 @@ import { calculateScore } from '../utils/scoreCalculator.js';
 import { buildCodeGraph } from '../core/codeGraph.js';
 import { computeImpact } from '../core/impact.js';
 import { computeReview } from '../core/review.js';
+import { findStableRules, loadMemory } from '../core/memory.js';
 
 export interface McpPromptMessage {
   role: 'user' | 'assistant' | 'system';
@@ -82,6 +83,12 @@ const promptDefinitions: McpPromptDefinition[] = [
       { name: 'to', description: 'Optional. The new name (used in the generated plan).', required: false },
     ],
   },
+  {
+    name: 'quiet_the_doctor',
+    description:
+      'Propose silencing rules that have been open across many doctor runs without being addressed. Reads Project Memory\'s stable-rule list, frames the .projscanrc snippet, asks the agent to commit it (with a per-rule rationale).',
+    arguments: [],
+  },
 ];
 
 export function getPromptDefinitions(): McpPromptDefinition[] {
@@ -106,6 +113,8 @@ export async function getPrompt(
       return await reviewThisPrPrompt(args, rootPath);
     case 'safely_rename_symbol':
       return await safelyRenameSymbolPrompt(args, rootPath);
+    case 'quiet_the_doctor':
+      return await quietTheDoctorPrompt(rootPath);
     default:
       throw new Error(`Unknown prompt: ${name}`);
   }
@@ -409,6 +418,64 @@ async function safelyRenameSymbolPrompt(
 
   return {
     description: `Safe-rename plan for ${symbol}${newName ? ` → ${newName}` : ''}`,
+    messages: [{ role: 'user', content: { type: 'text', text } }],
+  };
+}
+
+async function quietTheDoctorPrompt(rootPath: string): Promise<McpPromptResult> {
+  const memory = await loadMemory(rootPath);
+  const stable = findStableRules(memory);
+
+  if (stable.length === 0) {
+    const text = [
+      'You were asked to silence stable doctor rules in this project, but Project Memory has no candidates yet.',
+      '',
+      `Total runs recorded: **${memory.totalRuns}**.`,
+      `Rules tracked: **${Object.keys(memory.rules).length}**.`,
+      '',
+      'A rule becomes "stable" after surfacing in ≥ 3 runs over ≥ 7 days without ever being fixed. None of the tracked rules meet that threshold yet — either the project is being actively cleaned, or memory needs more runs to accumulate signal.',
+      '',
+      'Tell the user there\'s nothing to silence and recommend running the doctor a few more times to build memory, OR proposing a sweep of the existing open issues if they\'re willing to work through them.',
+    ].join('\n');
+    return {
+      description: 'No stable rules to silence (Project Memory has insufficient signal)',
+      messages: [{ role: 'user', content: { type: 'text', text } }],
+    };
+  }
+
+  const snippet = JSON.stringify({ disableRules: stable.map((r) => r.ruleId) }, null, 2);
+  const detail = stable
+    .map(
+      (r) =>
+        `- \`${r.ruleId}\` — surfaced ${r.runCount} times since ${r.firstSeenAt.slice(0, 10)} (last seen ${r.lastSeenAt.slice(0, 10)})`,
+    )
+    .join('\n');
+
+  const text = [
+    'You are silencing analyzer rules that this project has been carrying across many doctor runs without ever fixing — i.e. the user has implicitly accepted them. Project Memory tracked this; here\'s the recommendation.',
+    '',
+    `**${stable.length} stable rule${stable.length === 1 ? '' : 's'}** (across ${memory.totalRuns} runs):`,
+    '',
+    detail,
+    '',
+    'Suggested `.projscanrc.json` patch:',
+    '',
+    '```json',
+    snippet,
+    '```',
+    '',
+    'Output a PR-ready proposal in this exact shape:',
+    '',
+    `1. **Rationale per rule** — for each of the ${stable.length} rule${stable.length === 1 ? '' : 's'}, one sentence explaining what it flags and why silencing is appropriate (e.g. "this dependency is loaded via a build script, not an import"). Be specific to the rule id.`,
+    '2. **The patch** — the exact `.projscanrc.json` change, merging cleanly with whatever \`disableRules\` already exists.',
+    '3. **Verification** — one command the user can run after applying the patch to confirm the doctor is quieter (typically `projscan ci --min-score 90`).',
+    '4. **Rollback note** — how to remove a single entry from `disableRules` if the user later wants the rule re-enabled.',
+    '',
+    'Tone: matter-of-fact. The user has already implicitly accepted these by not fixing them; you\'re documenting the acceptance, not advocating for it.',
+  ].join('\n');
+
+  return {
+    description: `Quiet ${stable.length} stable rule${stable.length === 1 ? '' : 's'} via .projscanrc`,
     messages: [{ role: 'user', content: { type: 'text', text } }],
   };
 }

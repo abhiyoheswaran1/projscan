@@ -126,11 +126,39 @@ export function reportAnalysis(report: AnalysisReport): void {
 
 // ── Report: doctor ────────────────────────────────────────
 
-export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
+export interface ReportHealthOptions {
+  /** Scan duration in milliseconds; surfaced under the score line. */
+  scanTimeMs?: number;
+  /**
+   * 1.5+ — count of stable rules from Project Memory. When ≥ 1, doctor
+   * surfaces a one-line tip pointing at `projscan memory stable`.
+   * Caller (the doctor CLI) is responsible for loading memory and
+   * passing the count; reporters stay sync.
+   */
+  stableRuleCount?: number;
+}
+
+export function reportHealth(
+  issues: Issue[],
+  scanTimeMsOrOptions?: number | ReportHealthOptions,
+): void {
+  const opts: ReportHealthOptions =
+    typeof scanTimeMsOrOptions === 'number'
+      ? { scanTimeMs: scanTimeMsOrOptions }
+      : (scanTimeMsOrOptions ?? {});
   console.log(header('Project Health Report'));
 
   const { score, grade } = calculateScore(issues);
-  const gradeColor = grade === 'A' ? chalk.green : grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : grade === 'D' ? chalk.yellow : chalk.red;
+  const gradeColor =
+    grade === 'A'
+      ? chalk.green
+      : grade === 'B'
+        ? chalk.green
+        : grade === 'C'
+          ? chalk.yellow
+          : grade === 'D'
+            ? chalk.yellow
+            : chalk.red;
   console.log(`\n  Health Score: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))}`);
 
   if (issues.length === 0) {
@@ -145,12 +173,13 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
   // Summary
   const parts: string[] = [];
   if (errors.length > 0) parts.push(chalk.red(`${errors.length} error${errors.length > 1 ? 's' : ''}`));
-  if (warnings.length > 0) parts.push(chalk.yellow(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`));
+  if (warnings.length > 0)
+    parts.push(chalk.yellow(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`));
   if (infos.length > 0) parts.push(chalk.blue(`${infos.length} info`));
   console.log(`  Found ${parts.join(', ')}`);
 
-  if (scanTimeMs !== undefined) {
-    console.log(`  Scanned in ${chalk.dim(scanTimeMs.toFixed(0) + 'ms')}`);
+  if (opts.scanTimeMs !== undefined) {
+    console.log(`  Scanned in ${chalk.dim(opts.scanTimeMs.toFixed(0) + 'ms')}`);
   }
 
   // Issues
@@ -159,7 +188,9 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
     console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
     console.log(`    ${chalk.dim(issue.description)}`);
     if (issue.suggestedAction) {
-      console.log(`    ${chalk.cyan('→')} ${chalk.dim(issue.suggestedAction.summary)} ${chalk.dim(`(projscan fix-suggest ${issue.id})`)}`);
+      console.log(
+        `    ${chalk.cyan('→')} ${chalk.dim(issue.suggestedAction.summary)} ${chalk.dim(`(projscan fix-suggest ${issue.id})`)}`,
+      );
     }
   }
 
@@ -170,7 +201,17 @@ export function reportHealth(issues: Issue[], scanTimeMs?: number): void {
     for (let i = 0; i < fixable.length; i++) {
       console.log(`  ${chalk.bold(String(i + 1) + '.')} Fix: ${fixable[i].title}`);
     }
-    console.log(`\n  Run ${chalk.bold.cyan('projscan fix')} to auto-fix ${fixable.length} issue${fixable.length > 1 ? 's' : ''}.\n`);
+    console.log(
+      `\n  Run ${chalk.bold.cyan('projscan fix')} to auto-fix ${fixable.length} issue${fixable.length > 1 ? 's' : ''}.\n`,
+    );
+  }
+
+  // 1.5+ — Project Memory tip. Only fires when the user has stable
+  // rules accumulating; quiet otherwise.
+  if (opts.stableRuleCount && opts.stableRuleCount > 0) {
+    console.log(
+      `  ${chalk.cyan('▲')} ${chalk.dim(`${opts.stableRuleCount} rule${opts.stableRuleCount === 1 ? ' has' : 's have'} been open across enough runs to count as accepted. Run`)} ${chalk.bold.cyan('projscan memory stable')} ${chalk.dim('to review and silence them in .projscanrc.')}\n`,
+    );
   }
 
   console.log('');
