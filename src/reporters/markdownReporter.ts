@@ -267,13 +267,22 @@ export function reportDependenciesMarkdown(report: DependencyReport): void {
 
 export function reportFileMarkdown(insp: FileInspection): void {
   const lines: string[] = [`# File: ${insp.relativePath}`, ''];
-
   if (!insp.exists) {
     lines.push(`> ${insp.reason ?? 'File unavailable.'}`);
     console.log(lines.join('\n'));
     return;
   }
+  appendFileSummary(lines, insp);
+  appendFileHotspot(lines, insp);
+  appendFileIssues(lines, insp);
+  appendFilePotentialIssues(lines, insp);
+  appendFileImports(lines, insp);
+  appendFileExports(lines, insp);
+  appendFileFunctions(lines, insp);
+  console.log(lines.join('\n'));
+}
 
+function appendFileSummary(lines: string[], insp: FileInspection): void {
   lines.push(`**Purpose:** ${insp.purpose}`);
   lines.push(`**Lines:** ${insp.lineCount}  |  **Size:** ${insp.sizeBytes} B`);
   if (typeof insp.cyclomaticComplexity === 'number') {
@@ -282,59 +291,68 @@ export function reportFileMarkdown(insp: FileInspection): void {
   if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
     lines.push(`**Coupling:** fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`);
   }
+}
 
-  if (insp.hotspot) {
-    const h = insp.hotspot;
-    lines.push('', '## Risk', '');
-    lines.push(`- **Risk score:** ${h.riskScore.toFixed(1)}`);
-    lines.push(`- **Commits:** ${h.churn}`);
-    lines.push(`- **Authors:** ${h.distinctAuthors}${h.primaryAuthor ? ` (primary: ${h.primaryAuthor}, ${Math.round(h.primaryAuthorShare * 100)}%)` : ''}`);
-    if (h.daysSinceLastChange !== null) lines.push(`- **Last change:** ${h.daysSinceLastChange} days ago`);
-    if (h.busFactorOne) lines.push('- ⚠️ **Bus factor 1** - only one author has touched this.');
-    if (h.reasons.length > 0) lines.push(`- ${h.reasons.join(', ')}`);
+function appendFileHotspot(lines: string[], insp: FileInspection): void {
+  if (!insp.hotspot) return;
+  const h = insp.hotspot;
+  lines.push('', '## Risk', '');
+  lines.push(`- **Risk score:** ${h.riskScore.toFixed(1)}`);
+  lines.push(`- **Commits:** ${h.churn}`);
+  const primary = h.primaryAuthor
+    ? ` (primary: ${h.primaryAuthor}, ${Math.round(h.primaryAuthorShare * 100)}%)`
+    : '';
+  lines.push(`- **Authors:** ${h.distinctAuthors}${primary}`);
+  if (h.daysSinceLastChange !== null) {
+    lines.push(`- **Last change:** ${h.daysSinceLastChange} days ago`);
   }
+  if (h.busFactorOne) lines.push('- ⚠️ **Bus factor 1** - only one author has touched this.');
+  if (h.reasons.length > 0) lines.push(`- ${h.reasons.join(', ')}`);
+}
 
-  if (insp.issues.length > 0) {
-    lines.push('', '## Related Issues', '');
-    for (const issue of insp.issues) {
-      const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
-    }
+function appendFileIssues(lines: string[], insp: FileInspection): void {
+  if (insp.issues.length === 0) return;
+  lines.push('', '## Related Issues', '');
+  for (const issue of insp.issues) {
+    const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
+    lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
   }
+}
 
-  if (insp.potentialIssues.length > 0) {
-    lines.push('', '## Potential Issues', '');
-    for (const issue of insp.potentialIssues) lines.push(`- ⚠️ ${issue}`);
+function appendFilePotentialIssues(lines: string[], insp: FileInspection): void {
+  if (insp.potentialIssues.length === 0) return;
+  lines.push('', '## Potential Issues', '');
+  for (const issue of insp.potentialIssues) lines.push(`- ⚠️ ${issue}`);
+}
+
+function appendFileImports(lines: string[], insp: FileInspection): void {
+  if (insp.imports.length === 0) return;
+  lines.push('', '## Dependencies', '');
+  for (const imp of insp.imports) {
+    lines.push(`- \`${imp.source}\`${imp.isRelative ? ' (local)' : ''}`);
   }
+}
 
-  if (insp.imports.length > 0) {
-    lines.push('', '## Dependencies', '');
-    for (const imp of insp.imports) {
-      lines.push(`- \`${imp.source}\`${imp.isRelative ? ' (local)' : ''}`);
-    }
+function appendFileExports(lines: string[], insp: FileInspection): void {
+  if (insp.exports.length === 0) return;
+  lines.push('', '## Exports', '');
+  for (const exp of insp.exports) {
+    lines.push(`- \`${exp.name}\` (${exp.type})`);
   }
+}
 
-  if (insp.exports.length > 0) {
-    lines.push('', '## Exports', '');
-    for (const exp of insp.exports) {
-      lines.push(`- \`${exp.name}\` (${exp.type})`);
-    }
+function appendFileFunctions(lines: string[], insp: FileInspection): void {
+  if (!insp.functions || insp.functions.length === 0) return;
+  lines.push('', '## Functions (top by CC)', '');
+  lines.push('| CC | Fan-in | Name | Lines |');
+  lines.push('| ---: | ---: | --- | --- |');
+  for (const fn of insp.functions.slice(0, 20)) {
+    const fi = typeof fn.fanIn === 'number' ? String(fn.fanIn) : '-';
+    lines.push(`| ${fn.cyclomaticComplexity} | ${fi} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
   }
-
-  if (insp.functions && insp.functions.length > 0) {
-    lines.push('', '## Functions (top by CC)', '');
-    lines.push('| CC | Fan-in | Name | Lines |');
-    lines.push('| ---: | ---: | --- | --- |');
-    for (const fn of insp.functions.slice(0, 20)) {
-      const fi = typeof fn.fanIn === 'number' ? String(fn.fanIn) : '-';
-      lines.push(`| ${fn.cyclomaticComplexity} | ${fi} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
-    }
-    if (insp.functions.length > 20) {
-      lines.push('', `_... and ${insp.functions.length - 20} more_`);
-    }
+  if (insp.functions.length > 20) {
+    lines.push('', `_... and ${insp.functions.length - 20} more_`);
   }
-
-  console.log(lines.join('\n'));
 }
 
 export function reportHotspotsMarkdown(report: HotspotReport): void {
@@ -417,42 +435,64 @@ export function reportPrDiffMarkdown(report: PrDiffReport): void {
     console.log(lines.join('\n'));
     return;
   }
+  appendPrDiffHeader(lines, report);
+  appendPrDiffAdded(lines, report);
+  appendPrDiffRemoved(lines, report);
+  appendPrDiffModified(lines, report);
+  console.log(lines.join('\n'));
+}
+
+function appendPrDiffHeader(lines: string[], report: PrDiffReport): void {
   lines.push(
     `_base **${report.base.ref}** (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head **${report.head.ref}** (${report.head.resolvedSha?.slice(0, 7) ?? '?'})_`,
     '',
     `**${report.totalFilesChanged}** file(s) changed: +${report.filesAdded.length} added, -${report.filesRemoved.length} removed, ~${report.filesModified.length} modified`,
     '',
   );
-  if (report.filesAdded.length > 0) {
-    lines.push('## Added', '');
-    for (const f of report.filesAdded) lines.push(`- \`${f}\``);
-    lines.push('');
+}
+
+function appendPrDiffAdded(lines: string[], report: PrDiffReport): void {
+  if (report.filesAdded.length === 0) return;
+  lines.push('## Added', '');
+  for (const f of report.filesAdded) lines.push(`- \`${f}\``);
+  lines.push('');
+}
+
+function appendPrDiffRemoved(lines: string[], report: PrDiffReport): void {
+  if (report.filesRemoved.length === 0) return;
+  lines.push('## Removed', '');
+  for (const f of report.filesRemoved) lines.push(`- \`${f}\``);
+  lines.push('');
+}
+
+function appendPrDiffModified(lines: string[], report: PrDiffReport): void {
+  if (report.filesModified.length === 0) return;
+  lines.push('## Modified', '');
+  for (const m of report.filesModified) appendPrDiffModifiedEntry(lines, m);
+}
+
+function appendPrDiffModifiedEntry(
+  lines: string[],
+  m: PrDiffReport['filesModified'][number],
+): void {
+  const ccDelta = m.cyclomaticDelta;
+  const fiDelta = m.fanInDelta;
+  const dCC = ccDelta === null ? '' : ` · ΔCC ${signed(ccDelta)}`;
+  const dFI = fiDelta === null || fiDelta === 0 ? '' : ` · Δfan-in ${signed(fiDelta)}`;
+  lines.push(`### \`${m.relativePath}\`${dCC}${dFI}`, '');
+  if (m.exportsAdded.length > 0)
+    lines.push(`- **+exports:** ${m.exportsAdded.map((s) => `\`${s}\``).join(', ')}`);
+  if (m.exportsRemoved.length > 0)
+    lines.push(`- **-exports:** ${m.exportsRemoved.map((s) => `\`${s}\``).join(', ')}`);
+  if (m.exportsRenamed.length > 0) {
+    const pairs = m.exportsRenamed.map((r) => `\`${r.from}\` → \`${r.to}\``).join(', ');
+    lines.push(`- **~exports:** ${pairs}`);
   }
-  if (report.filesRemoved.length > 0) {
-    lines.push('## Removed', '');
-    for (const f of report.filesRemoved) lines.push(`- \`${f}\``);
-    lines.push('');
-  }
-  if (report.filesModified.length > 0) {
-    lines.push('## Modified', '');
-    for (const m of report.filesModified) {
-      const ccDelta = m.cyclomaticDelta;
-      const fiDelta = m.fanInDelta;
-      const dCC = ccDelta === null ? '' : ` · ΔCC ${signed(ccDelta)}`;
-      const dFI = fiDelta === null || fiDelta === 0 ? '' : ` · Δfan-in ${signed(fiDelta)}`;
-      lines.push(`### \`${m.relativePath}\`${dCC}${dFI}`, '');
-      if (m.exportsAdded.length > 0) lines.push(`- **+exports:** ${m.exportsAdded.map((s) => `\`${s}\``).join(', ')}`);
-      if (m.exportsRemoved.length > 0) lines.push(`- **-exports:** ${m.exportsRemoved.map((s) => `\`${s}\``).join(', ')}`);
-      if (m.exportsRenamed.length > 0) {
-        const pairs = m.exportsRenamed.map((r) => `\`${r.from}\` → \`${r.to}\``).join(', ');
-        lines.push(`- **~exports:** ${pairs}`);
-      }
-      if (m.importsAdded.length > 0) lines.push(`- **+imports:** ${m.importsAdded.map((s) => `\`${s}\``).join(', ')}`);
-      if (m.importsRemoved.length > 0) lines.push(`- **-imports:** ${m.importsRemoved.map((s) => `\`${s}\``).join(', ')}`);
-      lines.push('');
-    }
-  }
-  console.log(lines.join('\n'));
+  if (m.importsAdded.length > 0)
+    lines.push(`- **+imports:** ${m.importsAdded.map((s) => `\`${s}\``).join(', ')}`);
+  if (m.importsRemoved.length > 0)
+    lines.push(`- **-imports:** ${m.importsRemoved.map((s) => `\`${s}\``).join(', ')}`);
+  lines.push('');
 }
 
 function signed(n: number): string {
@@ -563,61 +603,86 @@ export function reportReviewMarkdown(report: ReviewReport): void {
     console.log(lines.join('\n'));
     return;
   }
-  const verdictBadge = report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
+  appendReviewHeader(lines, report);
+  appendReviewSummary(lines, report);
+  appendReviewChangedFiles(lines, report);
+  appendReviewCycles(lines, report);
+  appendReviewRiskyFunctions(lines, report);
+  appendReviewDependencyChanges(lines, report);
+  console.log(lines.join('\n'));
+}
+
+function appendReviewHeader(lines: string[], report: ReviewReport): void {
+  const verdictBadge =
+    report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
   lines.push(
     `_base **${report.base.ref}** (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head **${report.head.ref}** (${report.head.resolvedSha?.slice(0, 7) ?? '?'})_`,
     '',
     `**Verdict:** ${verdictBadge}`,
     '',
   );
-  if (report.summary.length > 0) {
-    for (const s of report.summary) lines.push(`- ${s}`);
+}
+
+function appendReviewSummary(lines: string[], report: ReviewReport): void {
+  if (report.summary.length === 0) return;
+  for (const s of report.summary) lines.push(`- ${s}`);
+  lines.push('');
+}
+
+function appendReviewChangedFiles(lines: string[], report: ReviewReport): void {
+  if (report.changedFiles.length === 0) return;
+  lines.push('## Changed files', '');
+  lines.push('| File | Status | Risk | CC | ΔCC |');
+  lines.push('| --- | --- | ---: | ---: | ---: |');
+  for (const f of report.changedFiles.slice(0, 50)) {
+    const risk = f.riskScore !== null ? f.riskScore.toFixed(1) : '-';
+    const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity) : '-';
+    const dcc = f.cyclomaticDelta === null ? '-' : signed(f.cyclomaticDelta);
+    lines.push(`| \`${f.relativePath}\` | ${f.status} | ${risk} | ${cc} | ${dcc} |`);
+  }
+  if (report.changedFiles.length > 50) {
+    lines.push('', `_... and ${report.changedFiles.length - 50} more files_`);
+  }
+  lines.push('');
+}
+
+function appendReviewCycles(lines: string[], report: ReviewReport): void {
+  if (report.newCycles.length === 0) return;
+  lines.push('## New / expanded import cycles', '');
+  for (const c of report.newCycles) {
+    lines.push(
+      `- **${c.classification}** (${c.size} files): ${c.files.map((f) => `\`${f}\``).join(' → ')}`,
+    );
+  }
+  lines.push('');
+}
+
+function appendReviewRiskyFunctions(lines: string[], report: ReviewReport): void {
+  if (report.riskyFunctions.length === 0) return;
+  lines.push('## Risky functions', '');
+  lines.push('| Function | File | CC | Reason | Δ from base |');
+  lines.push('| --- | --- | ---: | --- | --- |');
+  for (const fn of report.riskyFunctions.slice(0, 30)) {
+    const baseInfo = fn.baseCc === null ? 'new' : `${fn.baseCc} → ${fn.cyclomaticComplexity}`;
+    lines.push(
+      `| \`${fn.name}\` | \`${fn.file}\`:L${fn.line} | ${fn.cyclomaticComplexity} | ${fn.reason} | ${baseInfo} |`,
+    );
+  }
+  lines.push('');
+}
+
+function appendReviewDependencyChanges(lines: string[], report: ReviewReport): void {
+  if (report.dependencyChanges.length === 0) return;
+  lines.push('## Dependency changes', '');
+  for (const d of report.dependencyChanges) {
+    const wsLabel = d.workspace ? ` (${d.workspace})` : '';
+    lines.push(`### \`${d.manifestFile}\`${wsLabel}`, '');
+    for (const a of d.added) lines.push(`- ➕ \`${a.name}@${a.version}\` (${a.kind})`);
+    for (const r of d.removed) lines.push(`- ➖ \`${r.name}@${r.version}\` (${r.kind})`);
+    for (const b of d.bumped)
+      lines.push(`- 🔄 \`${b.name}\`: \`${b.from}\` → \`${b.to}\` (${b.kind})`);
     lines.push('');
   }
-  if (report.changedFiles.length > 0) {
-    lines.push('## Changed files', '');
-    lines.push('| File | Status | Risk | CC | ΔCC |');
-    lines.push('| --- | --- | ---: | ---: | ---: |');
-    for (const f of report.changedFiles.slice(0, 50)) {
-      const risk = f.riskScore !== null ? f.riskScore.toFixed(1) : '-';
-      const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity) : '-';
-      const dcc = f.cyclomaticDelta === null ? '-' : signed(f.cyclomaticDelta);
-      lines.push(`| \`${f.relativePath}\` | ${f.status} | ${risk} | ${cc} | ${dcc} |`);
-    }
-    if (report.changedFiles.length > 50) {
-      lines.push('', `_... and ${report.changedFiles.length - 50} more files_`);
-    }
-    lines.push('');
-  }
-  if (report.newCycles.length > 0) {
-    lines.push('## New / expanded import cycles', '');
-    for (const c of report.newCycles) {
-      lines.push(`- **${c.classification}** (${c.size} files): ${c.files.map((f) => `\`${f}\``).join(' → ')}`);
-    }
-    lines.push('');
-  }
-  if (report.riskyFunctions.length > 0) {
-    lines.push('## Risky functions', '');
-    lines.push('| Function | File | CC | Reason | Δ from base |');
-    lines.push('| --- | --- | ---: | --- | --- |');
-    for (const fn of report.riskyFunctions.slice(0, 30)) {
-      const baseInfo = fn.baseCc === null ? 'new' : `${fn.baseCc} → ${fn.cyclomaticComplexity}`;
-      lines.push(`| \`${fn.name}\` | \`${fn.file}\`:L${fn.line} | ${fn.cyclomaticComplexity} | ${fn.reason} | ${baseInfo} |`);
-    }
-    lines.push('');
-  }
-  if (report.dependencyChanges.length > 0) {
-    lines.push('## Dependency changes', '');
-    for (const d of report.dependencyChanges) {
-      const wsLabel = d.workspace ? ` (${d.workspace})` : '';
-      lines.push(`### \`${d.manifestFile}\`${wsLabel}`, '');
-      for (const a of d.added) lines.push(`- ➕ \`${a.name}@${a.version}\` (${a.kind})`);
-      for (const r of d.removed) lines.push(`- ➖ \`${r.name}@${r.version}\` (${r.kind})`);
-      for (const b of d.bumped) lines.push(`- 🔄 \`${b.name}\`: \`${b.from}\` → \`${b.to}\` (${b.kind})`);
-      lines.push('');
-    }
-  }
-  console.log(lines.join('\n'));
 }
 
 export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
