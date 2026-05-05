@@ -13,6 +13,7 @@ import type {
   DirectoryNode,
   DependencyReport,
   DiffResult,
+  HotspotDelta,
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
@@ -198,69 +199,83 @@ export function reportCi(issues: Issue[], threshold: number): void {
 
 export function reportDiff(diff: DiffResult): void {
   console.log(header('Health Diff'));
+  printDiffScoreLine(diff);
+  printDiffIssueLists(diff);
+  printHotspotDiff(diff);
+  console.log(`\n  Baseline: ${chalk.dim(diff.before.timestamp)}`);
+  console.log('');
+}
 
-  const arrow = diff.scoreDelta > 0 ? chalk.green('↑') : diff.scoreDelta < 0 ? chalk.red('↓') : chalk.dim('-');
+function printDiffScoreLine(diff: DiffResult): void {
+  const arrow =
+    diff.scoreDelta > 0 ? chalk.green('↑') : diff.scoreDelta < 0 ? chalk.red('↓') : chalk.dim('-');
   const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
-
   console.log(`\n  Score: ${diff.before.score} → ${diff.after.score} (${delta})  ${arrow}`);
   console.log(`  Grade: ${diff.before.grade} → ${diff.after.grade}`);
+}
 
+function printDiffIssueLists(diff: DiffResult): void {
   if (diff.resolvedIssues.length > 0) {
     console.log(`\n  ${chalk.green('✓')} Resolved (${diff.resolvedIssues.length}):`);
-    for (const title of diff.resolvedIssues) {
-      console.log(`    ${chalk.green('-')} ${title}`);
-    }
+    for (const title of diff.resolvedIssues) console.log(`    ${chalk.green('-')} ${title}`);
   }
-
   if (diff.newIssues.length > 0) {
     console.log(`\n  ${chalk.red('✗')} New (${diff.newIssues.length}):`);
-    for (const title of diff.newIssues) {
-      console.log(`    ${chalk.red('-')} ${title}`);
-    }
+    for (const title of diff.newIssues) console.log(`    ${chalk.red('-')} ${title}`);
   }
-
   if (diff.resolvedIssues.length === 0 && diff.newIssues.length === 0) {
     console.log(`\n  ${chalk.dim('No change in issues.')}`);
   }
+}
 
-  if (diff.hotspotDiff) {
-    const hd = diff.hotspotDiff;
-    const total = hd.rose.length + hd.fell.length + hd.appeared.length + hd.resolved.length;
-    if (total > 0) {
-      console.log(header('Hotspot Changes'));
-      if (hd.rose.length > 0) {
-        console.log(`\n  ${chalk.red('▲')} Worsening (${hd.rose.length}):`);
-        for (const delta of hd.rose.slice(0, 10)) {
-          console.log(
-            `    ${chalk.red('+' + delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
-          );
-        }
-      }
-      if (hd.appeared.length > 0) {
-        console.log(`\n  ${chalk.yellow('●')} Newly risky (${hd.appeared.length}):`);
-        for (const delta of hd.appeared.slice(0, 10)) {
-          console.log(`    ${chalk.yellow(delta.afterScore?.toFixed(1) ?? '?')}  ${delta.relativePath}`);
-        }
-      }
-      if (hd.fell.length > 0) {
-        console.log(`\n  ${chalk.green('▼')} Improving (${hd.fell.length}):`);
-        for (const delta of hd.fell.slice(0, 10)) {
-          console.log(
-            `    ${chalk.green(delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
-          );
-        }
-      }
-      if (hd.resolved.length > 0) {
-        console.log(`\n  ${chalk.green('✓')} No longer tracked (${hd.resolved.length}):`);
-        for (const delta of hd.resolved.slice(0, 5)) {
-          console.log(`    ${chalk.green('-')}  ${delta.relativePath}`);
-        }
-      }
-    }
+function printHotspotDiff(diff: DiffResult): void {
+  if (!diff.hotspotDiff) return;
+  const hd = diff.hotspotDiff;
+  const total = hd.rose.length + hd.fell.length + hd.appeared.length + hd.resolved.length;
+  if (total === 0) return;
+  console.log(header('Hotspot Changes'));
+  printHotspotRose(hd.rose);
+  printHotspotAppeared(hd.appeared);
+  printHotspotFell(hd.fell);
+  printHotspotResolved(hd.resolved);
+}
+
+function printHotspotRose(rose: HotspotDelta[]): void {
+  if (rose.length === 0) return;
+  console.log(`\n  ${chalk.red('▲')} Worsening (${rose.length}):`);
+  for (const delta of rose.slice(0, 10)) {
+    console.log(
+      `    ${chalk.red('+' + delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
+    );
   }
+}
 
-  console.log(`\n  Baseline: ${chalk.dim(diff.before.timestamp)}`);
-  console.log('');
+function printHotspotAppeared(appeared: HotspotDelta[]): void {
+  if (appeared.length === 0) return;
+  console.log(`\n  ${chalk.yellow('●')} Newly risky (${appeared.length}):`);
+  for (const delta of appeared.slice(0, 10)) {
+    console.log(
+      `    ${chalk.yellow(delta.afterScore?.toFixed(1) ?? '?')}  ${delta.relativePath}`,
+    );
+  }
+}
+
+function printHotspotFell(fell: HotspotDelta[]): void {
+  if (fell.length === 0) return;
+  console.log(`\n  ${chalk.green('▼')} Improving (${fell.length}):`);
+  for (const delta of fell.slice(0, 10)) {
+    console.log(
+      `    ${chalk.green(delta.scoreDelta.toFixed(1))}  ${delta.relativePath}  ${chalk.dim(`${delta.beforeScore?.toFixed(1)} → ${delta.afterScore?.toFixed(1)}`)}`,
+    );
+  }
+}
+
+function printHotspotResolved(resolved: HotspotDelta[]): void {
+  if (resolved.length === 0) return;
+  console.log(`\n  ${chalk.green('✓')} No longer tracked (${resolved.length}):`);
+  for (const delta of resolved.slice(0, 5)) {
+    console.log(`    ${chalk.green('-')}  ${delta.relativePath}`);
+  }
 }
 
 // ── Report: fix ───────────────────────────────────────────
@@ -450,12 +465,21 @@ export function reportHotspots(report: HotspotReport): void {
 
 export function reportFileInspection(insp: FileInspection): void {
   console.log(header('File Report'));
-
   if (!insp.exists) {
     console.log(`\n  ${chalk.red('✗')} ${insp.reason ?? 'File unavailable.'}\n`);
     return;
   }
+  printFileSummary(insp);
+  printFileHotspot(insp);
+  printFileIssues(insp);
+  printFilePotentialIssues(insp);
+  printFileImports(insp);
+  printFileExports(insp);
+  printFileFunctions(insp);
+  console.log('');
+}
 
+function printFileSummary(insp: FileInspection): void {
   console.log(`\n  ${chalk.bold('File:')}     ${insp.relativePath}`);
   console.log(`  ${chalk.bold('Purpose:')}  ${insp.purpose}`);
   console.log(`  ${chalk.bold('Lines:')}    ${insp.lineCount}`);
@@ -468,78 +492,89 @@ export function reportFileInspection(insp: FileInspection): void {
       `  ${chalk.bold('Coupling:')} fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`,
     );
   }
+}
 
-  if (insp.hotspot) {
-    const h = insp.hotspot;
-    console.log(header('Risk'));
-    console.log(`  ${chalk.bold('Risk Score:')}  ${chalk.bold(h.riskScore.toFixed(1))}`);
-    console.log(`  ${chalk.bold('Commits:')}     ${h.churn}`);
+function printFileHotspot(insp: FileInspection): void {
+  if (!insp.hotspot) {
     console.log(
-      `  ${chalk.bold('Authors:')}     ${h.distinctAuthors}${
-        h.primaryAuthor ? ` (primary: ${formatAuthorEmail(h.primaryAuthor)}, ${Math.round(h.primaryAuthorShare * 100)}%)` : ''
-      }`,
+      chalk.dim('\n  No hotspot data (file is untouched in git window or outside analysis scope).'),
     );
-    if (h.daysSinceLastChange !== null) {
-      console.log(`  ${chalk.bold('Last change:')} ${h.daysSinceLastChange} days ago`);
-    }
-    if (h.busFactorOne) {
-      console.log(`  ${chalk.red('⚠')} Bus factor 1 - only one author has touched this.`);
-    }
-    if (h.reasons.length > 0) {
-      console.log(`  ${chalk.dim(h.reasons.join(', '))}`);
-    }
-  } else {
-    console.log(chalk.dim('\n  No hotspot data (file is untouched in git window or outside analysis scope).'));
+    return;
   }
-
-  if (insp.issues.length > 0) {
-    console.log(header('Related Issues'));
-    for (const issue of insp.issues) {
-      console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
-    }
+  const h = insp.hotspot;
+  console.log(header('Risk'));
+  console.log(`  ${chalk.bold('Risk Score:')}  ${chalk.bold(h.riskScore.toFixed(1))}`);
+  console.log(`  ${chalk.bold('Commits:')}     ${h.churn}`);
+  const primary = h.primaryAuthor
+    ? ` (primary: ${formatAuthorEmail(h.primaryAuthor)}, ${Math.round(h.primaryAuthorShare * 100)}%)`
+    : '';
+  console.log(`  ${chalk.bold('Authors:')}     ${h.distinctAuthors}${primary}`);
+  if (h.daysSinceLastChange !== null) {
+    console.log(`  ${chalk.bold('Last change:')} ${h.daysSinceLastChange} days ago`);
   }
-
-  if (insp.potentialIssues.length > 0) {
-    console.log(header('Potential Issues'));
-    for (const issue of insp.potentialIssues) {
-      console.log(`  ${chalk.yellow('⚠')} ${issue}`);
-    }
+  if (h.busFactorOne) {
+    console.log(`  ${chalk.red('⚠')} Bus factor 1 - only one author has touched this.`);
   }
-
-  if (insp.imports.length > 0) {
-    console.log(header('Dependencies'));
-    for (const imp of insp.imports.slice(0, 20)) {
-      const prefix = imp.isRelative ? chalk.dim('(local)') : chalk.cyan('(package)');
-      console.log(`  ${prefix} ${imp.source}`);
-    }
-    if (insp.imports.length > 20) {
-      console.log(chalk.dim(`  ... and ${insp.imports.length - 20} more`));
-    }
+  if (h.reasons.length > 0) {
+    console.log(`  ${chalk.dim(h.reasons.join(', '))}`);
   }
+}
 
-  if (insp.exports.length > 0) {
-    console.log(header('Exports'));
-    for (const exp of insp.exports) {
-      console.log(`  ${chalk.dim('•')} ${chalk.bold(exp.name)} ${chalk.dim(`(${exp.type})`)}`);
-    }
+function printFileIssues(insp: FileInspection): void {
+  if (insp.issues.length === 0) return;
+  console.log(header('Related Issues'));
+  for (const issue of insp.issues) {
+    console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
   }
+}
 
-  if (insp.functions && insp.functions.length > 0) {
-    console.log(header('Functions (top by CC)'));
-    const top = insp.functions.slice(0, 10);
-    for (const fn of top) {
-      const ccColor = fn.cyclomaticComplexity >= 10 ? chalk.red : fn.cyclomaticComplexity >= 5 ? chalk.yellow : chalk.dim;
-      const fiStr = typeof fn.fanIn === 'number' ? `fan-in ${String(fn.fanIn).padStart(2)}` : '         ';
-      console.log(
-        `  ${ccColor(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)}  ${chalk.dim(fiStr)}  ${chalk.bold(fn.name)} ${chalk.dim(`L${fn.line}-${fn.endLine}`)}`,
-      );
-    }
-    if (insp.functions.length > 10) {
-      console.log(chalk.dim(`  ... and ${insp.functions.length - 10} more`));
-    }
+function printFilePotentialIssues(insp: FileInspection): void {
+  if (insp.potentialIssues.length === 0) return;
+  console.log(header('Potential Issues'));
+  for (const issue of insp.potentialIssues) {
+    console.log(`  ${chalk.yellow('⚠')} ${issue}`);
   }
+}
 
-  console.log('');
+function printFileImports(insp: FileInspection): void {
+  if (insp.imports.length === 0) return;
+  console.log(header('Dependencies'));
+  for (const imp of insp.imports.slice(0, 20)) {
+    const prefix = imp.isRelative ? chalk.dim('(local)') : chalk.cyan('(package)');
+    console.log(`  ${prefix} ${imp.source}`);
+  }
+  if (insp.imports.length > 20) {
+    console.log(chalk.dim(`  ... and ${insp.imports.length - 20} more`));
+  }
+}
+
+function printFileExports(insp: FileInspection): void {
+  if (insp.exports.length === 0) return;
+  console.log(header('Exports'));
+  for (const exp of insp.exports) {
+    console.log(`  ${chalk.dim('•')} ${chalk.bold(exp.name)} ${chalk.dim(`(${exp.type})`)}`);
+  }
+}
+
+function printFileFunctions(insp: FileInspection): void {
+  if (!insp.functions || insp.functions.length === 0) return;
+  console.log(header('Functions (top by CC)'));
+  const top = insp.functions.slice(0, 10);
+  for (const fn of top) {
+    const ccColor =
+      fn.cyclomaticComplexity >= 10
+        ? chalk.red
+        : fn.cyclomaticComplexity >= 5
+          ? chalk.yellow
+          : chalk.dim;
+    const fiStr = typeof fn.fanIn === 'number' ? `fan-in ${String(fn.fanIn).padStart(2)}` : '         ';
+    console.log(
+      `  ${ccColor(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)}  ${chalk.dim(fiStr)}  ${chalk.bold(fn.name)} ${chalk.dim(`L${fn.line}-${fn.endLine}`)}`,
+    );
+  }
+  if (insp.functions.length > 10) {
+    console.log(chalk.dim(`  ... and ${insp.functions.length - 10} more`));
+  }
 }
 
 function formatSize(bytes: number): string {
@@ -804,57 +839,74 @@ export function reportCoupling(report: CouplingReport): void {
 
 export function reportPrDiff(report: PrDiffReport): void {
   console.log(header('PR Structural Diff'));
-
   if (!report.available) {
     console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'PR diff unavailable.'}\n`);
     return;
   }
+  printPrDiffRefs(report);
+  printPrDiffFileTotals(report);
+  printPrDiffAdded(report);
+  printPrDiffRemoved(report);
+  printPrDiffModified(report);
+}
 
+function printPrDiffRefs(report: PrDiffReport): void {
   console.log(
     chalk.dim(
       `\n  base ${report.base.ref} (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head ${report.head.ref} (${report.head.resolvedSha?.slice(0, 7) ?? '?'})\n`,
     ),
   );
-  console.log(
-    `  ${chalk.bold(report.totalFilesChanged.toString())} file${report.totalFilesChanged === 1 ? '' : 's'} changed: ${chalk.green(`+${report.filesAdded.length}`)} ${chalk.red(`-${report.filesRemoved.length}`)} ${chalk.yellow(`~${report.filesModified.length}`)}\n`,
-  );
+}
 
-  if (report.filesAdded.length > 0) {
-    console.log(chalk.bold('  Added:'));
-    for (const f of report.filesAdded) console.log(`    ${chalk.green('+')} ${f}`);
-    console.log('');
+function printPrDiffFileTotals(report: PrDiffReport): void {
+  const fileLabel = report.totalFilesChanged === 1 ? '' : 's';
+  console.log(
+    `  ${chalk.bold(report.totalFilesChanged.toString())} file${fileLabel} changed: ${chalk.green(`+${report.filesAdded.length}`)} ${chalk.red(`-${report.filesRemoved.length}`)} ${chalk.yellow(`~${report.filesModified.length}`)}\n`,
+  );
+}
+
+function printPrDiffAdded(report: PrDiffReport): void {
+  if (report.filesAdded.length === 0) return;
+  console.log(chalk.bold('  Added:'));
+  for (const f of report.filesAdded) console.log(`    ${chalk.green('+')} ${f}`);
+  console.log('');
+}
+
+function printPrDiffRemoved(report: PrDiffReport): void {
+  if (report.filesRemoved.length === 0) return;
+  console.log(chalk.bold('  Removed:'));
+  for (const f of report.filesRemoved) console.log(`    ${chalk.red('-')} ${f}`);
+  console.log('');
+}
+
+function printPrDiffModified(report: PrDiffReport): void {
+  if (report.filesModified.length === 0) return;
+  console.log(chalk.bold('  Modified:'));
+  for (const m of report.filesModified) printPrDiffModifiedFile(m);
+  console.log('');
+}
+
+function printPrDiffModifiedFile(m: PrDiffReport['filesModified'][number]): void {
+  const ccDelta = m.cyclomaticDelta;
+  const fiDelta = m.fanInDelta;
+  const ccStr = ccDelta === null ? '' : `, ΔCC ${signed(ccDelta)}`;
+  const finStr = fiDelta === null || fiDelta === 0 ? '' : `, Δfan-in ${signed(fiDelta)}`;
+  console.log(`    ${chalk.yellow('~')} ${chalk.cyan(m.relativePath)}${chalk.dim(ccStr + finStr)}`);
+  if (m.exportsAdded.length > 0) {
+    console.log(`      ${chalk.green('+exports:')} ${m.exportsAdded.join(', ')}`);
   }
-  if (report.filesRemoved.length > 0) {
-    console.log(chalk.bold('  Removed:'));
-    for (const f of report.filesRemoved) console.log(`    ${chalk.red('-')} ${f}`);
-    console.log('');
+  if (m.exportsRemoved.length > 0) {
+    console.log(`      ${chalk.red('-exports:')} ${m.exportsRemoved.join(', ')}`);
   }
-  if (report.filesModified.length > 0) {
-    console.log(chalk.bold('  Modified:'));
-    for (const m of report.filesModified) {
-      const ccDelta = m.cyclomaticDelta;
-      const fiDelta = m.fanInDelta;
-      const ccStr = ccDelta === null ? '' : `, ΔCC ${signed(ccDelta)}`;
-      const finStr = fiDelta === null || fiDelta === 0 ? '' : `, Δfan-in ${signed(fiDelta)}`;
-      console.log(`    ${chalk.yellow('~')} ${chalk.cyan(m.relativePath)}${chalk.dim(ccStr + finStr)}`);
-      if (m.exportsAdded.length > 0) {
-        console.log(`      ${chalk.green('+exports:')} ${m.exportsAdded.join(', ')}`);
-      }
-      if (m.exportsRemoved.length > 0) {
-        console.log(`      ${chalk.red('-exports:')} ${m.exportsRemoved.join(', ')}`);
-      }
-      if (m.exportsRenamed.length > 0) {
-        const pairs = m.exportsRenamed.map((r) => `${r.from} → ${r.to}`).join(', ');
-        console.log(`      ${chalk.yellow('~exports:')} ${pairs}`);
-      }
-      if (m.importsAdded.length > 0) {
-        console.log(`      ${chalk.green('+imports:')} ${m.importsAdded.join(', ')}`);
-      }
-      if (m.importsRemoved.length > 0) {
-        console.log(`      ${chalk.red('-imports:')} ${m.importsRemoved.join(', ')}`);
-      }
-    }
-    console.log('');
+  if (m.exportsRenamed.length > 0) {
+    const pairs = m.exportsRenamed.map((r) => `${r.from} → ${r.to}`).join(', ');
+    console.log(`      ${chalk.yellow('~exports:')} ${pairs}`);
+  }
+  if (m.importsAdded.length > 0) {
+    console.log(`      ${chalk.green('+imports:')} ${m.importsAdded.join(', ')}`);
+  }
+  if (m.importsRemoved.length > 0) {
+    console.log(`      ${chalk.red('-imports:')} ${m.importsRemoved.join(', ')}`);
   }
 }
 
@@ -1005,82 +1057,106 @@ function wrapLines(text: string, maxWidth: number): string[] {
 
 export function reportReview(report: ReviewReport): void {
   console.log(header('PR Review'));
-
   if (!report.available) {
     console.log(`\n  ${chalk.yellow('⚠')} ${report.reason ?? 'Review unavailable.'}\n`);
     return;
   }
+  printReviewRefs(report);
+  printReviewVerdict(report);
+  printReviewSummary(report);
+  printReviewChangedFiles(report);
+  printReviewCycles(report);
+  printReviewRiskyFunctions(report);
+  printReviewDependencyChanges(report);
+}
 
+function printReviewRefs(report: ReviewReport): void {
   console.log(
     chalk.dim(
       `\n  base ${report.base.ref} (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head ${report.head.ref} (${report.head.resolvedSha?.slice(0, 7) ?? '?'})\n`,
     ),
   );
+}
 
-  const verdictColor = report.verdict === 'block' ? chalk.red : report.verdict === 'review' ? chalk.yellow : chalk.green;
-  const verdictLabel = report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
+function printReviewVerdict(report: ReviewReport): void {
+  const verdictColor =
+    report.verdict === 'block' ? chalk.red : report.verdict === 'review' ? chalk.yellow : chalk.green;
+  const verdictLabel =
+    report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
   console.log(`  ${chalk.bold('Verdict:')} ${verdictColor(verdictLabel)}\n`);
+}
 
+function printReviewSummary(report: ReviewReport): void {
   for (const s of report.summary) {
     console.log(`  ${chalk.dim('•')} ${s}`);
   }
   if (report.summary.length > 0) console.log('');
+}
 
-  if (report.changedFiles.length > 0) {
-    console.log(chalk.bold('  Changed files (top by risk):'));
-    for (const f of report.changedFiles.slice(0, 15)) {
-      const risk = f.riskScore !== null ? f.riskScore.toFixed(1).padStart(6) : '   -  ';
-      const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity).padStart(3) : '  -';
-      const dcc = f.cyclomaticDelta === null ? '   ' : signed(f.cyclomaticDelta).padStart(3);
-      const statusColor = f.status === 'added' ? chalk.green : f.status === 'removed' ? chalk.red : chalk.yellow;
+function printReviewChangedFiles(report: ReviewReport): void {
+  if (report.changedFiles.length === 0) return;
+  console.log(chalk.bold('  Changed files (top by risk):'));
+  for (const f of report.changedFiles.slice(0, 15)) {
+    const risk = f.riskScore !== null ? f.riskScore.toFixed(1).padStart(6) : '   -  ';
+    const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity).padStart(3) : '  -';
+    const dcc = f.cyclomaticDelta === null ? '   ' : signed(f.cyclomaticDelta).padStart(3);
+    const statusColor =
+      f.status === 'added' ? chalk.green : f.status === 'removed' ? chalk.red : chalk.yellow;
+    console.log(
+      `    ${statusColor(f.status.padEnd(8))} risk ${risk}  CC ${cc} (Δ${dcc})  ${chalk.cyan(f.relativePath)}`,
+    );
+  }
+  if (report.changedFiles.length > 15) {
+    console.log(chalk.dim(`    ... and ${report.changedFiles.length - 15} more`));
+  }
+  console.log('');
+}
+
+function printReviewCycles(report: ReviewReport): void {
+  if (report.newCycles.length === 0) return;
+  console.log(chalk.bold(`  New / expanded cycles (${report.newCycles.length}):`));
+  for (const c of report.newCycles.slice(0, 5)) {
+    const tag = c.classification === 'new' ? chalk.red('NEW') : chalk.yellow('EXP');
+    console.log(`    ${tag} (${c.size}): ${c.files.join(' → ')}`);
+  }
+  if (report.newCycles.length > 5) {
+    console.log(chalk.dim(`    ... and ${report.newCycles.length - 5} more`));
+  }
+  console.log('');
+}
+
+function printReviewRiskyFunctions(report: ReviewReport): void {
+  if (report.riskyFunctions.length === 0) return;
+  console.log(chalk.bold(`  Risky functions (${report.riskyFunctions.length}):`));
+  for (const fn of report.riskyFunctions.slice(0, 10)) {
+    const cc = fn.cyclomaticComplexity >= 15 ? chalk.red : chalk.yellow;
+    const transition = fn.baseCc === null ? `(new)` : `(${fn.baseCc} → ${fn.cyclomaticComplexity})`;
+    console.log(
+      `    ${cc(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)} ${chalk.bold(fn.name)}  ${chalk.dim(`${fn.file}:${fn.line}`)} ${chalk.dim(`[${fn.reason}] ${transition}`)}`,
+    );
+  }
+  if (report.riskyFunctions.length > 10) {
+    console.log(chalk.dim(`    ... and ${report.riskyFunctions.length - 10} more`));
+  }
+  console.log('');
+}
+
+function printReviewDependencyChanges(report: ReviewReport): void {
+  if (report.dependencyChanges.length === 0) return;
+  console.log(chalk.bold('  Dependency changes:'));
+  for (const d of report.dependencyChanges) {
+    const wsLabel = d.workspace ? ` (${d.workspace})` : '';
+    console.log(`    ${chalk.cyan(d.manifestFile)}${chalk.dim(wsLabel)}`);
+    for (const a of d.added)
+      console.log(`      ${chalk.green('+')} ${a.name}@${a.version} ${chalk.dim(`(${a.kind})`)}`);
+    for (const r of d.removed)
+      console.log(`      ${chalk.red('-')} ${r.name}@${r.version} ${chalk.dim(`(${r.kind})`)}`);
+    for (const b of d.bumped)
       console.log(
-        `    ${statusColor(f.status.padEnd(8))} risk ${risk}  CC ${cc} (Δ${dcc})  ${chalk.cyan(f.relativePath)}`,
+        `      ${chalk.yellow('~')} ${b.name}: ${b.from} → ${b.to} ${chalk.dim(`(${b.kind})`)}`,
       );
-    }
-    if (report.changedFiles.length > 15) {
-      console.log(chalk.dim(`    ... and ${report.changedFiles.length - 15} more`));
-    }
-    console.log('');
   }
-
-  if (report.newCycles.length > 0) {
-    console.log(chalk.bold(`  New / expanded cycles (${report.newCycles.length}):`));
-    for (const c of report.newCycles.slice(0, 5)) {
-      const tag = c.classification === 'new' ? chalk.red('NEW') : chalk.yellow('EXP');
-      console.log(`    ${tag} (${c.size}): ${c.files.join(' → ')}`);
-    }
-    if (report.newCycles.length > 5) {
-      console.log(chalk.dim(`    ... and ${report.newCycles.length - 5} more`));
-    }
-    console.log('');
-  }
-
-  if (report.riskyFunctions.length > 0) {
-    console.log(chalk.bold(`  Risky functions (${report.riskyFunctions.length}):`));
-    for (const fn of report.riskyFunctions.slice(0, 10)) {
-      const cc = fn.cyclomaticComplexity >= 15 ? chalk.red : chalk.yellow;
-      const transition = fn.baseCc === null ? `(new)` : `(${fn.baseCc} → ${fn.cyclomaticComplexity})`;
-      console.log(
-        `    ${cc(`CC ${String(fn.cyclomaticComplexity).padStart(3)}`)} ${chalk.bold(fn.name)}  ${chalk.dim(`${fn.file}:${fn.line}`)} ${chalk.dim(`[${fn.reason}] ${transition}`)}`,
-      );
-    }
-    if (report.riskyFunctions.length > 10) {
-      console.log(chalk.dim(`    ... and ${report.riskyFunctions.length - 10} more`));
-    }
-    console.log('');
-  }
-
-  if (report.dependencyChanges.length > 0) {
-    console.log(chalk.bold('  Dependency changes:'));
-    for (const d of report.dependencyChanges) {
-      const wsLabel = d.workspace ? ` (${d.workspace})` : '';
-      console.log(`    ${chalk.cyan(d.manifestFile)}${chalk.dim(wsLabel)}`);
-      for (const a of d.added) console.log(`      ${chalk.green('+')} ${a.name}@${a.version} ${chalk.dim(`(${a.kind})`)}`);
-      for (const r of d.removed) console.log(`      ${chalk.red('-')} ${r.name}@${r.version} ${chalk.dim(`(${r.kind})`)}`);
-      for (const b of d.bumped) console.log(`      ${chalk.yellow('~')} ${b.name}: ${b.from} → ${b.to} ${chalk.dim(`(${b.kind})`)}`);
-    }
-    console.log('');
-  }
+  console.log('');
 }
 
 // ── Report: workspaces ────────────────────────────────────
