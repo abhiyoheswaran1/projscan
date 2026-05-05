@@ -231,12 +231,12 @@ Cache version bumped 2 → 3 in 0.11 (CC stored per file). Existing v2 caches ar
 
 ## Performance
 
-Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25 (cold / warm cache, milliseconds). These are the 1.0 reference numbers:
+Reference numbers from `npm run bench` on an Apple M3 Pro running Node 25 (cold / warm cache, milliseconds), refreshed for 1.5.0:
 
 | Repo | Files | analyze | doctor | hotspots | coupling | search |
 |------|-------|---------|--------|----------|----------|--------|
-| projscan itself | ~135 | 612 / 463 | 557 / 509 | 673 / 507 | 364 / 173 | 439 / 258 |
-| Synthetic medium | 500 | 278 / 268 | 274 / 260 | 300 / 297 | 217 / 174 | 238 / 193 |
+| projscan itself | ~120 | 650 / 576 | 659 / 574 | 794 / 622 | 405 / 186 | 485 / 277 |
+| Synthetic medium | 500 | 284 / 257 | 277 / 255 | 300 / 278 | 224 / 177 | 239 / 196 |
 
 For real-world numbers against larger codebases, `npm run bench:references` shallow-clones TypeScript, Django, and kubernetes/client-go into `.bench-cache/` (gitignored) and runs the same suite. First run is network-bound; later runs reuse the cache. Restrict to one target with `-- --only ts|django|k8s-client-go`.
 
