@@ -213,3 +213,117 @@ describe('computeImpact (symbol mode)', () => {
     expect(files).not.toContain('src/a.ts');
   });
 });
+
+describe('computeImpact cross-repo (1.6+)', () => {
+  it('annotates each cross-repo file with its repo name', () => {
+    // Local repo defines symbol `foo`. Two sibling repos call it.
+    const local = makeGraph(
+      [
+        file('src/foo.ts', ['foo']),
+        file('src/uses-foo.ts', [], ['./foo.js'], ['foo']),
+      ],
+      [['src/uses-foo.ts', 'src/foo.ts']],
+      { foo: ['src/foo.ts'] },
+    );
+    const sdk = makeGraph(
+      [file('lib/sdk-uses.ts', [], [], ['foo']), file('lib/other.ts', [], [], ['unrelated'])],
+      [],
+    );
+    const consumer = makeGraph(
+      [file('app/handler.ts', [], [], ['foo'])],
+      [],
+    );
+    const r = computeImpact(
+      local,
+      { kind: 'symbol', value: 'foo' },
+      { crossRepoGraphs: new Map([['sdk', sdk], ['consumer', consumer]]) },
+    );
+    expect(r.available).toBe(true);
+    const crossRepoFiles = r.reachable.filter((n) => n.repo !== undefined);
+    const sdkHits = crossRepoFiles.filter((n) => n.repo === 'sdk').map((n) => n.file);
+    const consumerHits = crossRepoFiles.filter((n) => n.repo === 'consumer').map((n) => n.file);
+    expect(sdkHits).toEqual(['lib/sdk-uses.ts']);
+    expect(consumerHits).toEqual(['app/handler.ts']);
+    // 'lib/other.ts' calls something else; must NOT appear.
+    expect(crossRepoFiles.map((n) => n.file)).not.toContain('lib/other.ts');
+  });
+
+  it('reports per-repo totals via totalReachableByRepo', () => {
+    const local = makeGraph(
+      [file('src/x.ts', ['x'])],
+      [],
+      { x: ['src/x.ts'] },
+    );
+    const sdk = makeGraph(
+      [file('a.ts', [], [], ['x']), file('b.ts', [], [], ['x'])],
+      [],
+    );
+    const consumer = makeGraph(
+      [file('c.ts', [], [], ['x'])],
+      [],
+    );
+    const r = computeImpact(
+      local,
+      { kind: 'symbol', value: 'x' },
+      { crossRepoGraphs: new Map([['sdk', sdk], ['consumer', consumer]]) },
+    );
+    expect(r.totalReachableByRepo).toBeDefined();
+    expect(r.totalReachableByRepo!['sdk']).toBe(2);
+    expect(r.totalReachableByRepo!['consumer']).toBe(1);
+    expect(r.totalReachableByRepo!['(this repo)']).toBe(0);
+  });
+
+  it('omits repos that have zero hits from totalReachableByRepo', () => {
+    const local = makeGraph(
+      [file('src/x.ts', ['x'])],
+      [],
+      { x: ['src/x.ts'] },
+    );
+    const empty = makeGraph([file('a.ts', [], [], ['unrelated'])], []);
+    const r = computeImpact(
+      local,
+      { kind: 'symbol', value: 'x' },
+      { crossRepoGraphs: new Map([['empty', empty]]) },
+    );
+    expect(r.totalReachableByRepo!).not.toHaveProperty('empty');
+    // The local repo's own count is always present.
+    expect(r.totalReachableByRepo!['(this repo)']).toBe(0);
+  });
+
+  it('file-mode cross-repo annotates totalReachableByRepo with the local count only', () => {
+    // File-mode cross-repo isn't a full BFS yet (path resolution is the
+    // expensive future work). We at least pass through the local count.
+    const local = makeGraph(
+      [file('src/leaf.ts')],
+      [],
+    );
+    const sdk = makeGraph([file('a.ts')], []);
+    const r = computeImpact(
+      local,
+      { kind: 'file', value: 'src/leaf.ts' },
+      { crossRepoGraphs: new Map([['sdk', sdk]]) },
+    );
+    expect(r.available).toBe(true);
+    expect(r.totalReachableByRepo!['(this repo)']).toBe(0);
+    // No sibling lookups happen in file mode.
+    expect(r.reachable.filter((n) => n.repo)).toEqual([]);
+  });
+
+  it('passes through unchanged when crossRepoGraphs is undefined or empty', () => {
+    const local = makeGraph(
+      [file('src/x.ts', ['x']), file('src/uses.ts', [], [], ['x'])],
+      [],
+      { x: ['src/x.ts'] },
+    );
+    const without = computeImpact(local, { kind: 'symbol', value: 'x' });
+    const withEmpty = computeImpact(
+      local,
+      { kind: 'symbol', value: 'x' },
+      { crossRepoGraphs: new Map() },
+    );
+    expect(without.totalReachableByRepo).toBeUndefined();
+    expect(withEmpty.totalReachableByRepo).toBeUndefined();
+    // The reachable set itself is identical.
+    expect(without.reachable).toEqual(withEmpty.reachable);
+  });
+});
