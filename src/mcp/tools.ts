@@ -32,6 +32,7 @@ import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
 import { memoryTool } from './tools/memory.js';
 import { workspaceGraphTool } from './tools/workspaceGraph.js';
+import { applyFixTool } from './tools/applyFix.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -61,6 +62,7 @@ const tools: McpTool[] = [
   sessionTool,
   memoryTool,
   workspaceGraphTool,
+  applyFixTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

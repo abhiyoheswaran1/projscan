@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import type { Issue, IssueLocation, FixSuggestion } from '../types.js';
+import type { ApplyPlan } from './applyFix.js';
 
 /**
  * Rule-driven fix suggestion engine. projscan does not run an LLM; this
@@ -21,6 +22,16 @@ interface Template {
   /** Match by issue id prefix or full id. */
   match: (issue: Issue) => boolean;
   render: (issue: Issue, ctx: TemplateContext) => Promise<FixSuggestion> | FixSuggestion;
+  /**
+   * 1.6+ — opt-in apply support. When present, the issue can be
+   * auto-applied via projscan_apply_fix. Returns the ApplyPlan to
+   * execute, or null to defer (e.g., rule matches but the specific
+   * issue lacks data needed to plan).
+   */
+  buildApplyPlan?: (
+    issue: Issue,
+    ctx: TemplateContext,
+  ) => Promise<ApplyPlan | null> | ApplyPlan | null;
 }
 
 const TEMPLATES: Template[] = [
@@ -42,6 +53,44 @@ const TEMPLATES: Template[] = [
         'so projscan stops flagging it. Run the test suite + a build after the change.',
       suggestedTest: 'After removal: `npm install && npm test && npm run build`. CI must pass on all three matrix entries.',
     }),
+    buildApplyPlan: async (i, ctx) => {
+      // Patch package.json to remove the dep from dependencies / devDependencies.
+      // Targets the package.json the issue's location points at; falls back to
+      // the root package.json when no location is available.
+      const depName = parseDepName(i.id);
+      if (!depName) return null;
+      const manifestPath = pickManifestPath(i.locations, ctx.rootPath);
+      const abs = path.join(ctx.rootPath, manifestPath);
+      let raw: string;
+      try {
+        raw = await fs.readFile(abs, 'utf-8');
+      } catch {
+        return null;
+      }
+      let pkg: Record<string, unknown>;
+      try {
+        pkg = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+      const deps = pkg.dependencies as Record<string, string> | undefined;
+      const devDeps = pkg.devDependencies as Record<string, string> | undefined;
+      const present =
+        (deps && depName in deps) || (devDeps && depName in devDeps);
+      if (!present) return null;
+      if (deps && depName in deps) delete deps[depName];
+      if (devDeps && depName in devDeps) delete devDeps[depName];
+      return {
+        summary: `Remove unused dependency "${depName}" from ${manifestPath}`,
+        changes: [
+          {
+            path: manifestPath,
+            op: 'modify',
+            content: JSON.stringify(pkg, null, 2) + '\n',
+          },
+        ],
+      };
+    },
   },
   {
     match: (i) => i.id === 'dep-risk-no-lockfile',
@@ -183,6 +232,131 @@ const TEMPLATES: Template[] = [
           : 'Add vitest: `npm i -D vitest` then add `"test": "vitest run"` to package.json scripts. Create `src/__smoke__.test.ts` with one trivial passing test. Wire `npm test` into your CI workflow.',
       suggestedTest: 'After: `npm test` (or `pytest`) should exit 0 with at least the one smoke test passing.',
     }),
+    buildApplyPlan: async (i, ctx) => {
+      // Only auto-apply for the JS/TS variant — Python projects need
+      // pyproject.toml edits which are project-specific (poetry vs.
+      // setuptools etc.).
+      if (i.id !== 'missing-test-framework') return null;
+      // Verify package.json exists; bail otherwise.
+      try {
+        await fs.access(path.join(ctx.rootPath, 'package.json'));
+      } catch {
+        return null;
+      }
+      const config = `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: 'node',\n  },\n});\n`;
+      const smoke = `import { describe, it, expect } from 'vitest';\n\ndescribe('smoke', () => {\n  it('runs', () => {\n    expect(true).toBe(true);\n  });\n});\n`;
+      return {
+        summary: 'Scaffold vitest config + a smoke test (you still need to run `npm i -D vitest`).',
+        changes: [
+          { path: 'vitest.config.ts', op: 'create', content: config },
+          { path: 'src/__smoke__.test.ts', op: 'create', content: smoke },
+        ],
+      };
+    },
+  },
+  // 1.6+ — missing common config files. These were previously caught
+  // only by the generic fallback; explicit templates here let them
+  // declare apply support.
+  {
+    match: (i) => i.id === 'missing-eslint',
+    render: (i) => ({
+      issueId: i.id,
+      severity: i.severity,
+      category: i.category,
+      headline: i.title,
+      why: 'ESLint catches a class of correctness bugs (unused vars, accidental globals, async-without-await) before they ship. A repo without it is leaving free defect prevention on the table.',
+      where: [{ file: 'eslint.config.js' }],
+      instruction: 'Add ESLint with the modern flat config. Run `npm i -D eslint @eslint/js` and commit `eslint.config.js`. Wire `npm run lint` into CI.',
+    }),
+    buildApplyPlan: () => ({
+      summary: 'Scaffold eslint.config.js with a sensible default (you still need to run `npm i -D eslint @eslint/js`).',
+      changes: [
+        {
+          path: 'eslint.config.js',
+          op: 'create',
+          content:
+            "import js from '@eslint/js';\n\nexport default [\n  js.configs.recommended,\n  {\n    languageOptions: {\n      ecmaVersion: 'latest',\n      sourceType: 'module',\n    },\n    rules: {\n      'no-unused-vars': 'warn',\n    },\n  },\n];\n",
+        },
+      ],
+    }),
+  },
+  {
+    match: (i) => i.id === 'missing-prettier',
+    render: (i) => ({
+      issueId: i.id,
+      severity: i.severity,
+      category: i.category,
+      headline: i.title,
+      why: 'Prettier removes whole categories of bikeshedding from code review. The cost is one config file; the benefit is every PR.',
+      where: [{ file: '.prettierrc' }],
+      instruction: 'Add Prettier: `npm i -D prettier`. Commit `.prettierrc` (even an empty `{}` is enough; defaults are sensible).',
+    }),
+    buildApplyPlan: () => ({
+      summary: 'Scaffold .prettierrc (you still need to run `npm i -D prettier`).',
+      changes: [
+        {
+          path: '.prettierrc',
+          op: 'create',
+          content:
+            '{\n  "semi": true,\n  "singleQuote": true,\n  "trailingComma": "all",\n  "printWidth": 100\n}\n',
+        },
+      ],
+    }),
+  },
+  {
+    match: (i) => i.id === 'missing-editorconfig',
+    render: (i) => ({
+      issueId: i.id,
+      severity: i.severity,
+      category: i.category,
+      headline: i.title,
+      why: 'EditorConfig synchronizes whitespace + line-ending conventions across every editor used on the repo. One file; consistent diffs forever.',
+      where: [{ file: '.editorconfig' }],
+      instruction: 'Commit a top-level `.editorconfig` declaring `indent_style`, `indent_size`, `end_of_line`, `charset`, `trim_trailing_whitespace`, and `insert_final_newline`.',
+    }),
+    buildApplyPlan: () => ({
+      summary: 'Create top-level .editorconfig with sensible defaults.',
+      changes: [
+        {
+          path: '.editorconfig',
+          op: 'create',
+          content:
+            'root = true\n\n[*]\nindent_style = space\nindent_size = 2\nend_of_line = lf\ncharset = utf-8\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n\n[*.md]\ntrim_trailing_whitespace = false\n',
+        },
+      ],
+    }),
+  },
+  {
+    match: (i) => i.id === 'missing-readme',
+    render: (i) => ({
+      issueId: i.id,
+      severity: i.severity,
+      category: i.category,
+      headline: i.title,
+      why: 'A README is the first signal a contributor (or your future self) reads about the project. Even a minimal stub — name, what it does, how to run it — is dramatically better than nothing.',
+      where: [{ file: 'README.md' }],
+      instruction: 'Commit a README.md skeleton: project name + one-line purpose + an "Install" or "Quick start" section. Even three lines is enough to start.',
+    }),
+    buildApplyPlan: async (_i, ctx) => {
+      let projectName = path.basename(path.resolve(ctx.rootPath));
+      try {
+        const raw = await fs.readFile(path.join(ctx.rootPath, 'package.json'), 'utf-8');
+        const pkg = JSON.parse(raw) as { name?: string };
+        if (typeof pkg.name === 'string' && pkg.name.length > 0) projectName = pkg.name;
+      } catch {
+        // fall back to directory basename
+      }
+      return {
+        summary: `Scaffold a README.md skeleton for "${projectName}".`,
+        changes: [
+          {
+            path: 'README.md',
+            op: 'create',
+            content: `# ${projectName}\n\n> One-line description of what this project does.\n\n## Install\n\n\`\`\`bash\nnpm install\n\`\`\`\n\n## Usage\n\nDocument the primary entry point or quick-start command here.\n\n## Development\n\nDocument how to run tests, lint, build.\n`,
+          },
+        ],
+      };
+    },
   },
   {
     match: (i) => i.id === 'no-test-files' || i.id === 'no-python-test-files',
@@ -319,6 +493,18 @@ function parseDepName(issueId: string): string {
 }
 
 /**
+ * 1.6+ — pick the manifest path for an apply plan. Prefers the issue's
+ * first location's file when it's a `package.json`; falls back to the
+ * root manifest. The path is repo-relative, POSIX-separator.
+ */
+function pickManifestPath(locations: IssueLocation[] | undefined, _rootPath: string): string {
+  for (const loc of locations ?? []) {
+    if (loc.file && loc.file.endsWith('package.json')) return loc.file;
+  }
+  return 'package.json';
+}
+
+/**
  * Pick a template for the issue. Always returns a suggestion - the fallback
  * catches anything without a tailored template. Async because some templates
  * reach into the file system or git for context (none today, but the surface
@@ -334,6 +520,22 @@ export async function suggestFixForIssue(
     }
   }
   return await Promise.resolve(FALLBACK.render(issue, { rootPath }));
+}
+
+/**
+ * 1.6+ — resolve an ApplyPlan for the given issue, or null if no
+ * matching template declares apply support.
+ */
+export async function buildApplyPlanForIssue(
+  issue: Issue,
+  rootPath: string,
+): Promise<ApplyPlan | null> {
+  for (const tpl of TEMPLATES) {
+    if (!tpl.match(issue)) continue;
+    if (!tpl.buildApplyPlan) return null; // template matches but is not auto-applicable
+    return await Promise.resolve(tpl.buildApplyPlan(issue, { rootPath }));
+  }
+  return null;
 }
 
 /**

@@ -29,6 +29,9 @@ import { registerMcp } from './commands/mcp.js';
 import { registerSession } from './commands/session.js';
 import { registerMemory } from './commands/memory.js';
 import { registerWorkspace } from './commands/workspace.js';
+import { registerApplyFix } from './commands/applyFix.js';
+import { registerInit } from './commands/init.js';
+import { registerInstallHook } from './commands/installHook.js';
 import { registerBadge } from './commands/badge.js';
 import { registerHelp } from './commands/help.js';
 
@@ -60,6 +63,9 @@ registerMcp();
 registerSession();
 registerMemory();
 registerWorkspace();
+registerApplyFix();
+registerInit();
+registerInstallHook();
 registerBadge();
 registerHelp();
 
