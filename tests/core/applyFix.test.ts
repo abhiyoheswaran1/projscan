@@ -136,6 +136,55 @@ describe('executePlan', () => {
     });
   });
 
+  describe('atomicWrite hardening (1.6.2+)', () => {
+    // Note: these tests do NOT deterministically fail on pre-fix code.
+    // The TOCTOU and EEXIST checks are timing-dependent and prevent a
+    // narrow real-world race. What these tests *do* verify is that the
+    // hardening (randomUUID tmp filenames, 'wx' flag, fsync) hasn't
+    // broken the happy path of legitimate writes. The security wins are
+    // real but live in the implementation, not in observable behavior.
+    it('does not follow a victim symlink planted at the OLD predictable tmp path', async () => {
+      const targetVictim = path.join(tmp, 'victim.txt');
+      await fs.writeFile(targetVictim, 'ORIGINAL_VICTIM');
+      const oldPattern = path.join(tmp, `legit.txt.projscan-tmp-${process.pid}-${Date.now()}`);
+      try {
+        await fs.symlink(targetVictim, oldPattern);
+      } catch {
+        // platforms without symlink permission
+        return;
+      }
+      const plan: ApplyPlan = {
+        summary: 'create legit',
+        changes: [{ path: 'legit.txt', op: 'create', content: 'PROJSCAN' }],
+      };
+      const res = await executePlan(tmp, plan, { dryRun: false });
+      expect(res.ok).toBe(true);
+      // Victim untouched. (On pre-fix code this could intermittently fail
+      // if Date.now() happened to align — randomUUID makes the alignment
+      // essentially impossible.)
+      expect(await read('victim.txt')).toBe('ORIGINAL_VICTIM');
+    });
+
+    it('rapid sequential writes to the same target both succeed', async () => {
+      // With a non-O_EXCL flag, two writes that happen to land on the
+      // same Date.now() millisecond would collide; with randomUUID and
+      // 'wx', they can't.
+      const r1 = await executePlan(
+        tmp,
+        { summary: 'first', changes: [{ path: 'a.txt', op: 'create', content: 'one' }] },
+        { dryRun: false },
+      );
+      expect(r1.ok).toBe(true);
+      const r2 = await executePlan(
+        tmp,
+        { summary: 'second', changes: [{ path: 'a.txt', op: 'modify', content: 'two' }] },
+        { dryRun: false },
+      );
+      expect(r2.ok).toBe(true);
+      expect(await read('a.txt')).toBe('two');
+    });
+  });
+
   describe('multi-change atomic rollback (catch-block)', () => {
     it('rolls back successfully-created files when a later change fails mid-apply', async () => {
       // Trigger Phase-2 failure: first change creates `a.txt` as a file, then

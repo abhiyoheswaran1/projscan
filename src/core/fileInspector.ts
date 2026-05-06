@@ -29,30 +29,64 @@ export async function inspectFile(
   relOrAbsFile: string,
   options: InspectOptions = {},
 ): Promise<FileInspection> {
+  // Reject absolute paths up-front. The MCP `projscan_file` tool's docs
+  // describe `path` as "relative to the project root", but the prior
+  // implementation silently honored absolute paths. Refusing them removes
+  // an attack vector where a hostile MCP client passes /etc/passwd directly.
+  if (path.isAbsolute(relOrAbsFile)) {
+    return makeEmpty(relOrAbsFile, 'Absolute paths are not accepted; pass a path relative to the project root.');
+  }
+  // Canonicalize BOTH the root and the target via realpath before the
+  // inside-root check. macOS's tmpdir lives at `/var/folders/...` which
+  // is itself a symlink to `/private/var/folders/...`; without canonical-
+  // izing the root, the resolved target's `/private/...` form would fail
+  // the prefix check. Realpath of the root fails ENOENT only if the user
+  // pointed at a non-existent root (caller error); fall back to the
+  // resolved-without-realpath form in that case so the user gets a clear
+  // downstream "File not found" error rather than a misleading "outside
+  // the project root".
   const resolvedRoot = path.resolve(rootPath);
-  const absolutePath = path.isAbsolute(relOrAbsFile)
-    ? relOrAbsFile
-    : path.resolve(resolvedRoot, relOrAbsFile);
+  let canonicalRoot = resolvedRoot;
+  try {
+    canonicalRoot = await fs.realpath(resolvedRoot);
+  } catch {
+    // root doesn't exist; use the unresolved form
+  }
+  const absolutePath = path.resolve(canonicalRoot, relOrAbsFile);
 
-  if (!isInsideRoot(absolutePath, resolvedRoot)) {
+  // Resolve symlinks on the target. Without this, a symlink under the repo
+  // (e.g. `cache/keys.pem` → `/etc/passwd`) passes the prefix check but
+  // reads attacker-chosen content. realpath collapses the symlink so the
+  // inside-root check sees the real target. ENOENT (path doesn't exist)
+  // → fall back to the unresolved path; downstream stat will surface the
+  // real error.
+  let realPath = absolutePath;
+  try {
+    realPath = await fs.realpath(absolutePath);
+  } catch {
+    // missing path; use the unresolved form for the inside-root check.
+    // path.resolve already collapsed any '..' so we won't admit traversal.
+  }
+
+  if (!isInsideRoot(realPath, canonicalRoot)) {
     return makeEmpty(relOrAbsFile, 'File is outside the project root');
   }
 
   let content: string;
   let sizeBytes: number;
   try {
-    const stat = await fs.stat(absolutePath);
+    const stat = await fs.stat(realPath);
     if (!stat.isFile()) {
       return makeEmpty(relOrAbsFile, 'Path is not a file');
     }
     sizeBytes = stat.size;
-    content = await fs.readFile(absolutePath, 'utf-8');
+    content = await fs.readFile(realPath, 'utf-8');
   } catch (err) {
     const msg = (err as NodeJS.ErrnoException).code === 'ENOENT' ? 'File not found' : String(err);
     return makeEmpty(relOrAbsFile, msg);
   }
 
-  const relativePath = path.relative(resolvedRoot, absolutePath).split(path.sep).join('/');
+  const relativePath = path.relative(canonicalRoot, absolutePath).split(path.sep).join('/');
   const lines = content.split('\n');
   const adapter = getAdapterFor(relativePath);
   const language = adapter?.id;

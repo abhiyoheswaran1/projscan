@@ -70,7 +70,9 @@ export async function computePrDiff(
   const worktreeDir = await mkTempWorktreeDir();
   let baseGraph: CodeGraph;
   try {
-    await runGit(rootPath, ['worktree', 'add', '--detach', worktreeDir, baseSha]);
+    // `--` separator before positional args (defense-in-depth; see the
+    // matching comment in review.ts).
+    await runGit(rootPath, ['worktree', 'add', '--detach', '--', worktreeDir, baseSha]);
     const baseScan = await scanRepository(worktreeDir);
     baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
   } finally {
