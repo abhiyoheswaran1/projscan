@@ -144,4 +144,72 @@ describe('projscan_workspace_graph (1.6+)', () => {
     expect(env.result.content[0].text).toMatch(/Unknown action/);
     server.close();
   });
+
+  it('file_importers finds importers in sibling repos (1.6+ coverage)', async () => {
+    // Make consumer import sdk/src/auth via a relative path that the
+    // heuristic can match (`imp.source.endsWith(file)`).
+    await fs.writeFile(
+      path.join(consumerRepo, 'src', 'index.ts'),
+      `import { auth } from '../../sdk/src/auth.ts';
+export function callAuth() { return auth(); }
+`,
+    );
+    const server = createMcpServer(workspaceRoot);
+    await init(server);
+    const result = await call(server, 1, {
+      action: 'file_importers',
+      file: 'src/auth.ts',
+      repo: 'sdk',
+    });
+    expect(result.action).toBe('file_importers');
+    expect(result.sourceRepo).toBe('sdk');
+    const importers = result.importers as Array<{ repo: string; file: string }>;
+    expect(importers.length).toBeGreaterThan(0);
+    const consumerHit = importers.find((i) => i.repo === 'consumer');
+    expect(consumerHit).toBeDefined();
+    expect(consumerHit!.file).toBe('src/index.ts');
+    server.close();
+  });
+
+  it('file_importers throws when `file` is missing (caller error)', async () => {
+    const server = createMcpServer(workspaceRoot);
+    await init(server);
+    const raw = await server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'projscan_workspace_graph',
+          arguments: { action: 'file_importers' },
+        },
+      }),
+    );
+    if (!raw) throw new Error('no response');
+    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    expect(env.result.isError).toBe(true);
+    expect(env.result.content[0].text).toMatch(/file_importers requires/);
+    server.close();
+  });
+
+  it('file_importers throws when `repo` is unknown (caller error)', async () => {
+    const server = createMcpServer(workspaceRoot);
+    await init(server);
+    const raw = await server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'projscan_workspace_graph',
+          arguments: { action: 'file_importers', file: 'src/auth.ts', repo: 'never-registered' },
+        },
+      }),
+    );
+    if (!raw) throw new Error('no response');
+    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    expect(env.result.isError).toBe(true);
+    expect(env.result.content[0].text).toMatch(/not registered/);
+    server.close();
+  });
 });

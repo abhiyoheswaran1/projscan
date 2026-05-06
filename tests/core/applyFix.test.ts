@@ -136,6 +136,58 @@ describe('executePlan', () => {
     });
   });
 
+  describe('multi-change atomic rollback (catch-block)', () => {
+    it('rolls back successfully-created files when a later change fails mid-apply', async () => {
+      // Trigger Phase-2 failure: first change creates `a.txt` as a file, then
+      // a second change tries to create `a.txt/inner.txt` — mkdir on path.
+      // dirname() expects `a.txt` to be a directory, but it's now a file →
+      // fs.mkdir(... { recursive: true }) throws ENOTDIR. The catch block
+      // must unlink `a.txt` so disk is back to its pre-apply state.
+      const plan: ApplyPlan = {
+        summary: 'create then mid-apply fail',
+        changes: [
+          { path: 'a.txt', op: 'create', content: 'hello\n' },
+          { path: 'a.txt/inner.txt', op: 'create', content: 'never\n' },
+        ],
+      };
+      const res = await executePlan(tmp, plan, { dryRun: false });
+      expect(res.ok).toBe(false);
+      expect(res.applied).toBe(false);
+      expect(res.reason).toMatch(/Apply failed at "a\.txt\/inner\.txt"/);
+      // The first change must have been rolled back.
+      expect(await exists('a.txt')).toBe(false);
+      // Second change never wrote anything (verify on the file form).
+      expect(await exists('a.txt/inner.txt')).toBe(false);
+      // No rollback record should have been written, since apply did not succeed.
+      expect(await exists('.projscan-cache/rollbacks')).toBe(false);
+    });
+
+    it('restores prior content of a modified file when a later change fails', async () => {
+      // Set up: a.txt exists with original content. Plan: modify a.txt,
+      // then create b.txt/inner.txt (which fails because b.txt doesn't
+      // exist in the form needed). Wait — actually we need the second
+      // change to fail AFTER a.txt is modified. Use the same trick: plan
+      // [create x.txt, modify a.txt, create x.txt/inner.txt]. Second
+      // succeeds, third fails.
+      await fs.writeFile(path.join(tmp, 'a.txt'), 'ORIGINAL');
+      const plan: ApplyPlan = {
+        summary: 'create + modify + fail',
+        changes: [
+          { path: 'x.txt', op: 'create', content: 'first' },
+          { path: 'a.txt', op: 'modify', content: 'NEW' },
+          { path: 'x.txt/inner.txt', op: 'create', content: 'never' },
+        ],
+      };
+      const res = await executePlan(tmp, plan, { dryRun: false });
+      expect(res.ok).toBe(false);
+      expect(res.reason).toMatch(/Apply failed at "x\.txt\/inner\.txt"/);
+      // x.txt should have been unlinked (created → reversed).
+      expect(await exists('x.txt')).toBe(false);
+      // a.txt should be back to its original content.
+      expect(await read('a.txt')).toBe('ORIGINAL');
+    });
+  });
+
   describe('rollback', () => {
     it('reverses a create', async () => {
       const plan: ApplyPlan = {
