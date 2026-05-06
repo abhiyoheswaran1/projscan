@@ -4,6 +4,7 @@ import type { FileEntry } from '../types.js';
 import type { AstImport, AstExport, AstResult, FunctionInfo } from './ast.js';
 import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
+import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
 
 export interface GraphFile {
   relativePath: string;
@@ -50,12 +51,13 @@ export async function buildCodeGraph(
     );
 
   const graphFiles = new Map<string, GraphFile>();
-  await Promise.all(
-    parseable.map(async ({ file, adapter }) => {
-      const entry = await parseFileToGraphEntry(rootPath, file, adapter, previousGraph);
-      if (entry) graphFiles.set(file.relativePath, entry);
-    }),
-  );
+  // Bound concurrency. Without this, a 10K-file repo would issue 10K
+  // concurrent fs.stat + fs.readFile + adapter.parse, far exceeding macOS's
+  // default 256 open-files ulimit and tripping EMFILE on cold scans.
+  await mapWithConcurrency(parseable, DEFAULT_FILE_IO_CONCURRENCY, async ({ file, adapter }) => {
+    const entry = await parseFileToGraphEntry(rootPath, file, adapter, previousGraph);
+    if (entry) graphFiles.set(file.relativePath, entry);
+  });
 
   const { localImporters, packageImporters, symbolDefs } = rebuildCrossFileIndexes(
     graphFiles,
