@@ -469,7 +469,7 @@ async function quietTheDoctorPrompt(rootPath: string): Promise<McpPromptResult> 
     'Output a PR-ready proposal in this exact shape:',
     '',
     `1. **Rationale per rule** — for each of the ${stable.length} rule${stable.length === 1 ? '' : 's'}, one sentence explaining what it flags and why silencing is appropriate (e.g. "this dependency is loaded via a build script, not an import"). Be specific to the rule id.`,
-    '2. **The patch** — the exact `.projscanrc.json` change, merging cleanly with whatever \`disableRules\` already exists.',
+    '2. **The patch** — the exact `.projscanrc.json` change, merging cleanly with whatever `disableRules` already exists.',
     '3. **Verification** — one command the user can run after applying the patch to confirm the doctor is quieter (typically `projscan ci --min-score 90`).',
     '4. **Rollback note** — how to remove a single entry from `disableRules` if the user later wants the rule re-enabled.',
     '',
