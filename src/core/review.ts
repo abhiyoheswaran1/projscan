@@ -151,10 +151,12 @@ export async function computeReview(
   // Dependency changes across root + workspaces.
   const dependencyChanges = diffManifests(basePackageManifests, headPackageManifests);
 
-  // 1.6+ — taint flows newly introduced at head. Read project config for
-  // user-declared sources/sinks; defaults always apply. Restricted to flows
-  // whose path touches at least one PR-changed file, so a base-graph parse
-  // failure doesn't avalanche pre-existing flows into false "new" verdicts.
+  // 1.6+ — taint flows newly introduced at head. A flow is "new" iff
+  //   (a) the (sourceFn, sinkFn) pair didn't exist at base, AND
+  //   (b) at least one file along the flow's path is in the PR diff.
+  // (b) prevents a base-graph parse failure from avalanching every
+  // pre-existing head flow into a false "new" verdict. Project config
+  // adds user-declared sources/sinks on top of the built-in defaults.
   const touchedFiles = new Set<string>([
     ...prDiff.filesAdded,
     ...prDiff.filesRemoved,

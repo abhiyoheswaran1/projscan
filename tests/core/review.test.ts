@@ -180,7 +180,47 @@ export function danger() {
     // The flow exists at head, but it ALSO existed at base, AND the PR
     // didn't touch any file along its path — must not surface as new.
     expect(r.newTaintFlows).toHaveLength(0);
-    expect(r.verdict).not.toBe('block');
+    expect(r.verdict).toBe('ok');
+  });
+
+  it('flags a NEW cross-file taint flow (source in one file, sink in another) (1.6+)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // Sink file already exists at base — wraps child_process.exec.
+    await write(
+      'src/sink.ts',
+      `import { exec } from 'child_process';
+export function runIt(cmd: string | undefined) { exec(cmd ?? 'echo'); }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR adds a NEW source file that reads process.env and calls into the
+    // existing sink wrapper. Source-fn is in src/reader.ts, sink-fn is in
+    // src/sink.ts — exercises the cross-file BFS path.
+    await write(
+      'src/reader.ts',
+      `import { runIt } from './sink.js';
+export function reader() {
+  const v = process.env.MY_CMD;
+  runIt(v);
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add reader']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    const flow = r.newTaintFlows.find((f) => f.sourceFn === 'reader');
+    expect(flow).toBeDefined();
+    expect(flow!.sinkFn).toBe('runIt');
+    expect(flow!.source).toBe('env');
+    expect(flow!.sink).toBe('exec');
+    // Path crosses files: reader (src/reader.ts) → runIt (src/sink.ts).
+    expect(flow!.files).toEqual(['src/reader.ts', 'src/sink.ts']);
+    expect(r.verdict).toBe('block');
   });
 
   it('reports dependency additions in package.json', async () => {
