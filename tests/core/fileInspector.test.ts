@@ -94,6 +94,51 @@ describe('inspectFile', () => {
     expect(insp.reason).toMatch(/outside/i);
   });
 
+  it('refuses absolute paths (security regression)', async () => {
+    // 1.6.2+ — the docs claim "relative to project root" but the prior
+    // implementation silently honored absolute paths. Reject up front.
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
+    const insp = await inspectFile(tmpRoot, '/etc/passwd');
+    expect(insp.exists).toBe(false);
+    expect(insp.reason).toMatch(/Absolute paths are not accepted/);
+  });
+
+  it('refuses to follow a symlink that points outside the project root (security regression)', async () => {
+    // 1.6.2+ — without realpath resolution, a symlink under the repo
+    // (e.g. cache/keys.pem → /etc/passwd) passes the prefix check but
+    // reads attacker-chosen content.
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
+    const escapeTarget = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-escape-'));
+    await fs.writeFile(path.join(escapeTarget, 'secret.txt'), 'PWNED');
+    try {
+      await fs.symlink(path.join(escapeTarget, 'secret.txt'), path.join(tmpRoot, 'leak.txt'));
+    } catch {
+      // Some platforms (Windows without privilege) can't create symlinks;
+      // skip the assertion in that case.
+      return;
+    }
+    const insp = await inspectFile(tmpRoot, 'leak.txt');
+    expect(insp.exists).toBe(false);
+    expect(insp.reason).toMatch(/outside/i);
+    await fs.rm(escapeTarget, { recursive: true, force: true });
+  });
+
+  it('follows symlinks that stay inside the project root', async () => {
+    // Sanity check: in-repo symlinks (e.g. monorepo plumbing) remain
+    // readable. Only escapes are blocked.
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
+    await fs.writeFile(path.join(tmpRoot, 'real.ts'), `export const x = 1;\n`);
+    try {
+      await fs.symlink(path.join(tmpRoot, 'real.ts'), path.join(tmpRoot, 'aliased.ts'));
+    } catch {
+      return;
+    }
+    const insp = await inspectFile(tmpRoot, 'aliased.ts');
+    expect(insp.exists).toBe(true);
+    // Reported relativePath is the user-supplied alias (not the symlink target).
+    expect(insp.relativePath).toBe('aliased.ts');
+  });
+
   it('returns parsed metadata for a real file (without running full scan)', async () => {
     const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
     await fs.writeFile(path.join(tmpRoot, 'sample.ts'), "export const foo = 1;\n");

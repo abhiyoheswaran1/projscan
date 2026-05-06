@@ -77,7 +77,12 @@ export async function computeReview(
   let baseGraph: CodeGraph;
   let basePackageManifests: Map<string, ManifestSnapshot>;
   try {
-    await runGit(rootPath, ['worktree', 'add', '--detach', worktreeDir, baseSha]);
+    // `--` separator before positional args. baseSha is verified through
+    // `rev-parse --verify ... ^{commit}` upstream so it's already sha-shaped,
+    // but the separator is a defense-in-depth: if a future caller pipes a
+    // user-supplied ref here without that verification, refs starting with
+    // '-' (e.g. `--upload-pack=evil`) won't be parsed as flags.
+    await runGit(rootPath, ['worktree', 'add', '--detach', '--', worktreeDir, baseSha]);
     const baseScan = await scanRepository(worktreeDir);
     baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
     basePackageManifests = await readManifests(worktreeDir);
