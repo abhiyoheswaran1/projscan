@@ -168,19 +168,71 @@ describe('executePlan', () => {
     });
 
     it('rejects path-traversal in rollback id (security regression)', async () => {
-      // Plant a sibling .json file the traversal would try to read.
-      const sibling = path.join(tmp, 'secret.json');
-      await fs.writeFile(sibling, JSON.stringify({ schemaVersion: 1, rollbackId: 'fake', createdAt: 'x', summary: 'x', changes: [] }));
-      // path.join collapses the relative segments — this would read
-      // `<tmp>/secret.json` if the id were honored.
-      const undo = await rollback(tmp, '../secret');
+      // Plant a planted .json file at the EXACT path that '../../secret'
+      // would resolve to, so this test would FAIL (read the planted file)
+      // without the UUID-format guard. Without the guard:
+      //   path.join(tmp, '.projscan-cache/rollbacks', '../../secret.json')
+      //     → `<tmp>/secret.json` (segments collapse during resolve)
+      // With the guard: '../../secret' fails the UUID regex → readRollbackRecord
+      // returns null → rollback() returns ok:false with "No rollback record".
+      const planted = {
+        schemaVersion: 1,
+        rollbackId: 'planted',
+        createdAt: 'x',
+        summary: 'x',
+        changes: [],
+      };
+      await fs.writeFile(path.join(tmp, 'secret.json'), JSON.stringify(planted));
+      const undo = await rollback(tmp, '../../secret');
       expect(undo.ok).toBe(false);
       expect(undo.reason).toMatch(/No rollback record/);
     });
 
-    it('rejects non-UUID rollback ids (security regression)', async () => {
-      // Even a benign-looking id must be rejected unless it matches UUID v4.
+    it('rejects non-UUID rollback ids even when a same-named .json exists on disk (security regression)', async () => {
+      // Plant a record at exactly the path a `not-a-uuid` lookup would try
+      // to read. This is the test that actually exercises the UUID guard:
+      // without the regex check, readRollbackRecord would read this file,
+      // accept its valid schema, and rollback() would return ok:true with
+      // an empty changes array (i.e. an attacker could replay arbitrary
+      // .json content named *.json under .projscan-cache/rollbacks/).
+      // With the guard, `not-a-uuid` is rejected by the regex before the
+      // read, so we get ok:false / "No rollback record".
+      const dir = path.join(tmp, '.projscan-cache', 'rollbacks');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(
+        path.join(dir, 'not-a-uuid.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          rollbackId: 'not-a-uuid',
+          createdAt: 'x',
+          summary: 'planted',
+          changes: [],
+        }),
+      );
       const undo = await rollback(tmp, 'not-a-uuid');
+      expect(undo.ok).toBe(false);
+      expect(undo.reason).toMatch(/No rollback record/);
+    });
+
+    it('rejects a syntactically-valid UUID v3 (regression: regex must pin v4)', async () => {
+      // A v3 UUID has the same shape as a v4 but version digit `3`.
+      // Plant a same-named .json file so the test would PASS without a
+      // strict-v4 regex. With `[1-5]` (lenient): would read the file,
+      // return ok:true. With `4` (tight): rejected, ok:false.
+      const dir = path.join(tmp, '.projscan-cache', 'rollbacks');
+      await fs.mkdir(dir, { recursive: true });
+      const v3Id = '11111111-1111-3111-8111-111111111111';
+      await fs.writeFile(
+        path.join(dir, `${v3Id}.json`),
+        JSON.stringify({
+          schemaVersion: 1,
+          rollbackId: v3Id,
+          createdAt: 'x',
+          summary: 'planted',
+          changes: [],
+        }),
+      );
+      const undo = await rollback(tmp, v3Id);
       expect(undo.ok).toBe(false);
       expect(undo.reason).toMatch(/No rollback record/);
     });

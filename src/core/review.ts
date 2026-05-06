@@ -300,12 +300,15 @@ function findRiskyFunctions(
     const head = headGraph.files.get(f.relativePath);
     const base = baseGraph.files.get(f.relativePath);
     if (!head || !base) continue;
-    // Group base functions by name. We need a multimap (not a flat Map) because
-    // many functions can share a name within a file — the dominant case is
-    // anonymous arrow callbacks all named '<anonymous>' by ast.ts. A flat
-    // Map<name,cc> would collapse them and compare every head <anonymous> to
-    // the LAST base <anonymous>, producing false-positive crossed-threshold /
-    // jumped rows for every file with ≥2 anonymous arrows of differing CC.
+    // Group BOTH sides by name; we need to know the count on each side, not
+    // just on base. Many functions can share a name within a file — the
+    // dominant case is anonymous arrow callbacks all named '<anonymous>' by
+    // ast.ts. A flat Map<name,cc> would collapse them and compare every head
+    // <anonymous> to the LAST base <anonymous>, producing false-positive
+    // crossed-threshold / jumped rows for every file with ≥2 anonymous arrows
+    // of differing CC. Even a 1-base / N-head asymmetry is unsafe: a head
+    // arrow that's actually NEWLY ADDED would be paired with the single base
+    // arrow's CC and reported as 'crossed-threshold' instead of 'added'.
     const baseByName = new Map<string, number[]>();
     for (const fn of base.functions ?? []) {
       let list = baseByName.get(fn.name);
@@ -315,10 +318,14 @@ function findRiskyFunctions(
       }
       list.push(fn.cyclomaticComplexity);
     }
+    const headCountByName = new Map<string, number>();
+    for (const fn of head.functions ?? []) {
+      headCountByName.set(fn.name, (headCountByName.get(fn.name) ?? 0) + 1);
+    }
     for (const fn of head.functions ?? []) {
       const candidates = baseByName.get(fn.name);
       if (!candidates || candidates.length === 0) {
-        // Truly added. Flag if high CC.
+        // Truly added (no base function with this name). Flag if high CC.
         if (fn.cyclomaticComplexity >= HIGH_CC_THRESHOLD) {
           out.push({
             file: f.relativePath,
@@ -332,13 +339,15 @@ function findRiskyFunctions(
         }
         continue;
       }
-      if (candidates.length > 1) {
-        // Ambiguous — multiple base functions share this name. We can't
-        // reliably pair head-vs-base (typically <anonymous> arrow callbacks
-        // with no stable identity), so we skip the crossed-threshold/jumped
-        // checks. A regression that legitimately makes one of these high-CC
-        // can still surface via other signals (e.g. the file's overall risk
-        // score) and through `projscan_hotspots view: functions`.
+      // Pair head-vs-base only when the name is unambiguous on BOTH sides
+      // (1 ↔ 1). Any other ratio (1↔N, N↔1, N↔M) means we can't reliably
+      // tell which head fn corresponds to which base fn — typically
+      // <anonymous> arrow callbacks with no stable identity. We skip the
+      // crossed-threshold / jumped checks in those cases. Regressions that
+      // legitimately make one of these high-CC can still surface via other
+      // signals (the file's overall risk score and `projscan_hotspots
+      // view: functions`).
+      if (candidates.length > 1 || (headCountByName.get(fn.name) ?? 0) > 1) {
         continue;
       }
       const baseCc = candidates[0];

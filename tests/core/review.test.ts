@@ -97,57 +97,75 @@ export function bar(x) {
   });
 
   it('does NOT report false-positive risky-functions when a file has multiple anonymous arrows (regression)', async () => {
-    // Regression for a bug that has been live since 0.13.0:
+    // Regression for a bug live since 0.13.0:
     // findRiskyFunctions used `Map<name, cc>` keyed by fn.name. Many real
-    // files have multiple arrow callbacks all named '<anonymous>', which
-    // collapsed into a single map entry — every head <anonymous> then
-    // compared against the LAST base <anonymous>'s CC, producing false-
-    // positive crossed-threshold / jumped reports any time a file had ≥2
-    // anonymous arrows of differing CC.
+    // files have multiple INLINE arrow callbacks (no binding name → ast.ts
+    // labels them '<anonymous>'), which collapsed into a single map entry.
+    // Every head <anonymous> compared against the LAST base <anonymous>'s CC.
+    //
+    // To trigger the bug we need: (1) two inline arrows in the same file —
+    // not `export const foo = ...` arrows, those bind to a name — and (2)
+    // ordering such that the LAST base anon's CC differs enough from the
+    // FIRST head anon's CC to cross the jump threshold. Below: base has
+    // [arrow_high (CC≈8), arrow_low (CC=1)]; the buggy code stores
+    // baseByName.<anonymous> = 1 (the low one, last write). Head has the
+    // same two arrows unchanged, but when iterating head fns, the FIRST
+    // (still CC≈8) gets paired with baseCc=1 → delta 7 ≥ CC_JUMP_THRESHOLD
+    // (5) → false-positive 'jumped' on an arrow that didn't move.
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
-    // Base: two anonymous arrows of clearly different CC. Both stay below
-    // the high-CC threshold (10) so a correctly-paired comparison emits
-    // nothing. Under the buggy behavior, the second arrow would be paired
-    // against the first's CC and a small bump tripped 'jumped'.
     await write(
-      'src/handlers.ts',
-      `export const slim = (x: number) => x + 1;
-export const wider = (x: number) => {
-  if (x > 1) return 1;
-  if (x > 2) return 2;
-  if (x > 3) return 3;
-  if (x > 4) return 4;
-  return 0;
-};
+      'src/api.ts',
+      `export function api(items) {
+  return items
+    .filter(x => {
+      if (x === 1) return true;
+      if (x === 2) return true;
+      if (x === 3) return true;
+      if (x === 4) return true;
+      if (x === 5) return true;
+      if (x === 6) return true;
+      if (x === 7) return true;
+      return false;
+    })
+    .map(x => x + 1);
+}
 `,
     );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
-    // Head: trivial, semantically-irrelevant tweak to the slim arrow's body.
-    // No CC change in either arrow; the 'wider' arrow is unchanged.
+    // Head: trivial tweak to the LOW-CC inline arrow. Neither arrow's CC
+    // changes. Expected: zero risky-function rows. Under the buggy code:
+    // the high-CC arrow gets paired with the low-CC arrow's CC (1) and
+    // flagged as 'jumped' (8-1=7 ≥ 5).
     await write(
-      'src/handlers.ts',
-      `export const slim = (x: number) => x + 2;
-export const wider = (x: number) => {
-  if (x > 1) return 1;
-  if (x > 2) return 2;
-  if (x > 3) return 3;
-  if (x > 4) return 4;
-  return 0;
-};
+      'src/api.ts',
+      `export function api(items) {
+  return items
+    .filter(x => {
+      if (x === 1) return true;
+      if (x === 2) return true;
+      if (x === 3) return true;
+      if (x === 4) return true;
+      if (x === 5) return true;
+      if (x === 6) return true;
+      if (x === 7) return true;
+      return false;
+    })
+    .map(x => x + 2);
+}
 `,
     );
     await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'tweak slim']);
+    await git(['commit', '-q', '-m', 'tweak inner']);
 
     const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
     expect(r.available).toBe(true);
-    // No risky function should surface — neither arrow crossed the
-    // threshold, neither jumped. The buggy code would emit a 'jumped' on
-    // the wider arrow because it'd be paired with the slim arrow's CC.
-    expect(r.riskyFunctions).toHaveLength(0);
+    // Zero risky-function rows. The two inline arrows are both '<anonymous>'
+    // — ambiguous pairing → skipped on both sides. The outer api() function
+    // didn't change. No flag should surface.
+    expect(r.riskyFunctions.filter((f) => f.file === 'src/api.ts')).toHaveLength(0);
   });
 
   it('detects new cycles introduced between refs', async () => {
