@@ -1,19 +1,28 @@
 name: Release
 
-# Tag-triggered release pipeline (1.6+). One workflow that does everything:
+# Tag-triggered release pipeline (1.6.1+). One workflow that does everything:
 #   1. Validates package.json + server.json versions match the tag.
 #   2. Runs the full build / test / stability gate.
 #   3. Slices the matching CHANGELOG entry for use as release notes.
-#   4. Creates the GitHub Release with `dist/tool-manifest.json` attached
+#   4. Publishes to npm with provenance.
+#   5. Creates the GitHub Release with `dist/tool-manifest.json` attached
 #      (the website's docs page consumes that asset).
-#   5. Publishes to npm with provenance.
+#
+# Order note: npm publish runs BEFORE the GitHub Release is created. npm
+# publish is the more common failure mode (registry 5xx, token expiry,
+# sigstore outage); a workflow that creates the GH Release first and then
+# fails on npm leaves an orphan release pointing at a tarball that doesn't
+# exist. With this ordering, the worst-case partial state is "tag pushed,
+# tests passed, npm has it, no GH Release yet" — recoverable via
+# workflow_dispatch re-run (idempotent on both sides).
 #
 # MCP Registry publish stays MANUAL — `mcp-publisher` requires interactive
 # OAuth and short-lived tokens; not safe to wire into CI today. Run it from
 # your machine after the workflow completes.
 #
-# Trigger model: push a tag matching `v*.*.*`. To re-run for a tag that
-# already exists (e.g. CI flake), use the workflow_dispatch input.
+# Trigger model: push a tag matching `v*.*.*`. Prerelease tags (e.g.
+# `v1.6.1-rc.1`) match the glob but are rejected at runtime — see the
+# Resolve tag step. Re-run via workflow_dispatch with the tag input.
 
 on:
   push:
@@ -29,21 +38,34 @@ permissions:
   id-token: write   # npm provenance (sigstore)
 
 concurrency:
-  # Serialize per-tag so a re-run can't collide with the original push.
-  group: release-${{ github.event.inputs.tag || github.ref }}
+  # Serialize per-tag so a re-run via workflow_dispatch can't collide with
+  # the original tag-push run. `ref_name` strips `refs/tags/` so a tag-push
+  # ($ref_name = "v1.6.1") and a same-tag dispatch (input = "v1.6.1") share
+  # the same key.
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve tag
+      - name: Resolve tag (and reject prerelease tags)
         id: pick
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            tag="${{ github.event.inputs.tag }}"
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
           else
-            tag="${GITHUB_REF#refs/tags/}"
+            tag="$REF_NAME"
+          fi
+          # Allow only strict semver: vX.Y.Z with no -rc / -beta / +meta.
+          # The tag glob v*.*.* matches prereleases too; this is the
+          # second gate. Add prerelease branching here if/when needed.
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$tag' is not a strict semver vX.Y.Z. Prereleases / build metadata are not supported by this workflow."
+            exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
@@ -53,19 +75,24 @@ jobs:
           ref: ${{ steps.pick.outputs.tag }}
 
       - name: Verify package.json + server.json versions match tag
+        env:
+          EXPECTED: ${{ steps.pick.outputs.version }}
         run: |
-          expected="${{ steps.pick.outputs.version }}"
-          pkg=$(node -p "require('./package.json').version")
-          if [ "$pkg" != "$expected" ]; then
-            echo "::error::package.json version ($pkg) does not match tag ($expected)"
-            exit 1
-          fi
-          srv_top=$(node -p "JSON.parse(require('fs').readFileSync('.github/mcp-registry/server.json','utf8')).version")
-          srv_pkg=$(node -p "JSON.parse(require('fs').readFileSync('.github/mcp-registry/server.json','utf8')).packages[0].version")
-          if [ "$srv_top" != "$expected" ] || [ "$srv_pkg" != "$expected" ]; then
-            echo "::error::server.json versions ($srv_top / $srv_pkg) do not match tag ($expected). Both server.json fields must be bumped before tagging."
-            exit 1
-          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const expected = process.env.EXPECTED;
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+          const srv = JSON.parse(fs.readFileSync('.github/mcp-registry/server.json', 'utf8'));
+          const errors = [];
+          if (pkg !== expected) errors.push(`package.json version (${pkg}) != tag (${expected})`);
+          if (srv.version !== expected) errors.push(`server.json#version (${srv.version}) != tag (${expected})`);
+          if (srv.packages?.[0]?.version !== expected) errors.push(`server.json#packages[0].version (${srv.packages?.[0]?.version}) != tag (${expected})`);
+          if (errors.length > 0) {
+            for (const e of errors) console.log(`::error::${e}`);
+            console.log('::error::All version fields must be bumped before tagging.');
+            process.exit(1);
+          }
+          NODE
 
       - uses: actions/setup-node@v4
         with:
@@ -79,59 +106,63 @@ jobs:
       - run: npm run lint
       - run: node scripts/check-stability.mjs
 
-      - name: Slice CHANGELOG entry for ${{ steps.pick.outputs.tag }}
+      - name: Slice CHANGELOG entry
+        env:
+          VERSION: ${{ steps.pick.outputs.version }}
         run: |
-          version="${{ steps.pick.outputs.version }}"
           # Capture from the matching "## [X.Y.Z]" header up to (but not
           # including) the next "## [" header. Robust against any prev
           # version on either side.
-          awk -v v="$version" '
+          awk -v v="$VERSION" '
             $0 ~ "^## \\[" v "\\]" { flag=1; print; next }
             flag && /^## \[/ { exit }
             flag { print }
           ' CHANGELOG.md > /tmp/release-notes.md
           if [ ! -s /tmp/release-notes.md ]; then
-            echo "::error::No CHANGELOG entry found for version $version. Add a `## [$version] — YYYY-MM-DD` section before tagging."
+            echo "::error::No CHANGELOG entry found for version $VERSION. Add a '## [$VERSION] — YYYY-MM-DD' section before tagging."
             exit 1
           fi
-          echo "Sliced $(wc -l < /tmp/release-notes.md) lines for $version:"
+          echo "Sliced $(wc -l < /tmp/release-notes.md) lines for $VERSION:"
           head -5 /tmp/release-notes.md
-
-      - name: Create or update GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="${{ steps.pick.outputs.tag }}"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            echo "Release $tag already exists — refreshing notes + asset."
-            gh release edit "$tag" --notes-file /tmp/release-notes.md
-            gh release upload "$tag" dist/tool-manifest.json --clobber
-          else
-            gh release create "$tag" \
-              --title "$tag" \
-              --notes-file /tmp/release-notes.md \
-              dist/tool-manifest.json
-          fi
 
       - name: Publish to npm (idempotent)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.pick.outputs.version }}
         run: |
-          version="${{ steps.pick.outputs.version }}"
-          if npm view "projscan@${version}" version > /dev/null 2>&1; then
-            echo "projscan@${version} is already on npm — skipping (likely a re-run after a flake)."
+          if npm view "projscan@${VERSION}" version > /dev/null 2>&1; then
+            echo "projscan@${VERSION} is already on npm — skipping (likely a re-run after a flake)."
             exit 0
           fi
           npm publish --provenance --access public
 
-      - name: Summary
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.pick.outputs.tag }}
         run: |
-          tag="${{ steps.pick.outputs.tag }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists — refreshing notes + asset."
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md
+            gh release upload "$TAG" dist/tool-manifest.json --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file /tmp/release-notes.md \
+              dist/tool-manifest.json
+          fi
+
+      - name: Summary
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+          VERSION: ${{ steps.pick.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
           {
-            echo "### Released $tag"
+            echo "### Released $TAG"
             echo ""
-            echo "- npm: https://www.npmjs.com/package/projscan/v/${{ steps.pick.outputs.version }}"
-            echo "- GitHub: https://github.com/${{ github.repository }}/releases/tag/$tag"
+            echo "- npm: https://www.npmjs.com/package/projscan/v/$VERSION"
+            echo "- GitHub: https://github.com/$REPO/releases/tag/$TAG"
             echo ""
             echo "**Manual follow-up:** republish to the MCP Registry."
             echo '```'

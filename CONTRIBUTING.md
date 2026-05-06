@@ -153,7 +153,7 @@ For larger work (refactors, cross-cutting changes), open an issue first to discu
 
 ## Releasing
 
-A release is a four-step ritual now that `.github/workflows/release.yml` (1.6.1+) does the heavy lifting. Push the tag, the workflow does the rest; only the MCP Registry republish and the website edits stay manual (both need interactive auth that CI can't do safely).
+A release is a five-step ritual now that `.github/workflows/release.yml` (1.6.1+) does the heavy lifting. Steps 1-3 prep + ship the npm + GitHub Release surfaces; steps 4-5 are the manual surfaces (MCP Registry + website) that need interactive auth CI can't do safely.
 
 1. **Bump version + write the CHANGELOG entry** in a PR against `main`:
    - `package.json#version` → new semver (patch for fixes, minor for features, major if anything breaks).
