@@ -117,6 +117,72 @@ export function bar(x) {
     expect(r.verdict).toBe('block');
   });
 
+  it('flags a NEW taint flow introduced by the PR and forces verdict to block (1.6+)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // Base has a benign reader.
+    await write(
+      'src/handler.ts',
+      `export function handler() { return 1; }\n`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR introduces process.env source + exec sink in the same function.
+    await write(
+      'src/handler.ts',
+      `import { exec } from 'child_process';
+export function handler() {
+  const cmd = process.env.MY_CMD;
+  exec(cmd ?? 'echo hi');
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add exec']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    expect(r.newTaintFlows.length).toBeGreaterThan(0);
+    const flow = r.newTaintFlows.find((f) => f.sourceFn === 'handler');
+    expect(flow).toBeDefined();
+    expect(flow!.source).toBe('env');
+    expect(flow!.sink).toBe('exec');
+    // A new taint flow always blocks.
+    expect(r.verdict).toBe('block');
+    expect(r.summary.some((s) => s.includes('taint'))).toBe(true);
+  });
+
+  it('does NOT flag pre-existing taint flows in unchanged files (1.6+ regression)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // src/danger.ts already has a flow at base.
+    await write(
+      'src/danger.ts',
+      `import { exec } from 'child_process';
+export function danger() {
+  const cmd = process.env.MY_CMD;
+  exec(cmd ?? 'echo hi');
+}
+`,
+    );
+    await write('src/other.ts', `export const x = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR only edits src/other.ts, leaves src/danger.ts alone.
+    await write('src/other.ts', `export const x = 2;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'tweak other']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    // The flow exists at head, but it ALSO existed at base, AND the PR
+    // didn't touch any file along its path — must not surface as new.
+    expect(r.newTaintFlows).toHaveLength(0);
+    expect(r.verdict).not.toBe('block');
+  });
+
   it('reports dependency additions in package.json', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x', dependencies: {} }));

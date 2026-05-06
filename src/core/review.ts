@@ -152,8 +152,15 @@ export async function computeReview(
   const dependencyChanges = diffManifests(basePackageManifests, headPackageManifests);
 
   // 1.6+ — taint flows newly introduced at head. Read project config for
-  // user-declared sources/sinks; defaults always apply.
-  const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph);
+  // user-declared sources/sinks; defaults always apply. Restricted to flows
+  // whose path touches at least one PR-changed file, so a base-graph parse
+  // failure doesn't avalanche pre-existing flows into false "new" verdicts.
+  const touchedFiles = new Set<string>([
+    ...prDiff.filesAdded,
+    ...prDiff.filesRemoved,
+    ...prDiff.filesModified.map((f) => f.relativePath),
+  ]);
+  const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
 
   // Verdict.
   const { verdict, summary } = decideVerdict(
@@ -183,6 +190,7 @@ async function computeNewTaintFlows(
   rootPath: string,
   baseGraph: CodeGraph,
   headGraph: CodeGraph,
+  touchedFiles: Set<string>,
 ): Promise<ReviewTaintFlow[]> {
   const { config } = await loadConfig(rootPath);
   const sources = config.taint?.sources ?? [];
@@ -197,6 +205,13 @@ async function computeNewTaintFlows(
   for (const flow of headReport.flows) {
     const key = `${flow.sourceFn}::${flow.sinkFn}`;
     if (baseFlowKeys.has(key)) continue;
+    // Restrict to flows the PR actually had a hand in: at least one file
+    // along the path must be in the change set. A genuinely-introduced flow
+    // necessarily touches a modified file (the new source-fn, sink-fn, or
+    // intermediate hop), so this is a strict refinement — never drops a
+    // real flow. Without it, a base-graph parse failure would surface every
+    // pre-existing head flow as "new" and avalanche the verdict to block.
+    if (!flow.files.some((f) => touchedFiles.has(f))) continue;
     out.push({
       sourceFn: flow.sourceFn,
       sinkFn: flow.sinkFn,
