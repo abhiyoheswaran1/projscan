@@ -410,6 +410,17 @@ export interface ProjscanConfig {
   monorepo?: {
     importPolicy?: ImportPolicyRule[];
   };
+  /**
+   * Taint analysis tuning (1.6.0+). Both lists merge ON TOP of the
+   * built-in defaults — they don't replace them. Use this to add
+   * project-specific source/sink names: `customSecretReader`, `query`,
+   * `runRawSql`, etc. To suppress a default, list the rule id under
+   * `disableRules` (e.g. `taint-flow-detected`).
+   */
+  taint?: {
+    sources?: string[];
+    sinks?: string[];
+  };
 }
 
 /**
@@ -634,6 +645,23 @@ export interface ReviewFunction {
   reason: 'added' | 'jumped' | 'crossed-threshold';
 }
 
+/**
+ * 1.6+ — A taint flow that is NEW at head (not present at base). Mirrors
+ * the core TaintFlow shape but is intentionally light — review summaries
+ * should be readable in a glance, so we drop the per-step file list and
+ * keep only the source/sink, the function pair, and the path length.
+ */
+export interface ReviewTaintFlow {
+  sourceFn: string;
+  sinkFn: string;
+  source: string;
+  sink: string;
+  /** Hop count from source function to sink function, inclusive of both ends. */
+  pathLength: number;
+  /** First and last files in the path; same value when length = 1. */
+  files: string[];
+}
+
 /** Workspace-package-scoped dependency change. Aggregates root + workspaces. */
 export interface ReviewDependencyChange {
   /** Workspace name; '' for the root manifest. */
@@ -668,6 +696,13 @@ export interface ReviewReport {
   riskyFunctions: ReviewFunction[];
   /** package.json deltas across root + workspaces. */
   dependencyChanges: ReviewDependencyChange[];
+  /**
+   * 1.6+ — NEW source-to-sink taint flows introduced by this PR. Each
+   * entry is a flow that exists at head but didn't exist at base
+   * (matched by sourceFn + sinkFn pair). Empty when taint is unavailable
+   * (no per-function callSites at either side).
+   */
+  newTaintFlows: ReviewTaintFlow[];
   /** 'ok' = ship it; 'review' = needs careful look; 'block' = strongly suggests rework. */
   verdict: 'ok' | 'review' | 'block';
   /** One-line bullets explaining the verdict. */

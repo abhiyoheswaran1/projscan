@@ -53,52 +53,16 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.6 → 1.10 (Q4 2026 — 2027)
+### Now — 1.7 → 1.10 (Q4 2026 — 2027)
 
-**Theme arc: "From advisor to operator."** The Agent Substrate arc shipped (1.4 Session, 1.5 Budgeted by default + Project Memory). Next: stop being a thing that observes and start being a thing that *acts* — across boundaries (cross-repo), inside the codebase (apply layer), and at the security gate (taint flow). Then breadth (mobile, C++), depth (cost analytics, live review), and the platform commitment (2.0 plugin API).
+**Theme arc: "From advisor to operator."** 1.6 (Operator) just shipped — projscan now acts across boundaries (cross-repo), inside the codebase (apply layer), and at the security gate (taint flow). Next: breadth (mobile, C++), depth (cost analytics, live review), and the platform commitment (2.0 plugin API).
 
 | Release | Theme | Why an agent must have this |
 |---|---|---|
-| **1.6.0 "Operator"** | Three-pillar capstone: cross-repo + apply + security-aware review | Agents working across repos can't see consequences across boundaries today. They suggest fixes but burn context applying them. They review PRs but can't gate on taint flows. 1.6 closes all three — projscan stops advising and starts operating. |
 | **1.7.0 "Mobile"** | Kotlin and Swift adapters | Two huge codebases projscan can't see today: Android and iOS. Closing the mobile gap before competitors do. |
 | **1.8.0 "Depth"** | C++ adapter + Project Memory loop #3 (per-rule confidence) + sub-file embedding refinements | C++ for systems / games / embedded. Per-rule confidence weighting auto-deprioritizes rules with low fix-rates — Project Memory's third loop, viable now that ~6 months of accumulated signal exists. |
 | **1.9.0 "Cost Visibility"** | Aggregate cost analytics, per-tool cost catalog | Agents can't optimize tokens they can't see. The `_cost` sidecar (1.5) was per-call; 1.9 is the dashboard view: session totals, top spenders, pre-call cost budgets. |
 | **1.10.0 "Live Reviewer"** | Long-running PR-watch mode | `projscan_review` is a snapshot. PRs are streams. Subscribe-once-watch-forever closes the long-session loop on PRs the way `--watch` (1.3) did for files. The capstone for the agent-substrate arc. |
-
-#### 1.6.0 "Operator" — three pillars in one release
-
-The three pillars are conceptually distinct but mutually reinforcing: cross-repo unlocks taint flows that cross repos AND apply-layer fixes that coordinate across consumers/producers. Shipping them together gives the agent a coherent "operator" upgrade rather than three half-stories spread across three minors.
-
-##### Pillar 1: Cross-repo view (foundation)
-
-- `projscan workspace add/list/remove` CLI to register sibling repos under a workspace root.
-- `projscan_workspace_graph` MCP tool — cross-repo importers, shared symbols.
-- `projscan_impact` extended with `--cross-repo` for "what other repos depend on this?"
-- `projscan coverage --changed-only` (diff-aware coverage; pairs with 0.3's `--changed-only` mode).
-- Project Memory's `findStableRules` and acceptance loops extend cross-repo so a rule the user accepts in one repo doesn't pester them in siblings.
-
-##### Pillar 2: Apply layer
-
-- `projscan_apply_fix` MCP tool — agent passes a fix id + explicit confirm; projscan executes the mechanical edit. Dry-run first; no overwrite without confirmation.
-- ~6 templates gain apply-support: `missing-test-framework`, `missing-eslint-config`, `missing-prettier-config`, `unused-dependency-X`, `cycle-detected-X` (suggested rename), `missing-editorconfig`.
-- Atomic file edits with rollback record stored in session — undo via `projscan session events`.
-- `projscan init` scaffolds `.projscanrc.json` for new adopters.
-- `projscan install-hook` writes `.git/hooks/pre-commit`.
-
-##### Pillar 3: Security-aware review
-
-- `projscan_taint` MCP tool — source-to-sink reachability with declared dangerous functions.
-- Config: `.projscanrc.taint.sources` / `.sinks` with built-in defaults (`eval`, `exec`, `child_process.spawn`, `fs.writeFile` to user paths, raw SQL).
-- `projscan_review` integration — PRs adding a source→sink path bump verdict to `block` with a `taint-flow-detected-N` finding.
-- `review_this_pr` prompt updated to flag taint findings with severity context.
-- Adaptive shaping recognizes taint findings as never-truncatable (security signals always present in the response, regardless of `max_cost_tokens` budget).
-
-##### 1.6.0 scope discipline
-
-Bundling three pillars is aggressive. Two PM-hat guardrails:
-
-1. **Cross-repo demand validation.** If single-repo users vastly outnumber multi-repo, Pillar 1 is over-investment relative to apply layer (which has universal demand). Counter: Pillar 1 unblocks cross-repo apply (Pillar 2) and cross-repo taint (Pillar 3); shipping them sequentially leaves both coordination paths broken until 1.8. Decision: ship together.
-2. **Taint scope discipline.** CFG/DFG for *all* code is a research project; source-to-sink for *declared* sources/sinks is shippable in a minor. If Pillar 3's design starts drifting toward general dataflow, cut scope hard — taint stays config-driven and rule-bounded.
 
 ### Later — 2.0 (2027+)
 
@@ -140,6 +104,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **1.6.0** (2026-05-06) | Operator | Cross-repo workspace + intelligence (`projscan_workspace_graph`); mechanical apply layer with rollback (`projscan_apply_fix`, six templates); source-to-sink taint analysis (`projscan_taint`) wired into review as a hard block on new flows |
 | **1.5.0** (2026-05-05) | Budgeted by default | `_cost` sidecar on every result; adaptive `projscan_review` with full / summary / verdict-only tiers |
 | **1.4.0** (2026-05-05) | Session | Durable cross-invocation session: `projscan_session` MCP tool, auto-touched files, event log |
 | **1.3.0** (2026-05-05) | Push, Don't Poll | MCP `notifications/file_changed` push and registry-aware upgrade preview |

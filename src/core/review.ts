@@ -8,12 +8,15 @@ import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
+import { computeTaint } from './taint.js';
+import { loadConfig } from '../utils/config.js';
 import type {
   ReviewCycle,
   ReviewDependencyChange,
   ReviewFile,
   ReviewFunction,
   ReviewReport,
+  ReviewTaintFlow,
   ReviewTier,
 } from '../types.js';
 
@@ -148,8 +151,18 @@ export async function computeReview(
   // Dependency changes across root + workspaces.
   const dependencyChanges = diffManifests(basePackageManifests, headPackageManifests);
 
+  // 1.6+ — taint flows newly introduced at head. Read project config for
+  // user-declared sources/sinks; defaults always apply.
+  const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph);
+
   // Verdict.
-  const { verdict, summary } = decideVerdict(changedFiles, newCycles, riskyFunctions, dependencyChanges);
+  const { verdict, summary } = decideVerdict(
+    changedFiles,
+    newCycles,
+    riskyFunctions,
+    dependencyChanges,
+    newTaintFlows,
+  );
 
   return {
     available: true,
@@ -160,9 +173,44 @@ export async function computeReview(
     newCycles,
     riskyFunctions,
     dependencyChanges,
+    newTaintFlows,
     verdict,
     summary,
   };
+}
+
+async function computeNewTaintFlows(
+  rootPath: string,
+  baseGraph: CodeGraph,
+  headGraph: CodeGraph,
+): Promise<ReviewTaintFlow[]> {
+  const { config } = await loadConfig(rootPath);
+  const sources = config.taint?.sources ?? [];
+  const sinks = config.taint?.sinks ?? [];
+  const baseReport = computeTaint(baseGraph, { sources, sinks });
+  const headReport = computeTaint(headGraph, { sources, sinks });
+  if (!headReport.available) return [];
+  const baseFlowKeys = new Set(
+    baseReport.available ? baseReport.flows.map((f) => `${f.sourceFn}::${f.sinkFn}`) : [],
+  );
+  const out: ReviewTaintFlow[] = [];
+  for (const flow of headReport.flows) {
+    const key = `${flow.sourceFn}::${flow.sinkFn}`;
+    if (baseFlowKeys.has(key)) continue;
+    out.push({
+      sourceFn: flow.sourceFn,
+      sinkFn: flow.sinkFn,
+      source: flow.source,
+      sink: flow.sink,
+      pathLength: flow.path.length,
+      files: flow.files,
+    });
+  }
+  out.sort((a, b) => {
+    if (a.pathLength !== b.pathLength) return a.pathLength - b.pathLength;
+    return a.sourceFn.localeCompare(b.sourceFn);
+  });
+  return out;
 }
 
 // ── cycle classification ──────────────────────────────────
@@ -407,6 +455,7 @@ function decideVerdict(
   newCycles: ReviewCycle[],
   riskyFunctions: ReviewFunction[],
   depChanges: ReviewDependencyChange[],
+  newTaintFlows: ReviewTaintFlow[],
 ): { verdict: ReviewReport['verdict']; summary: string[] } {
   const summary: string[] = [];
   let verdict: ReviewReport['verdict'] = 'ok';
@@ -434,6 +483,17 @@ function decideVerdict(
   if (riskyFunctions.length > 0) {
     verdict = bumpTo(verdict, 'review');
     summary.push(`${riskyFunctions.length} function(s) flagged: high CC added or jumped.`);
+  }
+
+  if (newTaintFlows.length > 0) {
+    verdict = 'block';
+    const sample = newTaintFlows
+      .slice(0, 3)
+      .map((f) => `${f.source}→${f.sink} (${f.sourceFn}${f.pathLength > 1 ? '…' : ''})`)
+      .join(', ');
+    summary.push(
+      `${newTaintFlows.length} new taint flow(s) detected: ${sample}${newTaintFlows.length > 3 ? ', …' : ''}.`,
+    );
   }
 
   if (depChanges.length > 0) {
@@ -495,6 +555,7 @@ function unavailable(
     newCycles: [],
     riskyFunctions: [],
     dependencyChanges: [],
+    newTaintFlows: [],
     verdict: 'ok',
     summary: [reason],
   };
@@ -590,7 +651,8 @@ export function shapeReviewForTier(
   const cyclesAdded = report.newCycles.length;
   const riskyFunctionsAdded = report.riskyFunctions.length;
   const depsChanged = report.dependencyChanges.length;
-  const totals = { filesChanged, cyclesAdded, riskyFunctionsAdded, depsChanged };
+  const taintFlowsAdded = report.newTaintFlows?.length ?? 0;
+  const totals = { filesChanged, cyclesAdded, riskyFunctionsAdded, depsChanged, taintFlowsAdded };
 
   if (tier === 'verdict-only') {
     return {
@@ -631,6 +693,7 @@ export function shapeReviewForTier(
     newCycles: report.newCycles.slice(0, 3),
     riskyFunctions: report.riskyFunctions.slice(0, 3),
     dependencyChanges: report.dependencyChanges.slice(0, 3),
+    newTaintFlows: report.newTaintFlows?.slice(0, 5) ?? [],
     verdict: report.verdict,
     summary: report.summary,
     totals,

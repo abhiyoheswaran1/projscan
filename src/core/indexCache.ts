@@ -9,7 +9,10 @@ const CACHE_FILE = 'graph.json';
 // caches are discarded on load so we never read back missing CC as 0.
 // v4: added `functions: [{name, line, endLine, cyclomaticComplexity}]` per
 // file (0.13 "Agent Review"). v3 caches are discarded on first 0.13 run.
-const CACHE_VERSION = 4;
+// v5: added `references` to per-function entries (1.6 "Operator" — taint
+// analysis needs property-shaped reads). v4 caches are discarded on first
+// 1.6 run so taint sees populated references on every parsed function.
+const CACHE_VERSION = 5;
 
 interface SerializedGraph {
   version: number;

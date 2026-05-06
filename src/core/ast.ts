@@ -77,6 +77,15 @@ export interface FunctionInfo {
    * count. Populated post-parse in `buildCodeGraph`.
    */
   fanOut?: number;
+  /**
+   * Per-function member-expression reads (1.6.0+): rightmost identifier
+   * of every `obj.prop` chain in the function body that is NOT in callee
+   * position. Used by taint analysis to detect property-shaped sources
+   * like `process.env.X` (captures `env` and `X`). Currently only the
+   * JavaScript/TypeScript adapter populates this; other adapters omit
+   * it and taint will only match call-shaped sources for those files.
+   */
+  references?: string[];
 }
 
 export interface AstResult {
@@ -265,8 +274,8 @@ function collectFunctions(
     const name = nameForFunctionNode(node, parentClassName, bindingName);
     const line = (node as NodeWithLoc).loc?.start.line ?? 0;
     const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const { cc, callSites } = analyzeBabelBody(node);
-    out.push({ name, line, endLine, cyclomaticComplexity: cc, callSites });
+    const { cc, callSites, references } = analyzeBabelBody(node);
+    out.push({ name, line, endLine, cyclomaticComplexity: cc, callSites, references });
 
     // Recurse into nested functions so they emit their own entries. The body
     // walker (`countCcInBody`) skips nested functions for CC, but we still need
@@ -371,11 +380,16 @@ function nameForFunctionNode(
  * function body. Nested functions are opaque (their decisions and calls
  * belong to them). Used to populate per-function CC + fan-out.
  */
-function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[] } {
+function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[]; references: string[] } {
   const body = (fnNode as { body?: Node }).body;
-  if (!body) return { cc: 1, callSites: [] };
+  if (!body) return { cc: 1, callSites: [], references: [] };
   let decisions = 0;
   const calls = new Set<string>();
+  const refs = new Set<string>();
+  // MemberExpression nodes that ARE in callee position get their rightmost
+  // identifier added to callSites instead of references — track them here so
+  // we can skip them during the read walk.
+  const calleeMembers = new Set<Node>();
   walkSkippingNestedFunctions(body, (n) => {
     if (isDecisionPoint(n)) {
       decisions++;
@@ -385,9 +399,34 @@ function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[] } {
       const callee = (n as { callee?: Node }).callee;
       const name = babelCalleeName(callee);
       if (name) calls.add(name);
+      if (callee && (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression')) {
+        calleeMembers.add(callee);
+      }
+    }
+    if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') {
+      if (calleeMembers.has(n)) return;
+      collectMemberReadIdents(n, refs);
     }
   });
-  return { cc: decisions + 1, callSites: [...calls] };
+  return { cc: decisions + 1, callSites: [...calls], references: [...refs] };
+}
+
+/**
+ * Walk a member-expression chain (`a.b.c`, `req.body.x`, `process.env.SECRET`)
+ * and add the rightmost ident of each link to `out`. Skips the leftmost root
+ * (which is usually a binding name like `req` or `obj` — not interesting for
+ * taint matching). Computed-property accesses (`a[i]`) contribute nothing.
+ */
+function collectMemberReadIdents(node: Node, out: Set<string>): void {
+  let cur: Node | null = node;
+  while (cur && (cur.type === 'MemberExpression' || cur.type === 'OptionalMemberExpression')) {
+    const m = cur as { property?: Node; computed?: boolean; object?: Node };
+    if (!m.computed && m.property && m.property.type === 'Identifier') {
+      const name = (m.property as { name?: string }).name;
+      if (name) out.add(name);
+    }
+    cur = m.object ?? null;
+  }
 }
 
 function babelCalleeName(node: Node | null | undefined): string | null {

@@ -120,6 +120,7 @@ describe('shapeReviewForTier (1.5+)', () => {
       cyclesAdded: 5,
       riskyFunctionsAdded: 5,
       depsChanged: 5,
+      taintFlowsAdded: 0,
     });
   });
 

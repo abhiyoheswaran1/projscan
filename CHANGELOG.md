@@ -4,6 +4,60 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] — 2026-05-06
+
+Theme: **"Operator"** — projscan grows from a *report-and-suggest* tool into a *report-and-act* tool, and learns to look across repository boundaries. Three pillars in one release: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
+
+### Added — cross-repo intelligence (Pillar 1)
+
+- **`projscan workspace add | list | remove` CLI.** Register sibling repository paths under a workspace root. State persists at `<root>/.projscan-workspace.json` (auto-gitignored), schema-versioned for forward evolution. Each registered repo gets a stable name (defaults to its directory name) and an absolute path; duplicates are detected up-front.
+- **`projscan_workspace_graph` MCP tool.** Cross-repo intelligence over the registered siblings. Three subactions:
+  - `list` — registered repos with parsed-file counts and exported-symbol counts.
+  - `graph` — every symbol exported by ≥ 2 registered repos (a candidate refactor / API contract surface).
+  - `file_importers` — given a file in one registered repo, list every other repo whose graph imports it.
+- **`projscan_impact` cross-repo mode.** New `cross_repo: true` arg (CLI: `--cross-repo`) folds the registered sibling graphs into impact analysis: the response gains a `repo` field per node and a `totalReachableByRepo` aggregate, so an agent can answer "if I rename this exported function, what changes across every registered repo?"
+- **`projscan coverage --changed-only`** + **`--base-ref <ref>`.** Restrict the coverage report to files changed against a git base ref (auto-detected when omitted). Speeds up the per-PR loop where you only want hotspots in the diff.
+
+Naming note: `projscan_workspaces` (plural) remains the intra-repo monorepo tool — workspace packages within a single codebase. `projscan_workspace_graph` (singular concept, "the workspace graph") is the new cross-repo tool. The split is deliberate; the docs call it out so agents pick the right one.
+
+### Added — apply layer (Pillar 2)
+
+The diagnose-fix loop closes mechanically for the safe templates.
+
+- **`projscan_apply_fix` MCP tool + `projscan apply-fix <issue_id>` CLI.** Default is dry-run — returns the would-change list without writing. Pass `confirm: true` (`--confirm`) to actually mutate disk. Atomic writes (write-to-tmp + rename), per-apply rollback record persisted at `.projscan-cache/rollbacks/<id>.json`. Reverse with `action: "rollback", rollback_id: ...` or `projscan apply-fix --rollback <id>`. Refusal guards reject absolute paths, `..` traversal, create-over-existing, and modify-non-existent.
+- **Apply support for six mechanical fix templates.** `unused-dependency-*` (patches the right `package.json`), `missing-test-framework` (vitest config + smoke test), `missing-eslint` (`eslint.config.js`), `missing-prettier` (`.prettierrc`), `missing-editorconfig` (`.editorconfig`), `missing-readme` (README skeleton). Templates without apply support return `applicable: false` and point at `projscan_fix_suggest` for the structured guidance — no codemods, no semantic rename, no inference.
+- **`projscan init` CLI.** Scaffolds `.projscanrc.json` with sensible defaults (`{minScore: 70, hotspots: {limit: 10}, ignore: [], disableRules: []}`). Idempotent — refuses to overwrite an existing config without `--force`.
+- **`projscan install-hook --threshold <n>` CLI.** Writes `.git/hooks/pre-commit` running `npx projscan ci --changed-only --min-score <n>`. One-line CI gate without touching CI config.
+
+### Added — security-aware review (Pillar 3)
+
+- **`projscan_taint` MCP tool + `projscan taint` CLI.** Source-to-sink reachability over the per-function call graph. Each flow lists `sourceFn`, `sinkFn`, the matched source/sink names, the path, and the files it traverses. BFS over per-function `callSites` + member-expression reads, capped at 8 hops, deduped by `(sourceFn, sinkFn)`.
+- **Built-in source/sink defaults.** Common JS / Python sources (`process.env`, `req.body`, `req.query`, `req.params`, `req.headers`, `req.cookies`, `readFile`, `readFileSync`, `process.stdin`, `getInput`) and sinks (`exec`, `execSync`, `spawn`, `spawnSync`, `eval`, `Function`, `writeFile`, `writeFileSync`, `unlink`, `rm`, `rmSync`, `query`, `execute`, `os.system`, `subprocess`, `innerHTML`).
+- **`.projscanrc.json` `taint` block.** `taint.sources` and `taint.sinks` arrays MERGE with the defaults — they don't replace them. Use this to add project-specific names: `runRawSql`, `dangerouslyEval`, `customSecretReader`, etc. To suppress a default, list `taint-flow-detected` under `disableRules`.
+- **`projscan_review` taint integration.** The review now diffs taint flows between base and head: any `(sourceFn, sinkFn)` pair that exists at head and didn't at base surfaces as `newTaintFlows`. **A new taint flow forces the verdict to `block`** — the strongest signal in the review verdict. Surfaced in the `summary` line as the lead concern (e.g. `2 new taint flow(s) detected: env→exec (run), body→query (handler), …`).
+- **`review_this_pr` prompt updated.** Taint flows are now the lead concern in the PR review template — agents are asked to name the flow, explain the exploit shape, and demand neutralization or justification before approving.
+
+### Changed
+
+- **MCP tool count: 22 → 25** (added `projscan_workspace_graph`, `projscan_apply_fix`, `projscan_taint`).
+- **CLI commands: 24 → 28** (added `projscan workspace`, `projscan apply-fix`, `projscan init`, `projscan install-hook`, `projscan taint`).
+- **`ReviewReport` gains required `newTaintFlows: ReviewTaintFlow[]` field** (1.6+). New type `ReviewTaintFlow` exported.
+- **`ImpactReport` gains optional `totalReachableByRepo?: Record<string, number>`** (1.6+, present only when `cross_repo: true`).
+- **`ImpactNode` gains optional `repo?: string`** (1.6+).
+- **`ProjscanConfig` gains optional `taint?: { sources?: string[]; sinks?: string[] }`** (1.6+).
+- **`FunctionInfo` gains optional `references?: string[]`** (1.6+) — rightmost identifiers from member-expression reads in non-callee position. Powers taint source detection (e.g. `process.env.X` registers `env`). JavaScript / TypeScript only at this release; other adapters omit it and taint matches call-shaped sources only for those files.
+- **Cache version bump v4 → v5.** `.projscan-cache/graph.json` written by 1.5 is discarded on first 1.6 run so the new `references` field is populated for every parsed function.
+- New public exports from `src/core/taint.ts`: `computeTaint`, `TaintConfig`, `TaintFlow`, `TaintReport`, `DEFAULT_TAINT_SOURCES`, `DEFAULT_TAINT_SINKS`.
+- New public exports from `src/core/applyFix.ts`: `executePlan`, `rollback`, `ApplyResult`, `ApplyPlan`, `ApplyChange`.
+- New public exports from `src/core/workspace.ts`: `loadWorkspace`, `loadOrCreateWorkspace`, `addRepo`, `removeRepo`, `saveWorkspace`, `Workspace`, `WorkspaceRepo`.
+- `buildApplyPlanForIssue(issue, rootPath)` and `pickManifestPath(rootPath, issue)` exported from `src/core/fixSuggest.ts`.
+
+### Notes
+
+- All additions pass the stability check. The `newTaintFlows` field on `ReviewReport` is required at the type level but defaults to `[]` for unavailable reports — existing callers that read the report without checking `available` will see an empty array, never a missing field.
+- Taint analysis is intentionally heuristic: it answers "does some call chain reach from a function reading a source to a function calling a sink?" not "is this variable actually tainted at the sink?" False positives are expected for functions that launder taint safely; false negatives happen for flows through `eval`'d strings or plugin loaders. Tune by adding sinks under `.projscanrc.json` `taint.sinks` and silencing rules under `disableRules`.
+- No new runtime dependencies.
+
 ## [1.5.0] — 2026-05-05
 
 Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, `projscan_review` adapts its response shape to the budget the caller asks for, a new set of specialist prompts lets agents invoke a tested composition of tools by name, and projscan now learns from how you use it on this specific repo and quiets down the noise over time.

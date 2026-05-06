@@ -20,7 +20,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 22 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get a one-call PR review, request structured fix-action prompts for any open issue, ask "what breaks if I change this?" via transitive blast-radius analysis, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 25 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get a one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
 
 Humans get the same thing through the CLI.
 
@@ -99,8 +99,13 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan outdated` | Declared-vs-installed drift check (offline) |
 | `projscan audit` | `npm audit`-powered vulnerability report - SARIF-ready for Code Scanning |
 | `projscan upgrade <pkg>` | Preview upgrade impact - local CHANGELOG + importer list, offline |
-| `projscan coverage` | **Coverage × hotspots - rank the scariest untested files** |
+| `projscan coverage` | **Coverage × hotspots - rank the scariest untested files** (`--changed-only` for diff mode) |
 | `projscan badge` | Generate a health score badge for your README |
+| `projscan init` | *(1.6)* Scaffold `.projscanrc.json` with sensible defaults |
+| `projscan install-hook` | *(1.6)* Install a `pre-commit` hook running `projscan ci --changed-only` |
+| `projscan workspace` | *(1.6)* Register sibling repos for cross-repo intelligence (`add` / `list` / `remove`) |
+| `projscan apply-fix <id>` | *(1.6)* Mechanically execute the safe fix templates with rollback (default dry-run) |
+| `projscan taint` | *(1.6)* Source-to-sink reachability over the call graph |
 | `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Cursor, …) |
 
 To see all commands and options, run:
@@ -622,7 +627,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 22 MCP tools
+### The 25 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
@@ -657,6 +662,11 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 
 **Memory (1.5):**
 - **`projscan_memory`** *(1.5)* - durable, local-only feedback loop. Records, per analyzer rule id, how many runs surfaced it and how many fixed it. Subactions: `current` (aggregate counts), `stable` (rules surfaced across ≥ 3 runs over ≥ 7 days without ever being fixed — paired with a ready-to-paste `.projscanrc.json disableRules` snippet), `runs` (every tracked rule with full history), `forget` (drop a single rule). Stored at `.projscan-memory/memory.json`; never leaves the machine. Lets an agent ask "what is this project tolerating?" and propose quieting it.
+
+**Operator (1.6):**
+- **`projscan_workspace_graph`** *(1.6)* - cross-repo intelligence over sibling repos registered with `projscan workspace add`. Subactions: `list` (registered repos + parsed-file + export counts), `graph` (every symbol exported by ≥ 2 repos — the candidate refactor / API contract surface), `file_importers` (given a file in one repo, every other repo whose graph imports it). Read-only.
+- **`projscan_apply_fix`** *(1.6)* - mechanically execute the safe fix templates. Default is dry-run; pass `confirm: true` to write. Atomic writes, per-apply rollback record at `.projscan-cache/rollbacks/<id>.json`. Reverse with `action: "rollback", rollback_id: ...`. Six templates supported at this release: `unused-dependency-*`, `missing-test-framework`, `missing-eslint`, `missing-prettier`, `missing-editorconfig`, `missing-readme`.
+- **`projscan_taint`** *(1.6)* - source-to-sink reachability over the per-function call graph. Built-in defaults cover common JS / Python sources (`process.env`, `req.body`, etc.) and sinks (`exec`, `eval`, `db.query`, etc.). Project-specific names go in `.projscanrc.json` `taint`. `projscan_review` automatically diffs taint flows between base and head and **blocks any PR that introduces a new flow**.
 
 ### Context-window budgeting
 

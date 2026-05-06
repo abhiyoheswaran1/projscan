@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.abhiyoheswaran1/projscan",
-  "description": "Agent-first code intelligence over MCP. AST for 9 languages. 22 tools. Offline.",
+  "description": "Agent-first code intelligence over MCP. AST for 9 languages. 25 tools. Cross-repo workspace, mechanical apply layer, taint flows. Offline.",
   "repository": {
     "url": "https://github.com/abhiyoheswaran1/projscan",
     "source": "github"
   },
-  "version": "1.5.0",
+  "version": "1.6.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "projscan",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "transport": {
         "type": "stdio"
       },

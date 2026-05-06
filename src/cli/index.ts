@@ -32,6 +32,7 @@ import { registerWorkspace } from './commands/workspace.js';
 import { registerApplyFix } from './commands/applyFix.js';
 import { registerInit } from './commands/init.js';
 import { registerInstallHook } from './commands/installHook.js';
+import { registerTaint } from './commands/taint.js';
 import { registerBadge } from './commands/badge.js';
 import { registerHelp } from './commands/help.js';
 
@@ -66,6 +67,7 @@ registerWorkspace();
 registerApplyFix();
 registerInit();
 registerInstallHook();
+registerTaint();
 registerBadge();
 registerHelp();
 
