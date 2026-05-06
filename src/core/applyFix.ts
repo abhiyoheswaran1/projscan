@@ -267,10 +267,19 @@ interface RollbackRecord {
   changes: ApplyChange[];
 }
 
+// Rollback ids are randomUUID() — validate strict UUID v4 shape before joining
+// into a path. Without this, a hostile `rollback_id` like `../../../tmp/foo`
+// reads arbitrary `.json` under cwd through path.join (the relative segments
+// collapse during resolve). The id never came from the user originally — it
+// was returned by a prior apply — but the `projscan_apply_fix` MCP tool
+// accepts it as a free-form string from clients.
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 async function readRollbackRecord(
   rootPath: string,
   rollbackId: string,
 ): Promise<RollbackRecord | null> {
+  if (!UUID_V4_RE.test(rollbackId)) return null;
   try {
     const filePath = path.join(rootPath, ROLLBACK_DIR, `${rollbackId}.json`);
     const raw = await fs.readFile(filePath, 'utf-8');

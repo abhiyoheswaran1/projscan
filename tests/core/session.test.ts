@@ -131,6 +131,23 @@ describe('recordTouch', () => {
     recordTouch(session, 'src\\nested\\a.ts', 'tool-result');
     expect(session.touchedFiles['src/nested/a.ts']).toBeDefined();
   });
+
+  it('accepts legitimate filenames containing ".." substrings (regression)', async () => {
+    // Regression for the segment-vs-substring path-traversal check.
+    // The old check rejected ANY file containing '..' anywhere in the
+    // string, which is too loose: `before..after.txt` and `..hidden`
+    // are perfectly valid filenames. The fix moved to a segment-based
+    // check (matching applyFix.isSafeRelativePath) so substring
+    // occurrences inside a single segment no longer trip the guard.
+    const { session } = await loadSession(tmp);
+    recordTouch(session, 'src/before..after.txt', 'tool-result');
+    expect(session.touchedFiles['src/before..after.txt']).toBeDefined();
+    recordTouch(session, 'src/..hidden', 'tool-result');
+    expect(session.touchedFiles['src/..hidden']).toBeDefined();
+    // But a real '..' segment is still rejected.
+    recordTouch(session, 'src/../escape.ts', 'tool-result');
+    expect(session.touchedFiles['src/../escape.ts']).toBeUndefined();
+  });
 });
 
 describe('recordEvent', () => {

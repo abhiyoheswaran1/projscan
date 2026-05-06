@@ -218,11 +218,16 @@ function sessionFilePath(rootPath: string): string {
 
 function normalizeFile(file: string): string | null {
   if (typeof file !== 'string' || file.length === 0) return null;
-  if (file.includes('..')) return null;
   if (path.isAbsolute(file)) return null;
-  // Convert any backslashes (Windows paths) to forward slashes for
-  // cross-platform consistency in the session file.
-  return file.split(path.sep).join('/').split('\\').join('/');
+  // Path-traversal check — reject any '..' SEGMENT, not just any occurrence
+  // of the substring '..'. The substring check rejects legitimate filenames
+  // like `before..after.txt` or `..hidden`. Segment-based matches the
+  // (correct) check used in applyFix.isSafeRelativePath.
+  const normalized = file.split(path.sep).join('/').split('\\').join('/');
+  for (const segment of normalized.split('/')) {
+    if (segment === '..') return null;
+  }
+  return normalized;
 }
 
 function isSessionShape(value: unknown): value is Session {

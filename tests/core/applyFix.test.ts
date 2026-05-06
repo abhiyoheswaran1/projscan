@@ -166,5 +166,23 @@ describe('executePlan', () => {
       expect(undo.ok).toBe(false);
       expect(undo.reason).toMatch(/No rollback record/);
     });
+
+    it('rejects path-traversal in rollback id (security regression)', async () => {
+      // Plant a sibling .json file the traversal would try to read.
+      const sibling = path.join(tmp, 'secret.json');
+      await fs.writeFile(sibling, JSON.stringify({ schemaVersion: 1, rollbackId: 'fake', createdAt: 'x', summary: 'x', changes: [] }));
+      // path.join collapses the relative segments — this would read
+      // `<tmp>/secret.json` if the id were honored.
+      const undo = await rollback(tmp, '../secret');
+      expect(undo.ok).toBe(false);
+      expect(undo.reason).toMatch(/No rollback record/);
+    });
+
+    it('rejects non-UUID rollback ids (security regression)', async () => {
+      // Even a benign-looking id must be rejected unless it matches UUID v4.
+      const undo = await rollback(tmp, 'not-a-uuid');
+      expect(undo.ok).toBe(false);
+      expect(undo.reason).toMatch(/No rollback record/);
+    });
   });
 });

@@ -300,12 +300,25 @@ function findRiskyFunctions(
     const head = headGraph.files.get(f.relativePath);
     const base = baseGraph.files.get(f.relativePath);
     if (!head || !base) continue;
-    const baseByName = new Map<string, number>();
-    for (const fn of base.functions ?? []) baseByName.set(fn.name, fn.cyclomaticComplexity);
+    // Group base functions by name. We need a multimap (not a flat Map) because
+    // many functions can share a name within a file — the dominant case is
+    // anonymous arrow callbacks all named '<anonymous>' by ast.ts. A flat
+    // Map<name,cc> would collapse them and compare every head <anonymous> to
+    // the LAST base <anonymous>, producing false-positive crossed-threshold /
+    // jumped rows for every file with ≥2 anonymous arrows of differing CC.
+    const baseByName = new Map<string, number[]>();
+    for (const fn of base.functions ?? []) {
+      let list = baseByName.get(fn.name);
+      if (!list) {
+        list = [];
+        baseByName.set(fn.name, list);
+      }
+      list.push(fn.cyclomaticComplexity);
+    }
     for (const fn of head.functions ?? []) {
-      const baseCc = baseByName.get(fn.name);
-      if (baseCc === undefined) {
-        // Newly added function. Flag if high CC.
+      const candidates = baseByName.get(fn.name);
+      if (!candidates || candidates.length === 0) {
+        // Truly added. Flag if high CC.
         if (fn.cyclomaticComplexity >= HIGH_CC_THRESHOLD) {
           out.push({
             file: f.relativePath,
@@ -319,6 +332,16 @@ function findRiskyFunctions(
         }
         continue;
       }
+      if (candidates.length > 1) {
+        // Ambiguous — multiple base functions share this name. We can't
+        // reliably pair head-vs-base (typically <anonymous> arrow callbacks
+        // with no stable identity), so we skip the crossed-threshold/jumped
+        // checks. A regression that legitimately makes one of these high-CC
+        // can still surface via other signals (e.g. the file's overall risk
+        // score) and through `projscan_hotspots view: functions`.
+        continue;
+      }
+      const baseCc = candidates[0];
       // Existed: flag if it newly crossed the threshold.
       if (
         baseCc < HIGH_CC_THRESHOLD &&
