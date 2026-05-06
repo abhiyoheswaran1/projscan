@@ -4,6 +4,40 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] — 2026-05-06
+
+Audit-driven hardening release. A multi-agent code review found 7 real bugs and 5 ship-affecting test gaps across the 1.6 surfaces. All four tiers fixed in separate PRs (#25 / #26 / #27 / #28) and shipped here as one version.
+
+### Fixed
+
+- **`projscan_review` no longer emits false-positive risky-functions on JS files with multiple anonymous arrows.** `findRiskyFunctions` keyed `baseByName` by `fn.name`, so all `<anonymous>` callbacks (the dominant real-world case — every unbound arrow gets that name from `ast.ts:nameForFunctionNode`) collapsed into a single map entry. Every head `<anonymous>` then compared against the LAST base `<anonymous>`'s CC, producing false-positive `crossed-threshold` / `jumped` rows on essentially every file with ≥2 anonymous arrows of differing CC. Live since 0.13.0. Fixed by switching to a multimap and skipping the CC-delta check when EITHER side has more than one function with that name.
+- **`projscan_apply_fix` rejects path-traversal in `rollback_id`.** `readRollbackRecord` joined an unvalidated `rollback_id` into a path, so a hostile MCP client passing `rollback_id: "../../foo"` could read any `*.json` under cwd through `path.join`'s relative-segment collapse. Fix: strict UUID v4 regex validation (pinned to v4 since `crypto.randomUUID()` always emits v4) before the read.
+- **`projscan_session` accepts legitimate filenames containing `..` substrings.** `normalizeFile` rejected any file whose path contained the literal `..` substring anywhere — wrong shape of guard. Names like `before..after.txt` and `..hidden` were silently dropped. Fix: segment-based check matching `applyFix.isSafeRelativePath`.
+- **`projscan_file` rejects absolute paths and resolves symlinks before the inside-root check.** The MCP tool's docs claim "relative to project root" but the prior implementation silently honored absolute paths. Worse: a symlink under the repo (e.g. `cache/keys.pem` → `/etc/passwd`) passed the prefix check but read attacker-chosen content. Fix: reject absolute paths up front; canonicalize both root and target via `realpath` before the inside-root check (which also fixes a subtle macOS regression where `mkdtemp` returns `/var/folders/...` but the canonical form is `/private/var/folders/...`).
+- **`atomicWrite` is now crash-durable and TOCTOU-resistant.** Three hardenings to `applyFix.atomicWrite`: tmp filename uses `crypto.randomUUID()` instead of `pid + Date.now()` (was predictable to ~µs); open with `'wx'` (`O_CREAT | O_EXCL`) so a planted symlink at the tmp path is rejected with EEXIST; `fsync` the file before rename and best-effort `fsync` the parent dir after — the docstring claimed partial-state-not-allowed, but without fsync the rename can survive a crash with empty content.
+- **`git worktree add` argv adds `--` separator.** Defensive: `baseSha` is verified through `rev-parse --verify ... ^{commit}` upstream, so refs starting with `-` can't slip through today, but the separator means a future caller passing an unverified ref can't argument-inject (e.g. `--upload-pack=evil`).
+- **`applyFix.ts:147` `.reverse()` mutation.** Latent bug — `[...completedIdx].reverse()` instead of `completedIdx.reverse()` in the rollback loop. Only iterated once today, but a footgun for any future maintainer.
+- **`src/mcp/prompts.ts:472` lint cleanup.** Stray escaped backticks inside a single-quoted string emitting `no-useless-escape`. CI on `main` had been red since the 1.5.0 security commit; nobody noticed because lint isn't part of the local pre-commit gate. Fixed and added to the gate.
+
+### Added — performance
+
+- **Bounded file-I/O concurrency.** `buildCodeGraph`, `buildSearchIndex`, and `attachExcerpts` previously did `Promise.all(files.map(async))` — an unbounded fan-out that opened an FD per file. On a 10K-file repo this issued 10K concurrent `fs.stat + fs.readFile`, far exceeding macOS's default 256 open-files ulimit and tripping EMFILE on cold scans. New helper `mapWithConcurrency` (default 128) batches the work. Zero behavior change for small repos; correctness fix on large ones.
+- **Skipped redundant `JSON.stringify` per non-truncated MCP tool call.** Every tool result re-stringified the post-budget payload to compute the `_cost` sidecar — but `applyBudget` already produced exactly that number for the non-truncated case. Now reuses the cached value. For a 200KB response that's ~4MB of throwaway string work saved per call.
+
+### Added — release pipeline
+
+- **Tag-triggered Release workflow.** Pushing `vX.Y.Z` now: validates `package.json` + `server.json` versions match the tag; runs the full build/test/lint/stability gate; slices the matching CHANGELOG entry; publishes to npm with provenance; creates the GitHub Release with `dist/tool-manifest.json` attached. Replaces the old release-published-triggered workflow. Manual surfaces left: MCP Registry republish (interactive OAuth, can't run safely in CI today) and the website edits. See `CONTRIBUTING.md` for the new ritual.
+
+### Added — test coverage
+
+- 39 new tests across 5 surfaces that shipped without coverage in 1.6.0/1.6.1: `buildApplyPlanForIssue` + each of the six apply templates (16), `FunctionInfo.references[]` direct assertions (8), `cross_repo` impact extension (5), `executePlan` multi-change rollback catch-block (2), `projscan_apply_fix` MCP tool round-trip (5), `projscan_workspace_graph file_importers` action (3). Plus 5 regression tests pinning the security/correctness fixes above and 7 unit tests for the new `mapWithConcurrency` helper. Total: **1132 tests pass** (was 1076 at 1.6.0 ship).
+
+### Notes
+
+- No public API changes. `ReviewReport` shape unchanged. MCP tool count still 25.
+- Three perf items deferred to a future minor: taint BFS algorithmic redesign (the 197-flow dogfood explosion needs constraint by import-locality, not pure bare-name lookup), in-process graph cache across MCP tool calls (currently `doctor → impact → coupling` rebuilds the graph 3×), and `searchIndex.ts` posting-driven boost loop. Each needs design discussion + bench numbers, not a mechanical fix.
+- `.projscan-workspace.json` poisoning concern (a non-gitignored workspace file pointing at registered repos that the MCP tool will then scan) is documented but deferred — needs a design call between relocating under `.projscan-cache/`, validating registered paths look like project roots, or prompting before honoring an unfamiliar workspace.
+
 ## [1.6.1] — 2026-05-06
 
 Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pipeline that should have been part of 1.6.0.
