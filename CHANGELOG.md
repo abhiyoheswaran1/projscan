@@ -4,7 +4,25 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.6.0] — 2026-05-06
+## [1.6.1] — 2026-05-06
+
+Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pipeline that should have been part of 1.6.0.
+
+### Fixed
+
+- **`projscan_review` no longer false-positive-blocks safe PRs when the base graph fails to parse.** 1.6.0's new-taint-flow detection diffed `(sourceFn, sinkFn)` pairs between base and head; if the base graph couldn't be parsed (worktree problem, transient adapter failure), `baseFlowKeys` was empty and *every* head flow was flagged as new — the verdict avalanched to `block`. A flow is now only "new" if at least one file in its path is in the PR's changed-file set. Strictly tighter — any genuinely-introduced flow must touch a modified file by construction (the new source-fn, sink-fn, or intermediate hop), so this never drops a real flow. Thanks to a post-1.6.0 review pass for catching it.
+- **`src/mcp/prompts.ts` lint cleanup.** Stray `\\\``-style escapes inside a single-quoted string were emitting `no-useless-escape` errors that CI had been failing on silently since 1.5.0. Real bug: not user-visible, but main was red.
+
+### Added
+
+- **Tag-triggered Release workflow (`.github/workflows/release.yml`).** Replaces the old `publish.yml` (which fired on `release.published`). Pushing `vX.Y.Z` now: validates `package.json` + `server.json` versions match the tag, runs the full build/test/lint/stability gate, slices the matching CHANGELOG entry, publishes to npm with provenance, and creates the GitHub Release with `dist/tool-manifest.json` attached. Idempotent on re-run via `workflow_dispatch`. Strict-semver gate rejects prerelease tags up front. The MCP Registry republish stays manual (mcp-publisher needs interactive OAuth).
+
+### Notes
+
+- No public API changes. `ReviewReport.newTaintFlows` semantics are tightened (filter is strict refinement); existing consumers that read the field unchanged.
+- No new dependencies, no MCP tool count change (still 25), no language count change (still 9).
+
+
 
 Theme: **"Operator"** — projscan grows from a *report-and-suggest* tool into a *report-and-act* tool, and learns to look across repository boundaries. Three pillars in one release: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
 
