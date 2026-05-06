@@ -3,9 +3,10 @@ import chalk from 'chalk';
 
 import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
-import { buildCodeGraph } from '../../core/codeGraph.js';
+import { buildCodeGraph, type CodeGraph } from '../../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../../core/indexCache.js';
 import { computeImpact } from '../../core/impact.js';
+import { loadWorkspace } from '../../core/workspace.js';
 import { reportImpact } from '../../reporters/consoleReporter.js';
 import { reportImpactJson } from '../../reporters/jsonReporter.js';
 import { reportImpactMarkdown } from '../../reporters/markdownReporter.js';
@@ -17,7 +18,15 @@ export function registerImpact(): void {
     .description('Transitive blast radius for a file (repo path) or symbol (--symbol). Cycle-safe; depth-bounded.')
     .option('--symbol', 'treat <target> as a symbol (export) name instead of a file path')
     .option('--max-distance <n>', 'BFS depth limit (default 10)', (v) => parseInt(v, 10))
-    .action(async (target: string, cmdOpts: { symbol?: boolean; maxDistance?: number }) => {
+    .option(
+      '--cross-repo',
+      '1.6+: also include callers in sibling repos registered via `projscan workspace add` (symbol mode only)',
+    )
+    .action(
+      async (
+        target: string,
+        cmdOpts: { symbol?: boolean; maxDistance?: number; crossRepo?: boolean },
+      ) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
@@ -33,7 +42,13 @@ export function registerImpact(): void {
         const t = cmdOpts.symbol
           ? { kind: 'symbol' as const, value: target }
           : { kind: 'file' as const, value: target };
-        const report = computeImpact(graph, t, cmdOpts.maxDistance ? { maxDistance: cmdOpts.maxDistance } : {});
+        const crossRepoGraphs = cmdOpts.crossRepo
+          ? await buildCrossRepoGraphs(rootPath)
+          : undefined;
+        const report = computeImpact(graph, t, {
+          ...(cmdOpts.maxDistance ? { maxDistance: cmdOpts.maxDistance } : {}),
+          ...(crossRepoGraphs ? { crossRepoGraphs } : {}),
+        });
 
         if (spinner) spinner.stop();
 
@@ -58,4 +73,19 @@ export function registerImpact(): void {
         process.exit(1);
       }
     });
+}
+
+async function buildCrossRepoGraphs(rootPath: string): Promise<Map<string, CodeGraph>> {
+  const out = new Map<string, CodeGraph>();
+  const workspace = await loadWorkspace(rootPath);
+  if (!workspace || workspace.repos.length === 0) return out;
+  for (const repo of workspace.repos) {
+    try {
+      const scan = await scanRepository(repo.path);
+      out.set(repo.name, await buildCodeGraph(repo.path, scan.files));
+    } catch {
+      // skip
+    }
+  }
+  return out;
 }

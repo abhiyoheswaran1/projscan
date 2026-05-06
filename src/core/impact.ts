@@ -6,6 +6,14 @@ const DEFAULT_MAX_DISTANCE = 10;
 export interface ImpactOptions {
   /** Stop BFS after this many hops. Default 10. Capped at 1 (lower bound). */
   maxDistance?: number;
+  /**
+   * 1.6+ — when present, after computing in-repo reachability, also walk
+   * the listed sibling-repo graphs and add files whose callSites or
+   * imports reference the target. Each cross-repo node is annotated
+   * with the repo name. Map keys are repo names (the human-readable
+   * name from the workspace); values are the per-repo CodeGraph.
+   */
+  crossRepoGraphs?: Map<string, CodeGraph>;
 }
 
 /**
@@ -32,10 +40,52 @@ export function computeImpact(
 ): ImpactReport {
   const maxDistance = Math.max(1, options.maxDistance ?? DEFAULT_MAX_DISTANCE);
 
-  if (target.kind === 'file') {
-    return impactForFile(graph, target.value, maxDistance);
+  const base = target.kind === 'file'
+    ? impactForFile(graph, target.value, maxDistance)
+    : impactForSymbol(graph, target.value, maxDistance);
+
+  // 1.6+ — fold in cross-repo reachability. Symbol mode is the
+  // meaningful case (cross-repo file imports require real path
+  // resolution which the lightweight scan doesn't do). For symbol
+  // mode: any sibling-repo file whose callSites includes the symbol
+  // name is a cross-repo direct caller (distance 1).
+  if (options.crossRepoGraphs && options.crossRepoGraphs.size > 0) {
+    return foldInCrossRepo(base, target, options.crossRepoGraphs);
   }
-  return impactForSymbol(graph, target.value, maxDistance);
+  return base;
+}
+
+function foldInCrossRepo(
+  base: ImpactReport,
+  target: { kind: 'file' | 'symbol'; value: string },
+  crossRepoGraphs: Map<string, CodeGraph>,
+): ImpactReport {
+  if (!base.available) return base;
+  if (target.kind !== 'symbol') {
+    // File-mode cross-repo would need path-resolution against each
+    // sibling repo's import graph, which is more involved than this
+    // first cut. Document and skip.
+    return { ...base, totalReachableByRepo: { '(this repo)': base.totalReachable } };
+  }
+  const extra: ImpactNode[] = [];
+  const totalsByRepo: Record<string, number> = { '(this repo)': base.totalReachable };
+  for (const [repoName, repoGraph] of crossRepoGraphs) {
+    let count = 0;
+    for (const [filePath, gf] of repoGraph.files) {
+      if (gf.callSites && gf.callSites.includes(target.value)) {
+        extra.push({ file: filePath, distance: 1, repo: repoName });
+        count += 1;
+      }
+    }
+    if (count > 0) totalsByRepo[repoName] = count;
+  }
+  const reachable = [...base.reachable, ...extra].sort(compareNodes);
+  return {
+    ...base,
+    reachable,
+    totalReachable: reachable.length,
+    totalReachableByRepo: totalsByRepo,
+  };
 }
 
 function impactForFile(graph: CodeGraph, file: string, maxDistance: number): ImpactReport {

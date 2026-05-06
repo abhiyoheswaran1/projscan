@@ -1,7 +1,8 @@
 import { scanRepository } from '../../core/repositoryScanner.js';
-import { buildCodeGraph } from '../../core/codeGraph.js';
+import { buildCodeGraph, type CodeGraph } from '../../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../../core/indexCache.js';
 import { computeImpact } from '../../core/impact.js';
+import { loadWorkspace } from '../../core/workspace.js';
 import { paginate, listChecksum, readPageParams } from '../pagination.js';
 import { emitProgress } from '../progress.js';
 import type { McpTool } from './_shared.js';
@@ -24,6 +25,11 @@ export const impactTool: McpTool = {
       max_distance: {
         type: 'number',
         description: 'Maximum BFS hops from the target. Default 10. Reports `truncated: true` when exceeded.',
+      },
+      cross_repo: {
+        type: 'boolean',
+        description:
+          '1.6+ — when true, also fold in callers from sibling repos registered via `projscan workspace add`. Each cross-repo file is annotated with its repo name. Symbol-mode only; file-mode cross-repo requires path resolution that this first cut does not perform.',
       },
       cursor: { type: 'string', description: 'Opaque cursor from a previous response.' },
       page_size: { type: 'number', description: 'Items per page (default 50, max 500).' },
@@ -54,7 +60,12 @@ export const impactTool: McpTool = {
 
     emitProgress(2, 3, 'computing impact');
     const target = file ? { kind: 'file' as const, value: file } : { kind: 'symbol' as const, value: symbol! };
-    const report = computeImpact(graph, target, maxDistance !== undefined ? { maxDistance } : {});
+    const crossRepo = args.cross_repo === true;
+    const crossRepoGraphs = crossRepo ? await buildCrossRepoGraphs(rootPath) : undefined;
+    const report = computeImpact(graph, target, {
+      ...(maxDistance !== undefined ? { maxDistance } : {}),
+      ...(crossRepoGraphs ? { crossRepoGraphs } : {}),
+    });
     const page = paginate(report.reachable, readPageParams(args), listChecksum(report.reachable));
     emitProgress(3, 3, 'done');
     return {
@@ -65,3 +76,25 @@ export const impactTool: McpTool = {
     };
   },
 };
+
+/**
+ * 1.6+ — load the cross-repo workspace and build a CodeGraph for each
+ * registered sibling. Returns an empty Map if no workspace is
+ * registered or no siblings exist; the impact module handles that
+ * case as a no-op cross-repo fold.
+ */
+async function buildCrossRepoGraphs(rootPath: string): Promise<Map<string, CodeGraph>> {
+  const out = new Map<string, CodeGraph>();
+  const workspace = await loadWorkspace(rootPath);
+  if (!workspace || workspace.repos.length === 0) return out;
+  for (const repo of workspace.repos) {
+    try {
+      const scan = await scanRepository(repo.path);
+      const repoGraph = await buildCodeGraph(repo.path, scan.files);
+      out.set(repo.name, repoGraph);
+    } catch {
+      // Skip repos that fail to scan (transient I/O, missing dir, etc.).
+    }
+  }
+  return out;
+}

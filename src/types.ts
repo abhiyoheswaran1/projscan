@@ -689,6 +689,12 @@ export interface ReviewReport {
 export interface ImpactNode {
   file: string;
   distance: number;
+  /**
+   * 1.6+ — name of the registered repo that contains this file.
+   * Present only when `cross_repo: true` was passed and the file
+   * lives outside the source repo. Absent for in-repo entries.
+   */
+  repo?: string;
 }
 
 export interface ImpactReport {
@@ -712,6 +718,12 @@ export interface ImpactReport {
   reachable: ImpactNode[];
   /** Convenience count of reachable files (== reachable.length). */
   totalReachable: number;
+  /**
+   * 1.6+ — when cross-repo expansion ran, this is the per-repo
+   * breakdown of reachable file counts. Absent when `cross_repo`
+   * was false or the workspace had no siblings.
+   */
+  totalReachableByRepo?: Record<string, number>;
   /**
    * True when traversal hit `maxDistance` before exhausting the graph.
    * Items beyond the limit are omitted from `reachable`.

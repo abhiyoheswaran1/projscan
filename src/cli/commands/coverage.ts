@@ -15,6 +15,7 @@ import { analyzeHotspots } from '../../core/hotspotAnalyzer.js';
 import { parseCoverage, coverageMap } from '../../core/coverageParser.js';
 import { joinCoverageWithHotspots } from '../../core/coverageJoin.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
+import { getChangedFiles } from '../../utils/changedFiles.js';
 import { reportCoverage } from '../../reporters/consoleReporter.js';
 import { reportCoverageJson } from '../../reporters/jsonReporter.js';
 import { reportCoverageMarkdown } from '../../reporters/markdownReporter.js';
@@ -26,6 +27,11 @@ export function registerCoverage(): void {
     .description('Join test coverage with hotspots - surface the scariest untested files')
     .option('--limit <n>', 'limit number of entries shown', '30')
     .option('--package <name>', 'monorepo: scope to a single workspace package')
+    .option(
+      '--changed-only',
+      '1.6+: scope to files changed vs base ref (auto-detected; override with --base-ref)',
+    )
+    .option('--base-ref <ref>', 'git base ref for --changed-only')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -50,6 +56,15 @@ export function registerCoverage(): void {
           const ws = await detectWorkspaces(rootPath);
           const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, joined.entries.map((e) => e.relativePath)));
           joined.entries = joined.entries.filter((e) => allowed.has(e.relativePath));
+        }
+        if (cmdOpts.changedOnly && joined.available) {
+          const changed = await getChangedFiles(rootPath, cmdOpts.baseRef);
+          if (changed.available) {
+            const allowed = new Set(changed.files);
+            joined.entries = joined.entries.filter((e) => allowed.has(e.relativePath));
+          } else if (spinner) {
+            spinner.warn(`--changed-only ignored: ${changed.reason}`);
+          }
         }
 
         if (spinner) spinner.stop();
