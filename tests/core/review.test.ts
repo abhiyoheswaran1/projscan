@@ -96,6 +96,86 @@ export function bar(x) {
     expect(r.verdict === 'review' || r.verdict === 'block').toBe(true);
   });
 
+  it('does NOT report false-positive risky-functions when a file has multiple anonymous arrows (regression)', async () => {
+    // Regression for a bug live since 0.13.0:
+    // findRiskyFunctions used `Map<name, cc>` keyed by fn.name. Many real
+    // files have multiple INLINE arrow callbacks (no binding name → ast.ts
+    // labels them '<anonymous>'), which collapsed into a single map entry.
+    // Every head <anonymous> compared against the LAST base <anonymous>'s CC.
+    //
+    // To trigger the bug we need: (1) two inline arrows in the same file —
+    // not `export const foo = ...` arrows, those bind to a name — and (2)
+    // ordering such that the LAST base anon's CC differs enough from the
+    // FIRST head anon's CC to cross the jump threshold. Below: base has
+    // [arrow_high (CC≈8), arrow_low (CC=1)]; the buggy code stores
+    // baseByName.<anonymous> = 1 (the low one, last write). Head has the
+    // same two arrows unchanged, but when iterating head fns, the FIRST
+    // (still CC≈8) gets paired with baseCc=1 → delta 7 ≥ CC_JUMP_THRESHOLD
+    // (5) → false-positive 'jumped' on an arrow that didn't move.
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write(
+      'src/api.ts',
+      `export function api(items) {
+  return items
+    .filter(x => {
+      if (x === 1) return true;
+      if (x === 2) return true;
+      if (x === 3) return true;
+      if (x === 4) return true;
+      if (x === 5) return true;
+      if (x === 6) return true;
+      if (x === 7) return true;
+      return false;
+    })
+    .map(x => x + 1);
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // Head: same body unchanged + a NEW exported helper. The new export
+    // is what makes prDiff classify the file as 'modified' (without a
+    // structural change, prDiff.filesModified is empty and findRiskyFunctions
+    // never iterates the file). The two inline arrows still have CC 8 and 1.
+    // Under the buggy code: the cc=8 filter callback is paired with the
+    // last-write-of-baseByName.<anonymous>=1 → delta 7 ≥ CC_JUMP_THRESHOLD
+    // → 'jumped' flag on an arrow that didn't move.
+    await write(
+      'src/api.ts',
+      `export function api(items) {
+  return items
+    .filter(x => {
+      if (x === 1) return true;
+      if (x === 2) return true;
+      if (x === 3) return true;
+      if (x === 4) return true;
+      if (x === 5) return true;
+      if (x === 6) return true;
+      if (x === 7) return true;
+      return false;
+    })
+    .map(x => x + 1);
+}
+
+export function helper() {
+  return 42;
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add helper']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    // Zero risky-function rows. The two inline arrows are both '<anonymous>'
+    // — ambiguous pairing → skipped on both sides. helper() is newly added
+    // but its CC=1 is below the threshold so it's not flagged. The outer
+    // api() function is unchanged. No flag should surface.
+    expect(r.riskyFunctions.filter((f) => f.file === 'src/api.ts')).toHaveLength(0);
+  });
+
   it('detects new cycles introduced between refs', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));

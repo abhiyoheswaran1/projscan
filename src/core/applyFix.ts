@@ -267,10 +267,19 @@ interface RollbackRecord {
   changes: ApplyChange[];
 }
 
+// Rollback ids are crypto.randomUUID() outputs (always v4) — validate strict
+// UUID v4 shape before joining into a path. Without this, a hostile
+// `rollback_id` like `../../foo` from an MCP client reads arbitrary `.json`
+// under cwd through path.join (the relative segments collapse during resolve).
+// We only generate v4, so the regex pins the version digit to `4` (not the
+// permissive `[1-5]` you'd see in generic UUID validators).
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 async function readRollbackRecord(
   rootPath: string,
   rollbackId: string,
 ): Promise<RollbackRecord | null> {
+  if (!UUID_V4_RE.test(rollbackId)) return null;
   try {
     const filePath = path.join(rootPath, ROLLBACK_DIR, `${rollbackId}.json`);
     const raw = await fs.readFile(filePath, 'utf-8');
