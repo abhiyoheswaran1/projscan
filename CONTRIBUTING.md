@@ -153,24 +153,35 @@ For larger work (refactors, cross-cutting changes), open an issue first to discu
 
 ## Releasing
 
-A release is a seven-step ritual. Skipping any step leaves something out of sync.
+A release is a four-step ritual now that `.github/workflows/release.yml` (1.6.1+) does the heavy lifting. Push the tag, the workflow does the rest; only the MCP Registry republish and the website edits stay manual (both need interactive auth that CI can't do safely).
 
-1. **Bump version** in `package.json` (semver: patch for fixes, minor for features, major if anything breaks).
-2. **Write the CHANGELOG entry** at the top of `CHANGELOG.md` using the existing Keep-a-Changelog format. Cover Added / Changed / Removed / Notes. Be honest about tradeoffs.
-3. **Verify the build artifact** locally: `npm run build && npm run test`. The build runs `tsc + copy-wasm + generate-tool-manifest`; all three must succeed. Tests must be green.
-4. **Tag and publish.** Merge to `main`, then `git tag vX.Y.Z && git push origin vX.Y.Z && npm publish`.
-5. **Create the GitHub Release** at the new tag and **attach `dist/tool-manifest.json`** as a release asset (`gh release create vX.Y.Z dist/tool-manifest.json --title ... --notes ...`). The website's docs page reads this asset.
-6. **Republish to the MCP Registry.** Edit `.github/mcp-registry/server.json` and bump both `version` fields (top-level and `packages[0].version`) to the new version. Then run `/tmp/mcp-publisher publish .github/mcp-registry/server.json` (or wherever the publisher binary lives — see `.github/mcp-registry/SUBMIT.md`). The registry stores all published versions; not republishing means the registry's "latest" pointer drifts behind npm. Validation should pass before any publish: `mcp-publisher validate .github/mcp-registry/server.json`.
-7. **Bump the website's expectations.** In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
-   - The hardcoded **manifest URL pin** → swap `releases/download/vX.Y.Z/tool-manifest.json` for the new tag
-   - `EXPECTED.minVersion` → the new version
-   - `EXPECTED.requiredTools` → append any new MCP tool names the release added
+1. **Bump version + write the CHANGELOG entry** in a PR against `main`:
+   - `package.json#version` → new semver (patch for fixes, minor for features, major if anything breaks).
+   - `.github/mcp-registry/server.json` — bump BOTH `version` fields (top-level and `packages[0].version`). Description must stay ≤ 100 chars (registry limit).
+   - `CHANGELOG.md` — add a `## [X.Y.Z] — YYYY-MM-DD` section at the top in Keep-a-Changelog format. Cover Added / Changed / Removed / Notes; be honest about tradeoffs. The release workflow slices this verbatim into the GitHub Release body.
+   - Sweep for "X tools" / "Y languages" counts in `README.md`, `docs/GUIDE.md`, `docs/ROADMAP.md` and update them.
 
-   The website build refuses to run until all three edits are in. That friction is the feature - it prevents the docs page from drifting out of sync with the published tool surface.
+2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review.
 
-   The changelog page does NOT need a manual bump - it pulls `CHANGELOG.md` from `main` at build time, so the next site build after the release naturally picks up the new entry.
+3. **Tag and push.** From `main`:
+   ```
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+   The `Release` workflow fires automatically. It validates versions, runs the full build / test / lint / stability gate, slices the CHANGELOG entry, creates the GitHub Release with `dist/tool-manifest.json` attached, and publishes to npm with provenance. If anything fails, no GitHub Release is created and no npm publish happens — fix and re-tag, or use the workflow's `workflow_dispatch` re-run with the same tag (the workflow is idempotent).
 
-The MCP-tool count, runtime-dep count, and any "X tools" / "Y languages" claims in `README.md` and `docs/` are hand-edited; sweep for them when the release adds tools or languages.
+4. **MCP Registry republish (manual).** From your machine, after the workflow turns green:
+   ```
+   ~/bin/mcp-publisher publish .github/mcp-registry/server.json
+   ```
+   If it 401s, refresh with `~/bin/mcp-publisher login github`. The registry stores all published versions; not republishing means the registry's "latest" pointer drifts behind npm.
+
+5. **Bump the website's expectations** (separate repo). In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
+   - The hardcoded **manifest URL pin** → swap `releases/download/vX.Y.Z/tool-manifest.json` for the new tag.
+   - `EXPECTED.minVersion` → the new version.
+   - `EXPECTED.requiredTools` → append any new MCP tool names the release added.
+
+   The website build refuses to run until all three edits are in. That friction is the feature — it prevents the docs page from drifting out of sync with the published tool surface. The changelog page is regenerated from `CHANGELOG.md` on `main` at build time, so the next site build naturally picks up the new entry.
 
 ## License
 
