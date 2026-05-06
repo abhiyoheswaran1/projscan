@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../types.js';
 import type { CodeGraph } from './codeGraph.js';
+import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
 
 /**
  * Lightweight BM25-ranked inverted index over source files.
@@ -91,44 +92,44 @@ export async function buildSearchIndex(
 
   const parseable = files.filter((f) => f.sizeBytes <= MAX_FILE_SIZE && isIndexable(f.relativePath));
 
-  await Promise.all(
-    parseable.map(async (file) => {
-      const abs = path.isAbsolute(file.absolutePath)
-        ? file.absolutePath
-        : path.resolve(rootPath, file.relativePath);
-      let content: string;
-      try {
-        content = await fs.readFile(abs, 'utf-8');
-      } catch {
-        return;
-      }
+  // Bounded concurrency on file reads — avoids tripping the OS open-files
+  // ulimit on large repos. See utils/concurrency.ts for the rationale.
+  await mapWithConcurrency(parseable, DEFAULT_FILE_IO_CONCURRENCY, async (file) => {
+    const abs = path.isAbsolute(file.absolutePath)
+      ? file.absolutePath
+      : path.resolve(rootPath, file.relativePath);
+    let content: string;
+    try {
+      content = await fs.readFile(abs, 'utf-8');
+    } catch {
+      return;
+    }
 
-      const contentTokens = tokenize(content);
-      const pathTokens = tokenize(file.relativePath);
-      const symbols = (graph?.files.get(file.relativePath)?.exports ?? []).map((e) =>
-        e.name.toLowerCase(),
-      );
+    const contentTokens = tokenize(content);
+    const pathTokens = tokenize(file.relativePath);
+    const symbols = (graph?.files.get(file.relativePath)?.exports ?? []).map((e) =>
+      e.name.toLowerCase(),
+    );
 
-      const entry: IndexedFile = {
-        relativePath: file.relativePath,
-        content: contentTokens,
-        symbols: symbols.flatMap((s) => tokenize(s)),
-        pathTokens,
-        length: contentTokens.length,
-      };
-      indexed.set(file.relativePath, entry);
+    const entry: IndexedFile = {
+      relativePath: file.relativePath,
+      content: contentTokens,
+      symbols: symbols.flatMap((s) => tokenize(s)),
+      pathTokens,
+      length: contentTokens.length,
+    };
+    indexed.set(file.relativePath, entry);
 
-      // Build postings from content tokens
-      const termCounts = new Map<string, number>();
-      for (const tok of contentTokens) {
-        termCounts.set(tok, (termCounts.get(tok) ?? 0) + 1);
-      }
-      for (const [tok, count] of termCounts) {
-        if (!postings.has(tok)) postings.set(tok, new Map());
-        postings.get(tok)!.set(file.relativePath, count);
-      }
-    }),
-  );
+    // Build postings from content tokens
+    const termCounts = new Map<string, number>();
+    for (const tok of contentTokens) {
+      termCounts.set(tok, (termCounts.get(tok) ?? 0) + 1);
+    }
+    for (const [tok, count] of termCounts) {
+      if (!postings.has(tok)) postings.set(tok, new Map());
+      postings.get(tok)!.set(file.relativePath, count);
+    }
+  });
 
   const totalLength = [...indexed.values()].reduce((sum, f) => sum + f.length, 0);
   const avgDocLength = indexed.size > 0 ? totalLength / indexed.size : 1;
@@ -232,24 +233,23 @@ export async function attachExcerpts(
   queryTokens: string[],
 ): Promise<SearchHit[]> {
   const qLower = queryTokens.map((t) => t.toLowerCase());
-  return Promise.all(
-    hits.map(async (hit) => {
-      const abs = path.resolve(rootPath, hit.file);
-      try {
-        const content = await fs.readFile(abs, 'utf-8');
-        const lines = content.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const lower = lines[i].toLowerCase();
-          if (qLower.some((t) => lower.includes(t))) {
-            return { ...hit, line: i + 1, excerpt: lines[i].trim().slice(0, 200) };
-          }
+  // Bounded concurrency on file reads — see utils/concurrency.ts.
+  return mapWithConcurrency(hits, DEFAULT_FILE_IO_CONCURRENCY, async (hit) => {
+    const abs = path.resolve(rootPath, hit.file);
+    try {
+      const content = await fs.readFile(abs, 'utf-8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const lower = lines[i].toLowerCase();
+        if (qLower.some((t) => lower.includes(t))) {
+          return { ...hit, line: i + 1, excerpt: lines[i].trim().slice(0, 200) };
         }
-      } catch {
-        // ignore
       }
-      return hit;
-    }),
-  );
+    } catch {
+      // ignore
+    }
+    return hit;
+  });
 }
 
 /**

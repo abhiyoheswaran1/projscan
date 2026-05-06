@@ -295,7 +295,16 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
           maxTokens,
         })
       : budgeted.value;
-    const finalEstimatedTokens = estimateTokens(JSON.stringify(withBudget) ?? '');
+    // Avoid re-stringifying when budget didn't truncate. In that case
+    // `withBudget === budgeted.value`, so `budgeted.estimatedTokens`
+    // (computed once inside applyBudget) is exactly what we'd recompute
+    // here. Only the truncated branch wraps with attachBudgetSidecar,
+    // changing the size — that path keeps the re-stringify. Saves one
+    // full-payload JSON.stringify per non-truncated tool call (the
+    // common case).
+    const finalEstimatedTokens = budgeted.truncated
+      ? estimateTokens(JSON.stringify(withBudget) ?? '')
+      : budgeted.estimatedTokens;
     return attachCostSidecar(withBudget, finalEstimatedTokens);
   }
 
