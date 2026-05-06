@@ -28,6 +28,7 @@ import { registerCoverage } from './commands/coverage.js';
 import { registerMcp } from './commands/mcp.js';
 import { registerSession } from './commands/session.js';
 import { registerMemory } from './commands/memory.js';
+import { registerWorkspace } from './commands/workspace.js';
 import { registerBadge } from './commands/badge.js';
 import { registerHelp } from './commands/help.js';
 
@@ -58,6 +59,7 @@ registerCoverage();
 registerMcp();
 registerSession();
 registerMemory();
+registerWorkspace();
 registerBadge();
 registerHelp();
 
