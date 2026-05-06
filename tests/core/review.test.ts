@@ -135,10 +135,13 @@ export function bar(x) {
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
-    // Head: trivial tweak to the LOW-CC inline arrow. Neither arrow's CC
-    // changes. Expected: zero risky-function rows. Under the buggy code:
-    // the high-CC arrow gets paired with the low-CC arrow's CC (1) and
-    // flagged as 'jumped' (8-1=7 ≥ 5).
+    // Head: same body unchanged + a NEW exported helper. The new export
+    // is what makes prDiff classify the file as 'modified' (without a
+    // structural change, prDiff.filesModified is empty and findRiskyFunctions
+    // never iterates the file). The two inline arrows still have CC 8 and 1.
+    // Under the buggy code: the cc=8 filter callback is paired with the
+    // last-write-of-baseByName.<anonymous>=1 → delta 7 ≥ CC_JUMP_THRESHOLD
+    // → 'jumped' flag on an arrow that didn't move.
     await write(
       'src/api.ts',
       `export function api(items) {
@@ -153,18 +156,23 @@ export function bar(x) {
       if (x === 7) return true;
       return false;
     })
-    .map(x => x + 2);
+    .map(x => x + 1);
+}
+
+export function helper() {
+  return 42;
 }
 `,
     );
     await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'tweak inner']);
+    await git(['commit', '-q', '-m', 'add helper']);
 
     const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
     expect(r.available).toBe(true);
     // Zero risky-function rows. The two inline arrows are both '<anonymous>'
-    // — ambiguous pairing → skipped on both sides. The outer api() function
-    // didn't change. No flag should surface.
+    // — ambiguous pairing → skipped on both sides. helper() is newly added
+    // but its CC=1 is below the threshold so it's not flagged. The outer
+    // api() function is unchanged. No flag should surface.
     expect(r.riskyFunctions.filter((f) => f.file === 'src/api.ts')).toHaveLength(0);
   });
 
