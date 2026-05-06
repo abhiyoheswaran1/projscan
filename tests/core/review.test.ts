@@ -117,6 +117,112 @@ export function bar(x) {
     expect(r.verdict).toBe('block');
   });
 
+  it('flags a NEW taint flow introduced by the PR and forces verdict to block (1.6+)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // Base has a benign reader.
+    await write(
+      'src/handler.ts',
+      `export function handler() { return 1; }\n`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR introduces process.env source + exec sink in the same function.
+    await write(
+      'src/handler.ts',
+      `import { exec } from 'child_process';
+export function handler() {
+  const cmd = process.env.MY_CMD;
+  exec(cmd ?? 'echo hi');
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add exec']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    expect(r.newTaintFlows.length).toBeGreaterThan(0);
+    const flow = r.newTaintFlows.find((f) => f.sourceFn === 'handler');
+    expect(flow).toBeDefined();
+    expect(flow!.source).toBe('env');
+    expect(flow!.sink).toBe('exec');
+    // A new taint flow always blocks.
+    expect(r.verdict).toBe('block');
+    expect(r.summary.some((s) => s.includes('taint'))).toBe(true);
+  });
+
+  it('does NOT flag pre-existing taint flows in unchanged files (1.6+ regression)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // src/danger.ts already has a flow at base.
+    await write(
+      'src/danger.ts',
+      `import { exec } from 'child_process';
+export function danger() {
+  const cmd = process.env.MY_CMD;
+  exec(cmd ?? 'echo hi');
+}
+`,
+    );
+    await write('src/other.ts', `export const x = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR only edits src/other.ts, leaves src/danger.ts alone.
+    await write('src/other.ts', `export const x = 2;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'tweak other']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    // The flow exists at head, but it ALSO existed at base, AND the PR
+    // didn't touch any file along its path — must not surface as new.
+    expect(r.newTaintFlows).toHaveLength(0);
+    expect(r.verdict).toBe('ok');
+  });
+
+  it('flags a NEW cross-file taint flow (source in one file, sink in another) (1.6+)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    // Sink file already exists at base — wraps child_process.exec.
+    await write(
+      'src/sink.ts',
+      `import { exec } from 'child_process';
+export function runIt(cmd: string | undefined) { exec(cmd ?? 'echo'); }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // PR adds a NEW source file that reads process.env and calls into the
+    // existing sink wrapper. Source-fn is in src/reader.ts, sink-fn is in
+    // src/sink.ts — exercises the cross-file BFS path.
+    await write(
+      'src/reader.ts',
+      `import { runIt } from './sink.js';
+export function reader() {
+  const v = process.env.MY_CMD;
+  runIt(v);
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add reader']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+    expect(r.available).toBe(true);
+    const flow = r.newTaintFlows.find((f) => f.sourceFn === 'reader');
+    expect(flow).toBeDefined();
+    expect(flow!.sinkFn).toBe('runIt');
+    expect(flow!.source).toBe('env');
+    expect(flow!.sink).toBe('exec');
+    // Path crosses files: reader (src/reader.ts) → runIt (src/sink.ts).
+    expect(flow!.files).toEqual(['src/reader.ts', 'src/sink.ts']);
+    expect(r.verdict).toBe('block');
+  });
+
   it('reports dependency additions in package.json', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x', dependencies: {} }));
