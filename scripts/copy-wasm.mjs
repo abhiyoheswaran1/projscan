@@ -1,9 +1,46 @@
 import { copyFile, mkdir, stat } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
+
+/**
+ * Some tree-sitter grammar packages (e.g., tree-sitter-kotlin@0.3.x) ship
+ * grammar source but do NOT include a prebuilt `.wasm`. For those we
+ * invoke `tree-sitter build --wasm` from the package directory at install
+ * time. tree-sitter-cli is a devDependency of projscan, so it's available
+ * during npm install (when `prepare: npm run build` runs the build).
+ */
+async function ensureBuiltWasm(pkgDir, wasmName) {
+  const target = path.join(pkgDir, wasmName);
+  try {
+    await stat(target);
+    return; // Already built (or shipped).
+  } catch {
+    // Need to build.
+  }
+  console.log(`building ${wasmName} (tree-sitter build --wasm in ${path.basename(pkgDir)})…`);
+  await new Promise((resolve, reject) => {
+    const child = spawn(
+      process.platform === 'win32' ? 'npx.cmd' : 'npx',
+      ['--no-install', 'tree-sitter', 'build', '--wasm'],
+      { cwd: pkgDir, stdio: 'inherit' },
+    );
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`tree-sitter build --wasm exited with code ${code}`));
+    });
+  });
+  await stat(target);
+}
+
+await ensureBuiltWasm(
+  path.join(root, 'node_modules/tree-sitter-kotlin'),
+  'tree-sitter-kotlin.wasm',
+);
 
 const targets = [
   {
@@ -37,6 +74,14 @@ const targets = [
   {
     from: path.join(root, 'node_modules/tree-sitter-c-sharp/tree-sitter-c_sharp.wasm'),
     to: path.join(root, 'dist/grammars/tree-sitter-c_sharp.wasm'),
+  },
+  {
+    from: path.join(root, 'node_modules/tree-sitter-kotlin/tree-sitter-kotlin.wasm'),
+    to: path.join(root, 'dist/grammars/tree-sitter-kotlin.wasm'),
+  },
+  {
+    from: path.join(root, 'node_modules/tree-sitter-cpp/tree-sitter-cpp.wasm'),
+    to: path.join(root, 'dist/grammars/tree-sitter-cpp.wasm'),
   },
 ];
 

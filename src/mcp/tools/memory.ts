@@ -1,5 +1,7 @@
 import type { McpTool } from './_shared.js';
 import {
+  computeRuleConfidence,
+  computeRuleConfidenceScore,
   findAcceptedHotspots,
   findStableRules,
   forgetHotspot,
@@ -35,9 +37,9 @@ export const memoryTool: McpTool = {
     properties: {
       action: {
         type: 'string',
-        enum: ['current', 'stable', 'runs', 'accepted', 'forget', 'forget-hotspot'],
+        enum: ['current', 'stable', 'runs', 'accepted', 'confidence', 'forget', 'forget-hotspot'],
         description:
-          'Subaction. "current" returns aggregate counts. "stable" returns long-running rules with a config-snippet suggestion. "runs" returns every tracked rule. "accepted" (1.5+) returns files Project Memory marks as accepted load-bearing debt (top-K hotspot for ≥ 5 runs over ≥ 7 days without improving). "forget" drops one rule. "forget-hotspot" drops one file from hotspot memory.',
+          'Subaction. "current" returns aggregate counts. "stable" returns long-running rules with a config-snippet suggestion. "runs" returns every tracked rule. "accepted" (1.5+) returns files Project Memory marks as accepted load-bearing debt (top-K hotspot for ≥ 5 runs over ≥ 7 days without improving). "confidence" (1.7+) returns each tracked rule labelled high/medium/low based on observed fix-rate — high = user has fixed instances; low = persistently ignored. "forget" drops one rule. "forget-hotspot" drops one file from hotspot memory.',
       },
       rule: {
         type: 'string',
@@ -62,6 +64,8 @@ export const memoryTool: McpTool = {
         return runsView(memory);
       case 'accepted':
         return acceptedView(memory);
+      case 'confidence':
+        return confidenceView(memory);
       case 'forget': {
         const rule = typeof args.rule === 'string' ? args.rule : '';
         if (!rule) throw new Error('forget action requires a "rule" argument');
@@ -78,7 +82,7 @@ export const memoryTool: McpTool = {
       }
       default:
         throw new Error(
-          `Unknown action "${action}". Valid actions: current, stable, runs, accepted, forget, forget-hotspot.`,
+          `Unknown action "${action}". Valid actions: current, stable, runs, accepted, confidence, forget, forget-hotspot.`,
         );
     }
   },
@@ -145,5 +149,36 @@ function runsView(memory: ProjectMemory): Record<string, unknown> {
     totalRuns: memory.totalRuns,
     rulesTracked: all.length,
     rules: all,
+  };
+}
+
+/**
+ * 1.7+ — per-rule confidence view. For each tracked rule, compute the
+ * derived `level` (high / medium / low) and a numeric `score` in [0, 1].
+ * Sorted by score descending so the agent sees the most actionable
+ * (highest-confidence) suggestions first. Includes a one-line summary
+ * counting rules per level so the agent can decide at a glance whether
+ * to call out a "noisy rules" deprioritization.
+ */
+function confidenceView(memory: ProjectMemory): Record<string, unknown> {
+  const ranked = Object.keys(memory.rules)
+    .map((ruleId) => {
+      const obs = memory.rules[ruleId];
+      return {
+        ruleId,
+        level: computeRuleConfidence(memory, ruleId),
+        score: Number(computeRuleConfidenceScore(memory, ruleId).toFixed(3)),
+        runCount: obs.runCount,
+        fixedCount: obs.fixedCount,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+  const counts = { high: 0, medium: 0, low: 0 };
+  for (const r of ranked) counts[r.level] += 1;
+  return {
+    totalRuns: memory.totalRuns,
+    rulesTracked: ranked.length,
+    counts,
+    rules: ranked,
   };
 }

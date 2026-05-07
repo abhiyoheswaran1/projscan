@@ -92,12 +92,28 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   // client only does tools/list and disconnects).
   let session: Session | null = null;
   let sessionDirty = false;
+  // 1.7+ — gate concurrent ensureSession() callers behind a single
+  // in-flight load. Without this, two MCP requests arriving back-to-back
+  // could each call loadSession(), each get their own deserialized object,
+  // and each save back — last-write-wins would silently drop touches and
+  // events from the earlier request.
+  let sessionLoadPromise: Promise<Session> | null = null;
 
   async function ensureSession(): Promise<Session> {
     if (session) return session;
-    const { session: loaded } = await loadSession(rootPath);
-    session = loaded;
-    return session;
+    if (sessionLoadPromise) return sessionLoadPromise;
+    sessionLoadPromise = (async () => {
+      const { session: loaded } = await loadSession(rootPath);
+      session = loaded;
+      sessionLoadPromise = null;
+      return loaded;
+    })();
+    try {
+      return await sessionLoadPromise;
+    } catch (err) {
+      sessionLoadPromise = null;
+      throw err;
+    }
   }
 
   async function persistSessionIfDirty(): Promise<void> {
@@ -188,8 +204,10 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       const args = params.arguments ?? {};
       const emit = buildProgressEmitter(params._meta?.progressToken);
       const result = await withProgress(emit, () => handler(args, rootPath));
-      await recordSessionTouches(name, result);
-      const payload = applyBudgetAndCost(result, args);
+      const { payload, estimatedTokens } = applyBudgetAndCost(result, args);
+      // Record AFTER budgeting so the cost we log is the cost the
+      // agent actually pays, not the pre-truncation payload size.
+      await recordSessionTouches(name, result, estimatedTokens);
       const content = formatToolContent(payload, args.stream === true);
       return ok(id, { content, isError: false });
     } catch (err) {
@@ -259,14 +277,32 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   /**
    * 1.4 — record session touches from any file paths the tool surfaced,
    * plus an event for the call itself. Skipped when the call IS for
-   * `projscan_session` (don't pollute the read with the read).
+   * `projscan_session` or the cost-summary tool itself (don't pollute
+   * the read with the read).
    * Best-effort: failures here never break the tool call.
+   *
+   * 1.7+ — when `estimatedTokens` is provided, attaches it to the event
+   * so `projscan_cost_summary` can aggregate per-tool costs. The session
+   * event log is bounded (MAX_EVENTS = 500), so the cost view reflects
+   * recent activity rather than the full lifetime of the session.
    */
-  async function recordSessionTouches(name: string, result: unknown): Promise<void> {
-    if (name === 'projscan_session') return;
+  async function recordSessionTouches(
+    name: string,
+    result: unknown,
+    estimatedTokens?: number,
+  ): Promise<void> {
+    if (name === 'projscan_session' || name === 'projscan_cost_summary') return;
     try {
       const sess = await ensureSession();
-      recordEvent(sess, `tool-call:${name}`);
+      const data: Record<string, unknown> = {};
+      if (typeof estimatedTokens === 'number' && Number.isFinite(estimatedTokens)) {
+        data.estimatedTokens = estimatedTokens;
+      }
+      recordEvent(
+        sess,
+        `tool-call:${name}`,
+        Object.keys(data).length > 0 ? data : undefined,
+      );
       sessionDirty = true;
       const paths = extractTouchedPaths(result);
       for (const p of paths) recordTouch(sess, p, 'tool-result');
@@ -280,8 +316,15 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
    * Apply the agent's `max_tokens` budget (post-hoc truncation) then
    * attach the `_cost` sidecar (1.5+) reflecting the final payload.
    * Budget and cost coexist when both fire; both are non-destructive.
+   *
+   * 1.7+ — also returns the final estimatedTokens so the dispatcher can
+   * fold it into the session event log for `projscan_cost_summary`
+   * aggregation.
    */
-  function applyBudgetAndCost(result: unknown, args: Record<string, unknown>): unknown {
+  function applyBudgetAndCost(
+    result: unknown,
+    args: Record<string, unknown>,
+  ): { payload: unknown; estimatedTokens: number } {
     const rawMaxTokens = args.max_tokens;
     const maxTokens =
       typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
@@ -305,7 +348,10 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     const finalEstimatedTokens = budgeted.truncated
       ? estimateTokens(JSON.stringify(withBudget) ?? '')
       : budgeted.estimatedTokens;
-    return attachCostSidecar(withBudget, finalEstimatedTokens);
+    return {
+      payload: attachCostSidecar(withBudget, finalEstimatedTokens),
+      estimatedTokens: finalEstimatedTokens,
+    };
   }
 
   /**

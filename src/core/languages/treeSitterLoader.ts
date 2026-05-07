@@ -31,7 +31,25 @@ function grammarDirs(): string[] {
   const nodeModulesRust = path.join(repoRoot, 'node_modules', 'tree-sitter-rust');
   const nodeModulesPhp = path.join(repoRoot, 'node_modules', 'tree-sitter-php');
   const nodeModulesCSharp = path.join(repoRoot, 'node_modules', 'tree-sitter-c-sharp');
-  return [distDir, nodeModulesWebTs, nodeModulesPy, nodeModulesGo, nodeModulesJava, nodeModulesRuby, nodeModulesRust, nodeModulesPhp, nodeModulesCSharp];
+  // 1.7+ — Kotlin doesn't ship a prebuilt wasm in the npm tarball; we
+  // build it locally during `npm run build` (see scripts/copy-wasm.mjs's
+  // ensureBuiltWasm). At test time (vitest running off src/) the wasm
+  // sits inside the package directory, so probe it there too.
+  const nodeModulesKotlin = path.join(repoRoot, 'node_modules', 'tree-sitter-kotlin');
+  const nodeModulesCpp = path.join(repoRoot, 'node_modules', 'tree-sitter-cpp');
+  return [
+    distDir,
+    nodeModulesWebTs,
+    nodeModulesPy,
+    nodeModulesGo,
+    nodeModulesJava,
+    nodeModulesRuby,
+    nodeModulesRust,
+    nodeModulesPhp,
+    nodeModulesCSharp,
+    nodeModulesKotlin,
+    nodeModulesCpp,
+  ];
 }
 
 function findWasm(filename: string): string {

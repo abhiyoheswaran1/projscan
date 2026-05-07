@@ -1,8 +1,8 @@
 {
   "name": "projscan",
   "mcpName": "io.github.abhiyoheswaran1/projscan",
-  "version": "1.6.2",
-  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, and C#; code graph, file + per-function AST cyclomatic complexity, per-function fan-in + fan-out, coupling + cycle detection, structural PR diff with HTML reporter, coverage report with HTML reporter, one-call PR review (projscan_review) with new-taint-flow detection, rule-driven fix suggestions + mechanical apply layer with rollback (projscan_apply_fix, projscan_fix_suggest, projscan_explain_issue), source-to-sink taint analysis (projscan_taint), transitive blast-radius analysis with cross-repo mode (projscan_impact for files and symbols), cross-repo workspace registration + intelligence (projscan_workspace_graph), per-function semantic search chunks (sub-file embeddings), monorepo workspace awareness with cross-package import policy + per-package dependencies / outdated / audit, BM25 + optional semantic search, cursor pagination, progress notifications, context-budgeted output, and a stable-surface CI guard. CLI on the side.",
+  "version": "1.7.0",
+  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, and C++; code graph, file + per-function AST cyclomatic complexity, per-function fan-in + fan-out, coupling + cycle detection, structural PR diff with HTML reporter, coverage report with HTML reporter, one-call PR review (projscan_review) with new-taint-flow detection, rule-driven fix suggestions + mechanical apply layer with rollback (projscan_apply_fix, projscan_fix_suggest, projscan_explain_issue), source-to-sink taint analysis (projscan_taint), transitive blast-radius analysis with cross-repo mode (projscan_impact for files and symbols), cross-repo workspace registration + intelligence (projscan_workspace_graph), per-function semantic search chunks (sub-file embeddings), per-rule confidence + cost-summary analytics (projscan_cost_summary), monorepo workspace awareness with cross-package import policy + per-package dependencies / outdated / audit, BM25 + optional semantic search, cursor pagination, progress notifications, context-budgeted output, and a stable-surface CI guard. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -84,6 +84,9 @@
     "@types/node": "^22.0.0",
     "@xenova/transformers": "^2.17.0",
     "eslint": "^10.0.3",
+    "tree-sitter-cli": "^0.26.8",
+    "tree-sitter-cpp": "^0.23.4",
+    "tree-sitter-kotlin": "^0.3.8",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.57.0",
     "vitest": "^2.1.0"
