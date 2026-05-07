@@ -9,8 +9,33 @@ import {
 import { detectWorkspaces } from '../../core/monorepo.js';
 import type { FileEntry, FileExplanation, McpToolDefinition, DirectoryNode } from '../../types.js';
 
+/**
+ * 1.8+ — handlers may also receive an optional `context` object with
+ * server-level capabilities (notify channel, watch registry). Existing
+ * handlers ignore it and continue to read `args` + `rootPath` only;
+ * new handlers (e.g., `projscan_review_watch`) opt in to use it.
+ */
+export interface McpToolContext {
+  /**
+   * Emit a JSON-RPC notification (no `id`) over the server's notify
+   * channel. No-op when the server was started without a notify
+   * channel (e.g., a CLI smoke test). Always returns true when the
+   * channel is wired and the payload is valid; false otherwise.
+   */
+  notify?: (method: string, params: Record<string, unknown>) => boolean;
+  /**
+   * Register a long-running watch with the server. The server holds
+   * the cancel handle and will invoke it when the connection closes,
+   * preventing leaked timers. Returns a `watchId` the caller persists
+   * so it can stop the watch later via `unregisterWatch`.
+   */
+  registerWatch?: (cancel: () => void) => string;
+  /** Cancel a watch previously registered via `registerWatch`. */
+  unregisterWatch?: (watchId: string) => boolean;
+}
+
 export interface McpToolHandler {
-  (args: Record<string, unknown>, rootPath: string): Promise<unknown>;
+  (args: Record<string, unknown>, rootPath: string, context?: McpToolContext): Promise<unknown>;
 }
 
 export interface McpTool extends McpToolDefinition {

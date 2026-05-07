@@ -90,6 +90,11 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   // tool call, persisted after every touch. Skipping pre-load on init
   // because the server might never receive a tool call (e.g., the
   // client only does tools/list and disconnects).
+  // 1.8+ — registry for long-running tool-side watches (e.g.,
+  // projscan_review_watch). Each entry is a cancel callback; the server
+  // calls them on close() so polling timers don't leak.
+  const toolWatches = new Map<string, () => void>();
+
   let session: Session | null = null;
   let sessionDirty = false;
   // 1.7+ — gate concurrent ensureSession() callers behind a single
@@ -203,7 +208,8 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     try {
       const args = params.arguments ?? {};
       const emit = buildProgressEmitter(params._meta?.progressToken);
-      const result = await withProgress(emit, () => handler(args, rootPath));
+      const ctx = buildToolContext();
+      const result = await withProgress(emit, () => handler(args, rootPath, ctx));
       const { payload, estimatedTokens } = applyBudgetAndCost(result, args);
       // Record AFTER budgeting so the cost we log is the cost the
       // agent actually pays, not the pre-truncation payload size.
@@ -247,6 +253,47 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       const message = err instanceof Error ? err.message : String(err);
       return fail(id, JSONRPC_ERROR.InvalidParams, message);
     }
+  }
+
+  /**
+   * 1.8+ — build the per-call tool context. Tools that opt in (e.g.,
+   * projscan_review_watch) use this to access the notify channel and
+   * register polling watches with the server. Tools that don't opt in
+   * ignore the third arg and continue to operate on (args, rootPath).
+   *
+   * Watches registered here are tracked in `toolWatches` and cancelled
+   * on close() so timers can't leak past server shutdown.
+   */
+  function buildToolContext(): import('./tools/_shared.js').McpToolContext {
+    return {
+      notify: options.notify
+        ? (method, params) => {
+            try {
+              const payload = JSON.stringify({ jsonrpc: '2.0', method, params });
+              options.notify!(payload);
+              return true;
+            } catch {
+              return false;
+            }
+          }
+        : undefined,
+      registerWatch: (cancel) => {
+        const id = `watch-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+        toolWatches.set(id, cancel);
+        return id;
+      },
+      unregisterWatch: (watchId) => {
+        const cancel = toolWatches.get(watchId);
+        if (!cancel) return false;
+        try {
+          cancel();
+        } catch {
+          // best-effort
+        }
+        toolWatches.delete(watchId);
+        return true;
+      },
+    };
   }
 
   /**
@@ -432,6 +479,16 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       watchHandle.close();
       watchHandle = null;
     }
+    // 1.8+ — cancel any tool-side watches (review-watch polling, etc.)
+    // so their timers don't outlive the server.
+    for (const cancel of toolWatches.values()) {
+      try {
+        cancel();
+      } catch {
+        // best-effort
+      }
+    }
+    toolWatches.clear();
   }
 
   return { handleMessage, close };

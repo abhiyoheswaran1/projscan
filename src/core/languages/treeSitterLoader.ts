@@ -36,6 +36,7 @@ function grammarDirs(): string[] {
   // ensureBuiltWasm). At test time (vitest running off src/) the wasm
   // sits inside the package directory, so probe it there too.
   const nodeModulesKotlin = path.join(repoRoot, 'node_modules', 'tree-sitter-kotlin');
+  const nodeModulesSwift = path.join(repoRoot, 'node_modules', 'tree-sitter-swift');
   const nodeModulesCpp = path.join(repoRoot, 'node_modules', 'tree-sitter-cpp');
   return [
     distDir,
@@ -48,6 +49,7 @@ function grammarDirs(): string[] {
     nodeModulesPhp,
     nodeModulesCSharp,
     nodeModulesKotlin,
+    nodeModulesSwift,
     nodeModulesCpp,
   ];
 }

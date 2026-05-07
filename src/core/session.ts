@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { atomicWriteFile } from '../utils/atomicWrite.js';
 
 /**
  * Session — durable cross-invocation state for projscan (1.4+).
@@ -173,17 +174,31 @@ export function recordEvent(session: Session, kind: string, data?: Record<string
  * Persist the session to disk. Best-effort; failures are swallowed so
  * a transient write error doesn't break the calling tool.
  *
- * Last-write-wins semantics for now. If two MCP servers run against the
- * same repo concurrently, the later writer overwrites the earlier; this
- * is acceptable for the v1 scope (the multi-process case is rare and the
- * downside is just a slightly stale touched-file count, not corruption).
+ * 1.8+ — uses atomicWriteFile (tmp + fsync + rename + parent-dir fsync)
+ * instead of a naive fs.writeFile. Two reasons:
+ *
+ *   1. Crash safety. A naive writeFile can leave the file truncated to
+ *      zero bytes if the process is killed mid-write — and on next
+ *      startup the corrupt file is treated as a new session, losing the
+ *      touched-file map and event log.
+ *
+ *   2. Concurrent processes. The previous "last-write-wins" comment was
+ *      true at the *file* level: two writers could clobber each other.
+ *      With atomic rename the in-flight tmp paths are unique (random
+ *      UUID suffix), so the only collision point is the rename — which
+ *      is atomic at the journal-record level on every supported FS.
+ *      Either A wins or B wins; neither sees a half-written read.
+ *
+ * The session payload is JSON; we still don't merge concurrent writes
+ * (one writer's view may shadow another's recent touches by a few
+ * seconds), but corruption is no longer possible.
  */
 export async function saveSession(rootPath: string, session: Session): Promise<void> {
   try {
     const dir = path.join(rootPath, SESSION_DIR);
     await fs.mkdir(dir, { recursive: true });
     const filePath = sessionFilePath(rootPath);
-    await fs.writeFile(filePath, JSON.stringify(session, null, 2), 'utf-8');
+    await atomicWriteFile(filePath, JSON.stringify(session, null, 2));
   } catch {
     // Swallow — sessions are best-effort.
   }

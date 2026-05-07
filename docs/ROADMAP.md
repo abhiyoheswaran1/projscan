@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-07.
+Last reviewed 2026-05-08.
 
 ---
 
@@ -53,15 +53,14 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.7 → 1.10 (Q4 2026 — 2027)
+### Now — 1.9 → 1.10 (2027)
 
-**Theme arc: "From advisor to operator."** 1.6 (Operator) and 1.7 (Reach + Visibility) shipped: projscan now acts across boundaries (cross-repo), inside the codebase (apply layer), at the security gate (taint flow), and reaches into JVM (Kotlin) + systems (C++). 1.7 also pulled forward two depth items — per-rule confidence and aggregate cost analytics — into the same release. Remaining: iOS (Swift), live PR review, and the platform commitment (2.0 plugin API).
+**Theme arc: "From advisor to operator."** 1.6 (Operator), 1.7 (Reach + Visibility), and 1.8 (Resilience + Live) all shipped. projscan now reaches into 11 languages (added Kotlin, C++, Swift), holds long-running PR watches, atomic-saves session state, surfaces taint truncation, and bounds embedding caches. The agent-substrate arc is essentially complete; what remains is polish and the platform commitment.
 
 | Release | Theme | Why an agent must have this |
 |---|---|---|
-| **1.7.1 "Swift"** | Swift adapter | Deferred from 1.7.0 because tree-sitter-swift's wasm build needs an emcc / docker chain we couldn't ship through reliably. Lands as a patch once the build path stabilises. |
-| **1.8.0 "Depth"** | Atomic session save, taint MAX_DEPTH algorithmic redesign, embeddings LRU eviction, sub-file embedding refinements | The bug-hunt items deferred from 1.7.0. Atomic writes for cross-process session safety, import-locality constraints to lift the 8-hop taint cap, bounded model cache. |
-| **1.9.0 "Live Reviewer"** | Long-running PR-watch mode | `projscan_review` is a snapshot. PRs are streams. Subscribe-once-watch-forever closes the long-session loop on PRs the way `--watch` (1.3) did for files. The capstone for the agent-substrate arc. |
+| **1.9.0 "Polish"** | Cross-arch wasi-sdk validation, review_watch signature deepening (cycle / dep deltas), live cost-summary streaming, ROI on Project Memory's loop #4 (per-rule severity drift) | Tail-end refinements from the 1.8 bug hunt. Mostly hardening. |
+| **1.10.0 "RC for 2.0"** | Plugin-API preview behind a feature flag. Public design discussion of the 2.0 stable surface. | Lay the platform-commitment groundwork before cutting a major. |
 
 ### Later — 2.0 (2027+)
 
@@ -103,6 +102,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **1.8.0** (2026-05-08) | Resilience + Live | Swift adapter (11 languages); long-running PR watch (`projscan_review_watch`) with `notifications/projscan/pr_changed`; atomic session save; taint truncation reporting + MAX_DEPTH 8 → 12; embeddings LRU; templated C++ qualified-id; 7 fixes from a three-way multi-agent bug hunt |
 | **1.7.0** (2026-05-07) | Reach + Visibility | Kotlin and C++ adapters (10 languages); per-rule confidence in Project Memory (loop #3); aggregate cost analytics (`projscan_cost_summary`); 6 fixes from a four-way multi-agent bug hunt |
 | **1.6.0** (2026-05-06) | Operator | Cross-repo workspace + intelligence (`projscan_workspace_graph`); mechanical apply layer with rollback (`projscan_apply_fix`, six templates); source-to-sink taint analysis (`projscan_taint`) wired into review as a hard block on new flows |
 | **1.5.0** (2026-05-05) | Budgeted by default | `_cost` sidecar on every result; adaptive `projscan_review` with full / summary / verdict-only tiers |

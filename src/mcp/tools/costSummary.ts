@@ -62,16 +62,25 @@ export const costSummaryTool: McpTool = {
       averageTokens: b.callCount > 0 ? Math.round(b.totalTokens / b.callCount) : 0,
     }));
 
+    // 1.8+ — only report a real p95 when we have enough samples for it
+    // to be meaningful. With < MIN_P95_SAMPLES, sorted[len*0.95] just
+    // returns the observed maximum, which agents misinterpret as a
+    // representative high-water mark for budgeting. We surface null and
+    // an explicit `insufficientSamples: true` flag so the agent knows
+    // to fall back to expectedTokens or wait for more data.
+    const MIN_P95_SAMPLES = 20;
     const perToolCatalog = ranked.map((b) => {
       const sorted = [...b.tokenSamples].sort((x, y) => x - y);
       const median = sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)];
-      const p95 = sorted.length === 0
-        ? 0
-        : sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+      const hasEnoughForP95 = sorted.length >= MIN_P95_SAMPLES;
+      const p95 = hasEnoughForP95
+        ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
+        : null;
       return {
         tool: b.tool,
         observedTypicalTokens: median,
         observedP95Tokens: p95,
+        observedP95InsufficientSamples: !hasEnoughForP95,
         callCount: b.callCount,
         expectedTokens: STATIC_EXPECTED_TOKENS[b.tool] ?? null,
       };

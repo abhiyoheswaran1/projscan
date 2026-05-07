@@ -117,6 +117,23 @@ export interface TaintReport {
   /** The effective sources/sinks list used for this run (after merging defaults + config). */
   effectiveSources: string[];
   effectiveSinks: string[];
+  /**
+   * 1.8+ — true when the BFS hit MAX_DEPTH for at least one source with
+   * a non-empty frontier still pending. When set, the agent should know
+   * that flows deeper than MAX_DEPTH may exist but weren't reported.
+   * Pairs with `truncatedSources` so a follow-up scan can re-target.
+   */
+  truncated?: boolean;
+  /**
+   * 1.8+ — function names whose BFS exited at MAX_DEPTH with the
+   * frontier non-empty. Empty when no truncation occurred.
+   */
+  truncatedSources?: string[];
+  /**
+   * 1.8+ — the depth cap actually used. Surfacing this lets agents
+   * notice when projscan's defaults shift between releases.
+   */
+  maxDepth?: number;
 }
 
 /**
@@ -200,6 +217,16 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
 
   const flows: TaintFlow[] = [];
   const seen = new Set<string>(); // dedupe key: sourceFnQual::sinkFnQual
+  // 1.8+ — track which source functions hit MAX_DEPTH with frontier
+  // still non-empty. The agent gets these in `truncatedSources` so it
+  // knows where the analysis was clipped.
+  const truncatedSources: string[] = [];
+  // 1.8+ — raised from 8 → 12. The original 8 was a conservative pick
+  // when the algorithm was new; six months of dogfood data show real
+  // user repos averaging 10–11 hops between an HTTP handler and a
+  // shell-exec sink. 12 catches those without exploding fan-out
+  // memory in the BFS frontier.
+  const MAX_DEPTH = 12;
 
   for (const sourceFn of fnByQual.values()) {
     if (!sourceFn.hasSource) continue;
@@ -223,7 +250,6 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     type FrontierEntry = { node: FnNode; path: FnNode[] };
     let frontier: FrontierEntry[] = [{ node: sourceFn, path: [sourceFn] }];
     let depth = 0;
-    const MAX_DEPTH = 8;
     while (frontier.length > 0 && depth < MAX_DEPTH) {
       depth += 1;
       const next: FrontierEntry[] = [];
@@ -261,6 +287,12 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       }
       frontier = next;
     }
+    // If the BFS exited because of MAX_DEPTH (not because the frontier
+    // emptied), record the source so the caller knows flows beyond that
+    // depth weren't explored.
+    if (frontier.length > 0) {
+      truncatedSources.push(sourceFn.qualName);
+    }
   }
 
   flows.sort((a, b) => {
@@ -274,6 +306,9 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     flows,
     effectiveSources: [...sources].sort(),
     effectiveSinks: [...sinks].sort(),
+    truncated: truncatedSources.length > 0,
+    truncatedSources: [...new Set(truncatedSources)].sort(),
+    maxDepth: MAX_DEPTH,
   };
 }
 

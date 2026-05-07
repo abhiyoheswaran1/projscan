@@ -8,6 +8,7 @@ import { rustAdapter } from './rustAdapter.js';
 import { phpAdapter } from './phpAdapter.js';
 import { csharpAdapter } from './csharpAdapter.js';
 import { kotlinAdapter } from './kotlinAdapter.js';
+import { swiftAdapter } from './swiftAdapter.js';
 import { cppAdapter } from './cppAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
@@ -21,6 +22,7 @@ const adapters: LanguageAdapter[] = [
   phpAdapter,
   csharpAdapter,
   kotlinAdapter,
+  swiftAdapter,
   cppAdapter,
 ];
 const byExtension = new Map<string, LanguageAdapter>();
