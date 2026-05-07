@@ -4,6 +4,55 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-05-07 — "Reach + Visibility"
+
+A combined-scope release that pulls forward roadmap items originally planned across 1.7 (Mobile), 1.8 (Depth), and 1.9 (Cost Visibility) into one shipment. Closes the breadth gap on JVM and systems languages, lights up Project Memory's third learning loop, and adds the cost-dashboard view agents have been asking for. Followed by a four-way multi-agent bug hunt (12 findings; 6 fixed, 5 documented as future work, 1 deferred).
+
+### Added — language adapters
+
+- **Kotlin (`.kt`, `.kts`)** — full tree-sitter adapter: imports (incl. wildcards + aliases), visibility-aware exports (private / internal hidden), per-function CC with `when`-arm counting (else not counted), call-site extraction, package-root detection from Gradle / Maven layouts. Closes the JVM gap that previously stopped at Java. Bumps the supported-languages count from 9 to 10.
+- **C++ (`.cpp`, `.cc`, `.cxx`, `.c`, `.h`, `.hpp`, `.hxx`)** — full tree-sitter adapter: `#include` resolution (quoted relative-to-importer + project include roots), top-level decl exports (functions, classes, structs, enums, type aliases), per-function CC with `case`-label counting (default not counted) and out-of-line method qualified-name handling (`Foo::bar` → `Foo.bar`), call-site extraction across qualified, field, and template expressions. Closes the systems-languages gap.
+- **Build chain**: `tree-sitter-kotlin` doesn't ship a prebuilt wasm; `scripts/copy-wasm.mjs` now invokes `tree-sitter build --wasm` at install time using the bundled wasi-sdk. `tree-sitter-cli` is a new devDep — runtime users pay nothing.
+- **Swift adapter** is **deferred to 1.7.1**: tree-sitter-swift's parser size requires emcc / docker that we couldn't bring online from this build environment. Design is preserved and will ship in the next patch.
+
+### Added — Project Memory loop #3 (per-rule confidence)
+
+- New `computeRuleConfidence(memory, ruleId)` and `computeRuleConfidenceScore(...)` in `src/core/memory.ts`. Returns `'high'` when the user has actively fixed instances of a rule (`fixedCount > 0`), `'low'` when the rule has surfaced over ≥ STABLE_RULE_RUN_COUNT runs spanning ≥ STABLE_RULE_DAYS days without ever being fixed, and `'medium'` otherwise. Numeric score in `[0, 1]` for ranking.
+- `projscan_fix_suggest` MCP tool now attaches a `confidence: { level, score }` sidecar to every result so agents can deprioritise rules the user has historically tolerated.
+- `projscan_memory` gains a new `confidence` action that returns every tracked rule labelled and ranked, plus per-level counts (high / medium / low). Pairs with the existing `stable` and `accepted` views.
+
+### Added — cost visibility (aggregate analytics)
+
+- New MCP tool **`projscan_cost_summary`** that aggregates the `_cost` sidecar (1.5+) across the session event log: total tokens, top spenders, per-tool typical / p95 token estimates, plus a static `expectedTokens` catalog so an agent can budget pre-call.
+- The MCP server now folds the post-budget `estimatedTokens` into each `tool-call:*` session event (1.7+), so the cost summary can derive per-tool stats automatically. Older sessions without cost data are handled gracefully (typical / p95 read as 0). Aware of the bounded log (last 500 calls) — documented in the tool description.
+
+### Fixed — bug-hunt round (audit-driven)
+
+- **Kotlin / C++ branch detection** — `when_entry` else-arm and `case_statement` default-arm detection switched from text-regex (fragile around comments / whitespace) to structural checks (`when_condition` child presence; tree-sitter-cpp's `value` field). Caught a real CC-by-one in the kotlin classify integration test.
+- **Future-dated timestamps in confidence math** — `computeRuleConfidence` now requires `ageMs > 0` before classifying a rule as `'low'`, so clock skew or corrupt memory falls back to `'medium'` instead of silently ageing into a low-confidence cliff.
+- **Memory tool error-message drift** — the unknown-action error now lists `confidence` alongside the other actions; matches the input-schema enum.
+- **Concurrent ensureSession race** — multi-request bursts could each load and save their own session copy, last-write-wins dropping touches and events. The MCP server now gates `ensureSession()` behind a single in-flight `Promise`, so concurrent callers share the loaded session.
+- **Session event-log overflow race** — `recordEvent` now bounds-then-pushes (rather than push-then-bound), so two interleaved calls can't briefly leave the array one-over MAX_EVENTS or drop a different entry depending on order.
+- **`looksLikePath` substring `..` check** — the session touch scanner rejected legitimate filenames like `before..after.txt` and `..hidden` with a substring check; switched to a segment-based check matching `session.normalizeFile` and `applyFix.isSafeRelativePath`.
+
+### Notes — known limitations carried forward
+
+These came out of the bug hunt and are deferred (each will be cited in CHANGELOG when fixed):
+
+- **Session save is last-write-wins.** Documented in `session.ts`; in practice acceptable because the multi-process case is rare and the downside is a slightly stale `touched` count, not corruption. Atomic-write upgrade tracked for 1.8.
+- **`projscan_taint`'s `MAX_DEPTH = 8`** silently truncates flows beyond 8 hops. The cap is the algorithmic-redesign work flagged at 1.6.2 — it will return as a planned 1.8 item alongside import-locality constraints.
+- **Embeddings pipeline cache is unbounded.** A single model is the common case; the optional-peer load pattern doesn't currently LRU-evict if multiple model identifiers are requested.
+- **`p95` in `projscan_cost_summary`** saturates at the observed max for samples < 21 — overly conservative but transparent in the response (`callCount`).
+- **Templated qualified C++ identifiers** (`Foo<T>::bar`) translate `::` → `.` literally; benign in current grammar output (templates don't appear in declarators) but flagged for future hardening.
+
+### Stable surface
+
+Additive only: 1 new MCP tool (`projscan_cost_summary`), 0 removed, 0 renamed. No CLI changes. `npm run check:stability` passes.
+
+### Migration
+
+Drop-in upgrade. Existing `.projscan-memory/memory.json` files keep working — confidence is derived from existing fields. Existing `.projscan-cache/session.json` files predate the per-event `estimatedTokens` data; the cost summary will start populating as new tool calls arrive.
+
 ## [1.6.2] — 2026-05-06
 
 Audit-driven hardening release. A multi-agent code review found 7 real bugs and 5 ship-affecting test gaps across the 1.6 surfaces. All four tiers fixed in separate PRs (#25 / #26 / #27 / #28) and shipped here as one version.

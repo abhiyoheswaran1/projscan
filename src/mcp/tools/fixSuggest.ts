@@ -5,7 +5,34 @@ import {
   suggestFixForIssue,
   syntheticIssue,
 } from '../../core/fixSuggest.js';
+import {
+  computeRuleConfidence,
+  computeRuleConfidenceScore,
+  loadMemory,
+  type RuleConfidence,
+} from '../../core/memory.js';
 import type { McpTool } from './_shared.js';
+
+/**
+ * 1.7+ — Build a confidence sidecar from Project Memory's per-rule
+ * fix-rate. Returned alongside every fix suggestion so the agent can
+ * deprioritize rules the user has historically ignored. Best-effort —
+ * if memory is missing or unreadable, returns "medium".
+ */
+async function attachConfidence(rootPath: string, ruleId: string): Promise<{
+  level: RuleConfidence;
+  score: number;
+}> {
+  try {
+    const memory = await loadMemory(rootPath);
+    return {
+      level: computeRuleConfidence(memory, ruleId),
+      score: computeRuleConfidenceScore(memory, ruleId),
+    };
+  } catch {
+    return { level: 'medium', score: 0.5 };
+  }
+}
 
 export const fixSuggestTool: McpTool = {
   name: 'projscan_fix_suggest',
@@ -52,13 +79,15 @@ export const fixSuggestTool: McpTool = {
         return { matched: false, reason: `No open issue with id "${issueId}" in current doctor run.` };
       }
       const fix = await suggestFixForIssue(found, rootPath);
-      return { matched: true, fix };
+      const confidence = await attachConfidence(rootPath, found.id);
+      return { matched: true, fix, confidence };
     }
 
     if (file && rule) {
       const synthetic = syntheticIssue(rule, file, severity);
       const fix = await suggestFixForIssue(synthetic, rootPath);
-      return { matched: true, fix, synthetic: true };
+      const confidence = await attachConfidence(rootPath, synthetic.id);
+      return { matched: true, fix, synthetic: true, confidence };
     }
 
     return {

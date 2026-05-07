@@ -93,7 +93,13 @@ function walk(value: unknown, keyHint: string | null, depth: number, out: Set<st
 
 function looksLikePath(s: string): boolean {
   if (s.length === 0 || s.length > 1024) return false;
-  if (s.includes('..')) return false;
+  // Reject any `..` SEGMENT, not just the substring `..`. The substring
+  // check rejected legitimate filenames like `before..after.txt` or
+  // `..hidden`. Segment-based matches the (correct) check used in
+  // session.normalizeFile and applyFix.isSafeRelativePath.
+  for (const segment of s.split('/')) {
+    if (segment === '..') return false;
+  }
   if (s.startsWith('/')) return false;
   if (s.startsWith('http://') || s.startsWith('https://')) return false;
   if (s.startsWith('file://')) return false;

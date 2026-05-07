@@ -150,6 +150,11 @@ export function recordTouch(session: Session, file: string, source: TouchSource)
 /**
  * Append an event to the session's bounded log. The log keeps the last
  * MAX_EVENTS entries and drops the oldest when over capacity.
+ *
+ * 1.7+ — bound BEFORE append (rather than after) so that two interleaved
+ * recordEvent calls can't both observe `length === MAX_EVENTS`, both push,
+ * and leave the array one-over. Drops the single oldest entry on overflow,
+ * which keeps the steady-state size at exactly MAX_EVENTS.
  */
 export function recordEvent(session: Session, kind: string, data?: Record<string, unknown>): void {
   const event: SessionEvent = {
@@ -157,10 +162,10 @@ export function recordEvent(session: Session, kind: string, data?: Record<string
     kind,
     ...(data ? { data } : {}),
   };
-  session.events.push(event);
-  if (session.events.length > MAX_EVENTS) {
-    session.events = session.events.slice(-MAX_EVENTS);
+  if (session.events.length >= MAX_EVENTS) {
+    session.events = session.events.slice(-(MAX_EVENTS - 1));
   }
+  session.events.push(event);
   session.lastActivityAt = event.at;
 }
 

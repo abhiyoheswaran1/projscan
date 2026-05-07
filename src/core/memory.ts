@@ -237,6 +237,65 @@ export function findStableRules(memory: ProjectMemory): RuleObservation[] {
   return out;
 }
 
+/**
+ * 1.7+ — Confidence label for a rule, derived from observed fix-rate.
+ *
+ *   "high"   — the user has actively fixed instances of this rule
+ *              (`fixedCount > 0`). Suggestions for this rule should be
+ *              surfaced prominently; the user has shown they care.
+ *   "low"    — the rule has surfaced across ≥ STABLE_RULE_RUN_COUNT runs
+ *              over ≥ STABLE_RULE_DAYS days but has never been fixed
+ *              (`fixedCount === 0`). The user is effectively tolerating
+ *              it; suggestions should be deprioritized.
+ *   "medium" — anything in between (insufficient signal, or recent rule).
+ *
+ * Returns "medium" if the memory has no observation for this rule yet.
+ *
+ * Project Memory's "loop #3" — rules with low confidence in a given repo
+ * stop crowding out rules the user actually acts on. The advisor stays
+ * useful instead of becoming background noise.
+ */
+export type RuleConfidence = 'high' | 'medium' | 'low';
+
+export function computeRuleConfidence(memory: ProjectMemory, ruleId: string): RuleConfidence {
+  const obs = memory.rules[ruleId];
+  if (!obs) return 'medium';
+  if (obs.fixedCount > 0) return 'high';
+  if (obs.runCount < STABLE_RULE_RUN_COUNT) return 'medium';
+  const ageMs = Date.now() - Date.parse(obs.firstSeenAt);
+  const stableMs = STABLE_RULE_DAYS * MS_PER_DAY;
+  // Guard against future-dated timestamps (clock skew, corrupt memory):
+  // a negative age must NOT trip the "low" branch — fall back to medium
+  // until the wall clock catches up or the memory is regenerated.
+  if (Number.isFinite(ageMs) && ageMs > 0 && ageMs >= stableMs) return 'low';
+  return 'medium';
+}
+
+/**
+ * 1.7+ — A simple numeric score in [0, 1] that ranks suggestions by how
+ * likely the user is to act on them. Pairs with `computeRuleConfidence`
+ * for callers that want a single comparable number for sorting.
+ *
+ *   high   → 1.0 + (small bonus for higher fix-rate)
+ *   medium → 0.5 (neutral)
+ *   low    → 0.0 + (small penalty for run-count that ages further)
+ */
+export function computeRuleConfidenceScore(memory: ProjectMemory, ruleId: string): number {
+  const obs = memory.rules[ruleId];
+  if (!obs) return 0.5;
+  const label = computeRuleConfidence(memory, ruleId);
+  if (label === 'high') {
+    const fixRate = obs.runCount > 0 ? obs.fixedCount / obs.runCount : 0;
+    return Math.min(1, 0.6 + 0.4 * fixRate);
+  }
+  if (label === 'low') {
+    // The longer a rule has been ignored, the lower its score.
+    const decay = Math.min(1, obs.runCount / 10);
+    return Math.max(0, 0.2 - 0.2 * decay);
+  }
+  return 0.5;
+}
+
 /** Drop a single rule's history. Returns true if the rule existed. */
 export function forgetRule(memory: ProjectMemory, ruleId: string): boolean {
   if (!memory.rules[ruleId]) return false;
