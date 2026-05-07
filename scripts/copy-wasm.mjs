@@ -1,45 +1,150 @@
 import { copyFile, mkdir, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 
 /**
- * Some tree-sitter grammar packages (e.g., tree-sitter-kotlin@0.3.x) ship
- * grammar source but do NOT include a prebuilt `.wasm`. For those we
- * invoke `tree-sitter build --wasm` from the package directory at install
- * time. tree-sitter-cli is a devDependency of projscan, so it's available
- * during npm install (when `prepare: npm run build` runs the build).
+ * Build a wasm via `tree-sitter build --wasm`. Works for grammars whose
+ * single-ABI `src/parser.c + src/scanner.c` layout the cli recognises
+ * (e.g., tree-sitter-kotlin). Spawns npx tree-sitter from the package
+ * directory; tree-sitter-cli is a devDependency, available at build time.
  */
-async function ensureBuiltWasm(pkgDir, wasmName) {
+async function ensureBuiltWasmViaCli(pkgDir, wasmName) {
   const target = path.join(pkgDir, wasmName);
   try {
     await stat(target);
-    return; // Already built (or shipped).
+    return;
   } catch {
     // Need to build.
   }
   console.log(`building ${wasmName} (tree-sitter build --wasm in ${path.basename(pkgDir)})…`);
-  await new Promise((resolve, reject) => {
-    const child = spawn(
-      process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      ['--no-install', 'tree-sitter', 'build', '--wasm'],
-      { cwd: pkgDir, stdio: 'inherit' },
-    );
-    child.on('error', reject);
-    child.on('exit', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`tree-sitter build --wasm exited with code ${code}`));
-    });
-  });
+  await spawnAndWait(
+    process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    ['--no-install', 'tree-sitter', 'build', '--wasm'],
+    { cwd: pkgDir, stdio: 'inherit' },
+  );
   await stat(target);
 }
 
-await ensureBuiltWasm(
+/**
+ * Build a wasm by invoking the cached wasi-sdk's clang directly.
+ * tree-sitter-cli refuses some grammars (e.g., tree-sitter-swift, whose
+ * src/ ships parser_abi13.c + parser_abi14.c alongside parser.c) and
+ * demands emcc/docker/podman. The cli's underlying wasi-sdk approach
+ * works fine — we just bypass the cli's pre-flight check.
+ *
+ * Uses the same flags the cli uses internally (extracted from the
+ * compiled tree-sitter binary's strings table):
+ *   -Os -g --target=wasm32-unknown-wasi -fPIC -shared
+ *   -Wl,--allow-undefined -Wl,--no-entry -nostdlib -fno-exceptions
+ *   -fvisibility=hidden -Wl,--export=tree_sitter_<name>
+ *
+ * Requires `~/.cache/tree-sitter/wasi-sdk/` to exist — populated by any
+ * prior `tree-sitter build --wasm` invocation. We force-trigger that
+ * by building kotlin first (see the call ordering below).
+ */
+async function ensureBuiltWasmViaWasiSdk(pkgDir, wasmName, exportName) {
+  const target = path.join(pkgDir, wasmName);
+  try {
+    await stat(target);
+    return;
+  } catch {
+    // Need to build.
+  }
+  const wasiSdkCandidates = treeSitterCacheCandidates();
+  let clang = '';
+  for (const wasiSdk of wasiSdkCandidates) {
+    const probe = path.join(wasiSdk, 'bin', process.platform === 'win32' ? 'clang.exe' : 'clang');
+    try {
+      await stat(probe);
+      clang = probe;
+      break;
+    } catch {
+      // try next
+    }
+  }
+  if (!clang) {
+    throw new Error(
+      `wasi-sdk clang not found. Searched: ${wasiSdkCandidates.join(', ')}. ` +
+        `It is auto-installed by 'tree-sitter build --wasm' (which runs first for tree-sitter-kotlin). ` +
+        `If that step succeeded but the cache path differs on your platform, set the TREE_SITTER_WASI_SDK_PATH env var to the wasi-sdk root.`,
+    );
+  }
+  console.log(`building ${wasmName} (wasi-sdk clang in ${path.basename(pkgDir)})…`);
+  const sources = ['src/parser.c', 'src/scanner.c'];
+  await spawnAndWait(
+    clang,
+    [
+      '-Os',
+      '-g',
+      '--target=wasm32-unknown-wasi',
+      '-fPIC',
+      '-shared',
+      '-Wl,--allow-undefined',
+      '-Wl,--no-entry',
+      '-nostdlib',
+      '-fno-exceptions',
+      '-fvisibility=hidden',
+      '-I',
+      'src',
+      `-Wl,--export=${exportName}`,
+      ...sources,
+      '-o',
+      wasmName,
+    ],
+    { cwd: pkgDir, stdio: 'inherit' },
+  );
+  await stat(target);
+}
+
+/**
+ * Candidate locations for the tree-sitter cli's auto-installed wasi-sdk.
+ * Honors TREE_SITTER_WASI_SDK_PATH first (matches the cli's own override),
+ * then probes the OS-conventional cache directory (Unix vs. Windows).
+ */
+function treeSitterCacheCandidates() {
+  const out = [];
+  if (process.env.TREE_SITTER_WASI_SDK_PATH) out.push(process.env.TREE_SITTER_WASI_SDK_PATH);
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+    out.push(path.join(localAppData, 'tree-sitter', 'wasi-sdk'));
+  }
+  // Unix conventional path — also used as a fallback on Windows because
+  // some tooling installs MSYS-style ~/.cache regardless of platform.
+  out.push(path.join(os.homedir(), '.cache', 'tree-sitter', 'wasi-sdk'));
+  return out;
+}
+
+function spawnAndWait(cmd, args, opts) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, opts);
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${path.basename(cmd)} exited with code ${code}`));
+    });
+  });
+}
+
+// Kotlin is built first via the cli — this also auto-installs wasi-sdk
+// at ~/.cache/tree-sitter/wasi-sdk on machines that don't have it yet.
+await ensureBuiltWasmViaCli(
   path.join(root, 'node_modules/tree-sitter-kotlin'),
   'tree-sitter-kotlin.wasm',
+);
+
+// Swift's parser source layout (parser.c + parser_abi13.c + parser_abi14.c)
+// trips a hard "you must have emcc/docker/podman on PATH" check inside the
+// tree-sitter cli even when wasi-sdk is locally available. We bypass the
+// pre-flight by invoking wasi-sdk's clang directly.
+await ensureBuiltWasmViaWasiSdk(
+  path.join(root, 'node_modules/tree-sitter-swift'),
+  'tree-sitter-swift.wasm',
+  'tree_sitter_swift',
 );
 
 const targets = [
@@ -78,6 +183,10 @@ const targets = [
   {
     from: path.join(root, 'node_modules/tree-sitter-kotlin/tree-sitter-kotlin.wasm'),
     to: path.join(root, 'dist/grammars/tree-sitter-kotlin.wasm'),
+  },
+  {
+    from: path.join(root, 'node_modules/tree-sitter-swift/tree-sitter-swift.wasm'),
+    to: path.join(root, 'dist/grammars/tree-sitter-swift.wasm'),
   },
   {
     from: path.join(root, 'node_modules/tree-sitter-cpp/tree-sitter-cpp.wasm'),

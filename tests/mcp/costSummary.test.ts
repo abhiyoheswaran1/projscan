@@ -80,6 +80,43 @@ describe('projscan_cost_summary', () => {
     });
   });
 
+  it('reports null p95 with insufficientSamples=true for fewer than 20 calls', async () => {
+    await withTempRepo(async (root) => {
+      await plantSession(root, [
+        { kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 4000 } },
+        { kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 5000 } },
+      ]);
+      const result = (await costSummaryTool.handler({}, root)) as Record<string, unknown>;
+      const catalog = result.perToolCatalog as Array<{
+        tool: string;
+        observedP95Tokens: number | null;
+        observedP95InsufficientSamples: boolean;
+      }>;
+      const entry = catalog.find((c) => c.tool === 'projscan_doctor')!;
+      expect(entry.observedP95Tokens).toBeNull();
+      expect(entry.observedP95InsufficientSamples).toBe(true);
+    });
+  });
+
+  it('reports a real p95 once samples reach 20', async () => {
+    await withTempRepo(async (root) => {
+      const events = [];
+      for (let i = 0; i < 25; i++) {
+        events.push({ kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 1000 + i * 100 } });
+      }
+      await plantSession(root, events);
+      const result = (await costSummaryTool.handler({}, root)) as Record<string, unknown>;
+      const catalog = result.perToolCatalog as Array<{
+        tool: string;
+        observedP95Tokens: number | null;
+        observedP95InsufficientSamples: boolean;
+      }>;
+      const entry = catalog.find((c) => c.tool === 'projscan_doctor')!;
+      expect(entry.observedP95Tokens).not.toBeNull();
+      expect(entry.observedP95InsufficientSamples).toBe(false);
+    });
+  });
+
   it('respects the `top` argument', async () => {
     await withTempRepo(async (root) => {
       const events = [];

@@ -80,9 +80,12 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
     const baseName = functionName(node) ?? '<anonymous>';
     // If the name already has `::` (out-of-line method), translate to dot form
     // and use that as the qualified name. Otherwise prepend ownerName if any.
+    // 1.8+ — translate `::` ONLY when it appears outside angle-bracket
+    // depth, so a templated method declarator like `Foo<std::pair<int,int>>::bar`
+    // doesn't get its inner template's `::` rewritten.
     let fnName: string;
     if (baseName.includes('::')) {
-      fnName = baseName.replace(/::/g, '.');
+      fnName = translateScopeOperator(baseName);
     } else {
       fnName = ownerName ? `${ownerName}.${baseName}` : baseName;
     }
@@ -106,6 +109,42 @@ function functionName(fn: TsNode): string | null {
     if (c.type === 'function_declarator') return declaratorName(c);
   }
   return null;
+}
+
+/**
+ * Translate `::` → `.` only when it's at angle-bracket depth 0. Inside
+ * a template-argument list (e.g., `std::pair<int,int>`) the `::` belongs
+ * to a type qualifier, not to the method's enclosing scope, and must
+ * not be rewritten. Without this, `Foo<std::pair<int,int>>::bar` would
+ * become `Foo<std.pair<int,int>>.bar`, corrupting the type spelling.
+ */
+function translateScopeOperator(s: string): string {
+  let out = '';
+  let depth = 0;
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === '<') {
+      depth += 1;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === '>') {
+      if (depth > 0) depth -= 1;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (depth === 0 && ch === ':' && s[i + 1] === ':') {
+      out += '.';
+      i += 2;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
 }
 
 function declaratorName(node: TsNode): string | null {

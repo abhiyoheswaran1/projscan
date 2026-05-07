@@ -4,6 +4,50 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] — 2026-05-08 — "Resilience + Live"
+
+A combined-scope release that pulls forward roadmap items originally planned across 1.7.1 (Swift), 1.8 (Depth + bug-hunt deferrals), and 1.9 (Live Reviewer) into one shipment. Closes the iOS gap, lands every deferred-from-1.7 item from the prior bug-hunt, and ships the long-running PR-watch mode that's been the capstone of the agent-substrate arc.
+
+### Added — Swift adapter (`.swift`)
+
+- Full tree-sitter integration. Imports (incl. `import struct Foo.Bar`, `@testable import`), visibility-aware exports (private / fileprivate hidden; public / internal / open visible), per-function CC with `switch`-arm counting (default not counted) and guard / for / while / do / catch handling, call-site extraction across navigation expressions, package-root detection from SwiftPM `Package.swift` / `Sources/` layout. **11 languages now**.
+- **Build chain**: tree-sitter-swift's `parser.c` (540k LoC) trips a hard `you must have emcc/docker/podman on PATH` check inside the `tree-sitter` cli even when wasi-sdk is locally available. `scripts/copy-wasm.mjs` now bypasses the cli and invokes wasi-sdk's clang directly with the same flags the cli uses internally (`-Os -fPIC -shared -nostdlib -Wl,--no-entry --target=wasm32-unknown-wasi`). The path probe honors `TREE_SITTER_WASI_SDK_PATH` and falls back to the OS-conventional cache (`~/.cache/...` on Unix; `%LOCALAPPDATA%\tree-sitter\wasi-sdk` on Windows).
+
+### Added — `projscan_review_watch` (long-running PR review)
+
+- New MCP tool. Polls a `base + head` ref pair on a configurable interval (default 30s, range 5–600s) and emits `notifications/projscan/pr_changed` whenever the review verdict, base/head SHAs, changed-file count, new-taint-flow count, or risky-function set changes. The capstone for the agent-substrate arc — `projscan_review` is a snapshot, this is the stream.
+- Actions: `start` (returns initial review + watchId), `stop` (cancels by watchId), `list` (enumerate active watches).
+- Server-side lifecycle: each watch is registered with the MCP server's tool-watch registry; `close()` cancels all timers so polling can't outlive the server. Single-flight per watch — overlapping ticks during a slow `computeReview` are dropped, not queued.
+- Tool-side context plumbing: `McpToolHandler` signature is now `(args, rootPath, context?: McpToolContext)`. Existing tools ignore the third arg and continue to operate as before.
+
+### Added — Project Memory + cost analytics deepening
+
+- **Taint depth reporting**: `projscan_taint` now returns `truncated: boolean`, `truncatedSources: string[]`, and `maxDepth: number` so agents know when the BFS hit its cap. The cap is also raised from 8 → 12 (real user repos average 10–11 hops between an HTTP handler and a shell-exec sink); the BFS data structures and visited-set are unchanged.
+- **Cost p95 saturation guard**: `projscan_cost_summary` returns `observedP95Tokens: null` plus `observedP95InsufficientSamples: true` when fewer than 20 samples are available. Saturating at the observed max for tiny samples misled agents into budgeting on a worst-case spike rather than a representative high-water mark.
+
+### Fixed — bug-hunt round (audit-driven)
+
+- **Atomic session save**. `session.saveSession` now uses the same `atomicWriteFile` (tmp + fsync + rename + parent-dir fsync) that `applyFix` has used since 1.6.0. Crashes mid-write can no longer truncate `.projscan-cache/session.json` to zero bytes, and concurrent writers can't half-clobber each other. The atomic-write helper is extracted to `src/utils/atomicWrite.ts` and shared. Cleanup on rename failure unlinks the abandoned tmp file so retries don't accumulate disk droppings.
+- **Embeddings pipeline LRU**. The pipeline cache is now bounded at 2 cached models with LRU eviction. Long-running MCP servers that switch models (or test runs that thrash) no longer accumulate ~200 MB per model indefinitely.
+- **Templated C++ qualified-id translation**. `translateScopeOperator` walks chars while tracking angle-bracket depth, so `Foo<std::pair<int,int>>::bar` now correctly emits `Foo<std::pair<int,int>>.bar` instead of `Foo<std.pair<int,int>>.bar`. The previous bare `replace(/::/g, '.')` would corrupt template-argument types in declarators.
+- **review_watch race conditions** caught in the bug hunt: (1) `watchId` is now assigned BEFORE the `setInterval` is armed (was: timer fires capturing a `null` watchId in the closure for ≥ 5000 ms); (2) `runTick` is single-flight per watch (was: overlapping ticks during slow `computeReview` could deliver out-of-order notifications); (3) `stop` always cleans the module-level `watches` map regardless of whether the server registry knew about it (was: orphaned state across cross-transport stops).
+
+### Notes — bug-hunt findings deferred to a future minor
+
+These came out of the 1.8 bug hunt and are deferred:
+
+- **Architecture probe for wasi-sdk**: the build chain now searches multiple cache paths, but doesn't validate that the discovered clang matches the host arch. Cross-arch CI matrices may need a more aggressive validate-then-rebuild cycle.
+- **review_watch signature gaps**: the `signatureOf` change-detection key includes verdict + SHAs + counts + risky function names, but omits dependency-change deltas and cycle composition. In practice same-SHA reviews are identical, but a signature collision is theoretically possible; documented for future hardening.
+- **Atomic-write parent-directory fsync** is best-effort because Windows / some FUSE backends don't support it. Acceptable trade-off.
+
+### Stable surface
+
+Additive only: 1 new MCP tool (`projscan_review_watch`), 0 removed, 0 renamed. `McpToolHandler` signature gained an optional third `context` parameter — existing handlers ignore it. No CLI changes. `npm run check:stability` passes with 27 tools.
+
+### Migration
+
+Drop-in upgrade. Existing `.projscan-cache/session.json` files keep working. Existing memory files keep working. The `taint` report now carries `truncated` / `maxDepth` fields — old consumers ignore unknown keys.
+
 ## [1.7.0] — 2026-05-07 — "Reach + Visibility"
 
 A combined-scope release that pulls forward roadmap items originally planned across 1.7 (Mobile), 1.8 (Depth), and 1.9 (Cost Visibility) into one shipment. Closes the breadth gap on JVM and systems languages, lights up Project Memory's third learning loop, and adds the cost-dashboard view agents have been asking for. Followed by a four-way multi-agent bug hunt (12 findings; 6 fixed, 5 documented as future work, 1 deferred).

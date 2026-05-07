@@ -11,6 +11,7 @@ export type LanguageId =
   | 'php'
   | 'csharp'
   | 'kotlin'
+  | 'swift'
   | 'cpp';
 
 export interface LanguageResolveContext {

@@ -13,7 +13,25 @@ describe('language registry', () => {
   it('returns undefined for unknown extensions', () => {
     expect(getAdapterFor('README.md')).toBeUndefined();
     expect(getAdapterFor('Makefile')).toBeUndefined();
-    expect(getAdapterFor('a.swift')).toBeUndefined();
+    // .lua isn't supported as of 1.8; if it ever ships, swap this for
+    // another genuinely-unsupported extension.
+    expect(getAdapterFor('script.lua')).toBeUndefined();
+  });
+
+  it('returns the Swift adapter for .swift (1.8+)', () => {
+    expect(getAdapterFor('Sources/App/Main.swift')?.id).toBe('swift');
+  });
+
+  it('returns the Kotlin adapter for .kt / .kts (1.7+)', () => {
+    expect(getAdapterFor('src/main/kotlin/com/example/Main.kt')?.id).toBe('kotlin');
+    expect(getAdapterFor('build.gradle.kts')?.id).toBe('kotlin');
+  });
+
+  it('returns the C++ adapter for .cpp / .cc / .h / .hpp (1.7+)', () => {
+    expect(getAdapterFor('src/main.cpp')?.id).toBe('cpp');
+    expect(getAdapterFor('src/util.cc')?.id).toBe('cpp');
+    expect(getAdapterFor('include/foo.h')?.id).toBe('cpp');
+    expect(getAdapterFor('include/foo.hpp')?.id).toBe('cpp');
   });
 
   it('returns the Go adapter for .go', () => {

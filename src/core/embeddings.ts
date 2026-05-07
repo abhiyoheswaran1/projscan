@@ -35,6 +35,21 @@ interface TransformersModule {
 }
 
 let cachedModule: TransformersModule | null | undefined;
+
+// 1.8+ — bound the pipeline cache at MAX_CACHED_MODELS to prevent
+// long-running MCP servers from accumulating hundreds of MB of model
+// state on agents that switch models mid-session. Each pipeline holds
+// roughly 200MB of weights when warm; without a bound, an agent
+// requesting `Xenova/all-MiniLM-L6-v2` then `Xenova/all-MiniLM-L12-v2`
+// then a third model retains all three indefinitely. With this LRU
+// bound, the third request evicts the first.
+//
+// `Map` insertion order is the LRU order: oldest entry is the one we
+// drop on overflow. We `delete` + `set` on a hit to bump it to the end.
+//
+// Single-process default (one model in steady state) is unaffected:
+// the bound is 2, and projscan's default-everywhere pipe stays warm.
+const MAX_CACHED_PIPELINES = 2;
 const pipelines = new Map<string, Promise<EmbedderPipeline>>();
 
 async function tryLoadTransformers(): Promise<TransformersModule | null> {
@@ -75,14 +90,41 @@ async function getPipeline(model: string, onFirstLoad?: (m: string) => void): Pr
   if (!mod) return null;
 
   let existing = pipelines.get(model);
-  if (!existing) {
-    onFirstLoad?.(`Loading embedding model ${model} (first run downloads ~25MB)...`);
-    existing = mod.pipeline('feature-extraction', model, {
-      quantized: true,
-    });
+  if (existing) {
+    // Bump on access so the LRU cache treats the recently-used model as
+    // hot. Map insertion order = recency.
+    pipelines.delete(model);
     pipelines.set(model, existing);
+    return existing;
+  }
+  onFirstLoad?.(`Loading embedding model ${model} (first run downloads ~25MB)...`);
+  existing = mod.pipeline('feature-extraction', model, {
+    quantized: true,
+  });
+  pipelines.set(model, existing);
+  // Evict the least-recently-used pipeline when over the bound. Map
+  // iteration is in insertion order, so the first key is the oldest.
+  while (pipelines.size > MAX_CACHED_PIPELINES) {
+    const oldest = pipelines.keys().next().value;
+    if (oldest === undefined) break;
+    pipelines.delete(oldest);
   }
   return existing;
+}
+
+/**
+ * Test-only: drop all cached pipelines. Lets unit tests verify LRU
+ * eviction without each test paying for a real model load.
+ */
+export function __resetEmbeddingsCacheForTests(): void {
+  pipelines.clear();
+}
+
+/**
+ * Test-only: snapshot the model keys currently in the LRU, oldest-first.
+ */
+export function __snapshotEmbeddingsCacheForTests(): string[] {
+  return [...pipelines.keys()];
 }
 
 /**

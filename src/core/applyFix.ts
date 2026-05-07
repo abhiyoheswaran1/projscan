@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { atomicWriteFile } from '../utils/atomicWrite.js';
 
 /**
  * Apply layer (1.6+).
@@ -229,49 +230,10 @@ async function readIfExists(absPath: string): Promise<string | null> {
   }
 }
 
-async function atomicWrite(absPath: string, content: string): Promise<void> {
-  // Three hardenings over a naive writeFile + rename:
-  //
-  // 1. Tmp filename uses randomUUID() instead of `${pid}-${Date.now()}`. The
-  //    old shape was predictable to within a few hundred microseconds — on a
-  //    shared system a local user could pre-create the tmp path as a symlink
-  //    to an attacker-chosen target before our write landed. Random-UUID
-  //    eliminates the prediction.
-  //
-  // 2. Open with the 'wx' flag (O_CREAT | O_EXCL). If the tmp path already
-  //    exists for any reason (race, leftover, planted symlink), fs.open
-  //    throws EEXIST instead of following the symlink. Belt-and-suspenders
-  //    with #1.
-  //
-  // 3. fsync the file before rename, and best-effort fsync the parent dir
-  //    after rename. Rename is atomic at the journal-record level on most
-  //    filesystems, but without fsync the rename can survive a crash with
-  //    empty tmp content (the file metadata persists, the data doesn't).
-  //    Parent-dir sync is best-effort because Windows doesn't support it
-  //    and some filesystems treat it as a no-op.
-  const tmp = `${absPath}.projscan-tmp-${randomUUID()}`;
-  const handle = await fs.open(tmp, 'wx');
-  try {
-    await handle.writeFile(content, 'utf-8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  await fs.rename(tmp, absPath);
-  // Best-effort durable rename. fsync the parent directory so the rename
-  // entry survives a crash. Swallow errors: Windows doesn't support
-  // directory fsync; some FUSE backends throw EINVAL.
-  try {
-    const dir = await fs.open(path.dirname(absPath), 'r');
-    try {
-      await dir.sync();
-    } finally {
-      await dir.close();
-    }
-  } catch {
-    // ignore — best-effort
-  }
-}
+// 1.8+ — atomic-write logic moved to src/utils/atomicWrite.ts and reused
+// by session.saveSession. This file keeps the local name as a thin alias
+// so existing call sites don't change shape.
+const atomicWrite = atomicWriteFile;
 
 function sha256(s: string): string {
   return createHash('sha256').update(s).digest('hex');

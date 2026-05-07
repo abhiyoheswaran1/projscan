@@ -142,9 +142,31 @@ export function customDangerousSink(v: string | undefined) { return v; }
     expect(report.reason).toMatch(/callSites/);
   });
 
-  it('caps depth at MAX_DEPTH (long-chain doesn\'t blow up)', async () => {
-    // 12-level call chain. MAX_DEPTH is 8, so the deepest sink at level 12
-    // should NOT be reported.
+  it('caps depth at MAX_DEPTH (long-chain truncation reported)', async () => {
+    // 18-level call chain — MAX_DEPTH (1.8+) is 12, so the deepest sink
+    // at level 18 should NOT be reported AND the report should mark the
+    // source as truncated.
+    let src = `import { exec } from 'child_process';\n\n`;
+    for (let i = 0; i < 18; i++) {
+      const calls = i === 17 ? `exec('x');` : `f${i + 1}();`;
+      src += `export function f${i}() {${i === 0 ? ' const v = process.env.X;' : ''} ${calls} }\n`;
+    }
+    await fs.writeFile(path.join(tmp, 'src', 'chain.ts'), src);
+    const graph = await buildGraph();
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+    // No flow should reach the depth-18 sink — depth cap stops at 12.
+    const reaching = report.flows.find((f) => f.sourceFn === 'f0');
+    expect(reaching).toBeUndefined();
+    // 1.8+ — surface the truncation explicitly so callers know flows
+    // beyond MAX_DEPTH may exist.
+    expect(report.truncated).toBe(true);
+    expect(report.truncatedSources).toContain('f0');
+    expect(report.maxDepth).toBe(12);
+  });
+
+  it('reaches a sink at the new MAX_DEPTH=12 boundary', async () => {
+    // 12-level chain — should now report the f0→f11 flow (was unreachable
+    // when MAX_DEPTH was 8 in the 1.7 line).
     let src = `import { exec } from 'child_process';\n\n`;
     for (let i = 0; i < 12; i++) {
       const calls = i === 11 ? `exec('x');` : `f${i + 1}();`;
@@ -153,8 +175,7 @@ export function customDangerousSink(v: string | undefined) { return v; }
     await fs.writeFile(path.join(tmp, 'src', 'chain.ts'), src);
     const graph = await buildGraph();
     const report = computeTaint(graph, { sources: [], sinks: [] });
-    // No flow should reach the depth-12 sink — depth cap stops at 8.
-    const reaching = report.flows.find((f) => f.sourceFn === 'f0');
-    expect(reaching).toBeUndefined();
+    const reaching = report.flows.find((f) => f.sourceFn === 'f0' && f.sinkFn === 'f11');
+    expect(reaching).toBeDefined();
   });
 });
