@@ -5,6 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/projscan.svg)](https://www.npmjs.com/package/projscan)
 [![license](https://img.shields.io/npm/l/projscan.svg)](https://github.com/abhiyoheswaran1/projscan/blob/main/LICENSE)
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
+[![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](#quick-start)
 
 **Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Cursor, Windsurf) query your codebase - with a CLI for humans on the side.
 
