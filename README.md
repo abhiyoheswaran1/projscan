@@ -7,7 +7,7 @@
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](#quick-start)
 
-**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Cursor, Windsurf) query your codebase - with a CLI for humans on the side.
+**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans on the side.
 
 [AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
@@ -107,7 +107,7 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan workspace` | *(1.6)* Register sibling repos for cross-repo intelligence (`add` / `list` / `remove`) |
 | `projscan apply-fix <id>` | *(1.6)* Mechanically execute the safe fix templates with rollback (default dry-run) |
 | `projscan taint` | *(1.6)* Source-to-sink reachability over the call graph |
-| `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Cursor, …) |
+| `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, …) |
 
 To see all commands and options, run:
 
@@ -531,6 +531,33 @@ One-liner — adds projscan as an MCP server in the current project:
 
 ```bash
 claude mcp add projscan -- npx -y projscan mcp
+```
+
+### Codex CLI (OpenAI)
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.projscan]
+command = "npx"
+args = ["-y", "projscan", "mcp"]
+```
+
+Restart `codex` and the tool surface (`projscan_graph`, `projscan_review`, …) appears alongside Codex's built-ins.
+
+### Gemini CLI (Google)
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "projscan": {
+      "command": "npx",
+      "args": ["-y", "projscan", "mcp"]
+    }
+  }
+}
 ```
 
 ### Cursor
