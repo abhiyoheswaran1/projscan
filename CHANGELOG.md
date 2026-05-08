@@ -4,6 +4,19 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] — 2026-05-08
+
+Documentation patch. Surfaces the MCP clients we already work with but didn't document.
+
+### Added
+
+- README integration sections for **Codex CLI (OpenAI)** and **Gemini CLI (Google)**. projscan implements the MCP 2025-03-26 spec; both Codex and Gemini are conformant MCP clients, so the protocol-level support has been there since 1.0.0 — only the setup snippet was missing. No code changes.
+- Tagline + commands table now mention both alongside Claude Code, Cursor, Windsurf, Cline, Continue, and Zed.
+
+### Stable surface
+
+No additions or removals. README-only patch.
+
 ## [1.8.0] — 2026-05-08 — "Resilience + Live"
 
 A combined-scope release that pulls forward roadmap items originally planned across 1.7.1 (Swift), 1.8 (Depth + bug-hunt deferrals), and 1.9 (Live Reviewer) into one shipment. Closes the iOS gap, lands every deferred-from-1.7 item from the prior bug-hunt, and ships the long-running PR-watch mode that's been the capstone of the agent-substrate arc.
