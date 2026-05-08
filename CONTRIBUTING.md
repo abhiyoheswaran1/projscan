@@ -160,6 +160,7 @@ A release is a five-step ritual now that `.github/workflows/release.yml` (1.6.1+
    - `.github/mcp-registry/server.json` — bump BOTH `version` fields (top-level and `packages[0].version`). Description must stay ≤ 100 chars (registry limit).
    - `CHANGELOG.md` — add a `## [X.Y.Z] — YYYY-MM-DD` section at the top in Keep-a-Changelog format. Cover Added / Changed / Removed / Notes; be honest about tradeoffs. The release workflow slices this verbatim into the GitHub Release body.
    - Sweep for "X tools" / "Y languages" counts in `README.md`, `docs/GUIDE.md`, `docs/ROADMAP.md` and update them.
+   - **Regenerate the dogfood health badge.** Run `npx projscan badge` against the prepped tree. If the letter or score in the README badge changed, update `README.md` to match. **A drop in letter (e.g., A → B) is a release blocker** — fix the underlying signal before tagging. (The badge is a static `img.shields.io/badge` snapshot, not a live endpoint, so it stays consistent until the next release intentionally moves it.)
 
 2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review.
 
