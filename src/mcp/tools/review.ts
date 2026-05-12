@@ -6,7 +6,7 @@ import type { McpTool } from './_shared.js';
 export const reviewTool: McpTool = {
   name: 'projscan_review',
   description:
-    'One-call PR review. Combines projscan_pr_diff + per-changed-file risk score + new/expanded import cycles + risky function additions + dependency changes, plus a verdict ("ok" | "review" | "block") with a one-line summary. Use when an agent is asked "is this PR safe to merge?" Defaults: base=origin/main (falls back to main/master/HEAD~1), head=HEAD. Pass `max_cost_tokens` (1.5+) to get a budget-shaped response: <3000 returns verdict-only, <7000 returns a summary, otherwise the full review.',
+    'One-call PR review. Combines projscan_pr_diff + per-changed-file risk score + new/expanded import cycles + risky function additions + dependency changes, plus a verdict ("ok" | "review" | "block") with a one-line summary. Use when an agent is asked "is this PR safe to merge?" Defaults: base=origin/main (falls back to main/master/HEAD~1), head=HEAD. Pass `max_cost_tokens` (1.5+) to get a budget-shaped response: <3000 returns verdict-only, <7000 returns a summary, otherwise the full review. 1.9+: pass `intent` (a free-text PR description like "refactor auth middleware" or "docs: fix codex setup") to get an intent-grounded review — each finding is labelled expected / unexpected / out-of-scope against the stated intent. Verdict is unchanged; this is an extra narration layer.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -28,14 +28,20 @@ export const reviewTool: McpTool = {
         type: 'string',
         description: 'Optional. Workspace package name to scope all sections of the review to a single package.',
       },
+      intent: {
+        type: 'string',
+        description:
+          '1.9+ — free-text description of what the PR is trying to do. projscan parses this into an action (feature / fix / refactor / perf / test / docs / chore / remove) plus scope tokens, then labels every finding as expected / unexpected / out-of-scope against that intent. Returns an `intent` echo and an `intentAnalysis` summary; per-finding labels appear as `intentAlignment` on each changedFile / riskyFunction / newCycle / newTaintFlow / dependencyChange. Does NOT change the verdict (verdict stays structural).',
+      },
     },
   },
   handler: async (args, rootPath) => {
     emitProgress(0, 4, 'resolving refs');
     const base = typeof args.base === 'string' ? args.base : undefined;
     const head = typeof args.head === 'string' ? args.head : undefined;
+    const intent = typeof args.intent === 'string' ? args.intent : undefined;
     emitProgress(1, 4, 'building base + head graphs');
-    const report = await computeReview(rootPath, { base, head });
+    const report = await computeReview(rootPath, { base, head, intent });
 
     if (typeof args.package === 'string' && args.package.length > 0 && report.available) {
       emitProgress(2, 4, 'scoping to workspace');

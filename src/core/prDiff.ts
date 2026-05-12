@@ -330,23 +330,38 @@ interface GitResult {
   stderr: string;
 }
 
+/**
+ * 1.9+ — Default cap on any single `git` invocation. Previously git
+ * could hang forever if it landed in a credential prompt (a fetch
+ * against an inaccessible remote), a custom git hook that blocks on
+ * stdin, or a network filesystem that stalls. The MCP server inherits
+ * stdin from the host process — an interactive prompt has nowhere to
+ * return to and the watch/review/prDiff tool would hang the entire
+ * server. 30s is well above any honest local-repo operation and
+ * forces the hang to surface as an explicit timeout error.
+ */
+const DEFAULT_GIT_TIMEOUT_MS = 30_000;
+
 function runGit(
   cwd: string,
   args: string[],
   opts: { timeoutMs?: number } = {},
 ): Promise<GitResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn('git', args, { cwd, env: process.env });
+    // Detach stdin so a git hook or credential prompt can't block
+    // waiting for input — it'll see EOF and exit instead of hanging.
+    const child = spawn('git', args, { cwd, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     let settled = false;
-    const timeout = opts.timeoutMs
+    const effectiveTimeoutMs = opts.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS;
+    const timeout = effectiveTimeoutMs > 0
       ? setTimeout(() => {
           if (settled) return;
           settled = true;
           child.kill('SIGKILL');
-          reject(new Error('git command timed out'));
-        }, opts.timeoutMs)
+          reject(new Error(`git command timed out after ${effectiveTimeoutMs}ms`));
+        }, effectiveTimeoutMs)
       : null;
     child.stdout.on('data', (d) => (stdout += d.toString()));
     child.stderr.on('data', (d) => (stderr += d.toString()));

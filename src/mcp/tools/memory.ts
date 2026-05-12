@@ -2,6 +2,7 @@ import type { McpTool } from './_shared.js';
 import {
   computeRuleConfidence,
   computeRuleConfidenceScore,
+  computeSeverityDrift,
   findAcceptedHotspots,
   findStableRules,
   forgetHotspot,
@@ -9,6 +10,7 @@ import {
   loadMemory,
   saveMemory,
   type ProjectMemory,
+  type SeverityDrift,
 } from '../../core/memory.js';
 
 /**
@@ -39,7 +41,7 @@ export const memoryTool: McpTool = {
         type: 'string',
         enum: ['current', 'stable', 'runs', 'accepted', 'confidence', 'forget', 'forget-hotspot'],
         description:
-          'Subaction. "current" returns aggregate counts. "stable" returns long-running rules with a config-snippet suggestion. "runs" returns every tracked rule. "accepted" (1.5+) returns files Project Memory marks as accepted load-bearing debt (top-K hotspot for ≥ 5 runs over ≥ 7 days without improving). "confidence" (1.7+) returns each tracked rule labelled high/medium/low based on observed fix-rate — high = user has fixed instances; low = persistently ignored. "forget" drops one rule. "forget-hotspot" drops one file from hotspot memory.',
+          'Subaction. "current" returns aggregate counts. "stable" returns long-running rules with a config-snippet suggestion. "runs" returns every tracked rule. "accepted" (1.5+) returns files Project Memory marks as accepted load-bearing debt (top-K hotspot for ≥ 5 runs over ≥ 7 days without improving). "confidence" (1.7+) returns each tracked rule labelled high/medium/low based on observed fix-rate — high = user has fixed instances; low = persistently ignored. 1.9+: each rule also carries a `drift` label (stable / noisy / cry-wolf) so the agent can deprioritize rules the user has effectively classified as false positives. "forget" drops one rule. "forget-hotspot" drops one file from hotspot memory.',
       },
       rule: {
         type: 'string',
@@ -168,17 +170,23 @@ function confidenceView(memory: ProjectMemory): Record<string, unknown> {
         ruleId,
         level: computeRuleConfidence(memory, ruleId),
         score: Number(computeRuleConfidenceScore(memory, ruleId).toFixed(3)),
+        drift: computeSeverityDrift(memory, ruleId),
         runCount: obs.runCount,
         fixedCount: obs.fixedCount,
       };
     })
     .sort((a, b) => b.score - a.score);
   const counts = { high: 0, medium: 0, low: 0 };
-  for (const r of ranked) counts[r.level] += 1;
+  const driftCounts: Record<SeverityDrift, number> = { stable: 0, noisy: 0, 'cry-wolf': 0 };
+  for (const r of ranked) {
+    counts[r.level] += 1;
+    driftCounts[r.drift] += 1;
+  }
   return {
     totalRuns: memory.totalRuns,
     rulesTracked: ranked.length,
     counts,
+    driftCounts,
     rules: ranked,
   };
 }

@@ -126,6 +126,13 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
 
 function shouldSkip(rel: string): boolean {
   if (rel.length === 0) return true;
+  // 1.9+ — filter atomic-write tmp suffixes. atomicWriteFile creates
+  // `<target>.projscan-tmp-<uuid>` siblings then renames; the watcher
+  // would otherwise fire on the tmp file's creation, the rename, AND
+  // the post-rename target, tripling debounce work. The actual target
+  // file's rename event still fires (its name doesn't carry the
+  // suffix), so we don't lose updates.
+  if (rel.includes('.projscan-tmp-')) return true;
   // Filter out hidden files and known noise directories anywhere in the path.
   const parts = rel.split('/');
   for (const part of parts) {

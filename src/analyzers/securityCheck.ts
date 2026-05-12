@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { DEFAULT_FILE_IO_CONCURRENCY, mapWithConcurrency } from '../utils/concurrency.js';
 import type { FileEntry, Issue } from '../types.js';
 
 const ENV_FILE_PATTERN = /^\.env(\..+)?$/;
@@ -81,8 +82,13 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
         path.basename(f.relativePath).startsWith('.env')),
   );
 
-  const scanResults = await Promise.all(
-    filesToScan.map((f) => scanFileForSecrets(f)),
+  // 1.9+ — was Promise.all unbounded; on a 50K-file repo that opens
+  // 50K concurrent fs.readFile and trips EMFILE (macOS default ulimit
+  // 256). Route through the shared concurrency helper instead.
+  const scanResults = await mapWithConcurrency(
+    filesToScan,
+    DEFAULT_FILE_IO_CONCURRENCY,
+    (f) => scanFileForSecrets(f),
   );
 
   for (const result of scanResults) {

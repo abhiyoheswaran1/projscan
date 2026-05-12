@@ -13,7 +13,12 @@ export async function scanRepository(rootPath: string, options?: ScanOptions): P
     : undefined;
   const files = await walkFiles(rootPath, ignore ? { ignore } : undefined);
   const directoryTree = buildDirectoryTree(files, rootPath);
-  const directories = new Set(files.map((f) => f.directory));
+  // 1.9+ — exclude the empty-string "directory" key (some file
+  // walkers emit '' for root-level entries instead of '.'). The root
+  // is represented as '.' and counts as a directory; '' is the same
+  // logical place and would otherwise double-count when both shapes
+  // appear in the same scan.
+  const directories = new Set(files.map((f) => f.directory).filter((d) => d !== ''));
   const scanDurationMs = performance.now() - start;
 
   return {

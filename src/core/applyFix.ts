@@ -256,7 +256,12 @@ async function writeRollbackRecord(
       summary,
       changes,
     };
-    await fs.writeFile(filePath, JSON.stringify(record, null, 2), 'utf-8');
+    // 1.9+ — atomic write. The rollback record IS the recovery oracle;
+    // a crash mid-write would otherwise leave a corrupt JSON that
+    // `rollback` parses as null, stranding the user with applied
+    // changes and no way to revert. Atomic rename guarantees the file
+    // either contains the full record or doesn't exist.
+    await atomicWriteFile(filePath, JSON.stringify(record, null, 2));
   } catch {
     // best-effort
   }

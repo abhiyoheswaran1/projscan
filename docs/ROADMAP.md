@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-08.
+Last reviewed 2026-05-12.
 
 ---
 
@@ -53,14 +53,13 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 1.9 → 1.10 (2027)
+### Now — 1.10 (2027)
 
-**Theme arc: "From advisor to operator."** 1.6 (Operator), 1.7 (Reach + Visibility), and 1.8 (Resilience + Live) all shipped. projscan now reaches into 11 languages (added Kotlin, C++, Swift), holds long-running PR watches, atomic-saves session state, surfaces taint truncation, and bounds embedding caches. The agent-substrate arc is essentially complete; what remains is polish and the platform commitment.
+**Theme arc: "From advisor to operator."** 1.6 (Operator), 1.7 (Reach + Visibility), 1.8 (Resilience + Live), and 1.9 (Intent + Polish) all shipped. projscan now reaches into 11 languages, holds long-running PR watches with structured per-bucket deltas, atomic-saves session state, surfaces taint truncation, bounds embedding caches, and labels review findings against an agent-supplied free-text intent. The agent-substrate arc is essentially complete; what remains is the platform commitment.
 
 | Release | Theme | Why an agent must have this |
 |---|---|---|
-| **1.9.0 "Polish"** | Cross-arch wasi-sdk validation, review_watch signature deepening (cycle / dep deltas), live cost-summary streaming, ROI on Project Memory's loop #4 (per-rule severity drift) | Tail-end refinements from the 1.8 bug hunt. Mostly hardening. |
-| **1.10.0 "RC for 2.0"** | Plugin-API preview behind a feature flag. Public design discussion of the 2.0 stable surface. | Lay the platform-commitment groundwork before cutting a major. |
+| **1.10.0 "RC for 2.0"** | Plugin-API preview behind a feature flag. Public design discussion of the 2.0 stable surface. Live cost-summary streaming (deferred from 1.9). Bug-hunt deferrals from 1.9 (applyFix rollback parent-dir handling, incrementalUpdateGraph context staleness, changedFiles maxBuffer detection, taint frontier-memory cap, watcher.close mid-flush). | Lay the platform-commitment groundwork before cutting a major; finish the bug-hunt items that needed more time. |
 
 ### Later — 2.0 (2027+)
 
@@ -102,6 +101,8 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **1.9.0** (2026-05-12) | Intent + Polish | Intent-grounded review: free-text PR description → per-finding expected / unexpected / out-of-scope labels (no LLM); Project Memory loop #4 (per-rule severity drift, cry-wolf / noisy / stable); review_watch signature deepening with structured `delta` payload; macOS CI leg; 6 fixes from a two-way multi-agent bug hunt (5 documented deferrals) |
+| **1.8.1** (2026-05-08) | Docs patch | README setup snippets for Codex CLI + Gemini CLI |
 | **1.8.0** (2026-05-08) | Resilience + Live | Swift adapter (11 languages); long-running PR watch (`projscan_review_watch`) with `notifications/projscan/pr_changed`; atomic session save; taint truncation reporting + MAX_DEPTH 8 → 12; embeddings LRU; templated C++ qualified-id; 7 fixes from a three-way multi-agent bug hunt |
 | **1.7.0** (2026-05-07) | Reach + Visibility | Kotlin and C++ adapters (10 languages); per-rule confidence in Project Memory (loop #3); aggregate cost analytics (`projscan_cost_summary`); 6 fixes from a four-way multi-agent bug hunt |
 | **1.6.0** (2026-05-06) | Operator | Cross-repo workspace + intelligence (`projscan_workspace_graph`); mechanical apply layer with rollback (`projscan_apply_fix`, six templates); source-to-sink taint analysis (`projscan_taint`) wired into review as a hard block on new flows |
