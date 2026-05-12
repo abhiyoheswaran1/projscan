@@ -42,6 +42,15 @@ export interface ApplyChange {
    * edited. null when op='create'.
    */
   beforeContent?: string | null;
+  /**
+   * Repo-relative parent dirs that did not exist before the forward
+   * `op:'create'` ran and were brought into being by its `mkdir -p`. On
+   * rollback the unlink removes the file; these dirs are then `rmdir`'d
+   * deepest-first (silently no-op if non-empty, so unrelated siblings
+   * survive). Absent for op:'modify' and op:'delete' and for older
+   * rollback records written before this field existed.
+   */
+  createdParentDirs?: string[];
 }
 
 export interface ApplyResult {
@@ -139,8 +148,22 @@ export async function executePlan(
       if (item.op === 'delete') {
         await fs.unlink(abs);
       } else {
+        // 1.10+ — record which parent dirs we're about to bring into
+        // existence on `op:'create'`, so the rollback can `rmdir` them
+        // and leave the tree as we found it. We don't track this for
+        // `op:'modify'` because by Phase-1 invariant the file (and
+        // therefore its parent dir) already existed.
+        let createdDirs: string[] = [];
+        if (item.op === 'create') {
+          createdDirs = await findMissingAncestors(abs, rootPath);
+        }
         await fs.mkdir(path.dirname(abs), { recursive: true });
         await atomicWrite(abs, item.content ?? '');
+        if (createdDirs.length > 0) {
+          changes[i].createdParentDirs = createdDirs.map((d) =>
+            path.relative(rootPath, d).split(path.sep).join('/'),
+          );
+        }
       }
       completedIdx.push(i);
     } catch (err) {
@@ -154,9 +177,15 @@ export async function executePlan(
         try {
           if (c.op === 'create') {
             await fs.unlink(cabs).catch(() => undefined);
+            await removeCreatedParentDirs(rootPath, c.createdParentDirs);
           } else if (c.op === 'modify' && c.beforeContent !== undefined) {
             await atomicWrite(cabs, c.beforeContent ?? '');
           } else if (c.op === 'delete' && c.beforeContent !== undefined) {
+            // 1.10+ — defensive mkdir before re-creating. The forward delete
+            // only removed the file, but the parent dir may have been pruned
+            // externally between apply and rollback. Without this, atomicWrite's
+            // fs.open(tmp, 'wx') would ENOENT and the rollback would partial-fail.
+            await fs.mkdir(path.dirname(cabs), { recursive: true });
             await atomicWrite(cabs, c.beforeContent ?? '');
           }
         } catch {
@@ -200,11 +229,16 @@ export async function rollback(rootPath: string, rollbackId: string): Promise<Ap
     try {
       if (c.op === 'create') {
         await fs.unlink(abs).catch(() => undefined);
+        await removeCreatedParentDirs(rootPath, c.createdParentDirs);
         reversed.push({ ...c, op: 'delete', afterHash: null });
       } else if (c.op === 'modify' && c.beforeContent !== undefined) {
         await atomicWrite(abs, c.beforeContent ?? '');
         reversed.push({ ...c, op: 'modify' });
       } else if (c.op === 'delete' && c.beforeContent !== undefined) {
+        // 1.10+ — defensive mkdir before re-creating: the forward delete only
+        // removed the file, but a separate process may have pruned the
+        // now-empty parent dir between apply and rollback.
+        await fs.mkdir(path.dirname(abs), { recursive: true });
         await atomicWrite(abs, c.beforeContent ?? '');
         reversed.push({ ...c, op: 'create', beforeHash: null });
       }
@@ -213,6 +247,51 @@ export async function rollback(rootPath: string, rollbackId: string): Promise<Ap
     }
   }
   return { ok: true, applied: true, changes: reversed };
+}
+
+/**
+ * Walk upward from `absPath`'s parent and collect the absolute paths of
+ * ancestor dirs that do not yet exist (deepest-first). Stops at
+ * `rootPath` — we never report rootPath itself or anything above it, so
+ * a later `rmdir` pass can't accidentally tear down the project root or
+ * directories outside the project. Returns [] when every ancestor down
+ * to (and including) the file's parent already exists.
+ */
+async function findMissingAncestors(absPath: string, rootPath: string): Promise<string[]> {
+  const root = path.resolve(rootPath);
+  const missing: string[] = [];
+  let cur = path.dirname(absPath);
+  while (true) {
+    const resolved = path.resolve(cur);
+    if (resolved === root || !resolved.startsWith(root + path.sep)) break;
+    try {
+      await fs.access(resolved);
+      break;
+    } catch {
+      missing.push(resolved);
+      cur = path.dirname(resolved);
+    }
+  }
+  return missing;
+}
+
+/**
+ * Best-effort rmdir of dirs we created during forward apply. Deepest-first
+ * (the list was collected deepest-first by findMissingAncestors). `rmdir`
+ * refuses non-empty dirs by default, so if the user later wrote a sibling
+ * file under one of these dirs, the rmdir silently no-ops and the
+ * sibling survives.
+ */
+async function removeCreatedParentDirs(rootPath: string, rels: string[] | undefined): Promise<void> {
+  if (!rels || rels.length === 0) return;
+  for (const rel of rels) {
+    if (!isSafeRelativePath(rel)) continue;
+    try {
+      await fs.rmdir(path.join(rootPath, rel));
+    } catch {
+      // best-effort: non-empty dir, race with another process, etc.
+    }
+  }
 }
 
 function isSafeRelativePath(p: string): boolean {

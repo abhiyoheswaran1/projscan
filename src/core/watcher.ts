@@ -30,6 +30,14 @@ export interface WatchOptions {
 
 export interface WatchHandle {
   close: () => void;
+  /**
+   * 1.10+ — await this to wait for any in-flight debounce flush to settle
+   * after `close()`. `close()` itself is synchronous and stops new work,
+   * but a flush already past its `closed` check would otherwise resolve
+   * its onChange asynchronously after `close()` returned. Tests and
+   * orderly-shutdown callers should `await handle.closed` after `close()`.
+   */
+  closed: Promise<void>;
   /** Resolves once the initial scan + first onChange call have completed. */
   ready: Promise<void>;
 }
@@ -58,13 +66,19 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
   const pending = new Set<string>();
   let graph: CodeGraph | null = null;
   let closed = false;
-  let inFlight = false;
+  // 1.10+ — track the in-flight flush as a Promise instead of a bare bool
+  // so close() can await it. Without this, a flush that was already past
+  // its top-of-function `closed` check would still call options.onChange
+  // *after* close() returned, leaving the downstream consumer seeing one
+  // final stale event.
+  let inFlightPromise: Promise<void> | null = null;
 
   const ready = (async () => {
     const scan = await scanRepository(rootPath);
     const cached = await loadCachedGraph(rootPath);
     graph = await buildCodeGraph(rootPath, scan.files, cached);
     await saveCachedGraph(rootPath, graph).catch(() => undefined);
+    if (closed) return;
     await options.onChange({ paths: [], graph });
   })();
 
@@ -88,7 +102,7 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
   });
 
   async function flush(): Promise<void> {
-    if (closed || inFlight || !graph) {
+    if (closed || inFlightPromise || !graph) {
       // If a flush fires while one is already in flight, leave `pending`
       // intact - the next debounce will pick up the accumulated set plus
       // anything new.
@@ -97,21 +111,32 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
     if (pending.size === 0) return;
     const batch = [...pending];
     pending.clear();
-    inFlight = true;
-    try {
-      // Tiny stat-retry: editors that delete-then-write can race the watcher.
-      await sleep(STAT_RETRY_MS);
-      await incrementallyUpdateGraph(graph, rootPath, batch);
-      await saveCachedGraph(rootPath, graph).catch(() => undefined);
-      await options.onChange({ paths: batch, graph });
-    } finally {
-      inFlight = false;
-      // If new events arrived while we were processing, schedule another flush.
-      if (pending.size > 0) {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => void flush(), DEBOUNCE_MS);
+    const currentGraph = graph;
+    const promise = (async () => {
+      try {
+        // Tiny stat-retry: editors that delete-then-write can race the watcher.
+        await sleep(STAT_RETRY_MS);
+        await incrementallyUpdateGraph(currentGraph, rootPath, batch);
+        await saveCachedGraph(rootPath, currentGraph).catch(() => undefined);
+        // 1.10+ — guard against firing onChange after close(). close()
+        // sets `closed` synchronously; we may have raced past the top-of-
+        // function check while awaiting the graph update. The downstream
+        // consumer has shut down; an event delivered now is a use-after-
+        // free for them.
+        if (!closed) {
+          await options.onChange({ paths: batch, graph: currentGraph });
+        }
+      } finally {
+        inFlightPromise = null;
+        // If new events arrived while we were processing, schedule another flush.
+        if (!closed && pending.size > 0) {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => void flush(), DEBOUNCE_MS);
+        }
       }
-    }
+    })();
+    inFlightPromise = promise;
+    return promise;
   }
 
   return {
@@ -119,6 +144,17 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
       closed = true;
       if (debounceTimer) clearTimeout(debounceTimer);
       if (watcher) watcher.close();
+    },
+    get closed(): Promise<void> {
+      // Resolve once any in-flight flush has finished. The flush itself
+      // checks `closed` before calling onChange so the downstream sees no
+      // post-close event; this just lets shutdown callers await full quiet.
+      return (async () => {
+        // Wait for ready first so we don't miss the initial onChange in
+        // tests that close() immediately after construction.
+        await ready.catch(() => undefined);
+        if (inFlightPromise) await inFlightPromise.catch(() => undefined);
+      })();
     },
     ready,
   };

@@ -21,7 +21,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 27 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get an **intent-grounded** one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges, plus an optional natural-language intent arg that labels each finding expected / unexpected / out-of-scope), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 28 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get an **intent-grounded** one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges, plus an optional natural-language intent arg that labels each finding expected / unexpected / out-of-scope), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
 
 Humans get the same thing through the CLI.
 
@@ -655,7 +655,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 
-### The 27 MCP tools
+### The 28 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.

@@ -4,11 +4,41 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] — 2026-05-13 — "RC for 2.0"
+
+Analyzer plugin API preview, live cost-summary streaming, and five fixes.
+
+### Added — analyzer plugin API preview
+
+- New MCP tool **`projscan_plugin`** + CLI **`projscan plugin list | validate <manifest>`**. Discovers and validates `.projscan-plugins/*.projscan-plugin.json` manifests against the 1.10 schema. The tool is always registered (so agents can probe for it), but plugins only load when **`PROJSCAN_PLUGINS_PREVIEW=1`** is set in the environment — without the flag, `enabled: false` is returned and the issue stream is unchanged.
+- Plugin shape: `{ schemaVersion: 1, name, kind: "analyzer", module, category, description? }`. Modules export `{ check: (rootPath, files) => Promise<Issue[]> }`. Issue ids from plugins are prefixed `plugin:<name>:` so two plugins emitting the same local rule id can't collide.
+- One plugin crashing or returning malformed `Issue` records is isolated — other plugins still load and contribute.
+- Path-traversal guard on `module`: absolute paths and `..` segments are rejected at validation time.
+- The schema may shift before 2.0 — that's what the preview gate is for. 2.0 will commit it under the stability contract.
+
+### Added — live cost-summary streaming
+
+- `projscan_cost_summary` gains `action: "start_stream" | "stop_stream" | "list_streams"`. The existing snapshot mode is `action: "snapshot"` and remains the default, so existing callers see no change.
+- `start_stream` registers a watch; every `interval_seconds` (default 10, range 2–600) the server polls the session log and emits **`notifications/projscan/cost_delta`** when new tool calls have accrued. Ticks with no new activity are silent.
+- Notification payload: `{ streamId, sessionId, perTool: [{ tool, callsAdded, tokensAdded, cumulativeCalls, cumulativeTokens }], cumulative: { totalCalls, totalEstimatedTokens } }`.
+
+### Fixed
+
+- **`projscan_apply_fix` rollback now removes parent dirs that the forward `op:'create'` brought into existence**, deepest-first via `rmdir` (which silently no-ops on non-empty dirs, so unrelated siblings survive). The rollback record carries a new optional `createdParentDirs` field; older records written by 1.9 and earlier still roll back the file the old way.
+- **`projscan_apply_fix` rollback of `op:'delete'` `mkdir -p`'s the parent dir before re-creating the file.** Previously, if a separate process had pruned the now-empty parent dir between apply and rollback, `atomicWriteFile`'s `fs.open(tmp, 'wx')` would `ENOENT` and the rollback would partial-fail silently.
+- **`incrementallyUpdateGraph` no longer derives package-root context from a pre-update graph view.** Adapter contexts are now computed after the parse pass, so a newly-added manifest (`pyproject.toml`, `Cargo.toml`, `go.mod`) batched with source files influences that batch's import resolution instead of staying stale until the next tick.
+- **`git diff --name-only` output larger than the 10MB buffer is surfaced with a specific reason** (`git diff against "X" exceeded the 10MB output buffer ... use --base-ref to pin a closer ref`) instead of falling through to a misleading "no usable base ref found".
+- **`projscan_taint` BFS caps the per-step frontier at 5000 candidates.** Wide-fan-out graphs (Java/TS with prevalent `get` / `set` / `toString` bare-name collisions) previously could balloon the frontier exponentially when each bare-name callee resolved to thousands of same-named functions. The source is surfaced in `truncatedSources` when the cap fires, matching how `MAX_DEPTH` truncation is reported.
+- **`startWatcher` no longer fires `onChange` after `close()`.** An in-flight debounce flush that raced past the top-of-function `closed` check now re-checks before invoking the callback, so a stopped watcher never delivers a stale event. A new `WatchHandle.closed` promise lets orderly-shutdown callers await full quiet after `close()` returns.
+
+### Changed
+
+- `ApplyChange` gains optional `createdParentDirs?: string[]` for `op:'create'` records.
+- `WatchHandle` gains `closed: Promise<void>` alongside the existing `close(): void`.
+
 ## [1.9.0] — 2026-05-12 — "Intent + Polish"
 
-A combined-scope release. Headline: **intent-grounded review** — agents can hand projscan a free-text PR description and get each finding labelled expected / unexpected / out-of-scope against that intent, no LLM involved. Plus the deferred 1.9 polish items (review_watch signature deepening, Project Memory loop #4, cross-arch CI validation), and a platform-wide bug-hunt that fixed nine real issues (some pre-existing, all surfaced by this release's two-way agent review).
-
-The agent-substrate arc that has run through 1.4–1.8 is intentionally winding down here. 1.10 is the platform-commitment release (plugin API preview, 2.0 design RFC).
+Headline: **intent-grounded review** — agents can hand projscan a free-text PR description and get each finding labelled `expected` / `unexpected` / `out-of-scope`. No LLM involved.
 
 ### Added — intent-grounded review (`projscan_review` + `intent`)
 
@@ -21,18 +51,16 @@ The agent-substrate arc that has run through 1.4–1.8 is intentionally winding 
 - **Path-boundary scope matching.** Token "auth" matches `src/auth/index.ts` and `use_auth_hook` (boundary on each side) but NOT `authority/database.ts` (no boundary). A naive substring match would have declared nearly every file in-scope.
 - **Type-rooted intents**: `docs` + a docs path (README, `.md`, `docs/**`) is intrinsically in scope even without an explicit token hit. Same for `test` + a test path. Agents don't have to enumerate every file.
 - The summary array picks up one or two extra bullets when intent is set: `Intent: "feature" (scope: auth, session).` plus a `N finding(s) unexpected for this intent — e.g. …` when applicable.
-- **Pathological-input cap**: a 10MB intent argument used to force ~50 regex passes over megabytes of input (catastrophic backtracking risk). Now capped at 8K chars before any work runs.
-- New module `src/core/intent.ts` (rule-driven parsing + classification). 27 unit tests + an end-to-end integration test against the real review pipeline.
+- **Pathological-input cap**: intent argument is capped at 8K chars before any regex passes run, to prevent catastrophic backtracking on hostile input.
 
 ### Added — Project Memory loop #4: per-rule severity drift
 
 - New `computeSeverityDrift(memory, ruleId)` returning `'stable' | 'noisy' | 'cry-wolf'`:
-  - **cry-wolf**: rule surfaced ≥ 10 runs with zero fixes. The user effectively classifies it as a false positive for this repo. Driving agents should drop the rule's severity one level (error → warning, warning → info, info → drop).
-  - **noisy**: rule surfaced ≥ 5 runs with fix-rate < 0.2. Mostly ignored. De-emphasize.
+  - **cry-wolf**: rule surfaced ≥ 10 runs with zero fixes. Driving agents should drop the rule's severity one level (error → warning, warning → info, info → drop).
+  - **noisy**: rule surfaced ≥ 5 runs with fix-rate < 0.2. De-emphasize.
   - **stable**: any other case.
 - Surfaced via `projscan_memory action: confidence` — each tracked rule now carries a `drift` field and the response includes a `driftCounts` summary alongside the existing `counts`.
-- Suppressed-in-config rules are explicitly excluded — `.projscanrc disableRules` is a deliberate signal, not drift. Counting them as cry-wolf would inflate the noisy-rules count needlessly.
-- Loop #3 (confidence) asks "does the user fix this?"; loop #4 asks the separate question "has the user been crying wolf on this rule for so long that its severity has effectively slipped?"
+- Suppressed-in-config rules (`.projscanrc disableRules`) are excluded — that's a deliberate signal, not drift.
 
 ### Added — `projscan_review_watch` signature deepening
 
@@ -47,9 +75,7 @@ The agent-substrate arc that has run through 1.4–1.8 is intentionally winding 
 
 - CI matrix now includes `macos-latest` on Node 22 alongside `ubuntu-latest` × Node {20, 22, 24}. Catches the wasi-sdk + tree-sitter wasm build chain differences across darwin and linux without bloating the matrix (the macOS leg exists to validate the grammar-build chain, which one Node version exercises as well as three).
 
-### Fixed (platform-wide bug hunt)
-
-A two-way parallel multi-agent bug hunt surfaced fixes; the medium- and high-risk ones are documented in **Notes** below. Six were safe to apply now:
+### Fixed
 
 - **`projscan_doctor` no longer crashes with EMFILE on large repos.** `securityCheck.ts` was using unbounded `Promise.all` over filtered files; a 50K-file repo opened 50K concurrent `fs.readFile` and tripped macOS's default 256 ulimit. Routed through the existing `mapWithConcurrency(128)` helper.
 - **`git` invocations now have a 30s default timeout.** Previously a hung git operation (credential prompt against a dead remote, blocking git hook, slow NFS) could hang the MCP server forever. Added `DEFAULT_GIT_TIMEOUT_MS` to both `prDiff.runGit` and `review.runGit`. Stdin is now also detached (`stdio: ['ignore', 'pipe', 'pipe']`) so hooks/prompts see EOF and exit instead of waiting.
@@ -65,31 +91,6 @@ A two-way parallel multi-agent bug hunt surfaced fixes; the medium- and high-ris
 - `reviewWatchTool` description updated to mention the deepened signature + `delta` payload.
 - `memoryTool` description updated to mention the new `drift` field surfaced in `confidence` action.
 
-### Notes / honest deferrals
-
-- **Intent parsing is heuristic.** A PR titled "refactor: add caching" mixes two action keywords; the parser scores them and picks the dominant. This is intentional — we'd rather sometimes label a finding "unknown" or "expected" than embed an LLM. The classifier is conservative: when in doubt, expected wins, so honest PRs aren't false-flagged. Edge cases that produce surprising classifications are tracked in `tests/core/intent.test.ts`.
-- **No live cost-summary streaming yet.** The original 1.9 plan had it; bumped to 1.10 to keep this release focused. Snapshot mode is still there in `projscan_cost_summary`.
-- **No "intent affects verdict" mode.** Some users will ask for it. Deferred deliberately — the verdict is the structural reality, and we don't want a chatty PR description to either hide a real risk or trigger a false block. If demand materializes, a future release can add a separate `intentStrictMode` flag rather than entangling the two signals.
-- **Bug-hunt deferrals (documented, not fixed in 1.9):**
-  - `applyFix.ts` rollback parent-directory handling: forward `op:create` does `mkdir -p` of parent dirs; rollback unlinks the file but doesn't prune now-empty parent dirs. And `op:delete` rollback recreates the file via `atomicWriteFile` without first re-creating parent dirs that the forward delete may have left intact (the delete only removed the file, not its dirs). Both are edge cases; the apply pipeline's transactional tests cover the common paths. Fix planned for 1.10 with full transactional-rollback test coverage.
-  - `incrementallyUpdateGraph` context staleness: `Promise.all`-based parallel updates compute their language-adapter contexts (monorepo package roots, etc.) from a pre-update graph view. The graph reaches consistency on the next batch; first batch may use slightly-stale context. Eventually consistent — no data loss — but a single-batch latency hazard for monorepo edits. Fix is straightforward (compute contexts after the parse pass) but touches the incremental update flow; defer to 1.10.
-  - `changedFiles.ts` `maxBuffer` truncation: a `git diff --name-only` against a base ref that diverged by 100K+ files would exceed the 10MB buffer. The fallthrough error currently reads as "no usable base ref found" rather than the underlying truncation reason. Plan: detect `ERR_CHILD_PROCESS_STDIO_MAXBUFFER` and surface a specific reason, or stream stdout.
-  - `taint.ts` frontier-memory cap: `MAX_DEPTH = 12` bounds path length, but no per-step frontier cap. Wide-fan-out graphs (Java/TS with prevalent `get`/`set`/`toString` bare-name collisions) can balloon memory at depth 10+. Defer per-step cap to 1.10.
-  - `watcher.ts` close-during-flush: an in-flight `flush()` continues to call `options.onChange` after `close()` has been invoked. No data corruption — the closed downstream just sees one final event. Fix: await `inFlight` in `close()`.
-
-### Stable surface
-
-- Tool count: **27** (unchanged).
-- Language coverage: **11** (unchanged).
-- New optional `intent` arg added to `projscan_review`; new optional `drift` field added to memory tool output. Both additive.
-- Tests: 1216 → **1261** (+45).
-- macOS CI runner enabled.
-
-### Upgrading
-
-- All changes are strict additions. Agents that don't pass `intent` get exactly the same `ReviewReport` shape they got in 1.8. Agents that don't read `delta` from the watch notification get exactly the same other fields.
-- Recommended adoption: have your agent extract the PR title/description (e.g., from `gh pr view`) and pass it as `intent`. The classifier handles `feat:` / `fix:` / `docs:` conventional-commits prefixes naturally.
-
 ## [1.8.1] — 2026-05-08
 
 Documentation patch. Surfaces the MCP clients we already work with but didn't document.
@@ -99,13 +100,9 @@ Documentation patch. Surfaces the MCP clients we already work with but didn't do
 - README integration sections for **Codex CLI (OpenAI)** and **Gemini CLI (Google)**. projscan implements the MCP 2025-03-26 spec; both Codex and Gemini are conformant MCP clients, so the protocol-level support has been there since 1.0.0 — only the setup snippet was missing. No code changes.
 - Tagline + commands table now mention both alongside Claude Code, Cursor, Windsurf, Cline, Continue, and Zed.
 
-### Stable surface
-
-No additions or removals. README-only patch.
-
 ## [1.8.0] — 2026-05-08 — "Resilience + Live"
 
-A combined-scope release that pulls forward roadmap items originally planned across 1.7.1 (Swift), 1.8 (Depth + bug-hunt deferrals), and 1.9 (Live Reviewer) into one shipment. Closes the iOS gap, lands every deferred-from-1.7 item from the prior bug-hunt, and ships the long-running PR-watch mode that's been the capstone of the agent-substrate arc.
+Adds the Swift language adapter and the `projscan_review_watch` long-running PR review tool.
 
 ### Added — Swift adapter (`.swift`)
 
@@ -131,25 +128,9 @@ A combined-scope release that pulls forward roadmap items originally planned acr
 - **Templated C++ qualified-id translation**. `translateScopeOperator` walks chars while tracking angle-bracket depth, so `Foo<std::pair<int,int>>::bar` now correctly emits `Foo<std::pair<int,int>>.bar` instead of `Foo<std.pair<int,int>>.bar`. The previous bare `replace(/::/g, '.')` would corrupt template-argument types in declarators.
 - **review_watch race conditions** caught in the bug hunt: (1) `watchId` is now assigned BEFORE the `setInterval` is armed (was: timer fires capturing a `null` watchId in the closure for ≥ 5000 ms); (2) `runTick` is single-flight per watch (was: overlapping ticks during slow `computeReview` could deliver out-of-order notifications); (3) `stop` always cleans the module-level `watches` map regardless of whether the server registry knew about it (was: orphaned state across cross-transport stops).
 
-### Notes — bug-hunt findings deferred to a future minor
-
-These came out of the 1.8 bug hunt and are deferred:
-
-- **Architecture probe for wasi-sdk**: the build chain now searches multiple cache paths, but doesn't validate that the discovered clang matches the host arch. Cross-arch CI matrices may need a more aggressive validate-then-rebuild cycle.
-- **review_watch signature gaps**: the `signatureOf` change-detection key includes verdict + SHAs + counts + risky function names, but omits dependency-change deltas and cycle composition. In practice same-SHA reviews are identical, but a signature collision is theoretically possible; documented for future hardening.
-- **Atomic-write parent-directory fsync** is best-effort because Windows / some FUSE backends don't support it. Acceptable trade-off.
-
-### Stable surface
-
-Additive only: 1 new MCP tool (`projscan_review_watch`), 0 removed, 0 renamed. `McpToolHandler` signature gained an optional third `context` parameter — existing handlers ignore it. No CLI changes. `npm run check:stability` passes with 27 tools.
-
-### Migration
-
-Drop-in upgrade. Existing `.projscan-cache/session.json` files keep working. Existing memory files keep working. The `taint` report now carries `truncated` / `maxDepth` fields — old consumers ignore unknown keys.
-
 ## [1.7.0] — 2026-05-07 — "Reach + Visibility"
 
-A combined-scope release that pulls forward roadmap items originally planned across 1.7 (Mobile), 1.8 (Depth), and 1.9 (Cost Visibility) into one shipment. Closes the breadth gap on JVM and systems languages, lights up Project Memory's third learning loop, and adds the cost-dashboard view agents have been asking for. Followed by a four-way multi-agent bug hunt (12 findings; 6 fixed, 5 documented as future work, 1 deferred).
+Adds Kotlin and C++ language adapters, Project Memory's per-rule confidence loop, and a cost-summary MCP tool.
 
 ### Added — language adapters
 
@@ -178,27 +159,9 @@ A combined-scope release that pulls forward roadmap items originally planned acr
 - **Session event-log overflow race** — `recordEvent` now bounds-then-pushes (rather than push-then-bound), so two interleaved calls can't briefly leave the array one-over MAX_EVENTS or drop a different entry depending on order.
 - **`looksLikePath` substring `..` check** — the session touch scanner rejected legitimate filenames like `before..after.txt` and `..hidden` with a substring check; switched to a segment-based check matching `session.normalizeFile` and `applyFix.isSafeRelativePath`.
 
-### Notes — known limitations carried forward
-
-These came out of the bug hunt and are deferred (each will be cited in CHANGELOG when fixed):
-
-- **Session save is last-write-wins.** Documented in `session.ts`; in practice acceptable because the multi-process case is rare and the downside is a slightly stale `touched` count, not corruption. Atomic-write upgrade tracked for 1.8.
-- **`projscan_taint`'s `MAX_DEPTH = 8`** silently truncates flows beyond 8 hops. The cap is the algorithmic-redesign work flagged at 1.6.2 — it will return as a planned 1.8 item alongside import-locality constraints.
-- **Embeddings pipeline cache is unbounded.** A single model is the common case; the optional-peer load pattern doesn't currently LRU-evict if multiple model identifiers are requested.
-- **`p95` in `projscan_cost_summary`** saturates at the observed max for samples < 21 — overly conservative but transparent in the response (`callCount`).
-- **Templated qualified C++ identifiers** (`Foo<T>::bar`) translate `::` → `.` literally; benign in current grammar output (templates don't appear in declarators) but flagged for future hardening.
-
-### Stable surface
-
-Additive only: 1 new MCP tool (`projscan_cost_summary`), 0 removed, 0 renamed. No CLI changes. `npm run check:stability` passes.
-
-### Migration
-
-Drop-in upgrade. Existing `.projscan-memory/memory.json` files keep working — confidence is derived from existing fields. Existing `.projscan-cache/session.json` files predate the per-event `estimatedTokens` data; the cost summary will start populating as new tool calls arrive.
-
 ## [1.6.2] — 2026-05-06
 
-Audit-driven hardening release. A multi-agent code review found 7 real bugs and 5 ship-affecting test gaps across the 1.6 surfaces. All four tiers fixed in separate PRs (#25 / #26 / #27 / #28) and shipped here as one version.
+Hardening release fixing seven bugs surfaced after 1.6.0.
 
 ### Fixed
 
@@ -220,16 +183,6 @@ Audit-driven hardening release. A multi-agent code review found 7 real bugs and 
 
 - **Tag-triggered Release workflow.** Pushing `vX.Y.Z` now: validates `package.json` + `server.json` versions match the tag; runs the full build/test/lint/stability gate; slices the matching CHANGELOG entry; publishes to npm with provenance; creates the GitHub Release with `dist/tool-manifest.json` attached. Replaces the old release-published-triggered workflow. Manual surfaces left: MCP Registry republish (interactive OAuth, can't run safely in CI today) and the website edits. See `CONTRIBUTING.md` for the new ritual.
 
-### Added — test coverage
-
-- 39 new tests across 5 surfaces that shipped without coverage in 1.6.0/1.6.1: `buildApplyPlanForIssue` + each of the six apply templates (16), `FunctionInfo.references[]` direct assertions (8), `cross_repo` impact extension (5), `executePlan` multi-change rollback catch-block (2), `projscan_apply_fix` MCP tool round-trip (5), `projscan_workspace_graph file_importers` action (3). Plus 5 regression tests pinning the security/correctness fixes above and 7 unit tests for the new `mapWithConcurrency` helper. Total: **1132 tests pass** (was 1076 at 1.6.0 ship).
-
-### Notes
-
-- No public API changes. `ReviewReport` shape unchanged. MCP tool count still 25.
-- Three perf items deferred to a future minor: taint BFS algorithmic redesign (the 197-flow dogfood explosion needs constraint by import-locality, not pure bare-name lookup), in-process graph cache across MCP tool calls (currently `doctor → impact → coupling` rebuilds the graph 3×), and `searchIndex.ts` posting-driven boost loop. Each needs design discussion + bench numbers, not a mechanical fix.
-- `.projscan-workspace.json` poisoning concern (a non-gitignored workspace file pointing at registered repos that the MCP tool will then scan) is documented but deferred — needs a design call between relocating under `.projscan-cache/`, validating registered paths look like project roots, or prompting before honoring an unfamiliar workspace.
-
 ## [1.6.1] — 2026-05-06
 
 Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pipeline that should have been part of 1.6.0.
@@ -243,14 +196,9 @@ Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pi
 
 - **Tag-triggered Release workflow (`.github/workflows/release.yml`).** Replaces the old `publish.yml` (which fired on `release.published`). Pushing `vX.Y.Z` now: validates `package.json` + `server.json` versions match the tag, runs the full build/test/lint/stability gate, slices the matching CHANGELOG entry, publishes to npm with provenance, and creates the GitHub Release with `dist/tool-manifest.json` attached. Idempotent on re-run via `workflow_dispatch`. Strict-semver gate rejects prerelease tags up front. The MCP Registry republish stays manual (mcp-publisher needs interactive OAuth).
 
-### Notes
+## [1.6.0] — 2026-05-06 — "Operator"
 
-- No public API changes. `ReviewReport.newTaintFlows` semantics are tightened (filter is strict refinement); existing consumers that read the field unchanged.
-- No new dependencies, no MCP tool count change (still 25), no language count change (still 9).
-
-
-
-Theme: **"Operator"** — projscan grows from a *report-and-suggest* tool into a *report-and-act* tool, and learns to look across repository boundaries. Three pillars in one release: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
+projscan grows from a *report-and-suggest* tool into a *report-and-act* tool, and learns to look across repository boundaries. Three pillars: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
 
 ### Added — cross-repo intelligence (Pillar 1)
 
@@ -298,9 +246,7 @@ The diagnose-fix loop closes mechanically for the safe templates.
 
 ### Notes
 
-- All additions pass the stability check. The `newTaintFlows` field on `ReviewReport` is required at the type level but defaults to `[]` for unavailable reports — existing callers that read the report without checking `available` will see an empty array, never a missing field.
 - Taint analysis is intentionally heuristic: it answers "does some call chain reach from a function reading a source to a function calling a sink?" not "is this variable actually tainted at the sink?" False positives are expected for functions that launder taint safely; false negatives happen for flows through `eval`'d strings or plugin loaders. Tune by adding sinks under `.projscanrc.json` `taint.sinks` and silencing rules under `disableRules`.
-- No new runtime dependencies.
 
 ## [1.5.0] — 2026-05-05
 
@@ -369,12 +315,6 @@ A local feedback loop that learns which analyzer rules this specific repo has be
 - **CLI commands: 23 → 24** (added `projscan memory` with three subcommands).
 - **MCP prompt count: 2 → 7.**
 
-### Notes
-
-- The `_cost` sidecar is additive; `max_cost_tokens` is a new optional arg on existing tools; the new prompts are additive in the `prompts/list` response; the new `projscan_memory` tool is additive. All pass the stability check.
-- Project Memory now has both feedback loops in production: stable-rule detection and hotspot acceptance. Per-rule confidence weighting (the third loop) is still on the deferred list — needs more longitudinal data to tune.
-- No new runtime dependencies.
-
 ## [1.4.0] — 2026-05-05
 
 Theme: **"Session"** — durable cross-invocation state so multiple agent calls (or multiple agents) can see what's been touched in the current session without re-querying git.
@@ -394,12 +334,6 @@ Theme: **"Session"** — durable cross-invocation state so multiple agent calls 
 
 - **MCP tool count: 20 → 21** (added `projscan_session`).
 - **CLI commands: 22 → 23** (added `projscan session` with four subcommands).
-
-### Notes
-
-- The session is best-effort: write failures (full disk, permission issues) are swallowed so a transient error never breaks a tool call. Last-write-wins if two MCP servers run against the same repo concurrently.
-- Schema is versioned (`schemaVersion: 1`); future changes will detect and migrate older session files instead of crashing.
-- No new runtime dependencies. All session state lives in `.projscan-cache/session.json`, alongside the existing graph cache.
 
 ## [1.3.0] — 2026-05-05
 
