@@ -272,6 +272,51 @@ export function computeRuleConfidence(memory: ProjectMemory, ruleId: string): Ru
 }
 
 /**
+ * 1.9+ — Project Memory loop #4: per-rule severity drift.
+ *
+ * Confidence (loop #3) asks "does the user fix this?" Drift asks the
+ * separate question "has the user been crying wolf on this rule for
+ * so long that its severity has effectively slipped?"
+ *
+ *   "stable"    — normal. Either the rule has fix activity, or has
+ *                 not surfaced enough times to judge.
+ *   "noisy"     — surfaced in ≥ NOISY_RUN_COUNT runs with a fix-rate
+ *                 below NOISY_FIX_RATE. The user mostly ignores it.
+ *                 Doctors / reviewers should de-emphasize.
+ *   "cry-wolf" — surfaced in ≥ CRY_WOLF_RUN_COUNT runs with ZERO
+ *                 fix activity. Effectively a false-positive class for
+ *                 this repo. The driving agent should treat severity
+ *                 as one level lower than the rule's declared
+ *                 severity (error → warning, warning → info, info → drop).
+ *
+ * Returns "stable" for unknown rules — the absence of signal means we
+ * have no basis to claim drift. The thresholds are conservative to
+ * avoid quieting genuinely-important rules that simply have not had a
+ * chance to be fixed yet.
+ */
+export type SeverityDrift = 'stable' | 'noisy' | 'cry-wolf';
+
+export const CRY_WOLF_RUN_COUNT = 10;
+export const NOISY_RUN_COUNT = 5;
+export const NOISY_FIX_RATE = 0.2;
+
+export function computeSeverityDrift(memory: ProjectMemory, ruleId: string): SeverityDrift {
+  const obs = memory.rules[ruleId];
+  if (!obs) return 'stable';
+  // Suppressed-in-config means the user has *explicitly* silenced the
+  // rule — that's a deliberate signal, not drift. Don't classify it
+  // here; the rule won't fire anyway and double-counting it as
+  // "cry-wolf" inflates the noisy-rules count in the confidence view.
+  if (obs.suppressedInConfig) return 'stable';
+  if (obs.runCount >= CRY_WOLF_RUN_COUNT && obs.fixedCount === 0) return 'cry-wolf';
+  if (obs.runCount >= NOISY_RUN_COUNT) {
+    const fixRate = obs.fixedCount / obs.runCount;
+    if (fixRate < NOISY_FIX_RATE) return 'noisy';
+  }
+  return 'stable';
+}
+
+/**
  * 1.7+ — A simple numeric score in [0, 1] that ranks suggestions by how
  * likely the user is to act on them. Pairs with `computeRuleConfidence`
  * for callers that want a single comparable number for sorting.

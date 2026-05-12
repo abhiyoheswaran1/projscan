@@ -322,4 +322,46 @@ export function reader() {
     const change = r.dependencyChanges[0];
     expect(change.added).toContainEqual({ name: 'axios', version: '^1.0.0', kind: 'dep' });
   });
+
+  it('annotates findings with intent alignment when intent is passed (1.9+)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/auth.ts', `export function login() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    // Add a new file in the auth module — matches the stated intent.
+    await write('src/auth/session.ts', `export function newSession() { return {}; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add session']);
+
+    const r = await computeReview(tmp, {
+      base: 'HEAD~1',
+      head: 'HEAD',
+      intent: 'Add session management to auth',
+    });
+    expect(r.available).toBe(true);
+    expect(r.intent).toBeDefined();
+    expect(r.intent?.action).toBe('feature');
+    expect(r.intent?.scopeTokens).toContain('auth');
+    expect(r.intentAnalysis).toBeDefined();
+    // The new src/auth/session.ts should be expected (feature + auth scope).
+    const newFile = r.changedFiles.find((f) => f.relativePath === 'src/auth/session.ts');
+    expect(newFile?.intentAlignment).toBe('expected');
+    // Summary picks up an intent bullet.
+    expect(r.summary.some((s) => /Intent:/.test(s))).toBe(true);
+    // Verdict-flavoring sanity: verdict is one of the documented values.
+    expect(['ok', 'review', 'block']).toContain(r.verdict);
+  });
+
+  it('omits intent fields when no intent is passed (1.9+ default)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+    const r = await computeReview(tmp, { base: 'HEAD', head: 'HEAD' });
+    expect(r.intent).toBeUndefined();
+    expect(r.intentAnalysis).toBeUndefined();
+  });
 });

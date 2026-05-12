@@ -276,12 +276,17 @@ function computeFanOut(graphFiles: Map<string, GraphFile>): void {
         fn.fanOut = 0;
         continue;
       }
+      // 1.9+ — hoist bareName(fn.name) out of the inner loop. Was
+      // recomputing the string-slice for every callee; on a 50K-file
+      // repo averaging 20 functions × 30 call sites that's ~30M
+      // redundant slices. The bare name is per-function-constant.
+      const selfBare = bareName(fn.name);
       let count = 0;
       const seen = new Set<string>();
       for (const callee of fn.callSites) {
         if (seen.has(callee)) continue;
         seen.add(callee);
-        if (callee === bareName(fn.name)) continue; // self-recursion
+        if (callee === selfBare) continue; // self-recursion
         if (definedNames.has(callee)) count++;
       }
       fn.fanOut = count;

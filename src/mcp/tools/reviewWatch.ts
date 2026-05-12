@@ -34,6 +34,43 @@ import type { McpTool, McpToolContext } from './_shared.js';
  * channel with a `pr_review_error` method instead of `pr_changed`.
  */
 
+interface WatchSnapshot {
+  /** 1.8+ */
+  verdict: string;
+  baseSha: string | null;
+  headSha: string | null;
+  changedFilesCount: number;
+  taintFlowKeys: string[];
+  riskyFunctionKeys: string[];
+  /**
+   * 1.9+ — deepened signature. Each cycle is fingerprinted by its
+   * sorted file list so we can tell newly-introduced cycles apart from
+   * stable ones across ticks.
+   */
+  cycleKeys: string[];
+  /**
+   * 1.9+ — dependency-change fingerprint per (manifest, name, kind).
+   * 'add'/'remove' carry the version; 'bump' carries from->to.
+   * Allows the delta to count adds/removes/bumps separately.
+   */
+  depAdds: string[];
+  depRemoves: string[];
+  depBumps: string[];
+}
+
+interface WatchDelta {
+  /**
+   * 1.9+ — which buckets actually changed since last tick. Lets the
+   * agent decide whether to refetch full data or just react to one
+   * dimension (e.g. only `deps` triggered, so re-run audit not review).
+   */
+  changeKinds: Array<'verdict' | 'baseSha' | 'headSha' | 'changedFiles' | 'cycles' | 'risky' | 'taint' | 'deps'>;
+  cycles: { added: number; removed: number };
+  risky: { added: number; removed: number };
+  taint: { added: number; removed: number };
+  deps: { added: number; removed: number; bumped: number };
+}
+
 interface WatchState {
   watchId: string;
   base: string;
@@ -42,6 +79,8 @@ interface WatchState {
   startedAt: string;
   ticks: number;
   lastSignature: string | null;
+  /** 1.9+ — kept alongside lastSignature so we can compute deltas at notification time. */
+  lastSnapshot: WatchSnapshot | null;
   lastReportAt: string | null;
   /**
    * 1.8+ — guard against concurrent runTick calls from overlapping
@@ -61,7 +100,7 @@ const MAX_INTERVAL_S = 600;
 export const reviewWatchTool: McpTool = {
   name: 'projscan_review_watch',
   description:
-    'Long-running PR review. Polls a base+head ref pair on an interval and emits a notifications/projscan/pr_changed notification whenever the review verdict, SHAs, flow count, or risky-function set changes. Pairs with projscan_review (one-shot) — use this when an agent wants to react to pushes on a PR without re-asking. Actions: start (returns initial review + watchId) / stop / list.',
+    'Long-running PR review. Polls a base+head ref pair on an interval and emits a notifications/projscan/pr_changed notification whenever the review verdict, SHAs, cycle set, dep changes, taint flows, or risky-function set changes. 1.9+: the notification carries a structured `delta` describing exactly which buckets moved (verdict/baseSha/headSha/changedFiles/cycles/risky/taint/deps) and counts of newly-appearing items per bucket, so agents can skip work they do not need. Pairs with projscan_review (one-shot) — use this when an agent wants to react to pushes on a PR without re-asking. Actions: start (returns initial review + watchId) / stop / list.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -116,7 +155,8 @@ async function startWatch(
   // Initial review — synchronous, returned with the response so the agent
   // gets a useful payload right away and can react before the first tick.
   const initial = await computeReview(rootPath, { base, head });
-  const initialSignature = signatureOf(initial);
+  const initialSnapshot = snapshotOf(initial);
+  const initialSignature = signatureOf(initialSnapshot);
 
   if (!context?.registerWatch || !context.notify) {
     // Caller is in a transport without a notify channel (CLI smoke,
@@ -160,6 +200,7 @@ async function startWatch(
     startedAt: new Date().toISOString(),
     ticks: 0,
     lastSignature: initialSignature,
+    lastSnapshot: initialSnapshot,
     lastReportAt: new Date().toISOString(),
     inFlight: false,
   });
@@ -213,9 +254,16 @@ async function runTick(
       return;
     }
 
-    const sig = signatureOf(report);
+    const snapshot = snapshotOf(report);
+    const sig = signatureOf(snapshot);
     if (sig === state.lastSignature) return; // unchanged — silent
+    // 1.9+ — diff against the previous snapshot so the notification
+    // tells the agent *what kind* of change triggered it. Lets the
+    // agent skip work it doesn't need: e.g. dep-only changes don't
+    // need a full review re-read; verdict changes do.
+    const delta = diffSnapshots(state.lastSnapshot, snapshot);
     state.lastSignature = sig;
+    state.lastSnapshot = snapshot;
     state.lastReportAt = new Date().toISOString();
     context.notify?.('notifications/projscan/pr_changed', {
       watchId,
@@ -223,6 +271,7 @@ async function runTick(
       head: report.head?.ref ?? head ?? null,
       baseSha: report.base?.resolvedSha ?? null,
       headSha: report.head?.resolvedSha ?? null,
+      delta,
       report,
     });
   } finally {
@@ -272,21 +321,131 @@ function listWatches(): unknown {
 }
 
 /**
- * A change-detection signature: tracks the bits of the review the
- * agent cares about (verdict, SHAs, flow / risky-fn counts and names).
- * Two ticks with identical signatures are silent; a delta on any of
- * these triggers a `pr_changed` notification with the full report.
+ * 1.9+ — Capture the change-detection-relevant slice of a review.
+ * Replaces 1.8's `signatureOf(report) → string` so we can both compare
+ * ticks for equality AND compute a structured delta when they differ.
+ *
+ * Cycles use a sorted-files fingerprint, dependency changes are split
+ * into adds / removes / bumps. Risky-function keys carry both file and
+ * name so renames in unchanged files surface, and so two functions
+ * with the same anonymous name in different files don't collapse.
  */
-function signatureOf(report: ReviewReport): string {
-  const parts: string[] = [];
-  parts.push(report.verdict ?? '');
-  parts.push(report.base?.resolvedSha ?? '');
-  parts.push(report.head?.resolvedSha ?? '');
-  parts.push(String(report.changedFiles?.length ?? 0));
-  parts.push(String(report.newTaintFlows?.length ?? 0));
-  const risky = (report.riskyFunctions ?? []).map((f) => f.name).sort().join(',');
-  parts.push(risky);
-  return parts.join('|');
+function snapshotOf(report: ReviewReport): WatchSnapshot {
+  const cycleKeys = (report.newCycles ?? [])
+    .map((c) => [...c.files].sort().join('|'))
+    .sort();
+  const taintFlowKeys = (report.newTaintFlows ?? [])
+    .map((f) => `${f.sourceFn}::${f.sinkFn}`)
+    .sort();
+  const riskyFunctionKeys = (report.riskyFunctions ?? [])
+    .map((f) => `${f.file}::${f.name}`)
+    .sort();
+  const depAdds: string[] = [];
+  const depRemoves: string[] = [];
+  const depBumps: string[] = [];
+  for (const change of report.dependencyChanges ?? []) {
+    for (const a of change.added) {
+      depAdds.push(`${change.manifestFile}::${a.name}::${a.kind}::${a.version}`);
+    }
+    for (const r of change.removed) {
+      depRemoves.push(`${change.manifestFile}::${r.name}::${r.kind}::${r.version}`);
+    }
+    for (const b of change.bumped) {
+      depBumps.push(`${change.manifestFile}::${b.name}::${b.kind}::${b.from}->${b.to}`);
+    }
+  }
+  depAdds.sort();
+  depRemoves.sort();
+  depBumps.sort();
+  return {
+    verdict: report.verdict ?? '',
+    baseSha: report.base?.resolvedSha ?? null,
+    headSha: report.head?.resolvedSha ?? null,
+    changedFilesCount: report.changedFiles?.length ?? 0,
+    taintFlowKeys,
+    riskyFunctionKeys,
+    cycleKeys,
+    depAdds,
+    depRemoves,
+    depBumps,
+  };
+}
+
+/**
+ * Serialize a snapshot into a stable comparison key. Used only for
+ * the fast "did anything change?" check — the structured delta is
+ * computed separately via diffSnapshots.
+ */
+function signatureOf(snapshot: WatchSnapshot): string {
+  return JSON.stringify(snapshot);
+}
+
+/**
+ * 1.9+ — Structured diff between two watch snapshots. Counts items
+ * that moved into or out of each bucket, and records which buckets
+ * had any change at all. Caller embeds this in the `delta` field of
+ * the `notifications/projscan/pr_changed` payload so agents can react
+ * to a specific dimension without re-reading the full report.
+ *
+ * `prev` may be null for the very first emitted notification — in
+ * that case every non-empty bucket is reported as an "added" delta
+ * against an empty baseline.
+ */
+function diffSnapshots(prev: WatchSnapshot | null, next: WatchSnapshot): WatchDelta {
+  const prevCycles = new Set(prev?.cycleKeys ?? []);
+  const nextCycles = new Set(next.cycleKeys);
+  const prevTaint = new Set(prev?.taintFlowKeys ?? []);
+  const nextTaint = new Set(next.taintFlowKeys);
+  const prevRisky = new Set(prev?.riskyFunctionKeys ?? []);
+  const nextRisky = new Set(next.riskyFunctionKeys);
+  const prevDepAdds = new Set(prev?.depAdds ?? []);
+  const nextDepAdds = new Set(next.depAdds);
+  const prevDepRemoves = new Set(prev?.depRemoves ?? []);
+  const nextDepRemoves = new Set(next.depRemoves);
+  const prevDepBumps = new Set(prev?.depBumps ?? []);
+  const nextDepBumps = new Set(next.depBumps);
+
+  const cycles = setDiffCounts(prevCycles, nextCycles);
+  const taint = setDiffCounts(prevTaint, nextTaint);
+  const risky = setDiffCounts(prevRisky, nextRisky);
+  const depAddsDiff = setDiffCounts(prevDepAdds, nextDepAdds);
+  const depRemovesDiff = setDiffCounts(prevDepRemoves, nextDepRemoves);
+  const depBumpsDiff = setDiffCounts(prevDepBumps, nextDepBumps);
+  // Each dep-bucket counter reports records that NEWLY appeared. We
+  // intentionally don't roll up reverts (records that vanished from a
+  // bucket since last tick); they fire `changeKinds.push('deps')` so
+  // the agent knows a dep-bucket moved, but counting them would
+  // conflate "PR newly adds foo" with "PR no longer removes foo",
+  // which mean different things to the reviewer.
+  const deps = {
+    added: depAddsDiff.added,
+    removed: depRemovesDiff.added,
+    bumped: depBumpsDiff.added,
+  };
+  const depsChanged =
+    depAddsDiff.added + depAddsDiff.removed +
+    depRemovesDiff.added + depRemovesDiff.removed +
+    depBumpsDiff.added + depBumpsDiff.removed > 0;
+
+  const changeKinds: WatchDelta['changeKinds'] = [];
+  if (!prev || prev.verdict !== next.verdict) changeKinds.push('verdict');
+  if (!prev || prev.baseSha !== next.baseSha) changeKinds.push('baseSha');
+  if (!prev || prev.headSha !== next.headSha) changeKinds.push('headSha');
+  if (!prev || prev.changedFilesCount !== next.changedFilesCount) changeKinds.push('changedFiles');
+  if (cycles.added + cycles.removed > 0) changeKinds.push('cycles');
+  if (risky.added + risky.removed > 0) changeKinds.push('risky');
+  if (taint.added + taint.removed > 0) changeKinds.push('taint');
+  if (depsChanged) changeKinds.push('deps');
+
+  return { changeKinds, cycles, risky, taint, deps };
+}
+
+function setDiffCounts(prev: Set<string>, next: Set<string>): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const k of next) if (!prev.has(k)) added++;
+  for (const k of prev) if (!next.has(k)) removed++;
+  return { added, removed };
 }
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -301,3 +460,16 @@ function clamp(n: number, lo: number, hi: number): number {
 export function __resetReviewWatchesForTests(): void {
   watches.clear();
 }
+
+/**
+ * Test-only exports: snapshot + diff helpers for the 1.9 signature
+ * deepening. Keeping these accessible avoids over-loading the public
+ * tool surface with internals while still letting tests assert on the
+ * specific shape and per-bucket counts the agent will see.
+ */
+export const __internal = {
+  snapshotOf,
+  signatureOf,
+  diffSnapshots,
+};
+export type { WatchSnapshot, WatchDelta };

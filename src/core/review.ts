@@ -9,6 +9,7 @@ import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { computeTaint } from './taint.js';
+import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { loadConfig } from '../utils/config.js';
 import type {
   ReviewCycle,
@@ -25,6 +26,14 @@ export interface ReviewOptions {
   base?: string;
   /** Head ref. Default: HEAD. */
   head?: string;
+  /**
+   * 1.9+ — optional free-text PR description. When provided, projscan
+   * parses it into an action type + scope tokens, classifies each
+   * finding as expected / unexpected / out-of-scope, and surfaces an
+   * `intent` echo plus `intentAnalysis` summary in the result. Does
+   * NOT affect the verdict — verdict stays structural.
+   */
+  intent?: string;
 }
 
 const HIGH_CC_THRESHOLD = 10;
@@ -178,7 +187,7 @@ export async function computeReview(
     newTaintFlows,
   );
 
-  return {
+  const report: ReviewReport = {
     available: true,
     base: { ref: baseRef, resolvedSha: baseSha },
     head: { ref: headRef, resolvedSha: headSha },
@@ -191,6 +200,27 @@ export async function computeReview(
     verdict,
     summary,
   };
+
+  // 1.9+ — intent grounding. Parse the agent-supplied description,
+  // annotate each finding with an alignment label, and append a
+  // small intent summary to the verdict bullets. Does NOT change the
+  // verdict — verdict stays structural.
+  const intent = parseIntent(options.intent);
+  if (intent) {
+    const analysis = annotateReviewWithIntent(report, intent);
+    report.intent = {
+      raw: intent.raw,
+      action: intent.action,
+      scopeTokens: intent.scopeTokens,
+    };
+    report.intentAnalysis = {
+      totals: analysis.totals,
+      notable: analysis.notable,
+    };
+    appendIntentToSummary(report.summary, analysis);
+  }
+
+  return report;
 }
 
 async function computeNewTaintFlows(
@@ -650,15 +680,45 @@ interface GitResult {
   stderr: string;
 }
 
+/**
+ * 1.9+ — Default cap on any single `git` invocation made from the
+ * review pipeline (worktree add/remove, rev-parse, etc.). Without it
+ * a hung git operation (credential prompt, blocking hook, dead remote)
+ * would hang the MCP server until kill. Mirror of prDiff.ts's same
+ * default; kept as a sibling rather than shared because runGit here
+ * is intentionally minimal and `prDiff.runGit` carries extra
+ * timeoutMs override plumbing that this caller doesn't need.
+ */
+const DEFAULT_GIT_TIMEOUT_MS = 30_000;
+
 function runGit(cwd: string, args: string[]): Promise<GitResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn('git', args, { cwd, env: process.env });
+    // Detach stdin so credential prompts / interactive hooks see EOF
+    // and exit instead of waiting forever.
+    const child = spawn('git', args, { cwd, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill('SIGKILL');
+      reject(new Error(`git command timed out after ${DEFAULT_GIT_TIMEOUT_MS}ms`));
+    }, DEFAULT_GIT_TIMEOUT_MS);
     child.stdout.on('data', (d) => (stdout += d.toString()));
     child.stderr.on('data', (d) => (stderr += d.toString()));
-    child.on('error', reject);
-    child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
+    child.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code: code ?? 1, stdout, stderr });
+    });
   });
 }
 

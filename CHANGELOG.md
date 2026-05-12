@@ -4,6 +4,92 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] — 2026-05-12 — "Intent + Polish"
+
+A combined-scope release. Headline: **intent-grounded review** — agents can hand projscan a free-text PR description and get each finding labelled expected / unexpected / out-of-scope against that intent, no LLM involved. Plus the deferred 1.9 polish items (review_watch signature deepening, Project Memory loop #4, cross-arch CI validation), and a platform-wide bug-hunt that fixed nine real issues (some pre-existing, all surfaced by this release's two-way agent review).
+
+The agent-substrate arc that has run through 1.4–1.8 is intentionally winding down here. 1.10 is the platform-commitment release (plugin API preview, 2.0 design RFC).
+
+### Added — intent-grounded review (`projscan_review` + `intent`)
+
+- `projscan_review` accepts a new optional **`intent`** string argument. projscan parses it rule-driven — no LLM — into:
+  - an **action type** (`feature` / `fix` / `refactor` / `perf` / `test` / `docs` / `chore` / `remove` / `unknown`), and
+  - a list of **scope tokens** (identifiers, file paths, module names) extracted from the prose with English stopwords + generic path components (`src`, `lib`, `dist`, ...) + action keywords filtered out.
+- Every changed file, risky function, new cycle, new taint flow, and dependency-change record gets an **`intentAlignment`** field: `expected` (in scope + typical for the action), `unexpected` (in scope but atypical — e.g. docs PR that introduces a new taint flow), `out-of-scope` (outside the area the agent named), or `unknown` (action could not be classified).
+- The report carries an **`intent` echo** (raw + parsed action + scope tokens) and an **`intentAnalysis`** block with per-alignment totals and up to 5 "notable" findings biased toward unexpected.
+- The verdict (`ok` / `review` / `block`) is **deliberately unaffected** by intent — verdict stays structural. Intent is an extra narration layer on top so the agent can say "you intended X, you also got Y."
+- **Path-boundary scope matching.** Token "auth" matches `src/auth/index.ts` and `use_auth_hook` (boundary on each side) but NOT `authority/database.ts` (no boundary). A naive substring match would have declared nearly every file in-scope.
+- **Type-rooted intents**: `docs` + a docs path (README, `.md`, `docs/**`) is intrinsically in scope even without an explicit token hit. Same for `test` + a test path. Agents don't have to enumerate every file.
+- The summary array picks up one or two extra bullets when intent is set: `Intent: "feature" (scope: auth, session).` plus a `N finding(s) unexpected for this intent — e.g. …` when applicable.
+- **Pathological-input cap**: a 10MB intent argument used to force ~50 regex passes over megabytes of input (catastrophic backtracking risk). Now capped at 8K chars before any work runs.
+- New module `src/core/intent.ts` (rule-driven parsing + classification). 27 unit tests + an end-to-end integration test against the real review pipeline.
+
+### Added — Project Memory loop #4: per-rule severity drift
+
+- New `computeSeverityDrift(memory, ruleId)` returning `'stable' | 'noisy' | 'cry-wolf'`:
+  - **cry-wolf**: rule surfaced ≥ 10 runs with zero fixes. The user effectively classifies it as a false positive for this repo. Driving agents should drop the rule's severity one level (error → warning, warning → info, info → drop).
+  - **noisy**: rule surfaced ≥ 5 runs with fix-rate < 0.2. Mostly ignored. De-emphasize.
+  - **stable**: any other case.
+- Surfaced via `projscan_memory action: confidence` — each tracked rule now carries a `drift` field and the response includes a `driftCounts` summary alongside the existing `counts`.
+- Suppressed-in-config rules are explicitly excluded — `.projscanrc disableRules` is a deliberate signal, not drift. Counting them as cry-wolf would inflate the noisy-rules count needlessly.
+- Loop #3 (confidence) asks "does the user fix this?"; loop #4 asks the separate question "has the user been crying wolf on this rule for so long that its severity has effectively slipped?"
+
+### Added — `projscan_review_watch` signature deepening
+
+- The change-detection signature was previously a flat string of verdict + SHAs + counts. Replaced with a structured **`WatchSnapshot`** that fingerprints cycles (sorted file lists), risky functions (file + name keys), taint flows (source-fn::sink-fn keys), and dependency changes split into adds / removes / bumps.
+- The `notifications/projscan/pr_changed` payload now carries a **`delta`** field with:
+  - `changeKinds`: which buckets actually moved (`verdict` / `baseSha` / `headSha` / `changedFiles` / `cycles` / `risky` / `taint` / `deps`)
+  - per-bucket counts: `cycles: { added, removed }`, `risky: { added, removed }`, `taint: { added, removed }`, `deps: { added, removed, bumped }`
+- Lets agents react to a specific dimension without re-reading the full report. A dep-only change can trigger a `projscan_audit` re-run; a verdict change can short-circuit to "rebuild the review summary."
+- Bucket semantics: each counter reports records that NEWLY appeared. Reverts (records that vanished) trigger `changeKinds.push('deps')` so the agent knows something moved, but they don't increment counters — counting them would conflate "PR newly adds foo" with "PR no longer removes foo," which mean different things to a reviewer.
+
+### Added — cross-arch CI (macOS leg)
+
+- CI matrix now includes `macos-latest` on Node 22 alongside `ubuntu-latest` × Node {20, 22, 24}. Catches the wasi-sdk + tree-sitter wasm build chain differences across darwin and linux without bloating the matrix (the macOS leg exists to validate the grammar-build chain, which one Node version exercises as well as three).
+
+### Fixed (platform-wide bug hunt)
+
+A two-way parallel multi-agent bug hunt surfaced fixes; the medium- and high-risk ones are documented in **Notes** below. Six were safe to apply now:
+
+- **`projscan_doctor` no longer crashes with EMFILE on large repos.** `securityCheck.ts` was using unbounded `Promise.all` over filtered files; a 50K-file repo opened 50K concurrent `fs.readFile` and tripped macOS's default 256 ulimit. Routed through the existing `mapWithConcurrency(128)` helper.
+- **`git` invocations now have a 30s default timeout.** Previously a hung git operation (credential prompt against a dead remote, blocking git hook, slow NFS) could hang the MCP server forever. Added `DEFAULT_GIT_TIMEOUT_MS` to both `prDiff.runGit` and `review.runGit`. Stdin is now also detached (`stdio: ['ignore', 'pipe', 'pipe']`) so hooks/prompts see EOF and exit instead of waiting.
+- **Watcher noise from atomic writes.** The `shouldSkip` filter now matches `.projscan-tmp-` so `atomicWriteFile` siblings don't generate redundant rename/create/unlink events. Previously every `projscan_apply_fix` write in the repo body fired three watcher events per file.
+- **Rollback record is now atomic.** The recovery oracle (`.projscan-cache/rollbacks/<id>.json`) was being written with non-atomic `fs.writeFile`. A crash mid-write left corrupt JSON that `rollback` parsed as null, stranding the user with applied changes and no way to revert. Now uses `atomicWriteFile` like the rest of the apply pipeline.
+- **`repositoryScanner.totalDirectories` off-by-one on some walkers.** Empty-string `directory` keys (from file walkers that emit `''` instead of `'.'` for root files) inflated the count by one. Now filtered.
+- **`computeFanOut` perf hoist.** The inner-loop `bareName(fn.name)` was re-computed per callee — on a 50K-file repo with average fan-out, ~30M redundant string-slice ops per scan. Hoisted to per-function constant.
+
+### Changed
+
+- `ReviewReport` type gains optional `intent` and `intentAnalysis` fields. Absent when no `intent` arg was passed — strict addition, no break.
+- `ReviewFile` / `ReviewFunction` / `ReviewCycle` / `ReviewTaintFlow` / `ReviewDependencyChange` each gain an optional `intentAlignment` field. Same — absent when no intent.
+- `reviewWatchTool` description updated to mention the deepened signature + `delta` payload.
+- `memoryTool` description updated to mention the new `drift` field surfaced in `confidence` action.
+
+### Notes / honest deferrals
+
+- **Intent parsing is heuristic.** A PR titled "refactor: add caching" mixes two action keywords; the parser scores them and picks the dominant. This is intentional — we'd rather sometimes label a finding "unknown" or "expected" than embed an LLM. The classifier is conservative: when in doubt, expected wins, so honest PRs aren't false-flagged. Edge cases that produce surprising classifications are tracked in `tests/core/intent.test.ts`.
+- **No live cost-summary streaming yet.** The original 1.9 plan had it; bumped to 1.10 to keep this release focused. Snapshot mode is still there in `projscan_cost_summary`.
+- **No "intent affects verdict" mode.** Some users will ask for it. Deferred deliberately — the verdict is the structural reality, and we don't want a chatty PR description to either hide a real risk or trigger a false block. If demand materializes, a future release can add a separate `intentStrictMode` flag rather than entangling the two signals.
+- **Bug-hunt deferrals (documented, not fixed in 1.9):**
+  - `applyFix.ts` rollback parent-directory handling: forward `op:create` does `mkdir -p` of parent dirs; rollback unlinks the file but doesn't prune now-empty parent dirs. And `op:delete` rollback recreates the file via `atomicWriteFile` without first re-creating parent dirs that the forward delete may have left intact (the delete only removed the file, not its dirs). Both are edge cases; the apply pipeline's transactional tests cover the common paths. Fix planned for 1.10 with full transactional-rollback test coverage.
+  - `incrementallyUpdateGraph` context staleness: `Promise.all`-based parallel updates compute their language-adapter contexts (monorepo package roots, etc.) from a pre-update graph view. The graph reaches consistency on the next batch; first batch may use slightly-stale context. Eventually consistent — no data loss — but a single-batch latency hazard for monorepo edits. Fix is straightforward (compute contexts after the parse pass) but touches the incremental update flow; defer to 1.10.
+  - `changedFiles.ts` `maxBuffer` truncation: a `git diff --name-only` against a base ref that diverged by 100K+ files would exceed the 10MB buffer. The fallthrough error currently reads as "no usable base ref found" rather than the underlying truncation reason. Plan: detect `ERR_CHILD_PROCESS_STDIO_MAXBUFFER` and surface a specific reason, or stream stdout.
+  - `taint.ts` frontier-memory cap: `MAX_DEPTH = 12` bounds path length, but no per-step frontier cap. Wide-fan-out graphs (Java/TS with prevalent `get`/`set`/`toString` bare-name collisions) can balloon memory at depth 10+. Defer per-step cap to 1.10.
+  - `watcher.ts` close-during-flush: an in-flight `flush()` continues to call `options.onChange` after `close()` has been invoked. No data corruption — the closed downstream just sees one final event. Fix: await `inFlight` in `close()`.
+
+### Stable surface
+
+- Tool count: **27** (unchanged).
+- Language coverage: **11** (unchanged).
+- New optional `intent` arg added to `projscan_review`; new optional `drift` field added to memory tool output. Both additive.
+- Tests: 1216 → **1261** (+45).
+- macOS CI runner enabled.
+
+### Upgrading
+
+- All changes are strict additions. Agents that don't pass `intent` get exactly the same `ReviewReport` shape they got in 1.8. Agents that don't read `delta` from the watch notification get exactly the same other fields.
+- Recommended adoption: have your agent extract the PR title/description (e.g., from `gh pr view`) and pass it as `intent`. The classifier handles `feat:` / `fix:` / `docs:` conventional-commits prefixes naturally.
+
 ## [1.8.1] — 2026-05-08
 
 Documentation patch. Surfaces the MCP clients we already work with but didn't document.

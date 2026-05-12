@@ -612,6 +612,8 @@ export interface ReviewFile {
   importsAdded: number;
   /** Number of imports removed. */
   importsRemoved: number;
+  /** 1.9+ — set when `projscan_review` was called with an `intent` arg. Absent otherwise. */
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
 /**
@@ -627,6 +629,8 @@ export interface ReviewCycle {
    * file added to an existing cycle.
    */
   classification: 'new' | 'expanded';
+  /** 1.9+ — set when `projscan_review` was called with an `intent` arg. Absent otherwise. */
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
 /**
@@ -643,6 +647,8 @@ export interface ReviewFunction {
   baseCc: number | null;
   /** Why this function shows up. */
   reason: 'added' | 'jumped' | 'crossed-threshold';
+  /** 1.9+ — set when `projscan_review` was called with an `intent` arg. Absent otherwise. */
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
 /**
@@ -660,6 +666,8 @@ export interface ReviewTaintFlow {
   pathLength: number;
   /** First and last files in the path; same value when length = 1. */
   files: string[];
+  /** 1.9+ — set when `projscan_review` was called with an `intent` arg. Absent otherwise. */
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
 /** Workspace-package-scoped dependency change. Aggregates root + workspaces. */
@@ -670,6 +678,8 @@ export interface ReviewDependencyChange {
   added: Array<{ name: string; version: string; kind: 'dep' | 'dev' }>;
   removed: Array<{ name: string; version: string; kind: 'dep' | 'dev' }>;
   bumped: Array<{ name: string; from: string; to: string; kind: 'dep' | 'dev' }>;
+  /** 1.9+ — set when `projscan_review` was called with an `intent` arg. Absent otherwise. */
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
 /**
@@ -712,6 +722,31 @@ export interface ReviewReport {
    * report is returned without budget shaping.
    */
   tier?: ReviewTier;
+  /**
+   * 1.9+ — the parsed intent the agent passed (if any). Echo of the
+   * raw string + the parser's classified action + extracted scope
+   * tokens. Absent when `intent` arg wasn't provided.
+   */
+  intent?: {
+    raw: string;
+    action: 'feature' | 'fix' | 'refactor' | 'perf' | 'test' | 'docs' | 'chore' | 'remove' | 'unknown';
+    scopeTokens: string[];
+  };
+  /**
+   * 1.9+ — per-alignment totals across all findings + a small sample
+   * of "notable" (unexpected / out-of-scope) findings. Absent when
+   * no intent was provided. Verdict is NOT affected by intent —
+   * verdict stays structural.
+   */
+  intentAnalysis?: {
+    totals: Record<'expected' | 'unexpected' | 'out-of-scope' | 'unknown', number>;
+    notable: Array<{
+      kind: 'file' | 'function' | 'cycle' | 'taint' | 'dependency';
+      label: string;
+      alignment: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
+      reason: string;
+    }>;
+  };
 }
 
 // === Impact / Reachability (0.15) ===
