@@ -15,6 +15,7 @@ import { check as pythonLinterCheck } from '../analyzers/pythonLinterCheck.js';
 import { check as pythonDependencyRiskCheck } from '../analyzers/pythonDependencyRiskCheck.js';
 import { check as pythonUnusedDependencyCheck } from '../analyzers/pythonUnusedDependencyCheck.js';
 import { loadMemory, recordRun, saveMemory } from './memory.js';
+import { loadPlugins, runAnalyzerPlugins, pluginsEnabled } from './plugins.js';
 
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
 
@@ -44,6 +45,18 @@ const checkers: Checker[] = [
 export async function collectIssues(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
   const results = await Promise.all(checkers.map((check) => check(rootPath, files)));
   const issues = results.flat();
+
+  // 1.10+ — fold in issues from loaded analyzer plugins. No-op unless
+  // PROJSCAN_PLUGINS_PREVIEW=1 is set; loadPlugins() short-circuits to []
+  // when the env flag is off, so users who haven't opted into the preview
+  // pay zero cost.
+  if (pluginsEnabled()) {
+    const plugins = await loadPlugins(rootPath);
+    if (plugins.length > 0) {
+      const pluginIssues = await runAnalyzerPlugins(plugins, rootPath, files);
+      issues.push(...pluginIssues);
+    }
+  }
 
   // Sort by severity: error > warning > info
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };

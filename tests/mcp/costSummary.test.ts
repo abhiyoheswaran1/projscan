@@ -140,4 +140,121 @@ describe('projscan_cost_summary', () => {
       expect((result.topSpenders as unknown[]).length).toBeGreaterThan(0);
     });
   });
+
+  describe('live cost-summary streaming (1.10+)', () => {
+    function mockContext() {
+      const notifications: Array<{ method: string; params: Record<string, unknown> }> = [];
+      const registered = new Map<string, () => void>();
+      let counter = 0;
+      return {
+        notifications,
+        registered,
+        ctx: {
+          notify: (method: string, params: Record<string, unknown>) => {
+            notifications.push({ method, params });
+            return true;
+          },
+          registerWatch: (cancel: () => void) => {
+            const id = `stream-${++counter}`;
+            registered.set(id, cancel);
+            return id;
+          },
+          unregisterWatch: (id: string) => {
+            const cancel = registered.get(id);
+            if (!cancel) return false;
+            cancel();
+            registered.delete(id);
+            return true;
+          },
+        },
+      };
+    }
+
+    it('returns registered:false when no notify channel is available', async () => {
+      await withTempRepo(async (root) => {
+        const result = (await costSummaryTool.handler(
+          { action: 'start_stream' },
+          root,
+        )) as Record<string, unknown>;
+        expect(result.registered).toBe(false);
+        expect(result.streamId).toBeNull();
+      });
+    });
+
+    it('returns a streamId and baseline aggregates on start_stream', async () => {
+      await withTempRepo(async (root) => {
+        await plantSession(root, [
+          { kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 4000 } },
+          { kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 5000 } },
+        ]);
+        const { ctx } = mockContext();
+        const result = (await costSummaryTool.handler(
+          { action: 'start_stream', interval_seconds: 2 },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        expect(result.registered).toBe(true);
+        expect(typeof result.streamId).toBe('string');
+        expect(result.intervalSeconds).toBe(2);
+        expect((result.baseline as Record<string, number>).totalCalls).toBe(2);
+        expect((result.baseline as Record<string, number>).totalEstimatedTokens).toBe(9000);
+        // Stop the stream so the dangling timer doesn't keep the test alive.
+        await costSummaryTool.handler({ action: 'stop_stream', stream_id: result.streamId }, root, ctx);
+      });
+    });
+
+    it('list_streams enumerates active streams; stop_stream cancels by id', async () => {
+      await withTempRepo(async (root) => {
+        const { ctx } = mockContext();
+        const start = (await costSummaryTool.handler(
+          { action: 'start_stream', interval_seconds: 2 },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        const list1 = (await costSummaryTool.handler(
+          { action: 'list_streams' },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        expect((list1.streams as unknown[]).length).toBe(1);
+
+        const stop = (await costSummaryTool.handler(
+          { action: 'stop_stream', stream_id: start.streamId },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        expect(stop.cancelled).toBe(true);
+
+        const list2 = (await costSummaryTool.handler(
+          { action: 'list_streams' },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        expect((list2.streams as unknown[]).length).toBe(0);
+      });
+    });
+
+    it('clamps interval_seconds below the minimum', async () => {
+      await withTempRepo(async (root) => {
+        const { ctx } = mockContext();
+        const result = (await costSummaryTool.handler(
+          { action: 'start_stream', interval_seconds: 0.1 },
+          root,
+          ctx,
+        )) as Record<string, unknown>;
+        // MIN_STREAM_INTERVAL_S = 2
+        expect(result.intervalSeconds).toBe(2);
+        await costSummaryTool.handler({ action: 'stop_stream', stream_id: result.streamId }, root, ctx);
+      });
+    });
+
+    it('rejects unknown action with an error', async () => {
+      await withTempRepo(async (root) => {
+        const { ctx } = mockContext();
+        await expect(
+          costSummaryTool.handler({ action: 'totally-not-a-thing' }, root, ctx),
+        ).rejects.toThrow(/Unknown action/);
+      });
+    });
+  });
 });

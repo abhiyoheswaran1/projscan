@@ -338,4 +338,85 @@ describe('executePlan', () => {
       expect(undo.reason).toMatch(/No rollback record/);
     });
   });
+
+  describe('rollback parent-dir handling (1.10+)', () => {
+    it('rollback of create prunes empty parent dirs it created', async () => {
+      // The forward op:create did `mkdir -p` of three nested dirs. The
+      // unlink alone leaves the now-empty dirs orphaned in the repo — a
+      // pre-1.10 rollback was non-symmetric. The rollback should remove
+      // them, deepest-first.
+      const plan: ApplyPlan = {
+        summary: 'create nested',
+        changes: [{ path: 'a/b/c/file.txt', op: 'create', content: 'hi' }],
+      };
+      const applied = await executePlan(tmp, plan);
+      expect(applied.ok).toBe(true);
+      expect(applied.changes[0].createdParentDirs).toEqual(['a/b/c', 'a/b', 'a']);
+      expect(await exists('a/b/c/file.txt')).toBe(true);
+
+      await rollback(tmp, applied.rollbackId!);
+      expect(await exists('a/b/c/file.txt')).toBe(false);
+      expect(await exists('a/b/c')).toBe(false);
+      expect(await exists('a/b')).toBe(false);
+      expect(await exists('a')).toBe(false);
+    });
+
+    it('rollback of create preserves dirs that already existed pre-apply', async () => {
+      // `a/` existed before apply; only `a/b/c` were created. Rollback
+      // should leave `a/` behind.
+      await fs.mkdir(path.join(tmp, 'a'));
+      const plan: ApplyPlan = {
+        summary: 'create deeper',
+        changes: [{ path: 'a/b/c/file.txt', op: 'create', content: 'hi' }],
+      };
+      const applied = await executePlan(tmp, plan);
+      expect(applied.changes[0].createdParentDirs).toEqual(['a/b/c', 'a/b']);
+
+      await rollback(tmp, applied.rollbackId!);
+      expect(await exists('a/b')).toBe(false);
+      expect(await exists('a')).toBe(true);
+    });
+
+    it('rollback of create skips dirs that became non-empty post-apply', async () => {
+      // After the apply, the user drops an unrelated sibling into `a/b`.
+      // Rollback should remove `a/b/c` (still empty) but not `a/b` (now
+      // contains sibling.txt) and not `a` (transitively still has b).
+      const plan: ApplyPlan = {
+        summary: 'create nested',
+        changes: [{ path: 'a/b/c/file.txt', op: 'create', content: 'hi' }],
+      };
+      const applied = await executePlan(tmp, plan);
+      await fs.writeFile(path.join(tmp, 'a', 'b', 'sibling.txt'), 'unrelated');
+
+      await rollback(tmp, applied.rollbackId!);
+      expect(await exists('a/b/c/file.txt')).toBe(false);
+      expect(await exists('a/b/c')).toBe(false);
+      expect(await exists('a/b/sibling.txt')).toBe(true);
+      expect(await exists('a/b')).toBe(true);
+      expect(await exists('a')).toBe(true);
+    });
+
+    it('rollback of delete re-creates parent dirs that were pruned externally', async () => {
+      // Forward op:delete only removed the file. A separate process
+      // (user, cleanup script, IDE) then pruned the now-empty parent
+      // dir. Pre-1.10, rollback's atomicWrite ENOENT'd on the missing
+      // dir. Now we mkdir -p before re-creating.
+      await fs.mkdir(path.join(tmp, 'doomed'), { recursive: true });
+      await fs.writeFile(path.join(tmp, 'doomed', 'gone.txt'), 'bye');
+      const plan: ApplyPlan = {
+        summary: 'delete it',
+        changes: [{ path: 'doomed/gone.txt', op: 'delete' }],
+      };
+      const applied = await executePlan(tmp, plan);
+      expect(await exists('doomed/gone.txt')).toBe(false);
+      // Simulate external prune of the now-empty parent.
+      await fs.rmdir(path.join(tmp, 'doomed'));
+      expect(await exists('doomed')).toBe(false);
+
+      const undo = await rollback(tmp, applied.rollbackId!);
+      expect(undo.ok).toBe(true);
+      expect(await exists('doomed')).toBe(true);
+      expect(await read('doomed/gone.txt')).toBe('bye');
+    });
+  });
 });

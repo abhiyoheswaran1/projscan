@@ -178,4 +178,68 @@ export function customDangerousSink(v: string | undefined) { return v; }
     const reaching = report.flows.find((f) => f.sourceFn === 'f0' && f.sinkFn === 'f11');
     expect(reaching).toBeDefined();
   });
+
+  it('caps the BFS frontier per step and surfaces the source as truncated (1.10+)', () => {
+    // Construct a wide-fan-out graph directly: one source function calls
+    // a bare-name `helper`, and 6000 same-named `helper` functions exist
+    // in the graph. Each BFS step would otherwise resolve every bare-name
+    // callee to every same-named candidate, exploding the frontier. With
+    // MAX_FRONTIER_PER_STEP = 5000, the BFS aborts after pushing 5000
+    // candidates and the source is surfaced in `truncatedSources`.
+    const files = new Map<string, import('../../src/core/codeGraph.js').GraphFile>();
+    files.set('entry.ts', {
+      relativePath: 'entry.ts',
+      imports: [],
+      exports: [],
+      callSites: ['helper'],
+      lineCount: 1,
+      cyclomaticComplexity: 1,
+      mtimeMs: 0,
+      parseOk: true,
+      functions: [
+        {
+          name: 'entry',
+          line: 1,
+          endLine: 1,
+          cyclomaticComplexity: 1,
+          callSites: ['helper'],
+          references: ['env'],
+        },
+      ],
+    });
+    const N = 6000;
+    for (let i = 0; i < N; i++) {
+      files.set(`h${i}.ts`, {
+        relativePath: `h${i}.ts`,
+        imports: [],
+        exports: [],
+        callSites: [],
+        lineCount: 1,
+        cyclomaticComplexity: 1,
+        mtimeMs: 0,
+        parseOk: true,
+        functions: [
+          {
+            name: 'helper',
+            line: 1,
+            endLine: 1,
+            cyclomaticComplexity: 1,
+            callSites: [],
+            references: [],
+          },
+        ],
+      });
+    }
+    const graph = {
+      files,
+      packageImporters: new Map(),
+      localImporters: new Map(),
+      symbolDefs: new Map(),
+      scannedFiles: files.size,
+    };
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+    expect(report.available).toBe(true);
+    expect(report.truncated).toBe(true);
+    expect(report.truncatedSources).toContain('entry');
+  });
 });

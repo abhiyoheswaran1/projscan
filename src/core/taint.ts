@@ -227,6 +227,14 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
   // shell-exec sink. 12 catches those without exploding fan-out
   // memory in the BFS frontier.
   const MAX_DEPTH = 12;
+  // 1.10+ — per-step frontier cap. MAX_DEPTH bounds path length, but
+  // wide-fan-out graphs (Java/TS with prevalent get/set/toString bare-name
+  // collisions) can balloon the frontier exponentially: each step
+  // resolves every bare-name callee to every same-named function in the
+  // graph. Once a single step would push past this cap, we abort the
+  // remaining BFS for this source and surface it in `truncatedSources`,
+  // matching how MAX_DEPTH truncation is reported.
+  const MAX_FRONTIER_PER_STEP = 5000;
 
   for (const sourceFn of fnByQual.values()) {
     if (!sourceFn.hasSource) continue;
@@ -250,10 +258,13 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     type FrontierEntry = { node: FnNode; path: FnNode[] };
     let frontier: FrontierEntry[] = [{ node: sourceFn, path: [sourceFn] }];
     let depth = 0;
+    let frontierCapped = false;
     while (frontier.length > 0 && depth < MAX_DEPTH) {
       depth += 1;
       const next: FrontierEntry[] = [];
+      let aborted = false;
       for (const entry of frontier) {
+        if (aborted) break;
         for (const calleeName of entry.node.callees) {
           const candidates = fnsByBareName.get(calleeName) ?? [];
           for (const candidate of candidates) {
@@ -282,15 +293,25 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
               continue;
             }
             next.push({ node: candidate, path: newPath });
+            if (next.length >= MAX_FRONTIER_PER_STEP) {
+              // 1.10+ — per-step frontier cap reached. Abort this source's
+              // BFS and surface it as truncated. Continuing would just
+              // multiply: each entry in `next` will spawn its own bare-name
+              // resolutions on the following step.
+              frontierCapped = true;
+              aborted = true;
+              break;
+            }
           }
+          if (aborted) break;
         }
       }
       frontier = next;
     }
-    // If the BFS exited because of MAX_DEPTH (not because the frontier
-    // emptied), record the source so the caller knows flows beyond that
-    // depth weren't explored.
-    if (frontier.length > 0) {
+    // If the BFS exited because of MAX_DEPTH or the per-step frontier cap
+    // (not because the frontier emptied), record the source so the caller
+    // knows flows beyond that point weren't explored.
+    if (frontier.length > 0 || frontierCapped) {
       truncatedSources.push(sourceFn.qualName);
     }
   }

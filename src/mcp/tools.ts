@@ -36,6 +36,7 @@ import { applyFixTool } from './tools/applyFix.js';
 import { taintTool } from './tools/taint.js';
 import { costSummaryTool } from './tools/costSummary.js';
 import { reviewWatchTool } from './tools/reviewWatch.js';
+import { pluginTool } from './tools/plugin.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -69,6 +70,7 @@ const tools: McpTool[] = [
   taintTool,
   costSummaryTool,
   reviewWatchTool,
+  pluginTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

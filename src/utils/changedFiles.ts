@@ -47,6 +47,22 @@ export async function getChangedFiles(
       const files = await diffNames(rootPath, ref);
       return { available: true, baseRef: ref, files };
     } catch (err) {
+      // 1.10+ — surface stdio-too-large explicitly instead of letting it
+      // fall through to the generic "no usable base ref" path. The ref
+      // exists; the diff against it is just too big to fit in our 10MB
+      // buffer (typical when HEAD has diverged from the base by 100K+
+      // files). The user needs a closer base ref or a streaming reader,
+      // not a missing-ref diagnosis.
+      if (isMaxBufferError(err)) {
+        return {
+          available: false,
+          reason:
+            `git diff against "${ref}" exceeded the 10MB output buffer ` +
+            '(typically > 100K files changed). Use --base-ref to pin a closer ref.',
+          baseRef: null,
+          files: [],
+        };
+      }
       lastError = err instanceof Error ? err.message : String(err);
     }
   }
@@ -134,4 +150,12 @@ async function statusNames(rootPath: string): Promise<string[]> {
 
 function normalizePath(p: string): string {
   return p.split(path.sep).join('/');
+}
+
+function isMaxBufferError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: unknown; message?: unknown };
+  if (e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return true;
+  if (typeof e.message === 'string' && /maxBuffer length exceeded/i.test(e.message)) return true;
+  return false;
 }

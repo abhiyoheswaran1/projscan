@@ -339,8 +339,18 @@ export async function incrementallyUpdateGraph(
 ): Promise<CodeGraph> {
   if (changedPaths.length === 0) return graph;
 
-  const contextByAdapter = await prepareAdapterContexts(rootPath, fakeFilesFromGraph(graph, rootPath));
+  // 1.10+ — re-parse changed files first, then derive adapter contexts
+  // against the post-update graph view. Previously contexts were computed
+  // from the pre-update graph, so a newly-added manifest (pyproject.toml,
+  // Cargo.toml, go.mod) batched with source files wasn't in the file list
+  // passed to preparePackageRoots — the adapter derived a stale set of
+  // package roots and mis-resolved that batch's imports until the next
+  // tick. Parsing itself doesn't depend on context, so the reorder is safe.
   await Promise.all(changedPaths.map((rel) => processChangedPath(graph, rootPath, rel)));
+  const contextByAdapter = await prepareAdapterContexts(
+    rootPath,
+    fakeFilesFromGraph(graph, rootPath),
+  );
   rebuildIndexesIntoGraph(graph, contextByAdapter);
   computeFanIn(graph.files);
   computeFanOut(graph.files);

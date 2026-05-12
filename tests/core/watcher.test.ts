@@ -110,4 +110,37 @@ describe('startWatcher', () => {
     // Should not throw if close is called twice.
     expect(() => handle.close()).not.toThrow();
   });
+
+  it('does not fire onChange after close() (1.10+)', async () => {
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+
+    let initialPathsLen = -1;
+    let postCloseCalls = 0;
+    const handle = startWatcher(tmp, {
+      onChange: ({ paths }) => {
+        if (initialPathsLen === -1) {
+          initialPathsLen = paths.length;
+        } else {
+          postCloseCalls += 1;
+        }
+      },
+    });
+    await handle.ready;
+    expect(initialPathsLen).toBe(0); // initial scan
+
+    // Close synchronously, then await full quiet via the new `closed` promise.
+    // Any in-flight debounce flush past its top-of-function check should
+    // observe `closed=true` and skip its onChange call.
+    await sleep(50);
+    await fs.writeFile(path.join(tmp, 'src/a.ts'), 'export const a = 2;\n', 'utf-8');
+    handle.close();
+    await handle.closed;
+
+    // Give the event loop one more tick to flush any late-bound timers
+    // that might have escaped the close.
+    await sleep(400);
+
+    expect(postCloseCalls).toBe(0);
+  });
 });
