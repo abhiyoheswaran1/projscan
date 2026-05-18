@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/abhiyoheswaran1/projscan/blob/main/docs/plugin.schema.json",
+  "title": "projscan plugin manifest",
+  "description": "Manifest schema for local projscan analyzer and reporter plugins.",
+  "oneOf": [
+    {
+      "title": "Analyzer plugin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "name", "kind", "module", "category"],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9._/-]{1,65}$"
+        },
+        "kind": {
+          "const": "analyzer"
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "title": "Reporter plugin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "name", "kind", "module", "commands"],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9._/-]{1,65}$"
+        },
+        "kind": {
+          "const": "reporter"
+        },
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": ["doctor", "analyze", "ci"]
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

@@ -58,6 +58,12 @@ Fields:
 - `commands`: reporter-only list of CLI commands the reporter supports: `doctor`, `analyze`, `ci`.
 - `description`: optional summary for humans and agents.
 
+## Schema
+
+The machine-readable manifest schema lives at
+[`docs/plugin.schema.json`](plugin.schema.json). The examples under
+[`docs/examples/plugins/`](examples/plugins/) are tested in CI.
+
 ## Analyzer Module
 
 The module must export a `check(rootPath, files)` function, either as the
