@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getAdapterFor, isAdapterParseable, listAdapters } from '../../../src/core/languages/registry.js';
+import { BUILTIN_LANGUAGE_IDS } from '../../../src/core/languages/LanguageAdapter.js';
+import type { BuiltinLanguageId, LanguageId } from '../../../src/core/languages/LanguageAdapter.js';
 
 describe('language registry', () => {
   it('returns the JavaScript adapter for JS/TS extensions', () => {
@@ -76,5 +78,13 @@ describe('language registry', () => {
   it('never returns an adapter whose extension set excludes the queried extension', () => {
     const adapter = getAdapterFor('src/a.ts');
     expect(adapter?.extensions.has('.ts')).toBe(true);
+  });
+
+  it('allows plugin-provided language ids while preserving built-in ids', () => {
+    const builtin: BuiltinLanguageId = 'javascript';
+    const custom: LanguageId = 'acme.dsl';
+    expect(BUILTIN_LANGUAGE_IDS).toContain('javascript');
+    expect(builtin).toBe('javascript');
+    expect(custom).toBe('acme.dsl');
   });
 });

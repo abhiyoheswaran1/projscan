@@ -66,6 +66,8 @@ export { createMcpServer, runMcpServer } from './mcp/server.js';
 export { getToolDefinitions } from './mcp/tools.js';
 export { getPromptDefinitions } from './mcp/prompts.js';
 export { getResourceDefinitions } from './mcp/resources.js';
+export { BUILTIN_LANGUAGE_IDS } from './core/languages/LanguageAdapter.js';
+export type { BuiltinLanguageId, LanguageId, LanguageAdapter } from './core/languages/LanguageAdapter.js';
 
 export type {
   ScanResult,

@@ -1,18 +1,22 @@
 import type { FileEntry } from '../../types.js';
 import type { AstResult } from '../ast.js';
 
-export type LanguageId =
-  | 'javascript'
-  | 'python'
-  | 'go'
-  | 'java'
-  | 'ruby'
-  | 'rust'
-  | 'php'
-  | 'csharp'
-  | 'kotlin'
-  | 'swift'
-  | 'cpp';
+export const BUILTIN_LANGUAGE_IDS = [
+  'javascript',
+  'python',
+  'go',
+  'java',
+  'ruby',
+  'rust',
+  'php',
+  'csharp',
+  'kotlin',
+  'swift',
+  'cpp',
+] as const;
+
+export type BuiltinLanguageId = (typeof BUILTIN_LANGUAGE_IDS)[number];
+export type LanguageId = BuiltinLanguageId | (string & {});
 
 export interface LanguageResolveContext {
   /** Language-specific root dirs used during import resolution. */
