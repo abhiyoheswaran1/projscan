@@ -42,8 +42,8 @@ Four plays, in order:
 
 1. **Defend the lead** — close the obvious gaps so users picking an MCP server for code intel have one less reason to go elsewhere. ✅ Largely complete (1.1–1.3).
 2. **Lean into multi-agent** — make projscan the *shared substrate* for agent swarms. This is where the market is moving and where our context-budget design pays off. ✅ Largely shipped (1.4 Session, 1.5 Budgeted by default + Project Memory).
-3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). **Now (1.6).**
-4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. **Next (1.7 → 1.11), then 2.0.**
+3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). ✅ Shipped in the 1.6 arc.
+4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. ✅ The 1.7 → 2.0 arc turns this into a platform contract.
 
 We are *not* trying to be:
 - A coding agent (we're what agents call into).
@@ -53,20 +53,23 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 2.0 (2027)
+### Now — 2.0.0 (2026)
 
-The agent-substrate arc (1.4 → 1.11) is done: 11 languages, long-running PR watch with per-bucket deltas, intent-grounded review, severity drift, atomic-saved session state, cost-summary streaming, and analyzer/reporter plugin API preview. Next release is the major.
+The agent-substrate arc (1.4 → 2.0) is complete: 11 languages, long-running PR watch with per-bucket deltas, intent-grounded review, severity drift, atomic-saved session state, cost-summary streaming, and a stable local analyzer/reporter plugin API.
 
-### Later — 2.0 (2027+)
+**2.0.0 "Plugin Platform"** commits the platform contract.
 
-**2.0.0 "Plugin API + Breaking"** — after 1.11 the agent-substrate arc is mature. Time to commit a platform contract.
+- **Plugin API.** Third parties write `.projscan-plugin.json` declaring an analyzer or reporter; projscan dispatches via a stable interface. `projscan plugin list` for discovery. Turns projscan from a tool into a substrate other tools build on. Analyzer plugins and CLI reporter plugins for `doctor`, `analyze`, and `ci` are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
+- Deprecated regex extractors (`extractImports` / `extractExports`, marked `@deprecated` in 0.17) are removed.
+- JSON output includes `schemaVersion: 2` at the top level for machine consumers.
+- `LanguageId` is plugin-extensible; `BuiltinLanguageId` names the bundled adapters.
+- Custom presentation, white-label reports, and team-branded output live in reporter plugins; the built-in HTML reporter remains the default core renderer.
 
-- **Plugin API.** Third parties write `.projscan-plugin.json` declaring an analyzer or reporter; projscan dispatches via a stable interface. `projscan plugin list` for discovery. Turns projscan from a tool into a substrate other tools build on. The current preview covers analyzer plugins plus CLI reporter plugins for `doctor`, `analyze`, and `ci`; the contract and authoring flow are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
-- Remove deprecated regex extractors (`extractImports` / `extractExports`, marked `@deprecated` in 0.17).
-- JSON output schema cleanups — consolidate the optional-field accumulation that grew through 0.x → 1.x.
-- `LanguageId` becomes plugin-extensible (no longer a closed type).
-- 1.x compatibility shim for 6 months with stderr deprecation warnings.
-- Custom presentation: white-label and team-branded reports live in reporter plugins; the built-in HTML reporter remains the default core renderer.
+### Next — 2.x
+
+- Deepen review-time dataflow where it helps agents make safer edits.
+- Add plugin ergonomics only where the stable contract needs clearer tooling.
+- Keep MCP tool payloads structured and budget-aware; keep custom human presentation in reporter plugins.
 
 ## Non-goals
 
@@ -97,6 +100,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **2.0.0** (2026-05-18) | Plugin Platform | Stable local analyzer/reporter plugin contract, manifest schema and tested examples, CLI JSON `schemaVersion: 2`, extensible `LanguageId`, and removal of deprecated regex import/export helpers |
 | **1.11.0** (2026-05-18) | Reporter Plugins | Reporter plugin preview for CLI output (`--reporter` on `doctor`, `analyze`, and `ci`), reporter manifest validation through `projscan_plugin`, and refreshed README media with a macOS-style terminal demo |
 | **1.10.0** (2026-05-13) | RC for 2.0 | Analyzer plugin API preview behind PROJSCAN_PLUGINS_PREVIEW flag (`projscan_plugin` MCP tool, `projscan plugin` CLI, `.projscan-plugins/*.projscan-plugin.json` schema); live cost-summary streaming with `notifications/projscan/cost_delta`; five 1.9-deferred fixes (applyFix rollback dir handling, incrementalUpdateGraph context staleness, changedFiles maxBuffer surfacing, taint per-step frontier cap, watcher.close mid-flush) |
 | **1.9.0** (2026-05-12) | Intent + Polish | Intent-grounded review: free-text PR description → per-finding expected / unexpected / out-of-scope labels (no LLM); Project Memory loop #4 (per-rule severity drift, cry-wolf / noisy / stable); review_watch signature deepening with structured `delta` payload; macOS CI leg |

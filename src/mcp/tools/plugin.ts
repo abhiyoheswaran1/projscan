@@ -8,20 +8,17 @@ import {
 } from '../../core/plugins.js';
 
 /**
- * `projscan_plugin` (1.10+ preview) — discover and validate third-party
+ * `projscan_plugin` — discover and validate stable local analyzer/reporter
  * plugins under `<root>/.projscan-plugins/*.projscan-plugin.json`.
  *
- * Behind the PROJSCAN_PLUGINS_PREVIEW=1 feature flag. The tool is always
- * registered (so agents can probe for it), but `action:"list"` returns
- * `enabled:false` and an empty list when the flag is off, so callers can
- * detect that the preview is dark without an extra `enabled` check.
- *
- * The plugin schema and discovery path may still change before 2.0.
+ * Execution remains opt-in via PROJSCAN_PLUGINS_PREVIEW=1 because plugins are
+ * local code. The tool is always registered so agents can discover and
+ * validate manifests before enabling execution.
  */
 export const pluginTool: McpTool = {
   name: 'projscan_plugin',
   description:
-    '1.10+ preview. Discover and validate third-party analyzer and reporter plugins under .projscan-plugins/. Gated by the PROJSCAN_PLUGINS_PREVIEW=1 env flag; the schema is preview-only and may shift before 2.0. Use action:"list" to see what is discoverable today, action:"validate" to check a manifest before committing it.',
+    'Discover and validate stable local analyzer and reporter plugins under .projscan-plugins/. Execution is opt-in via the PROJSCAN_PLUGINS_PREVIEW=1 env flag because plugins are local code. Use action:"list" to see what is discoverable today, action:"validate" to check a manifest before committing it.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -29,7 +26,7 @@ export const pluginTool: McpTool = {
         type: 'string',
         enum: ['list', 'validate'],
         description:
-          '"list" enumerates manifests under <root>/.projscan-plugins/ with discovery status. "validate" lints a manifest at the given path against the 1.10 schema.',
+          '"list" enumerates manifests under <root>/.projscan-plugins/ with discovery status. "validate" lints a manifest at the given path against schema v1.',
       },
       manifest_path: {
         type: 'string',

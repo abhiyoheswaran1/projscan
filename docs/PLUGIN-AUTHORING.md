@@ -1,10 +1,10 @@
 # Plugin Authoring
 
-projscan 1.10 introduced the analyzer plugin preview; 1.11 extends it with
-reporter plugins for CLI output. The preview is gated by
-`PROJSCAN_PLUGINS_PREVIEW=1` while the 2.0 contract is being finalized.
+projscan 2.0 stabilizes the local analyzer and reporter plugin contract.
+Plugin execution is opt-in via `PROJSCAN_PLUGINS_PREVIEW=1` so repositories
+must explicitly trust local plugin code before it runs.
 
-Plugins are local code. Enabling the preview means you trust the plugin code in
+Plugins are local code. Enabling the opt-in flag means you trust the plugin code in
 the repository, the same way you trust project scripts in `package.json`.
 projscan does not fetch remote plugin code.
 
@@ -101,7 +101,7 @@ Malformed issues are dropped so one bad plugin cannot poison the issue stream.
 
 ## Reporter Module
 
-Reporter plugins are CLI-only in the preview. The module must export a
+Reporter plugins are CLI-only. The module must export a
 `render(context)` function, either as the default export or a named export.
 
 ```js
@@ -159,7 +159,7 @@ projscan plugin list --format json
 ```
 
 The list command discovers manifests whether or not execution is enabled. It
-shows `enabled:false` until the preview flag is set.
+shows `enabled:false` until the opt-in flag is set.
 
 ## Enable
 
@@ -190,8 +190,8 @@ The `projscan_plugin` MCP tool supports:
 Plugin execution for MCP `projscan_doctor` and `projscan_analyze` follows the
 same `PROJSCAN_PLUGINS_PREVIEW` flag as the CLI.
 
-Reporter rendering is CLI-only in this preview. MCP tools continue to return
-structured payloads.
+Reporter rendering is CLI-only. MCP tools continue to return structured
+payloads.
 
 ## Failure Isolation
 
@@ -204,6 +204,6 @@ structured payloads.
 
 ## Compatibility
 
-This is a preview for the 2.0 plugin contract. The current shape is the intended
-direction, but plugin authors should expect final polish before 2.0 removes the
-preview label.
+This is the stable 2.0 plugin contract for local analyzer and reporter plugins.
+New optional manifest fields may be added in 2.x; existing required fields keep
+their names and types.

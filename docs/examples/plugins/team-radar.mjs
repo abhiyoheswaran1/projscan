@@ -7,7 +7,8 @@ export default {
 
     if (command === 'doctor') {
       const health = payload.health;
-      return `team-radar doctor ${health.score}/100 ${health.grade} ${health.totalIssues} issue(s)`;
+      const issues = Array.isArray(payload.issues) ? payload.issues.length : 0;
+      return `team-radar doctor ${health.score}/100 ${health.grade} ${issues} issue(s)`;
     }
 
     const issues = Array.isArray(payload.issues) ? payload.issues.length : 0;

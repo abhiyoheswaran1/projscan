@@ -91,6 +91,14 @@ async function writePluginFixture(root: string): Promise<void> {
 }
 
 describe('CLI reporter plugins', () => {
+  it('describes plugin commands as the stable local platform', async () => {
+    const result = await runCli(['plugin', '--help']);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Discover and validate local plugins');
+    expect(result.stdout).not.toContain('preview');
+    expect(result.stdout).not.toContain('1.10');
+  });
+
   it('renders doctor output through a reporter plugin', async () => {
     const result = await runCli(['doctor', '--reporter', 'team-summary', '--quiet'], {
       PROJSCAN_PLUGINS_PREVIEW: '1',

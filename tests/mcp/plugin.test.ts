@@ -37,7 +37,25 @@ async function call(
   return JSON.parse(env.result.content[0].text);
 }
 
+async function listTools(server: ReturnType<typeof createMcpServer>): Promise<Array<Record<string, unknown>>> {
+  const raw = await server.handleMessage(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }));
+  if (!raw) throw new Error('no response');
+  const env = JSON.parse(raw) as { result: { tools: Array<Record<string, unknown>> } };
+  return env.result.tools;
+}
+
 describe('projscan_plugin MCP tool', () => {
+  it('describes the plugin tool as the stable local platform', async () => {
+    const server = createMcpServer(tmp);
+    await init(server);
+    const tools = await listTools(server);
+    const tool = tools.find((entry) => entry.name === 'projscan_plugin');
+    expect(tool?.description).toContain('stable local analyzer and reporter plugins');
+    expect(tool?.description).not.toContain('preview-only');
+    expect(tool?.description).not.toContain('may shift before 2.0');
+    server.close();
+  });
+
   it('returns structured diagnostics from validate', async () => {
     const manifestPath = path.join(tmp, '.projscan-plugins', 'bad.projscan-plugin.json');
     await fs.writeFile(

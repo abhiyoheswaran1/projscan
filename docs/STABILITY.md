@@ -10,11 +10,11 @@ These are versioned. Removing or breaking anything in this list requires a depre
 
 ### CLI
 
-- **Command names**: `analyze`, `doctor`, `ci`, `hotspots`, `coupling`, `pr-diff`, `review`, `dependencies`, `outdated`, `audit`, `coverage`, `search`, `structure`, `explain`, `explain-issue`, `fix-suggest`, `impact`, `watch`, `badge`, `diff`, `workspaces`, `mcp`. New commands may be added; existing names will not be renamed or removed.
+- **Command names**: `analyze`, `apply-fix`, `audit`, `badge`, `ci`, `coupling`, `coverage`, `dependencies`, `diagram`, `diff`, `doctor`, `explain`, `explain-issue`, `file`, `fix`, `fix-suggest`, `hotspots`, `impact`, `init`, `install-hook`, `mcp`, `memory`, `outdated`, `plugin`, `pr-diff`, `review`, `search`, `session`, `structure`, `taint`, `upgrade`, `watch`, `workspace`, `workspaces`. New commands may be added; existing names will not be renamed or removed.
 - **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`. The `--format` flag will continue to accept these names. Per-format guarantees:
-  - **JSON**: top-level keys (`issues`, `hotspots`, `coverage`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
+  - **JSON**: top-level `schemaVersion` is stable and is `2` for projscan 2.x. Data keys (`issues`, `hotspots`, `coverage`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
   - **SARIF**: schema is the [SARIF 2.1.0 spec](https://sarifweb.azurewebsites.net/). We are bound by it.
   - **Markdown**: section headings are stable. Whitespace and column widths inside tables are not.
   - **HTML** *(0.16+)*: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
@@ -23,7 +23,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 ### MCP server
 
 - **Protocol versions advertised**: `2025-03-26` (current), with backward negotiation for `2024-11-05`. We will continue to support at least one prior protocol version when we move to a newer one.
-- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_search`, `projscan_graph`, `projscan_file`, `projscan_audit`, `projscan_outdated`, `projscan_dependencies`, `projscan_upgrade`, `projscan_coverage`, `projscan_structure`, `projscan_coupling`, `projscan_pr_diff`, `projscan_workspaces`, `projscan_review`, `projscan_fix_suggest`, `projscan_explain_issue`, `projscan_impact`. New tools may be added without a major bump; existing names will not be renamed or removed.
+- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_explain`, `projscan_file`, `projscan_structure`, `projscan_dependencies`, `projscan_outdated`, `projscan_audit`, `projscan_upgrade`, `projscan_coverage`, `projscan_graph`, `projscan_coupling`, `projscan_workspaces`, `projscan_pr_diff`, `projscan_review`, `projscan_fix_suggest`, `projscan_explain_issue`, `projscan_impact`, `projscan_search`, `projscan_session`, `projscan_memory`, `projscan_workspace_graph`, `projscan_apply_fix`, `projscan_taint`, `projscan_cost_summary`, `projscan_review_watch`, `projscan_plugin`. New tools may be added without a major bump; existing names will not be renamed or removed.
 - **Input schemas**: documented argument names and types are stable. New optional arguments may be added; existing ones will not change name or type, and required arguments will not become required mid-release-line.
 - **Output shapes**: top-level keys returned by each tool are stable. New optional fields may appear; existing fields will not change name, type, or semantic meaning. Pagination cursors are stable across a single major.
 - **Tool manifest**: `dist/tool-manifest.json` is shipped on every release as a GitHub Release asset. External consumers can pin to `releases/download/v<version>/tool-manifest.json` and rely on the schema (`name`, `version`, `mcpProtocolVersion`, `toolCount`, `tools[{name, description, inputSchema}]`).
@@ -31,7 +31,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 ### Configuration
 
 - **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`. New keys may be added; existing keys will not change name or type.
-- **Environment variables** consulted: none currently advertised as stable. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
+- **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. The name remains stable in 2.x as the explicit local-code trust gate. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
 
 ### Plugin API
 

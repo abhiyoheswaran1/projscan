@@ -4,6 +4,34 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] — 2026-05-18 — "Plugin Platform"
+
+projscan 2.0 stabilizes the local plugin platform and uses the major-version
+boundary to clean up deferred 1.x public API surfaces. MCP tool names and input
+schemas remain stable.
+
+### Added
+
+- Stable local analyzer/reporter plugin contract for `.projscan-plugins/*.projscan-plugin.json` manifests with `schemaVersion: 1`.
+- Machine-readable plugin manifest schema at `docs/plugin.schema.json`, plus tested analyzer and reporter examples under `docs/examples/plugins/`.
+- CLI JSON `schemaVersion: 2` metadata on built-in JSON reporters.
+- `BuiltinLanguageId` for the closed set of bundled adapters while keeping `LanguageId` extensible for plugin-provided languages.
+
+### Changed
+
+- CLI/MCP file explanations now use the multi-language AST graph path instead of deprecated JS/TS-only regex helpers.
+- Custom presentation, white-label reports, and team-branded output are documented as reporter-plugin responsibilities rather than core HTML theming flags.
+- Release validation now opts GitHub Actions JavaScript actions into the Node 24 runtime and keeps MCP Registry descriptor constraints under test.
+- Stability baseline refreshed for the 2.x public CLI/MCP surface.
+
+### Removed
+
+- Deprecated regex `extractImports` and `extractExports` helpers from the npm public API.
+
+### Migration
+
+- See [2.0 Migration Guide](docs/2.0-MIGRATION.md).
+
 ## [1.11.0] — 2026-05-18 — "Reporter Plugins"
 
 Reporter plugin preview for CLI output, docs, and demo media. No MCP wire breakage.

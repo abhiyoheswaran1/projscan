@@ -1,12 +1,13 @@
 # MCP Registry — projscan
 
-projscan is published to the official MCP Registry at [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) under the namespace **`io.github.abhiyoheswaran1/projscan`**. First publish: 2026-05-04, version `1.1.0`. Latest publish: 2026-05-04, version `1.1.1`.
+projscan is published to the official MCP Registry at [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) under the namespace **`io.github.abhiyoheswaran1/projscan`**. First publish: 2026-05-04, version `1.1.0`.
 
 This file documents how to **republish on every new release** so the registry stays in sync with npm. For the first-time submission story, see this file's git history (we keep the history in the repo for reference).
 
 ## On every release — keep registry in sync with npm
 
-After `npm publish` succeeds for a new version, do this **before** marking the release ritual complete:
+After the GitHub release workflow publishes npm for a new version, do this
+**before** marking the release ritual complete:
 
 ### 1. Bump both version fields in `server.json`
 
@@ -27,7 +28,7 @@ There are two of them (top-level + inside `packages[0]`). Both must match `packa
 ### 2. Validate against the schema
 
 ```sh
-/tmp/mcp-publisher validate .github/mcp-registry/server.json
+~/bin/mcp-publisher validate .github/mcp-registry/server.json
 ```
 
 Should print `✅ server.json is valid`. If you get a 422, the schema may have changed — check [registry.modelcontextprotocol.io/docs](https://registry.modelcontextprotocol.io/docs) and adjust.
@@ -35,7 +36,7 @@ Should print `✅ server.json is valid`. If you get a 422, the schema may have c
 ### 3. Publish
 
 ```sh
-/tmp/mcp-publisher publish .github/mcp-registry/server.json
+~/bin/mcp-publisher publish .github/mcp-registry/server.json
 ```
 
 Expected:
@@ -48,13 +49,15 @@ Publishing to https://registry.modelcontextprotocol.io...
 
 The registry stores all published versions; this doesn't replace the prior entries, it adds. Aggregators (PulseMCP, mcpmarket.com, etc.) see the new "latest" pointer within hours.
 
-### 4. Commit the bumped server.json
+### 4. Commit the bumped server.json before tagging
 
-Don't forget — local `.github/mcp-registry/server.json` should match what's actually on the registry. Otherwise future-you won't trust the file.
+Don't forget — local `.github/mcp-registry/server.json` should match the version
+being tagged. Otherwise future-you won't trust the file.
 
 ## If `mcp-publisher` is missing
 
-The publisher CLI lives at `/tmp/mcp-publisher` if a previous session put it there. If not, grab a pre-built binary (Go toolchain not required):
+The publisher CLI usually lives at `~/bin/mcp-publisher`. If it is missing,
+grab a pre-built binary (Go toolchain not required):
 
 ```sh
 # macOS arm64 — adjust for your platform
@@ -62,6 +65,8 @@ cd /tmp
 curl -sL https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_darwin_arm64.tar.gz \
   | tar -xz
 ./mcp-publisher --version
+mkdir -p ~/bin
+mv ./mcp-publisher ~/bin/mcp-publisher
 ```
 
 Other platforms: see [github.com/modelcontextprotocol/registry/releases](https://github.com/modelcontextprotocol/registry/releases).
@@ -69,10 +74,10 @@ Other platforms: see [github.com/modelcontextprotocol/registry/releases](https:/
 ## If auth has expired
 
 ```sh
-/tmp/mcp-publisher login github
+~/bin/mcp-publisher login github
 ```
 
-Opens a browser for GitHub OAuth. Sign in as **`abhiyoheswaran1`** (the namespace owner). Re-auth lasts long enough that you'll only do this rarely.
+Opens a browser for GitHub OAuth. Sign in as **`abhiyoheswaran1`** (the namespace owner). Re-auth lasts long enough that you'll only do this rarely. If publish returns `401 Unauthorized` with an expired Registry JWT token, run this login command and retry publish.
 
 ## Why we republish on every minor (and every patch when convenient)
 

@@ -9,6 +9,7 @@
     },
     "projscan_doctor": {
       "args": [
+        "max_cost_tokens",
         "package"
       ],
       "required": []
@@ -73,6 +74,7 @@
     },
     "projscan_upgrade": {
       "args": [
+        "check_registry",
         "package"
       ],
       "required": [
@@ -126,6 +128,8 @@
       "args": [
         "base",
         "head",
+        "intent",
+        "max_cost_tokens",
         "max_tokens",
         "package"
       ],
@@ -150,6 +154,7 @@
     },
     "projscan_impact": {
       "args": [
+        "cross_repo",
         "cursor",
         "file",
         "max_distance",
@@ -172,30 +177,110 @@
       "required": [
         "query"
       ]
+    },
+    "projscan_session": {
+      "args": [
+        "action",
+        "cursor",
+        "page_size",
+        "source"
+      ],
+      "required": []
+    },
+    "projscan_memory": {
+      "args": [
+        "action",
+        "file",
+        "rule"
+      ],
+      "required": []
+    },
+    "projscan_workspace_graph": {
+      "args": [
+        "action",
+        "file",
+        "repo"
+      ],
+      "required": []
+    },
+    "projscan_apply_fix": {
+      "args": [
+        "action",
+        "confirm",
+        "issue_id",
+        "rollback_id"
+      ],
+      "required": []
+    },
+    "projscan_taint": {
+      "args": [
+        "max_flows",
+        "sinks",
+        "sources"
+      ],
+      "required": []
+    },
+    "projscan_cost_summary": {
+      "args": [
+        "action",
+        "interval_seconds",
+        "stream_id",
+        "top"
+      ],
+      "required": []
+    },
+    "projscan_review_watch": {
+      "args": [
+        "action",
+        "base",
+        "head",
+        "interval_seconds",
+        "watchId"
+      ],
+      "required": []
+    },
+    "projscan_plugin": {
+      "args": [
+        "action",
+        "manifest_path"
+      ],
+      "required": []
     }
   },
   "cliCommands": [
     "analyze",
+    "apply-fix",
     "audit",
     "badge",
     "ci",
     "coupling",
     "coverage",
     "dependencies",
+    "diagram",
     "diff",
     "doctor",
     "explain",
     "explain-issue",
+    "file",
+    "fix",
     "fix-suggest",
     "hotspots",
     "impact",
+    "init",
+    "install-hook",
     "mcp",
+    "memory",
     "outdated",
+    "plugin",
     "pr-diff",
     "review",
     "search",
+    "session",
     "structure",
+    "taint",
+    "upgrade",
     "watch",
+    "workspace",
     "workspaces"
   ],
   "exitCodes": {

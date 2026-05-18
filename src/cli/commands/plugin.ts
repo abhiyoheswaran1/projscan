@@ -11,14 +11,14 @@ import {
 } from '../../core/plugins.js';
 
 /**
- * `projscan plugin` (1.10+ preview) — list and validate local plugins
- * under `<root>/.projscan-plugins/`. Behind the PROJSCAN_PLUGINS_PREVIEW=1
- * env flag; the schema is preview-only and may shift before 2.0.
+ * `projscan plugin` — list and validate stable local plugins under
+ * `<root>/.projscan-plugins/`. Execution is opt-in via
+ * PROJSCAN_PLUGINS_PREVIEW=1 because plugins are local code.
  */
 export function registerPlugin(): void {
   const plugin = program
     .command('plugin')
-    .description('Discover and validate local plugins (1.10+ preview)')
+    .description('Discover and validate local plugins')
     .action(async () => {
       await runList();
     });
@@ -32,7 +32,7 @@ export function registerPlugin(): void {
 
   plugin
     .command('validate <manifest>')
-    .description('Validate a .projscan-plugin.json manifest against the 1.10 schema')
+    .description('Validate a .projscan-plugin.json manifest against schema v1')
     .action(async (manifest: string) => {
       await runValidate(manifest);
     });
@@ -66,10 +66,10 @@ async function runList(): Promise<void> {
     return;
   }
   console.log('');
-  console.log(chalk.bold('Plugins (1.10+ preview)'));
+  console.log(chalk.bold('Plugins'));
   console.log(chalk.dim('────────────────────────────────────────'));
   console.log(
-    `  preview enabled: ${enabled ? chalk.green('yes') : chalk.dim('no')} ${chalk.dim(`(${PLUGIN_PREVIEW_FLAG}=1)`)}`,
+    `  execution enabled: ${enabled ? chalk.green('yes') : chalk.dim('no')} ${chalk.dim(`(${PLUGIN_PREVIEW_FLAG}=1)`)}`,
   );
   if (entries.length === 0) {
     console.log(chalk.dim('  no manifests found under .projscan-plugins/'));
@@ -94,7 +94,7 @@ async function runList(): Promise<void> {
     console.log('');
     console.log(
       chalk.dim(
-        `  Discovered but inactive. Set ${PLUGIN_PREVIEW_FLAG}=1 in the environment to enable the preview.`,
+        `  Discovered but inactive. Set ${PLUGIN_PREVIEW_FLAG}=1 in the environment to enable local plugin execution.`,
       ),
     );
   }

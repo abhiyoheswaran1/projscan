@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { validateManifest } from '../../src/core/plugins.js';
 
@@ -71,6 +72,21 @@ describe('documented plugin manifest schema', () => {
     expect(validateManifest(analyzer).ok).toBe(true);
     expect(validateAgainstDocumentedSchema(reporter)).toEqual([]);
     expect(validateManifest(reporter).ok).toBe(true);
+  });
+
+  it('keeps the documented reporter example executable for doctor payloads', async () => {
+    const moduleUrl = pathToFileURL(join(root, 'docs/examples/plugins/team-radar.mjs')).href;
+    const mod = (await import(moduleUrl)) as { default: { render: (context: unknown) => Promise<string> } };
+
+    const rendered = await mod.default.render({
+      command: 'doctor',
+      payload: {
+        health: { score: 87, grade: 'B' },
+        issues: [{ id: 'one' }, { id: 'two' }],
+      },
+    });
+
+    expect(rendered).toBe('team-radar doctor 87/100 B 2 issue(s)');
   });
 
   it('rejects analyzer and reporter manifests missing kind-specific fields', () => {
