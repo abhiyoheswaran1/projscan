@@ -328,11 +328,16 @@ function importPluginModule(modulePath: string): Promise<Record<string, unknown>
 }
 
 async function importPluginModuleFromSource(modulePath: string): Promise<Record<string, unknown>> {
-  const source = await fs.readFile(modulePath, 'utf-8');
+  const originalSource = await fs.readFile(modulePath, 'utf-8');
+  const { source, bindings } = stripSupportedImports(originalSource);
   const defaultMatch = source.match(/^\s*export\s+default\s+([\s\S]*?)\s*;?\s*$/);
   if (defaultMatch) {
     const expression = defaultMatch[1].trim().replace(/;$/, '');
-    return { default: new Function(`return (${expression});`)() as unknown };
+    return {
+      default: new Function(...Object.keys(bindings), `return (${expression});`)(
+        ...Object.values(bindings),
+      ) as unknown,
+    };
   }
 
   const names: string[] = [];
@@ -348,6 +353,21 @@ async function importPluginModuleFromSource(modulePath: string): Promise<Record<
     throw new Error('unsupported module syntax in Vitest VM fallback');
   }
   return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<string, unknown>;
+}
+
+function stripSupportedImports(source: string): {
+  source: string;
+  bindings: Record<string, unknown>;
+} {
+  const bindings: Record<string, unknown> = {};
+  const stripped = source.replace(
+    /^\s*import\s+\{\s*readFile\s*\}\s+from\s+['"]node:fs\/promises['"];\s*/m,
+    () => {
+      bindings.readFile = fs.readFile;
+      return '';
+    },
+  );
+  return { source: stripped, bindings };
 }
 
 function escapeForSingleQuotedJs(value: string): string {
