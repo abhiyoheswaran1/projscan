@@ -5,12 +5,7 @@ import readline from 'node:readline';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import {
-  extractImports,
-  extractExports,
-  inferPurpose,
-  detectFileIssues,
-} from '../core/fileInspector.js';
+import { explainFile as explainProjectFile } from '../core/fileInspector.js';
 import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { loadConfig } from '../utils/config.js';
@@ -185,20 +180,9 @@ export function sliceCliTree(node: DirectoryNode, targetPath: string): Directory
   return null;
 }
 
-export function analyzeFile(filePath: string, content: string): FileExplanation {
-  const lines = content.split('\n');
-  const imports = extractImports(content);
-  const exports = extractExports(content);
-  const purpose = inferPurpose(filePath, exports);
-  const potentialIssues = detectFileIssues(content, lines.length);
-  return {
-    filePath: path.relative(process.cwd(), filePath),
-    purpose,
-    imports,
-    exports,
-    potentialIssues,
-    lineCount: lines.length,
-  };
+export async function analyzeFile(filePath: string): Promise<FileExplanation> {
+  const rootPath = process.cwd();
+  return await explainProjectFile(rootPath, path.relative(rootPath, filePath));
 }
 
 export function buildArchitectureLayers(files: FileEntry[], frameworkNames: string[]): ArchitectureLayer[] {

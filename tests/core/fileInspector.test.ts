@@ -4,45 +4,15 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import {
   inspectFile,
-  extractImports,
-  extractExports,
   inferPurpose,
   detectFileIssues,
 } from '../../src/core/fileInspector.js';
 
-describe('extractImports', () => {
-  it('parses ES imports', () => {
-    const src = `import foo from 'foo';\nimport { bar } from "./bar";\n`;
-    const imports = extractImports(src);
-    expect(imports.find((i) => i.source === 'foo')?.isRelative).toBe(false);
-    expect(imports.find((i) => i.source === './bar')?.isRelative).toBe(true);
-  });
-
-  it('parses CommonJS require', () => {
-    const src = `const fs = require('fs');\n`;
-    const imports = extractImports(src);
-    expect(imports.map((i) => i.source)).toContain('fs');
-  });
-
-  it('dedupes duplicates', () => {
-    const src = `import foo from 'foo';\nimport 'foo';`;
-    const imports = extractImports(src);
-    expect(imports.filter((i) => i.source === 'foo')).toHaveLength(1);
-  });
-});
-
-describe('extractExports', () => {
-  it('catches functions, classes, variables, types, interfaces, defaults', () => {
-    const src = `
-export function a() {}
-export class B {}
-export const c = 1;
-export type D = string;
-export interface E {}
-export default {};
-`;
-    const names = extractExports(src).map((e) => e.name);
-    expect(names).toEqual(expect.arrayContaining(['a', 'B', 'c', 'D', 'E', 'default']));
+describe('deprecated extractor exports', () => {
+  it('does not expose the removed regex import/export helpers', async () => {
+    const mod = await import('../../src/core/fileInspector.js');
+    expect(['extract', 'Imports'].join('') in mod).toBe(false);
+    expect(['extract', 'Exports'].join('') in mod).toBe(false);
   });
 });
 
@@ -139,24 +109,35 @@ describe('inspectFile', () => {
     expect(insp.relativePath).toBe('aliased.ts');
   });
 
-  it('returns parsed metadata for a real file (without running full scan)', async () => {
+  it('returns graph-backed JavaScript imports and exports for a real file', async () => {
     const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
-    await fs.writeFile(path.join(tmpRoot, 'sample.ts'), "export const foo = 1;\n");
+    await fs.writeFile(path.join(tmpRoot, 'dep.ts'), "export const bar = 1;\n");
+    await fs.writeFile(
+      path.join(tmpRoot, 'sample.ts'),
+      "import { bar } from './dep';\nexport const foo = bar;\n",
+    );
 
-    const insp = await inspectFile(tmpRoot, 'sample.ts', {
-      scan: { files: [] },
-      issues: [],
-      hotspots: {
-        available: true,
-        window: { since: null, commitsScanned: 0 },
-        hotspots: [],
-        totalFilesRanked: 0,
-      },
-    });
+    const insp = await inspectFile(tmpRoot, 'sample.ts');
 
     expect(insp.exists).toBe(true);
+    expect(insp.imports.map((i) => i.source)).toContain('./dep');
     expect(insp.exports.map((e) => e.name)).toContain('foo');
     expect(insp.hotspot).toBeNull();
     expect(insp.relativePath).toBe('sample.ts');
+  });
+
+  it('returns graph-backed Python imports and exports for a real file', async () => {
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
+    await fs.writeFile(path.join(tmpRoot, 'helper.py'), 'def helper():\n    return 1\n');
+    await fs.writeFile(
+      path.join(tmpRoot, 'sample.py'),
+      'from helper import helper\n\ndef run():\n    return helper()\n',
+    );
+
+    const insp = await inspectFile(tmpRoot, 'sample.py');
+
+    expect(insp.exists).toBe(true);
+    expect(insp.imports.map((i) => i.source)).toContain('helper');
+    expect(insp.exports.map((e) => e.name)).toContain('run');
   });
 });

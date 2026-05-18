@@ -1,5 +1,4 @@
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import { explainFile, type McpTool } from './_shared.js';
 
 export const explainTool: McpTool = {
@@ -30,7 +29,6 @@ export const explainTool: McpTool = {
         `file must be inside the project root (got "${rel}"; absolute or "../" paths are rejected for security).`,
       );
     }
-    const content = await fs.readFile(absolutePath, 'utf-8');
-    return explainFile(absolutePath, content, rootPath);
+    return await explainFile(absolutePath, rootPath);
   },
 };

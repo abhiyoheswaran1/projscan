@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import path from 'node:path';
-import fs from 'node:fs/promises';
 
 import { program, getFormat, setupLogLevel, maybeCompactBanner, analyzeFile } from '../_shared.js';
 import { reportExplanation } from '../../reporters/consoleReporter.js';
@@ -18,8 +17,7 @@ export function registerExplain(): void {
       const absolutePath = path.resolve(filePath);
 
       try {
-        const content = await fs.readFile(absolutePath, 'utf-8');
-        const explanation = analyzeFile(absolutePath, content);
+        const explanation = await analyzeFile(absolutePath);
 
         switch (format) {
           case 'json':
@@ -32,13 +30,14 @@ export function registerExplain(): void {
             reportExplanation(explanation);
         }
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        const message = error instanceof Error ? error.message : String(error);
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT' || /not found/i.test(message)) {
           console.error(chalk.red(`File not found: ${filePath}`));
           console.error(
             chalk.dim(`  Tip: paths are repo-relative. Run \`projscan structure\` to see the file tree.`),
           );
         } else {
-          console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+          console.error(chalk.red(message));
         }
         process.exit(1);
       }

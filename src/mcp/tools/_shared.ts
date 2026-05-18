@@ -1,11 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import {
-  extractImports,
-  extractExports,
-  inferPurpose,
-  detectFileIssues,
-} from '../../core/fileInspector.js';
+import { explainFile as explainProjectFile } from '../../core/fileInspector.js';
 import { detectWorkspaces } from '../../core/monorepo.js';
 import type { FileEntry, FileExplanation, McpToolDefinition, DirectoryNode } from '../../types.js';
 
@@ -103,18 +98,6 @@ export function sliceTree(node: DirectoryNode, targetPath: string): DirectoryNod
   return null;
 }
 
-export function explainFile(absolutePath: string, content: string, rootPath: string): FileExplanation {
-  const lines = content.split('\n');
-  const imports = extractImports(content);
-  const exports = extractExports(content);
-  const purpose = inferPurpose(absolutePath, exports);
-  const potentialIssues = detectFileIssues(content, lines.length);
-  return {
-    filePath: path.relative(rootPath, absolutePath),
-    purpose,
-    imports,
-    exports,
-    potentialIssues,
-    lineCount: lines.length,
-  };
+export async function explainFile(absolutePath: string, rootPath: string): Promise<FileExplanation> {
+  return await explainProjectFile(rootPath, path.relative(rootPath, absolutePath));
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import type {
   ExportInfo,
   FileEntry,
+  FileExplanation,
   FileInspection,
   FileHotspot,
   HotspotReport,
@@ -22,6 +23,25 @@ export interface InspectOptions {
   hotspots?: HotspotReport;
   /** If provided, prefer graph-derived imports/exports over regex parsing. */
   graph?: CodeGraph;
+}
+
+export async function explainFile(
+  rootPath: string,
+  relOrAbsFile: string,
+  options: InspectOptions = {},
+): Promise<FileExplanation> {
+  const inspection = await inspectFile(rootPath, relOrAbsFile, options);
+  if (!inspection.exists) {
+    throw new Error(inspection.reason ?? 'File not found');
+  }
+  return {
+    filePath: inspection.relativePath,
+    purpose: inspection.purpose,
+    imports: inspection.imports,
+    exports: inspection.exports,
+    potentialIssues: inspection.potentialIssues,
+    lineCount: inspection.lineCount,
+  };
 }
 
 export async function inspectFile(
@@ -91,13 +111,22 @@ export async function inspectFile(
   const adapter = getAdapterFor(relativePath);
   const language = adapter?.id;
 
-  // Prefer graph-derived imports/exports when available. The regex extractors
-  // in this file only understand JS/TS syntax and would emit garbage on
-  // Python. For JS/TS we still fall back to regex when no graph is provided
-  // (preserves existing behavior).
-  let imports: ImportInfo[];
-  let exports: ExportInfo[];
-  const graphFile = options.graph?.files.get(relativePath);
+  const files = options.scan?.files ?? (await scanRepository(resolvedRoot)).files;
+  const issues = options.issues ?? (await collectIssues(resolvedRoot, files));
+
+  // Build the graph before deriving imports/exports. The removed regex
+  // extractors only understood JS/TS and emitted misleading metadata for
+  // other languages.
+  let graph = options.graph;
+  if (!graph) {
+    const cached = await loadCachedGraph(resolvedRoot);
+    graph = await buildCodeGraph(resolvedRoot, files, cached);
+    await saveCachedGraph(resolvedRoot, graph);
+  }
+
+  let imports: ImportInfo[] = [];
+  let exports: ExportInfo[] = [];
+  const graphFile = graph.files.get(relativePath);
   if (graphFile) {
     imports = graphFile.imports.map((i) => ({
       source: i.source,
@@ -108,29 +137,9 @@ export async function inspectFile(
       name: e.name,
       type: mapExportType(e.kind),
     }));
-  } else if (language === 'javascript') {
-    imports = extractImports(content);
-    exports = extractExports(content);
-  } else {
-    // Non-JS file with no graph: we don't have a safe extractor. Return empty
-    // rather than running the JS regex against (e.g.) Python and emitting garbage.
-    imports = [];
-    exports = [];
   }
   const purpose = inferPurpose(absolutePath, exports);
   const potentialIssues = detectFileIssues(content, lines.length);
-
-  const files = options.scan?.files ?? (await scanRepository(resolvedRoot)).files;
-  const issues = options.issues ?? (await collectIssues(resolvedRoot, files));
-
-  // Build the graph if not provided. Powers AST cyclomatic complexity, fan-in,
-  // fan-out, and feeds the hotspot analyzer's CC-based risk score.
-  let graph = options.graph;
-  if (!graph) {
-    const cached = await loadCachedGraph(resolvedRoot);
-    graph = await buildCodeGraph(resolvedRoot, files, cached);
-    await saveCachedGraph(resolvedRoot, graph);
-  }
 
   const hotspotReport =
     options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100, graph }));
@@ -227,98 +236,6 @@ function isInsideRoot(absolutePath: string, resolvedRoot: string): boolean {
 function findHotspotForFile(report: HotspotReport | undefined, relativePath: string): FileHotspot | null {
   if (!report || !report.available) return null;
   return report.hotspots.find((h) => h.relativePath === relativePath) ?? null;
-}
-
-// ── Parsing (shared with CLI/MCP) ─────────────────────────
-//
-// 0.17.0: `extractImports` and `extractExports` below are JS/TS-only regex
-// parsers kept for backward compatibility with `projscan_explain` and the
-// CLI `analyzeFile` / `explainFile` helpers. The AST-based code graph
-// (`buildCodeGraph` + `LanguageAdapter.parse`) is strictly better and is
-// already used as the primary path in `inspectFile` above. These regex
-// helpers are scheduled for removal in a future release once all
-// `projscan_explain` paths take a graph; do not add new callers.
-
-/** @deprecated 0.17.0 — prefer `graphFile.imports` from `buildCodeGraph`. */
-export function extractImports(content: string): ImportInfo[] {
-  const imports: ImportInfo[] = [];
-  const seen = new Set<string>();
-
-  const addSource = (source: string) => {
-    if (!seen.has(source)) {
-      seen.add(source);
-      imports.push({
-        source,
-        specifiers: [],
-        isRelative: source.startsWith('.') || source.startsWith('/'),
-      });
-    }
-  };
-
-  // ES import - optional `type` keyword for type-only imports.
-  const esImportRegex = /import\s+(?:type\s+)?(?:(?:\{[^}]*\}|[\w*]+(?:\s*,\s*\{[^}]*\})?|\*\s+as\s+\w+)\s+from\s+)?['"]([^'"]+)['"]/gm;
-  let match: RegExpExecArray | null;
-  while ((match = esImportRegex.exec(content)) !== null) {
-    addSource(match[1]);
-  }
-
-  // ES re-export - `export ... from '...'` counts as an import from the
-  // importer's point of view for graph-building purposes.
-  const esReexportRegex = /export\s+(?:type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]([^'"]+)['"]/gm;
-  while ((match = esReexportRegex.exec(content)) !== null) {
-    addSource(match[1]);
-  }
-
-  // Dynamic import()
-  const dynamicRegex = /import\(\s*['"]([^'"]+)['"]\s*\)/gm;
-  while ((match = dynamicRegex.exec(content)) !== null) {
-    addSource(match[1]);
-  }
-
-  // CommonJS require
-  const requireRegex = /(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/gm;
-  while ((match = requireRegex.exec(content)) !== null) {
-    addSource(match[1]);
-  }
-
-  return imports;
-}
-
-/** @deprecated 0.17.0 — prefer `graphFile.exports` from `buildCodeGraph`. */
-export function extractExports(content: string): ExportInfo[] {
-  const exports: ExportInfo[] = [];
-
-  const funcRegex = /^export\s+(?:async\s+)?function\s+(\w+)/gm;
-  let match: RegExpExecArray | null;
-  while ((match = funcRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'function' });
-  }
-
-  const classRegex = /^export\s+class\s+(\w+)/gm;
-  while ((match = classRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'class' });
-  }
-
-  const varRegex = /^export\s+(?:const|let|var)\s+(\w+)/gm;
-  while ((match = varRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'variable' });
-  }
-
-  const interfaceRegex = /^export\s+interface\s+(\w+)/gm;
-  while ((match = interfaceRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'interface' });
-  }
-
-  const typeRegex = /^export\s+type\s+(\w+)/gm;
-  while ((match = typeRegex.exec(content)) !== null) {
-    exports.push({ name: match[1], type: 'type' });
-  }
-
-  if (/^export\s+default/m.test(content)) {
-    exports.push({ name: 'default', type: 'default' });
-  }
-
-  return exports;
 }
 
 /**
