@@ -87,9 +87,10 @@ jobs:
           if (pkg !== expected) errors.push(`package.json version (${pkg}) != tag (${expected})`);
           if (srv.version !== expected) errors.push(`server.json#version (${srv.version}) != tag (${expected})`);
           if (srv.packages?.[0]?.version !== expected) errors.push(`server.json#packages[0].version (${srv.packages?.[0]?.version}) != tag (${expected})`);
+          if (srv.description?.length > 100) errors.push(`server.json#description length (${srv.description.length}) exceeds MCP Registry max (100)`);
           if (errors.length > 0) {
             for (const e of errors) console.log(`::error::${e}`);
-            console.log('::error::All version fields must be bumped before tagging.');
+            console.log('::error::Fix the release metadata before tagging.');
             process.exit(1);
           }
           NODE
