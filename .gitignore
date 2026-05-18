@@ -5,6 +5,7 @@ coverage/
 .projscan-cache/
 .projscan-memory/
 .bench-cache/
+.worktrees/
 *.tgz
 .DS_Store
 .env
