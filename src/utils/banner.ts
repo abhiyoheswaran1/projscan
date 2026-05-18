@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { formatList, formatSupportRows } from './formatSupport.js';
 
 function getVersion(): string {
   try {
@@ -52,9 +53,9 @@ export function showBanner(): void {
     `${w('upgrade')}    ${dim('Preview upgrade')}`,
     `${dim('...projscan --help')}`,
     `${head("What's new")}`,
-    `${dim('Semantic search (opt-in)')}`,
-    `${dim('BM25 + hybrid modes')}`,
-    `${dim('Progress isolation fix')}`,
+    `${dim('Plugin Platform stable')}`,
+    `${dim('schemaVersion 2 JSON')}`,
+    `${dim('Reporter plugin docs')}`,
   ];
 
   const leftW = 42;
@@ -147,13 +148,23 @@ export function showHelp(): void {
   console.log(`  ${cyan('Global Options')}`);
   console.log(dim('  ─'.repeat(20)));
   console.log('');
-  console.log(`  ${w('--format <type>')}    ${g('Output format: console, json, markdown, sarif')}`);
+  console.log(`  ${w('--format <type>')}    ${g(`Output format: ${formatList()} (command-dependent)`)}`);
   console.log(`  ${w('--config <path>')}    ${g('Path to a .projscanrc config file')}`);
   console.log(`  ${w('--changed-only')}     ${g('Scope to files changed vs base ref (ci/analyze/doctor)')}`);
   console.log(`  ${w('--base-ref <ref>')}   ${g('Git base ref for --changed-only (default: origin/main)')}`);
   console.log(`  ${w('--verbose')}          ${g('Enable verbose/debug output')}`);
   console.log(`  ${w('--quiet')}            ${g('Suppress non-essential output')}`);
   console.log(`  ${w('--version')}          ${g('Show version number')}`);
+  console.log('');
+
+  const rows = formatSupportRows();
+  const maxFormatCommand = Math.max(...rows.map((row) => `projscan ${row.command}`.length));
+  console.log(`  ${cyan('Format Support')}`);
+  console.log(dim('  ─'.repeat(20)));
+  console.log('');
+  for (const { command, formats } of rows) {
+    console.log(`  ${w(`projscan ${command}`.padEnd(maxFormatCommand + 2))} ${g(formatList(formats))}`);
+  }
   console.log('');
 }
 

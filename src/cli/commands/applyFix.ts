@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, getFormat, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { findIssue, buildApplyPlanForIssue } from '../../core/fixSuggest.js';
@@ -22,7 +22,7 @@ export function registerApplyFix(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('apply-fix');
       try {
         if (opts.rollback) {
           const result = await rollback(rootPath, opts.rollback);

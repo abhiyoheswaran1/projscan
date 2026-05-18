@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, pkg, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, pkg, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { runAudit, auditFindingsToIssues } from '../../core/auditRunner.js';
 import { reportAudit } from '../../reporters/consoleReporter.js';
 import { reportAuditJson } from '../../reporters/jsonReporter.js';
@@ -18,7 +18,7 @@ export function registerAudit(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('audit');
       const spinner = format === 'console' ? ora('Running npm audit...').start() : null;
 
       try {

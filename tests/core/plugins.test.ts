@@ -43,6 +43,21 @@ async function writeModule(rel: string, source: string): Promise<void> {
   await fs.writeFile(path.join(dir, rel), source, 'utf-8');
 }
 
+async function captureStderr(fn: () => Promise<unknown>): Promise<string> {
+  const originalWrite = process.stderr.write.bind(process.stderr);
+  let output = '';
+  process.stderr.write = ((chunk: unknown) => {
+    output += String(chunk);
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    await fn();
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+  return output;
+}
+
 describe('plugins — validateManifest', () => {
   it('accepts a minimal well-formed manifest', () => {
     const v = validateManifest({
@@ -407,6 +422,68 @@ describe('plugins — loadPlugins', () => {
       process.stderr.write = origStderr;
     }
   });
+
+  it('explains missing analyzer modules with the manifest module path', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('missing', {
+      schemaVersion: 1,
+      name: 'missing',
+      kind: 'analyzer',
+      module: './missing.mjs',
+      category: 'custom',
+    });
+
+    const stderr = await captureStderr(async () => {
+      const loaded = await loadPlugins(tmp);
+      expect(loaded).toEqual([]);
+    });
+
+    expect(stderr).toContain('plugin "missing" failed to load');
+    expect(stderr).toContain('module "./missing.mjs" was not found');
+    expect(stderr).toContain('Check the manifest "module" path');
+  });
+
+  it('explains analyzer module syntax errors with a reproduction hint', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('syntax', {
+      schemaVersion: 1,
+      name: 'syntax',
+      kind: 'analyzer',
+      module: './syntax.mjs',
+      category: 'custom',
+    });
+    await writeModule('syntax.mjs', `export default { check: async () => []`);
+
+    const stderr = await captureStderr(async () => {
+      const loaded = await loadPlugins(tmp);
+      expect(loaded).toEqual([]);
+    });
+
+    expect(stderr).toContain('plugin "syntax" failed to load');
+    expect(stderr).toContain('syntax error in module "./syntax.mjs"');
+    expect(stderr).toContain('Run node');
+  });
+
+  it('explains analyzer modules that omit the required check export', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('no-check', {
+      schemaVersion: 1,
+      name: 'no-check',
+      kind: 'analyzer',
+      module: './no-check.mjs',
+      category: 'custom',
+    });
+    await writeModule('no-check.mjs', `export default { render: async () => 'unused' }`);
+
+    const stderr = await captureStderr(async () => {
+      const loaded = await loadPlugins(tmp);
+      expect(loaded).toEqual([]);
+    });
+
+    expect(stderr).toContain('missing required export "check"');
+    expect(stderr).toContain('export default { check(rootPath, files)');
+    expect(stderr).toContain('or export a named check function');
+  });
 });
 
 describe('plugins — reporter runtime', () => {
@@ -480,6 +557,7 @@ describe('plugins — reporter runtime', () => {
         code: 'reporter-unsupported-command',
       });
       expect(result.reason).toContain('ci');
+      expect(result.diagnostic.hint).toContain('Add "ci"');
     }
   });
 
@@ -501,6 +579,50 @@ describe('plugins — reporter runtime', () => {
         code: 'invalid-reporter-export',
       });
       expect(result.reason).toContain('render');
+      expect(result.diagnostic.hint).toContain('export default { render(context)');
+    }
+  });
+
+  it('returns a diagnostic when a reporter module path is missing', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './missing.mjs',
+      commands: ['doctor'],
+    });
+
+    const result = await resolveReporterPlugin(tmp, 'summary', 'doctor');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({
+        code: 'reporter-load-error',
+      });
+      expect(result.reason).toContain('module "./missing.mjs" was not found');
+      expect(result.diagnostic.hint).toContain('Check the reporter manifest "module" path');
+    }
+  });
+
+  it('returns a diagnostic when a reporter module has a syntax error', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('summary.mjs', `export default { render: async () => 'unused'`);
+
+    const result = await resolveReporterPlugin(tmp, 'summary', 'doctor');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({
+        code: 'reporter-load-error',
+      });
+      expect(result.reason).toContain('syntax error in module "./summary.mjs"');
+      expect(result.diagnostic.hint).toContain('Run node');
     }
   });
 

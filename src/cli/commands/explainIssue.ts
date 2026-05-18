@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { explainIssue } from '../../core/explainIssue.js';
@@ -17,7 +17,7 @@ export function registerExplainIssue(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('explain-issue');
       const spinner = format === 'console' ? ora('Resolving issue context...').start() : null;
 
       try {

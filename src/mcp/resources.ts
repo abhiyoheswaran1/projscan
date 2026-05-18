@@ -2,6 +2,7 @@ import type { McpResourceDefinition } from '../types.js';
 import { scanRepository } from '../core/repositoryScanner.js';
 import { collectIssues } from '../core/issueEngine.js';
 import { analyzeHotspots } from '../core/hotspotAnalyzer.js';
+import { buildHandoff, buildRiskNow, buildSessionSummary } from '../core/sessionResources.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
 export interface McpResourceContent {
@@ -30,6 +31,24 @@ const resourceDefinitions: McpResourceDefinition[] = [
     description: 'File/directory layout of the project with counts.',
     mimeType: 'application/json',
   },
+  {
+    uri: 'projscan://session/summary',
+    name: 'Agent Session Summary',
+    description: 'Current shared session state: touched files, recent issues, and stale signals.',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'projscan://handoff',
+    name: 'Agent Handoff',
+    description: 'Compact payload for another agent: touched files, risks, and next tool calls.',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'projscan://risk-now',
+    name: 'Coordination Risk Now',
+    description: 'Current multi-agent coordination risks from session touched-file data.',
+    mimeType: 'application/json',
+  },
 ];
 
 export function getResourceDefinitions(): McpResourceDefinition[] {
@@ -54,6 +73,12 @@ export async function readResource(uri: string, rootPath: string): Promise<McpRe
       const scan = await scanRepository(rootPath);
       return jsonResource(uri, { structure: scan.directoryTree, totalFiles: scan.totalFiles });
     }
+    case 'projscan://session/summary':
+      return jsonResource(uri, await buildSessionSummary(rootPath));
+    case 'projscan://handoff':
+      return jsonResource(uri, await buildHandoff(rootPath));
+    case 'projscan://risk-now':
+      return jsonResource(uri, await buildRiskNow(rootPath));
     default:
       throw new Error(`Unknown resource URI: ${uri}`);
   }

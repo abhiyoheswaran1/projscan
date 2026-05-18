@@ -4,12 +4,12 @@ import path from 'node:path';
 
 import {
   program,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
   sliceCliTree,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { detectWorkspaces } from '../../core/monorepo.js';
@@ -26,7 +26,7 @@ export function registerStructure(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('structure');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Scanning...').start() : null;
 

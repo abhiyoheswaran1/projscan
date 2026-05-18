@@ -10,6 +10,7 @@ import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { loadConfig } from '../utils/config.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
+import { OUTPUT_FORMATS, formatList, getCommandFormatSupport } from '../utils/formatSupport.js';
 import {
   resolveReporterPlugin,
   renderReporterPlugin,
@@ -35,7 +36,7 @@ program
   .name('projscan')
   .description('Instant codebase insights - doctor, x-ray, and architecture map for any repository')
   .version(pkg.version)
-  .option('--format <type>', 'output format: console, json, markdown, sarif, html', 'console')
+  .option('--format <type>', `output format: ${formatList()} (command-dependent)`, 'console')
   .option('--config <path>', 'path to .projscanrc config file')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
@@ -43,8 +44,23 @@ program
 export function getFormat(): ReportFormat {
   const opts = program.opts();
   const f = opts.format as string;
-  if (f === 'json' || f === 'markdown' || f === 'sarif' || f === 'html') return f;
-  return 'console';
+  if ((OUTPUT_FORMATS as readonly string[]).includes(f)) return f as ReportFormat;
+  console.error(chalk.red(`Unsupported --format ${f}.`));
+  console.error(chalk.dim(`Supported formats: ${formatList()}`));
+  process.exit(1);
+}
+
+export function assertFormatSupported(commandName: string): ReportFormat {
+  const format = getFormat();
+  const supported = getCommandFormatSupport(commandName);
+  if (!supported) {
+    console.error(chalk.red(`Internal error: no --format support metadata for projscan ${commandName}.`));
+    process.exit(1);
+  }
+  if (supported.includes(format)) return format;
+  console.error(chalk.red(`projscan ${commandName} does not support --format ${format}.`));
+  console.error(chalk.dim(`Supported formats: ${formatList(supported)}`));
+  process.exit(1);
 }
 
 export function getRootPath(): string {

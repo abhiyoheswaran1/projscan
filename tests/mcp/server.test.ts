@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { createMcpServer } from '../../src/mcp/server.js';
 import { getToolDefinitions } from '../../src/mcp/tools.js';
 
@@ -6,6 +9,15 @@ async function send(server: ReturnType<typeof createMcpServer>, message: unknown
   const line = JSON.stringify(message);
   const raw = await server.handleMessage(line);
   return raw === null ? null : JSON.parse(raw);
+}
+
+async function makeFixtureRoot(): Promise<string> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-server-'));
+  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
+  await fs.mkdir(path.join(root, 'src'), { recursive: true });
+  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
+  return root;
 }
 
 describe('MCP server', () => {
@@ -227,15 +239,20 @@ describe('MCP server', () => {
   });
 
   it('prompts/get prioritize_refactoring returns a user message', async () => {
-    const server = createMcpServer(process.cwd());
-    const response = (await send(server, {
-      jsonrpc: '2.0',
-      id: 11,
-      method: 'prompts/get',
-      params: { name: 'prioritize_refactoring', arguments: { limit: 3 } },
-    })) as { result: { messages: Array<{ role: string; content: { text: string } }> } };
-    expect(response.result.messages[0].role).toBe('user');
-    expect(response.result.messages[0].content.text.length).toBeGreaterThan(100);
+    const root = await makeFixtureRoot();
+    try {
+      const server = createMcpServer(root);
+      const response = (await send(server, {
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'prompts/get',
+        params: { name: 'prioritize_refactoring', arguments: { limit: 3 } },
+      })) as { result: { messages: Array<{ role: string; content: { text: string } }> } };
+      expect(response.result.messages[0].role).toBe('user');
+      expect(response.result.messages[0].content.text.length).toBeGreaterThan(100);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it('prompts/get investigate_file requires a file arg', async () => {

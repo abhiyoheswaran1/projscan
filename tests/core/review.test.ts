@@ -323,6 +323,64 @@ export function reader() {
     expect(change.added).toContainEqual({ name: 'axios', version: '^1.0.0', kind: 'dep' });
   });
 
+  it('reports exported symbol contract changes', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/api.ts', `export function oldApi() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('src/api.ts', `export function newApi() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'replace api']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'export-renamed',
+          file: 'src/api.ts',
+          symbol: 'newApi',
+          before: 'oldApi',
+          after: 'newApi',
+          confidence: 'high',
+        }),
+      ]),
+    );
+    expect(r.contractChanges?.[0].why).toMatch(/downstream/i);
+  });
+
+  it('reports package entrypoint contract changes', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', main: './old.js' }, null, 2));
+    await write('old.js', `export const value = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('package.json', JSON.stringify({ name: 'x', main: './new.js' }, null, 2));
+    await write('new.js', `export const value = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'move entrypoint']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'entrypoint-changed',
+          file: 'package.json',
+          symbol: 'main',
+          before: './old.js',
+          after: './new.js',
+          confidence: 'high',
+        }),
+      ]),
+    );
+  });
+
   it('annotates findings with intent alignment when intent is passed (1.9+)', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));

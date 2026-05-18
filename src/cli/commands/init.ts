@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 
 /**
  * `projscan init` (1.6+) — scaffold `.projscanrc.json` for new
@@ -17,6 +17,7 @@ export function registerInit(): void {
     .action(async (opts: { force?: boolean }) => {
       setupLogLevel();
       maybeCompactBanner();
+      assertFormatSupported('init');
       const rootPath = getRootPath();
       try {
         await runInit(rootPath, opts.force === true);

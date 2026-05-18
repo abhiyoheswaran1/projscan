@@ -5,13 +5,13 @@ import path from 'node:path';
 import {
   program,
   pkg,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeBanner,
   filterIssuesByChangedFiles,
   renderPluginReporterIfRequested,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { detectLanguages } from '../../core/languageDetector.js';
@@ -24,6 +24,7 @@ import { reportAnalysis } from '../../reporters/consoleReporter.js';
 import { reportAnalysisJson } from '../../reporters/jsonReporter.js';
 import { reportAnalysisMarkdown } from '../../reporters/markdownReporter.js';
 import { reportAnalysisSarif } from '../../reporters/sarifReporter.js';
+import { reportAnalysisHtml } from '../../reporters/htmlReporter.js';
 import type { AnalysisReport } from '../../types.js';
 
 export function registerAnalyze(): void {
@@ -33,12 +34,12 @@ export function registerAnalyze(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
-    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
+    .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('analyze');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Scanning repository...').start() : null;
 
@@ -89,6 +90,9 @@ export function registerAnalyze(): void {
             break;
           case 'sarif':
             reportAnalysisSarif(issues, pkg.version);
+            break;
+          case 'html':
+            reportAnalysisHtml(report);
             break;
           default:
             reportAnalysis(report);

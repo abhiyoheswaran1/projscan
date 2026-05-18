@@ -3,11 +3,11 @@ import chalk from 'chalk';
 
 import {
   program,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -33,7 +33,7 @@ export function registerHotspots(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('hotspots');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Analyzing hotspots...').start() : null;
 

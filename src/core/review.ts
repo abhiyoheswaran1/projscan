@@ -13,12 +13,14 @@ import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './
 import { loadConfig } from '../utils/config.js';
 import type {
   ReviewCycle,
+  ReviewContractChange,
   ReviewDependencyChange,
   ReviewFile,
   ReviewFunction,
   ReviewReport,
   ReviewTaintFlow,
   ReviewTier,
+  PrDiffReport,
 } from '../types.js';
 
 export interface ReviewOptions {
@@ -164,6 +166,13 @@ export async function computeReview(
 
   // Dependency changes across root + workspaces.
   const dependencyChanges = diffManifests(basePackageManifests, headPackageManifests);
+  const contractChanges = buildContractChanges(
+    prDiff,
+    baseGraph,
+    headGraph,
+    basePackageManifests,
+    headPackageManifests,
+  );
 
   // 1.6+ — taint flows newly introduced at head. A flow is "new" iff
   //   (a) the (sourceFn, sinkFn) pair didn't exist at base, AND
@@ -196,6 +205,7 @@ export async function computeReview(
     newCycles,
     riskyFunctions,
     dependencyChanges,
+    contractChanges,
     newTaintFlows,
     verdict,
     summary,
@@ -428,6 +438,7 @@ interface ManifestSnapshot {
   manifestFile: string;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
+  entrypoints: Record<string, string>;
 }
 
 async function readManifests(rootPath: string): Promise<Map<string, ManifestSnapshot>> {
@@ -462,7 +473,15 @@ async function readOneManifest(
   } catch {
     return null;
   }
-  let parsed: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  let parsed: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    main?: unknown;
+    module?: unknown;
+    types?: unknown;
+    exports?: unknown;
+    bin?: unknown;
+  };
   try {
     parsed = JSON.parse(raw) as typeof parsed;
   } catch {
@@ -473,7 +492,28 @@ async function readOneManifest(
     manifestFile,
     dependencies: parsed.dependencies ?? {},
     devDependencies: parsed.devDependencies ?? {},
+    entrypoints: readEntrypoints(parsed),
   };
+}
+
+function readEntrypoints(parsed: {
+  main?: unknown;
+  module?: unknown;
+  types?: unknown;
+  exports?: unknown;
+  bin?: unknown;
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of ['main', 'module', 'types', 'exports', 'bin'] as const) {
+    const value = parsed[field];
+    if (value === undefined) continue;
+    out[field] = entrypointValue(value);
+  }
+  return out;
+}
+
+function entrypointValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
 function diffManifests(
@@ -493,6 +533,99 @@ function diffManifests(
   }
   out.sort((a, b) => a.manifestFile.localeCompare(b.manifestFile));
   return out;
+}
+
+function buildContractChanges(
+  prDiff: PrDiffReport,
+  baseGraph: CodeGraph,
+  headGraph: CodeGraph,
+  baseManifests: Map<string, ManifestSnapshot>,
+  headManifests: Map<string, ManifestSnapshot>,
+): ReviewContractChange[] {
+  const changes: ReviewContractChange[] = [];
+  for (const file of prDiff.filesAdded) {
+    const entry = headGraph.files.get(file);
+    for (const exp of entry?.exports ?? []) {
+      changes.push(exportContractChange('export-added', file, exp.name));
+    }
+  }
+  for (const file of prDiff.filesRemoved) {
+    const entry = baseGraph.files.get(file);
+    for (const exp of entry?.exports ?? []) {
+      changes.push(exportContractChange('export-removed', file, exp.name));
+    }
+  }
+  for (const file of prDiff.filesModified) {
+    for (const symbol of file.exportsAdded) {
+      changes.push(exportContractChange('export-added', file.relativePath, symbol));
+    }
+    for (const symbol of file.exportsRemoved) {
+      changes.push(exportContractChange('export-removed', file.relativePath, symbol));
+    }
+    for (const rename of file.exportsRenamed) {
+      changes.push({
+        kind: 'export-renamed',
+        file: file.relativePath,
+        symbol: rename.to,
+        before: rename.from,
+        after: rename.to,
+        confidence: 'high',
+        why: `Export "${rename.from}" was renamed to "${rename.to}" in ${file.relativePath}; downstream imports of the old name can fail at compile time or runtime.`,
+      });
+    }
+  }
+
+  changes.push(...entrypointContractChanges(baseManifests, headManifests));
+  return changes;
+}
+
+function exportContractChange(
+  kind: 'export-added' | 'export-removed',
+  file: string,
+  symbol: string,
+): ReviewContractChange {
+  return {
+    kind,
+    file,
+    symbol,
+    confidence: 'high',
+    why:
+      kind === 'export-added'
+        ? `Export "${symbol}" was added in ${file}; downstream code may start depending on a new public API.`
+        : `Export "${symbol}" was removed from ${file}; downstream imports can fail at compile time or runtime.`,
+  };
+}
+
+function entrypointContractChanges(
+  base: Map<string, ManifestSnapshot>,
+  head: Map<string, ManifestSnapshot>,
+): ReviewContractChange[] {
+  const out: ReviewContractChange[] = [];
+  const allManifests = new Set<string>([...base.keys(), ...head.keys()]);
+  for (const manifestFile of allManifests) {
+    const baseEntrypoints = base.get(manifestFile)?.entrypoints ?? {};
+    const headEntrypoints = head.get(manifestFile)?.entrypoints ?? {};
+    const fields = new Set<string>([...Object.keys(baseEntrypoints), ...Object.keys(headEntrypoints)]);
+    for (const field of fields) {
+      const before = baseEntrypoints[field];
+      const after = headEntrypoints[field];
+      if (before === after) continue;
+      const kind = field === 'exports' ? 'public-export-changed' : 'entrypoint-changed';
+      out.push({
+        kind,
+        file: manifestFile,
+        symbol: field,
+        ...(before !== undefined ? { before } : {}),
+        ...(after !== undefined ? { after } : {}),
+        confidence: 'high',
+        why:
+          kind === 'public-export-changed'
+            ? `${manifestFile} package "exports" changed; consumers may resolve different public modules.`
+            : `${manifestFile} package "${field}" changed from ${before ?? '<unset>'} to ${after ?? '<unset>'}; package consumers may load a different entrypoint.`,
+      });
+    }
+  }
+  return out.sort((a, b) => `${a.file}:${a.symbol ?? ''}`.localeCompare(`${b.file}:${b.symbol ?? ''}`));
 }
 
 function diffOneManifest(
@@ -766,7 +899,15 @@ export function shapeReviewForTier(
   const riskyFunctionsAdded = report.riskyFunctions.length;
   const depsChanged = report.dependencyChanges.length;
   const taintFlowsAdded = report.newTaintFlows?.length ?? 0;
-  const totals = { filesChanged, cyclesAdded, riskyFunctionsAdded, depsChanged, taintFlowsAdded };
+  const contractChanges = report.contractChanges?.length ?? 0;
+  const totals = {
+    filesChanged,
+    cyclesAdded,
+    riskyFunctionsAdded,
+    depsChanged,
+    taintFlowsAdded,
+    contractChanges,
+  };
 
   if (tier === 'verdict-only') {
     return {
@@ -807,6 +948,7 @@ export function shapeReviewForTier(
     newCycles: report.newCycles.slice(0, 3),
     riskyFunctions: report.riskyFunctions.slice(0, 3),
     dependencyChanges: report.dependencyChanges.slice(0, 3),
+    contractChanges: report.contractChanges?.slice(0, TOP) ?? [],
     newTaintFlows: report.newTaintFlows?.slice(0, 5) ?? [],
     verdict: report.verdict,
     summary: report.summary,

@@ -4,6 +4,8 @@ import { mkdtempSync, rmSync, readdirSync, statSync, existsSync } from 'node:fs'
 import path from 'node:path';
 import os from 'node:os';
 
+const maybePackedInstallSmoke = process.env.PROJSCAN_RUN_PACKED_INSTALL_SMOKE === '1' ? it : it.skip;
+
 /**
  * Verifies that `npm pack` produces a tarball containing the compiled
  * output AND the vendored tree-sitter wasm files. A regression here
@@ -28,6 +30,7 @@ describe('npm pack smoke test', () => {
     try {
       execFileSync('npm', ['pack', '--pack-destination', tmpDir, '--ignore-scripts'], {
         cwd: repoRoot,
+        env: { ...process.env, npm_config_cache: path.join(tmpDir, '.npm-cache') },
         stdio: 'pipe',
       });
 
@@ -54,4 +57,18 @@ describe('npm pack smoke test', () => {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   }, 60_000);
+
+  maybePackedInstallSmoke('installs the packed tarball into a fresh project and exercises CLI, MCP, and plugins', () => {
+    const repoRoot = path.resolve(__dirname, '..', '..');
+    const script = path.join(repoRoot, 'scripts', 'packed-install-smoke.mjs');
+
+    const output = execFileSync(process.execPath, [script], {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+      timeout: 300_000,
+    });
+
+    expect(output).toContain('packed-install-smoke: ok');
+  }, 300_000);
 });

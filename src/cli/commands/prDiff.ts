@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { computePrDiff } from '../../core/prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportPrDiff } from '../../reporters/consoleReporter.js';
@@ -20,7 +20,7 @@ export function registerPrDiff(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('pr-diff');
       const spinner = format === 'console' ? ora('Computing structural PR diff...').start() : null;
 
       try {

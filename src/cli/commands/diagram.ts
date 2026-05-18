@@ -3,12 +3,12 @@ import chalk from 'chalk';
 
 import {
   program,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
   buildArchitectureLayers,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { detectFrameworks } from '../../core/frameworkDetector.js';
@@ -24,7 +24,7 @@ export function registerDiagram(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('diagram');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Analyzing architecture...').start() : null;
 

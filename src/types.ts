@@ -240,6 +240,153 @@ export interface HealthScore {
   infos: number;
 }
 
+// === Agent Preflight (2.1) ===
+
+export type PreflightMode = 'before_edit' | 'before_commit' | 'before_merge';
+
+export type PreflightVerdict = 'proceed' | 'caution' | 'block';
+
+export type PreflightReasonSource =
+  | 'doctor'
+  | 'review'
+  | 'taint'
+  | 'session'
+  | 'plugin'
+  | 'memory'
+  | 'changed-files'
+  | 'hotspots'
+  | 'git'
+  | 'format';
+
+export interface PreflightReason {
+  severity: IssueSeverity;
+  source: PreflightReasonSource;
+  message: string;
+  file?: string;
+  issueId?: string;
+  tool?: string;
+}
+
+export interface PreflightRequiredCheck {
+  name: string;
+  status: 'pass' | 'warn' | 'fail' | 'unavailable';
+  reason?: string;
+}
+
+export interface PreflightSuggestedAction {
+  label: string;
+  command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+}
+
+export interface PreflightEvidence {
+  health?: {
+    score: number;
+    grade: HealthScore['grade'];
+    errors: number;
+    warnings: number;
+    infos: number;
+  };
+  changedFiles?: {
+    available: boolean;
+    count: number;
+    files: string[];
+    reason?: string;
+  };
+  review?: {
+    available: boolean;
+    verdict?: ReviewReport['verdict'];
+    summary?: string;
+    reason?: string;
+  };
+  session?: {
+    id: string;
+    touchedFiles: string[];
+    totalTouchedFiles?: number;
+    eventCount: number;
+    truncated?: boolean;
+  };
+  hotspots?: {
+    touched: Array<{ file: string; riskScore: number }>;
+  };
+  plugins?: {
+    enabled: boolean;
+    errorIssues: number;
+    warningIssues: number;
+  };
+}
+
+export interface PreflightReport {
+  schemaVersion: 1;
+  mode: PreflightMode;
+  verdict: PreflightVerdict;
+  summary: string;
+  reasons: PreflightReason[];
+  evidence: PreflightEvidence;
+  requiredChecks: PreflightRequiredCheck[];
+  suggestedNextActions: PreflightSuggestedAction[];
+  toolCalls: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
+export interface SessionResourceSummary {
+  schemaVersion: 1;
+  sessionId: string;
+  touchedFiles: string[];
+  recentIssues: Issue[];
+  highRiskTouchedFiles: Array<{ file: string; riskScore: number }>;
+  staleSignals: string[];
+  truncated?: boolean;
+}
+
+export interface SessionConflict {
+  kind: 'same-file' | 'import-related' | 'same-workspace' | 'taint-related' | 'hotspot-overlap';
+  files: string[];
+  message: string;
+  severity: 'warning' | 'error';
+}
+
+export interface SessionHandoff {
+  schemaVersion: 1;
+  summary: SessionResourceSummary;
+  remainingRisks: SessionConflict[];
+  suggestedNextActions: PreflightSuggestedAction[];
+  avoidRepeating: string[];
+}
+
+export interface RiskNowResource {
+  schemaVersion: 1;
+  conflicts: SessionConflict[];
+  touchedFiles: string[];
+  truncated?: boolean;
+}
+
+export interface PluginTestResult {
+  schemaVersion: 1;
+  manifestPath: string;
+  ok: boolean;
+  diagnostics: Array<{ code: string; severity: IssueSeverity; message: string }>;
+  analyzer?: { issues: Issue[] };
+  reporter?: { outputs: Array<{ command: string; text: string }> };
+}
+
+export interface ReviewContractChange {
+  kind:
+    | 'export-added'
+    | 'export-removed'
+    | 'export-renamed'
+    | 'entrypoint-changed'
+    | 'public-export-changed'
+    | 'signature-changed';
+  file: string;
+  symbol?: string;
+  before?: string;
+  after?: string;
+  confidence: 'high' | 'medium' | 'low';
+  why: string;
+}
+
 // === Baseline / Diff ===
 
 export interface BaselineHotspot {
@@ -706,6 +853,11 @@ export interface ReviewReport {
   riskyFunctions: ReviewFunction[];
   /** package.json deltas across root + workspaces. */
   dependencyChanges: ReviewDependencyChange[];
+  /**
+   * 2.1+ — additive public contract changes such as export and package
+   * entrypoint changes. Empty or absent when no contract signal is available.
+   */
+  contractChanges?: ReviewContractChange[];
   /**
    * 1.6+ — NEW source-to-sink taint flows introduced by this PR. Each
    * entry is a flow that exists at head but didn't exist at base

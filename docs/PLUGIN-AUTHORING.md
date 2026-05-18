@@ -64,6 +64,20 @@ The machine-readable manifest schema lives at
 [`docs/plugin.schema.json`](plugin.schema.json). The examples under
 [`docs/examples/plugins/`](examples/plugins/) are tested in CI.
 
+## Scaffold
+
+Use `plugin init` to create a minimal local plugin without writing the manifest
+by hand:
+
+```sh
+projscan plugin init --kind analyzer --name policy
+projscan plugin init --kind reporter --name team-summary
+projscan plugin init --kind analyzer --name policy --format json
+```
+
+The command writes a manifest and `.mjs` module under `.projscan-plugins/`.
+It refuses to overwrite existing files.
+
 ## Analyzer Module
 
 The module must export a `check(rootPath, files)` function, either as the
@@ -150,6 +164,22 @@ projscan plugin validate .projscan-plugins/policy.projscan-plugin.json --format 
 
 Validation reports structured diagnostics with a stable `code`, the manifest
 `field` when applicable, a `message`, and sometimes a `hint`.
+
+## Test
+
+Use `plugin test` after editing a plugin:
+
+```sh
+projscan plugin test .projscan-plugins/policy.projscan-plugin.json
+projscan plugin test .projscan-plugins/policy.projscan-plugin.json --format json
+projscan plugin test .projscan-plugins/policy.projscan-plugin.json --fixture ./test-fixture
+```
+
+For analyzer plugins, the test runner loads the module, scans the fixture root,
+runs `check(rootPath, files)`, and verifies every returned issue has the required
+shape. For reporter plugins, it renders sample `doctor`, `analyze`, and `ci`
+payloads for the commands listed in the manifest and verifies each render returns
+a string.
 
 ## List
 

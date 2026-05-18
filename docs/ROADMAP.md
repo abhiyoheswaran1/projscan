@@ -53,7 +53,21 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 2.0.0 (2026)
+### Now — 2.1.0 (2026)
+
+**2.1.0 "Agent Trust"** turns the platform into a safety gate for coding
+agents:
+
+- `projscan preflight` / `projscan_preflight` answer `proceed`, `caution`, or
+  `block` with evidence and suggested next tool calls.
+- MCP resources `projscan://session/summary`, `projscan://handoff`, and
+  `projscan://risk-now` expose coordination risk for multi-agent sessions.
+- `projscan plugin init` and `projscan plugin test` make the 2.0 plugin
+  platform practical to author and verify.
+- `projscan_review.contractChanges` surfaces exported symbol and package
+  entrypoint changes before agents merge unsafe public API edits.
+
+### Recently Completed — 2.0.0 (2026)
 
 The agent-substrate arc (1.4 → 2.0) is complete: 11 languages, long-running PR watch with per-bucket deltas, intent-grounded review, severity drift, atomic-saved session state, cost-summary streaming, and a stable local analyzer/reporter plugin API.
 

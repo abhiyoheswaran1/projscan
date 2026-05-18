@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, getFormat, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import {
   addRepo,
   loadOrCreateWorkspace,
@@ -55,7 +55,7 @@ async function runList(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('workspace list');
   try {
     const w = await loadWorkspace(rootPath);
     if (format === 'json') {
@@ -72,6 +72,7 @@ async function runList(): Promise<void> {
 async function runAdd(repoPath: string, name?: string): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
+  assertFormatSupported('workspace add');
   const rootPath = getRootPath();
   try {
     const w = await loadOrCreateWorkspace(rootPath);
@@ -88,6 +89,7 @@ async function runAdd(repoPath: string, name?: string): Promise<void> {
 async function runRemove(pathOrName: string): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
+  assertFormatSupported('workspace remove');
   const rootPath = getRootPath();
   try {
     const w = await loadWorkspace(rootPath);

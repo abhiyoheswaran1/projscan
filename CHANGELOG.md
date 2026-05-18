@@ -4,6 +4,34 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [2.1.0] — 2026-05-18 — "Agent Trust"
+
+### Added
+
+- `projscan preflight` and MCP `projscan_preflight` now return an agent-sized `proceed` / `caution` / `block` verdict with evidence, required checks, and suggested next tool calls.
+- Added MCP resources `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now` for multi-agent coordination over the shared session.
+- `projscan plugin init` and `projscan plugin test` now scaffold local analyzer/reporter plugins and validate their runtime behavior with structured diagnostics.
+- `projscan_review` now includes optional `contractChanges` for exported symbol renames/additions/removals and Node package entrypoint/public export changes.
+- `projscan analyze --format html` now emits a self-contained HTML analysis report instead of falling through to console output.
+- `npm run smoke:packed-install` now installs the packed npm tarball into a fresh temp project and verifies the CLI, MCP stdio startup, plugin loading, and core JSON commands outside the repo checkout.
+- Command format support is now machine-readable from one shared source and rendered by `projscan help`.
+- Added a website update prompt for downstream site refreshes after npm/GitHub/MCP Registry releases.
+
+### Fixed
+
+- Unsupported CLI `--format` combinations now fail with a clear command-specific diagnostic instead of silently rendering console output.
+- Default repository scanning now ignores projscan's own local state directories (`.projscan-cache/`, `.projscan-memory/`) and OS metadata files (`.DS_Store`, `Thumbs.db`).
+- Local plugin modules now load through Node's runtime importer so file-based plugins continue to work under Vite/Vitest-backed environments.
+- Local plugin load failures now explain missing modules, syntax errors, missing analyzer/reporter exports, and unsupported reporter commands with actionable manifest/module hints.
+- Upgraded the dev Vitest/Vite test stack to a Node 18-compatible safe range so `npm audit` no longer reports the esbuild dev-server advisory.
+
+### Documentation
+
+- Refreshed CLI help, README, Guide, and Stability docs so command-dependent format support includes HTML and reflects the 2.0 Plugin Platform release.
+- Audited README trust copy, MCP Registry metadata, and registry republish instructions for the 2.0 release line.
+
 ## [2.0.0] — 2026-05-18 — "Plugin Platform"
 
 projscan 2.0 stabilizes the local plugin platform and uses the major-version

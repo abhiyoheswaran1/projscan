@@ -3,11 +3,11 @@ import chalk from 'chalk';
 
 import {
   program,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { previewUpgrade } from '../../core/upgradePreview.js';
@@ -24,7 +24,7 @@ export function registerUpgrade(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('upgrade');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora(`Previewing ${pkgName}...`).start() : null;
 

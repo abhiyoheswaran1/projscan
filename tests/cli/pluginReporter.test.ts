@@ -97,6 +97,11 @@ describe('CLI reporter plugins', () => {
     expect(result.stdout).toContain('Discover and validate local plugins');
     expect(result.stdout).not.toContain('preview');
     expect(result.stdout).not.toContain('1.10');
+
+    const doctor = await runCli(['doctor', '--help']);
+    expect(doctor.exitCode).toBe(0);
+    expect(doctor.stdout).toContain('render output with a local reporter plugin');
+    expect(doctor.stdout).not.toContain('preview: render output');
   });
 
   it('renders doctor output through a reporter plugin', async () => {

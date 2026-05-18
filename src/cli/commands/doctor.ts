@@ -4,13 +4,13 @@ import chalk from 'chalk';
 import {
   program,
   pkg,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
   filterIssuesByChangedFiles,
   renderPluginReporterIfRequested,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -31,12 +31,12 @@ export function registerDoctor(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
-    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
+    .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('doctor');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Running health checks...').start() : null;
 

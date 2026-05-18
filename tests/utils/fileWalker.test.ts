@@ -94,10 +94,25 @@ describe('fileWalker', () => {
     expect(files[0].relativePath).toBe('app.py');
   });
 
+  it('should ignore projscan local state and OS metadata by default', async () => {
+    tmpDir = await createTmpDir();
+    await createFile(tmpDir, 'src/index.ts', 'export const value = 1;');
+    await createFile(tmpDir, '.DS_Store', 'metadata');
+    await createFile(tmpDir, 'docs/.DS_Store', 'metadata');
+    await createFile(tmpDir, '.projscan-cache/graph.json', '{}');
+    await createFile(tmpDir, '.projscan-memory/memory.json', '{}');
+
+    const files = await walkFiles(tmpDir);
+    expect(files.map((f) => f.relativePath)).toEqual(['src/index.ts']);
+  });
+
   it('should expose the new Python ignore patterns via the public helper', () => {
     const patterns = getDefaultIgnorePatterns();
     expect(patterns).toContain('**/venv/**');
     expect(patterns).toContain('**/__pycache__/**');
     expect(patterns).toContain('**/*.egg-info/**');
+    expect(patterns).toContain('**/.projscan-cache/**');
+    expect(patterns).toContain('**/.projscan-memory/**');
+    expect(patterns).toContain('**/.DS_Store');
   });
 });

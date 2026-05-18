@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        node-version: [20, 22, 24]
+        node-version: [18, 20, 22, 24]
         # 1.9+ — add a macOS leg on Node 22 only to validate the
         # wasi-sdk + tree-sitter wasm build chain on darwin. The
         # full matrix stays Linux-only because Node-version
@@ -36,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: npm run smoke:packed-install
       - run: npm run lint
       - run: npm run check:stability
 

@@ -102,6 +102,7 @@ describe('shapeReviewForTier (1.5+)', () => {
       newCycles: unknown[];
       riskyFunctions: unknown[];
       dependencyChanges: unknown[];
+      contractChanges: unknown[];
       totals: Record<string, number>;
       prDiff: {
         filesAdded: unknown[];
@@ -113,6 +114,7 @@ describe('shapeReviewForTier (1.5+)', () => {
     expect(out.newCycles.length).toBeLessThanOrEqual(3);
     expect(out.riskyFunctions.length).toBeLessThanOrEqual(3);
     expect(out.dependencyChanges.length).toBeLessThanOrEqual(3);
+    expect(out.contractChanges.length).toBeLessThanOrEqual(5);
     expect(out.prDiff.filesAdded.length).toBeLessThanOrEqual(5);
     expect(out.prDiff.filesModified.length).toBeLessThanOrEqual(5);
     expect(out.totals).toEqual({
@@ -121,6 +123,7 @@ describe('shapeReviewForTier (1.5+)', () => {
       riskyFunctionsAdded: 5,
       depsChanged: 5,
       taintFlowsAdded: 0,
+      contractChanges: 0,
     });
   });
 

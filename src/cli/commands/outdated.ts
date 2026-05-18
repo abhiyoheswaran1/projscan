@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, pkg, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, pkg, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { detectOutdated } from '../../core/outdatedDetector.js';
 import { detectWorkspaces } from '../../core/monorepo.js';
 import { reportOutdated } from '../../reporters/consoleReporter.js';
@@ -18,7 +18,7 @@ export function registerOutdated(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('outdated');
       const spinner = format === 'console' ? ora('Checking dependencies...').start() : null;
 
       try {

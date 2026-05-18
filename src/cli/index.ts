@@ -35,6 +35,7 @@ import { registerInstallHook } from './commands/installHook.js';
 import { registerTaint } from './commands/taint.js';
 import { registerBadge } from './commands/badge.js';
 import { registerPlugin } from './commands/plugin.js';
+import { registerPreflight } from './commands/preflight.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -71,6 +72,7 @@ registerInstallHook();
 registerTaint();
 registerBadge();
 registerPlugin();
+registerPreflight();
 registerHelp();
 
 program.parse();

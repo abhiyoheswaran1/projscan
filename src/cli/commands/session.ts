@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, getFormat, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import {
   loadSession,
   resetSession,
@@ -56,7 +56,7 @@ async function runSummary(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('session');
   try {
     const { session: sess, created } = await loadSession(rootPath);
     if (format === 'json') {
@@ -74,7 +74,7 @@ async function runTouched(opts: { source?: string; limit?: number }): Promise<vo
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('session touched');
   try {
     const { session: sess } = await loadSession(rootPath);
     const all = Object.values(sess.touchedFiles);
@@ -96,7 +96,7 @@ async function runEvents(opts: { limit?: number }): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('session events');
   try {
     const { session: sess } = await loadSession(rootPath);
     const reversed = [...sess.events].reverse();
@@ -116,7 +116,7 @@ async function runReset(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('session reset');
   try {
     const fresh = await resetSession(rootPath);
     if (format === 'json') {

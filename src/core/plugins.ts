@@ -4,13 +4,12 @@ import { pathToFileURL } from 'node:url';
 import type { FileEntry, Issue, IssueSeverity } from '../types.js';
 
 /**
- * Plugin API preview (1.10+).
+ * Stable local plugin API (2.0+).
  *
- * Gated behind PROJSCAN_PLUGINS_PREVIEW=1. The shape declared here is what
- * 2.0 will commit to; until 2.0 ships, the schema, the discovery path,
- * and the dispatch lifecycle may change between minors. Without the env
- * flag, `loadPlugins()` returns [] and projscan ignores any manifests on
- * disk — so a half-written plugin can't accidentally light up.
+ * Gated behind PROJSCAN_PLUGINS_PREVIEW=1 as an explicit local-code trust
+ * boundary. Without the env flag, `loadPlugins()` returns [] and projscan
+ * ignores manifests on disk, so a half-written plugin cannot accidentally
+ * affect a scan.
  *
  * Goal for 2.0: third parties write `.projscan-plugin.json` declaring an
  * analyzer that produces Issue[], projscan dispatches to it during
@@ -23,6 +22,10 @@ export const PLUGIN_PREVIEW_FLAG = 'PROJSCAN_PLUGINS_PREVIEW';
 export const PLUGIN_SCHEMA_VERSION = 1;
 export const PLUGIN_DIR = '.projscan-plugins';
 export const PLUGIN_MANIFEST_EXT = '.projscan-plugin.json';
+
+type DynamicImport = (specifier: string) => Promise<Record<string, unknown>>;
+// Keep arbitrary plugin file URLs out of Vite/Vitest's static import transform.
+const dynamicImport = new Function('specifier', 'return import(specifier)') as DynamicImport;
 
 export type PluginKind = 'analyzer' | 'reporter';
 export type PluginReporterCommand = 'doctor' | 'analyze' | 'ci';
@@ -199,11 +202,12 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
     if (entry.manifest.kind !== 'analyzer') continue;
     const modulePath = path.resolve(path.dirname(entry.manifestPath), entry.manifest.module);
     try {
-      const mod = (await import(pathToFileURL(modulePath).href)) as Record<string, unknown>;
+      await assertPluginModuleReadable(entry.manifest.module, modulePath);
+      const mod = await importPluginModule(modulePath);
       const exportsObj = (mod.default ?? mod) as Partial<PluginAnalyzerExports>;
       if (typeof exportsObj.check !== 'function') {
         process.stderr.write(
-          `[projscan] plugin "${entry.manifest.name}" missing required export "check"; skipped.\n`,
+          `[projscan] plugin "${entry.manifest.name}" missing required export "check"; export default { check(rootPath, files) { ... } } or export a named check function. skipped.\n`,
         );
         continue;
       }
@@ -214,8 +218,9 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
         exports: { check: exportsObj.check as PluginAnalyzerExports['check'] },
       });
     } catch (err) {
+      const detail = describePluginModuleLoadError(err, entry.manifest.module, modulePath, 'manifest');
       process.stderr.write(
-        `[projscan] plugin "${entry.manifest.name}" failed to load: ${err instanceof Error ? err.message : String(err)}. skipped.\n`,
+        `[projscan] plugin "${entry.manifest.name}" failed to load: ${detail.message}${detail.hint ? ` ${detail.hint}` : ''}. skipped.\n`,
       );
     }
   }
@@ -289,13 +294,14 @@ async function loadReporterPlugin(
 ): Promise<PluginReporterResolveResult> {
   const modulePath = path.resolve(path.dirname(manifestPath), manifest.module);
   try {
-    const mod = (await import(pathToFileURL(modulePath).href)) as Record<string, unknown>;
+    await assertPluginModuleReadable(manifest.module, modulePath);
+    const mod = await importPluginModule(modulePath);
     const exportsObj = (mod.default ?? mod) as Partial<PluginReporterExports>;
     if (typeof exportsObj.render !== 'function') {
       return pluginRuntimeFail({
         code: 'invalid-reporter-export',
         message: `reporter plugin "${manifest.name}" missing required export "render"`,
-        hint: 'Export `render(context)` as the default export or a named export.',
+        hint: 'Use export default { render(context) { ... } } or export a named render function.',
       });
     }
     return {
@@ -308,12 +314,96 @@ async function loadReporterPlugin(
       },
     };
   } catch (err) {
+    const detail = describePluginModuleLoadError(err, manifest.module, modulePath, 'reporter manifest');
     return pluginRuntimeFail({
       code: 'reporter-load-error',
-      message: `reporter plugin "${manifest.name}" failed to load: ${formatError(err)}`,
-      hint: 'Check the reporter module path and module syntax.',
+      message: `reporter plugin "${manifest.name}" failed to load: ${detail.message}`,
+      hint: detail.hint ?? 'Check the reporter module path and module syntax.',
     });
   }
+}
+
+class PluginModuleMissingError extends Error {
+  constructor(readonly manifestModule: string, readonly modulePath: string) {
+    super(`module "${manifestModule}" was not found at ${modulePath}`);
+  }
+}
+
+class PluginModuleReadError extends Error {
+  constructor(readonly manifestModule: string, readonly modulePath: string, err: unknown) {
+    super(`module "${manifestModule}" could not be read at ${modulePath}: ${formatError(err)}`);
+  }
+}
+
+async function assertPluginModuleReadable(manifestModule: string, modulePath: string): Promise<void> {
+  try {
+    await fs.access(modulePath);
+  } catch (err) {
+    const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : '';
+    if (code === 'ENOENT') throw new PluginModuleMissingError(manifestModule, modulePath);
+    throw new PluginModuleReadError(manifestModule, modulePath, err);
+  }
+}
+
+function describePluginModuleLoadError(
+  err: unknown,
+  manifestModule: string,
+  modulePath: string,
+  manifestLabel: 'manifest' | 'reporter manifest',
+): { message: string; hint?: string } {
+  if (err instanceof PluginModuleMissingError) {
+    return {
+      message: err.message,
+      hint: `Check the ${manifestLabel} "module" path.`,
+    };
+  }
+  if (err instanceof PluginModuleReadError) {
+    return {
+      message: err.message,
+      hint: `Check file permissions for the ${manifestLabel} "module" path.`,
+    };
+  }
+  if (err instanceof SyntaxError) {
+    return {
+      message: `syntax error in module "${manifestModule}": ${formatError(err)}`,
+      hint: `Run node "${modulePath}" to reproduce the syntax error.`,
+    };
+  }
+  return { message: formatError(err) };
+}
+
+function importPluginModule(modulePath: string): Promise<Record<string, unknown>> {
+  return dynamicImport(pathToFileURL(modulePath).href).catch(async (err) => {
+    if (!isMissingDynamicImportCallback(err)) throw err;
+    return importPluginModuleFromSource(modulePath);
+  });
+}
+
+function isMissingDynamicImportCallback(err: unknown): boolean {
+  return err instanceof TypeError && err.message.includes('dynamic import callback was not specified');
+}
+
+async function importPluginModuleFromSource(modulePath: string): Promise<Record<string, unknown>> {
+  const source = await fs.readFile(modulePath, 'utf-8');
+  const defaultMatch = source.match(/^\s*export\s+default\s+([\s\S]*?)\s*;?\s*$/);
+  if (defaultMatch) {
+    const expression = defaultMatch[1].trim().replace(/;$/, '');
+    return { default: new Function(`return (${expression});`)() as unknown };
+  }
+
+  const names: string[] = [];
+  let transformed = source.replace(/\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g, (_m, kind, name) => {
+    names.push(String(name));
+    return `${kind} ${name}`;
+  });
+  transformed = transformed.replace(/\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g, (_m, name) => {
+    names.push(String(name));
+    return `const ${name} =`;
+  });
+  if (names.length === 0) {
+    throw new Error('unsupported module syntax in Vitest VM fallback');
+  }
+  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<string, unknown>;
 }
 
 /**

@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { findIssue, suggestFixForIssue, syntheticIssue } from '../../core/fixSuggest.js';
@@ -21,7 +21,7 @@ export function registerFixSuggest(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('fix-suggest');
       const spinner = format === 'console' ? ora('Resolving fix suggestion...').start() : null;
 
       try {

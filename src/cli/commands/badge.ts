@@ -7,6 +7,7 @@ import {
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -21,6 +22,7 @@ export function registerBadge(): void {
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
+      assertFormatSupported('badge');
       const rootPath = getRootPath();
       const spinner = ora('Calculating health score...').start();
       const config = await loadProjectConfig();

@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { computeReview } from '../../core/review.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportReview } from '../../reporters/consoleReporter.js';
@@ -20,7 +20,7 @@ export function registerReview(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('review');
       const spinner = format === 'console' ? ora('Reviewing PR...').start() : null;
 
       try {

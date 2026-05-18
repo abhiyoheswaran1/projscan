@@ -35,6 +35,7 @@ As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interfac
   - [Console](#console-default)
   - [JSON](#json)
   - [Markdown](#markdown)
+  - [HTML](#html)
   - [SARIF](#sarif)
 - [Configuration (`.projscanrc`)](#configuration-projscanrc)
 - [PR-Diff Mode (`--changed-only`)](#pr-diff-mode---changed-only)
@@ -110,18 +111,20 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
 - **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
+- **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, and plugin-policy evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_doctor` first; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files; drill into one with `projscan_file`.
+**Typical agent flow:** call `projscan_preflight` first; if it returns `caution` or `block`, follow the suggested next tool calls. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
 
 ### 2. Review — "is this PR safe to merge?"
 
 When the agent has changes in flight (or is asked to review someone else's), the question shifts from "what's wrong globally" to "what changed, and does the change introduce risk?"
 
 - **`projscan_pr_diff` / `projscan pr-diff`** *(0.11+)* — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
-- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+- **`projscan_preflight --mode before_merge` / `projscan_preflight { mode: "before_merge" }`** — smaller merge gate over review, changed-file health, taint, session, hotspot, and plugin signals. Use it when the agent needs the decision before reading the full review payload.
 
 **Typical agent flow:** start with `projscan_review` for the verdict + summary; if it returns `review` or `block`, drill into the `riskyFunctions` and `newCycles` arrays for specifics.
 
@@ -150,9 +153,10 @@ Long agent sessions edit files repeatedly. Each edit could otherwise cost a full
 
 - **`projscan watch`** *(0.16+)* — long-running CLI command. On file change, debounces 200ms then runs the incremental graph update + re-runs `doctor`, printing a one-line status. Uses `node:fs.watch`, no new runtime dep. Filters out `node_modules`, `.git`, build dirs, etc.
 - **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** — the public API the watcher uses; exported so callers maintaining their own state can patch the graph in place after handling their own change events.
-- **`--format html`** *(0.16+)* — for sharing review snapshots: `projscan doctor --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `doctor`, `hotspots`, `coupling`, `review`, and `impact`.
+- **`--format html`** *(0.16+, expanded in 2.x)* — for sharing review snapshots: `projscan analyze --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
 - **`projscan mcp --watch`** *(1.3+)* — when projscan runs as an MCP server with this flag, it pushes JSON-RPC `notifications/file_changed` events to the connected agent on every debounced batch. Long-session agents stop polling. The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support.
 - **`projscan_session` MCP tool + `projscan session` CLI** *(1.4+)* — durable cross-invocation session. Auto-records every file path that any tool returned (`tool-result` source) and every fs-watch batch (`fs-watch` source), so multiple agent invocations against the same project share a "what's been touched here" view without re-running git. Idle window 1 hour by default; subactions: `current` / `touched` / `events` / `reset`. State lives at `.projscan-cache/session.json`.
+- **MCP resources** *(2.1+)* — `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now` expose the shared session as resource reads. Agents can pick up touched files, coordination conflicts, remaining risks, and recommended next tool calls without spending a tool call on discovery.
 
 **Typical workflow:** start `projscan watch` in a side terminal at the start of a long session; subsequent agent tool calls hit a warm graph cache. With multi-agent setups, every MCP tool call additionally records into the session, so a coordinator agent can ask `projscan_session { action: "touched" }` to see what its peers have touched.
 
@@ -453,11 +457,11 @@ Offline drift check - compares the version declared in `package.json` against th
 **Output fields per package:**
 - `declared` - the range in `package.json` (e.g., `^1.2.3`)
 - `installed` - the concrete version in `node_modules`, or `null` if not installed
-- `latest` - same as `installed` in offline mode (registry-aware preview is planned)
+- `latest` - same as `installed` in this offline drift check
 - `drift` - classification
 - `scope` - `dependency` or `devDependency`
 
-JSON / Markdown formats supported. No SARIF - this isn't a vulnerability signal.
+JSON, Markdown, and SARIF formats are supported.
 
 ### audit
 
@@ -491,7 +495,7 @@ Each finding becomes a SARIF result with `ruleId: audit-<pkg>`, severity mapped 
 projscan upgrade <package>
 ```
 
-Preview the impact of upgrading a package - fully offline.
+Preview the impact of upgrading a package. The default path is fully offline; pass `--check-registry` when you explicitly want npm registry lookup for the current latest version.
 
 **What you get:**
 - Drift classification (`patch` / `minor` / `major`)
@@ -517,7 +521,7 @@ $ projscan upgrade react --format markdown
 
 **Limitations:**
 - Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
-- Works with what's **installed**, not what's latest on the registry. Registry-aware preview is on the roadmap.
+- Without `--check-registry`, works with what's **installed** and reports `latestSource: "installed"`. With `--check-registry`, npm registry lookup is attempted and failures fall back to the installed version with `registryError`.
 
 ### coverage
 
@@ -618,13 +622,14 @@ The score appears in all output formats:
 - **Console**: Shown at the top of the doctor report
 - **JSON**: Included as `health.score` and `health.grade` fields
 - **Markdown**: Shown as a heading with an auto-generated shields.io badge
+- **HTML**: Shown in the health summary card
 - **SARIF**: Not surfaced directly - SARIF is per-issue, not per-project. The score still drives `ci`'s exit code.
 
 ---
 
 ## Output Formats
 
-Every command supports the `--format` flag.
+Every command accepts the `--format` flag, but supported formats are command-dependent. Unsupported combinations fail with a clear message instead of falling back to console output.
 
 ### Console (default)
 
@@ -647,6 +652,17 @@ Formatted Markdown suitable for saving as documentation or pasting into a PR des
 projscan doctor --format markdown > HEALTH.md
 ```
 
+### HTML
+
+Self-contained HTML output for sharing scan, health, review, and risk snapshots.
+
+```bash
+projscan analyze --format html > analysis.html
+projscan doctor --format html > HEALTH.html
+```
+
+Supported on `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
+
 ### SARIF
 
 [SARIF 2.1.0](https://sarifweb.azurewebsites.net/) output - the industry standard for static analysis results. GitHub Code Scanning, Azure DevOps, GitLab, and many other systems consume SARIF natively.
@@ -655,7 +671,7 @@ projscan doctor --format markdown > HEALTH.md
 projscan ci --format sarif > projscan.sarif
 ```
 
-Supported on `analyze`, `doctor`, and `ci`. Each issue is emitted as a SARIF `result` with:
+Supported on `analyze`, `audit`, `ci`, `doctor`, and `outdated`. Each issue is emitted as a SARIF `result` with:
 - `ruleId` - stable rule identifier (e.g., `hardcoded-secret`, `missing-prettier`)
 - `level` - `error`, `warning`, or `note` (mapped from projscan severity)
 - `message.text` - the issue description
@@ -787,7 +803,7 @@ Example GitHub Actions snippet:
 
 | Option | Description |
 |--------|-------------|
-| `--format <type>` | Output format: `console` (default), `json`, `markdown`, `sarif` |
+| `--format <type>` | Output format: `console` (default), `json`, `markdown`, `sarif`, `html` (command-dependent) |
 | `--config <path>` | Path to a `.projscanrc` config file |
 | `--changed-only` | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |

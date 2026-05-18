@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, getFormat, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import {
   findStableRules,
   forgetRule,
@@ -54,7 +54,7 @@ async function runSummary(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('memory');
   try {
     const m = await loadMemory(rootPath);
     if (format === 'json') {
@@ -72,7 +72,7 @@ async function runStable(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('memory stable');
   try {
     const m = await loadMemory(rootPath);
     const stable = findStableRules(m);
@@ -91,7 +91,7 @@ async function runRuns(): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const rootPath = getRootPath();
-  const format = getFormat();
+  const format = assertFormatSupported('memory runs');
   try {
     const m = await loadMemory(rootPath);
     const all = Object.values(m.rules).sort((a, b) => b.runCount - a.runCount);
@@ -109,6 +109,7 @@ async function runRuns(): Promise<void> {
 async function runForget(rule: string): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
+  assertFormatSupported('memory forget');
   const rootPath = getRootPath();
   try {
     const m = await loadMemory(rootPath);

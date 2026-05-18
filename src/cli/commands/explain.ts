@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import path from 'node:path';
 
-import { program, getFormat, setupLogLevel, maybeCompactBanner, analyzeFile } from '../_shared.js';
+import { program, setupLogLevel, maybeCompactBanner, analyzeFile, assertFormatSupported } from '../_shared.js';
 import { reportExplanation } from '../../reporters/consoleReporter.js';
 import { reportExplanationJson } from '../../reporters/jsonReporter.js';
 import { reportExplanationMarkdown } from '../../reporters/markdownReporter.js';
@@ -13,7 +13,7 @@ export function registerExplain(): void {
     .action(async (filePath: string) => {
       setupLogLevel();
       maybeCompactBanner();
-      const format = getFormat();
+      const format = assertFormatSupported('explain');
       const absolutePath = path.resolve(filePath);
 
       try {

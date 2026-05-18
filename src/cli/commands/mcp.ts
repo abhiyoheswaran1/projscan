@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath } from '../_shared.js';
+import { program, getRootPath, assertFormatSupported } from '../_shared.js';
 import { setLogLevel } from '../../utils/logger.js';
 import { runMcpServer } from '../../mcp/server.js';
 
@@ -13,6 +13,7 @@ export function registerMcp(): void {
       "emit notifications/file_changed when source files change (1.3+; off by default — agents that subscribe stop polling)",
     )
     .action(async (opts: { watch?: boolean }) => {
+      assertFormatSupported('mcp');
       setLogLevel('quiet');
       const rootPath = getRootPath();
       try {

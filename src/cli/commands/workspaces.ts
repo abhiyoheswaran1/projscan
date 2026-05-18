@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { detectWorkspaces } from '../../core/monorepo.js';
 import { reportWorkspaces } from '../../reporters/consoleReporter.js';
 import { reportWorkspacesJson } from '../../reporters/jsonReporter.js';
@@ -14,7 +14,7 @@ export function registerWorkspaces(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('workspaces');
       try {
         const info = await detectWorkspaces(rootPath);
         switch (format) {

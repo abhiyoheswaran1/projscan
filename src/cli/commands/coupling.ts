@@ -3,11 +3,11 @@ import chalk from 'chalk';
 
 import {
   program,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { buildCodeGraph } from '../../core/codeGraph.js';
@@ -33,7 +33,7 @@ export function registerCoupling(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('coupling');
       const config = await loadProjectConfig();
       const spinner = format === 'console' ? ora('Computing coupling + cycles...').start() : null;
 
@@ -97,4 +97,3 @@ export function registerCoupling(): void {
       }
     });
 }
-

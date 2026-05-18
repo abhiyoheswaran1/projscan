@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { startWatcher } from '../../core/watcher.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
@@ -13,6 +13,7 @@ export function registerWatch(): void {
     .action(async () => {
       setupLogLevel();
       maybeCompactBanner();
+      assertFormatSupported('watch');
       const rootPath = getRootPath();
 
       console.log(chalk.dim(`Watching ${rootPath} ...`));

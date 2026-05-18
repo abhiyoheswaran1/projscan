@@ -3,13 +3,13 @@ import chalk from 'chalk';
 import {
   program,
   pkg,
-  getFormat,
   getRootPath,
   loadProjectConfig,
   setupLogLevel,
   maybeCompactBanner,
   filterIssuesByChangedFiles,
   renderPluginReporterIfRequested,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -27,12 +27,12 @@ export function registerCi(): void {
     .option('--min-score <score>', 'minimum passing score (0-100)')
     .option('--changed-only', 'gate only on issues in files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
-    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
+    .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('ci');
       const config = await loadProjectConfig();
 
       try {

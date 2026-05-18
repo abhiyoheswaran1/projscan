@@ -21,7 +21,7 @@
 
 AI coding agents are becoming the primary interface to code. Today, when you ask your agent *"which files implement auth?"* or *"what breaks if I bump React from 18 to 19?"* - it either guesses from names, or it shells out to grep and reads raw output not built for it.
 
-**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 28 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get an **intent-grounded** one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges, plus an optional natural-language intent arg that labels each finding expected / unexpected / out-of-scope), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
+**projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through structured MCP tools. It can run a preflight safety gate before edits or merge, query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get an **intent-grounded** one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges, plus an optional natural-language intent arg that labels each finding expected / unexpected / out-of-scope), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
 
 The stable local plugin platform turns that same pipeline into a team substrate: analyzer plugins add project-specific findings, and reporter plugins render `doctor`, `analyze`, and `ci` in your team's own voice without changing the underlying scan.
 
@@ -61,6 +61,7 @@ Run inside any repository:
 
 ```bash
 projscan                            # Full project analysis
+projscan preflight --format json    # Agent safety gate: proceed, caution, or block
 projscan doctor                     # Health check
 projscan hotspots                   # Rank files by risk (churn × complexity × issues × ownership)
 projscan search <query>             # BM25-ranked search (content + symbols + path)
@@ -78,6 +79,8 @@ projscan diagram                    # Architecture visualization
 projscan structure                  # Directory tree
 projscan mcp                        # Run as an MCP server for AI coding agents
 projscan plugin list                # Discover local analyzer/reporter plugins
+projscan plugin init --kind analyzer --name policy
+projscan plugin test .projscan-plugins/policy.projscan-plugin.json
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 ```
 
@@ -91,6 +94,7 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 |---------|-------------|
 | `projscan analyze` | Full analysis - languages, frameworks, dependencies, issues |
 | `projscan doctor` | Health check - missing tooling, architecture smells, security risks |
+| `projscan preflight` | Agent safety gate - `proceed`, `caution`, or `block` with evidence |
 | `projscan hotspots` | Rank files by risk - churn × complexity × issues × ownership |
 | `projscan search <query>` | **BM25-ranked search** - content + symbols + path, with excerpts |
 | `projscan file <path>` | Drill into a file - purpose, risk, ownership, related issues |
@@ -111,7 +115,7 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | `projscan workspace` | *(1.6)* Register sibling repos for cross-repo intelligence (`add` / `list` / `remove`) |
 | `projscan apply-fix <id>` | *(1.6)* Mechanically execute the safe fix templates with rollback (default dry-run) |
 | `projscan taint` | *(1.6)* Source-to-sink reachability over the call graph |
-| `projscan plugin` | Discover and validate local analyzer/reporter plugins |
+| `projscan plugin` | Discover, scaffold, validate, and test local analyzer/reporter plugins |
 | `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, …) |
 
 To see all commands and options, run:
@@ -154,15 +158,18 @@ projscan --help
 
 ### Output Formats
 
-All commands support `--format` for different output targets:
+Commands accept `--format` for different output targets. Supported formats are command-dependent; unsupported combinations fail clearly instead of falling back to another renderer.
 
 ```bash
 projscan analyze --format json       # Machine-readable JSON
+projscan analyze --format html       # Self-contained HTML report
 projscan doctor --format markdown    # Markdown for docs/PRs
 projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
 ```
 
-Formats: `console` (default), `json`, `markdown`, `sarif`
+Formats: `console` (default), `json`, `markdown`, `sarif`, `html`
+
+Run `projscan help` for the generated command-by-command support matrix.
 
 ### Plugin Platform
 
@@ -185,7 +192,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 
 | Flag | Description |
 |------|-------------|
-| `--format <type>` | Output format: console, json, markdown, sarif |
+| `--format <type>` | Output format: console, json, markdown, sarif, html (command-dependent) |
 | `--config <path>` | Path to a `.projscanrc` config file |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
@@ -312,7 +319,7 @@ projscan reads your source code so it can be useful; it does not send your sourc
 
 - **Send your source code off-machine.** Zero network calls in any code path projscan owns. File contents stay local; AST analysis runs in-process.
 - **Read environment variables for secrets.** `process.env` is forwarded to child processes (`git`, `npm`) so they can find their `PATH` — we never inspect `.env` values, API keys, or session tokens.
-- **Execute user input dynamically.** No `eval`, no `new Function(...)`, no shell-string composition. The two `await import('...')` sites in our code (`core/embeddings.ts` and `core/review.ts`) take literal string arguments and exist for lazy-loading optional code paths, not for running user-supplied code.
+- **Execute command-line arguments as code.** Core CLI and MCP arguments are parsed as data, and projscan does not compose shell strings from user input. Local plugins are the explicit trust boundary: when `PROJSCAN_PLUGINS_PREVIEW=1` is set, projscan imports local modules declared in `.projscan-plugins/*.projscan-plugin.json` and runs their `check` / `render` exports.
 - **Phone home with telemetry.** The opt-in JSONL telemetry shipped in 0.11 was removed entirely in 0.12. Future telemetry, if any, will be remote-sink-with-dashboard and explicitly opt-in.
 - **Modify your repo without an explicit command.** `projscan fix` is the only command that writes to source files, and only when invoked. The cache directory `.projscan-cache/` is local-only and gitignored.
 
@@ -323,6 +330,7 @@ projscan reads your source code so it can be useful; it does not send your sourc
 | Read source files | every command | no | parses with tree-sitter / Babel; results cached at `.projscan-cache/` |
 | Spawn `git` | `hotspots`, `pr-diff`, `review`, `diff` | git itself may fetch if you run `git fetch` separately; **projscan never invokes `git fetch`** | `env: process.env` is passed so `git` can find its config |
 | Spawn `npm audit` | `audit` only | yes — by `npm`, not by projscan | runs against your local lockfile |
+| Load local plugins | only with `PROJSCAN_PLUGINS_PREVIEW=1` | no | imports local JS modules declared in `.projscan-plugins/`; only enable plugins you trust |
 | Load wasm grammars | first parse of a non-JS file | no | served from `dist/grammars/` inside the package; no fetch |
 | Build embeddings | semantic search opt-in only | yes — by `@xenova/transformers`, on first use | model cached locally after first download; remove the peer dep to remove this code path entirely |
 
@@ -331,7 +339,7 @@ projscan reads your source code so it can be useful; it does not send your sourc
 If you read projscan's [Socket report](https://socket.dev/npm/package/projscan), you'll see four supply-chain alerts. Here's a one-line answer to each:
 
 - **"Network access"** — comes from `web-tree-sitter`'s internal API surface; we feed it local wasm files at `dist/grammars/`. No outbound traffic.
-- **"Dynamic require"** — two static `await import('literal-string')` sites for optional code paths. No user-input-driven require.
+- **"Dynamic require" / runtime import** — optional dependencies lazy-load from literal module names; opt-in local plugins load validated manifest module paths under `.projscan-plugins/`. Plugin execution is local code execution by design, gated by `PROJSCAN_PLUGINS_PREVIEW=1`.
 - **"Environment variable access"** — `env: process.env` is forwarded to child processes (`git`, `npm audit`). We don't read env contents.
 - **"URL strings"** — the strings are documentation references (`github.com`, `registry.npmjs.org`) shown in error messages and CHANGELOGs, not runtime fetch targets.
 

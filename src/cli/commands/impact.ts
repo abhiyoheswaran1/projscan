@@ -1,7 +1,7 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getFormat, getRootPath, setupLogLevel, maybeCompactBanner } from '../_shared.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { buildCodeGraph, type CodeGraph } from '../../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../../core/indexCache.js';
@@ -30,7 +30,7 @@ export function registerImpact(): void {
       setupLogLevel();
       maybeCompactBanner();
       const rootPath = getRootPath();
-      const format = getFormat();
+      const format = assertFormatSupported('impact');
       const spinner = format === 'console' ? ora('Computing impact...').start() : null;
 
       try {

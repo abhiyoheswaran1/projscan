@@ -8,6 +8,7 @@ import {
   setupLogLevel,
   maybeCompactBanner,
   promptYesNo,
+  assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -24,6 +25,7 @@ export function registerFix(): void {
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
+      assertFormatSupported('fix');
       const rootPath = getRootPath();
       const spinner = ora('Detecting issues...').start();
       const config = await loadProjectConfig();

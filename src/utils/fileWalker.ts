@@ -16,8 +16,12 @@ const DEFAULT_IGNORE = [
   '**/.next/**',
   '**/.nuxt/**',
   '**/.cache/**',
+  '**/.projscan-cache/**',
+  '**/.projscan-memory/**',
   '**/.turbo/**',
   '**/.output/**',
+  '**/.DS_Store',
+  '**/Thumbs.db',
   // Python noise. Without these, a repo with a committed virtualenv
   // or interpreter bytecode cache would scan thousands of third-party
   // files and tank the health score.
