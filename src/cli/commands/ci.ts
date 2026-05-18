@@ -9,6 +9,7 @@ import {
   setupLogLevel,
   maybeCompactBanner,
   filterIssuesByChangedFiles,
+  renderPluginReporterIfRequested,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -26,6 +27,7 @@ export function registerCi(): void {
     .option('--min-score <score>', 'minimum passing score (0-100)')
     .option('--changed-only', 'gate only on issues in files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -46,7 +48,23 @@ export function registerCi(): void {
           0,
           Math.min(100, typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold),
         );
-        const { score } = calculateScore(issues);
+        const { score, grade, errors, warnings, infos } = calculateScore(issues);
+        const ci = {
+          score,
+          grade,
+          pass: score >= threshold,
+          threshold,
+          totalIssues: issues.length,
+          errors,
+          warnings,
+          info: infos,
+          issues,
+        };
+
+        if (await renderPluginReporterIfRequested('ci', cmdOpts.reporter, { ci })) {
+          if (score < threshold) process.exit(1);
+          return;
+        }
 
         switch (format) {
           case 'json':

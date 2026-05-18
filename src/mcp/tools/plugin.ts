@@ -9,7 +9,7 @@ import {
 
 /**
  * `projscan_plugin` (1.10+ preview) — discover and validate third-party
- * analyzer plugins under `<root>/.projscan-plugins/*.projscan-plugin.json`.
+ * plugins under `<root>/.projscan-plugins/*.projscan-plugin.json`.
  *
  * Behind the PROJSCAN_PLUGINS_PREVIEW=1 feature flag. The tool is always
  * registered (so agents can probe for it), but `action:"list"` returns
@@ -21,7 +21,7 @@ import {
 export const pluginTool: McpTool = {
   name: 'projscan_plugin',
   description:
-    '1.10+ preview. Discover and validate third-party analyzer plugins under .projscan-plugins/. Gated by the PROJSCAN_PLUGINS_PREVIEW=1 env flag; the schema is preview-only and may shift before 2.0. Use action:"list" to see what is discoverable today, action:"validate" to check a manifest before committing it.',
+    '1.10+ preview. Discover and validate third-party analyzer and reporter plugins under .projscan-plugins/. Gated by the PROJSCAN_PLUGINS_PREVIEW=1 env flag; the schema is preview-only and may shift before 2.0. Use action:"list" to see what is discoverable today, action:"validate" to check a manifest before committing it.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -54,7 +54,9 @@ export const pluginTool: McpTool = {
                   name: e.manifest.name,
                   kind: e.manifest.kind,
                   module: e.manifest.module,
-                  category: e.manifest.category,
+                  ...(e.manifest.kind === 'analyzer'
+                    ? { category: e.manifest.category }
+                    : { commands: e.manifest.commands }),
                   description: e.manifest.description,
                 }
               : { error: e.error, diagnostic: e.diagnostic }),

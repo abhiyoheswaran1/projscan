@@ -24,31 +24,66 @@ export const PLUGIN_SCHEMA_VERSION = 1;
 export const PLUGIN_DIR = '.projscan-plugins';
 export const PLUGIN_MANIFEST_EXT = '.projscan-plugin.json';
 
-export type PluginKind = 'analyzer';
+export type PluginKind = 'analyzer' | 'reporter';
+export type PluginReporterCommand = 'doctor' | 'analyze' | 'ci';
 
-export interface PluginManifest {
+export const PLUGIN_REPORTER_COMMANDS = ['doctor', 'analyze', 'ci'] as const;
+
+interface PluginManifestBase {
   schemaVersion: number;
   name: string;
   kind: PluginKind;
   /** Module entry point, relative to the manifest file. */
   module: string;
-  /** Issue category emitted by this plugin (`Issue.category`). */
-  category: string;
   /** Optional human-readable summary. */
   description?: string;
 }
+
+export interface PluginAnalyzerManifest extends PluginManifestBase {
+  kind: 'analyzer';
+  /** Issue category emitted by this plugin (`Issue.category`). */
+  category: string;
+}
+
+export interface PluginReporterManifest extends PluginManifestBase {
+  kind: 'reporter';
+  /** CLI commands this reporter can render. */
+  commands: PluginReporterCommand[];
+}
+
+export type PluginManifest = PluginAnalyzerManifest | PluginReporterManifest;
 
 export interface PluginAnalyzerExports {
   check: (rootPath: string, files: FileEntry[]) => Promise<Issue[]> | Issue[];
 }
 
+export interface PluginReporterContext<TPayload = unknown> {
+  command: PluginReporterCommand;
+  rootPath: string;
+  manifest: PluginReporterManifest;
+  payload: TPayload;
+}
+
+export interface PluginReporterExports {
+  render: (context: PluginReporterContext) => Promise<string> | string;
+}
+
 export interface LoadedPlugin {
-  manifest: PluginManifest;
+  manifest: PluginAnalyzerManifest;
   /** Absolute path to the manifest file on disk. */
   manifestPath: string;
   /** Absolute path to the resolved module entry point. */
   modulePath: string;
   exports: PluginAnalyzerExports;
+}
+
+export interface LoadedReporterPlugin {
+  manifest: PluginReporterManifest;
+  /** Absolute path to the manifest file on disk. */
+  manifestPath: string;
+  /** Absolute path to the resolved module entry point. */
+  modulePath: string;
+  exports: PluginReporterExports;
 }
 
 export interface PluginDiscoveryEntry {
@@ -61,6 +96,14 @@ export interface PluginDiscoveryEntry {
 
 export type PluginManifestFileResult =
   | { ok: true; manifest: PluginManifest }
+  | { ok: false; reason: string; diagnostic: PluginDiagnostic };
+
+export type PluginReporterResolveResult =
+  | { ok: true; plugin: LoadedReporterPlugin }
+  | { ok: false; reason: string; diagnostic: PluginDiagnostic };
+
+export type PluginReporterRenderResult =
+  | { ok: true; output: string }
   | { ok: false; reason: string; diagnostic: PluginDiagnostic };
 
 export function pluginsEnabled(): boolean {
@@ -153,6 +196,7 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
   const loaded: LoadedPlugin[] = [];
   for (const entry of discovered) {
     if (!entry.manifest) continue;
+    if (entry.manifest.kind !== 'analyzer') continue;
     const modulePath = path.resolve(path.dirname(entry.manifestPath), entry.manifest.module);
     try {
       const mod = (await import(pathToFileURL(modulePath).href)) as Record<string, unknown>;
@@ -176,6 +220,100 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
     }
   }
   return loaded;
+}
+
+export async function resolveReporterPlugin(
+  rootPath: string,
+  reporterName: string,
+  command: PluginReporterCommand,
+): Promise<PluginReporterResolveResult> {
+  if (!pluginsEnabled()) {
+    return pluginRuntimeFail({
+      code: 'plugins-disabled',
+      message: `reporter plugins require ${PLUGIN_PREVIEW_FLAG}=1`,
+      hint: `Set ${PLUGIN_PREVIEW_FLAG}=1 in the environment to enable plugin reporters.`,
+    });
+  }
+
+  const entries = await discoverPluginManifests(rootPath);
+  const reporters = entries.filter(
+    (entry): entry is PluginDiscoveryEntry & { manifest: PluginReporterManifest } =>
+      entry.manifest?.kind === 'reporter',
+  );
+  const entry = reporters.find((candidate) => candidate.manifest.name === reporterName);
+  if (!entry) {
+    return pluginRuntimeFail({
+      code: 'reporter-not-found',
+      message: `reporter plugin "${reporterName}" was not found`,
+      hint: 'Run `projscan plugin list` to see discovered reporter plugins.',
+    });
+  }
+
+  if (!entry.manifest.commands.includes(command)) {
+    return pluginRuntimeFail({
+      code: 'reporter-unsupported-command',
+      message: `reporter plugin "${reporterName}" does not support command "${command}"`,
+      hint: `Add "${command}" to the reporter manifest's commands array or choose a different reporter.`,
+    });
+  }
+
+  return loadReporterPlugin(entry.manifest, entry.manifestPath);
+}
+
+export async function renderReporterPlugin(
+  plugin: LoadedReporterPlugin,
+  context: PluginReporterContext,
+): Promise<PluginReporterRenderResult> {
+  try {
+    const output = await plugin.exports.render(context);
+    if (typeof output !== 'string') {
+      return pluginRuntimeFail({
+        code: 'reporter-render-error',
+        message: `reporter plugin "${plugin.manifest.name}" returned ${typeof output}; expected string`,
+        hint: 'Reporter render(context) must return text for stdout.',
+      });
+    }
+    return { ok: true, output };
+  } catch (err) {
+    return pluginRuntimeFail({
+      code: 'reporter-render-error',
+      message: `reporter plugin "${plugin.manifest.name}" failed during render: ${formatError(err)}`,
+      hint: 'Fix the reporter render(context) implementation and try again.',
+    });
+  }
+}
+
+async function loadReporterPlugin(
+  manifest: PluginReporterManifest,
+  manifestPath: string,
+): Promise<PluginReporterResolveResult> {
+  const modulePath = path.resolve(path.dirname(manifestPath), manifest.module);
+  try {
+    const mod = (await import(pathToFileURL(modulePath).href)) as Record<string, unknown>;
+    const exportsObj = (mod.default ?? mod) as Partial<PluginReporterExports>;
+    if (typeof exportsObj.render !== 'function') {
+      return pluginRuntimeFail({
+        code: 'invalid-reporter-export',
+        message: `reporter plugin "${manifest.name}" missing required export "render"`,
+        hint: 'Export `render(context)` as the default export or a named export.',
+      });
+    }
+    return {
+      ok: true,
+      plugin: {
+        manifest,
+        manifestPath,
+        modulePath,
+        exports: { render: exportsObj.render as PluginReporterExports['render'] },
+      },
+    };
+  } catch (err) {
+    return pluginRuntimeFail({
+      code: 'reporter-load-error',
+      message: `reporter plugin "${manifest.name}" failed to load: ${formatError(err)}`,
+      hint: 'Check the reporter module path and module syntax.',
+    });
+  }
 }
 
 /**
@@ -221,9 +359,16 @@ export interface PluginDiagnostic {
     | 'unsupported-kind'
     | 'invalid-module'
     | 'invalid-category'
+    | 'invalid-commands'
     | 'invalid-description'
     | 'invalid-json'
-    | 'read-error';
+    | 'read-error'
+    | 'plugins-disabled'
+    | 'reporter-not-found'
+    | 'reporter-unsupported-command'
+    | 'invalid-reporter-export'
+    | 'reporter-load-error'
+    | 'reporter-render-error';
   message: string;
   field?: string;
   hint?: string;
@@ -241,6 +386,14 @@ interface ValidationFail {
 
 function failValidation(diagnostic: PluginDiagnostic): ValidationFail {
   return { ok: false, reason: diagnostic.message, diagnostic };
+}
+
+function pluginRuntimeFail(diagnostic: PluginDiagnostic): PluginReporterResolveResult & PluginReporterRenderResult {
+  return { ok: false, reason: diagnostic.message, diagnostic };
+}
+
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 export function validateManifest(input: unknown): ValidationOk | ValidationFail {
@@ -268,12 +421,12 @@ export function validateManifest(input: unknown): ValidationOk | ValidationFail 
       hint: 'Use a stable 1-65 character plugin id such as "team/no-console" or "my-plugin".',
     });
   }
-  if (obj.kind !== 'analyzer') {
+  if (obj.kind !== 'analyzer' && obj.kind !== 'reporter') {
     return failValidation({
       code: 'unsupported-kind',
       field: 'kind',
-      message: 'only kind:"analyzer" is supported in the plugin preview',
-      hint: 'Set "kind": "analyzer".',
+      message: 'kind must be "analyzer" or "reporter"',
+      hint: 'Set "kind": "analyzer" for issue-producing plugins or "kind": "reporter" for CLI output plugins.',
     });
   }
   if (typeof obj.module !== 'string' || obj.module.length === 0) {
@@ -293,14 +446,6 @@ export function validateManifest(input: unknown): ValidationOk | ValidationFail 
       hint: 'Do not use absolute paths or any ".." path segment.',
     });
   }
-  if (typeof obj.category !== 'string' || obj.category.length === 0) {
-    return failValidation({
-      code: 'invalid-category',
-      field: 'category',
-      message: 'category is required',
-      hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
-    });
-  }
   if (obj.description !== undefined && typeof obj.description !== 'string') {
     return failValidation({
       code: 'invalid-description',
@@ -308,6 +453,31 @@ export function validateManifest(input: unknown): ValidationOk | ValidationFail 
       message: 'description must be a string when provided',
     });
   }
+  if (obj.kind === 'analyzer') {
+    if (typeof obj.category !== 'string' || obj.category.length === 0) {
+      return failValidation({
+        code: 'invalid-category',
+        field: 'category',
+        message: 'category is required for analyzer plugins',
+        hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
+      });
+    }
+    return {
+      ok: true,
+      manifest: {
+        schemaVersion: obj.schemaVersion,
+        name: obj.name,
+        kind: obj.kind,
+        module: obj.module,
+        category: obj.category,
+        ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
+      },
+    };
+  }
+
+  const commandValidation = validateReporterCommands(obj.commands);
+  if (!commandValidation.ok) return commandValidation;
+
   return {
     ok: true,
     manifest: {
@@ -315,10 +485,44 @@ export function validateManifest(input: unknown): ValidationOk | ValidationFail 
       name: obj.name,
       kind: obj.kind,
       module: obj.module,
-      category: obj.category,
+      commands: commandValidation.commands,
       ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
     },
   };
+}
+
+function validateReporterCommands(input: unknown): { ok: true; commands: PluginReporterCommand[] } | ValidationFail {
+  if (!Array.isArray(input) || input.length === 0) {
+    return failValidation({
+      code: 'invalid-commands',
+      field: 'commands',
+      message: 'commands must be a non-empty array for reporter plugins',
+      hint: 'Use one or more supported commands: doctor, analyze, ci.',
+    });
+  }
+
+  const seen = new Set<PluginReporterCommand>();
+  const invalid: string[] = [];
+  for (const value of input) {
+    if (typeof value !== 'string' || !isReporterCommand(value)) {
+      invalid.push(String(value));
+      continue;
+    }
+    seen.add(value);
+  }
+  if (invalid.length > 0) {
+    return failValidation({
+      code: 'invalid-commands',
+      field: 'commands',
+      message: `unsupported reporter command(s): ${invalid.join(', ')}`,
+      hint: 'Supported reporter commands are: doctor, analyze, ci.',
+    });
+  }
+  return { ok: true, commands: [...seen] };
+}
+
+function isReporterCommand(value: string): value is PluginReporterCommand {
+  return (PLUGIN_REPORTER_COMMANDS as readonly string[]).includes(value);
 }
 
 function isWellShapedIssue(x: unknown): x is Issue {

@@ -9,6 +9,8 @@ import {
   loadPlugins,
   pluginsEnabled,
   readPluginManifestFile,
+  renderReporterPlugin,
+  resolveReporterPlugin,
   runAnalyzerPlugins,
   validateManifest,
 } from '../../src/core/plugins.js';
@@ -88,11 +90,84 @@ describe('plugins — validateManifest', () => {
     expect(v.ok).toBe(false);
   });
 
-  it('rejects unsupported kind (analyzer-only in 1.10)', () => {
+  it('accepts a reporter manifest with supported commands', () => {
+    const v = validateManifest({
+      schemaVersion: 1,
+      name: 'team-summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor', 'analyze', 'ci'],
+      description: 'Team summary reporter',
+    });
+    expect(v.ok).toBe(true);
+    if (v.ok) {
+      expect(v.manifest).toMatchObject({
+        name: 'team-summary',
+        kind: 'reporter',
+        module: './summary.mjs',
+        commands: ['doctor', 'analyze', 'ci'],
+      });
+      expect('category' in v.manifest).toBe(false);
+    }
+  });
+
+  it('rejects reporter manifests without a non-empty commands array', () => {
+    const v = validateManifest({
+      schemaVersion: 1,
+      name: 'team-summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: [],
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.diagnostic).toMatchObject({
+        code: 'invalid-commands',
+        field: 'commands',
+      });
+      expect(v.reason).toMatch(/commands/);
+    }
+  });
+
+  it('rejects reporter manifests with unsupported commands', () => {
+    const v = validateManifest({
+      schemaVersion: 1,
+      name: 'team-summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor', 'hotspots'],
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.diagnostic).toMatchObject({
+        code: 'invalid-commands',
+        field: 'commands',
+      });
+      expect(v.diagnostic.message).toContain('hotspots');
+    }
+  });
+
+  it('keeps category required for analyzer manifests', () => {
     const v = validateManifest({
       schemaVersion: 1,
       name: 'p',
-      kind: 'reporter',
+      kind: 'analyzer',
+      module: './c.mjs',
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.diagnostic).toMatchObject({
+        code: 'invalid-category',
+        field: 'category',
+      });
+    }
+  });
+
+  it('rejects unsupported kind', () => {
+    const v = validateManifest({
+      schemaVersion: 1,
+      name: 'p',
+      kind: 'renderer',
       module: './c.mjs',
       category: 'x',
     });
@@ -330,6 +405,151 @@ describe('plugins — loadPlugins', () => {
       expect(issues.map((i) => i.id)).toEqual(['plugin:fine:r']);
     } finally {
       process.stderr.write = origStderr;
+    }
+  });
+});
+
+describe('plugins — reporter runtime', () => {
+  it('does not resolve reporter plugins when the preview flag is off', async () => {
+    delete process.env[PLUGIN_PREVIEW_FLAG];
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('summary.mjs', `export default { render: async () => 'unused' }`);
+
+    const result = await resolveReporterPlugin(tmp, 'summary', 'doctor');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({
+        code: 'plugins-disabled',
+      });
+      expect(result.reason).toContain(PLUGIN_PREVIEW_FLAG);
+    }
+  });
+
+  it('resolves a reporter plugin by name and command', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor', 'ci'],
+      description: 'summary output',
+    });
+    await writeModule(
+      'summary.mjs',
+      `export default {
+        render: async (context) => \`\${context.command}:\${context.payload.health.score}:\${context.manifest.name}\`,
+      };`,
+    );
+
+    const resolved = await resolveReporterPlugin(tmp, 'summary', 'doctor');
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error(resolved.reason);
+    expect(resolved.plugin.manifest.commands).toEqual(['doctor', 'ci']);
+
+    const rendered = await renderReporterPlugin(resolved.plugin, {
+      command: 'doctor',
+      rootPath: tmp,
+      manifest: resolved.plugin.manifest,
+      payload: { health: { score: 88 } },
+    });
+    expect(rendered).toEqual({ ok: true, output: 'doctor:88:summary' });
+  });
+
+  it('rejects a reporter that does not support the requested command', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('summary.mjs', `export default { render: async () => 'unused' }`);
+
+    const result = await resolveReporterPlugin(tmp, 'summary', 'ci');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({
+        code: 'reporter-unsupported-command',
+      });
+      expect(result.reason).toContain('ci');
+    }
+  });
+
+  it('returns a diagnostic when a reporter has no render export', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('summary', {
+      schemaVersion: 1,
+      name: 'summary',
+      kind: 'reporter',
+      module: './summary.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('summary.mjs', `export default { check: async () => [] }`);
+
+    const result = await resolveReporterPlugin(tmp, 'summary', 'doctor');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({
+        code: 'invalid-reporter-export',
+      });
+      expect(result.reason).toContain('render');
+    }
+  });
+
+  it('isolates reporter render throws and non-string output', async () => {
+    process.env[PLUGIN_PREVIEW_FLAG] = '1';
+    await writeManifest('thrower', {
+      schemaVersion: 1,
+      name: 'thrower',
+      kind: 'reporter',
+      module: './thrower.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('thrower.mjs', `export default { render: async () => { throw new Error('boom'); } }`);
+    const thrower = await resolveReporterPlugin(tmp, 'thrower', 'doctor');
+    expect(thrower.ok).toBe(true);
+    if (!thrower.ok) throw new Error(thrower.reason);
+    const thrown = await renderReporterPlugin(thrower.plugin, {
+      command: 'doctor',
+      rootPath: tmp,
+      manifest: thrower.plugin.manifest,
+      payload: {},
+    });
+    expect(thrown.ok).toBe(false);
+    if (!thrown.ok) {
+      expect(thrown.diagnostic).toMatchObject({ code: 'reporter-render-error' });
+      expect(thrown.reason).toContain('boom');
+    }
+
+    await writeManifest('objecter', {
+      schemaVersion: 1,
+      name: 'objecter',
+      kind: 'reporter',
+      module: './objecter.mjs',
+      commands: ['doctor'],
+    });
+    await writeModule('objecter.mjs', `export default { render: async () => ({ text: 'nope' }) }`);
+    const objecter = await resolveReporterPlugin(tmp, 'objecter', 'doctor');
+    expect(objecter.ok).toBe(true);
+    if (!objecter.ok) throw new Error(objecter.reason);
+    const objectOutput = await renderReporterPlugin(objecter.plugin, {
+      command: 'doctor',
+      rootPath: tmp,
+      manifest: objecter.plugin.manifest,
+      payload: {},
+    });
+    expect(objectOutput.ok).toBe(false);
+    if (!objectOutput.ok) {
+      expect(objectOutput.diagnostic).toMatchObject({ code: 'reporter-render-error' });
+      expect(objectOutput.reason).toContain('string');
     }
   });
 });

@@ -1,6 +1,6 @@
 # Plugin Authoring
 
-projscan 1.10 introduced an analyzer plugin preview. The preview is gated by
+projscan 1.10 introduced a plugin preview. The preview is gated by
 `PROJSCAN_PLUGINS_PREVIEW=1` while the 2.0 contract is being finalized.
 
 Plugins are local code. Enabling the preview means you trust the plugin code in
@@ -15,9 +15,13 @@ Plugin manifests live under `.projscan-plugins/`:
 .projscan-plugins/
   policy.projscan-plugin.json
   policy.mjs
+  team-summary.projscan-plugin.json
+  team-summary.mjs
 ```
 
 ## Manifest
+
+Analyzer plugins add issues to the normal projscan issue stream:
 
 ```json
 {
@@ -30,13 +34,27 @@ Plugin manifests live under `.projscan-plugins/`:
 }
 ```
 
+Reporter plugins render CLI output for selected commands:
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "team-summary",
+  "kind": "reporter",
+  "module": "./team-summary.mjs",
+  "commands": ["doctor", "analyze", "ci"],
+  "description": "Compact team health summary"
+}
+```
+
 Fields:
 
 - `schemaVersion`: must be `1`.
 - `name`: stable plugin identifier. Issue ids are prefixed with `plugin:<name>:`.
-- `kind`: currently only `analyzer`.
+- `kind`: `analyzer` or `reporter`.
 - `module`: relative path inside the plugin directory. Absolute paths and `..` are rejected.
-- `category`: fallback issue category when a plugin issue omits one.
+- `category`: analyzer-only fallback issue category when a plugin issue omits one.
+- `commands`: reporter-only list of CLI commands the reporter supports: `doctor`, `analyze`, `ci`.
 - `description`: optional summary for humans and agents.
 
 ## Analyzer Module
@@ -74,6 +92,41 @@ Required issue fields:
 
 Malformed issues are dropped so one bad plugin cannot poison the issue stream.
 
+## Reporter Module
+
+Reporter plugins are CLI-only in the preview. The module must export a
+`render(context)` function, either as the default export or a named export.
+
+```js
+export default {
+  render: async ({ command, payload }) => {
+    if (command === 'ci') {
+      return `CI ${payload.ci.pass ? 'passed' : 'failed'}: ${payload.ci.score}/100`;
+    }
+
+    const issues = payload.issues ?? [];
+    const score = payload.health?.score ?? 'analysis';
+    return `${command}: ${issues.length} issue(s), score ${score}`;
+  },
+};
+```
+
+`context` contains:
+
+- `command`: `doctor`, `analyze`, or `ci`.
+- `rootPath`: absolute project root.
+- `manifest`: the validated reporter manifest.
+- `payload`: the command payload.
+
+Payloads:
+
+- `doctor`: `{ health, issues }`
+- `analyze`: the same `AnalysisReport` shape returned by `--format json`
+- `ci`: `{ ci: { score, grade, pass, threshold, totalIssues, errors, warnings, info, issues } }`
+
+Renderers must return a string. They should not write directly to stdout or
+stderr; projscan writes the returned text after the renderer succeeds.
+
 ## Validate
 
 ```sh
@@ -100,11 +153,18 @@ shows `enabled:false` until the preview flag is set.
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor
 PROJSCAN_PLUGINS_PREVIEW=1 projscan ci
 PROJSCAN_PLUGINS_PREVIEW=1 projscan analyze
+PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-summary
+PROJSCAN_PLUGINS_PREVIEW=1 projscan analyze --reporter team-summary
+PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-summary
 ```
 
 When enabled, analyzer plugin issues are merged into the same issue stream as
 built-in analyzer issues. That means they affect health scores and CI gates in
 the same way.
+
+Reporter plugins are selected with `--reporter <name>` on supported commands.
+Do not combine `--reporter` with `--format json`, `markdown`, `sarif`, or
+`html`; reporter output is its own stdout text.
 
 ## MCP
 
@@ -116,11 +176,16 @@ The `projscan_plugin` MCP tool supports:
 Plugin execution for MCP `projscan_doctor` and `projscan_analyze` follows the
 same `PROJSCAN_PLUGINS_PREVIEW` flag as the CLI.
 
+Reporter rendering is CLI-only in this preview. MCP tools continue to return
+structured payloads.
+
 ## Failure Isolation
 
 - One plugin failing to load does not stop other plugins.
 - One plugin throwing during `check` does not stop built-in analyzers.
 - Malformed issues are dropped.
+- One reporter failing to load or render exits that CLI command with a
+  diagnostic instead of falling back to a misleading built-in report.
 - Runtime plugin warnings go to stderr so JSON stdout stays parseable.
 
 ## Compatibility

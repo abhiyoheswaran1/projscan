@@ -15,6 +15,12 @@ import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { loadConfig } from '../utils/config.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
+import {
+  resolveReporterPlugin,
+  renderReporterPlugin,
+  type PluginDiagnostic,
+  type PluginReporterCommand,
+} from '../core/plugins.js';
 import type {
   ArchitectureLayer,
   FileExplanation,
@@ -130,6 +136,43 @@ export function maybeCompactBanner(): void {
       console.error(chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`));
     }
   }
+}
+
+export async function renderPluginReporterIfRequested(
+  command: PluginReporterCommand,
+  reporterName: unknown,
+  payload: unknown,
+): Promise<boolean> {
+  if (typeof reporterName !== 'string' || reporterName.length === 0) return false;
+  const format = getFormat();
+  if (format !== 'console') {
+    console.error(chalk.red(`--reporter cannot be combined with --format ${format}`));
+    process.exit(1);
+  }
+
+  const rootPath = getRootPath();
+  const resolved = await resolveReporterPlugin(rootPath, reporterName, command);
+  if (!resolved.ok) {
+    printPluginReporterDiagnostic(resolved.diagnostic);
+    process.exit(1);
+  }
+  const rendered = await renderReporterPlugin(resolved.plugin, {
+    command,
+    rootPath,
+    manifest: resolved.plugin.manifest,
+    payload,
+  });
+  if (!rendered.ok) {
+    printPluginReporterDiagnostic(rendered.diagnostic);
+    process.exit(1);
+  }
+  console.log(rendered.output);
+  return true;
+}
+
+function printPluginReporterDiagnostic(diagnostic: PluginDiagnostic): void {
+  console.error(chalk.red(`[${diagnostic.code}] ${diagnostic.message}`));
+  if (diagnostic.hint) console.error(chalk.dim(`hint: ${diagnostic.hint}`));
 }
 
 /** Walk a DirectoryNode to find the node whose `path` matches targetPath. */

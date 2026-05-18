@@ -10,6 +10,7 @@ import {
   setupLogLevel,
   maybeCompactBanner,
   filterIssuesByChangedFiles,
+  renderPluginReporterIfRequested,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
@@ -21,6 +22,7 @@ import { reportHealthMarkdown } from '../../reporters/markdownReporter.js';
 import { reportHealthSarif } from '../../reporters/sarifReporter.js';
 import { reportHealthHtml } from '../../reporters/htmlReporter.js';
 import { findStableRules, loadMemory } from '../../core/memory.js';
+import { calculateScore } from '../../utils/scoreCalculator.js';
 
 export function registerDoctor(): void {
   program
@@ -29,6 +31,7 @@ export function registerDoctor(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
+    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -51,6 +54,9 @@ export function registerDoctor(): void {
         }
 
         if (spinner) spinner.stop();
+
+        const health = calculateScore(issues);
+        if (await renderPluginReporterIfRequested('doctor', cmdOpts.reporter, { health, issues })) return;
 
         switch (format) {
           case 'json':

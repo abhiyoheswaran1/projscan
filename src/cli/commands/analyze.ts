@@ -11,6 +11,7 @@ import {
   setupLogLevel,
   maybeBanner,
   filterIssuesByChangedFiles,
+  renderPluginReporterIfRequested,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { detectLanguages } from '../../core/languageDetector.js';
@@ -32,6 +33,7 @@ export function registerAnalyze(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
+    .option('--reporter <name>', 'preview: render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeBanner();
@@ -75,6 +77,8 @@ export function registerAnalyze(): void {
           issues,
           timestamp: new Date().toISOString(),
         };
+
+        if (await renderPluginReporterIfRequested('analyze', cmdOpts.reporter, report)) return;
 
         switch (format) {
           case 'json':

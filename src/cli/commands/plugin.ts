@@ -11,14 +11,14 @@ import {
 } from '../../core/plugins.js';
 
 /**
- * `projscan plugin` (1.10+ preview) — list and validate analyzer plugins
+ * `projscan plugin` (1.10+ preview) — list and validate local plugins
  * under `<root>/.projscan-plugins/`. Behind the PROJSCAN_PLUGINS_PREVIEW=1
  * env flag; the schema is preview-only and may shift before 2.0.
  */
 export function registerPlugin(): void {
   const plugin = program
     .command('plugin')
-    .description('Discover and validate analyzer plugins (1.10+ preview)')
+    .description('Discover and validate local plugins (1.10+ preview)')
     .action(async () => {
       await runList();
     });
@@ -77,9 +77,11 @@ async function runList(): Promise<void> {
   }
   for (const e of entries) {
     if (e.manifest) {
-      console.log(
-        `  ${chalk.green('✓')} ${chalk.bold(e.manifest.name)} ${chalk.dim(`(${e.manifest.kind}, ${e.manifest.category})`)}`,
-      );
+      const detail =
+        e.manifest.kind === 'analyzer'
+          ? `${e.manifest.kind}, ${e.manifest.category}`
+          : `${e.manifest.kind}, ${e.manifest.commands.join(', ')}`;
+      console.log(`  ${chalk.green('✓')} ${chalk.bold(e.manifest.name)} ${chalk.dim(`(${detail})`)}`);
       console.log(chalk.dim(`      ${e.manifestPath}`));
       console.log(chalk.dim(`      module: ${e.manifest.module}`));
     } else {

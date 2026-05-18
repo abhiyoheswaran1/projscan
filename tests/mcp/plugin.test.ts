@@ -81,6 +81,44 @@ describe('projscan_plugin MCP tool', () => {
     server.close();
   });
 
+  it('lists and validates reporter plugin manifests', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'team-summary.projscan-plugin.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        name: 'team-summary',
+        kind: 'reporter',
+        module: './team-summary.mjs',
+        commands: ['doctor', 'analyze', 'ci'],
+      }),
+    );
+    const server = createMcpServer(tmp);
+    await init(server);
+    const listed = await call(server, 'projscan_plugin', { action: 'list' });
+    const plugins = listed.plugins as Array<Record<string, unknown>>;
+    expect(plugins[0]).toMatchObject({
+      ok: true,
+      name: 'team-summary',
+      kind: 'reporter',
+      module: './team-summary.mjs',
+      commands: ['doctor', 'analyze', 'ci'],
+    });
+
+    const validated = await call(server, 'projscan_plugin', {
+      action: 'validate',
+      manifest_path: '.projscan-plugins/team-summary.projscan-plugin.json',
+    });
+    expect(validated).toMatchObject({
+      ok: true,
+      manifest: {
+        name: 'team-summary',
+        kind: 'reporter',
+        commands: ['doctor', 'analyze', 'ci'],
+      },
+    });
+    server.close();
+  });
+
   it('enabled plugin issues appear in MCP doctor and analyze output', async () => {
     process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
     await fs.mkdir(path.join(tmp, 'src'), { recursive: true });

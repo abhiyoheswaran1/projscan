@@ -61,7 +61,7 @@ The agent-substrate arc (1.4 → 1.10) is done: 11 languages, long-running PR wa
 
 **2.0.0 "Plugin API + Breaking"** — after 1.10 the agent-substrate arc is mature. Time to commit a platform contract.
 
-- **Plugin API.** Third parties write `.projscan-plugin.json` declaring an analyzer or reporter; projscan dispatches via a stable interface. `projscan plugin list` for discovery. Turns projscan from a tool into a substrate other tools build on. The current preview contract and authoring flow are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
+- **Plugin API.** Third parties write `.projscan-plugin.json` declaring an analyzer or reporter; projscan dispatches via a stable interface. `projscan plugin list` for discovery. Turns projscan from a tool into a substrate other tools build on. The current preview covers analyzer plugins plus CLI reporter plugins for `doctor`, `analyze`, and `ci`; the contract and authoring flow are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
 - Remove deprecated regex extractors (`extractImports` / `extractExports`, marked `@deprecated` in 0.17).
 - JSON output schema cleanups — consolidate the optional-field accumulation that grew through 0.x → 1.x.
 - `LanguageId` becomes plugin-extensible (no longer a closed type).

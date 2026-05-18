@@ -1034,7 +1034,7 @@ The chosen tier is surfaced as a top-level `tier` field on the response and lift
 
 **Incremental cache:** projscan caches parsed ASTs at `.projscan-cache/graph.json`. First run populates, subsequent runs re-parse only files whose `mtime` changed. Auto-gitignored. Delete the directory to force a rebuild.
 
-For the analyzer plugin preview, including a minimal manifest and analyzer module, see [Plugin Authoring](PLUGIN-AUTHORING.md).
+For the analyzer and reporter plugin preview, including minimal manifests, analyzer modules, and `--reporter <name>`, see [Plugin Authoring](PLUGIN-AUTHORING.md).
 
 **Prompts (6, parameterized with live project data):**
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
