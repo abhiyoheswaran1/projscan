@@ -1,13 +1,14 @@
 import chalk from 'chalk';
+import path from 'node:path';
 
 import { program, getRootPath, getFormat, setupLogLevel, maybeCompactBanner } from '../_shared.js';
 import {
   PLUGIN_PREVIEW_FLAG,
   discoverPluginManifests,
   pluginsEnabled,
-  validateManifest,
+  readPluginManifestFile,
+  type PluginDiagnostic,
 } from '../../core/plugins.js';
-import fs from 'node:fs/promises';
 
 /**
  * `projscan plugin` (1.10+ preview) — list and validate analyzer plugins
@@ -55,6 +56,7 @@ async function runList(): Promise<void> {
             ok: e.manifest !== null,
             manifest: e.manifest,
             error: e.error,
+            diagnostic: e.diagnostic,
           })),
         },
         null,
@@ -82,7 +84,8 @@ async function runList(): Promise<void> {
       console.log(chalk.dim(`      module: ${e.manifest.module}`));
     } else {
       console.log(`  ${chalk.red('✗')} ${e.manifestPath}`);
-      console.log(chalk.red(`      ${e.error}`));
+      if (e.diagnostic) printDiagnostic(e.diagnostic);
+      else console.log(chalk.red(`      ${e.error}`));
     }
   }
   if (!enabled) {
@@ -99,23 +102,17 @@ async function runValidate(manifestPath: string): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const format = getFormat();
-  let raw: string;
-  try {
-    raw = await fs.readFile(manifestPath, 'utf-8');
-  } catch (err) {
-    fail(`unable to read manifest: ${err instanceof Error ? err.message : String(err)}`, format);
-    return;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    fail(`invalid JSON: ${err instanceof Error ? err.message : String(err)}`, format);
-    return;
-  }
-  const v = validateManifest(parsed);
+  const rootPath = getRootPath();
+  const resolvedManifestPath = resolveManifestPath(rootPath, manifestPath);
+  const v = await readPluginManifestFile(resolvedManifestPath);
   if (format === 'json') {
-    console.log(JSON.stringify(v.ok ? { ok: true, manifest: v.manifest } : { ok: false, error: v.reason }, null, 2));
+    console.log(
+      JSON.stringify(
+        v.ok ? { ok: true, manifest: v.manifest } : { ok: false, error: v.reason, diagnostic: v.diagnostic },
+        null,
+        2,
+      ),
+    );
     if (!v.ok) process.exit(1);
     return;
   }
@@ -123,15 +120,16 @@ async function runValidate(manifestPath: string): Promise<void> {
     console.log(chalk.green(`✓ ${manifestPath} validates against schema v${v.manifest.schemaVersion}.`));
   } else {
     console.error(chalk.red(`✗ ${manifestPath}: ${v.reason}`));
+    printDiagnostic(v.diagnostic);
     process.exit(1);
   }
 }
 
-function fail(reason: string, format: string): void {
-  if (format === 'json') {
-    console.log(JSON.stringify({ ok: false, error: reason }, null, 2));
-  } else {
-    console.error(chalk.red(`✗ ${reason}`));
-  }
-  process.exit(1);
+function resolveManifestPath(rootPath: string, manifestPath: string): string {
+  return path.isAbsolute(manifestPath) ? manifestPath : path.resolve(rootPath, manifestPath);
+}
+
+function printDiagnostic(diagnostic: PluginDiagnostic): void {
+  console.error(chalk.red(`      [${diagnostic.code}] ${diagnostic.message}`));
+  if (diagnostic.hint) console.error(chalk.dim(`      hint: ${diagnostic.hint}`));
 }

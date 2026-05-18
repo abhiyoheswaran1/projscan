@@ -56,11 +56,55 @@ export interface PluginDiscoveryEntry {
   manifest: PluginManifest | null;
   /** Set when the manifest failed to parse or validate. */
   error?: string;
+  diagnostic?: PluginDiagnostic;
 }
+
+export type PluginManifestFileResult =
+  | { ok: true; manifest: PluginManifest }
+  | { ok: false; reason: string; diagnostic: PluginDiagnostic };
 
 export function pluginsEnabled(): boolean {
   const v = process.env[PLUGIN_PREVIEW_FLAG];
   return v === '1' || v === 'true';
+}
+
+export async function readPluginManifestFile(manifestPath: string): Promise<PluginManifestFileResult> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(manifestPath, 'utf-8');
+  } catch (err) {
+    const message = `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`;
+    return {
+      ok: false,
+      reason: message,
+      diagnostic: {
+        code: 'read-error',
+        message,
+        hint: 'Check file permissions and try again.',
+      },
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    const message = `invalid JSON: ${err instanceof Error ? err.message : String(err)}`;
+    return {
+      ok: false,
+      reason: message,
+      diagnostic: {
+        code: 'invalid-json',
+        message,
+        hint: 'Fix the manifest so it is valid JSON.',
+      },
+    };
+  }
+
+  const validation = validateManifest(parsed);
+  return validation.ok
+    ? { ok: true, manifest: validation.manifest }
+    : { ok: false, reason: validation.reason, diagnostic: validation.diagnostic };
 }
 
 /**
@@ -80,34 +124,17 @@ export async function discoverPluginManifests(rootPath: string): Promise<PluginD
   for (const name of entries.sort()) {
     if (!name.endsWith(PLUGIN_MANIFEST_EXT)) continue;
     const manifestPath = path.join(dir, name);
-    let raw: string;
-    try {
-      raw = await fs.readFile(manifestPath, 'utf-8');
-    } catch (err) {
+    const result = await readPluginManifestFile(manifestPath);
+    if (!result.ok) {
       out.push({
         manifestPath,
         manifest: null,
-        error: `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`,
+        error: result.reason,
+        diagnostic: result.diagnostic,
       });
       continue;
     }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: `invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      continue;
-    }
-    const validation = validateManifest(parsed);
-    if (!validation.ok) {
-      out.push({ manifestPath, manifest: null, error: validation.reason });
-      continue;
-    }
-    out.push({ manifestPath, manifest: validation.manifest });
+    out.push({ manifestPath, manifest: result.manifest });
   }
   return out;
 }
@@ -186,6 +213,22 @@ export async function runAnalyzerPlugins(
   return out;
 }
 
+export interface PluginDiagnostic {
+  code:
+    | 'invalid-manifest'
+    | 'unsupported-schema-version'
+    | 'invalid-name'
+    | 'unsupported-kind'
+    | 'invalid-module'
+    | 'invalid-category'
+    | 'invalid-description'
+    | 'invalid-json'
+    | 'read-error';
+  message: string;
+  field?: string;
+  hint?: string;
+}
+
 interface ValidationOk {
   ok: true;
   manifest: PluginManifest;
@@ -193,37 +236,77 @@ interface ValidationOk {
 interface ValidationFail {
   ok: false;
   reason: string;
+  diagnostic: PluginDiagnostic;
+}
+
+function failValidation(diagnostic: PluginDiagnostic): ValidationFail {
+  return { ok: false, reason: diagnostic.message, diagnostic };
 }
 
 export function validateManifest(input: unknown): ValidationOk | ValidationFail {
   if (!input || typeof input !== 'object') {
-    return { ok: false, reason: 'manifest must be a JSON object' };
+    return failValidation({
+      code: 'invalid-manifest',
+      message: 'manifest must be a JSON object',
+      hint: 'Use an object with schemaVersion, name, kind, module, and category fields.',
+    });
   }
   const obj = input as Record<string, unknown>;
   if (obj.schemaVersion !== PLUGIN_SCHEMA_VERSION) {
-    return {
-      ok: false,
-      reason: `unsupported schemaVersion ${String(obj.schemaVersion)}; expected ${PLUGIN_SCHEMA_VERSION}`,
-    };
+    return failValidation({
+      code: 'unsupported-schema-version',
+      field: 'schemaVersion',
+      message: `unsupported schemaVersion ${String(obj.schemaVersion)}; expected ${PLUGIN_SCHEMA_VERSION}`,
+      hint: `Set "schemaVersion": ${PLUGIN_SCHEMA_VERSION}.`,
+    });
   }
   if (typeof obj.name !== 'string' || !/^[a-z0-9][a-z0-9._/-]{0,64}$/i.test(obj.name)) {
-    return { ok: false, reason: 'name is required and must be 1–65 chars of [a-z0-9._/-]' };
+    return failValidation({
+      code: 'invalid-name',
+      field: 'name',
+      message: 'name is required and must be 1-65 chars of [a-z0-9._/-]',
+      hint: 'Use a stable 1-65 character plugin id such as "team/no-console" or "my-plugin".',
+    });
   }
   if (obj.kind !== 'analyzer') {
-    return { ok: false, reason: 'only kind:"analyzer" is supported in the 1.10 preview' };
+    return failValidation({
+      code: 'unsupported-kind',
+      field: 'kind',
+      message: 'only kind:"analyzer" is supported in the plugin preview',
+      hint: 'Set "kind": "analyzer".',
+    });
   }
   if (typeof obj.module !== 'string' || obj.module.length === 0) {
-    return { ok: false, reason: 'module is required and must be a relative path' };
+    return failValidation({
+      code: 'invalid-module',
+      field: 'module',
+      message: 'module is required and must be a relative path',
+      hint: 'Point to a local module inside the same plugin directory, for example "./check.mjs".',
+    });
   }
   // Path-traversal guard. Modules must resolve under the manifest's own dir.
   if (path.isAbsolute(obj.module) || obj.module.split(/[/\\]/).some((seg) => seg === '..')) {
-    return { ok: false, reason: 'module must be a relative path inside the plugin dir' };
+    return failValidation({
+      code: 'invalid-module',
+      field: 'module',
+      message: 'module must be a relative path inside the plugin dir',
+      hint: 'Do not use absolute paths or any ".." path segment.',
+    });
   }
   if (typeof obj.category !== 'string' || obj.category.length === 0) {
-    return { ok: false, reason: 'category is required' };
+    return failValidation({
+      code: 'invalid-category',
+      field: 'category',
+      message: 'category is required',
+      hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
+    });
   }
   if (obj.description !== undefined && typeof obj.description !== 'string') {
-    return { ok: false, reason: 'description must be a string when provided' };
+    return failValidation({
+      code: 'invalid-description',
+      field: 'description',
+      message: 'description must be a string when provided',
+    });
   }
   return {
     ok: true,

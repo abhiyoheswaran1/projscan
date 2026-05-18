@@ -8,6 +8,7 @@ import {
   discoverPluginManifests,
   loadPlugins,
   pluginsEnabled,
+  readPluginManifestFile,
   runAnalyzerPlugins,
   validateManifest,
 } from '../../src/core/plugins.js';
@@ -97,6 +98,40 @@ describe('plugins — validateManifest', () => {
     });
     expect(v.ok).toBe(false);
   });
+
+  it('returns structured diagnostics for invalid manifests', () => {
+    const missingName = validateManifest({
+      schemaVersion: 1,
+      kind: 'analyzer',
+      module: './check.mjs',
+      category: 'custom',
+    });
+    expect(missingName.ok).toBe(false);
+    if (!missingName.ok) {
+      expect(missingName.reason).toMatch(/name/);
+      expect(missingName.diagnostic).toMatchObject({
+        code: 'invalid-name',
+        field: 'name',
+      });
+      expect(missingName.diagnostic.hint).toMatch(/1-65/);
+    }
+
+    const wrongVersion = validateManifest({
+      schemaVersion: 2,
+      name: 'p',
+      kind: 'analyzer',
+      module: './check.mjs',
+      category: 'custom',
+    });
+    expect(wrongVersion.ok).toBe(false);
+    if (!wrongVersion.ok) {
+      expect(wrongVersion.diagnostic).toMatchObject({
+        code: 'unsupported-schema-version',
+        field: 'schemaVersion',
+      });
+      expect(wrongVersion.diagnostic.message).toContain('expected 1');
+    }
+  });
 });
 
 describe('plugins — discoverPluginManifests', () => {
@@ -105,7 +140,7 @@ describe('plugins — discoverPluginManifests', () => {
     expect(entries).toEqual([]);
   });
 
-  it('surfaces invalid JSON without throwing', async () => {
+  it('surfaces invalid JSON with structured diagnostics without throwing', async () => {
     const dir = path.join(tmp, PLUGIN_DIR);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
@@ -113,6 +148,26 @@ describe('plugins — discoverPluginManifests', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].manifest).toBeNull();
     expect(entries[0].error).toMatch(/invalid JSON/);
+    expect(entries[0].diagnostic).toMatchObject({
+      code: 'invalid-json',
+    });
+  });
+
+  it('surfaces validation diagnostics on discovered manifests', async () => {
+    await writeManifest('bad', {
+      schemaVersion: 1,
+      name: 'bad plugin with spaces',
+      kind: 'analyzer',
+      module: './bad.mjs',
+      category: 'custom',
+    });
+    const entries = await discoverPluginManifests(tmp);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].manifest).toBeNull();
+    expect(entries[0].diagnostic).toMatchObject({
+      code: 'invalid-name',
+      field: 'name',
+    });
   });
 
   it('discovers a valid manifest', async () => {
@@ -126,6 +181,34 @@ describe('plugins — discoverPluginManifests', () => {
     const entries = await discoverPluginManifests(tmp);
     expect(entries).toHaveLength(1);
     expect(entries[0].manifest?.name).toBe('a');
+  });
+});
+
+describe('plugins — readPluginManifestFile', () => {
+  it('validates a manifest file and returns the parsed manifest', async () => {
+    const manifestPath = await writeManifest('file-ok', {
+      schemaVersion: 1,
+      name: 'file-ok',
+      kind: 'analyzer',
+      module: './check.mjs',
+      category: 'custom',
+    });
+    const result = await readPluginManifestFile(manifestPath);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.manifest.name).toBe('file-ok');
+  });
+
+  it('returns structured diagnostics for invalid JSON', async () => {
+    const dir = path.join(tmp, PLUGIN_DIR);
+    await fs.mkdir(dir, { recursive: true });
+    const manifestPath = path.join(dir, 'broken.projscan-plugin.json');
+    await fs.writeFile(manifestPath, '{ not json', 'utf-8');
+    const result = await readPluginManifestFile(manifestPath);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostic).toMatchObject({ code: 'invalid-json' });
+      expect(result.reason).toMatch(/invalid JSON/);
+    }
   });
 });
 

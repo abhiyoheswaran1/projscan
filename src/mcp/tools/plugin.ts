@@ -1,11 +1,11 @@
+import path from 'node:path';
 import type { McpTool } from './_shared.js';
 import {
   PLUGIN_PREVIEW_FLAG,
   discoverPluginManifests,
   pluginsEnabled,
-  validateManifest,
+  readPluginManifestFile,
 } from '../../core/plugins.js';
-import fs from 'node:fs/promises';
 
 /**
  * `projscan_plugin` (1.10+ preview) — discover and validate third-party
@@ -57,33 +57,18 @@ export const pluginTool: McpTool = {
                   category: e.manifest.category,
                   description: e.manifest.description,
                 }
-              : { error: e.error }),
+              : { error: e.error, diagnostic: e.diagnostic }),
           })),
         };
       }
       case 'validate': {
         const p = typeof args.manifest_path === 'string' ? args.manifest_path : '';
         if (!p) throw new Error('validate action requires a "manifest_path" argument');
-        let raw: string;
-        try {
-          raw = await fs.readFile(p, 'utf-8');
-        } catch (err) {
-          return {
-            ok: false,
-            error: `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`,
-          };
-        }
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (err) {
-          return {
-            ok: false,
-            error: `invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
-          };
-        }
-        const v = validateManifest(parsed);
-        return v.ok ? { ok: true, manifest: v.manifest } : { ok: false, error: v.reason };
+        const manifestPath = path.isAbsolute(p) ? p : path.resolve(rootPath, p);
+        const result = await readPluginManifestFile(manifestPath);
+        return result.ok
+          ? { ok: true, manifest: result.manifest }
+          : { ok: false, error: result.reason, diagnostic: result.diagnostic };
       }
       default:
         throw new Error(`Unknown action "${action}". Known: list, validate.`);
