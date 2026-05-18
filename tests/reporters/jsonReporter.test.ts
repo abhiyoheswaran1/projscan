@@ -34,6 +34,7 @@ describe('jsonReporter', () => {
     it('emits the full AnalysisReport at the top level', async () => {
       const report = makeAnalysisReport();
       const parsed = (await captureJson(() => reportAnalysisJson(report))) as Record<string, unknown>;
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toMatchObject({
         projectName: 'test-project',
         rootPath: '/proj',
@@ -55,8 +56,10 @@ describe('jsonReporter', () => {
         makeIssue({ id: 'i1', severity: 'info' }),
       ];
       const parsed = (await captureJson(() => reportHealthJson(issues))) as {
+        schemaVersion: number;
         health: Record<string, unknown>;
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed.health).toMatchObject({
         totalIssues: 3,
         errors: 1,
@@ -70,8 +73,10 @@ describe('jsonReporter', () => {
 
     it('reports zero counts for an empty issue list', async () => {
       const parsed = (await captureJson(() => reportHealthJson([]))) as {
+        schemaVersion: number;
         health: Record<string, number>;
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed.health.totalIssues).toBe(0);
       expect(parsed.health.errors).toBe(0);
       expect(parsed.health.warnings).toBe(0);
@@ -83,7 +88,8 @@ describe('jsonReporter', () => {
     it('includes threshold, pass/fail, and propagates issues', async () => {
       const parsed = (await captureJson(() =>
         reportCiJson([makeIssue({ severity: 'error' })], 80),
-      )) as { ci: Record<string, unknown> };
+      )) as { schemaVersion: number; ci: Record<string, unknown> };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed.ci).toMatchObject({ threshold: 80, totalIssues: 1, errors: 1 });
       expect(typeof parsed.ci.pass).toBe('boolean');
       expect(typeof parsed.ci.score).toBe('number');
@@ -91,8 +97,10 @@ describe('jsonReporter', () => {
 
     it('marks pass=true when score meets threshold', async () => {
       const parsed = (await captureJson(() => reportCiJson([], 50))) as {
+        schemaVersion: number;
         ci: { pass: boolean; score: number };
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed.ci.pass).toBe(parsed.ci.score >= 50);
       expect(parsed.ci.pass).toBe(true);
     });
@@ -101,8 +109,10 @@ describe('jsonReporter', () => {
   describe('wrapper shapes', () => {
     it('reportDiffJson wraps under `diff`', async () => {
       const parsed = (await captureJson(() => reportDiffJson(makeDiff()))) as {
+        schemaVersion: number;
         diff: Record<string, unknown>;
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toHaveProperty('diff');
       expect(parsed.diff).toMatchObject({
         scoreDelta: -5,
@@ -113,8 +123,10 @@ describe('jsonReporter', () => {
 
     it('reportHotspotsJson wraps under `hotspots`', async () => {
       const parsed = (await captureJson(() => reportHotspotsJson(makeHotspotReport()))) as {
+        schemaVersion: number;
         hotspots: Record<string, unknown>;
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toHaveProperty('hotspots');
       expect(parsed.hotspots).toHaveProperty('hotspots');
     });
@@ -124,6 +136,7 @@ describe('jsonReporter', () => {
         string,
         unknown
       >;
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toHaveProperty('outdated');
     });
 
@@ -132,13 +145,16 @@ describe('jsonReporter', () => {
         string,
         unknown
       >;
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toHaveProperty('audit');
     });
 
     it('reportUpgradeJson wraps under `upgrade`', async () => {
       const parsed = (await captureJson(() => reportUpgradeJson(makeUpgradePreview()))) as {
+        schemaVersion: number;
         upgrade: Record<string, unknown>;
       };
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toHaveProperty('upgrade');
       expect(parsed.upgrade).toMatchObject({
         name: 'react',
@@ -150,6 +166,7 @@ describe('jsonReporter', () => {
       const parsed = (await captureJson(() =>
         reportExplanationJson(makeExplanation()),
       )) as Record<string, unknown>;
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toMatchObject({ filePath: 'src/index.ts', lineCount: 42 });
     });
 
@@ -157,6 +174,7 @@ describe('jsonReporter', () => {
       const parsed = (await captureJson(() =>
         reportDependenciesJson(makeDependencyReport()),
       )) as Record<string, unknown>;
+      expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toMatchObject({ totalDependencies: 2, totalDevDependencies: 1 });
     });
   });
@@ -164,6 +182,6 @@ describe('jsonReporter', () => {
   it('emits parseable JSON with 2-space indentation', async () => {
     const out = await captureStdout(() => reportAnalysisJson(makeAnalysisReport()));
     expect(() => JSON.parse(out)).not.toThrow();
-    expect(out).toContain('\n  "projectName"');
+    expect(out).toContain('\n  "schemaVersion"');
   });
 });

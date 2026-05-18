@@ -22,8 +22,14 @@ import type {
 } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
+export const CLI_JSON_SCHEMA_VERSION = 2;
+
+function emitJson(payload: Record<string, unknown>): void {
+  console.log(JSON.stringify({ schemaVersion: CLI_JSON_SCHEMA_VERSION, ...payload }, null, 2));
+}
+
 export function reportAnalysisJson(report: AnalysisReport): void {
-  console.log(JSON.stringify(report, null, 2));
+  emitJson(report as unknown as Record<string, unknown>);
 }
 
 export function reportHealthJson(issues: Issue[]): void {
@@ -31,6 +37,7 @@ export function reportHealthJson(issues: Issue[]): void {
   console.log(
     JSON.stringify(
       {
+        schemaVersion: CLI_JSON_SCHEMA_VERSION,
         health: {
           score,
           grade,
@@ -52,6 +59,7 @@ export function reportCiJson(issues: Issue[], threshold: number): void {
   console.log(
     JSON.stringify(
       {
+        schemaVersion: CLI_JSON_SCHEMA_VERSION,
         ci: {
           score,
           grade,
@@ -71,73 +79,73 @@ export function reportCiJson(issues: Issue[], threshold: number): void {
 }
 
 export function reportDiffJson(diff: DiffResult): void {
-  console.log(JSON.stringify({ diff }, null, 2));
+  emitJson({ diff });
 }
 
 export function reportExplanationJson(explanation: FileExplanation): void {
-  console.log(JSON.stringify(explanation, null, 2));
+  emitJson(explanation as unknown as Record<string, unknown>);
 }
 
 export function reportDiagramJson(layers: ArchitectureLayer[]): void {
-  console.log(JSON.stringify({ architecture: layers }, null, 2));
+  emitJson({ architecture: layers });
 }
 
 export function reportStructureJson(tree: DirectoryNode): void {
-  console.log(JSON.stringify({ structure: tree }, null, 2));
+  emitJson({ structure: tree });
 }
 
 export function reportDependenciesJson(report: DependencyReport): void {
-  console.log(JSON.stringify(report, null, 2));
+  emitJson(report as unknown as Record<string, unknown>);
 }
 
 export function reportHotspotsJson(report: HotspotReport): void {
-  console.log(JSON.stringify({ hotspots: report }, null, 2));
+  emitJson({ hotspots: report });
 }
 
 export function reportFileJson(inspection: FileInspection): void {
-  console.log(JSON.stringify({ file: inspection }, null, 2));
+  emitJson({ file: inspection });
 }
 
 export function reportOutdatedJson(report: OutdatedReport): void {
-  console.log(JSON.stringify({ outdated: report }, null, 2));
+  emitJson({ outdated: report });
 }
 
 export function reportAuditJson(report: AuditReport): void {
-  console.log(JSON.stringify({ audit: report }, null, 2));
+  emitJson({ audit: report });
 }
 
 export function reportUpgradeJson(preview: UpgradePreview): void {
-  console.log(JSON.stringify({ upgrade: preview }, null, 2));
+  emitJson({ upgrade: preview });
 }
 
 export function reportCoverageJson(report: CoverageJoinedReport): void {
-  console.log(JSON.stringify({ coverage: report }, null, 2));
+  emitJson({ coverage: report });
 }
 
 export function reportCouplingJson(report: CouplingReport): void {
-  console.log(JSON.stringify({ coupling: report }, null, 2));
+  emitJson({ coupling: report });
 }
 
 export function reportPrDiffJson(report: PrDiffReport): void {
-  console.log(JSON.stringify({ prDiff: report }, null, 2));
+  emitJson({ prDiff: report });
 }
 
 export function reportReviewJson(report: ReviewReport): void {
-  console.log(JSON.stringify({ review: report }, null, 2));
+  emitJson({ review: report });
 }
 
 export function reportFixSuggestJson(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
-  console.log(JSON.stringify({ fixSuggest: result }, null, 2));
+  emitJson({ fixSuggest: result });
 }
 
 export function reportExplainIssueJson(explanation: IssueExplanation): void {
-  console.log(JSON.stringify({ issueExplanation: explanation }, null, 2));
+  emitJson({ issueExplanation: explanation });
 }
 
 export function reportImpactJson(report: ImpactReport): void {
-  console.log(JSON.stringify({ impact: report }, null, 2));
+  emitJson({ impact: report });
 }
 
 export function reportWorkspacesJson(info: WorkspaceInfo): void {
-  console.log(JSON.stringify({ workspaces: info }, null, 2));
+  emitJson({ workspaces: info });
 }
