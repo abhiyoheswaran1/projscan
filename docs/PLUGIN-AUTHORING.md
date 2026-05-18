@@ -1,6 +1,7 @@
 # Plugin Authoring
 
-projscan 1.10 introduced a plugin preview. The preview is gated by
+projscan 1.10 introduced the analyzer plugin preview; 1.11 extends it with
+reporter plugins for CLI output. The preview is gated by
 `PROJSCAN_PLUGINS_PREVIEW=1` while the 2.0 contract is being finalized.
 
 Plugins are local code. Enabling the preview means you trust the plugin code in

@@ -4,6 +4,27 @@ All notable changes to projscan are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] — 2026-05-18 — "Reporter Plugins"
+
+Reporter plugin preview for CLI output, docs, and demo media. No MCP wire breakage.
+
+### Added — reporter plugin preview
+
+- Local plugin manifests may now declare `kind: "reporter"` with `commands: ["doctor" | "analyze" | "ci"]`. Reporter modules export `render(context)`, returning the CLI output string for a supported command.
+- New CLI flag **`--reporter <name>`** on `projscan doctor`, `projscan analyze`, and `projscan ci`. Reporters stay behind **`PROJSCAN_PLUGINS_PREVIEW=1`**, matching the analyzer preview gate.
+- Reporter execution is isolated: unsupported commands, missing exports, non-string returns, and thrown render errors produce clear CLI failures without changing the default console or JSON output paths.
+
+### Changed
+
+- **`projscan_plugin`** and `projscan plugin list | validate` now understand analyzer and reporter manifests. The MCP tool remains structured and validation-oriented; reporter rendering is intentionally CLI-only.
+- Plugin diagnostics now distinguish analyzer-specific `category` requirements from reporter-specific `commands` requirements.
+- `projscan ci --reporter <name>` preserves CI policy behavior: reporter output can customize the console view, but threshold failures still exit non-zero.
+
+### Documentation
+
+- README now leads with a generated macOS-style reporter plugin demo (`docs/projscan-reporter-plugin.png` / `.gif`) and includes a reporter quick-start.
+- [Plugin Authoring](docs/PLUGIN-AUTHORING.md) now documents reporter manifests, `render(context)`, supported commands, and CLI-only behavior.
+
 ## [1.10.0] — 2026-05-13 — "RC for 2.0"
 
 Analyzer plugin API preview, live cost-summary streaming, and five fixes.
