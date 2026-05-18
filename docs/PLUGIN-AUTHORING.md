@@ -134,6 +134,13 @@ Payloads:
 Renderers must return a string. They should not write directly to stdout or
 stderr; projscan writes the returned text after the renderer succeeds.
 
+## Custom Presentation
+
+Reporter plugins are the customization boundary for team-specific presentation.
+Use them for white-label reports, team-branded summaries, and output shaped for
+local workflows. The built-in HTML reporter stays the default core renderer
+instead of growing project-specific theming flags.
+
 ## Validate
 
 ```sh

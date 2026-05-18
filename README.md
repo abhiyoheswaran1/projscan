@@ -177,7 +177,7 @@ PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-radar --min-score 80
 
 <img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v1.11.0/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
 
-Reporter plugins are intentionally CLI-only in the preview. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v1.11.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
+Reporter plugins are intentionally CLI-only in the preview. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v1.11.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
 
 ### Options
 

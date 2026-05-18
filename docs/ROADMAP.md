@@ -66,7 +66,7 @@ The agent-substrate arc (1.4 → 1.11) is done: 11 languages, long-running PR wa
 - JSON output schema cleanups — consolidate the optional-field accumulation that grew through 0.x → 1.x.
 - `LanguageId` becomes plugin-extensible (no longer a closed type).
 - 1.x compatibility shim for 6 months with stderr deprecation warnings.
-- HTML report theming: white-label via plugin API rather than core feature.
+- Custom presentation: white-label and team-branded reports live in reporter plugins; the built-in HTML reporter remains the default core renderer.
 
 ## Non-goals
 
