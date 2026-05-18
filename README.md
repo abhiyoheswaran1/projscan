@@ -168,6 +168,8 @@ Formats: `console` (default), `json`, `markdown`, `sarif`
 
 projscan can load local plugins from `.projscan-plugins/` when `PROJSCAN_PLUGINS_PREVIEW=1` is set. The environment flag is kept for explicit local-code opt-in. Analyzer plugins emit normal projscan issues; reporter plugins render supported CLI commands with team-specific output.
 
+**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v2.0.0/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v2.0.0/docs/PLUGIN-AUTHORING.md) and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v2.0.0/docs/plugin.schema.json) as the stable contract.
+
 ```bash
 projscan plugin list
 projscan plugin validate .projscan-plugins/team-radar.projscan-plugin.json
