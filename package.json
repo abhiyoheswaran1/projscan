@@ -11,7 +11,11 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "docs/2.0-MIGRATION.md",
+    "docs/PLUGIN-AUTHORING.md",
+    "docs/plugin.schema.json",
+    "docs/examples/plugins"
   ],
   "scripts": {
     "build": "tsc && node scripts/copy-wasm.mjs && node scripts/generate-tool-manifest.mjs",

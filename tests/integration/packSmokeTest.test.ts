@@ -43,6 +43,13 @@ describe('npm pack smoke test', () => {
       expect(listing).toContain('package/dist/grammars/tree-sitter-java.wasm');
       expect(listing).toContain('package/dist/grammars/tree-sitter-ruby.wasm');
       expect(listing).toContain('package/dist/tool-manifest.json');
+      expect(listing).toContain('package/docs/plugin.schema.json');
+      expect(listing).toContain('package/docs/PLUGIN-AUTHORING.md');
+      expect(listing).toContain('package/docs/2.0-MIGRATION.md');
+      expect(listing).toContain('package/docs/examples/plugins/policy.projscan-plugin.json');
+      expect(listing).toContain('package/docs/examples/plugins/policy.mjs');
+      expect(listing).toContain('package/docs/examples/plugins/team-radar.projscan-plugin.json');
+      expect(listing).toContain('package/docs/examples/plugins/team-radar.mjs');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
