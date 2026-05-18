@@ -33,10 +33,23 @@ These are versioned. Removing or breaking anything in this list requires a depre
 - **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`. New keys may be added; existing keys will not change name or type.
 - **Environment variables** consulted: none currently advertised as stable. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
 
+### Plugin API
+
+Starting in 2.0, `.projscan-plugins/*.projscan-plugin.json` manifests with
+`schemaVersion: 1` are stable for local analyzer and reporter plugins. New
+optional manifest fields may be added in 2.x; existing required fields keep
+their names and types.
+
+Analyzer plugins export `check(rootPath, files)` and return `Issue[]`. Reporter
+plugins export `render(context)` and return a string for supported CLI commands.
+Plugin execution is local-only: projscan does not fetch remote plugin code.
+
 ### Public API (npm package)
 
 - Exports from `dist/index.js` listed in `src/index.ts` are the public TypeScript API. Anything not re-exported there is internal.
 - Re-exported types from `src/types.ts` follow the JSON-output stability rules above.
+- `BuiltinLanguageId` is the closed set of bundled language adapters.
+  `LanguageId` is extensible and may include plugin-provided language ids.
 
 ## Unstable surface
 
