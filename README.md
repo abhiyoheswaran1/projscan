@@ -7,11 +7,11 @@
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](#quick-start)
 
-**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans on the side.
+**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans and a local plugin layer for team-specific policy and reporting.
 
 [AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
-<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="projscan running on the abhiyoheswaran.com repo: banner, scan progress, project report" width="600">
+<img src="docs/projscan-reporter-plugin.png" alt="projscan reporter plugin running in a macOS-style terminal window with a team health summary" width="700">
 
 </div>
 
@@ -23,6 +23,8 @@ AI coding agents are becoming the primary interface to code. Today, when you ask
 
 **projscan is the first code-intelligence tool built for agents, not for humans.** Your agent gets a fast, AST-accurate, context-budget-aware view of your codebase through 28 structured MCP tools. It can query the import graph, find symbol definitions, preview upgrades, rank hotspots, diff structural changes between refs, surface coupling/cycle hotspots, get an **intent-grounded** one-call PR review (now with new-taint-flow detection that *blocks* unsafe merges, plus an optional natural-language intent arg that labels each finding expected / unexpected / out-of-scope), request structured fix-action prompts for any open issue and **mechanically apply** the safe ones with rollback, ask "what breaks if I change this?" via transitive blast-radius analysis (across registered sibling repos too), surface source-to-sink taint flows, share a durable session across multiple agent invocations, and learn from how you use it — quieting accumulated noise on this specific repo over time without ever phoning home.
 
+The plugin preview turns that same pipeline into a local platform: analyzer plugins add project-specific findings, and reporter plugins render `doctor`, `analyze`, and `ci` in your team's own voice without changing the underlying scan.
+
 Humans get the same thing through the CLI.
 
 **Everything is offline-first. Zero network calls. No API keys.**
@@ -31,7 +33,7 @@ Humans get the same thing through the CLI.
 npx projscan
 ```
 
-<img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="npx projscan: banner, scan progress, full project report" width="700">
+<img src="docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
 
 Run `projscan doctor` for a focused health check:
 
@@ -75,6 +77,8 @@ projscan diff                       # Compare health + hotspot trends against a 
 projscan diagram                    # Architecture visualization
 projscan structure                  # Directory tree
 projscan mcp                        # Run as an MCP server for AI coding agents
+projscan plugin list                # Discover local analyzer/reporter plugins
+PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 ```
 
 <img src="docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
@@ -107,6 +111,7 @@ For a comprehensive walkthrough, see the **[Full Guide](docs/GUIDE.md)**.
 | `projscan workspace` | *(1.6)* Register sibling repos for cross-repo intelligence (`add` / `list` / `remove`) |
 | `projscan apply-fix <id>` | *(1.6)* Mechanically execute the safe fix templates with rollback (default dry-run) |
 | `projscan taint` | *(1.6)* Source-to-sink reachability over the call graph |
+| `projscan plugin` | *(1.10 preview)* Discover and validate local analyzer/reporter plugins |
 | `projscan mcp` | Run as an MCP server for AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, …) |
 
 To see all commands and options, run:
@@ -159,6 +164,21 @@ projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
 
 Formats: `console` (default), `json`, `markdown`, `sarif`
 
+### Plugin Platform Preview
+
+projscan can load local plugins from `.projscan-plugins/` when `PROJSCAN_PLUGINS_PREVIEW=1` is set. Analyzer plugins emit normal projscan issues; reporter plugins render supported CLI commands with team-specific output.
+
+```bash
+projscan plugin list
+projscan plugin validate .projscan-plugins/team-radar.projscan-plugin.json
+PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
+PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-radar --min-score 80
+```
+
+<img src="docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
+
+Reporter plugins are intentionally CLI-only in the preview. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. See [Plugin Authoring](docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
+
 ### Options
 
 | Flag | Description |
@@ -167,6 +187,7 @@ Formats: `console` (default), `json`, `markdown`, `sarif`
 | `--config <path>` | Path to a `.projscanrc` config file |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
+| `--reporter <name>` | Preview: render `doctor`, `analyze`, or `ci` with a local reporter plugin |
 | `--verbose` | Enable debug output |
 | `--quiet` | Suppress non-essential output |
 | `-V, --version` | Show version |
