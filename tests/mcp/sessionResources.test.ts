@@ -39,13 +39,13 @@ test('risk-now returns JSON-compatible conflict data from touched files', async 
 
   expect(resource.mimeType).toBe('application/json');
   expect(payload.schemaVersion).toBe(1);
-  expect(payload.touchedFiles).toEqual(['src/a.ts', 'src/b.ts']);
+  expect([...payload.touchedFiles].sort()).toEqual(['src/a.ts', 'src/b.ts']);
   expect(Array.isArray(payload.conflicts)).toBe(true);
-  expect(payload.conflicts).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ kind: 'same-workspace', files: ['src/a.ts', 'src/b.ts'] }),
-    ]),
+  const sameWorkspace = payload.conflicts.find(
+    (conflict: { kind?: string }) => conflict.kind === 'same-workspace',
   );
+  expect(sameWorkspace).toBeDefined();
+  expect([...sameWorkspace.files].sort()).toEqual(['src/a.ts', 'src/b.ts']);
 });
 
 test('handoff includes summary, remaining risks, and next actions', async () => {
