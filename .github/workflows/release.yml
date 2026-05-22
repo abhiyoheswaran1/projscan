@@ -6,8 +6,8 @@ name: Release
 #   3. Slices the matching CHANGELOG entry for use as release notes.
 #   4. Runs the supply-chain release gate and emits an SBOM.
 #   5. Publishes to npm through Trusted Publishing / OIDC.
-#   6. Creates the GitHub Release with `dist/tool-manifest.json` and the SBOM attached
-#      (the website's docs page consumes that asset).
+#   6. Creates the GitHub Release with `dist/tool-manifest.json` and the SBOM attached.
+#   7. Publishes MCP Registry metadata through GitHub OIDC.
 #
 # Order note: npm publish runs BEFORE the GitHub Release is created. npm
 # publish is the more common failure mode (registry 5xx, trusted-publisher
@@ -16,10 +16,6 @@ name: Release
 # that doesn't exist. With this ordering, the worst-case partial state is
 # "tag pushed, tests passed, npm has it, no GH Release yet" — recoverable via
 # workflow_dispatch re-run (idempotent on both sides).
-#
-# MCP Registry publish stays MANUAL — `mcp-publisher` requires interactive
-# OAuth and short-lived tokens; not safe to wire into CI today. Run it from
-# your machine after the workflow completes.
 #
 # Trigger model: push a tag matching `v*.*.*`. Prerelease tags (e.g.
 # `v1.6.1-rc.1`) match the glob but are rejected at runtime — see the
@@ -160,20 +156,58 @@ jobs:
               dist/projscan-sbom.cdx.json
           fi
 
+      - name: Check MCP Registry version
+        id: mcp_registry
+        env:
+          VERSION: ${{ steps.pick.outputs.version }}
+        run: |
+          curl -fsSL 'https://registry.modelcontextprotocol.io/v0/servers?search=projscan' > /tmp/mcp-registry.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const response = JSON.parse(fs.readFileSync('/tmp/mcp-registry.json', 'utf8'));
+          const version = process.env.VERSION;
+          const alreadyPublished = Array.isArray(response.servers)
+            && response.servers.some((entry) =>
+              entry?.server?.name === 'io.github.abhiyoheswaran1/projscan'
+              && entry?.server?.version === version
+            );
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `already_published=${alreadyPublished ? 'true' : 'false'}\n`);
+          NODE
+
+      - name: Install mcp-publisher
+        if: steps.mcp_registry.outputs.already_published != 'true'
+        run: |
+          platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          curl -fsSL \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${platform}_${arch}.tar.gz" \
+            -o mcp-publisher.tar.gz
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+
+      - name: Publish MCP Registry metadata
+        if: steps.mcp_registry.outputs.already_published != 'true'
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish .github/mcp-registry/server.json
+
       - name: Summary
         env:
           TAG: ${{ steps.pick.outputs.tag }}
           VERSION: ${{ steps.pick.outputs.version }}
           REPO: ${{ github.repository }}
+          MCP_REGISTRY_ALREADY_PUBLISHED: ${{ steps.mcp_registry.outputs.already_published }}
         run: |
           {
             echo "### Released $TAG"
             echo ""
             echo "- npm: https://www.npmjs.com/package/projscan/v/$VERSION"
             echo "- GitHub: https://github.com/$REPO/releases/tag/$TAG"
+            if [ "$MCP_REGISTRY_ALREADY_PUBLISHED" = "true" ]; then
+              echo "- MCP Registry: already published"
+            else
+              echo "- MCP Registry: published"
+            fi
             echo ""
-            echo "**Manual follow-up:** republish to the MCP Registry."
-            echo '```'
-            echo "~/bin/mcp-publisher publish .github/mcp-registry/server.json"
-            echo '```'
+            echo "**Manual follow-up:** update the website manifest pin."
           } >> "$GITHUB_STEP_SUMMARY"

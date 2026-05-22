@@ -61,6 +61,18 @@ describe('release workflow metadata', () => {
     expect(workflow).toContain('dist/projscan-sbom.cdx.json');
   });
 
+  it('publishes MCP Registry metadata through GitHub OIDC', () => {
+    expect(workflow).toMatch(/id-token:\s*write/);
+    expect(workflow).toContain('Check MCP Registry version');
+    expect(workflow).toContain('registry.modelcontextprotocol.io/v0/servers?search=projscan');
+    expect(workflow).toContain('already_published=');
+    expect(workflow).toContain('Install mcp-publisher');
+    expect(workflow).toContain('modelcontextprotocol/registry/releases/latest/download/mcp-publisher_');
+    expect(workflow).toContain('./mcp-publisher login github-oidc');
+    expect(workflow).toContain('./mcp-publisher publish .github/mcp-registry/server.json');
+    expect(workflow).not.toContain('Manual follow-up:** republish to the MCP Registry');
+  });
+
   it('names root lockfile packages correctly in the generated SBOM', () => {
     execFileSync(process.execPath, ['scripts/generate-sbom.mjs'], { cwd: root, stdio: 'pipe' });
 

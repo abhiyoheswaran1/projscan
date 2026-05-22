@@ -153,7 +153,7 @@ For larger work (refactors, cross-cutting changes), open an issue first to discu
 
 ## Releasing
 
-A release is a five-step ritual now that `.github/workflows/release.yml` (1.6.1+) does the heavy lifting. Steps 1-3 prep + ship the npm + GitHub Release surfaces; steps 4-5 are the manual surfaces (MCP Registry + website) that need interactive auth CI can't do safely.
+A release is a four-step ritual now that `.github/workflows/release.yml` does the heavy lifting. Steps 1-3 prep and ship the npm, GitHub Release, and MCP Registry surfaces; step 4 is the website surface that lives in the separate website repo.
 
 1. **Bump version + write the CHANGELOG entry** in a PR against `main`:
    - `package.json#version` → new semver (patch for fixes, minor for features, major if anything breaks).
@@ -170,15 +170,9 @@ A release is a five-step ritual now that `.github/workflows/release.yml` (1.6.1+
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
-   The `Release` workflow fires automatically. It validates versions, runs the full build / test / lint / stability gate, slices the CHANGELOG entry, creates the GitHub Release with `dist/tool-manifest.json` attached, and publishes to npm with provenance. If anything fails, no GitHub Release is created and no npm publish happens — fix and re-tag, or use the workflow's `workflow_dispatch` re-run with the same tag (the workflow is idempotent).
+   The `Release` workflow fires automatically. It validates versions, runs the full build / test / lint / stability gate, slices the CHANGELOG entry, publishes to npm with provenance, creates the GitHub Release with `dist/tool-manifest.json` and the SBOM attached, and republishes the MCP Registry metadata through GitHub OIDC. If anything fails before npm, no GitHub Release is created and no npm publish happens. If anything fails after npm, fix it and use the workflow's `workflow_dispatch` re-run with the same tag; npm, GitHub Release, and MCP Registry steps are idempotent.
 
-4. **MCP Registry republish (manual).** From your machine, after the workflow turns green:
-   ```
-   ~/bin/mcp-publisher publish .github/mcp-registry/server.json
-   ```
-   If it 401s, refresh with `~/bin/mcp-publisher login github`. The registry stores all published versions; not republishing means the registry's "latest" pointer drifts behind npm.
-
-5. **Bump the website's expectations** (separate repo). In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
+4. **Bump the website's expectations** (separate repo). In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:
    - The hardcoded **manifest URL pin** → swap `releases/download/vX.Y.Z/tool-manifest.json` for the new tag.
    - `EXPECTED.minVersion` → the new version.
    - `EXPECTED.requiredTools` → append any new MCP tool names the release added.

@@ -2,12 +2,13 @@
 
 projscan is published to the official MCP Registry at [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) under the namespace **`io.github.abhiyoheswaran1/projscan`**. First publish: 2026-05-04, version `1.1.0`.
 
-This file documents how to **republish on every new release** so the registry stays in sync with npm. For the first-time submission story, see this file's git history (we keep the history in the repo for reference).
+This file documents how to keep the registry in sync with npm. For the first-time submission story, see this file's git history (we keep the history in the repo for reference).
 
 ## On every release — keep registry in sync with npm
 
-After the GitHub release workflow publishes npm for a new version, do this
-**before** marking the release ritual complete:
+The GitHub `Release` workflow republishes the MCP Registry metadata through
+GitHub OIDC after npm and the GitHub Release are green. Keep the metadata below
+correct before tagging; the workflow handles the publish step.
 
 ### 1. Bump both version fields in `server.json`
 
@@ -33,11 +34,11 @@ There are two of them (top-level + inside `packages[0]`). Both must match `packa
 
 Should print `✅ server.json is valid`. If you get a 422, the schema may have changed — check [registry.modelcontextprotocol.io/docs](https://registry.modelcontextprotocol.io/docs) and adjust.
 
-### 3. Publish
+### 3. Workflow publish
 
-```sh
-~/bin/mcp-publisher publish .github/mcp-registry/server.json
-```
+The release workflow downloads the latest `mcp-publisher`, authenticates with
+`mcp-publisher login github-oidc`, checks whether the version is already present,
+and publishes `.github/mcp-registry/server.json` when needed.
 
 Expected:
 
@@ -53,6 +54,19 @@ The registry stores all published versions; this doesn't replace the prior entri
 
 Don't forget — local `.github/mcp-registry/server.json` should match the version
 being tagged. Otherwise future-you won't trust the file.
+
+## Manual fallback
+
+If the GitHub OIDC publish path is down, publish from your machine after npm is
+visible:
+
+```sh
+~/bin/mcp-publisher publish .github/mcp-registry/server.json
+```
+
+If it 401s, refresh with `~/bin/mcp-publisher login github`. The registry stores
+all published versions; not republishing means the registry's "latest" pointer
+drifts behind npm.
 
 ## If `mcp-publisher` is missing
 
