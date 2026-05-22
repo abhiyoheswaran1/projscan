@@ -39,6 +39,8 @@ import { reviewWatchTool } from './tools/reviewWatch.js';
 import { pluginTool } from './tools/plugin.js';
 import { preflightTool } from './tools/preflight.js';
 import { workplanTool } from './tools/workplan.js';
+import { releaseTrainTool } from './tools/releaseTrain.js';
+import { bugHuntTool } from './tools/bugHunt.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -75,6 +77,8 @@ const tools: McpTool[] = [
   pluginTool,
   preflightTool,
   workplanTool,
+  releaseTrainTool,
+  bugHuntTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

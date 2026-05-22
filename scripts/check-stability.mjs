@@ -41,12 +41,12 @@ const baselinePath = path.join(root, 'stability-baseline.json');
 // this list ONLY on a major version bump; otherwise additions go through
 // the baseline-diff path automatically.
 const STABLE_CLI_COMMANDS = [
-  'analyze', 'apply-fix', 'audit', 'badge', 'ci', 'coupling', 'coverage',
+  'analyze', 'apply-fix', 'audit', 'badge', 'bug-hunt', 'ci', 'coupling', 'coverage',
   'dependencies', 'diagram', 'diff', 'doctor', 'explain', 'explain-issue',
   'file', 'fix', 'fix-suggest', 'handoff', 'hotspots', 'impact', 'init',
   'install-hook', 'mcp', 'memory', 'outdated', 'plugin', 'preflight',
-  'pr-diff', 'review', 'search', 'session', 'structure', 'taint', 'upgrade',
-  'watch', 'workplan', 'workspace', 'workspaces',
+  'pr-diff', 'release-train', 'review', 'search', 'session', 'structure',
+  'taint', 'upgrade', 'watch', 'workplan', 'workspace', 'workspaces',
 ];
 
 const STABLE_EXIT_CODES = {

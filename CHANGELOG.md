@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan_workplan` now composes preflight, review, session, hotspot, plugin, and supply-chain signals into an ordered agent execution plan with priorities, evidence, suggested tools, verification commands, and short handoff text.
 - `projscan workplan` exposes the same planner through the CLI with modes for `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
 - `projscan handoff` prints a concise next-agent handoff from the current workplan, including the next tasks and coordination recommendation.
+- `projscan_release_train` / `projscan release-train` plan upcoming release lines in one readiness view with version, preflight, scope, and next-action evidence.
+- `projscan_bug_hunt` / `projscan bug-hunt` compose doctor, preflight, hotspot, and session signals into a prioritized fix queue with verification commands for each target.
+
+### Fixed
+
+- Full-suite test stability now uses a 45s Vitest test/hook budget and guards git-heavy temp-repo cleanup paths, preventing false negatives under subprocess load.
 
 ## [2.2.0] — 2026-05-21 — "Supply-Chain Trust Gate"
 

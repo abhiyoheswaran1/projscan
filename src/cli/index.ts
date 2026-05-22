@@ -37,6 +37,8 @@ import { registerBadge } from './commands/badge.js';
 import { registerPlugin } from './commands/plugin.js';
 import { registerPreflight } from './commands/preflight.js';
 import { registerWorkplan } from './commands/workplan.js';
+import { registerReleaseTrain } from './commands/releaseTrain.js';
+import { registerBugHunt } from './commands/bugHunt.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -75,6 +77,8 @@ registerBadge();
 registerPlugin();
 registerPreflight();
 registerWorkplan();
+registerReleaseTrain();
+registerBugHunt();
 registerHelp();
 
 program.parse();

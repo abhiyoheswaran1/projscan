@@ -394,6 +394,83 @@ export interface WorkplanReport {
   truncated?: boolean;
 }
 
+// === Release Train / Bug Hunt (2.3 roll-up) ===
+
+export interface ReleaseTrainTrack {
+  line: string;
+  theme: string;
+  outcome: string;
+  includedInRollup: boolean;
+  scope: string[];
+  successCriteria: string[];
+}
+
+export interface ReleaseTrainTask {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  why: string;
+  track: string;
+  files: string[];
+  verification: WorkplanVerification;
+}
+
+export interface ReleaseTrainReport {
+  schemaVersion: 1;
+  currentVersion: string | null;
+  rollup: {
+    policy: 'single-unreleased-release';
+    target: 'unreleased';
+    lines: string[];
+    releaseMutation: false;
+  };
+  readiness: {
+    verdict: PreflightVerdict;
+    blockers: number;
+    cautions: number;
+    summary: string;
+  };
+  tracks: ReleaseTrainTrack[];
+  tasks: ReleaseTrainTask[];
+  suggestedNextActions: PreflightSuggestedAction[];
+}
+
+export type BugHuntVerdict = 'clean' | 'fix' | 'block';
+
+export interface BugHuntFinding {
+  id: string;
+  priority: WorkplanPriority;
+  source: 'doctor' | 'preflight' | 'session' | 'hotspot' | 'verification';
+  title: string;
+  why: string;
+  files: string[];
+  evidence: WorkplanEvidence[];
+  suggestedTools: string[];
+  verification: WorkplanVerification;
+}
+
+export interface BugHuntReport {
+  schemaVersion: 1;
+  verdict: BugHuntVerdict;
+  summary: string;
+  health: HealthScore;
+  evidence: {
+    issueCounts: {
+      errors: number;
+      warnings: number;
+      infos: number;
+    };
+    hotspotCount: number;
+    preflightVerdict: PreflightVerdict;
+    touchedFiles: string[];
+    conflicts: number;
+  };
+  topSuspects: BugHuntFinding[];
+  fixQueue: BugHuntFinding[];
+  verificationMatrix: Array<{ command: string; reason: string; expected: string }>;
+  truncated?: boolean;
+}
+
 export interface SessionResourceSummary {
   schemaVersion: 1;
   sessionId: string;

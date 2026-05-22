@@ -111,13 +111,15 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
+- **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands.
+- **`projscan_release_train` / `projscan release-train`** — release-line roll-up planner. Plans multiple release lines as one unreleased train while keeping version, tag, and publish state untouched.
 - **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, supply-chain trust, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
 - **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, plugin-policy, and supply-chain evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
+**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a dedicated polish pass, call `projscan_bug_hunt`; for release planning, call `projscan_release_train`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -1013,6 +1015,8 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_pr_diff` — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in.
 - `projscan_review` — one-call PR review composing `pr_diff` + per-changed-file risk + new/expanded cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
 - `projscan_workplan` — prioritized agent execution plan with evidence, suggested tools, verification commands, coordination context, and handoff text.
+- `projscan_bug_hunt` — prioritized bug-hunt fix queue with per-target verification.
+- `projscan_release_train` — multi-line release roll-up plan that does not mutate release metadata.
 - `projscan_fix_suggest` — rule-driven action prompt for any open issue: headline, why, where, instruction, optional suggested test.
 - `projscan_explain_issue` — deep dive on one issue: code excerpt, related issues, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - `projscan_impact` — transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Cycle-safe; depth-bounded.
@@ -1315,7 +1319,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 30 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # 32 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

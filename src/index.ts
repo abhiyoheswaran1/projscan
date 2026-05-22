@@ -58,6 +58,8 @@ export { getChangedFiles } from './utils/changedFiles.js';
 export { issuesToSarif } from './reporters/sarifReporter.js';
 export { computeReview } from './core/review.js';
 export { computeWorkplan } from './core/workplan.js';
+export { computeReleaseTrain } from './core/releaseTrain.js';
+export { computeBugHunt } from './core/bugHunt.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';
@@ -126,6 +128,12 @@ export type {
   ImportPolicyRule,
   ImpactReport,
   ImpactNode,
+  BugHuntFinding,
+  BugHuntReport,
+  BugHuntVerdict,
+  ReleaseTrainReport,
+  ReleaseTrainTask,
+  ReleaseTrainTrack,
   WorkplanCoordination,
   WorkplanEvidence,
   WorkplanMode,

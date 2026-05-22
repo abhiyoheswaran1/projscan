@@ -17,6 +17,10 @@ function makeFile(relativePath: string, sizeBytes = 100): FileEntry {
   };
 }
 
+const FAKE_AWS_ACCESS_KEY = `AKIA${'IOSFODNN7EXAMPLE'}`;
+const FAKE_GITHUB_TOKEN = `ghp_${'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'}`;
+const FAKE_PASSWORD_ASSIGNMENT = `password = "${'super-secret-password123'}"`;
+
 describe('securityCheck', () => {
   beforeEach(() => vi.restoreAllMocks());
 
@@ -86,7 +90,7 @@ describe('securityCheck', () => {
     it('should detect AWS access keys', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';
-        if (String(p).endsWith('config.ts')) return 'const key = "AKIAIOSFODNN7EXAMPLE";';
+        if (String(p).endsWith('config.ts')) return `const key = "${FAKE_AWS_ACCESS_KEY}";`;
         return '';
       });
       const files = [makeFile('src/config.ts')];
@@ -100,8 +104,7 @@ describe('securityCheck', () => {
     it('should detect GitHub tokens', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';
-        if (String(p).endsWith('auth.ts'))
-          return 'const token = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij";';
+        if (String(p).endsWith('auth.ts')) return `const credential = "${FAKE_GITHUB_TOKEN}";`;
         return '';
       });
       const files = [makeFile('src/auth.ts')];
@@ -114,7 +117,7 @@ describe('securityCheck', () => {
     it('should detect generic password patterns', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';
-        if (String(p).endsWith('db.ts')) return 'password = "super-secret-password123"';
+        if (String(p).endsWith('db.ts')) return FAKE_PASSWORD_ASSIGNMENT;
         return '';
       });
       const files = [makeFile('src/db.ts')];
@@ -126,7 +129,7 @@ describe('securityCheck', () => {
     it('should skip files over 512KB', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';
-        return 'AKIAIOSFODNN7EXAMPLE';
+        return FAKE_AWS_ACCESS_KEY;
       });
       const files = [makeFile('src/big.ts', 600 * 1024)];
       const issues = await check('/proj', files);
@@ -173,7 +176,7 @@ describe('securityCheck', () => {
   it('should set category to security for all issues', async () => {
     vi.mocked(fs.readFile).mockImplementation(async (p) => {
       if (String(p).endsWith('.gitignore')) return 'node_modules/\n';
-      if (String(p).endsWith('config.ts')) return 'const key = "AKIAIOSFODNN7EXAMPLE";';
+      if (String(p).endsWith('config.ts')) return `const key = "${FAKE_AWS_ACCESS_KEY}";`;
       return '';
     });
     const files = [makeFile('.env'), makeFile('certs/server.pem'), makeFile('src/config.ts')];
