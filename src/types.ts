@@ -252,6 +252,7 @@ export type PreflightReasonSource =
   | 'taint'
   | 'session'
   | 'plugin'
+  | 'supply-chain'
   | 'memory'
   | 'changed-files'
   | 'hotspots'
@@ -312,6 +313,10 @@ export interface PreflightEvidence {
   };
   plugins?: {
     enabled: boolean;
+    errorIssues: number;
+    warningIssues: number;
+  };
+  supplyChain?: {
     errorIssues: number;
     warningIssues: number;
   };

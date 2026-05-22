@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-05-21 — "Supply-Chain Trust Gate"
+
+### Added
+
+- `projscan doctor`, `projscan preflight`, and MCP `projscan_preflight` now surface supply-chain findings for known malicious TanStack Mini Shai-Hulud indicators, hidden editor persistence hooks, risky install lifecycle scripts, pinned GitHub commit dependencies, and large obfuscated JavaScript payloads.
+- `projscan preflight` now includes `evidence.supplyChain`, supply-chain reason sources, and a dedicated required check so agents can distinguish dependency trust issues from general health or plugin policy failures.
+- Release validation now runs a built-artifact supply-chain gate, `npm audit`, npm signature verification, and emits a CycloneDX SBOM attached to GitHub releases.
+- `npm run release:check` now gives maintainers a local release-readiness report covering version metadata, changelog presence, git worktree state, local/remote tag state, release gates, and the exact next action.
+
+### Fixed
+
+- Lockfile IOC scanning now catches malicious `resolved` URLs even when a package entry has no nested dependency map.
+- Lockfile IOC scanning now reads normal large npm lockfiles instead of silently skipping supply-chain checks after the first 2 MB.
+- Root `node_modules/<pkg>` package-lock entries are parsed correctly for both supply-chain analysis and SBOM component names.
+- `projscan_review` now short-circuits identical base/head refs instead of doing a full head scan, hotspot pass, and temporary base worktree for an empty diff.
+- `prepare` lifecycle filtering now flags direct package execution such as `npx`, `npm exec`, `pnpm dlx`, and `yarn dlx` while preserving the existing `npm run build` allowance.
+- Updated the `brace-expansion` and `protobufjs` overrides and lockfile to the safe transitive ranges used by the release gate.
+
 ## [2.1.0] — 2026-05-18 — "Agent Trust"
 
 ### Added

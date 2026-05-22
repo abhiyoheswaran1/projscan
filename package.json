@@ -1,8 +1,8 @@
 {
   "name": "projscan",
   "mcpName": "io.github.abhiyoheswaran1/projscan",
-  "version": "2.1.0",
-  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++; code graph, file + per-function AST cyclomatic complexity, per-function fan-in + fan-out, coupling + cycle detection, structural PR diff with HTML reporter, coverage report with HTML reporter, intent-grounded one-call PR review (projscan_review with optional `intent` arg) and long-running PR-watch mode with structured per-bucket deltas (projscan_review_watch), rule-driven fix suggestions + mechanical apply layer with rollback (projscan_apply_fix, projscan_fix_suggest, projscan_explain_issue), source-to-sink taint analysis (projscan_taint) with truncation reporting, transitive blast-radius analysis with cross-repo mode (projscan_impact for files and symbols), cross-repo workspace registration + intelligence (projscan_workspace_graph), per-function semantic search chunks (sub-file embeddings), per-rule confidence + severity drift + cost-summary analytics with live streaming (projscan_cost_summary), stable local analyzer + reporter plugin API (projscan_plugin, CLI --reporter, opt-in via PROJSCAN_PLUGINS_PREVIEW=1), monorepo workspace awareness with cross-package import policy + per-package dependencies / outdated / audit, BM25 + optional semantic search, cursor pagination, progress notifications, context-budgeted output, and a stable-surface CI guard. CLI on the side.",
+  "version": "2.2.0",
+  "description": "Agent-first code intelligence. MCP server (2025-03-26) with AST parsing for JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++; code graph, file + per-function AST cyclomatic complexity, per-function fan-in + fan-out, coupling + cycle detection, structural PR diff with HTML reporter, coverage report with HTML reporter, intent-grounded one-call PR review (projscan_review with optional `intent` arg) and long-running PR-watch mode with structured per-bucket deltas (projscan_review_watch), agent preflight with supply-chain IOC evidence, rule-driven fix suggestions + mechanical apply layer with rollback (projscan_apply_fix, projscan_fix_suggest, projscan_explain_issue), source-to-sink taint analysis (projscan_taint) with truncation reporting, transitive blast-radius analysis with cross-repo mode (projscan_impact for files and symbols), cross-repo workspace registration + intelligence (projscan_workspace_graph), per-function semantic search chunks (sub-file embeddings), per-rule confidence + severity drift + cost-summary analytics with live streaming (projscan_cost_summary), stable local analyzer + reporter plugin API (projscan_plugin, CLI --reporter, opt-in via PROJSCAN_PLUGINS_PREVIEW=1), monorepo workspace awareness with cross-package import policy + per-package dependencies / outdated / audit, BM25 + optional semantic search, cursor pagination, progress notifications, context-budgeted output, and a stable-surface CI guard. CLI on the side.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,14 +20,17 @@
   "scripts": {
     "build": "tsc && node scripts/copy-wasm.mjs && node scripts/generate-tool-manifest.mjs",
     "dev": "tsc --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --test-timeout 15000 --hook-timeout 15000",
+    "test:watch": "vitest --test-timeout 15000 --hook-timeout 15000",
     "lint": "eslint src/",
     "format": "prettier --write .",
     "bench": "node scripts/bench.mjs",
     "bench:references": "node scripts/bench-references.mjs",
     "smoke:packed-install": "node scripts/packed-install-smoke.mjs",
     "check:stability": "node scripts/check-stability.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "security:release-gate": "node scripts/release-gate.mjs",
+    "sbom:generate": "node scripts/generate-sbom.mjs",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -99,9 +102,9 @@
     "vitest": "^3.2.4"
   },
   "overrides": {
-    "protobufjs": "^7.5.5",
+    "protobufjs": "^7.5.9",
     "picomatch": ">=2.3.2 <3 || >=4.0.4",
-    "brace-expansion": ">=2.0.2 <3 || >=5.0.5",
+    "brace-expansion": ">=2.0.2 <3 || >=5.0.6",
     "flatted": "^3.4.2",
     "postcss": "^8.5.10"
   }

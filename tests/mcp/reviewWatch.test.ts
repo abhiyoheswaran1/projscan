@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { execSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -21,23 +21,28 @@ async function makeRepo(): Promise<string> {
 }
 
 describe('projscan_review_watch — start (without notify channel)', () => {
+  let root: string;
+
+  beforeAll(async () => {
+    root = await makeRepo();
+  });
+
   beforeEach(() => __resetReviewWatchesForTests());
 
-  it('returns the initial review and a non-registered watch when notify is unavailable', async () => {
-    const root = await makeRepo();
-    try {
-      const result = (await reviewWatchTool.handler(
-        { action: 'start' },
-        root,
-      )) as Record<string, unknown>;
-      expect(result.action).toBe('start');
-      expect(result.registered).toBe(false);
-      expect(result.watchId).toBeNull();
-      expect(result.report).toBeDefined();
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
+  afterAll(async () => {
+    await rm(root, { recursive: true, force: true });
   });
+
+  it('returns the initial review and a non-registered watch when notify is unavailable', async () => {
+    const result = (await reviewWatchTool.handler(
+      { action: 'start', base: 'HEAD', head: 'HEAD' },
+      root,
+    )) as Record<string, unknown>;
+    expect(result.action).toBe('start');
+    expect(result.registered).toBe(false);
+    expect(result.watchId).toBeNull();
+    expect(result.report).toBeDefined();
+  }, 30000);
 });
 
 describe('projscan_review_watch — start (with notify + registry)', () => {
@@ -45,9 +50,16 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
   let watchCancels: Map<string, () => void>;
   let context: McpToolContext;
 
-  beforeEach(async () => {
-    __resetReviewWatchesForTests();
+  beforeAll(async () => {
     root = await makeRepo();
+  });
+
+  afterAll(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    __resetReviewWatchesForTests();
     watchCancels = new Map();
     context = {
       notify: () => true,
@@ -68,12 +80,11 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
 
   afterEach(async () => {
     for (const cancel of watchCancels.values()) cancel();
-    await rm(root, { recursive: true, force: true });
   });
 
   it('registers a watch and returns a watchId', async () => {
     const result = (await reviewWatchTool.handler(
-      { action: 'start', interval_seconds: 60 },
+      { action: 'start', base: 'HEAD', head: 'HEAD', interval_seconds: 60 },
       root,
       context,
     )) as Record<string, unknown>;
@@ -85,13 +96,13 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
 
   it('clamps interval_seconds to the [5, 600] range', async () => {
     const lower = (await reviewWatchTool.handler(
-      { action: 'start', interval_seconds: 1 },
+      { action: 'start', base: 'HEAD', head: 'HEAD', interval_seconds: 1 },
       root,
       context,
     )) as Record<string, unknown>;
     expect(lower.intervalSeconds).toBe(5);
     const upper = (await reviewWatchTool.handler(
-      { action: 'start', interval_seconds: 100000 },
+      { action: 'start', base: 'HEAD', head: 'HEAD', interval_seconds: 100000 },
       root,
       context,
     )) as Record<string, unknown>;
@@ -100,7 +111,7 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
 
   it('lists active watches', async () => {
     const start = (await reviewWatchTool.handler(
-      { action: 'start' },
+      { action: 'start', base: 'HEAD', head: 'HEAD' },
       root,
       context,
     )) as Record<string, unknown>;
@@ -115,7 +126,7 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
 
   it('stops a watch by watchId', async () => {
     const start = (await reviewWatchTool.handler(
-      { action: 'start' },
+      { action: 'start', base: 'HEAD', head: 'HEAD' },
       root,
       context,
     )) as Record<string, unknown>;

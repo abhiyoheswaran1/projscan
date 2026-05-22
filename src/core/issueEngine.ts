@@ -5,6 +5,7 @@ import { check as testCheck } from '../analyzers/testCheck.js';
 import { check as architectureCheck } from '../analyzers/architectureCheck.js';
 import { check as dependencyRiskCheck } from '../analyzers/dependencyRiskCheck.js';
 import { check as securityCheck } from '../analyzers/securityCheck.js';
+import { check as supplyChainCheck } from '../analyzers/supplyChainCheck.js';
 import { check as unusedDependencyCheck } from '../analyzers/unusedDependencyCheck.js';
 import { check as deadCodeCheck } from '../analyzers/deadCodeCheck.js';
 import { check as cycleCheck } from '../analyzers/cycleCheck.js';
@@ -26,6 +27,7 @@ const checkers: Checker[] = [
   architectureCheck,
   dependencyRiskCheck,
   securityCheck,
+  supplyChainCheck,
   unusedDependencyCheck,
   deadCodeCheck,
   // 0.13.0: lift Tarjan-detected import cycles into doctor's issue list.

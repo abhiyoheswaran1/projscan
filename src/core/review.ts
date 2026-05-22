@@ -73,6 +73,32 @@ export async function computeReview(
   if (!baseSha) {
     return unavailable(`Could not resolve base ref "${baseRef}".`, options, baseRef, headRef, headSha);
   }
+  if (headSha && headSha === baseSha) {
+    const report: ReviewReport = {
+      available: true,
+      base: { ref: baseRef, resolvedSha: baseSha },
+      head: { ref: headRef, resolvedSha: headSha },
+      prDiff: {
+        available: true,
+        base: { ref: baseRef, resolvedSha: baseSha },
+        head: { ref: headRef, resolvedSha: headSha },
+        filesAdded: [],
+        filesRemoved: [],
+        filesModified: [],
+        totalFilesChanged: 0,
+      },
+      changedFiles: [],
+      newCycles: [],
+      riskyFunctions: [],
+      dependencyChanges: [],
+      contractChanges: [],
+      newTaintFlows: [],
+      verdict: 'ok',
+      summary: ['No structural changes detected between base and head.'],
+    };
+    applyIntent(report, options.intent);
+    return report;
+  }
 
   // Head-side data: scan + graph + issues + hotspots.
   const headScan = await scanRepository(rootPath);
@@ -215,7 +241,13 @@ export async function computeReview(
   // annotate each finding with an alignment label, and append a
   // small intent summary to the verdict bullets. Does NOT change the
   // verdict — verdict stays structural.
-  const intent = parseIntent(options.intent);
+  applyIntent(report, options.intent);
+
+  return report;
+}
+
+function applyIntent(report: ReviewReport, rawIntent?: string): void {
+  const intent = parseIntent(rawIntent);
   if (intent) {
     const analysis = annotateReviewWithIntent(report, intent);
     report.intent = {
@@ -229,8 +261,6 @@ export async function computeReview(
     };
     appendIntentToSummary(report.summary, analysis);
   }
-
-  return report;
 }
 
 async function computeNewTaintFlows(

@@ -110,8 +110,8 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
-- **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
-- **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, and plugin-policy evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging.
+- **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, supply-chain trust, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
+- **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, plugin-policy, and supply-chain evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
@@ -1003,7 +1003,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 `projscan mcp` runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents can query ProjScan during a session to ground their suggestions in live project state.
 
-**Tools (20):**
+**Core tools include:**
 
 *Structural / agent-native:*
 - `projscan_graph` — structural query over the AST code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Milliseconds on a warm cache.
@@ -1018,6 +1018,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 *Analysis:*
 - `projscan_analyze` — full project snapshot.
 - `projscan_doctor` — health score + issues with inline `suggestedAction` hints.
+- `projscan_preflight` — compact `proceed` / `caution` / `block` gate with health, changed-file, review, session, plugin, and supply-chain evidence.
 - `projscan_hotspots` — ranked file risk (or top-N risky functions with `view: "functions"`).
 - `projscan_file` — per-file inspection (purpose, risk, ownership, related issues, CC, fan-in/out, per-function CC table).
 - `projscan_explain` — purpose, imports, exports, smells.

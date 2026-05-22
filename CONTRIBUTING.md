@@ -161,12 +161,13 @@ A release is a five-step ritual now that `.github/workflows/release.yml` (1.6.1+
    - `CHANGELOG.md` — add a `## [X.Y.Z] — YYYY-MM-DD` section at the top in Keep-a-Changelog format. Cover Added / Changed / Removed / Notes; be honest about tradeoffs. The release workflow slices this verbatim into the GitHub Release body.
    - Sweep for "X tools" / "Y languages" counts in `README.md`, `docs/GUIDE.md`, `docs/ROADMAP.md` and update them.
    - **Regenerate the dogfood health badge.** Run `npx projscan badge` against the prepped tree. If the letter or score in the README badge changed, update `README.md` to match. **A drop in letter (e.g., A → B) is a release blocker** — fix the underlying signal before tagging. (The badge is a static `img.shields.io/badge` snapshot, not a live endpoint, so it stays consistent until the next release intentionally moves it.)
+   - Run `npm run release:check`. It reports version/changelog drift, dirty worktree state, tag state, and the next release action. When there are no metadata or git blockers, it also runs the build, release gate, tests, lint, stability check, SBOM generation, and packed install smoke.
 
 2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review.
 
 3. **Tag and push.** From `main`:
    ```
-   git tag vX.Y.Z
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
    The `Release` workflow fires automatically. It validates versions, runs the full build / test / lint / stability gate, slices the CHANGELOG entry, creates the GitHub Release with `dist/tool-manifest.json` attached, and publishes to npm with provenance. If anything fails, no GitHub Release is created and no npm publish happens — fix and re-tag, or use the workflow's `workflow_dispatch` re-run with the same tag (the workflow is idempotent).

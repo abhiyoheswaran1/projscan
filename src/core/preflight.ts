@@ -82,6 +82,7 @@ export async function computePreflight(
     maxChangedFiles: options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES,
   });
   const verdict = decidePreflightVerdict(reasons);
+  const supplyChain = countSupplyChainIssues(issues);
   const evidence = buildEvidence({
     health,
     changedFiles,
@@ -102,12 +103,20 @@ export async function computePreflight(
     summary: '',
     reasons,
     evidence,
-    requiredChecks: buildRequiredChecks(mode, health, changedFiles, review),
+    requiredChecks: buildRequiredChecks(mode, health, changedFiles, review, supplyChain),
     suggestedNextActions: buildSuggestedActions(reasons, mode, changedFiles),
     toolCalls: buildToolCalls(reasons, mode, changedFiles),
     ...(truncated ? { truncated: true } : {}),
   };
   return { ...report, summary: summarizePreflight(report) };
+}
+
+function countSupplyChainIssues(issues: Issue[]): { errorIssues: number; warningIssues: number } {
+  const supplyChainIssues = issues.filter((issue) => issue.category === 'supply-chain');
+  return {
+    errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
+    warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
+  };
 }
 
 export function decidePreflightVerdict(reasons: PreflightReason[]): PreflightVerdict {
@@ -243,6 +252,18 @@ function buildPreflightReasons(input: {
   const changedOnly = input.mode !== 'before_edit' && input.changedFiles.available;
 
   for (const issue of input.issues) {
+    if (issue.category !== 'supply-chain') continue;
+    reasons.push({
+      severity: issue.severity,
+      source: 'supply-chain',
+      issueId: issue.id,
+      file: firstIssueFile(issue),
+      message: `${issue.severity === 'error' ? 'Supply-chain gate blocks' : 'Supply-chain gate flags'} ${issue.id}: ${issue.title}`,
+      tool: 'projscan_doctor',
+    });
+  }
+
+  for (const issue of input.issues) {
     if (!issue.id.startsWith('plugin:')) continue;
     reasons.push({
       severity: issue.severity,
@@ -369,6 +390,7 @@ function buildEvidence(input: {
   review: PreflightReviewEvidence;
 }): PreflightEvidence {
   const pluginIssues = input.issues.filter((issue) => issue.id.startsWith('plugin:'));
+  const supplyChainIssues = input.issues.filter((issue) => issue.category === 'supply-chain');
   const touched =
     input.hotspots?.available === true
       ? input.hotspots.hotspots
@@ -411,6 +433,10 @@ function buildEvidence(input: {
       errorIssues: pluginIssues.filter((issue) => issue.severity === 'error').length,
       warningIssues: pluginIssues.filter((issue) => issue.severity === 'warning').length,
     },
+    supplyChain: {
+      errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
+      warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
+    },
   };
 }
 
@@ -419,6 +445,7 @@ function buildRequiredChecks(
   health: HealthScore,
   changedFiles: PreflightChangedFiles,
   review: PreflightReviewEvidence,
+  supplyChain?: { errorIssues: number; warningIssues: number },
 ): PreflightRequiredCheck[] {
   const checks: PreflightRequiredCheck[] = [
     {
@@ -427,6 +454,16 @@ function buildRequiredChecks(
       reason: `${health.errors} error(s), ${health.warnings} warning(s), ${health.infos} info`,
     },
   ];
+  checks.push({
+    name: 'supply-chain',
+    status:
+      (supplyChain?.errorIssues ?? 0) > 0
+        ? 'fail'
+        : (supplyChain?.warningIssues ?? 0) > 0
+          ? 'warn'
+          : 'pass',
+    reason: `${supplyChain?.errorIssues ?? 0} error(s), ${supplyChain?.warningIssues ?? 0} warning(s)`,
+  });
   checks.push({
     name: 'changed-files',
     status: changedFiles.available ? 'pass' : 'unavailable',
@@ -470,9 +507,9 @@ function buildSuggestedActions(
       tool: 'projscan_review',
     });
   }
-  if (reasons.some((reason) => reason.source === 'doctor' || reason.source === 'plugin')) {
+  if (reasons.some((reason) => reason.source === 'doctor' || reason.source === 'plugin' || reason.source === 'supply-chain')) {
     actions.push({
-      label: 'Inspect health issues and plugin policy findings',
+      label: 'Inspect health, plugin policy, and supply-chain findings',
       command: 'projscan doctor --format json',
       tool: 'projscan_doctor',
     });

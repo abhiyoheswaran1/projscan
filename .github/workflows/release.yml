@@ -4,16 +4,17 @@ name: Release
 #   1. Validates package.json + server.json versions match the tag.
 #   2. Runs the full build / test / stability gate.
 #   3. Slices the matching CHANGELOG entry for use as release notes.
-#   4. Publishes to npm with provenance.
-#   5. Creates the GitHub Release with `dist/tool-manifest.json` attached
+#   4. Runs the supply-chain release gate and emits an SBOM.
+#   5. Publishes to npm through Trusted Publishing / OIDC.
+#   6. Creates the GitHub Release with `dist/tool-manifest.json` and the SBOM attached
 #      (the website's docs page consumes that asset).
 #
 # Order note: npm publish runs BEFORE the GitHub Release is created. npm
-# publish is the more common failure mode (registry 5xx, token expiry,
-# sigstore outage); a workflow that creates the GH Release first and then
-# fails on npm leaves an orphan release pointing at a tarball that doesn't
-# exist. With this ordering, the worst-case partial state is "tag pushed,
-# tests passed, npm has it, no GH Release yet" — recoverable via
+# publish is the more common failure mode (registry 5xx, trusted-publisher
+# configuration, sigstore outage); a workflow that creates the GH Release
+# first and then fails on npm leaves an orphan release pointing at a tarball
+# that doesn't exist. With this ordering, the worst-case partial state is
+# "tag pushed, tests passed, npm has it, no GH Release yet" — recoverable via
 # workflow_dispatch re-run (idempotent on both sides).
 #
 # MCP Registry publish stays MANUAL — `mcp-publisher` requires interactive
@@ -51,6 +52,7 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: npm-release
     steps:
       - name: Resolve tag (and reject prerelease tags)
         id: pick
@@ -106,9 +108,11 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+      - run: npm run security:release-gate
       - run: npm test
       - run: npm run lint
       - run: node scripts/check-stability.mjs
+      - run: npm run sbom:generate
 
       - name: Slice CHANGELOG entry
         env:
@@ -131,14 +135,13 @@ jobs:
 
       - name: Publish to npm (idempotent)
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.pick.outputs.version }}
         run: |
           if npm view "projscan@${VERSION}" version > /dev/null 2>&1; then
             echo "projscan@${VERSION} is already on npm — skipping (likely a re-run after a flake)."
             exit 0
           fi
-          npm publish --provenance --access public
+          npm publish --access public
 
       - name: Create or update GitHub Release
         env:
@@ -149,11 +152,13 @@ jobs:
             echo "Release $TAG already exists — refreshing notes + asset."
             gh release edit "$TAG" --notes-file /tmp/release-notes.md
             gh release upload "$TAG" dist/tool-manifest.json --clobber
+            gh release upload "$TAG" dist/projscan-sbom.cdx.json --clobber
           else
             gh release create "$TAG" \
               --title "$TAG" \
               --notes-file /tmp/release-notes.md \
-              dist/tool-manifest.json
+              dist/tool-manifest.json \
+              dist/projscan-sbom.cdx.json
           fi
 
       - name: Summary
