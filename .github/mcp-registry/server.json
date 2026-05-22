@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.abhiyoheswaran1/projscan",
-  "description": "Agent trust code intelligence over MCP. 11 langs, 29 tools, local plugins. Offline.",
+  "description": "Agent-first code intelligence over MCP. 11 langs, 36 tools, local plugins. Offline.",
   "repository": {
     "url": "https://github.com/abhiyoheswaran1/projscan",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.8.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "projscan",
-      "version": "2.2.0",
+      "version": "2.8.0",
       "transport": {
         "type": "stdio"
       },

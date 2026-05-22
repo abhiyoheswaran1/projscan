@@ -46,10 +46,10 @@ describe('MCP Registry descriptor', () => {
   });
 
   it('keeps website update prompt aligned with staged release metadata', () => {
-    expect(websitePrompt).toContain('projscan 2.1.0');
+    expect(websitePrompt).toContain(`projscan ${pkg.version}`);
     expect(websitePrompt).toContain(descriptor.name);
     expect(websitePrompt).toContain(descriptor.description);
-    expect(websitePrompt).toContain('29 MCP tools');
+    expect(websitePrompt).toContain('36 MCP tools');
     expect(websitePrompt).toContain('Node.js >= 18');
   });
 });

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.8.0] — 2026-05-22 — "Agent Mission Control"
+
 ### Added
 
 - `projscan_workplan` now composes preflight, review, session, hotspot, plugin, and supply-chain signals into an ordered agent execution plan with priorities, evidence, suggested tools, verification commands, and short handoff text.
