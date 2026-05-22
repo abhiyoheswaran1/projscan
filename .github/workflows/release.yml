@@ -102,10 +102,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
-      - run: npm install -g npm@11
       - run: npm ci
       - run: npm run build
       - run: npm run security:release-gate
