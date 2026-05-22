@@ -394,13 +394,13 @@ export interface WorkplanReport {
   truncated?: boolean;
 }
 
-// === Release Train / Bug Hunt / Release Readiness (2.3+ roll-up) ===
+// === Product Planning / Bug Hunt / Readiness (2.3+) ===
 
 export interface ReleaseTrainTrack {
   line: string;
   theme: string;
   outcome: string;
-  includedInRollup: boolean;
+  includedInPlan: boolean;
   scope: string[];
   successCriteria: string[];
 }
@@ -418,11 +418,10 @@ export interface ReleaseTrainTask {
 export interface ReleaseTrainReport {
   schemaVersion: 1;
   currentVersion: string | null;
-  rollup: {
-    policy: 'single-unreleased-release';
-    target: 'unreleased';
+  plan: {
+    policy: 'product-readiness-plan';
     lines: string[];
-    releaseMutation: false;
+    readOnly: true;
   };
   readiness: {
     verdict: PreflightVerdict;
@@ -486,7 +485,7 @@ export interface EvidencePackArtifact {
 export interface EvidencePackReport {
   schemaVersion: 1;
   currentVersion: string | null;
-  releaseMutation: false;
+  readOnly: true;
   verdict: EvidencePackVerdict;
   summary: string;
   train: {
@@ -510,7 +509,7 @@ export type RegressionPlanVerdict = 'ready' | 'needs_tests' | 'blocked';
 export interface RegressionPlanTarget {
   id: string;
   priority: WorkplanPriority;
-  source: 'baseline' | 'bug-hunt' | 'release-line' | 'preflight';
+  source: 'baseline' | 'bug-hunt' | 'product-line' | 'preflight';
   title: string;
   why: string;
   files: string[];
@@ -531,6 +530,76 @@ export interface RegressionPlanReport {
     touchedFiles: number;
   };
   targets: RegressionPlanTarget[];
+  commands: string[];
+  suggestedNextActions: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
+export type AgentBriefIntent = 'next_agent' | 'bug_hunt' | 'release' | 'refactor' | 'hardening';
+
+export interface AgentBriefItem {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  why: string;
+  files: string[];
+  commands: string[];
+}
+
+export interface AgentBriefGuardrail {
+  id: string;
+  label: string;
+  reason: string;
+  command: string;
+}
+
+export interface AgentBriefReport {
+  schemaVersion: 1;
+  intent: AgentBriefIntent;
+  summary: string;
+  health: HealthScore;
+  context: {
+    totalFiles: number;
+    totalDirectories: number;
+    topDirectories: Array<{ directory: string; files: number }>;
+    touchedFiles: string[];
+    conflicts: number;
+  };
+  focus: AgentBriefItem[];
+  guardrails: AgentBriefGuardrail[];
+  suggestedNextActions: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
+export type QualityScorecardVerdict = 'excellent' | 'healthy' | 'needs_attention' | 'blocked';
+export type QualityScorecardStatus = 'pass' | 'watch' | 'fail';
+
+export interface QualityScorecardDimension {
+  id: 'health' | 'security' | 'tests' | 'maintainability' | 'coordination';
+  label: string;
+  status: QualityScorecardStatus;
+  score: number;
+  summary: string;
+  evidence: string[];
+  commands: string[];
+}
+
+export interface QualityScorecardRisk {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  files: string[];
+  source: 'issue' | 'hotspot' | 'coordination';
+  command: string;
+}
+
+export interface QualityScorecardReport {
+  schemaVersion: 1;
+  verdict: QualityScorecardVerdict;
+  summary: string;
+  health: HealthScore;
+  dimensions: QualityScorecardDimension[];
+  topRisks: QualityScorecardRisk[];
   commands: string[];
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;

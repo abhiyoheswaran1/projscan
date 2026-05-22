@@ -11,10 +11,7 @@ import type {
 
 export interface ComputeReleaseTrainOptions {
   lines?: string[];
-  rollup?: 'unreleased';
 }
-
-const DEFAULT_ROLLUP = 'unreleased';
 
 export async function computeReleaseTrain(
   rootPath: string,
@@ -31,9 +28,9 @@ export async function computeReleaseTrain(
       ? [{
           id: 'rt-blockers-first',
           priority: 'p0' as const,
-          title: 'Clear release-blocking preflight evidence',
-          why: 'A rolled-up release should not accumulate feature scope on top of active blockers.',
-          track: 'rollup',
+          title: 'Clear readiness blockers',
+          why: 'Product planning should stay anchored to active safety and quality evidence.',
+          track: 'plan',
           files: filesFromPreflight(preflight.reasons),
           verification: {
             commands: ['projscan preflight --mode before_merge --format json'],
@@ -43,15 +40,15 @@ export async function computeReleaseTrain(
       : []),
     ...tracks.flatMap(tasksForTrack),
     {
-      id: 'rt-rollup-readiness',
+      id: 'rt-plan-readiness',
       priority: blockers > 0 ? 'p1' : 'p0',
-      title: 'Prove the rolled-up unreleased train is releasable',
-      why: 'The collapsed train needs one final local gate across docs, tests, stability metadata, package contents, and release checks before any actual release action.',
-      track: 'rollup',
+      title: 'Prove product readiness',
+      why: 'The product needs one final local gate across docs, tests, stability metadata, and package contents before handoff.',
+      track: 'plan',
       files: ['CHANGELOG.md', 'README.md', 'docs/STABILITY.md', 'package.json'],
       verification: {
         commands: ['npm test', 'npm run build', 'npm run check:stability', 'npm run release:check'],
-        expected: 'All release-readiness checks pass before a separate release instruction is given.',
+        expected: 'All readiness checks pass before handoff.',
       },
     },
   ]);
@@ -59,11 +56,10 @@ export async function computeReleaseTrain(
   return {
     schemaVersion: 1,
     currentVersion,
-    rollup: {
-      policy: 'single-unreleased-release',
-      target: DEFAULT_ROLLUP,
+    plan: {
+      policy: 'product-readiness-plan',
       lines,
-      releaseMutation: false,
+      readOnly: true,
     },
     readiness: {
       verdict: preflight.verdict,
@@ -83,16 +79,16 @@ function trackForLine(line: string): ReleaseTrainTrack {
       line,
       theme: 'Agent Mission Control',
       outcome: 'Agents can decide what to do next, hand off safely, and prove readiness without rereading the whole repo.',
-      includedInRollup: true,
+      includedInPlan: true,
       scope: [
         'prioritized workplans',
         'handoff-ready next actions',
-        'release-train planning without publish mutation',
+        'readiness planning',
       ],
       successCriteria: [
         'MCP and CLI expose the same planning contracts',
         'plans include evidence, priority, and verification commands',
-        'release planning does not bump versions, create tags, or publish',
+        'planning output stays read-only',
       ],
     };
   }
@@ -101,7 +97,7 @@ function trackForLine(line: string): ReleaseTrainTrack {
       line,
       theme: 'Autonomous Bug Hunt',
       outcome: 'Agents get a ranked fix queue that combines health, preflight, hotspots, and coordination evidence.',
-      includedInRollup: true,
+      includedInPlan: true,
       scope: [
         'bug-hunt fix queue',
         'verification matrix',
@@ -118,17 +114,17 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Release Evidence Pack',
-      outcome: 'Humans and agents get one approval packet that ties release train scope, preflight evidence, bug-hunt status, workplan tasks, and website-update copy together.',
-      includedInRollup: true,
+      outcome: 'Humans and agents get one approval packet that ties product scope, preflight evidence, bug-hunt status, workplan tasks, and website-update copy together.',
+      includedInPlan: true,
       scope: [
         'approval-ready evidence packet',
         'product-facing changelog and website prompt',
-        'release metadata mutation guard',
+        'read-only evidence gathering',
       ],
       successCriteria: [
-        'evidence pack includes release train, bug hunt, workplan, and preflight artifacts',
+        'evidence pack includes planning, bug hunt, workplan, and preflight artifacts',
         'website update prompt is generated only as text evidence',
-        'package version, tags, and publish state remain untouched',
+        'evidence generation stays read-only',
       ],
     };
   }
@@ -136,8 +132,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Regression Planning',
-      outcome: 'Agents get a smoke, focused, or full regression matrix that turns release risk into concrete commands before approval.',
-      includedInRollup: true,
+      outcome: 'Agents get a smoke, focused, or full regression matrix that turns product risk into concrete verification commands.',
+      includedInPlan: true,
       scope: [
         'risk-based regression targets',
         'smoke/focused/full verification levels',
@@ -146,17 +142,53 @@ function trackForLine(line: string): ReleaseTrainTrack {
       successCriteria: [
         'regression plan includes commands for the selected level',
         'bug-hunt and preflight signals become explicit regression targets',
-        'full level covers tests, build, lint, stability, and release checks',
+        'full level covers tests, build, lint, stability, and package checks',
+      ],
+    };
+  }
+  if (line.startsWith('2.7')) {
+    return {
+      line,
+      theme: 'Agent Brief',
+      outcome: 'Agents get a compact context packet with focus items, repo context, guardrails, and suggested next actions.',
+      includedInPlan: true,
+      scope: [
+        'next-agent focus packet',
+        'guardrail commands',
+        'session and repo context summary',
+      ],
+      successCriteria: [
+        'brief includes health, context, focus, guardrails, and next actions',
+        'CLI and MCP expose the same schema',
+        'brief output stays compact enough for handoff',
+      ],
+    };
+  }
+  if (line.startsWith('2.8')) {
+    return {
+      line,
+      theme: 'Quality Scorecard',
+      outcome: 'Agents and reviewers get a dimensioned quality view with top risks and verification commands.',
+      includedInPlan: true,
+      scope: [
+        'quality dimensions',
+        'top-risk ranking',
+        'verification command set',
+      ],
+      successCriteria: [
+        'scorecard reports health, security, tests, maintainability, and coordination',
+        'top risks include concrete commands',
+        'CLI and MCP expose the same scorecard schema',
       ],
     };
   }
   return {
     line,
-    theme: 'Quality and Release Hardening',
-    outcome: 'The line is folded into the unreleased train with explicit readiness checks.',
-    includedInRollup: true,
-    scope: ['quality fixes', 'documentation alignment', 'release readiness'],
-    successCriteria: ['all checks pass', 'public surface is documented', 'release mutation remains false'],
+    theme: 'Quality Hardening',
+    outcome: 'The line gets explicit readiness checks.',
+    includedInPlan: true,
+    scope: ['quality fixes', 'documentation alignment', 'readiness checks'],
+    successCriteria: ['all checks pass', 'public surface is documented', 'planning output stays read-only'],
   };
 }
 
@@ -199,12 +231,12 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         id: 'rt-2-5-evidence-pack',
         priority: 'p0',
         title: 'Assemble the release evidence pack',
-        why: 'A larger train needs one human-readable approval packet instead of scattered command output.',
+        why: 'A larger product update needs one human-readable evidence packet instead of scattered command output.',
         track: track.line,
         files: ['src/core/releaseEvidence.ts', 'src/cli/commands/evidencePack.ts', 'src/mcp/tools/evidencePack.ts'],
         verification: {
-          commands: ['projscan evidence-pack --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --format json'],
-          expected: 'Evidence pack returns all four release lines, approval evidence, changelog entries, and releaseMutation:false.',
+          commands: ['projscan evidence-pack --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --line 2.7.x --line 2.8.x --format json'],
+          expected: 'Evidence pack returns all planned lines, approval evidence, and changelog entries.',
         },
       },
     ];
@@ -215,7 +247,7 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         id: 'rt-2-6-regression-plan',
         priority: 'p0',
         title: 'Ship the regression planning matrix',
-        why: 'The bigger release should tell agents exactly which smoke, focused, and full checks prove the train.',
+        why: 'A bigger product update should tell agents exactly which smoke, focused, and full checks prove readiness.',
         track: track.line,
         files: ['src/core/regressionPlan.ts', 'src/cli/commands/regressionPlan.ts', 'src/mcp/tools/regressionPlan.ts'],
         verification: {
@@ -225,17 +257,49 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
       },
     ];
   }
+  if (track.line.startsWith('2.7')) {
+    return [
+      {
+        id: 'rt-2-7-agent-brief',
+        priority: 'p0',
+        title: 'Ship the agent brief',
+        why: 'Agents need a compact context packet that can be read quickly before choosing the next action.',
+        track: track.line,
+        files: ['src/core/agentBrief.ts', 'src/cli/commands/agentBrief.ts', 'src/mcp/tools/agentBrief.ts'],
+        verification: {
+          commands: ['projscan agent-brief --intent release --format json'],
+          expected: 'Agent brief returns focus, context, guardrails, and suggested next actions.',
+        },
+      },
+    ];
+  }
+  if (track.line.startsWith('2.8')) {
+    return [
+      {
+        id: 'rt-2-8-quality-scorecard',
+        priority: 'p0',
+        title: 'Ship the quality scorecard',
+        why: 'Agents and reviewers need a dimensioned quality view before deciding what to polish next.',
+        track: track.line,
+        files: ['src/core/qualityScorecard.ts', 'src/cli/commands/qualityScorecard.ts', 'src/mcp/tools/qualityScorecard.ts'],
+        verification: {
+          commands: ['projscan quality-scorecard --format json'],
+          expected: 'Quality scorecard returns dimensions, top risks, and verification commands.',
+        },
+      },
+    ];
+  }
   return [
     {
       id: `rt-${slug(track.line)}-quality`,
       priority: 'p1',
-      title: `Fold ${track.line} quality work into the unreleased train`,
-      why: 'Every line in the train needs an explicit verification task.',
+      title: `Plan ${track.line} quality work`,
+      why: 'Every product line needs an explicit verification task.',
       track: track.line,
       files: [],
       verification: {
         commands: ['npm test', 'npm run lint'],
-        expected: 'Quality checks pass for this release line.',
+        expected: 'Quality checks pass for this product line.',
       },
     },
   ];
@@ -275,6 +339,8 @@ function normalizeLines(lines: string[] | undefined, currentVersion: string | nu
     `${safeMajor}.${safeMinor + 2}.x`,
     `${safeMajor}.${safeMinor + 3}.x`,
     `${safeMajor}.${safeMinor + 4}.x`,
+    `${safeMajor}.${safeMinor + 5}.x`,
+    `${safeMajor}.${safeMinor + 6}.x`,
   ];
 }
 

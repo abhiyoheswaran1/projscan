@@ -27,15 +27,15 @@ test('lists release train and bug hunt MCP tools', () => {
   expect(names).toEqual(expect.arrayContaining(['projscan_release_train', 'projscan_bug_hunt']));
 });
 
-test('projscan_release_train returns a rolled-up unreleased plan', async () => {
+test('projscan_release_train returns a product readiness plan', async () => {
   const handler = getToolHandler('projscan_release_train');
   expect(handler).toBeDefined();
 
   const result = (await handler?.({ lines: ['2.3.x', '2.4.x'] }, tmp)) as {
-    releaseTrain: { rollup: { releaseMutation: boolean }; tracks: Array<{ line: string }> };
+    releaseTrain: { plan: { readOnly: boolean }; tracks: Array<{ line: string }> };
   };
 
-  expect(result.releaseTrain.rollup.releaseMutation).toBe(false);
+  expect(result.releaseTrain.plan.readOnly).toBe(true);
   expect(result.releaseTrain.tracks.map((track) => track.line)).toEqual(['2.3.x', '2.4.x']);
 });
 

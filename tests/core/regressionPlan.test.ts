@@ -10,7 +10,7 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
-test('regression plan builds a full verification matrix for the unreleased train', async () => {
+test('regression plan builds a full verification matrix for the product plan', async () => {
   const root = await makeTempProject();
   await fs.writeFile(path.join(root, 'src', 'danger.ts'), 'eval("console.log(1)");\n');
 

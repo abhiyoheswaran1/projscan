@@ -7,7 +7,7 @@ const LEVELS: readonly RegressionPlanLevel[] = ['smoke', 'focused', 'full'];
 export const regressionPlanTool: McpTool = {
   name: 'projscan_regression_plan',
   description:
-    'Build a smoke, focused, or full regression matrix from bug-hunt, preflight, and release-line risk signals.',
+    'Build a smoke, focused, or full regression matrix from bug-hunt, preflight, and product risk signals.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -19,7 +19,7 @@ export const regressionPlanTool: McpTool = {
       lines: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Release lines to include. Default: next four minor lines.',
+        description: 'Product lines to include. Default: next six minor lines.',
       },
       max_targets: {
         type: 'number',

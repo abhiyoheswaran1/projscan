@@ -26,7 +26,7 @@ export async function computeEvidencePack(
   options: ComputeEvidencePackOptions = {},
 ): Promise<EvidencePackReport> {
   const [train, bugHunt, workplan, preflight] = await Promise.all([
-    computeReleaseTrain(rootPath, { lines: options.lines, rollup: 'unreleased' }),
+    computeReleaseTrain(rootPath, { lines: options.lines }),
     computeBugHunt(rootPath, { maxFindings: options.maxFindings }),
     computeWorkplan(rootPath, { mode: 'release', maxTasks: 6 }),
     computePreflight(rootPath, { mode: 'before_merge' }),
@@ -48,11 +48,11 @@ export async function computeEvidencePack(
   return {
     schemaVersion: 1,
     currentVersion: train.currentVersion,
-    releaseMutation: false,
+    readOnly: true,
     verdict,
     summary: summarize(verdict, train, blockingReasons),
     train: {
-      lines: train.rollup.lines,
+      lines: train.plan.lines,
       readiness: train.readiness,
     },
     approval: {
@@ -76,13 +76,13 @@ function buildArtifacts(
   return [
     {
       id: 'ep-release-train',
-      title: 'Release train readiness',
+      title: 'Product plan readiness',
       status: statusFromPreflight(train.readiness.verdict),
       summary: train.readiness.summary,
       evidence: [
-        `${train.rollup.lines.length} release line(s): ${train.rollup.lines.join(', ')}`,
+        `${train.plan.lines.length} product line(s): ${train.plan.lines.join(', ')}`,
         `${train.readiness.blockers} blocker(s), ${train.readiness.cautions} caution(s)`,
-        'release mutation: false',
+        'read-only evidence: yes',
       ],
       commands: ['projscan release-train --format json'],
     },
@@ -145,19 +145,21 @@ function blockingEvidence(
 
 function buildChangelogEntries(): string[] {
   return [
-    '`projscan_evidence_pack` / `projscan evidence-pack` produce one approval-ready packet with release train, preflight, workplan, bug-hunt, changelog, and website-update evidence.',
-    '`projscan_regression_plan` / `projscan regression-plan` build a smoke/focused/full verification matrix from bug-hunt, preflight, and release-line risk.',
+    '`projscan_evidence_pack` / `projscan evidence-pack` produce one approval-ready packet with planning, preflight, workplan, bug-hunt, changelog, and website-update evidence.',
+    '`projscan_regression_plan` / `projscan regression-plan` build a smoke/focused/full verification matrix from bug-hunt, preflight, and product risk.',
+    '`projscan_agent_brief` / `projscan agent-brief` create compact next-agent context packets with focus items, guardrails, and repo context.',
+    '`projscan_quality_scorecard` / `projscan quality-scorecard` summarize health, security, tests, maintainability, and coordination with top risks and commands.',
   ];
 }
 
 function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[]): string {
   return [
     'Update the projscan website for the next release using the current repository evidence.',
-    `Release lines included in this train: ${train.rollup.lines.join(', ')}.`,
-    'Highlight the new agent-facing surfaces: projscan_workplan, projscan_bug_hunt, projscan_release_train, projscan_evidence_pack, and projscan_regression_plan.',
+    `Product lines covered: ${train.plan.lines.join(', ')}.`,
+    'Highlight the new agent-facing surfaces: projscan_workplan, projscan_bug_hunt, projscan_release_train, projscan_evidence_pack, projscan_regression_plan, projscan_agent_brief, and projscan_quality_scorecard.',
     'Use these product bullets:',
     ...changelogEntries.map((entry) => `- ${entry}`),
-    'Do not claim a tag, npm publish, or GitHub Release exists until the release workflow has actually completed.',
+    'Keep claims grounded in the completed product evidence.',
   ].join('\n');
 }
 
@@ -173,16 +175,16 @@ function summarize(
   blockingReasons: string[],
 ): string {
   if (verdict === 'blocked') {
-    return `blocked: ${blockingReasons[0] ?? 'release evidence still contains blocking signals'}`;
+    return `blocked: ${blockingReasons[0] ?? 'product evidence still contains blocking signals'}`;
   }
   if (verdict === 'caution') {
-    return `caution: ${train.rollup.lines.join(', ')} evidence is assembled but still needs explicit review`;
+    return `caution: ${train.plan.lines.join(', ')} evidence is assembled but still needs explicit review`;
   }
-  return `ready: ${train.rollup.lines.join(', ')} evidence is assembled for approval`;
+  return `ready: ${train.plan.lines.join(', ')} evidence is assembled for approval`;
 }
 
 function approvalRecommendation(verdict: EvidencePackVerdict): string {
-  if (verdict === 'blocked') return 'Do not approve release automation until p0 evidence is cleared or accepted.';
+  if (verdict === 'blocked') return 'Do not approve launch until p0 evidence is cleared or accepted.';
   if (verdict === 'caution') return 'Review cautions, then approve only after the regression plan passes.';
   return 'Approval can proceed after the recorded regression commands pass.';
 }

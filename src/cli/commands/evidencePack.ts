@@ -13,8 +13,8 @@ import type { EvidencePackArtifact, EvidencePackReport } from '../../types.js';
 export function registerEvidencePack(): void {
   program
     .command('evidence-pack')
-    .description('Assemble release approval evidence from train, bug-hunt, workplan, and preflight signals')
-    .option('--line <line>', 'release line to include, repeatable (default: next four minor lines)', collectLine, [])
+    .description('Assemble approval evidence from product planning, bug-hunt, workplan, and preflight signals')
+    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
     .option('--website-prompt', 'include website-update prompt text')
     .option('--max-findings <count>', 'maximum bug-hunt findings to include', parsePositiveInt)
     .action(async (cmdOpts) => {
@@ -55,8 +55,7 @@ function printEvidencePack(report: EvidencePackReport): void {
   console.log(color(`Evidence Pack: ${report.verdict}`));
   console.log(report.summary);
   console.log(`Version: ${report.currentVersion ?? 'unknown'}`);
-  console.log(`Lines: ${report.train.lines.join(', ')}`);
-  console.log(`Release mutation: ${report.releaseMutation ? 'yes' : 'no'}`);
+  console.log(`Product lines: ${report.train.lines.join(', ')}`);
   console.log('');
   console.log(chalk.bold('Artifacts'));
   for (const artifact of report.artifacts) {

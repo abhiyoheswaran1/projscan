@@ -10,45 +10,51 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
-test('release train rolls 2.3.x and 2.4.x into one unreleased plan without mutating version', async () => {
+test('release train plans 2.3.x and 2.4.x without changing package metadata', async () => {
   const root = await makeTempProject('2.2.0');
 
   const report = await computeReleaseTrain(root, {
     lines: ['2.3.x', '2.4.x'],
-    rollup: 'unreleased',
   });
 
   const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf-8')) as { version: string };
   expect(pkg.version).toBe('2.2.0');
   expect(report.schemaVersion).toBe(1);
   expect(report.currentVersion).toBe('2.2.0');
-  expect(report.rollup.releaseMutation).toBe(false);
-  expect(report.rollup.policy).toBe('single-unreleased-release');
-  expect(report.rollup.lines).toEqual(['2.3.x', '2.4.x']);
+  expect(report.plan.readOnly).toBe(true);
+  expect(report.plan.policy).toBe('product-readiness-plan');
+  expect(report.plan.lines).toEqual(['2.3.x', '2.4.x']);
   expect(report.tracks.map((track) => track.line)).toEqual(['2.3.x', '2.4.x']);
   expect(report.tracks[0]?.theme).toContain('Mission Control');
   expect(report.tracks[1]?.theme).toContain('Bug Hunt');
   expect(report.tasks.map((task) => task.id)).toEqual(
-    expect.arrayContaining(['rt-2-3-agent-readiness', 'rt-2-4-bug-hunt-gate', 'rt-rollup-readiness']),
+    expect.arrayContaining(['rt-2-3-agent-readiness', 'rt-2-4-bug-hunt-gate', 'rt-plan-readiness']),
   );
 });
 
-test('release train defaults to the four-line unreleased train', async () => {
+test('release train defaults to the six-line product plan', async () => {
   const root = await makeTempProject('2.2.0');
 
   const report = await computeReleaseTrain(root);
 
-  expect(report.rollup.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
+  expect(report.plan.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x', '2.7.x', '2.8.x']);
   expect(report.tracks.map((track) => track.theme)).toEqual(
     expect.arrayContaining([
       'Agent Mission Control',
       'Autonomous Bug Hunt',
       'Release Evidence Pack',
       'Regression Planning',
+      'Agent Brief',
+      'Quality Scorecard',
     ]),
   );
   expect(report.tasks.map((task) => task.id)).toEqual(
-    expect.arrayContaining(['rt-2-5-evidence-pack', 'rt-2-6-regression-plan']),
+    expect.arrayContaining([
+      'rt-2-5-evidence-pack',
+      'rt-2-6-regression-plan',
+      'rt-2-7-agent-brief',
+      'rt-2-8-quality-scorecard',
+    ]),
   );
 });
 

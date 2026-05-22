@@ -13,8 +13,8 @@ import type { ReleaseTrainReport, ReleaseTrainTask } from '../../types.js';
 export function registerReleaseTrain(): void {
   program
     .command('release-train')
-    .description('Plan multiple release lines as one unreleased roll-up without mutating release metadata')
-    .option('--line <line>', 'release line to fold in, repeatable (default: next four minor lines)', collectLine, [])
+    .description('Plan upcoming product lines with readiness evidence')
+    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -23,7 +23,6 @@ export function registerReleaseTrain(): void {
       try {
         const report = await computeReleaseTrain(getRootPath(), {
           lines: cmdOpts.line,
-          rollup: 'unreleased',
         });
 
         if (format === 'json') {
@@ -49,10 +48,9 @@ function printReleaseTrain(report: ReleaseTrainReport): void {
       : report.readiness.verdict === 'caution'
         ? chalk.yellow
         : chalk.green;
-  console.log(color(`Release Train: ${report.rollup.target}`));
+  console.log(color('Readiness Plan'));
   console.log(`Current version: ${report.currentVersion ?? 'unknown'}`);
-  console.log(`Lines: ${report.rollup.lines.join(', ')}`);
-  console.log(`Release mutation: ${report.rollup.releaseMutation ? 'yes' : 'no'}`);
+  console.log(`Product lines: ${report.plan.lines.join(', ')}`);
   console.log('');
   console.log(chalk.bold('Tracks'));
   for (const track of report.tracks) {

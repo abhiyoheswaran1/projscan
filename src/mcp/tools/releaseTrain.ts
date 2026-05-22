@@ -4,19 +4,14 @@ import type { McpTool } from './_shared.js';
 export const releaseTrainTool: McpTool = {
   name: 'projscan_release_train',
   description:
-    'Plan multiple release lines as one unreleased roll-up. Reads version and readiness signals but never bumps versions, creates tags, or publishes.',
+    'Plan upcoming product lines with version, scope, readiness, and next-action evidence.',
   inputSchema: {
     type: 'object',
     properties: {
       lines: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Release lines to fold into the current unreleased train. Default: next four minor lines.',
-      },
-      rollup: {
-        type: 'string',
-        enum: ['unreleased'],
-        description: 'Roll-up target. Currently only "unreleased" is supported and performs no release mutation.',
+        description: 'Product lines to include. Default: next six minor lines.',
       },
       max_tokens: {
         type: 'number',
@@ -29,7 +24,6 @@ export const releaseTrainTool: McpTool = {
       lines: Array.isArray(args.lines)
         ? args.lines.filter((line): line is string => typeof line === 'string')
         : undefined,
-      rollup: 'unreleased',
     }),
   }),
 };

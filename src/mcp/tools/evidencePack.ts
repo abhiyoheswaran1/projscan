@@ -4,14 +4,14 @@ import type { McpTool } from './_shared.js';
 export const evidencePackTool: McpTool = {
   name: 'projscan_evidence_pack',
   description:
-    'Assemble one release approval packet from release-train, bug-hunt, workplan, and preflight evidence. Never bumps versions, creates tags, or publishes.',
+    'Assemble one approval packet from product planning, bug-hunt, workplan, and preflight evidence.',
   inputSchema: {
     type: 'object',
     properties: {
       lines: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Release lines to include. Default: next four minor lines.',
+        description: 'Product lines to include. Default: next six minor lines.',
       },
       website_prompt: {
         type: 'boolean',

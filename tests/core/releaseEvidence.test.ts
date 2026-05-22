@@ -10,7 +10,7 @@ afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
-test('evidence pack composes the four-line unreleased train without mutating version', async () => {
+test('evidence pack composes the four-line product plan without changing package metadata', async () => {
   const root = await makeTempProject('2.2.0');
 
   const report = await computeEvidencePack(root, {
@@ -23,7 +23,7 @@ test('evidence pack composes the four-line unreleased train without mutating ver
   expect(pkg.version).toBe('2.2.0');
   expect(report.schemaVersion).toBe(1);
   expect(report.currentVersion).toBe('2.2.0');
-  expect(report.releaseMutation).toBe(false);
+  expect(report.readOnly).toBe(true);
   expect(report.train.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
   expect(report.artifacts.map((artifact) => artifact.id)).toEqual(
     expect.arrayContaining(['ep-release-train', 'ep-bug-hunt', 'ep-workplan', 'ep-preflight']),

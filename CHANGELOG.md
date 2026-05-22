@@ -11,10 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan_workplan` now composes preflight, review, session, hotspot, plugin, and supply-chain signals into an ordered agent execution plan with priorities, evidence, suggested tools, verification commands, and short handoff text.
 - `projscan workplan` exposes the same planner through the CLI with modes for `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
 - `projscan handoff` prints a concise next-agent handoff from the current workplan, including the next tasks and coordination recommendation.
-- `projscan_release_train` / `projscan release-train` plan upcoming release lines in one readiness view with version, preflight, scope, and next-action evidence.
+- `projscan_release_train` / `projscan release-train` plan upcoming product lines in one readiness view with version, preflight, scope, and next-action evidence.
 - `projscan_bug_hunt` / `projscan bug-hunt` compose doctor, preflight, hotspot, and session signals into a prioritized fix queue with verification commands for each target.
-- `projscan_evidence_pack` / `projscan evidence-pack` assemble release train, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence into one approval packet.
-- `projscan_regression_plan` / `projscan regression-plan` build smoke, focused, or full regression matrices from bug-hunt, preflight, and release-line risk.
+- `projscan_evidence_pack` / `projscan evidence-pack` assemble planning, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence into one approval packet.
+- `projscan_regression_plan` / `projscan regression-plan` build smoke, focused, or full regression matrices from bug-hunt, preflight, and product risk.
+- `projscan_agent_brief` / `projscan agent-brief` create compact next-agent context packets with focus items, guardrails, repo context, and suggested next actions.
+- `projscan_quality_scorecard` / `projscan quality-scorecard` summarize health, security, tests, maintainability, coordination, top risks, and verification commands.
 
 ### Fixed
 

@@ -29,7 +29,7 @@ export async function computeRegressionPlan(
   const maxTargets = normalizeMaxTargets(options.maxTargets);
   const [bugHunt, train, preflight] = await Promise.all([
     computeBugHunt(rootPath, { maxFindings: maxTargets }),
-    computeReleaseTrain(rootPath, { lines: options.lines, rollup: 'unreleased' }),
+    computeReleaseTrain(rootPath, { lines: options.lines }),
     computePreflight(rootPath, { mode: 'before_commit' }),
   ]);
   const allTargets = rankTargets([
@@ -47,7 +47,7 @@ export async function computeRegressionPlan(
     level,
     verdict,
     summary: summarize(verdict, level, targets.length),
-    releaseLines: train.rollup.lines,
+    releaseLines: train.plan.lines,
     evidence: {
       healthScore: bugHunt.health.score,
       bugHuntVerdict: bugHunt.verdict,
@@ -69,7 +69,7 @@ function baselineTargets(level: RegressionPlanLevel): RegressionPlanTarget[] {
       priority: 'p0',
       source: 'baseline',
       title: 'Verify the health and safety baseline',
-      why: 'Every release train needs a repeatable health gate before deeper regression work starts.',
+      why: 'Every product line needs a repeatable health gate before deeper regression work starts.',
       files: [],
       verification: {
         commands: ['projscan doctor --format json', 'projscan preflight --mode before_commit --format json'],
@@ -82,7 +82,7 @@ function baselineTargets(level: RegressionPlanLevel): RegressionPlanTarget[] {
           priority: 'p1' as const,
           source: 'baseline' as const,
           title: 'Run full package and stability gates',
-          why: 'The larger release should prove build output, stable public surfaces, and release-check packaging in one pass.',
+          why: 'The larger product update should prove build output, stable public surfaces, and readiness checks in one pass.',
           files: ['package.json', 'docs/STABILITY.md', 'scripts/check-stability.mjs'],
           verification: {
             commands: ['npm run build', 'npm run lint', 'npm run check:stability', 'npm run release:check'],
@@ -129,12 +129,12 @@ function preflightTargets(preflight: PreflightReport): RegressionPlanTarget[] {
 
 function releaseLineTargets(train: ReleaseTrainReport): RegressionPlanTarget[] {
   return train.tasks
-    .filter((task) => task.track !== 'rollup')
+    .filter((task) => task.track !== 'plan')
     .slice(0, 4)
     .map((task) => ({
       id: `rp-${task.id}`,
       priority: task.priority,
-      source: 'release-line' as const,
+      source: 'product-line' as const,
       title: `Verify ${task.track}: ${task.title}`,
       why: task.why,
       files: task.files,

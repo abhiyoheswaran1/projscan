@@ -3,6 +3,7 @@ import type { ReportFormat } from '../types.js';
 export const OUTPUT_FORMATS = ['console', 'json', 'markdown', 'sarif', 'html'] as const satisfies readonly ReportFormat[];
 
 export const COMMAND_FORMAT_SUPPORT = {
+  'agent-brief': ['console', 'json'],
   analyze: ['console', 'json', 'markdown', 'sarif', 'html'],
   'apply-fix': ['console', 'json'],
   audit: ['console', 'json', 'markdown', 'sarif'],
@@ -39,6 +40,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   'plugin test': ['console', 'json'],
   preflight: ['console', 'json'],
   'pr-diff': ['console', 'json', 'markdown', 'html'],
+  'quality-scorecard': ['console', 'json'],
   'release-train': ['console', 'json'],
   'regression-plan': ['console', 'json'],
   review: ['console', 'json', 'markdown', 'html'],

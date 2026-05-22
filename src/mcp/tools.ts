@@ -43,6 +43,8 @@ import { releaseTrainTool } from './tools/releaseTrain.js';
 import { bugHuntTool } from './tools/bugHunt.js';
 import { evidencePackTool } from './tools/evidencePack.js';
 import { regressionPlanTool } from './tools/regressionPlan.js';
+import { agentBriefTool } from './tools/agentBrief.js';
+import { qualityScorecardTool } from './tools/qualityScorecard.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -83,6 +85,8 @@ const tools: McpTool[] = [
   bugHuntTool,
   evidencePackTool,
   regressionPlanTool,
+  agentBriefTool,
+  qualityScorecardTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

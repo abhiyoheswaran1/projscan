@@ -41,6 +41,8 @@ import { registerReleaseTrain } from './commands/releaseTrain.js';
 import { registerBugHunt } from './commands/bugHunt.js';
 import { registerEvidencePack } from './commands/evidencePack.js';
 import { registerRegressionPlan } from './commands/regressionPlan.js';
+import { registerAgentBrief } from './commands/agentBrief.js';
+import { registerQualityScorecard } from './commands/qualityScorecard.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -83,6 +85,8 @@ registerReleaseTrain();
 registerBugHunt();
 registerEvidencePack();
 registerRegressionPlan();
+registerAgentBrief();
+registerQualityScorecard();
 registerHelp();
 
 program.parse();

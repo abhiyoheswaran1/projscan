@@ -45,7 +45,7 @@ test('evidence-pack renders JSON and keeps package version unchanged', async () 
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.releaseMutation).toBe(false);
+  expect(report.readOnly).toBe(true);
   expect(report.train.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
   expect(report.websitePrompt).toContain('projscan_evidence_pack');
   const pkg = JSON.parse(await fs.readFile(path.join(tmp, 'package.json'), 'utf-8')) as { version: string };

@@ -27,7 +27,7 @@ test('lists evidence pack and regression plan MCP tools', () => {
   expect(names).toEqual(expect.arrayContaining(['projscan_evidence_pack', 'projscan_regression_plan']));
 });
 
-test('projscan_evidence_pack returns approval evidence for the unreleased train', async () => {
+test('projscan_evidence_pack returns approval evidence for the product plan', async () => {
   const handler = getToolHandler('projscan_evidence_pack');
   expect(handler).toBeDefined();
 
@@ -35,10 +35,10 @@ test('projscan_evidence_pack returns approval evidence for the unreleased train'
     { lines: ['2.3.x', '2.4.x', '2.5.x', '2.6.x'], website_prompt: true },
     tmp,
   )) as {
-    evidencePack: { releaseMutation: boolean; train: { lines: string[] }; websitePrompt?: string };
+    evidencePack: { readOnly: boolean; train: { lines: string[] }; websitePrompt?: string };
   };
 
-  expect(result.evidencePack.releaseMutation).toBe(false);
+  expect(result.evidencePack.readOnly).toBe(true);
   expect(result.evidencePack.train.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
   expect(result.evidencePack.websitePrompt).toContain('projscan_evidence_pack');
 });

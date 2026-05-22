@@ -62,6 +62,8 @@ export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
 export { computeEvidencePack } from './core/releaseEvidence.js';
 export { computeRegressionPlan } from './core/regressionPlan.js';
+export { computeAgentBrief } from './core/agentBrief.js';
+export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';
@@ -96,6 +98,10 @@ export type {
   ExportInfo,
   ArchitectureLayer,
   AnalysisReport,
+  AgentBriefGuardrail,
+  AgentBriefIntent,
+  AgentBriefItem,
+  AgentBriefReport,
   ReportFormat,
   FileHotspot,
   HotspotReport,
@@ -141,6 +147,11 @@ export type {
   RegressionPlanReport,
   RegressionPlanTarget,
   RegressionPlanVerdict,
+  QualityScorecardDimension,
+  QualityScorecardReport,
+  QualityScorecardRisk,
+  QualityScorecardStatus,
+  QualityScorecardVerdict,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,

@@ -63,8 +63,10 @@ Run inside any repository:
 projscan                            # Full project analysis
 projscan workplan --mode bug_hunt   # Prioritized agent execution plan
 projscan bug-hunt --format json     # Bug-hunt fix queue with verification commands
-projscan release-train --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x  # Plan a release train
-projscan evidence-pack --website-prompt  # Approval packet with release evidence
+projscan agent-brief --intent bug_hunt   # Compact next-agent context packet
+projscan quality-scorecard --format json # Dimensioned quality view
+projscan release-train --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --line 2.7.x --line 2.8.x  # Product readiness plan
+projscan evidence-pack --website-prompt  # Approval packet with product evidence
 projscan regression-plan --level full    # Risk-based verification matrix
 projscan handoff                    # Concise next-agent handoff
 projscan preflight --format json    # Agent safety gate with supply-chain evidence
@@ -101,9 +103,11 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | `projscan analyze` | Full analysis - languages, frameworks, dependencies, issues |
 | `projscan workplan` | Agent execution plan - prioritized tasks with evidence, tools, verification, and handoff text |
 | `projscan bug-hunt` | Prioritized bug-hunt fix queue from doctor, preflight, hotspot, and session evidence |
-| `projscan release-train` | Plan multiple release lines as one unreleased roll-up without mutating release metadata |
-| `projscan evidence-pack` | Assemble release approval evidence from release train, bug-hunt, workplan, and preflight signals |
-| `projscan regression-plan` | Build a smoke, focused, or full regression matrix from release risk signals |
+| `projscan agent-brief` | Compact next-agent context packet with focus items, guardrails, repo context, and next actions |
+| `projscan quality-scorecard` | Dimensioned quality view with health, security, tests, maintainability, coordination, and top risks |
+| `projscan release-train` | Plan upcoming product lines with readiness evidence |
+| `projscan evidence-pack` | Assemble approval evidence from planning, bug-hunt, workplan, and preflight signals |
+| `projscan regression-plan` | Build a smoke, focused, or full regression matrix from product risk signals |
 | `projscan handoff` | Concise next-agent handoff from the current workplan |
 | `projscan doctor` | Health check - missing tooling, architecture smells, security and supply-chain risks |
 | `projscan preflight` | Agent safety gate - `proceed`, `caution`, or `block` with health, change, plugin, and supply-chain evidence |
@@ -702,12 +706,14 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 - *"What should my agent do next?"* → `projscan_workplan { mode: "bug_hunt" }`
+- *"Give the next agent a compact brief."* → `projscan_agent_brief { intent: "bug_hunt" }`
+- *"Show the product quality picture."* → `projscan_quality_scorecard`
 - *"What should I fix before a big release?"* → `projscan_bug_hunt`
-- *"What evidence do I need before approving the release workflow?"* → `projscan_evidence_pack { website_prompt: true }`
-- *"Which checks prove this bigger release?"* → `projscan_regression_plan { level: "full" }`
-- *"How do I plan the next four release lines together?"* → `projscan_release_train { lines: ["2.3.x", "2.4.x", "2.5.x", "2.6.x"] }`
+- *"What evidence do I need before approval?"* → `projscan_evidence_pack { website_prompt: true }`
+- *"Which checks prove this bigger product update?"* → `projscan_regression_plan { level: "full" }`
+- *"How do I plan the next six product lines?"* → `projscan_release_train { lines: ["2.3.x", "2.4.x", "2.5.x", "2.6.x", "2.7.x", "2.8.x"] }`
 
-### The 34 MCP tools
+### The 36 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
@@ -717,9 +723,11 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_review`** *(0.13)* - one-call PR review. Composes `pr_diff` + per-changed-file risk + new/expanded import cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
 - **`projscan_workplan`** *(2.3)* - agent mission-control plan. Composes preflight, review, session, hotspot, plugin, and supply-chain evidence into prioritized tasks with verification commands and handoff text.
 - **`projscan_bug_hunt`** *(2.3)* - ranked bug-hunt queue. Composes doctor issues, preflight, hotspots, and session coordination into fix targets with verification commands.
-- **`projscan_release_train`** *(2.3)* - release-line roll-up planner. Reads version and readiness evidence, then plans multiple lines as one unreleased train without mutating package metadata or publishing.
-- **`projscan_evidence_pack`** *(2.3)* - release approval packet. Composes release train, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence without mutating package metadata.
-- **`projscan_regression_plan`** *(2.3)* - smoke/focused/full regression matrix. Turns bug-hunt, preflight, and release-line risk into deduplicated verification commands.
+- **`projscan_release_train`** *(2.3)* - product-line readiness planner. Reads version, scope, readiness evidence, and next actions.
+- **`projscan_evidence_pack`** *(2.3)* - approval packet. Composes planning, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence.
+- **`projscan_regression_plan`** *(2.3)* - smoke/focused/full regression matrix. Turns bug-hunt, preflight, and product risk into deduplicated verification commands.
+- **`projscan_agent_brief`** *(2.3)* - compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
+- **`projscan_quality_scorecard`** *(2.3)* - dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
 - **`projscan_fix_suggest`** *(0.14)* - structured action prompt for any open issue: headline, why it matters, where, one-paragraph instruction, optional suggested test. Closes the diagnose → fix loop.
 - **`projscan_explain_issue`** *(0.14)* - deep dive on one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - **`projscan_impact`** *(0.15)* - transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Use BEFORE renaming or deleting to see what breaks.

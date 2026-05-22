@@ -13,9 +13,9 @@ import type { RegressionPlanLevel, RegressionPlanReport, RegressionPlanTarget } 
 export function registerRegressionPlan(): void {
   program
     .command('regression-plan')
-    .description('Build a smoke, focused, or full regression matrix from release risk signals')
+    .description('Build a smoke, focused, or full regression matrix from product risk signals')
     .option('--level <level>', 'smoke, focused, or full', 'focused')
-    .option('--line <line>', 'release line to include, repeatable (default: next four minor lines)', collectLine, [])
+    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
     .option('--max-targets <count>', 'maximum regression targets to include', parsePositiveInt)
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -62,7 +62,7 @@ function printRegressionPlan(report: RegressionPlanReport): void {
         : chalk.green;
   console.log(color(`Regression Plan: ${report.verdict} (${report.level})`));
   console.log(report.summary);
-  console.log(`Lines: ${report.releaseLines.join(', ')}`);
+  console.log(`Product lines: ${report.releaseLines.join(', ')}`);
   console.log('');
   console.log(chalk.bold('Targets'));
   for (const target of report.targets) {
