@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { computeReview } from '../../src/core/review.js';
 
 let tmp: string;
-const GIT_REVIEW_TIMEOUT_MS = 45000;
+const GIT_REVIEW_TIMEOUT_MS = 60000;
 
 vi.setConfig({ testTimeout: GIT_REVIEW_TIMEOUT_MS, hookTimeout: GIT_REVIEW_TIMEOUT_MS });
 

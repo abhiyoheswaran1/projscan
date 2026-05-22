@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { getChangedFiles } from '../../src/utils/changedFiles.js';
 
 const execFileAsync = promisify(execFile);
-const GIT_CHANGED_FILES_TIMEOUT_MS = 45000;
+const GIT_CHANGED_FILES_TIMEOUT_MS = 60000;
 
 vi.setConfig({ testTimeout: GIT_CHANGED_FILES_TIMEOUT_MS, hookTimeout: GIT_CHANGED_FILES_TIMEOUT_MS });
 

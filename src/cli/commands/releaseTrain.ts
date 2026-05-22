@@ -14,7 +14,7 @@ export function registerReleaseTrain(): void {
   program
     .command('release-train')
     .description('Plan multiple release lines as one unreleased roll-up without mutating release metadata')
-    .option('--line <line>', 'release line to fold in, repeatable (default: next two minor lines)', collectLine, [])
+    .option('--line <line>', 'release line to fold in, repeatable (default: next four minor lines)', collectLine, [])
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();

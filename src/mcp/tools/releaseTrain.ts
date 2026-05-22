@@ -11,7 +11,7 @@ export const releaseTrainTool: McpTool = {
       lines: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Release lines to fold into the current unreleased train. Default: next two minor lines.',
+        description: 'Release lines to fold into the current unreleased train. Default: next four minor lines.',
       },
       rollup: {
         type: 'string',

@@ -13,10 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan handoff` prints a concise next-agent handoff from the current workplan, including the next tasks and coordination recommendation.
 - `projscan_release_train` / `projscan release-train` plan upcoming release lines in one readiness view with version, preflight, scope, and next-action evidence.
 - `projscan_bug_hunt` / `projscan bug-hunt` compose doctor, preflight, hotspot, and session signals into a prioritized fix queue with verification commands for each target.
+- `projscan_evidence_pack` / `projscan evidence-pack` assemble release train, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence into one approval packet.
+- `projscan_regression_plan` / `projscan regression-plan` build smoke, focused, or full regression matrices from bug-hunt, preflight, and release-line risk.
 
 ### Fixed
 
-- Full-suite test stability now uses a 45s Vitest test/hook budget and guards git-heavy temp-repo cleanup paths, preventing false negatives under subprocess load.
+- Full-suite test stability now uses a 60s Vitest test/hook budget and guards git-heavy temp-repo cleanup paths, preventing false negatives under subprocess load.
 
 ## [2.2.0] — 2026-05-21 — "Supply-Chain Trust Gate"
 

@@ -39,6 +39,8 @@ import { registerPreflight } from './commands/preflight.js';
 import { registerWorkplan } from './commands/workplan.js';
 import { registerReleaseTrain } from './commands/releaseTrain.js';
 import { registerBugHunt } from './commands/bugHunt.js';
+import { registerEvidencePack } from './commands/evidencePack.js';
+import { registerRegressionPlan } from './commands/regressionPlan.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -79,6 +81,8 @@ registerPreflight();
 registerWorkplan();
 registerReleaseTrain();
 registerBugHunt();
+registerEvidencePack();
+registerRegressionPlan();
 registerHelp();
 
 program.parse();

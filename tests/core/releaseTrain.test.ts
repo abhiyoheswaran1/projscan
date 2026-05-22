@@ -33,6 +33,25 @@ test('release train rolls 2.3.x and 2.4.x into one unreleased plan without mutat
   );
 });
 
+test('release train defaults to the four-line unreleased train', async () => {
+  const root = await makeTempProject('2.2.0');
+
+  const report = await computeReleaseTrain(root);
+
+  expect(report.rollup.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
+  expect(report.tracks.map((track) => track.theme)).toEqual(
+    expect.arrayContaining([
+      'Agent Mission Control',
+      'Autonomous Bug Hunt',
+      'Release Evidence Pack',
+      'Regression Planning',
+    ]),
+  );
+  expect(report.tasks.map((task) => task.id)).toEqual(
+    expect.arrayContaining(['rt-2-5-evidence-pack', 'rt-2-6-regression-plan']),
+  );
+});
+
 test('release train marks blockers when preflight blocks', async () => {
   const root = await makeTempProject('2.2.0');
   await writeJson(path.join(root, 'package.json'), {

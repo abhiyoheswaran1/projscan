@@ -60,6 +60,8 @@ export { computeReview } from './core/review.js';
 export { computeWorkplan } from './core/workplan.js';
 export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
+export { computeEvidencePack } from './core/releaseEvidence.js';
+export { computeRegressionPlan } from './core/regressionPlan.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';
@@ -131,6 +133,14 @@ export type {
   BugHuntFinding,
   BugHuntReport,
   BugHuntVerdict,
+  EvidencePackArtifact,
+  EvidencePackArtifactStatus,
+  EvidencePackReport,
+  EvidencePackVerdict,
+  RegressionPlanLevel,
+  RegressionPlanReport,
+  RegressionPlanTarget,
+  RegressionPlanVerdict,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,

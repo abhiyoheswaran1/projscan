@@ -41,6 +41,8 @@ import { preflightTool } from './tools/preflight.js';
 import { workplanTool } from './tools/workplan.js';
 import { releaseTrainTool } from './tools/releaseTrain.js';
 import { bugHuntTool } from './tools/bugHunt.js';
+import { evidencePackTool } from './tools/evidencePack.js';
+import { regressionPlanTool } from './tools/regressionPlan.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -79,6 +81,8 @@ const tools: McpTool[] = [
   workplanTool,
   releaseTrainTool,
   bugHuntTool,
+  evidencePackTool,
+  regressionPlanTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

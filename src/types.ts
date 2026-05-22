@@ -394,7 +394,7 @@ export interface WorkplanReport {
   truncated?: boolean;
 }
 
-// === Release Train / Bug Hunt (2.3 roll-up) ===
+// === Release Train / Bug Hunt / Release Readiness (2.3+ roll-up) ===
 
 export interface ReleaseTrainTrack {
   line: string;
@@ -468,6 +468,71 @@ export interface BugHuntReport {
   topSuspects: BugHuntFinding[];
   fixQueue: BugHuntFinding[];
   verificationMatrix: Array<{ command: string; reason: string; expected: string }>;
+  truncated?: boolean;
+}
+
+export type EvidencePackVerdict = 'ready' | 'caution' | 'blocked';
+export type EvidencePackArtifactStatus = 'ready' | 'caution' | 'blocked';
+
+export interface EvidencePackArtifact {
+  id: string;
+  title: string;
+  status: EvidencePackArtifactStatus;
+  summary: string;
+  evidence: string[];
+  commands: string[];
+}
+
+export interface EvidencePackReport {
+  schemaVersion: 1;
+  currentVersion: string | null;
+  releaseMutation: false;
+  verdict: EvidencePackVerdict;
+  summary: string;
+  train: {
+    lines: string[];
+    readiness: ReleaseTrainReport['readiness'];
+  };
+  approval: {
+    required: true;
+    recommendation: string;
+    blockingReasons: string[];
+  };
+  artifacts: EvidencePackArtifact[];
+  changelogEntries: string[];
+  websitePrompt?: string;
+  suggestedNextActions: PreflightSuggestedAction[];
+}
+
+export type RegressionPlanLevel = 'smoke' | 'focused' | 'full';
+export type RegressionPlanVerdict = 'ready' | 'needs_tests' | 'blocked';
+
+export interface RegressionPlanTarget {
+  id: string;
+  priority: WorkplanPriority;
+  source: 'baseline' | 'bug-hunt' | 'release-line' | 'preflight';
+  title: string;
+  why: string;
+  files: string[];
+  verification: WorkplanVerification;
+}
+
+export interface RegressionPlanReport {
+  schemaVersion: 1;
+  level: RegressionPlanLevel;
+  verdict: RegressionPlanVerdict;
+  summary: string;
+  releaseLines: string[];
+  evidence: {
+    healthScore: number;
+    bugHuntVerdict: BugHuntVerdict;
+    preflightVerdict: PreflightVerdict;
+    changedFiles: number;
+    touchedFiles: number;
+  };
+  targets: RegressionPlanTarget[];
+  commands: string[];
+  suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
 }
 

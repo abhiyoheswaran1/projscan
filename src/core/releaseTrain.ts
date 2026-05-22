@@ -114,6 +114,42 @@ function trackForLine(line: string): ReleaseTrainTrack {
       ],
     };
   }
+  if (line.startsWith('2.5')) {
+    return {
+      line,
+      theme: 'Release Evidence Pack',
+      outcome: 'Humans and agents get one approval packet that ties release train scope, preflight evidence, bug-hunt status, workplan tasks, and website-update copy together.',
+      includedInRollup: true,
+      scope: [
+        'approval-ready evidence packet',
+        'product-facing changelog and website prompt',
+        'release metadata mutation guard',
+      ],
+      successCriteria: [
+        'evidence pack includes release train, bug hunt, workplan, and preflight artifacts',
+        'website update prompt is generated only as text evidence',
+        'package version, tags, and publish state remain untouched',
+      ],
+    };
+  }
+  if (line.startsWith('2.6')) {
+    return {
+      line,
+      theme: 'Regression Planning',
+      outcome: 'Agents get a smoke, focused, or full regression matrix that turns release risk into concrete commands before approval.',
+      includedInRollup: true,
+      scope: [
+        'risk-based regression targets',
+        'smoke/focused/full verification levels',
+        'deduplicated command matrix',
+      ],
+      successCriteria: [
+        'regression plan includes commands for the selected level',
+        'bug-hunt and preflight signals become explicit regression targets',
+        'full level covers tests, build, lint, stability, and release checks',
+      ],
+    };
+  }
   return {
     line,
     theme: 'Quality and Release Hardening',
@@ -153,6 +189,38 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         verification: {
           commands: ['projscan bug-hunt --format json', 'npm test'],
           expected: 'Bug hunt returns a prioritized fix queue and the test suite passes.',
+        },
+      },
+    ];
+  }
+  if (track.line.startsWith('2.5')) {
+    return [
+      {
+        id: 'rt-2-5-evidence-pack',
+        priority: 'p0',
+        title: 'Assemble the release evidence pack',
+        why: 'A larger train needs one human-readable approval packet instead of scattered command output.',
+        track: track.line,
+        files: ['src/core/releaseEvidence.ts', 'src/cli/commands/evidencePack.ts', 'src/mcp/tools/evidencePack.ts'],
+        verification: {
+          commands: ['projscan evidence-pack --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --format json'],
+          expected: 'Evidence pack returns all four release lines, approval evidence, changelog entries, and releaseMutation:false.',
+        },
+      },
+    ];
+  }
+  if (track.line.startsWith('2.6')) {
+    return [
+      {
+        id: 'rt-2-6-regression-plan',
+        priority: 'p0',
+        title: 'Ship the regression planning matrix',
+        why: 'The bigger release should tell agents exactly which smoke, focused, and full checks prove the train.',
+        track: track.line,
+        files: ['src/core/regressionPlan.ts', 'src/cli/commands/regressionPlan.ts', 'src/mcp/tools/regressionPlan.ts'],
+        verification: {
+          commands: ['projscan regression-plan --level full --format json', 'npm test'],
+          expected: 'Regression plan returns a deduplicated command matrix and the project suite passes.',
         },
       },
     ];
@@ -202,7 +270,12 @@ function normalizeLines(lines: string[] | undefined, currentVersion: string | nu
   const [major = 0, minor = 0] = (currentVersion ?? '2.2.0').split('.').map((part) => Number.parseInt(part, 10));
   const safeMajor = Number.isFinite(major) ? major : 2;
   const safeMinor = Number.isFinite(minor) ? minor : 2;
-  return [`${safeMajor}.${safeMinor + 1}.x`, `${safeMajor}.${safeMinor + 2}.x`];
+  return [
+    `${safeMajor}.${safeMinor + 1}.x`,
+    `${safeMajor}.${safeMinor + 2}.x`,
+    `${safeMajor}.${safeMinor + 3}.x`,
+    `${safeMajor}.${safeMinor + 4}.x`,
+  ];
 }
 
 function rankTasks(tasks: ReleaseTrainTask[]): ReleaseTrainTask[] {

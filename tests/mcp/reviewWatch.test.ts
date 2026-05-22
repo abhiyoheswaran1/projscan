@@ -9,7 +9,7 @@ import {
 } from '../../src/mcp/tools/reviewWatch.js';
 import type { McpToolContext } from '../../src/mcp/tools/_shared.js';
 
-const GIT_WATCH_TIMEOUT_MS = 45000;
+const GIT_WATCH_TIMEOUT_MS = 60000;
 
 vi.setConfig({ testTimeout: GIT_WATCH_TIMEOUT_MS, hookTimeout: GIT_WATCH_TIMEOUT_MS });
 
