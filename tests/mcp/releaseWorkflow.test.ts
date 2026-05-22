@@ -48,7 +48,8 @@ describe('release workflow metadata', () => {
   it('uses trusted publishing instead of a long-lived npm token', () => {
     expect(workflow).toMatch(/id-token:\s*write/);
     expect(workflow).toMatch(/environment:\s*npm-release/);
-    expect(workflow).toContain('npm publish --access public');
+    expect(workflow).toContain('npm publish --provenance --access public');
+    expect(workflow).not.toContain('registry-url: https://registry.npmjs.org');
     expect(workflow).not.toContain('NPM_TOKEN');
     expect(workflow).not.toContain('NODE_AUTH_TOKEN');
   });

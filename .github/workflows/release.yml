@@ -104,7 +104,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
 
       - run: npm ci
       - run: npm run build
@@ -141,7 +140,7 @@ jobs:
             echo "projscan@${VERSION} is already on npm — skipping (likely a re-run after a flake)."
             exit 0
           fi
-          npm publish --access public
+          npm publish --provenance --access public
 
       - name: Create or update GitHub Release
         env:
