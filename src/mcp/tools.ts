@@ -38,6 +38,7 @@ import { costSummaryTool } from './tools/costSummary.js';
 import { reviewWatchTool } from './tools/reviewWatch.js';
 import { pluginTool } from './tools/plugin.js';
 import { preflightTool } from './tools/preflight.js';
+import { workplanTool } from './tools/workplan.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -73,6 +74,7 @@ const tools: McpTool[] = [
   reviewWatchTool,
   pluginTool,
   preflightTool,
+  workplanTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

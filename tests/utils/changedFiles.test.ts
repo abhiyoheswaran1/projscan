@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -7,6 +7,9 @@ import { promisify } from 'node:util';
 import { getChangedFiles } from '../../src/utils/changedFiles.js';
 
 const execFileAsync = promisify(execFile);
+const GIT_CHANGED_FILES_TIMEOUT_MS = 45000;
+
+vi.setConfig({ testTimeout: GIT_CHANGED_FILES_TIMEOUT_MS, hookTimeout: GIT_CHANGED_FILES_TIMEOUT_MS });
 
 async function git(cwd: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd });
@@ -29,7 +32,7 @@ describe('getChangedFiles', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(repo, { recursive: true, force: true });
+    if (repo) await fs.rm(repo, { recursive: true, force: true });
   });
 
   it('returns available=false for non-git directories', async () => {

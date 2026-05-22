@@ -57,6 +57,7 @@ export { loadConfig, applyConfigToIssues } from './utils/config.js';
 export { getChangedFiles } from './utils/changedFiles.js';
 export { issuesToSarif } from './reporters/sarifReporter.js';
 export { computeReview } from './core/review.js';
+export { computeWorkplan } from './core/workplan.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';
@@ -125,4 +126,12 @@ export type {
   ImportPolicyRule,
   ImpactReport,
   ImpactNode,
+  WorkplanCoordination,
+  WorkplanEvidence,
+  WorkplanMode,
+  WorkplanPriority,
+  WorkplanReport,
+  WorkplanTask,
+  WorkplanTopRisk,
+  WorkplanVerification,
 } from './types.js';

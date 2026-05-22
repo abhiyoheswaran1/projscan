@@ -19,6 +19,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   file: ['console', 'json', 'markdown'],
   fix: ['console'],
   'fix-suggest': ['console', 'json', 'markdown'],
+  handoff: ['console', 'json'],
   help: ['console'],
   hotspots: ['console', 'json', 'markdown', 'html'],
   impact: ['console', 'json', 'markdown', 'html'],
@@ -50,6 +51,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   'workspace add': ['console'],
   'workspace remove': ['console'],
   workspaces: ['console', 'json', 'markdown'],
+  workplan: ['console', 'json'],
 } as const satisfies Record<string, readonly ReportFormat[]>;
 
 export type CommandFormatName = keyof typeof COMMAND_FORMAT_SUPPORT;

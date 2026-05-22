@@ -335,6 +335,65 @@ export interface PreflightReport {
   truncated?: boolean;
 }
 
+// === Agent Workplan (2.3) ===
+
+export type WorkplanMode =
+  | PreflightMode
+  | 'refactor'
+  | 'release'
+  | 'bug_hunt'
+  | 'hardening';
+
+export type WorkplanPriority = 'p0' | 'p1' | 'p2';
+
+export interface WorkplanEvidence {
+  source: PreflightReasonSource | 'coordination' | 'release' | 'verification';
+  message: string;
+  severity?: IssueSeverity;
+  file?: string;
+  issueId?: string;
+  tool?: string;
+}
+
+export interface WorkplanVerification {
+  commands: string[];
+  expected: string;
+}
+
+export interface WorkplanTask {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  why: string;
+  evidence: WorkplanEvidence[];
+  files: string[];
+  suggestedTools: string[];
+  verification: WorkplanVerification;
+  handoffText: string;
+}
+
+export interface WorkplanTopRisk extends WorkplanEvidence {
+  priority: WorkplanPriority;
+}
+
+export interface WorkplanCoordination {
+  touchedFiles: string[];
+  conflicts: SessionConflict[];
+  recommendedNextAgent: string;
+}
+
+export interface WorkplanReport {
+  schemaVersion: 1;
+  mode: WorkplanMode;
+  verdict: PreflightVerdict;
+  summary: string;
+  topRisks: WorkplanTopRisk[];
+  tasks: WorkplanTask[];
+  coordination: WorkplanCoordination;
+  suggestedNextActions: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
 export interface SessionResourceSummary {
   schemaVersion: 1;
   sessionId: string;

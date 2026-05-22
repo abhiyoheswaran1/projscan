@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { execSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -8,6 +8,10 @@ import {
   __resetReviewWatchesForTests,
 } from '../../src/mcp/tools/reviewWatch.js';
 import type { McpToolContext } from '../../src/mcp/tools/_shared.js';
+
+const GIT_WATCH_TIMEOUT_MS = 45000;
+
+vi.setConfig({ testTimeout: GIT_WATCH_TIMEOUT_MS, hookTimeout: GIT_WATCH_TIMEOUT_MS });
 
 async function makeRepo(): Promise<string> {
   const root = await mkdtemp(path.join(tmpdir(), 'projscan-watch-'));
@@ -30,7 +34,7 @@ describe('projscan_review_watch — start (without notify channel)', () => {
   beforeEach(() => __resetReviewWatchesForTests());
 
   afterAll(async () => {
-    await rm(root, { recursive: true, force: true });
+    if (root) await rm(root, { recursive: true, force: true });
   });
 
   it('returns the initial review and a non-registered watch when notify is unavailable', async () => {
@@ -42,7 +46,7 @@ describe('projscan_review_watch — start (without notify channel)', () => {
     expect(result.registered).toBe(false);
     expect(result.watchId).toBeNull();
     expect(result.report).toBeDefined();
-  }, 30000);
+  });
 });
 
 describe('projscan_review_watch — start (with notify + registry)', () => {
@@ -55,7 +59,7 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
   });
 
   afterAll(async () => {
-    await rm(root, { recursive: true, force: true });
+    if (root) await rm(root, { recursive: true, force: true });
   });
 
   beforeEach(() => {

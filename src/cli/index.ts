@@ -36,6 +36,7 @@ import { registerTaint } from './commands/taint.js';
 import { registerBadge } from './commands/badge.js';
 import { registerPlugin } from './commands/plugin.js';
 import { registerPreflight } from './commands/preflight.js';
+import { registerWorkplan } from './commands/workplan.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -73,6 +74,7 @@ registerTaint();
 registerBadge();
 registerPlugin();
 registerPreflight();
+registerWorkplan();
 registerHelp();
 
 program.parse();

@@ -61,6 +61,8 @@ Run inside any repository:
 
 ```bash
 projscan                            # Full project analysis
+projscan workplan --mode bug_hunt   # Prioritized agent execution plan
+projscan handoff                    # Concise next-agent handoff
 projscan preflight --format json    # Agent safety gate with supply-chain evidence
 projscan doctor                     # Health check, including security and supply-chain risks
 projscan hotspots                   # Rank files by risk (churn × complexity × issues × ownership)
@@ -93,6 +95,8 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | Command | Description |
 |---------|-------------|
 | `projscan analyze` | Full analysis - languages, frameworks, dependencies, issues |
+| `projscan workplan` | Agent execution plan - prioritized tasks with evidence, tools, verification, and handoff text |
+| `projscan handoff` | Concise next-agent handoff from the current workplan |
 | `projscan doctor` | Health check - missing tooling, architecture smells, security and supply-chain risks |
 | `projscan preflight` | Agent safety gate - `proceed`, `caution`, or `block` with health, change, plugin, and supply-chain evidence |
 | `projscan hotspots` | Rank files by risk - churn × complexity × issues × ownership |
@@ -689,8 +693,9 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"What are the scariest untested files?"* → `projscan_coverage`
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
 - *"Where should I refactor first?"* → `projscan_hotspots`
+- *"What should my agent do next?"* → `projscan_workplan { mode: "bug_hunt" }`
 
-### The 28 MCP tools
+### The 30 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_graph`** - query the AST-based code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Millisecond responses on a warm cache.
@@ -698,6 +703,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_coupling`** *(0.11)* - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
 - **`projscan_pr_diff`** *(0.11)* - structural diff between two git refs. Returns added/removed/modified files with explicit lists of exports, imports, and call sites that changed, plus ΔCC and Δfan-in.
 - **`projscan_review`** *(0.13)* - one-call PR review. Composes `pr_diff` + per-changed-file risk + new/expanded import cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
+- **`projscan_workplan`** *(2.3)* - agent mission-control plan. Composes preflight, review, session, hotspot, plugin, and supply-chain evidence into prioritized tasks with verification commands and handoff text.
 - **`projscan_fix_suggest`** *(0.14)* - structured action prompt for any open issue: headline, why it matters, where, one-paragraph instruction, optional suggested test. Closes the diagnose → fix loop.
 - **`projscan_explain_issue`** *(0.14)* - deep dive on one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - **`projscan_impact`** *(0.15)* - transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Use BEFORE renaming or deleting to see what breaks.
