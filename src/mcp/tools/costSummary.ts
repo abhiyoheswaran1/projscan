@@ -402,6 +402,8 @@ const STATIC_EXPECTED_TOKENS: Record<string, number> = {
   projscan_upgrade: 1000,
   projscan_search: 2500,
   projscan_graph: 4500,
+  projscan_semantic_graph: 6000,
+  projscan_dataflow: 3500,
   projscan_structure: 3000,
   projscan_analyze: 3500,
   projscan_explain: 1500,

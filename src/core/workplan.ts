@@ -170,12 +170,12 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
       makeTask({
         id: 'wp-review-gate',
         priority: review.some((reason) => reason.severity === 'error') ? 'p0' : 'p1',
-        title: 'Inspect review and taint blockers',
-        why: 'Review and taint findings describe merge safety, new risky flows, and structural changes that need explicit handling before handoff.',
+        title: 'Inspect review and dataflow blockers',
+        why: 'Review, taint, and dataflow findings describe merge safety, new risky flows, and structural changes that need explicit handling before handoff.',
         evidence: review.map(reasonToEvidence),
         files: filesFromReasons(review),
-        suggestedTools: ['projscan_review', 'projscan_taint'],
-        commands: ['projscan review --format json', 'projscan preflight --mode before_merge --format json'],
+        suggestedTools: ['projscan_review', 'projscan_taint', 'projscan_dataflow'],
+        commands: ['projscan review --format json', 'projscan dataflow --format json', 'projscan preflight --mode before_merge --format json'],
         expected: 'The review verdict is ok or the remaining review items are intentionally documented.',
       }),
     );

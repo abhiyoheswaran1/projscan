@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-05-23 — "Deep Graph Platform"
+
+### Added
+
+- `projscan_semantic_graph` and `projscan semantic-graph` expose a stable v3 semantic graph contract with file, function, package, and symbol nodes plus imports, package imports, exports, definitions, and calls edges.
+- `projscan_dataflow` and `projscan dataflow` report direct, propagated, and bridge source-to-sink risks over the function graph.
+- `projscan_review` now surfaces `newDataflowRisks` for bridge-helper patterns and blocks PRs that introduce a new bridge from a source reader to a dangerous sink.
+- The npm public API now exports `buildSemanticGraph`, `computeDataflow`, and the associated semantic graph, dataflow, and review dataflow risk types.
+
+### Changed
+
+- Stability docs now define the v3 semantic graph contract, the dataflow risk contract, and the 39-tool MCP surface.
+- README, Guide, Roadmap, MCP Registry metadata, and website prompt copy now focus the major release on graph/dataflow adoption by AI coding agents.
+
 ## [2.9.0] — 2026-05-23 — "Adoption Layer"
 
 ### Added

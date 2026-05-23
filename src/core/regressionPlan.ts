@@ -223,6 +223,7 @@ function sourceRank(source: RegressionPlanTarget['source']): number {
 function commandForTool(tool: string | undefined): string {
   if (tool === 'projscan_review') return 'projscan review --format json';
   if (tool === 'projscan_taint') return 'projscan taint --format json';
+  if (tool === 'projscan_dataflow') return 'projscan dataflow --format json';
   if (tool === 'projscan_hotspots') return 'projscan hotspots --format json';
   if (tool === 'projscan_plugin') return 'projscan plugin list --format json';
   if (tool === 'projscan_preflight') return 'projscan preflight --mode before_commit --format json';

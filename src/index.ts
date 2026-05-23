@@ -57,6 +57,8 @@ export { loadConfig, applyConfigToIssues } from './utils/config.js';
 export { getChangedFiles } from './utils/changedFiles.js';
 export { issuesToSarif } from './reporters/sarifReporter.js';
 export { computeReview } from './core/review.js';
+export { buildSemanticGraph } from './core/semanticGraph.js';
+export { computeDataflow } from './core/dataflow.js';
 export { computeWorkplan } from './core/workplan.js';
 export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
@@ -139,6 +141,7 @@ export type {
   ReviewReport,
   ReviewFile,
   ReviewCycle,
+  ReviewDataflowRisk,
   ReviewFunction,
   ReviewDependencyChange,
   FixSuggestion,
@@ -146,6 +149,16 @@ export type {
   ImportPolicyRule,
   ImpactReport,
   ImpactNode,
+  DataflowReport,
+  DataflowRisk,
+  DataflowRiskConfidence,
+  DataflowRiskKind,
+  DataflowRiskSeverity,
+  SemanticGraphEdge,
+  SemanticGraphEdgeKind,
+  SemanticGraphNode,
+  SemanticGraphNodeKind,
+  SemanticGraphReport,
   BugHuntFinding,
   BugHuntReport,
   BugHuntVerdict,

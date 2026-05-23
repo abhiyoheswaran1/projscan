@@ -1011,6 +1011,86 @@ export interface PrDiffReport {
   totalFilesChanged: number;
 }
 
+// === Semantic Graph + Dataflow (3.0) ===
+
+export type SemanticGraphNodeKind = 'file' | 'function' | 'package' | 'symbol';
+
+export interface SemanticGraphNode {
+  id: string;
+  kind: SemanticGraphNodeKind;
+  label: string;
+  file?: string;
+  line?: number;
+  endLine?: number;
+  adapterId?: string;
+  metrics?: {
+    lineCount?: number;
+    cyclomaticComplexity?: number;
+    fanIn?: number;
+    fanOut?: number;
+  };
+}
+
+export type SemanticGraphEdgeKind = 'defines' | 'imports' | 'imports_package' | 'exports' | 'calls';
+
+export interface SemanticGraphEdge {
+  from: string;
+  to: string;
+  kind: SemanticGraphEdgeKind;
+  label?: string;
+}
+
+export interface SemanticGraphReport {
+  schemaVersion: 3;
+  nodes: SemanticGraphNode[];
+  edges: SemanticGraphEdge[];
+  metrics: {
+    totalFiles: number;
+    totalFunctions: number;
+    totalPackages: number;
+    totalSymbols: number;
+    totalEdges: number;
+  };
+  truncated: boolean;
+  limits: {
+    maxNodes: number;
+    maxEdges: number;
+  };
+}
+
+export type DataflowRiskKind = 'direct' | 'propagated' | 'bridge';
+export type DataflowRiskSeverity = 'warning' | 'error';
+export type DataflowRiskConfidence = 'low' | 'medium' | 'high';
+
+export interface DataflowRisk {
+  key: string;
+  kind: DataflowRiskKind;
+  severity: DataflowRiskSeverity;
+  confidence: DataflowRiskConfidence;
+  sourceFn: string;
+  sinkFn: string;
+  bridgeFn?: string;
+  source: string;
+  sink: string;
+  path: string[];
+  sourcePath?: string[];
+  sinkPath?: string[];
+  pathLength: number;
+  files: string[];
+}
+
+export interface DataflowReport {
+  available: boolean;
+  reason?: string;
+  riskCount: number;
+  risks: DataflowRisk[];
+  effectiveSources: string[];
+  effectiveSinks: string[];
+  truncated?: boolean;
+  truncatedSources?: string[];
+  maxDepth?: number;
+}
+
 // === PR Review (0.13) ===
 
 /**
@@ -1092,6 +1172,25 @@ export interface ReviewTaintFlow {
   intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
 }
 
+/**
+ * 3.0+ — Review-time dataflow risks that are not represented by legacy
+ * taint reachability, especially bridge helpers that call both a source
+ * wrapper and a sink wrapper.
+ */
+export interface ReviewDataflowRisk {
+  kind: DataflowRiskKind;
+  sourceFn: string;
+  sinkFn: string;
+  bridgeFn?: string;
+  source: string;
+  sink: string;
+  pathLength: number;
+  files: string[];
+  severity: DataflowRiskSeverity;
+  confidence: DataflowRiskConfidence;
+  intentAlignment?: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
+}
+
 /** Workspace-package-scoped dependency change. Aggregates root + workspaces. */
 export interface ReviewDependencyChange {
   /** Workspace name; '' for the root manifest. */
@@ -1140,6 +1239,11 @@ export interface ReviewReport {
    * (no per-function callSites at either side).
    */
   newTaintFlows: ReviewTaintFlow[];
+  /**
+   * 3.0+ — NEW dataflow risks introduced by this PR that are outside the
+   * legacy source-to-sink taint flow list. Empty when unavailable or clean.
+   */
+  newDataflowRisks: ReviewDataflowRisk[];
   /** 'ok' = ship it; 'review' = needs careful look; 'block' = strongly suggests rework. */
   verdict: 'ok' | 'review' | 'block';
   /** One-line bullets explaining the verdict. */
@@ -1168,7 +1272,7 @@ export interface ReviewReport {
   intentAnalysis?: {
     totals: Record<'expected' | 'unexpected' | 'out-of-scope' | 'unknown', number>;
     notable: Array<{
-      kind: 'file' | 'function' | 'cycle' | 'taint' | 'dependency';
+      kind: 'file' | 'function' | 'cycle' | 'taint' | 'dataflow' | 'dependency';
       label: string;
       alignment: 'expected' | 'unexpected' | 'out-of-scope' | 'unknown';
       reason: string;

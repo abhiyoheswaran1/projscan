@@ -123,6 +123,7 @@ describe('shapeReviewForTier (1.5+)', () => {
       riskyFunctionsAdded: 5,
       depsChanged: 5,
       taintFlowsAdded: 0,
+      dataflowRisksAdded: 0,
       contractChanges: 0,
     });
   });

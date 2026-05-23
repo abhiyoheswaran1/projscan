@@ -17,14 +17,14 @@ import type { CodeGraph } from './codeGraph.js';
  * over-reports when functions read sources but launder them safely
  * before reaching sinks. Both are documented limitations.
  *
- * Known algorithm gap (1.6+): the "bridge-helper" pattern is missed —
+ * Legacy taint algorithm gap (1.6+): the "bridge-helper" pattern is missed —
  * `function bridge() { const v = getSecret(); runDangerous(v); }` where
  * `getSecret` reads the source and `runDangerous` is the sink. The BFS
  * walks DOWN from source-fns, but `bridge` has neither source nor sink
- * directly; both are its callees. Detecting this needs a different
- * algorithm (per-fn "transitively calls a source AND transitively calls
- * a sink") — deferred. Workaround: declare the helper itself as a
- * source via .projscanrc.json `taint.sources`.
+ * directly; both are its callees. 3.0's `computeDataflow` /
+ * `projscan_dataflow` runs that second algorithm and review surfaces it
+ * as `newDataflowRisks`. Keep this legacy function as the compatibility
+ * source-to-sink reachability report.
  *
  * Strict scope discipline (per ROADMAP 1.6 guardrail): no CFG, no
  * variable-level dataflow, no AST inspection beyond what callSites

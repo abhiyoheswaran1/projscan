@@ -1,6 +1,84 @@
-import { describe, it, expect } from 'vitest';
-import { diffGraphs, detectRenames } from '../../src/core/prDiff.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { spawn } from 'node:child_process';
+import { computePrDiff, diffGraphs, detectRenames } from '../../src/core/prDiff.js';
 import type { CodeGraph, GraphFile } from '../../src/core/codeGraph.js';
+
+let tmp: string;
+
+beforeEach(async () => {
+  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-pr-diff-test-'));
+});
+
+afterEach(async () => {
+  await fs.rm(tmp, { recursive: true, force: true });
+});
+
+function git(args: string[], cwd: string = tmp): Promise<{ code: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const c = spawn('git', args, {
+      cwd,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 't',
+        GIT_AUTHOR_EMAIL: 't@x',
+        GIT_COMMITTER_NAME: 't',
+        GIT_COMMITTER_EMAIL: 't@x',
+      },
+    });
+    let so = '';
+    let se = '';
+    c.stdout.on('data', (d) => (so += d.toString()));
+    c.stderr.on('data', (d) => (se += d.toString()));
+    c.on('close', (code) => resolve({ code: code ?? 1, stdout: so, stderr: se }));
+  });
+}
+
+async function write(rel: string, content: string): Promise<void> {
+  const full = path.join(tmp, rel);
+  await fs.mkdir(path.dirname(full), { recursive: true });
+  await fs.writeFile(full, content, 'utf-8');
+}
+
+async function setupRepo(): Promise<void> {
+  await git(['init', '-q', '-b', 'main']);
+  await git(['config', 'user.email', 't@x']);
+  await git(['config', 'user.name', 't']);
+}
+
+async function withFailingWorktreeAdd<T>(fn: () => Promise<T>): Promise<T> {
+  const oldPath = process.env.PATH ?? '';
+  const oldRealPath = process.env.PROJSCAN_TEST_REAL_PATH;
+  const fakeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fake-git-'));
+  const fakeGit = path.join(fakeDir, 'git');
+  await fs.writeFile(
+    fakeGit,
+    `#!/bin/sh
+if [ "$1" = "worktree" ] && [ "$2" = "add" ]; then
+  echo "fatal: could not create directory of .git/worktrees/projscan-pr-diff: Operation not permitted" >&2
+  exit 128
+fi
+PATH="$PROJSCAN_TEST_REAL_PATH" exec git "$@"
+`,
+    'utf-8',
+  );
+  await fs.chmod(fakeGit, 0o755);
+  process.env.PROJSCAN_TEST_REAL_PATH = oldPath;
+  process.env.PATH = `${fakeDir}${path.delimiter}${oldPath}`;
+  try {
+    return await fn();
+  } finally {
+    process.env.PATH = oldPath;
+    if (oldRealPath === undefined) {
+      delete process.env.PROJSCAN_TEST_REAL_PATH;
+    } else {
+      process.env.PROJSCAN_TEST_REAL_PATH = oldRealPath;
+    }
+    await fs.rm(fakeDir, { recursive: true, force: true });
+  }
+}
 
 function file(
   relativePath: string,
@@ -37,6 +115,32 @@ function makeGraph(files: GraphFile[], localImporters: Map<string, Set<string>> 
     scannedFiles: files.length,
   };
 }
+
+
+describe('computePrDiff', () => {
+  it('returns unavailable when the base worktree cannot be checked out', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('src/a.ts', `export const a = 2;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'change a']);
+
+    const r = await withFailingWorktreeAdd(() =>
+      computePrDiff(tmp, { base: 'HEAD~1', head: 'HEAD' }),
+    );
+
+    expect(r.available).toBe(false);
+    expect(r.reason).toMatch(/Could not check out base ref "HEAD~1"/);
+    expect(r.filesAdded).toEqual([]);
+    expect(r.filesModified).toEqual([]);
+    expect(r.filesRemoved).toEqual([]);
+    expect(r.totalFilesChanged).toBe(0);
+  });
+});
 
 describe('diffGraphs', () => {
   it('detects added files', () => {

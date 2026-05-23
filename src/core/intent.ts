@@ -68,7 +68,7 @@ export interface ParsedIntent {
 }
 
 export interface IntentNotable {
-  kind: 'file' | 'function' | 'cycle' | 'taint' | 'dependency';
+  kind: 'file' | 'function' | 'cycle' | 'taint' | 'dataflow' | 'dependency';
   label: string;
   alignment: IntentAlignment;
   reason: string;
@@ -95,6 +95,7 @@ type FindingKind =
   | 'cycle-new'
   | 'cycle-expanded'
   | 'taint-flow'
+  | 'dataflow-risk'
   | 'dep-added'
   | 'dep-removed'
   | 'dep-bumped';
@@ -491,6 +492,21 @@ export function annotateReviewWithIntent(
     }
   }
 
+  for (const risk of report.newDataflowRisks ?? []) {
+    const inScope = risk.files.some((f) => pathMatchesScope(intent.scopeTokens, f));
+    const alignment = classify(intent, 'dataflow-risk', inScope);
+    risk.intentAlignment = alignment;
+    totals[alignment] += 1;
+    if (alignment === 'unexpected' || alignment === 'out-of-scope') {
+      notable.push({
+        kind: 'dataflow',
+        label: `${risk.source} → ${risk.sink} (${risk.bridgeFn ?? risk.sourceFn})`,
+        alignment,
+        reason: reasonFor(intent.action, 'dataflow-risk', inScope),
+      });
+    }
+  }
+
   for (const dep of report.dependencyChanges) {
     // For dependency changes, "in scope" means the manifest path
     // matches the scope tokens, or the package name does. We use the
@@ -562,6 +578,8 @@ function reasonFor(
       return '';
     case 'taint-flow':
       return `intent is "${action}" but a new source-to-sink taint flow was introduced`;
+    case 'dataflow-risk':
+      return `intent is "${action}" but a new source-to-sink dataflow risk was introduced`;
     case 'function-added':
       if (action === 'docs' || action === 'fix') {
         return `intent is "${action}" but a high-complexity function was added`;

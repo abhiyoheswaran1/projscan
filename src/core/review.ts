@@ -9,11 +9,13 @@ import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { computeTaint } from './taint.js';
+import { computeDataflow } from './dataflow.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { loadConfig } from '../utils/config.js';
 import type {
   ReviewCycle,
   ReviewContractChange,
+  ReviewDataflowRisk,
   ReviewDependencyChange,
   ReviewFile,
   ReviewFunction,
@@ -93,6 +95,7 @@ export async function computeReview(
       dependencyChanges: [],
       contractChanges: [],
       newTaintFlows: [],
+      newDataflowRisks: [],
       verdict: 'ok',
       summary: ['No structural changes detected between base and head.'],
     };
@@ -119,7 +122,23 @@ export async function computeReview(
     // but the separator is a defense-in-depth: if a future caller pipes a
     // user-supplied ref here without that verification, refs starting with
     // '-' (e.g. `--upload-pack=evil`) won't be parsed as flags.
-    await runGit(rootPath, ['worktree', 'add', '--detach', '--', worktreeDir, baseSha]);
+    const addWorktree = await runGit(rootPath, [
+      'worktree',
+      'add',
+      '--detach',
+      '--',
+      worktreeDir,
+      baseSha,
+    ]);
+    if (addWorktree.code !== 0) {
+      return unavailable(
+        `Could not check out base ref "${baseRef}" for review: ${gitFailureSummary(addWorktree)}`,
+        options,
+        baseRef,
+        headRef,
+        headSha,
+      );
+    }
     const baseScan = await scanRepository(worktreeDir);
     baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
     basePackageManifests = await readManifests(worktreeDir);
@@ -212,6 +231,7 @@ export async function computeReview(
     ...prDiff.filesModified.map((f) => f.relativePath),
   ]);
   const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
+  const newDataflowRisks = await computeNewDataflowRisks(rootPath, baseGraph, headGraph, touchedFiles);
 
   // Verdict.
   const { verdict, summary } = decideVerdict(
@@ -220,6 +240,7 @@ export async function computeReview(
     riskyFunctions,
     dependencyChanges,
     newTaintFlows,
+    newDataflowRisks,
   );
 
   const report: ReviewReport = {
@@ -233,6 +254,7 @@ export async function computeReview(
     dependencyChanges,
     contractChanges,
     newTaintFlows,
+    newDataflowRisks,
     verdict,
     summary,
   };
@@ -289,6 +311,7 @@ async function computeNewTaintFlows(
     // real flow. Without it, a base-graph parse failure would surface every
     // pre-existing head flow as "new" and avalanche the verdict to block.
     if (!flow.files.some((f) => touchedFiles.has(f))) continue;
+    if (flow.files.some(isTestLikePath)) continue;
     out.push({
       sourceFn: flow.sourceFn,
       sinkFn: flow.sinkFn,
@@ -303,6 +326,87 @@ async function computeNewTaintFlows(
     return a.sourceFn.localeCompare(b.sourceFn);
   });
   return out;
+}
+
+async function computeNewDataflowRisks(
+  rootPath: string,
+  baseGraph: CodeGraph,
+  headGraph: CodeGraph,
+  touchedFiles: Set<string>,
+): Promise<ReviewDataflowRisk[]> {
+  const { config } = await loadConfig(rootPath);
+  const sources = config.taint?.sources ?? [];
+  const sinks = config.taint?.sinks ?? [];
+  const baseReport = computeDataflow(baseGraph, { sources, sinks });
+  const headReport = computeDataflow(headGraph, { sources, sinks });
+  if (!headReport.available) return [];
+  const baseRiskKeys = new Set(
+    baseReport.available ? baseReport.risks.map(reviewDataflowRiskKey) : [],
+  );
+  const out: ReviewDataflowRisk[] = [];
+  for (const risk of headReport.risks) {
+    // Legacy taint flows already have their own stable review field. Keep
+    // this additive review list focused on deeper 3.0 dataflow findings.
+    if (risk.kind !== 'bridge') continue;
+    const key = reviewDataflowRiskKey(risk);
+    if (baseRiskKeys.has(key)) continue;
+    if (!risk.files.some((f) => touchedFiles.has(f))) continue;
+    if (!isReviewBlockingDataflowRisk(risk)) continue;
+    out.push({
+      kind: risk.kind,
+      sourceFn: risk.sourceFn,
+      sinkFn: risk.sinkFn,
+      bridgeFn: risk.bridgeFn,
+      source: risk.source,
+      sink: risk.sink,
+      pathLength: risk.pathLength,
+      files: risk.files,
+      severity: risk.severity,
+      confidence: risk.confidence,
+    });
+  }
+  out.sort((a, b) => {
+    if (a.pathLength !== b.pathLength) return a.pathLength - b.pathLength;
+    return `${a.bridgeFn ?? ''}:${a.sourceFn}:${a.sinkFn}`.localeCompare(
+      `${b.bridgeFn ?? ''}:${b.sourceFn}:${b.sinkFn}`,
+    );
+  });
+  return out;
+}
+
+
+const BROAD_FILE_IO_REVIEW_SOURCES = new Set(['readFile', 'readFileSync']);
+const BROAD_FILE_IO_REVIEW_SINKS = new Set(['writeFile', 'writeFileSync', 'unlink', 'rm', 'rmSync']);
+
+function isReviewBlockingDataflowRisk(risk: { source: string; sink: string; files: string[] }): boolean {
+  if (risk.files.some(isTestLikePath)) return false;
+  if (BROAD_FILE_IO_REVIEW_SOURCES.has(risk.source)) return false;
+  if (BROAD_FILE_IO_REVIEW_SINKS.has(risk.sink)) return false;
+  return true;
+}
+
+function isTestLikePath(file: string): boolean {
+  const normalized = file.replace(/\\/g, '/');
+  return (
+    normalized.startsWith('test/') ||
+    normalized.startsWith('tests/') ||
+    normalized.includes('/test/') ||
+    normalized.includes('/tests/') ||
+    normalized.includes('/__tests__/') ||
+    /\.(test|spec)\.[^/]+$/.test(normalized)
+  );
+}
+
+function reviewDataflowRiskKey(risk: {
+  kind: string;
+  bridgeFn?: string;
+  sourceFn: string;
+  sinkFn: string;
+  source: string;
+  sink: string;
+  files?: string[];
+}): string {
+  return `${risk.kind}:${risk.bridgeFn ?? ''}:${risk.sourceFn}:${risk.sinkFn}:${risk.source}:${risk.sink}:${risk.files?.join('|') ?? ''}`;
 }
 
 // ── cycle classification ──────────────────────────────────
@@ -703,6 +807,7 @@ function decideVerdict(
   riskyFunctions: ReviewFunction[],
   depChanges: ReviewDependencyChange[],
   newTaintFlows: ReviewTaintFlow[],
+  newDataflowRisks: ReviewDataflowRisk[],
 ): { verdict: ReviewReport['verdict']; summary: string[] } {
   const summary: string[] = [];
   let verdict: ReviewReport['verdict'] = 'ok';
@@ -740,6 +845,17 @@ function decideVerdict(
       .join(', ');
     summary.push(
       `${newTaintFlows.length} new taint flow(s) detected: ${sample}${newTaintFlows.length > 3 ? ', …' : ''}.`,
+    );
+  }
+
+  if (newDataflowRisks.length > 0) {
+    verdict = 'block';
+    const sample = newDataflowRisks
+      .slice(0, 3)
+      .map((risk) => `${risk.source}→${risk.sink} (${risk.bridgeFn ?? risk.sourceFn})`)
+      .join(', ');
+    summary.push(
+      `${newDataflowRisks.length} new dataflow risk(s) detected: ${sample}${newDataflowRisks.length > 3 ? ', …' : ''}.`,
     );
   }
 
@@ -803,6 +919,7 @@ function unavailable(
     riskyFunctions: [],
     dependencyChanges: [],
     newTaintFlows: [],
+    newDataflowRisks: [],
     verdict: 'ok',
     summary: [reason],
   };
@@ -841,6 +958,12 @@ interface GitResult {
   code: number;
   stdout: string;
   stderr: string;
+}
+
+
+function gitFailureSummary(result: GitResult): string {
+  const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');
+  return message || `git exited with code ${result.code}`;
 }
 
 /**
@@ -929,6 +1052,7 @@ export function shapeReviewForTier(
   const riskyFunctionsAdded = report.riskyFunctions.length;
   const depsChanged = report.dependencyChanges.length;
   const taintFlowsAdded = report.newTaintFlows?.length ?? 0;
+  const dataflowRisksAdded = report.newDataflowRisks?.length ?? 0;
   const contractChanges = report.contractChanges?.length ?? 0;
   const totals = {
     filesChanged,
@@ -936,6 +1060,7 @@ export function shapeReviewForTier(
     riskyFunctionsAdded,
     depsChanged,
     taintFlowsAdded,
+    dataflowRisksAdded,
     contractChanges,
   };
 
@@ -980,6 +1105,7 @@ export function shapeReviewForTier(
     dependencyChanges: report.dependencyChanges.slice(0, 3),
     contractChanges: report.contractChanges?.slice(0, TOP) ?? [],
     newTaintFlows: report.newTaintFlows?.slice(0, 5) ?? [],
+    newDataflowRisks: report.newDataflowRisks?.slice(0, 5) ?? [],
     verdict: report.verdict,
     summary: report.summary,
     totals,
