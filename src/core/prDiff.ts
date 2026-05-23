@@ -72,7 +72,27 @@ export async function computePrDiff(
   try {
     // `--` separator before positional args (defense-in-depth; see the
     // matching comment in review.ts).
-    await runGit(rootPath, ['worktree', 'add', '--detach', '--', worktreeDir, baseSha]);
+    const addWorktree = await runGit(rootPath, [
+      'worktree',
+      'add',
+      '--detach',
+      '--',
+      worktreeDir,
+      baseSha,
+    ]);
+    if (addWorktree.code !== 0) {
+      const reason = `Could not check out base ref "${baseRef}": ${gitFailureSummary(addWorktree)}`;
+      return {
+        available: false,
+        reason,
+        base: { ref: baseRef, resolvedSha: baseSha },
+        head: { ref: headRef, resolvedSha: headSha },
+        filesAdded: [],
+        filesRemoved: [],
+        filesModified: [],
+        totalFilesChanged: 0,
+      };
+    }
     const baseScan = await scanRepository(worktreeDir);
     baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
   } finally {
@@ -328,6 +348,12 @@ interface GitResult {
   code: number;
   stdout: string;
   stderr: string;
+}
+
+
+function gitFailureSummary(result: GitResult): string {
+  const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');
+  return message || `git exited with code ${result.code}`;
 }
 
 /**

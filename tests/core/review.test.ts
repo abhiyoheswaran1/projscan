@@ -41,6 +41,38 @@ async function setupRepo(): Promise<void> {
   await git(['config', 'user.name', 't']);
 }
 
+async function withFailingWorktreeAdd<T>(fn: () => Promise<T>): Promise<T> {
+  const oldPath = process.env.PATH ?? '';
+  const oldRealPath = process.env.PROJSCAN_TEST_REAL_PATH;
+  const fakeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fake-git-'));
+  const fakeGit = path.join(fakeDir, 'git');
+  await fs.writeFile(
+    fakeGit,
+    `#!/bin/sh
+if [ "$1" = "worktree" ] && [ "$2" = "add" ]; then
+  echo "fatal: could not create directory of .git/worktrees/projscan-review: Operation not permitted" >&2
+  exit 128
+fi
+PATH="$PROJSCAN_TEST_REAL_PATH" exec git "$@"
+`,
+    'utf-8',
+  );
+  await fs.chmod(fakeGit, 0o755);
+  process.env.PROJSCAN_TEST_REAL_PATH = oldPath;
+  process.env.PATH = `${fakeDir}${path.delimiter}${oldPath}`;
+  try {
+    return await fn();
+  } finally {
+    process.env.PATH = oldPath;
+    if (oldRealPath === undefined) {
+      delete process.env.PROJSCAN_TEST_REAL_PATH;
+    } else {
+      process.env.PROJSCAN_TEST_REAL_PATH = oldRealPath;
+    }
+    await fs.rm(fakeDir, { recursive: true, force: true });
+  }
+}
+
 describe('computeReview', () => {
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
@@ -59,6 +91,106 @@ describe('computeReview', () => {
     expect(r.available).toBe(true);
     expect(r.verdict).toBe('ok');
     expect(r.changedFiles).toHaveLength(0);
+  });
+
+  it('returns unavailable when the base worktree cannot be checked out', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('src/a.ts', `export const a = 2;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'change a']);
+
+    const r = await withFailingWorktreeAdd(() =>
+      computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' }),
+    );
+
+    expect(r.available).toBe(false);
+    expect(r.reason).toMatch(/Could not check out base ref "HEAD~1"/);
+    expect(r.changedFiles).toEqual([]);
+    expect(r.newTaintFlows).toEqual([]);
+    expect(r.newDataflowRisks).toEqual([]);
+  });
+
+  it('does not block on taint or dataflow risks that only touch test files', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;
+`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'tests/helper.test.ts',
+      `import { writeFile } from 'node:fs/promises';
+
+export function readSecret() {
+  return process.env.TOKEN;
+}
+
+export async function writeSecret(value: string | undefined) {
+  await writeFile('tmp-token', value ?? '');
+}
+
+export async function bridge() {
+  const value = readSecret();
+  return writeSecret(value);
+}
+
+export async function direct() {
+  await writeFile('tmp-token', process.env.TOKEN ?? '');
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add test helper']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.newTaintFlows).toEqual([]);
+    expect(r.newDataflowRisks).toEqual([]);
+    expect(r.summary.some((line) => line.includes('taint flow'))).toBe(false);
+    expect(r.summary.some((line) => line.includes('dataflow risk'))).toBe(false);
+  });
+
+  it('does not promote broad file-IO bridge dataflow to review blockers', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/cache.ts', `export function refresh() { return 1; }
+`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/cache.ts',
+      `import { readFile, writeFile } from 'node:fs/promises';
+
+export function readCache() {
+  return readFile('cache.json', 'utf8');
+}
+
+export function saveCache(value: string) {
+  return writeFile('cache.json', value);
+}
+
+export async function refresh() {
+  const value = await readCache();
+  return saveCache(value);
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add cache refresh']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.newDataflowRisks).toEqual([]);
+    expect(r.summary.some((line) => line.includes('dataflow risk'))).toBe(false);
   });
 
   it('flags new high-CC function as risky on file modification', async () => {

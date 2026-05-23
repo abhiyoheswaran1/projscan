@@ -122,7 +122,23 @@ export async function computeReview(
     // but the separator is a defense-in-depth: if a future caller pipes a
     // user-supplied ref here without that verification, refs starting with
     // '-' (e.g. `--upload-pack=evil`) won't be parsed as flags.
-    await runGit(rootPath, ['worktree', 'add', '--detach', '--', worktreeDir, baseSha]);
+    const addWorktree = await runGit(rootPath, [
+      'worktree',
+      'add',
+      '--detach',
+      '--',
+      worktreeDir,
+      baseSha,
+    ]);
+    if (addWorktree.code !== 0) {
+      return unavailable(
+        `Could not check out base ref "${baseRef}" for review: ${gitFailureSummary(addWorktree)}`,
+        options,
+        baseRef,
+        headRef,
+        headSha,
+      );
+    }
     const baseScan = await scanRepository(worktreeDir);
     baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
     basePackageManifests = await readManifests(worktreeDir);
@@ -295,6 +311,7 @@ async function computeNewTaintFlows(
     // real flow. Without it, a base-graph parse failure would surface every
     // pre-existing head flow as "new" and avalanche the verdict to block.
     if (!flow.files.some((f) => touchedFiles.has(f))) continue;
+    if (flow.files.some(isTestLikePath)) continue;
     out.push({
       sourceFn: flow.sourceFn,
       sinkFn: flow.sinkFn,
@@ -334,6 +351,7 @@ async function computeNewDataflowRisks(
     const key = reviewDataflowRiskKey(risk);
     if (baseRiskKeys.has(key)) continue;
     if (!risk.files.some((f) => touchedFiles.has(f))) continue;
+    if (!isReviewBlockingDataflowRisk(risk)) continue;
     out.push({
       kind: risk.kind,
       sourceFn: risk.sourceFn,
@@ -354,6 +372,29 @@ async function computeNewDataflowRisks(
     );
   });
   return out;
+}
+
+
+const BROAD_FILE_IO_REVIEW_SOURCES = new Set(['readFile', 'readFileSync']);
+const BROAD_FILE_IO_REVIEW_SINKS = new Set(['writeFile', 'writeFileSync', 'unlink', 'rm', 'rmSync']);
+
+function isReviewBlockingDataflowRisk(risk: { source: string; sink: string; files: string[] }): boolean {
+  if (risk.files.some(isTestLikePath)) return false;
+  if (BROAD_FILE_IO_REVIEW_SOURCES.has(risk.source)) return false;
+  if (BROAD_FILE_IO_REVIEW_SINKS.has(risk.sink)) return false;
+  return true;
+}
+
+function isTestLikePath(file: string): boolean {
+  const normalized = file.replace(/\\/g, '/');
+  return (
+    normalized.startsWith('test/') ||
+    normalized.startsWith('tests/') ||
+    normalized.includes('/test/') ||
+    normalized.includes('/tests/') ||
+    normalized.includes('/__tests__/') ||
+    /\.(test|spec)\.[^/]+$/.test(normalized)
+  );
 }
 
 function reviewDataflowRiskKey(risk: {
@@ -917,6 +958,12 @@ interface GitResult {
   code: number;
   stdout: string;
   stderr: string;
+}
+
+
+function gitFailureSummary(result: GitResult): string {
+  const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');
+  return message || `git exited with code ${result.code}`;
 }
 
 /**
