@@ -1,4 +1,5 @@
 import { watch as fsWatch, type FSWatcher } from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { scanRepository } from './repositoryScanner.js';
 import { buildCodeGraph, incrementallyUpdateGraph, type CodeGraph } from './codeGraph.js';
@@ -49,8 +50,8 @@ export interface WatchHandle {
  * emit MCP notifications, etc.).
  *
  * Uses node:fs.watch (built-in, no chokidar dep). Caveats:
- *   - On Linux, fs.watch in recursive mode requires Node 20+. We use
- *     recursive: true and rely on that minimum.
+ *   - On Linux Node 18, recursive fs.watch is unavailable; we fall back to
+ *     watching the current directory tree with non-recursive watchers.
  *   - Some editors (vim, IntelliJ) atomically replace files; fs.watch
  *     reports those as 'rename' events. We treat both 'change' and
  *     'rename' as candidates and re-stat to decide if the file still exists.
@@ -61,7 +62,8 @@ export interface WatchHandle {
  * graph + first `onChange` call complete; close stops the watcher.
  */
 export function startWatcher(rootPath: string, options: WatchOptions): WatchHandle {
-  let watcher: FSWatcher | null = null;
+  const watchers = new Set<FSWatcher>();
+  const watchedDirs = new Set<string>();
   let debounceTimer: NodeJS.Timeout | null = null;
   const pending = new Set<string>();
   let graph: CodeGraph | null = null;
@@ -84,22 +86,93 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
 
   ready.then(() => {
     if (closed) return;
-    try {
-      watcher = fsWatch(rootPath, { recursive: true }, (_eventType, filename) => {
-        if (!filename) return;
-        const rel = filename.split(path.sep).join('/');
-        if (shouldSkip(rel)) return;
-        pending.add(rel);
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => void flush(), DEBOUNCE_MS);
-      });
-      watcher.on('error', (err) => {
-        options.onError?.(err);
-      });
-    } catch (err) {
-      options.onError?.(err as Error);
-    }
+    void startWatching();
   });
+
+  async function startWatching(): Promise<void> {
+    try {
+      const watcher = fsWatch(rootPath, { recursive: true }, (_eventType, filename) => {
+        if (!filename) return;
+        enqueueChange(filename.toString().split(path.sep).join('/'));
+      });
+      trackWatcher(watcher);
+    } catch (err) {
+      if (!isRecursiveWatchUnavailable(err)) {
+        options.onError?.(err as Error);
+        return;
+      }
+      try {
+        await watchDirectoryTree(rootPath);
+      } catch (fallbackErr) {
+        options.onError?.(fallbackErr as Error);
+      }
+    }
+  }
+
+  async function watchDirectoryTree(dir: string): Promise<void> {
+    if (closed) return;
+    const relDir = toRelativePath(dir);
+    if (relDir && shouldSkip(relDir)) return;
+    watchDirectory(dir, relDir);
+
+    let entries: import('node:fs').Dirent[];
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    await Promise.all(
+      entries.map(async (entry) => {
+        if (!entry.isDirectory()) return;
+        const childRel = joinRel(relDir, entry.name);
+        if (shouldSkip(childRel)) return;
+        await watchDirectoryTree(path.join(dir, entry.name));
+      }),
+    );
+  }
+
+  function watchDirectory(dir: string, relDir: string): void {
+    if (watchedDirs.has(dir)) return;
+    watchedDirs.add(dir);
+    const watcher = fsWatch(dir, (_eventType, filename) => {
+      if (!filename) return;
+      const name = filename.toString();
+      const rel = joinRel(relDir, name.split(path.sep).join('/'));
+      enqueueChange(rel);
+      void maybeWatchNewDirectory(path.join(dir, name), rel);
+    });
+    trackWatcher(watcher);
+  }
+
+  async function maybeWatchNewDirectory(abs: string, rel: string): Promise<void> {
+    if (closed || shouldSkip(rel)) return;
+    try {
+      const st = await fs.stat(abs);
+      if (st.isDirectory()) await watchDirectoryTree(abs);
+    } catch {
+      // Deletions and atomic renames can race the stat; the changed path
+      // remains queued so the graph still drops deleted files.
+    }
+  }
+
+  function trackWatcher(watcher: FSWatcher): void {
+    watchers.add(watcher);
+    watcher.on('error', (err) => {
+      options.onError?.(err);
+    });
+  }
+
+  function enqueueChange(rel: string): void {
+    if (shouldSkip(rel)) return;
+    pending.add(rel);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => void flush(), DEBOUNCE_MS);
+  }
+
+  function toRelativePath(abs: string): string {
+    return path.relative(rootPath, abs).split(path.sep).join('/');
+  }
 
   async function flush(): Promise<void> {
     if (closed || inFlightPromise || !graph) {
@@ -143,7 +216,9 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
     close: () => {
       closed = true;
       if (debounceTimer) clearTimeout(debounceTimer);
-      if (watcher) watcher.close();
+      for (const watcher of watchers) watcher.close();
+      watchers.clear();
+      watchedDirs.clear();
     },
     get closed(): Promise<void> {
       // Resolve once any in-flight flush has finished. The flush itself
@@ -158,6 +233,20 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
     },
     ready,
   };
+}
+
+function isRecursiveWatchUnavailable(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as NodeJS.ErrnoException).code;
+  return (
+    code === 'ERR_FEATURE_UNAVAILABLE_ON_PLATFORM' ||
+    err.message.includes('recursive watch unavailable') ||
+    err.message.includes('recursive option is not supported')
+  );
+}
+
+function joinRel(dir: string, name: string): string {
+  return dir ? `${dir}/${name}` : name;
 }
 
 function shouldSkip(rel: string): boolean {
