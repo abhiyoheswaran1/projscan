@@ -21,6 +21,7 @@ import { auditTool } from './tools/audit.js';
 import { upgradeTool } from './tools/upgrade.js';
 import { coverageTool } from './tools/coverage.js';
 import { graphTool } from './tools/graph.js';
+import { semanticGraphTool } from './tools/semanticGraph.js';
 import { couplingTool } from './tools/coupling.js';
 import { workspacesTool } from './tools/workspaces.js';
 import { prDiffTool } from './tools/prDiff.js';
@@ -34,6 +35,7 @@ import { memoryTool } from './tools/memory.js';
 import { workspaceGraphTool } from './tools/workspaceGraph.js';
 import { applyFixTool } from './tools/applyFix.js';
 import { taintTool } from './tools/taint.js';
+import { dataflowTool } from './tools/dataflow.js';
 import { costSummaryTool } from './tools/costSummary.js';
 import { reviewWatchTool } from './tools/reviewWatch.js';
 import { pluginTool } from './tools/plugin.js';
@@ -64,6 +66,7 @@ const tools: McpTool[] = [
   upgradeTool,
   coverageTool,
   graphTool,
+  semanticGraphTool,
   couplingTool,
   workspacesTool,
   prDiffTool,
@@ -77,6 +80,7 @@ const tools: McpTool[] = [
   workspaceGraphTool,
   applyFixTool,
   taintTool,
+  dataflowTool,
   costSummaryTool,
   reviewWatchTool,
   pluginTool,

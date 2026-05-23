@@ -15,6 +15,8 @@ As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interfac
   - [analyze](#analyze)
   - [doctor](#doctor)
   - [hotspots](#hotspots)
+  - [semantic-graph](#semantic-graph)
+  - [dataflow](#dataflow)
   - [search](#search)
   - [file](#file)
   - [ci](#ci)
@@ -121,6 +123,8 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, supply-chain trust, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
 - **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, plugin-policy, and supply-chain evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
+- **`projscan_semantic_graph` / `projscan semantic-graph`** — stable v3 graph contract with file, function, package, and symbol nodes plus imports, exports, definitions, and calls edges. Use it when an agent needs one normalized graph shape instead of several targeted queries.
+- **`projscan_dataflow` / `projscan dataflow`** — direct, propagated, and bridge source-to-sink dataflow risks. Use it for a focused safety pass before touching command execution, raw SQL, filesystem writes, or DOM sinks.
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
@@ -131,7 +135,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 When the agent has changes in flight (or is asked to review someone else's), the question shifts from "what's wrong globally" to "what changed, and does the change introduce risk?"
 
 - **`projscan_pr_diff` / `projscan pr-diff`** *(0.11+)* — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
-- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + `newTaintFlows` and 3.0 `newDataflowRisks` + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
 - **`projscan_preflight --mode before_merge` / `projscan_preflight { mode: "before_merge" }`** — smaller merge gate over review, changed-file health, taint, session, hotspot, and plugin signals. Use it when the agent needs the decision before reading the full review payload.
 
 **Typical agent flow:** start with `projscan_review` for the verdict + summary; if it returns `review` or `block`, drill into the `riskyFunctions` and `newCycles` arrays for specifics.
@@ -152,6 +156,7 @@ Before the agent commits to a refactor (or accepts a name-rename suggestion), th
 
 - **`projscan_impact` / `projscan impact`** *(0.15+)* — transitive blast-radius. File mode returns every file that transitively imports the target, ranked by BFS distance. Symbol mode returns the symbol's definition file(s), the files that directly call it (their callSites match), and the transitive importers of those callers. Cycle-safe; depth-bounded.
 - **`projscan_graph` / `projscan graph`** — direct one-hop queries: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer.
+- **`projscan_semantic_graph` / `projscan semantic-graph`** — full graph projection when a refactor needs file, function, package, and symbol context in one contract.
 
 **Typical agent flow:** before renaming or deleting an export, call `projscan_impact --symbol <name>` to see the dependent set; before deleting a file, call `projscan_impact <path>`. The truncated flag tells you whether the actual blast radius extends beyond what you saw.
 
@@ -249,6 +254,47 @@ Ranks files by **risk** - a combination of git churn, complexity (lines of code)
 - `reasons` - human-readable tags explaining the score
 
 **Fallback:** If the project isn't a git repository, hotspots returns `available: false` with a friendly reason - it does not crash.
+
+### semantic-graph
+
+```bash
+projscan semantic-graph --format json
+```
+
+Returns the 3.0 semantic graph contract: `schemaVersion: 3`, `nodes`, `edges`,
+`metrics`, `truncated`, and `limits`. Nodes use stable prefixes (`file:`,
+`function:`, `package:`, `symbol:`); edges use `defines`, `imports`,
+`imports_package`, `exports`, and `calls`.
+
+Use this when an agent needs one graph-shaped payload for planning, ownership
+analysis, plugin logic, or custom visualization instead of making several
+targeted `projscan_graph` queries.
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--max-nodes <n>` | Maximum nodes to return | 10000 |
+| `--max-edges <n>` | Maximum edges to return | 25000 |
+
+### dataflow
+
+```bash
+projscan dataflow --format json
+```
+
+Reports direct, propagated, and bridge source-to-sink risks over the function
+graph. Bridge risks are the 3.0 addition: a wrapper that calls a source reader
+and a sink wrapper is surfaced even when legacy taint reachability cannot see a
+downstream call path from source to sink.
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--source <name...>` | Add custom source identifiers | Built-ins + config |
+| `--sink <name...>` | Add custom sink identifiers | Built-ins + config |
+| `--max-risks <n>` | Maximum risks to return | 50 |
 
 ### search
 
@@ -1015,6 +1061,8 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 *Structural / agent-native:*
 - `projscan_graph` — structural query over the AST code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Milliseconds on a warm cache.
+- `projscan_semantic_graph` — stable v3 semantic graph with file/function/package/symbol nodes and normalized structural edges.
+- `projscan_dataflow` — direct, propagated, and bridge source-to-sink dataflow risks over the function graph.
 - `projscan_search` — BM25-ranked search. Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Optional semantic mode + sub-file chunking with the `@xenova/transformers` peer dep.
 - `projscan_coupling` — per-file fan-in / fan-out / instability + Tarjan circular-import cycles.
 - `projscan_pr_diff` — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in.
@@ -1329,7 +1377,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 37 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # 39 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

@@ -101,6 +101,14 @@
         "direction"
       ]
     },
+    "projscan_semantic_graph": {
+      "args": [
+        "max_edges",
+        "max_nodes",
+        "max_tokens"
+      ],
+      "required": []
+    },
     "projscan_coupling": {
       "args": [
         "direction",
@@ -220,6 +228,15 @@
       ],
       "required": []
     },
+    "projscan_dataflow": {
+      "args": [
+        "max_risks",
+        "max_tokens",
+        "sinks",
+        "sources"
+      ],
+      "required": []
+    },
     "projscan_cost_summary": {
       "args": [
         "action",
@@ -245,25 +262,108 @@
         "manifest_path"
       ],
       "required": []
+    },
+    "projscan_preflight": {
+      "args": [
+        "base_ref",
+        "head_ref",
+        "max_changed_files",
+        "mode"
+      ],
+      "required": []
+    },
+    "projscan_workplan": {
+      "args": [
+        "base_ref",
+        "enable_plugins",
+        "head_ref",
+        "max_changed_files",
+        "max_tasks",
+        "max_tokens",
+        "mode"
+      ],
+      "required": []
+    },
+    "projscan_release_train": {
+      "args": [
+        "lines",
+        "max_tokens"
+      ],
+      "required": []
+    },
+    "projscan_bug_hunt": {
+      "args": [
+        "max_findings",
+        "max_tokens",
+        "since"
+      ],
+      "required": []
+    },
+    "projscan_evidence_pack": {
+      "args": [
+        "lines",
+        "max_findings",
+        "max_tokens",
+        "website_prompt"
+      ],
+      "required": []
+    },
+    "projscan_regression_plan": {
+      "args": [
+        "level",
+        "lines",
+        "max_targets",
+        "max_tokens"
+      ],
+      "required": []
+    },
+    "projscan_agent_brief": {
+      "args": [
+        "intent",
+        "max_items",
+        "max_tokens"
+      ],
+      "required": []
+    },
+    "projscan_quality_scorecard": {
+      "args": [
+        "max_risks",
+        "max_tokens"
+      ],
+      "required": []
+    },
+    "projscan_adoption": {
+      "args": [
+        "action",
+        "client",
+        "max_tokens"
+      ],
+      "required": []
     }
   },
   "cliCommands": [
+    "agent-brief",
     "analyze",
     "apply-fix",
     "audit",
     "badge",
+    "bug-hunt",
     "ci",
     "coupling",
     "coverage",
+    "dataflow",
     "dependencies",
     "diagram",
     "diff",
     "doctor",
+    "evidence-pack",
     "explain",
     "explain-issue",
     "file",
+    "first-run",
     "fix",
     "fix-suggest",
+    "handoff",
     "hotspots",
     "impact",
     "init",
@@ -273,13 +373,20 @@
     "outdated",
     "plugin",
     "pr-diff",
+    "preflight",
+    "quality-scorecard",
+    "recipes",
+    "regression-plan",
+    "release-train",
     "review",
     "search",
+    "semantic-graph",
     "session",
     "structure",
     "taint",
     "upgrade",
     "watch",
+    "workplan",
     "workspace",
     "workspaces"
   ],

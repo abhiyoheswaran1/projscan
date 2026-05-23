@@ -306,6 +306,43 @@ export function reader() {
     expect(r.verdict).toBe('block');
   });
 
+  it('flags a NEW bridge dataflow risk introduced by the PR and forces verdict to block (3.0)', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/bridge.ts', `export function bridge() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/bridge.ts',
+      `import { exec } from 'child_process';
+
+export function readSecret() {
+  return process.env.TOKEN;
+}
+
+export function runDangerous(value: string | undefined) {
+  exec(value ?? 'echo ok');
+}
+
+export function bridge() {
+  const value = readSecret();
+  return runDangerous(value);
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add bridge risk']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.newTaintFlows).toHaveLength(0);
+    expect(r.newDataflowRisks.some((risk) => risk.kind === 'bridge')).toBe(true);
+    expect(r.verdict).toBe('block');
+    expect(r.summary.some((s) => s.includes('dataflow'))).toBe(true);
+  });
+
   it('reports dependency additions in package.json', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x', dependencies: {} }));

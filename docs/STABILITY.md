@@ -10,11 +10,11 @@ These are versioned. Removing or breaking anything in this list requires a depre
 
 ### CLI
 
-- **Command names**: `agent-brief`, `analyze`, `apply-fix`, `audit`, `badge`, `bug-hunt`, `ci`, `coupling`, `coverage`, `dependencies`, `diagram`, `diff`, `doctor`, `evidence-pack`, `explain`, `explain-issue`, `file`, `first-run`, `fix`, `fix-suggest`, `handoff`, `hotspots`, `impact`, `init`, `install-hook`, `mcp`, `memory`, `outdated`, `plugin`, `preflight`, `pr-diff`, `quality-scorecard`, `recipes`, `release-train`, `regression-plan`, `review`, `search`, `session`, `structure`, `taint`, `upgrade`, `watch`, `workplan`, `workspace`, `workspaces`. New commands may be added; existing names will not be renamed or removed.
+- **Command names**: `agent-brief`, `analyze`, `apply-fix`, `audit`, `badge`, `bug-hunt`, `ci`, `coupling`, `coverage`, `dataflow`, `dependencies`, `diagram`, `diff`, `doctor`, `evidence-pack`, `explain`, `explain-issue`, `file`, `first-run`, `fix`, `fix-suggest`, `handoff`, `hotspots`, `impact`, `init`, `install-hook`, `mcp`, `memory`, `outdated`, `plugin`, `preflight`, `pr-diff`, `quality-scorecard`, `recipes`, `release-train`, `regression-plan`, `review`, `search`, `semantic-graph`, `session`, `structure`, `taint`, `upgrade`, `watch`, `workplan`, `workspace`, `workspaces`. New commands may be added; existing names will not be renamed or removed.
 - **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`, `html`. The `--format` flag will continue to accept these names. Individual commands may support only a subset; unsupported combinations fail with a clear diagnostic rather than falling back to a different renderer. Per-format guarantees:
-  - **JSON**: top-level `schemaVersion` is stable and is `2` for projscan 2.x. Data keys (`issues`, `hotspots`, `coverage`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
+  - **JSON**: existing report-level `schemaVersion` values remain stable for their report families. The 3.0 semantic graph contract uses `schemaVersion: 3`. Data keys (`issues`, `hotspots`, `coverage`, `nodes`, `edges`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
   - **SARIF**: schema is the [SARIF 2.1.0 spec](https://sarifweb.azurewebsites.net/). We are bound by it.
   - **Markdown**: section headings are stable. Whitespace and column widths inside tables are not.
   - **HTML** *(0.16+)*: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
@@ -23,23 +23,25 @@ These are versioned. Removing or breaking anything in this list requires a depre
 ### MCP server
 
 - **Protocol versions advertised**: `2025-03-26` (current), with backward negotiation for `2024-11-05`. We will continue to support at least one prior protocol version when we move to a newer one.
-- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_explain`, `projscan_file`, `projscan_structure`, `projscan_dependencies`, `projscan_outdated`, `projscan_audit`, `projscan_upgrade`, `projscan_coverage`, `projscan_graph`, `projscan_coupling`, `projscan_workspaces`, `projscan_pr_diff`, `projscan_review`, `projscan_workplan`, `projscan_bug_hunt`, `projscan_release_train`, `projscan_evidence_pack`, `projscan_regression_plan`, `projscan_agent_brief`, `projscan_quality_scorecard`, `projscan_adoption`, `projscan_fix_suggest`, `projscan_explain_issue`, `projscan_impact`, `projscan_search`, `projscan_session`, `projscan_memory`, `projscan_workspace_graph`, `projscan_apply_fix`, `projscan_taint`, `projscan_cost_summary`, `projscan_review_watch`, `projscan_plugin`, `projscan_preflight`. New tools may be added without a major bump; existing names will not be renamed or removed.
+- **Tool names** (via `tools/list`): `projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_explain`, `projscan_file`, `projscan_structure`, `projscan_dependencies`, `projscan_outdated`, `projscan_audit`, `projscan_upgrade`, `projscan_coverage`, `projscan_graph`, `projscan_semantic_graph`, `projscan_coupling`, `projscan_workspaces`, `projscan_pr_diff`, `projscan_review`, `projscan_workplan`, `projscan_bug_hunt`, `projscan_release_train`, `projscan_evidence_pack`, `projscan_regression_plan`, `projscan_agent_brief`, `projscan_quality_scorecard`, `projscan_adoption`, `projscan_fix_suggest`, `projscan_explain_issue`, `projscan_impact`, `projscan_search`, `projscan_session`, `projscan_memory`, `projscan_workspace_graph`, `projscan_apply_fix`, `projscan_taint`, `projscan_dataflow`, `projscan_cost_summary`, `projscan_review_watch`, `projscan_plugin`, `projscan_preflight`. New tools may be added without a major bump; existing names will not be renamed or removed.
 - **Input schemas**: documented argument names and types are stable. New optional arguments may be added; existing ones will not change name or type, and required arguments will not become required mid-release-line.
 - **Output shapes**: top-level keys returned by each tool are stable. New optional fields may appear; existing fields will not change name, type, or semantic meaning. Pagination cursors are stable across a single major.
 - **Review contract intelligence**: `projscan_review.contractChanges` is optional and additive. Entries use stable `kind`, `file`, `symbol`, `before`, `after`, `confidence`, and `why` fields when present.
+- **Semantic graph contract**: `projscan_semantic_graph` returns `schemaVersion: 3` with stable `nodes`, `edges`, `metrics`, `truncated`, and `limits` top-level keys. Node ids are stable within a graph build and use `file:`, `function:`, `package:`, and `symbol:` prefixes.
+- **Dataflow risk contract**: `projscan_dataflow` returns `available`, `riskCount`, `risks`, `effectiveSources`, and `effectiveSinks`. `projscan_review.newDataflowRisks` is additive and currently reports bridge-helper risks not represented by legacy `newTaintFlows`.
 - **Tool manifest**: `dist/tool-manifest.json` is shipped on every release as a GitHub Release asset. External consumers can pin to `releases/download/v<version>/tool-manifest.json` and rely on the schema (`name`, `version`, `mcpProtocolVersion`, `toolCount`, `tools[{name, description, inputSchema}]`).
-- **Resource URIs**: `projscan://health`, `projscan://hotspots`, `projscan://structure`, `projscan://session/summary`, `projscan://handoff`, `projscan://risk-now`. Resource payloads are JSON. New optional fields may appear; existing URI names will not be renamed or repurposed in 2.x.
+- **Resource URIs**: `projscan://health`, `projscan://hotspots`, `projscan://structure`, `projscan://session/summary`, `projscan://handoff`, `projscan://risk-now`. Resource payloads are JSON. New optional fields may appear; existing URI names will not be renamed or repurposed in 3.x.
 
 ### Configuration
 
 - **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`. New keys may be added; existing keys will not change name or type.
-- **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. The name remains stable in 2.x as the explicit local-code trust gate. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
+- **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. The name remains stable in 3.x as the explicit local-code trust gate. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
 
 ### Plugin API
 
 Starting in 2.0, `.projscan-plugins/*.projscan-plugin.json` manifests with
 `schemaVersion: 1` are stable for local analyzer and reporter plugins. New
-optional manifest fields may be added in 2.x; existing required fields keep
+optional manifest fields may be added in 3.x; existing required fields keep
 their names and types.
 
 Analyzer plugins export `check(rootPath, files)` and return `Issue[]`. Reporter
