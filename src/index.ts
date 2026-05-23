@@ -64,6 +64,16 @@ export { computeEvidencePack } from './core/releaseEvidence.js';
 export { computeRegressionPlan } from './core/regressionPlan.js';
 export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
+export { computeFirstRunDiagnostics, getMcpConfigGuide, getWorkflowRecipes } from './core/adoption.js';
+export type {
+  AgentWorkflowRecipe,
+  FirstRunDiagnostic,
+  FirstRunReport,
+  McpConfigCatalog,
+  McpConfigGuide,
+  McpClientId,
+  WorkflowRecipeCatalog,
+} from './core/adoption.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';

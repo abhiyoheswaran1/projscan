@@ -64,6 +64,10 @@ The machine-readable manifest schema lives at
 [`docs/plugin.schema.json`](plugin.schema.json). The examples under
 [`docs/examples/plugins/`](examples/plugins/) are tested in CI.
 
+For packaged examples you can copy into a repo, see the
+[Plugin Gallery](PLUGIN-GALLERY.md). It includes policy, team health, security,
+and release-readiness examples.
+
 ## Scaffold
 
 Use `plugin init` to create a minimal local plugin without writing the manifest

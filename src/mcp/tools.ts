@@ -45,6 +45,7 @@ import { evidencePackTool } from './tools/evidencePack.js';
 import { regressionPlanTool } from './tools/regressionPlan.js';
 import { agentBriefTool } from './tools/agentBrief.js';
 import { qualityScorecardTool } from './tools/qualityScorecard.js';
+import { adoptionTool } from './tools/adoption.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -87,6 +88,7 @@ const tools: McpTool[] = [
   regressionPlanTool,
   agentBriefTool,
   qualityScorecardTool,
+  adoptionTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

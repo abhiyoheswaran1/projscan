@@ -43,6 +43,7 @@ import { registerEvidencePack } from './commands/evidencePack.js';
 import { registerRegressionPlan } from './commands/regressionPlan.js';
 import { registerAgentBrief } from './commands/agentBrief.js';
 import { registerQualityScorecard } from './commands/qualityScorecard.js';
+import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -87,6 +88,8 @@ registerEvidencePack();
 registerRegressionPlan();
 registerAgentBrief();
 registerQualityScorecard();
+registerRecipes();
+registerFirstRun();
 registerHelp();
 
 program.parse();

@@ -3,6 +3,7 @@ import path from 'node:path';
 import chalk from 'chalk';
 
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import { getMcpConfigGuide, isMcpClientId, MCP_CLIENT_IDS, type McpConfigCatalog, type McpConfigGuide } from '../../core/adoption.js';
 
 /**
  * `projscan init` (1.6+) — scaffold `.projscanrc.json` for new
@@ -10,7 +11,7 @@ import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSu
  * against the suggested defaults instead of overwriting.
  */
 export function registerInit(): void {
-  program
+  const init = program
     .command('init')
     .description('Scaffold .projscanrc.json with sensible defaults (1.6+)')
     .option('--force', 'overwrite an existing .projscanrc.json (default: refuse)')
@@ -25,6 +26,28 @@ export function registerInit(): void {
         console.error(chalk.red(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
+    });
+
+  init
+    .command('mcp')
+    .description('Print ready-to-paste MCP client config snippets')
+    .option('--client <client>', `client: ${MCP_CLIENT_IDS.join(', ')}`, 'all')
+    .action(async (opts: { client?: string }) => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('init mcp');
+      const client = opts.client ?? 'all';
+      if (!isMcpClientId(client)) {
+        console.error(chalk.red(`Unsupported --client ${client}.`));
+        console.error(chalk.dim(`Supported clients: ${MCP_CLIENT_IDS.join(', ')}`));
+        process.exit(1);
+      }
+      const guide = getMcpConfigGuide(client);
+      if (format === 'json') {
+        console.log(JSON.stringify(guide, null, 2));
+        return;
+      }
+      printMcpGuide(guide);
     });
 }
 
@@ -74,4 +97,29 @@ function prefixIndent(text: string, indent: string): string {
     .split('\n')
     .map((l) => indent + l)
     .join('\n');
+}
+
+function printMcpGuide(guide: McpConfigCatalog | McpConfigGuide): void {
+  console.log('');
+  console.log(chalk.bold('MCP Client Config'));
+  console.log(chalk.dim('────────────────────────────────────────'));
+  console.log(`  install: ${chalk.cyan(guide.install.command)}`);
+  console.log(`  server : ${chalk.cyan(guide.install.mcpServerCommand)}`);
+  console.log('');
+
+  if (guide.client === 'all') {
+    for (const config of guide.configs) printSingleGuide(config);
+    return;
+  }
+  printSingleGuide(guide);
+}
+
+function printSingleGuide(guide: McpConfigGuide): void {
+  console.log(chalk.bold(`  ${guide.displayName}`));
+  console.log(chalk.dim(`  ${guide.whereToPaste}`));
+  console.log(prefixIndent(guide.configText, '    '));
+  if (guide.notes.length > 0) {
+    console.log(chalk.dim(`    note: ${guide.notes.join(' ')}`));
+  }
+  console.log('');
 }

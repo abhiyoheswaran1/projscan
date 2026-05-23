@@ -53,6 +53,11 @@ describe('npm pack smoke test', () => {
       expect(listing).toContain('package/docs/examples/plugins/policy.mjs');
       expect(listing).toContain('package/docs/examples/plugins/team-radar.projscan-plugin.json');
       expect(listing).toContain('package/docs/examples/plugins/team-radar.mjs');
+      expect(listing).toContain('package/docs/PLUGIN-GALLERY.md');
+      expect(listing).toContain('package/docs/examples/plugins/security-radar.projscan-plugin.json');
+      expect(listing).toContain('package/docs/examples/plugins/security-radar.mjs');
+      expect(listing).toContain('package/docs/examples/plugins/release-readiness.projscan-plugin.json');
+      expect(listing).toContain('package/docs/examples/plugins/release-readiness.mjs');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

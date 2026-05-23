@@ -77,6 +77,22 @@ function printConsoleReport(report: PreflightReport): void {
   console.log(color(`Preflight: ${report.verdict}`));
   console.log(report.summary);
 
+  if (report.requiredChecks.length > 0) {
+    console.log('');
+    console.log(chalk.bold('Required checks'));
+    for (const check of report.requiredChecks) {
+      const statusColor =
+        check.status === 'fail'
+          ? chalk.red
+          : check.status === 'warn'
+            ? chalk.yellow
+            : check.status === 'pass'
+              ? chalk.green
+              : chalk.dim;
+      console.log(`- ${check.name}: ${statusColor(check.status)} ${chalk.dim(check.reason)}`);
+    }
+  }
+
   if (report.reasons.length > 0) {
     console.log('');
     console.log(chalk.bold('Reasons'));
@@ -93,4 +109,7 @@ function printConsoleReport(report: PreflightReport): void {
       console.log(`- ${action.command ?? action.tool ?? action.label}`);
     }
   }
+
+  console.log('');
+  console.log(chalk.dim('For agent workflows, run `projscan workplan --mode before_edit --format json` or `projscan recipes`.'));
 }

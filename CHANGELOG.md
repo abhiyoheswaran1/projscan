@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.9.0] — 2026-05-23 — "Adoption Layer"
+
+### Added
+
+- `projscan init mcp` now prints ready-to-paste MCP client configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
+- `projscan recipes` now prints adoption workflow recipes for before-edit, bug-hunt, release approval, handoff, and pre-merge agent loops.
+- `projscan first-run` now diagnoses first-run setup across Node.js, package metadata, Git state, `.projscanrc`, Tree-sitter runtime presence, local plugin manifests, and MCP stdio startup.
+- `projscan_adoption` exposes the same MCP configuration snippets, workflow recipes, and first-run diagnostics to agents through one structured MCP tool.
+- Added a packaged Plugin Gallery with policy, team health, security radar, and release readiness examples.
+
+### Changed
+
+- `projscan doctor` console output now ends with adoption-oriented next commands for preflight, bug-hunt, and recipe discovery while keeping machine-readable formats unchanged.
+- `projscan preflight` console output now shows required checks and an agent-workflow follow-up while keeping the JSON report shape unchanged.
+- README, Guide, Stability, package smoke tests, and website prompt copy now describe the adoption-layer workflows and 37-tool MCP surface.
+
 ## [2.8.0] — 2026-05-22 — "Agent Mission Control"
 
 ### Added

@@ -214,6 +214,11 @@ export function reportHealth(
     );
   }
 
+  console.log(header('Next best commands'));
+  console.log(`  ${chalk.cyan('projscan preflight --mode before_edit --format json')} ${chalk.dim('for an agent-sized safety gate')}`);
+  console.log(`  ${chalk.cyan('projscan bug-hunt --format json')} ${chalk.dim('for a ranked fix queue')}`);
+  console.log(`  ${chalk.cyan('projscan recipes')} ${chalk.dim('for repeatable agent workflows')}`);
+
   console.log('');
 }
 

@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-18.
+Last reviewed 2026-05-23.
 
 ---
 
@@ -53,37 +53,35 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 2.1.0 (2026)
+### Now — 2.9.0 (2026)
 
-**2.1.0 "Agent Trust"** turns the platform into a safety gate for coding
-agents:
+**2.9.0 "Adoption Layer"** makes the 2.x agent platform easier to adopt:
 
-- `projscan preflight` / `projscan_preflight` answer `proceed`, `caution`, or
-  `block` with evidence and suggested next tool calls.
-- MCP resources `projscan://session/summary`, `projscan://handoff`, and
-  `projscan://risk-now` expose coordination risk for multi-agent sessions.
-- `projscan plugin init` and `projscan plugin test` make the 2.0 plugin
-  platform practical to author and verify.
-- `projscan_review.contractChanges` surfaces exported symbol and package
-  entrypoint changes before agents merge unsafe public API edits.
+- `projscan init mcp` generates ready-to-paste MCP snippets for popular agent
+  clients.
+- `projscan recipes` documents repeatable before-edit, bug-hunt, approval,
+  handoff, and pre-merge workflows.
+- `projscan first-run` diagnoses Node, package metadata, Git, config,
+  Tree-sitter runtime, plugins, and MCP startup.
+- `projscan_adoption` exposes setup snippets, recipes, and first-run diagnostics
+  to agents.
+- The Plugin Gallery packages policy, team health, security radar, and release
+  readiness examples.
 
-### Recently Completed — 2.0.0 (2026)
+### Recently Completed — 2.8.0 (2026)
 
-The agent-substrate arc (1.4 → 2.0) is complete: 11 languages, long-running PR watch with per-bucket deltas, intent-grounded review, severity drift, atomic-saved session state, cost-summary streaming, and a stable local analyzer/reporter plugin API.
+**2.8.0 "Agent Mission Control"** added workplans, bug-hunt queues, product
+readiness, evidence packs, regression planning, compact agent briefs, and
+quality scorecards.
 
-**2.0.0 "Plugin Platform"** commits the platform contract.
+### Next — 3.0.0
 
-- **Plugin API.** Third parties write `.projscan-plugin.json` declaring an analyzer or reporter; projscan dispatches via a stable interface. `projscan plugin list` for discovery. Turns projscan from a tool into a substrate other tools build on. Analyzer plugins and CLI reporter plugins for `doctor`, `analyze`, and `ci` are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
-- Deprecated regex extractors (`extractImports` / `extractExports`, marked `@deprecated` in 0.17) are removed.
-- JSON output includes `schemaVersion: 2` at the top level for machine consumers.
-- `LanguageId` is plugin-extensible; `BuiltinLanguageId` names the bundled adapters.
-- Custom presentation, white-label reports, and team-branded output live in reporter plugins; the built-in HTML reporter remains the default core renderer.
-
-### Next — 2.x
-
-- Deepen review-time dataflow where it helps agents make safer edits.
-- Add plugin ergonomics only where the stable contract needs clearer tooling.
-- Keep MCP tool payloads structured and budget-aware; keep custom human presentation in reporter plugins.
+- Deepen review-time CFG/dataflow where it helps agents make safer edits.
+- Define a stable semantic graph contract for agents and plugins.
+- Expand cross-repo impact around package and ownership boundaries.
+- Add plugin API v2 only if richer graph/read access requires it.
+- Build a golden regression corpus across languages so graph quality is
+  measurable before the major boundary.
 
 ## Non-goals
 
@@ -114,6 +112,8 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **2.9.0** (2026-05-23) | Adoption Layer | MCP client config snippets, workflow recipes, first-run diagnostics, adoption MCP tool, plugin gallery, and console guidance polish |
+| **2.8.0** (2026-05-22) | Agent Mission Control | Workplans, bug-hunt queues, release readiness, evidence packs, regression plans, agent briefs, and quality scorecards |
 | **2.0.0** (2026-05-18) | Plugin Platform | Stable local analyzer/reporter plugin contract, manifest schema and tested examples, CLI JSON `schemaVersion: 2`, extensible `LanguageId`, and removal of deprecated regex import/export helpers |
 | **1.11.0** (2026-05-18) | Reporter Plugins | Reporter plugin preview for CLI output (`--reporter` on `doctor`, `analyze`, and `ci`), reporter manifest validation through `projscan_plugin`, and refreshed README media with a macOS-style terminal demo |
 | **1.10.0** (2026-05-13) | RC for 2.0 | Analyzer plugin API preview behind PROJSCAN_PLUGINS_PREVIEW flag (`projscan_plugin` MCP tool, `projscan plugin` CLI, `.projscan-plugins/*.projscan-plugin.json` schema); live cost-summary streaming with `notifications/projscan/cost_delta`; five 1.9-deferred fixes (applyFix rollback dir handling, incrementalUpdateGraph context staleness, changedFiles maxBuffer surfacing, taint per-step frontier cap, watcher.close mid-flush) |

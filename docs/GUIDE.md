@@ -114,6 +114,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
+- **`projscan_adoption` / `projscan init mcp` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, repeatable agent workflow recipes, and setup diagnostics without mutating the repo.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
@@ -1022,6 +1023,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_bug_hunt` — prioritized bug-hunt fix queue with per-target verification.
 - `projscan_agent_brief` — compact next-agent context packet with focus items, guardrails, repo context, and suggested next actions.
 - `projscan_quality_scorecard` — dimensioned quality view with top risks and verification commands.
+- `projscan_adoption` — adoption helper for MCP client snippets, agent workflow recipes, and first-run diagnostics.
 - `projscan_release_train` — product-line readiness plan with scope and next-action evidence.
 - `projscan_evidence_pack` — approval packet with planning, bug-hunt, workplan, preflight, changelog, and website prompt evidence.
 - `projscan_regression_plan` — smoke/focused/full regression matrix with deduplicated verification commands.
@@ -1327,7 +1329,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 36 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # 37 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

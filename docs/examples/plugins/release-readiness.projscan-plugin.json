@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "name": "release-readiness",
+  "kind": "reporter",
+  "module": "./release-readiness.mjs",
+  "commands": ["doctor", "analyze", "ci"],
+  "description": "Renders doctor, analyze, and ci output as a release approval summary"
+}

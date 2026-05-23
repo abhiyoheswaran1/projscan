@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "name": "security-radar",
+  "kind": "analyzer",
+  "module": "./security-radar.mjs",
+  "category": "security",
+  "description": "Flags common local security review triggers such as committed env files and shell-fetch install scripts"
+}
