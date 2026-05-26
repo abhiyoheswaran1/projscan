@@ -51,6 +51,22 @@ describe('release readiness check', () => {
     expect(report.nextAction.command).toBe('git add . && git commit -m "chore: prepare v2.2.0 release"');
     expect(check(report, 'worktree')?.status).toBe('block');
   });
+
+  it('blocks release tagging from branches other than main', () => {
+    const root = createReleaseFixture();
+
+    const report = createReleaseCheckReport({
+      root,
+      runGates: false,
+      remote: false,
+      gitRunner: fakeGit({ branch: 'fix/release-prep', status: '' }),
+    }) as ReleaseCheckReport;
+
+    expect(report.status).toBe('blocked');
+    expect(report.nextAction.kind).toBe('switch-main');
+    expect(report.nextAction.command).toBe('git switch main && git pull --ff-only origin main');
+    expect(check(report, 'release-branch')?.status).toBe('block');
+  });
 });
 
 interface ReleaseCheckReport {
@@ -101,12 +117,12 @@ function createReleaseFixture(): string {
   return root;
 }
 
-function fakeGit({ status }: { status: string }) {
+function fakeGit({ branch = 'main', status }: { branch?: string; status: string }) {
   return (_root: string, args: string[]) => {
     const command = args.join(' ');
     const responses: Record<string, { ok: boolean; stdout: string; stderr?: string; status?: number }> = {
       'rev-parse --is-inside-work-tree': { ok: true, stdout: 'true\n' },
-      'branch --show-current': { ok: true, stdout: 'main\n' },
+      'branch --show-current': { ok: true, stdout: `${branch}\n` },
       'rev-parse HEAD': { ok: true, stdout: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' },
       'status --short': { ok: true, stdout: status },
       'rev-parse --abbrev-ref --symbolic-full-name @{u}': { ok: true, stdout: 'origin/main\n' },

@@ -244,6 +244,17 @@ function checkGitState(ctx, releaseTag) {
   ctx.gitState.branch = git(ctx, ['branch', '--show-current']).stdout.trim() || null;
   ctx.gitState.head = git(ctx, ['rev-parse', 'HEAD']).stdout.trim() || null;
 
+  addCheck(
+    ctx,
+    'release-branch',
+    'Release branch',
+    ctx.gitState.branch === 'main' ? 'ok' : 'block',
+    ctx.gitState.branch === 'main'
+      ? 'Running from main'
+      : `Release check is running from ${ctx.gitState.branch ?? 'detached HEAD'}; releases must be tagged from main only.`,
+    ctx.gitState.branch === 'main' ? undefined : 'Merge the release PR first, then switch to clean, current main before tagging.',
+  );
+
   const status = git(ctx, ['status', '--short']);
   const dirtyLines = status.stdout.trim().split('\n').filter(Boolean);
   ctx.gitState.dirty = dirtyLines.length > 0;
@@ -371,6 +382,14 @@ function chooseNextAction(ctx, releaseTag) {
       command: releaseTag
         ? `git add . && git commit -m "chore: prepare ${releaseTag} release"`
         : 'git add . && git commit -m "chore: prepare release"',
+    };
+  }
+
+  if (hasCheckBlock(ctx, 'release-branch')) {
+    return {
+      kind: 'switch-main',
+      summary: 'Merge the release PR first, then tag from clean, current main only.',
+      command: 'git switch main && git pull --ff-only origin main',
     };
   }
 

@@ -163,10 +163,13 @@ A release is a four-step ritual now that `.github/workflows/release.yml` does th
    - **Regenerate the dogfood health badge.** Run `npx projscan badge` against the prepped tree. If the letter or score in the README badge changed, update `README.md` to match. **A drop in letter (e.g., A → B) is a release blocker** — fix the underlying signal before tagging. (The badge is a static `img.shields.io/badge` snapshot, not a live endpoint, so it stays consistent until the next release intentionally moves it.)
    - Run `npm run release:check`. It reports version/changelog drift, dirty worktree state, tag state, and the next release action. When there are no metadata or git blockers, it also runs the build, release gate, tests, lint, stability check, SBOM generation, and packed install smoke.
 
-2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review.
+2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review. Wait for CI to pass on the merged `main` commit before tagging.
 
-3. **Tag and push.** From `main`:
+3. **Tag and push.** Tags are allowed from `main` only. Never tag or publish from a feature, fix, release, or temporary branch. From a clean, current `main` checkout, run:
    ```
+   git switch main
+   git pull --ff-only origin main
+   npm run release:check
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
