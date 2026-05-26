@@ -75,6 +75,19 @@ jobs:
         with:
           ref: ${{ steps.pick.outputs.tag }}
 
+      - name: Verify release tag is on main history
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+        run: |
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+          tag_sha="$(git rev-parse "${TAG}^{commit}")"
+          main_sha="$(git rev-parse origin/main)"
+          if ! git merge-base --is-ancestor "$tag_sha" origin/main; then
+            echo "::error::Release tags must be created from main after the release PR is merged. $TAG points at $tag_sha, which is not on origin/main ($main_sha)."
+            exit 1
+          fi
+          echo "$TAG is on origin/main history ($tag_sha; origin/main $main_sha)."
+
       - name: Verify package.json + server.json versions match tag
         env:
           EXPECTED: ${{ steps.pick.outputs.version }}
