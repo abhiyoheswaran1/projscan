@@ -36,6 +36,7 @@ function makeGraph(
   files: GraphFile[],
   edges: Array<[string, string]>,
   symbolDefs: Record<string, string[]> = {},
+  packageImporters: Record<string, string[]> = {},
 ): CodeGraph {
   const localImporters = new Map<string, Set<string>>();
   for (const [importer, imported] of edges) {
@@ -46,9 +47,13 @@ function makeGraph(
   for (const [name, defs] of Object.entries(symbolDefs)) {
     symbolDefsMap.set(name, new Set(defs));
   }
+  const packageImportersMap = new Map<string, Set<string>>();
+  for (const [name, importers] of Object.entries(packageImporters)) {
+    packageImportersMap.set(name, new Set(importers));
+  }
   return {
     files: new Map(files.map((f) => [f.relativePath, f])),
-    packageImporters: new Map(),
+    packageImporters: packageImportersMap,
     localImporters,
     symbolDefs: symbolDefsMap,
     scannedFiles: files.length,
@@ -288,6 +293,36 @@ describe('computeImpact cross-repo (1.6+)', () => {
     expect(r.totalReachableByRepo!).not.toHaveProperty('empty');
     // The local repo's own count is always present.
     expect(r.totalReachableByRepo!['(this repo)']).toBe(0);
+  });
+
+  it('summarizes cross-repo package and ownership boundaries', () => {
+    const local = makeGraph(
+      [file('src/foo.ts', ['foo'])],
+      [],
+      { foo: ['src/foo.ts'] },
+    );
+    const sdk = makeGraph(
+      [file('app/use.ts', [], ['@acme/foo'], ['foo']), file('app/other.ts')],
+      [],
+      {},
+      { '@acme/foo': ['app/use.ts'] },
+    );
+
+    const r = computeImpact(
+      local,
+      { kind: 'symbol', value: 'foo' },
+      { crossRepoGraphs: new Map([['sdk', sdk]]) },
+    );
+
+    expect(r.boundarySummary).toEqual([
+      {
+        repo: 'sdk',
+        packageName: '@acme/foo',
+        owner: 'sdk',
+        files: ['app/use.ts'],
+        reachableFiles: 1,
+      },
+    ]);
   });
 
   it('file-mode cross-repo annotates totalReachableByRepo with the local count only', () => {

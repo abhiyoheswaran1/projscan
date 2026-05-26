@@ -1,4 +1,7 @@
 import { analyzeHotspots } from './hotspotAnalyzer.js';
+import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
+import { computeDataflow } from './dataflow.js';
+import { buildSemanticGraph } from './semanticGraph.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
@@ -9,7 +12,9 @@ import type {
   AgentBriefIntent,
   AgentBriefItem,
   AgentBriefReport,
+  FileEntry,
   FileHotspot,
+  GraphEvidenceSummary,
   HotspotReport,
   Issue,
   PreflightSuggestedAction,
@@ -34,9 +39,10 @@ export async function computeAgentBrief(
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
   const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
   const health = calculateScore(issues);
-  const [riskNow, hotspots] = await Promise.all([
+  const [riskNow, hotspots, graphContext] = await Promise.all([
     safeRiskNow(rootPath),
     safeHotspots(rootPath, scan.files, issues, maxItems),
+    safeGraphContext(rootPath, scan.files),
   ]);
   const allFocus = rankFocus([
     ...issues.slice(0, maxItems * 2).map(issueToFocus),
@@ -57,12 +63,39 @@ export async function computeAgentBrief(
       topDirectories: topDirectories(scan.files),
       touchedFiles: riskNow.touchedFiles.slice(0, 12),
       conflicts: riskNow.conflicts.length,
+      ...(graphContext ? { graph: graphContext } : {}),
     },
     focus,
     guardrails,
     suggestedNextActions: suggestedActions(focus, guardrails),
     ...(allFocus.length > focus.length || riskNow.touchedFiles.length > 12 ? { truncated: true } : {}),
   };
+}
+
+async function safeGraphContext(rootPath: string, files: FileEntry[]): Promise<GraphEvidenceSummary | undefined> {
+  try {
+    const graph = await buildCodeGraph(rootPath, files);
+    const semantic = buildSemanticGraph(graph, { maxNodes: 5_000, maxEdges: 10_000 });
+    const dataflow = computeDataflow(graph, { sources: [], sinks: [] });
+    return {
+      schemaVersion: 1,
+      totalFunctions: semantic.metrics.totalFunctions,
+      totalPackages: semantic.metrics.totalPackages,
+      totalCallEdges: semantic.edges.filter((edge) => edge.kind === 'calls').length,
+      dataflowRisks: dataflow.riskCount,
+      topPackages: topPackagesByImporters(graph),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function topPackagesByImporters(graph: CodeGraph): string[] {
+  return [...graph.packageImporters.entries()]
+    .map(([name, importers]) => ({ name, count: importers.size }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 5)
+    .map((entry) => entry.name);
 }
 
 async function safeRiskNow(rootPath: string): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {

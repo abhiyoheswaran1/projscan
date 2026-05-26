@@ -65,7 +65,7 @@ The machine-readable manifest schema lives at
 [`docs/examples/plugins/`](examples/plugins/) are tested in CI.
 
 For packaged examples you can copy into a repo, see the
-[Plugin Gallery](PLUGIN-GALLERY.md). It includes policy, team health, security,
+[Plugin Gallery](PLUGIN-GALLERY.md). It includes policy, graph-context, team health, security,
 and release-readiness examples.
 
 ## Scaffold
@@ -84,8 +84,8 @@ It refuses to overwrite existing files.
 
 ## Analyzer Module
 
-The module must export a `check(rootPath, files)` function, either as the
-default export or a named export.
+The module must export a `check(rootPath, files, context?)` function, either as the
+default export or a named export. The optional third argument exposes lazy read-only graph helpers for analyzers that need deeper context.
 
 ```js
 export default {
@@ -116,6 +116,14 @@ Required issue fields:
 - `fixAvailable`
 
 Malformed issues are dropped so one bad plugin cannot poison the issue stream.
+
+The analyzer `context` argument currently exposes:
+
+- `getCodeGraph()`: the underlying code graph used by core analysis.
+- `getSemanticGraph()`: the stable v3 semantic graph payload.
+- `getDataflow()`: the focused dataflow report.
+
+The packaged `graph-context` example under `docs/examples/plugins/` demonstrates the pattern without requiring a manifest schema bump.
 
 ## Reporter Module
 

@@ -193,6 +193,57 @@ export async function refresh() {
     expect(r.summary.some((line) => line.includes('dataflow risk'))).toBe(false);
   });
 
+  it('does not block review on unrelated generic parse/exec dataflow collisions', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/config.ts', `export function safeParse(raw: string) { return JSON.parse(raw); }
+`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/config.ts',
+      `import { parse } from './version.js';
+
+export function safeParse(raw: string) {
+  return parse(raw);
+}
+`,
+    );
+    await write(
+      'src/version.ts',
+      `const RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
+
+export function parse(version: string) {
+  return RE.exec(version);
+}
+`,
+    );
+    await write(
+      'scripts/smoke.mjs',
+      `export function exec(command) {
+  return process.env.PATH ? command : '';
+}
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add parser and smoke helper']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(
+      r.newDataflowRisks.find(
+        (risk) =>
+          risk.kind === 'bridge' &&
+          risk.bridgeFn === 'safeParse' &&
+          risk.sourceFn === 'exec' &&
+          risk.sinkFn === 'parse',
+      ),
+    ).toBeUndefined();
+    expect(r.summary.some((line) => line.includes('safeParse'))).toBe(false);
+  });
+
   it('flags new high-CC function as risky on file modification', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
@@ -471,6 +522,15 @@ export function bridge() {
     expect(r.available).toBe(true);
     expect(r.newTaintFlows).toHaveLength(0);
     expect(r.newDataflowRisks.some((risk) => risk.kind === 'bridge')).toBe(true);
+    expect(r.graphEvidence).toEqual(
+      expect.objectContaining({
+        schemaVersion: 1,
+        changedFiles: 1,
+        dataflowRisks: 1,
+      }),
+    );
+    expect(r.graphEvidence?.totalFunctions).toBeGreaterThanOrEqual(3);
+    expect(r.graphEvidence?.totalCallEdges).toBeGreaterThanOrEqual(2);
     expect(r.verdict).toBe('block');
     expect(r.summary.some((s) => s.includes('dataflow'))).toBe(true);
   });

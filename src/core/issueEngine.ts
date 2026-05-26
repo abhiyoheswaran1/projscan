@@ -16,7 +16,11 @@ import { check as pythonLinterCheck } from '../analyzers/pythonLinterCheck.js';
 import { check as pythonDependencyRiskCheck } from '../analyzers/pythonDependencyRiskCheck.js';
 import { check as pythonUnusedDependencyCheck } from '../analyzers/pythonUnusedDependencyCheck.js';
 import { loadMemory, recordRun, saveMemory } from './memory.js';
-import { loadPlugins, runAnalyzerPlugins, pluginsEnabled } from './plugins.js';
+import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
+import { computeDataflow } from './dataflow.js';
+import { buildSemanticGraph } from './semanticGraph.js';
+import { loadPlugins, runAnalyzerPlugins, pluginsEnabled, type PluginAnalyzerContext } from './plugins.js';
+import type { DataflowReport, SemanticGraphReport } from '../types.js';
 
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
 
@@ -55,7 +59,7 @@ export async function collectIssues(rootPath: string, files: FileEntry[]): Promi
   if (pluginsEnabled()) {
     const plugins = await loadPlugins(rootPath);
     if (plugins.length > 0) {
-      const pluginIssues = await runAnalyzerPlugins(plugins, rootPath, files);
+      const pluginIssues = await runAnalyzerPlugins(plugins, rootPath, files, createPluginAnalyzerContext(rootPath, files));
       issues.push(...pluginIssues);
     }
   }
@@ -81,6 +85,30 @@ export async function collectIssues(rootPath: string, files: FileEntry[]): Promi
   void recordRunInMemory(rootPath, issues);
 
   return issues;
+}
+
+function createPluginAnalyzerContext(rootPath: string, files: FileEntry[]): PluginAnalyzerContext {
+  let codeGraphPromise: Promise<CodeGraph> | undefined;
+  let semanticGraphPromise: Promise<SemanticGraphReport> | undefined;
+  let dataflowPromise: Promise<DataflowReport> | undefined;
+
+  const getCodeGraph = () => {
+    codeGraphPromise ??= buildCodeGraph(rootPath, files);
+    return codeGraphPromise;
+  };
+
+  return {
+    schemaVersion: 1,
+    getCodeGraph,
+    getSemanticGraph: () => {
+      semanticGraphPromise ??= getCodeGraph().then((graph) => buildSemanticGraph(graph));
+      return semanticGraphPromise;
+    },
+    getDataflow: () => {
+      dataflowPromise ??= getCodeGraph().then((graph) => computeDataflow(graph, { sources: [], sinks: [] }));
+      return dataflowPromise;
+    },
+  };
 }
 
 /**

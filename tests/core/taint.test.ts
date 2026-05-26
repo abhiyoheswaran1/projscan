@@ -242,4 +242,23 @@ export function customDangerousSink(v: string | undefined) { return v; }
     expect(report.truncated).toBe(true);
     expect(report.truncatedSources).toContain('entry');
   });
+
+  it('does not treat RegExp.exec as a default child_process sink', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'regex.ts'),
+      `const RE = /x/;
+
+export function cli() {
+  return parse(process.argv[2] ?? '');
+}
+
+export function parse(value: string) {
+  return RE.exec(value);
+}
+`,
+    );
+    const graph = await buildGraph();
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+    expect(report.flows).toEqual([]);
+  });
 });

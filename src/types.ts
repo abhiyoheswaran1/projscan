@@ -257,7 +257,8 @@ export type PreflightReasonSource =
   | 'changed-files'
   | 'hotspots'
   | 'git'
-  | 'format';
+  | 'format'
+  | 'release';
 
 export interface PreflightReason {
   severity: IssueSeverity;
@@ -279,6 +280,16 @@ export interface PreflightSuggestedAction {
   command?: string;
   tool?: string;
   args?: Record<string, unknown>;
+}
+
+export interface PreflightReleaseScaleEvidence {
+  detected: boolean;
+  changedFiles: number;
+  threshold: number;
+  reviewVerdict?: ReviewReport['verdict'];
+  reviewSummary?: string;
+  concreteBlockers: string[];
+  explanation: string;
 }
 
 export interface PreflightEvidence {
@@ -320,6 +331,7 @@ export interface PreflightEvidence {
     errorIssues: number;
     warningIssues: number;
   };
+  releaseScale?: PreflightReleaseScaleEvidence;
 }
 
 export interface PreflightReport {
@@ -347,7 +359,7 @@ export type WorkplanMode =
 export type WorkplanPriority = 'p0' | 'p1' | 'p2';
 
 export interface WorkplanEvidence {
-  source: PreflightReasonSource | 'coordination' | 'release' | 'verification';
+  source: PreflightReasonSource | 'coordination' | 'release' | 'verification' | 'graph';
   message: string;
   severity?: IssueSeverity;
   file?: string;
@@ -553,6 +565,17 @@ export interface AgentBriefGuardrail {
   command: string;
 }
 
+export interface GraphEvidenceSummary {
+  schemaVersion: 1;
+  changedFiles?: number;
+  changedFunctions?: number;
+  totalFunctions: number;
+  totalPackages: number;
+  totalCallEdges: number;
+  dataflowRisks: number;
+  topPackages: string[];
+}
+
 export interface AgentBriefReport {
   schemaVersion: 1;
   intent: AgentBriefIntent;
@@ -564,11 +587,30 @@ export interface AgentBriefReport {
     topDirectories: Array<{ directory: string; files: number }>;
     touchedFiles: string[];
     conflicts: number;
+    graph?: GraphEvidenceSummary;
   };
   focus: AgentBriefItem[];
   guardrails: AgentBriefGuardrail[];
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
+}
+
+export interface GraphCorpusFixtureMetrics {
+  name: string;
+  fixture: string;
+  files: number;
+  functions: number;
+  packages: number;
+  symbols: number;
+  importEdges: number;
+  callEdges: number;
+  dataflowRisks: number;
+}
+
+export interface GraphCorpusReport {
+  schemaVersion: 1;
+  fixtures: GraphCorpusFixtureMetrics[];
+  totals: Omit<GraphCorpusFixtureMetrics, 'name' | 'fixture'>;
 }
 
 export type QualityScorecardVerdict = 'excellent' | 'healthy' | 'needs_attention' | 'blocked';
@@ -1244,6 +1286,8 @@ export interface ReviewReport {
    * legacy source-to-sink taint flow list. Empty when unavailable or clean.
    */
   newDataflowRisks: ReviewDataflowRisk[];
+  /** 3.5+ — compact graph/dataflow evidence for review consumers. */
+  graphEvidence?: GraphEvidenceSummary;
   /** 'ok' = ship it; 'review' = needs careful look; 'block' = strongly suggests rework. */
   verdict: 'ok' | 'review' | 'block';
   /** One-line bullets explaining the verdict. */
@@ -1298,6 +1342,14 @@ export interface ImpactNode {
   repo?: string;
 }
 
+export interface ImpactBoundarySummary {
+  repo: string;
+  packageName: string;
+  owner: string;
+  files: string[];
+  reachableFiles: number;
+}
+
 export interface ImpactReport {
   available: boolean;
   reason?: string;
@@ -1325,6 +1377,8 @@ export interface ImpactReport {
    * was false or the workspace had no siblings.
    */
   totalReachableByRepo?: Record<string, number>;
+  /** 3.5+ — cross-repo package/ownership boundaries that mention the target. */
+  boundarySummary?: ImpactBoundarySummary[];
   /**
    * True when traversal hit `maxDistance` before exhausting the graph.
    * Items beyond the limit are omitted from `reachable`.

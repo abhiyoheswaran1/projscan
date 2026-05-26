@@ -25,6 +25,14 @@ export const dataflowTool: McpTool = {
         type: 'number',
         description: 'Maximum risks to return. Default 50, max 500.',
       },
+      include_tests: {
+        type: 'boolean',
+        description: 'Include dataflow risks that touch test files. Default false.',
+      },
+      include_broad_file_io: {
+        type: 'boolean',
+        description: 'Include broad readFile/writeFile-style default risks. Default false.',
+      },
       max_tokens: {
         type: 'number',
         description: 'Cap the response to roughly this many tokens.',
@@ -51,7 +59,10 @@ export const dataflowTool: McpTool = {
       typeof args.max_risks === 'number' && Number.isFinite(args.max_risks)
         ? Math.max(1, Math.min(500, Math.floor(args.max_risks)))
         : 50;
-    const report = computeDataflow(graph, { sources, sinks });
+    const report = computeDataflow(graph, { sources, sinks }, {
+      includeTests: args.include_tests === true,
+      includeBroadFileIo: args.include_broad_file_io === true,
+    });
     return {
       ...report,
       risks: report.risks.slice(0, maxRisks),

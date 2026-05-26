@@ -464,7 +464,6 @@ function defaultGitRunner(root, commandArgs, options = {}) {
 function defaultGateRunner(root, command, commandArgs) {
   return spawnSync(command, commandArgs, {
     cwd: root,
-    env: process.env,
     stdio: 'inherit',
     encoding: 'utf8',
     maxBuffer: 30 * 1024 * 1024,

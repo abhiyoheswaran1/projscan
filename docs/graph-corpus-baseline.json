@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "name": "cpp-small",
+      "fixture": "tests/fixtures/cpp-small",
+      "files": 3,
+      "functions": 3,
+      "packages": 2,
+      "symbols": 3,
+      "importEdges": 4,
+      "callEdges": 1,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "csharp-small",
+      "fixture": "tests/fixtures/csharp-small",
+      "files": 2,
+      "functions": 5,
+      "packages": 0,
+      "symbols": 2,
+      "importEdges": 1,
+      "callEdges": 1,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "go-small",
+      "fixture": "tests/fixtures/go-small",
+      "files": 2,
+      "functions": 3,
+      "packages": 1,
+      "symbols": 2,
+      "importEdges": 3,
+      "callEdges": 1,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "kotlin-small",
+      "fixture": "tests/fixtures/kotlin-small",
+      "files": 3,
+      "functions": 4,
+      "packages": 1,
+      "symbols": 4,
+      "importEdges": 1,
+      "callEdges": 0,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "php-small",
+      "fixture": "tests/fixtures/php-small",
+      "files": 2,
+      "functions": 6,
+      "packages": 0,
+      "symbols": 3,
+      "importEdges": 1,
+      "callEdges": 1,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "python-small",
+      "fixture": "tests/fixtures/python-small",
+      "files": 6,
+      "functions": 5,
+      "packages": 1,
+      "symbols": 6,
+      "importEdges": 6,
+      "callEdges": 2,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "rust-small",
+      "fixture": "tests/fixtures/rust-small",
+      "files": 2,
+      "functions": 4,
+      "packages": 0,
+      "symbols": 3,
+      "importEdges": 1,
+      "callEdges": 1,
+      "dataflowRisks": 0
+    },
+    {
+      "name": "swift-small",
+      "fixture": "tests/fixtures/swift-small",
+      "files": 3,
+      "functions": 3,
+      "packages": 2,
+      "symbols": 5,
+      "importEdges": 3,
+      "callEdges": 0,
+      "dataflowRisks": 0
+    }
+  ],
+  "totals": {
+    "files": 23,
+    "functions": 33,
+    "packages": 7,
+    "symbols": 28,
+    "importEdges": 20,
+    "callEdges": 7,
+    "dataflowRisks": 0
+  }
+}

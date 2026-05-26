@@ -14,7 +14,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 - **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`, `html`. The `--format` flag will continue to accept these names. Individual commands may support only a subset; unsupported combinations fail with a clear diagnostic rather than falling back to a different renderer. Per-format guarantees:
-  - **JSON**: existing report-level `schemaVersion` values remain stable for their report families. The 3.0 semantic graph contract uses `schemaVersion: 3`. Data keys (`issues`, `hotspots`, `coverage`, `nodes`, `edges`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
+  - **JSON**: existing report-level `schemaVersion` values remain stable for their report families. The semantic graph contract uses `schemaVersion: 3`; graph-evidence summaries are additive optional fields. Data keys (`issues`, `hotspots`, `coverage`, `nodes`, `edges`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
   - **SARIF**: schema is the [SARIF 2.1.0 spec](https://sarifweb.azurewebsites.net/). We are bound by it.
   - **Markdown**: section headings are stable. Whitespace and column widths inside tables are not.
   - **HTML** *(0.16+)*: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
@@ -28,7 +28,8 @@ These are versioned. Removing or breaking anything in this list requires a depre
 - **Output shapes**: top-level keys returned by each tool are stable. New optional fields may appear; existing fields will not change name, type, or semantic meaning. Pagination cursors are stable across a single major.
 - **Review contract intelligence**: `projscan_review.contractChanges` is optional and additive. Entries use stable `kind`, `file`, `symbol`, `before`, `after`, `confidence`, and `why` fields when present.
 - **Semantic graph contract**: `projscan_semantic_graph` returns `schemaVersion: 3` with stable `nodes`, `edges`, `metrics`, `truncated`, and `limits` top-level keys. Node ids are stable within a graph build and use `file:`, `function:`, `package:`, and `symbol:` prefixes.
-- **Dataflow risk contract**: `projscan_dataflow` returns `available`, `riskCount`, `risks`, `effectiveSources`, and `effectiveSinks`. `projscan_review.newDataflowRisks` is additive and currently reports bridge-helper risks not represented by legacy `newTaintFlows`.
+- **Dataflow risk contract**: `projscan_dataflow` returns `available`, `riskCount`, `risks`, `effectiveSources`, and `effectiveSinks`. Optional `include_tests` and `include_broad_file_io` inputs expand the default focused scan. `projscan_review.newDataflowRisks` is additive and currently reports bridge-helper risks not represented by legacy `newTaintFlows`.
+- **Preflight release-scale evidence**: `projscan_preflight.evidence.releaseScale` is optional and additive. It appears only when a large before-commit/before-merge change blocks on scale/complexity without concrete health, taint, dataflow, plugin, or supply-chain blockers.
 - **Tool manifest**: `dist/tool-manifest.json` is shipped on every release as a GitHub Release asset. External consumers can pin to `releases/download/v<version>/tool-manifest.json` and rely on the schema (`name`, `version`, `mcpProtocolVersion`, `toolCount`, `tools[{name, description, inputSchema}]`).
 - **Resource URIs**: `projscan://health`, `projscan://hotspots`, `projscan://structure`, `projscan://session/summary`, `projscan://handoff`, `projscan://risk-now`. Resource payloads are JSON. New optional fields may appear; existing URI names will not be renamed or repurposed in 3.x.
 
@@ -44,7 +45,7 @@ Starting in 2.0, `.projscan-plugins/*.projscan-plugin.json` manifests with
 optional manifest fields may be added in 3.x; existing required fields keep
 their names and types.
 
-Analyzer plugins export `check(rootPath, files)` and return `Issue[]`. Reporter
+Analyzer plugins export `check(rootPath, files, context?)` and return `Issue[]`. The optional context exposes read-only graph/dataflow helpers and is additive for manifest schema v1. Reporter
 plugins export `render(context)` and return a string for supported CLI commands.
 Plugin execution is local-only: projscan does not fetch remote plugin code.
 

@@ -135,8 +135,8 @@ When the agent first opens a repo, or before starting a refactor, the question i
 When the agent has changes in flight (or is asked to review someone else's), the question shifts from "what's wrong globally" to "what changed, and does the change introduce risk?"
 
 - **`projscan_pr_diff` / `projscan pr-diff`** *(0.11+)* — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
-- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + `newTaintFlows` and 3.0 `newDataflowRisks` + a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
-- **`projscan_preflight --mode before_merge` / `projscan_preflight { mode: "before_merge" }`** — smaller merge gate over review, changed-file health, taint, session, hotspot, and plugin signals. Use it when the agent needs the decision before reading the full review payload.
+- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + `newTaintFlows`, hardened `newDataflowRisks`, compact `graphEvidence`, and a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+- **`projscan_preflight --mode before_merge` / `projscan_preflight { mode: "before_merge" }`** — smaller merge gate over review, changed-file health, taint, dataflow, session, hotspot, plugin, supply-chain, and release-scale signals. `evidence.releaseScale` marks large platform-release sign-off when review blocks on scale/complexity rather than a concrete defect. Use it when the agent needs the decision before reading the full review payload.
 
 **Typical agent flow:** start with `projscan_review` for the verdict + summary; if it returns `review` or `block`, drill into the `riskyFunctions` and `newCycles` arrays for specifics.
 
@@ -261,7 +261,7 @@ Ranks files by **risk** - a combination of git churn, complexity (lines of code)
 projscan semantic-graph --format json
 ```
 
-Returns the 3.0 semantic graph contract: `schemaVersion: 3`, `nodes`, `edges`,
+Returns the stable semantic graph contract: `schemaVersion: 3`, `nodes`, `edges`,
 `metrics`, `truncated`, and `limits`. Nodes use stable prefixes (`file:`,
 `function:`, `package:`, `symbol:`); edges use `defines`, `imports`,
 `imports_package`, `exports`, and `calls`.
@@ -283,10 +283,13 @@ targeted `projscan_graph` queries.
 projscan dataflow --format json
 ```
 
-Reports direct, propagated, and bridge source-to-sink risks over the function
-graph. Bridge risks are the 3.0 addition: a wrapper that calls a source reader
+Reports focused direct, propagated, and bridge source-to-sink risks over the function
+graph. Bridge risks are graph-backed dataflow additions: a wrapper that calls a source reader
 and a sink wrapper is surfaced even when legacy taint reachability cannot see a
-downstream call path from source to sink.
+downstream call path from source to sink. By default, dataflow suppresses test-file paths,
+broad readFile/writeFile-style noise, and JavaScript RegExp.exec false positives.
+
+For release hardening, `npm run check:graph-corpus` compares bundled fixture metrics against `docs/graph-corpus-baseline.json`. The gate fails only when graph coverage drops below the baseline or dataflow risks rise above it.
 
 **Options:**
 
@@ -295,6 +298,8 @@ downstream call path from source to sink.
 | `--source <name...>` | Add custom source identifiers | Built-ins + config |
 | `--sink <name...>` | Add custom sink identifiers | Built-ins + config |
 | `--max-risks <n>` | Maximum risks to return | 50 |
+| `--include-tests` | Include risks that touch test files | false |
+| `--include-broad-file-io` | Include broad default readFile/writeFile-style risks | false |
 
 ### search
 

@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-23.
+Last reviewed 2026-05-26.
 
 ---
 
@@ -53,36 +53,26 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.0 (2026)
+### Now — 3.0.1 (2026)
 
-**3.0.0 "Deep Graph Platform"** gives agents a stable graph contract and deeper review-time dataflow:
+**3.0.1 "Graph Operations Platform"** turns the 3.0 graph contract into an operational agent substrate:
 
-- `projscan_semantic_graph` / `projscan semantic-graph` expose a stable v3 graph
-  with file, function, package, and symbol nodes plus normalized structural
-  edges.
-- `projscan_dataflow` / `projscan dataflow` report direct, propagated, and
-  bridge source-to-sink risks over the function graph.
-- `projscan_review` now surfaces `newDataflowRisks` for bridge-helper patterns
-  and blocks PRs that introduce them.
-- The public API exports `buildSemanticGraph` and `computeDataflow` for plugins,
-  orchestrators, and custom automation.
-- Docs, MCP Registry metadata, and the stability contract now describe the
-  39-tool surface and the v3 graph/dataflow contracts.
+- `projscan_review` carries compact graph evidence alongside verdicts so agents can reason about changed functions, call edges, package pressure, and dataflow-risk counts without pulling the full graph.
+- Workplans and agent briefs consume semantic graph/dataflow context directly and recommend `projscan_semantic_graph` when review evidence needs expansion.
+- `projscan_impact` / `computeImpact` summarize cross-repo package and ownership boundaries when sibling graphs are available.
+- Analyzer plugins can read the code graph, semantic graph, and dataflow report through an optional read-only context while staying on manifest schema v1.
+- A golden graph corpus measures bundled language fixture quality across functions, imports, calls, symbols, packages, and dataflow risks.
+- Dataflow bridge detection is hardened against generic-name false positives before review blocks a merge.
 
-### Recently Completed — 2.9.0 (2026)
+### Recently Completed — 3.0.0 (2026)
 
-**2.9.0 "Adoption Layer"** added MCP client config snippets, workflow recipes,
-first-run diagnostics, the adoption MCP tool, plugin gallery examples, and
-console guidance polish.
+**3.0.0 "Deep Graph Platform"** added the stable v3 semantic graph, dataflow risk engine, review-time bridge-risk blocking, and public graph/dataflow APIs.
 
-### Next — 3.1.0
+### Next — 3.0.x / 3.1.0
 
-- Expand semantic graph consumers: richer review explanations, workplan evidence,
-  and plugin read APIs backed by the v3 graph.
-- Expand cross-repo impact around package and ownership boundaries.
-- Add plugin API v2 only if richer graph/read access requires it.
-- Build a golden regression corpus across languages so graph quality is
-  measurable across releases.
+- Expand boundary-aware impact into richer workspace ownership metadata when projects expose CODEOWNERS or package-owner files.
+- Promote graph corpus checks into CI/release workflows where downstream adopters want repeatable parser/dataflow quality gates.
+- Continue hardening dataflow precision around framework routes, request handlers, and generated-code boundaries.
 
 ## Non-goals
 
@@ -113,6 +103,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.1** (2026-05-26) | Graph Operations Platform | Graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, golden graph corpus, and hardened dataflow precision |
 | **3.0.0** (2026-05-23) | Deep Graph Platform | Stable v3 semantic graph, dataflow risk engine, bridge-helper review blocks, 39-tool MCP surface, and public graph/dataflow APIs |
 | **2.9.0** (2026-05-23) | Adoption Layer | MCP client config snippets, workflow recipes, first-run diagnostics, adoption MCP tool, plugin gallery, and console guidance polish |
 | **2.8.0** (2026-05-22) | Agent Mission Control | Workplans, bug-hunt queues, release readiness, evidence packs, regression plans, agent briefs, and quality scorecards |
