@@ -72,11 +72,71 @@ describe('plugin analyzer pipeline', () => {
     });
   });
 
+  it('passes read-only graph context to analyzer plugins', async () => {
+    process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'policy.mjs'),
+      `export default {
+        check: async (rootPath, files, context) => {
+          const graph = await context.getSemanticGraph();
+          return [{
+            id: 'graph-metrics',
+            title: 'Graph metrics',
+            description: \`semantic graph has \${graph.metrics.totalFunctions} function(s)\`,
+            severity: 'info',
+            category: '',
+            fixAvailable: false,
+          }];
+        },
+      };`,
+    );
+
+    const issues = await collectFixtureIssues();
+
+    expect(issues.find((i) => i.id === 'plugin:policy:graph-metrics')).toMatchObject({
+      title: 'Graph metrics',
+      category: 'custom',
+      severity: 'info',
+    });
+  });
+
   it('plugin errors affect the same score used by doctor and ci', async () => {
     process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
     const issues = await collectFixtureIssues();
     const score = calculateScore(issues);
     expect(score.errors).toBeGreaterThanOrEqual(1);
     expect(score.score).toBeLessThan(100);
+  });
+  it('ships a graph-context example plugin that consumes semantic graph and dataflow', async () => {
+    process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
+    const exampleDir = path.join(process.cwd(), 'docs', 'examples', 'plugins');
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(exampleDir, 'graph-context.projscan-plugin.json'), 'utf-8'),
+    );
+    expect(manifest).toEqual(
+      expect.objectContaining({
+        schemaVersion: 1,
+        name: 'graph-context',
+        kind: 'analyzer',
+        module: './graph-context.mjs',
+      }),
+    );
+
+    await fs.copyFile(
+      path.join(exampleDir, 'graph-context.projscan-plugin.json'),
+      path.join(tmp, '.projscan-plugins', 'graph-context.projscan-plugin.json'),
+    );
+    await fs.copyFile(
+      path.join(exampleDir, 'graph-context.mjs'),
+      path.join(tmp, '.projscan-plugins', 'graph-context.mjs'),
+    );
+
+    const issues = await collectFixtureIssues();
+
+    expect(issues.find((i) => i.id === 'plugin:graph-context:graph-context-summary')).toMatchObject({
+      title: 'Graph context available',
+      category: 'architecture',
+      severity: 'info',
+    });
   });
 });

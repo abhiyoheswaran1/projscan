@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.1] — 2026-05-26 — "Graph Operations Platform"
+
+### Added
+
+- `projscan_review` now includes compact `graphEvidence` so agents can see changed-file count, changed functions, call-edge count, package count, and dataflow-risk count without fetching the full semantic graph.
+- Workplans and agent briefs now consume graph/dataflow context directly, including semantic-graph follow-up commands and compact graph metrics for next-agent handoff.
+- `computeImpact` now includes cross-repo `boundarySummary` evidence for package and ownership boundaries when sibling repository graphs import target-matching packages.
+- Analyzer plugins now receive an optional third `context` argument with lazy read-only `getCodeGraph()`, `getSemanticGraph()`, and `getDataflow()` helpers while keeping manifest schema v1.
+- Added `computeGraphCorpus` to produce deterministic semantic-graph/dataflow quality metrics over bundled language fixtures.
+- Added `npm run check:graph-corpus` plus `docs/graph-corpus-baseline.json` so parser/dataflow fixture regressions fail only when graph coverage drops or risk counts increase.
+- Added a graph-context analyzer plugin example that consumes `context.getSemanticGraph()` and `context.getDataflow()`.
+- Preflight now includes optional `evidence.releaseScale` for large platform changes so agents can distinguish expected scale/complexity sign-off from concrete health, taint, dataflow, plugin, or supply-chain blockers.
+
+### Changed
+
+- Split dataflow and review-time dataflow filtering into smaller internal modules while preserving the public CLI, MCP, and npm surfaces.
+
+### Fixed
+
+- Dataflow bridge detection no longer joins collision-prone generic names such as `parse` and `exec` across unrelated files, fixing false review blockers from impossible `env -> exec` paths.
+- Default dataflow scans now suppress test-file paths, broad file-IO noise, and misidentified JavaScript child-process sinks unless callers explicitly opt into the broader scan.
+
 ## [3.0.0] — 2026-05-23 — "Deep Graph Platform"
 
 ### Added

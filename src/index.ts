@@ -58,7 +58,8 @@ export { getChangedFiles } from './utils/changedFiles.js';
 export { issuesToSarif } from './reporters/sarifReporter.js';
 export { computeReview } from './core/review.js';
 export { buildSemanticGraph } from './core/semanticGraph.js';
-export { computeDataflow } from './core/dataflow.js';
+export { computeDataflow, type DataflowOptions } from './core/dataflow.js';
+export { computeGraphCorpus } from './core/graphCorpus.js';
 export { computeWorkplan } from './core/workplan.js';
 export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
@@ -149,6 +150,8 @@ export type {
   ImportPolicyRule,
   ImpactReport,
   ImpactNode,
+  GraphCorpusFixtureMetrics,
+  GraphCorpusReport,
   DataflowReport,
   DataflowRisk,
   DataflowRiskConfidence,

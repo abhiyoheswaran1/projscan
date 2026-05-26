@@ -20,7 +20,16 @@ export function registerDataflow(): void {
     .option('--source <name...>', 'add a custom source name (repeatable)')
     .option('--sink <name...>', 'add a custom sink name (repeatable)')
     .option('--max-risks <count>', 'maximum risks to return', parsePositiveInt)
-    .action(async (cmdOpts: { source?: string[]; sink?: string[]; maxRisks?: number }) => {
+    .option('--include-tests', 'include dataflow risks that touch test files')
+    .option('--include-broad-file-io', 'include broad readFile/writeFile-style default risks')
+    .action(
+      async (cmdOpts: {
+        source?: string[];
+        sink?: string[];
+        maxRisks?: number;
+        includeTests?: boolean;
+        includeBroadFileIo?: boolean;
+      }) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('dataflow');
@@ -33,7 +42,10 @@ export function registerDataflow(): void {
         const sources = [...(config.taint?.sources ?? []), ...(cmdOpts.source ?? [])];
         const sinks = [...(config.taint?.sinks ?? []), ...(cmdOpts.sink ?? [])];
         const maxRisks = Math.max(1, Math.min(500, cmdOpts.maxRisks ?? 50));
-        const report = computeDataflow(graph, { sources, sinks });
+        const report = computeDataflow(graph, { sources, sinks }, {
+          includeTests: cmdOpts.includeTests === true,
+          includeBroadFileIo: cmdOpts.includeBroadFileIo === true,
+        });
         const shaped = {
           ...report,
           risks: report.risks.slice(0, maxRisks),
@@ -49,7 +61,8 @@ export function registerDataflow(): void {
         console.error(chalk.red(err instanceof Error ? err.message : String(err)));
         process.exit(1);
       }
-    });
+    },
+  );
 }
 
 function printDataflow(report: DataflowReport): void {

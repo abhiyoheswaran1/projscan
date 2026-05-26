@@ -1,5 +1,6 @@
 import type { FunctionInfo } from './ast.js';
 import type { CodeGraph } from './codeGraph.js';
+import { shouldIncludeDataflowRisk, type DataflowRiskFilterContext } from './dataflowFilters.js';
 import {
   DEFAULT_TAINT_SINKS,
   DEFAULT_TAINT_SOURCES,
@@ -10,6 +11,10 @@ import type { DataflowReport, DataflowRisk } from '../types.js';
 
 export interface DataflowOptions {
   maxDepth?: number;
+  /** Include risks whose path touches test files. Default false for signal. */
+  includeTests?: boolean;
+  /** Include broad default readFile/writeFile-style risks. Custom sources/sinks still report. */
+  includeBroadFileIo?: boolean;
 }
 
 interface FnNode {
@@ -29,6 +34,7 @@ interface FnNode {
 interface FnIndex {
   fns: FnNode[];
   byBareName: Map<string, FnNode[]>;
+  importedFilesByFile: Map<string, Set<string>>;
   totalCallSites: number;
 }
 
@@ -39,9 +45,18 @@ export function computeDataflow(
   config: TaintConfig = { sources: [], sinks: [] },
   options: DataflowOptions = {},
 ): DataflowReport {
-  const sources = new Set([...DEFAULT_TAINT_SOURCES, ...(config.sources ?? [])]);
-  const sinks = new Set([...DEFAULT_TAINT_SINKS, ...(config.sinks ?? [])]);
+  const customSources = new Set(config.sources ?? []);
+  const customSinks = new Set(config.sinks ?? []);
+  const sources = new Set([...DEFAULT_TAINT_SOURCES, ...customSources]);
+  const sinks = new Set([...DEFAULT_TAINT_SINKS, ...customSinks]);
   const index = buildFunctionIndex(graph, sources, sinks);
+  const filterContext: DataflowRiskFilterContext = {
+    graph,
+    customSources,
+    customSinks,
+    includeTests: options.includeTests === true,
+    includeBroadFileIo: options.includeBroadFileIo === true,
+  };
   if (index.fns.length === 0 || index.totalCallSites === 0) {
     return {
       available: false,
@@ -63,7 +78,7 @@ export function computeDataflow(
       const key = `${kind}:${flow.sourceFn}:${flow.sinkFn}:${flow.source}:${flow.sink}:${flow.path.join('>')}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      risks.push({
+      const risk: DataflowRisk = {
         key,
         kind,
         severity: 'error',
@@ -75,7 +90,8 @@ export function computeDataflow(
         path: flow.path,
         pathLength: flow.path.length,
         files: flow.files,
-      });
+      };
+      if (shouldIncludeDataflowRisk(risk, filterContext)) risks.push(risk);
     }
   }
 
@@ -111,7 +127,7 @@ export function computeDataflow(
       ...sourcePath.slice(1).map((node) => node.qualName),
       ...sinkPath.slice(1).map((node) => node.qualName),
     ];
-    risks.push({
+    const risk: DataflowRisk = {
       key,
       kind: 'bridge',
       severity: 'error',
@@ -126,7 +142,8 @@ export function computeDataflow(
       sinkPath: sinkPath.map((node) => node.qualName),
       pathLength: Math.max(sourcePath.length, sinkPath.length),
       files,
-    });
+    };
+    if (shouldIncludeDataflowRisk(risk, filterContext, sinkNode.file)) risks.push(risk);
   }
 
   risks.sort(compareRisks);
@@ -149,6 +166,7 @@ function buildFunctionIndex(
 ): FnIndex {
   const fns: FnNode[] = [];
   const byBareName = new Map<string, FnNode[]>();
+  const importedFilesByFile = buildImportedFilesByFile(graph);
   let totalCallSites = 0;
   for (const [file, entry] of graph.files) {
     for (const fn of entry.functions ?? []) {
@@ -160,7 +178,19 @@ function buildFunctionIndex(
       byBareName.set(node.bareName, list);
     }
   }
-  return { fns, byBareName, totalCallSites };
+  return { fns, byBareName, importedFilesByFile, totalCallSites };
+}
+
+function buildImportedFilesByFile(graph: CodeGraph): Map<string, Set<string>> {
+  const importedFilesByFile = new Map<string, Set<string>>();
+  for (const [target, importers] of graph.localImporters) {
+    for (const importer of importers) {
+      const targets = importedFilesByFile.get(importer) ?? new Set<string>();
+      targets.add(target);
+      importedFilesByFile.set(importer, targets);
+    }
+  }
+  return importedFilesByFile;
 }
 
 function functionNode(
@@ -201,7 +231,7 @@ function findReachable(
     const next: FrontierEntry[] = [];
     for (const entry of frontier) {
       for (const callee of entry.node.callees) {
-        const targets = index.byBareName.get(callee) ?? [];
+        const targets = resolveCalleeTargets(entry.node, callee, index);
         for (const target of targets) {
           if (visited.has(target.id)) continue;
           const path = [...entry.path, target];
@@ -215,6 +245,65 @@ function findReachable(
     frontier = next;
   }
   return null;
+}
+
+function resolveCalleeTargets(from: FnNode, callee: string, index: FnIndex): FnNode[] {
+  const targets = index.byBareName.get(callee) ?? [];
+  if (targets.length === 0) return [];
+
+  const sameFile = targets.filter((target) => target.file === from.file);
+  if (sameFile.length > 0) return sameFile;
+
+  const importedFiles = index.importedFilesByFile.get(from.file);
+  if (importedFiles) {
+    const importedTargets = targets.filter((target) => importedFiles.has(target.file));
+    if (importedTargets.length > 0) return importedTargets;
+  }
+
+  // Bare call names such as RegExp.exec, parse, get, run, and handler are
+  // too collision-prone to join across the whole repository. Keep the
+  // conservative global fallback for distinctive names only.
+  if (isCollisionProneCallee(callee)) return [];
+  return targets.length === 1 ? targets : [];
+}
+
+const COLLISION_PRONE_CALLEES = new Set([
+  'add',
+  'build',
+  'check',
+  'close',
+  'compare',
+  'create',
+  'delete',
+  'exec',
+  'execute',
+  'filter',
+  'find',
+  'get',
+  'handle',
+  'handler',
+  'init',
+  'load',
+  'main',
+  'map',
+  'open',
+  'parse',
+  'read',
+  'reduce',
+  'remove',
+  'resolve',
+  'run',
+  'save',
+  'set',
+  'start',
+  'stop',
+  'update',
+  'validate',
+  'write',
+]);
+
+function isCollisionProneCallee(callee: string): boolean {
+  return COLLISION_PRONE_CALLEES.has(callee) || callee.length <= 2;
 }
 
 function pickHit(values: string[], set: Set<string>): string | null {

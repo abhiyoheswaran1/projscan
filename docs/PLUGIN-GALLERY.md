@@ -32,6 +32,14 @@ Files:
 - `docs/examples/plugins/security-radar.projscan-plugin.json`
 - `docs/examples/plugins/security-radar.mjs`
 
+### `graph-context`
+
+Demonstrates analyzer access to the optional graph/dataflow context. It reads the semantic graph and dataflow report through `context.getSemanticGraph()` and `context.getDataflow()` and emits a compact architecture summary issue.
+
+Files:
+- `docs/examples/plugins/graph-context.projscan-plugin.json`
+- `docs/examples/plugins/graph-context.mjs`
+
 ## Reporter Plugins
 
 ### `team-radar`

@@ -174,8 +174,8 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         why: 'Review, taint, and dataflow findings describe merge safety, new risky flows, and structural changes that need explicit handling before handoff.',
         evidence: review.map(reasonToEvidence),
         files: filesFromReasons(review),
-        suggestedTools: ['projscan_review', 'projscan_taint', 'projscan_dataflow'],
-        commands: ['projscan review --format json', 'projscan dataflow --format json', 'projscan preflight --mode before_merge --format json'],
+        suggestedTools: ['projscan_review', 'projscan_semantic_graph', 'projscan_taint', 'projscan_dataflow'],
+        commands: ['projscan review --format json', 'projscan semantic-graph --format json', 'projscan dataflow --format json', 'projscan preflight --mode before_merge --format json'],
         expected: 'The review verdict is ok or the remaining review items are intentionally documented.',
       }),
     );
@@ -354,8 +354,8 @@ function modeTasks(
         why: 'Hardening mode should prove the repo can reject compromised dependencies, unsafe scripts, and known audit findings.',
         evidence: [{ source: 'supply-chain', message: 'hardening mode pairs preflight evidence with release security gates' }],
         files: ['package.json', 'package-lock.json'],
-        suggestedTools: ['projscan_preflight', 'projscan_doctor', 'npm audit'],
-        commands: ['projscan preflight --format json', 'npm audit --audit-level=moderate'],
+        suggestedTools: ['projscan_preflight', 'projscan_doctor', 'projscan_semantic_graph', 'npm audit'],
+        commands: ['projscan preflight --format json', 'projscan semantic-graph --format json', 'npm audit --audit-level=moderate'],
         expected: 'Preflight has no supply-chain blockers and npm audit reports no moderate-or-higher vulnerabilities.',
       }),
     );
@@ -386,8 +386,8 @@ function modeTasks(
         why: 'Commit and merge gates should be based on changed-file evidence, review verdict, taint status, and focused verification commands.',
         evidence: [{ source: 'review', message: `${mode} mode composes review, preflight, and changed-file checks` }],
         files: touchedFiles,
-        suggestedTools: ['projscan_preflight', 'projscan_review'],
-        commands: [`projscan preflight --mode ${mode} --format json`, 'npm test', 'npm run lint'],
+        suggestedTools: ['projscan_preflight', 'projscan_review', 'projscan_semantic_graph'],
+        commands: [`projscan preflight --mode ${mode} --format json`, 'projscan semantic-graph --format json', 'npm test', 'npm run lint'],
         expected: 'Preflight is proceed or the remaining caution/block reasons are fixed before handoff.',
       }),
     );

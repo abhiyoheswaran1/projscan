@@ -64,4 +64,122 @@ export function bridge() {
     });
     expect(bridge?.files).toEqual(['src/bridge.ts']);
   });
+
+  it('does not join generic parse/exec names across unrelated files', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'config.ts'),
+      `import { parse } from './version.js';
+
+export function safeParse(raw: string) {
+  return parse(raw);
+}
+`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'version.ts'),
+      `const RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
+
+export function parse(version: string) {
+  return RE.exec(version);
+}
+`,
+    );
+    await fs.mkdir(path.join(tmp, 'scripts'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'scripts', 'smoke.mjs'),
+      `export function exec(command) {
+  return process.env.PATH ? command : '';
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.available).toBe(true);
+    expect(
+      report.risks.find(
+        (risk) =>
+          risk.kind === 'bridge' &&
+          risk.bridgeFn === 'safeParse' &&
+          risk.sourceFn === 'exec' &&
+          risk.sinkFn === 'parse',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('suppresses broad default file IO risks unless explicitly requested', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'cache.ts'),
+      `import fs from 'node:fs/promises';
+
+export async function rewrite() {
+  const raw = await fs.readFile('input.txt', 'utf-8');
+  await fs.writeFile('output.txt', raw, 'utf-8');
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    expect(report.risks).toEqual([]);
+
+    const verbose = computeDataflow(graph, { sources: [], sinks: [] }, { includeBroadFileIo: true });
+    expect(
+      verbose.risks.some(
+        (risk) => risk.source === 'readFile' && risk.sink === 'writeFile' && risk.sourceFn === 'rewrite',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat RegExp.exec as a child_process exec sink', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'regex.ts'),
+      `export function parseVersion() {
+  const raw = process.env.VERSION;
+  return /^v?\\d+$/.exec(raw ?? '');
+}
+`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'shell.ts'),
+      `import { exec } from 'node:child_process';
+
+export function runShell() {
+  const command = process.env.CMD;
+  exec(command ?? 'echo ok');
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks.find((risk) => risk.sourceFn === 'parseVersion')).toBeUndefined();
+    expect(
+      report.risks.some(
+        (risk) => risk.sourceFn === 'runShell' && risk.source === 'env' && risk.sink === 'exec',
+      ),
+    ).toBe(true);
+  });
+
+  it('excludes test-file risks by default with an explicit opt-in', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'runner.test.ts'),
+      `import { exec } from 'node:child_process';
+
+export function testRunner() {
+  const command = process.env.CMD;
+  exec(command ?? 'echo ok');
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    expect(report.risks).toEqual([]);
+
+    const withTests = computeDataflow(graph, { sources: [], sinks: [] }, { includeTests: true });
+    expect(withTests.risks.some((risk) => risk.sourceFn === 'testRunner')).toBe(true);
+  });
 });

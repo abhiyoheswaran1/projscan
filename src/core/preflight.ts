@@ -15,6 +15,7 @@ import type {
   PreflightEvidence,
   PreflightMode,
   PreflightReason,
+  PreflightReleaseScaleEvidence,
   PreflightReport,
   PreflightRequiredCheck,
   PreflightSuggestedAction,
@@ -50,6 +51,7 @@ interface PreflightReviewEvidence {
   summary?: string;
   reason?: string;
   newTaintFlows?: number;
+  newDataflowRisks?: number;
 }
 
 const DEFAULT_MAX_CHANGED_FILES = 50;
@@ -71,6 +73,17 @@ export async function computePreflight(
   const session = await safeSession(rootPath);
   const hotspots = await safeHotspots(rootPath, scan.files, issues);
   const review = await safeReview(rootPath, mode, options);
+  const maxChangedFiles = options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES;
+  const supplyChain = countSupplyChainIssues(issues);
+  const releaseScale = buildReleaseScaleEvidence({
+    mode,
+    issues,
+    changedFiles,
+    health,
+    review,
+    supplyChain,
+    maxChangedFiles,
+  });
   const reasons = buildPreflightReasons({
     mode,
     issues,
@@ -79,10 +92,10 @@ export async function computePreflight(
     session,
     hotspots,
     review,
-    maxChangedFiles: options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES,
+    releaseScale,
+    maxChangedFiles,
   });
   const verdict = decidePreflightVerdict(reasons);
-  const supplyChain = countSupplyChainIssues(issues);
   const evidence = buildEvidence({
     health,
     changedFiles,
@@ -91,6 +104,7 @@ export async function computePreflight(
     issues,
     pluginsEnabledForRun: options.enablePlugins === true || pluginsEnabled(),
     review,
+    releaseScale,
   });
   const truncated =
     evidence.session?.truncated === true ||
@@ -103,7 +117,7 @@ export async function computePreflight(
     summary: '',
     reasons,
     evidence,
-    requiredChecks: buildRequiredChecks(mode, health, changedFiles, review, supplyChain),
+    requiredChecks: buildRequiredChecks(mode, health, changedFiles, review, supplyChain, releaseScale),
     suggestedNextActions: buildSuggestedActions(reasons, mode, changedFiles),
     toolCalls: buildToolCalls(reasons, mode, changedFiles),
     ...(truncated ? { truncated: true } : {}),
@@ -228,6 +242,7 @@ async function safeReview(
       summary: report.available ? report.summary.join('; ') : undefined,
       reason: report.available ? undefined : report.reason,
       newTaintFlows: report.available ? report.newTaintFlows.length : undefined,
+      newDataflowRisks: report.available ? report.newDataflowRisks.length : undefined,
     };
   } catch (err) {
     return {
@@ -245,6 +260,7 @@ function buildPreflightReasons(input: {
   session: PreflightSessionEvidence;
   hotspots: HotspotReport | null;
   review: PreflightReviewEvidence;
+  releaseScale: PreflightReleaseScaleEvidence | null;
   maxChangedFiles: number;
 }): PreflightReason[] {
   const reasons: PreflightReason[] = [];
@@ -319,6 +335,14 @@ function buildPreflightReasons(input: {
       tool: 'projscan_review',
     });
   }
+  if (input.releaseScale?.detected) {
+    reasons.push({
+      severity: 'warning',
+      source: 'release',
+      message: input.releaseScale.explanation,
+      tool: 'projscan_review',
+    });
+  }
 
   if (input.review.available) {
     if ((input.review.newTaintFlows ?? 0) > 0) {
@@ -333,7 +357,7 @@ function buildPreflightReasons(input: {
       reasons.push({
         severity: 'error',
         source: 'review',
-        message: 'Review verdict is block',
+        message: formatReviewBlockMessage(input.review, input.releaseScale),
         tool: 'projscan_review',
       });
     } else if (input.review.verdict === 'review') {
@@ -380,6 +404,70 @@ function buildPreflightReasons(input: {
   return reasons;
 }
 
+function buildReleaseScaleEvidence(input: {
+  mode: PreflightMode;
+  issues: Issue[];
+  changedFiles: PreflightChangedFiles;
+  health: HealthScore;
+  review: PreflightReviewEvidence;
+  supplyChain: { errorIssues: number; warningIssues: number };
+  maxChangedFiles: number;
+}): PreflightReleaseScaleEvidence | null {
+  if (input.mode === 'before_edit') return null;
+  if (!input.changedFiles.available || input.changedFiles.count <= input.maxChangedFiles) return null;
+  if (!input.review.available || input.review.verdict !== 'block') return null;
+
+  const concreteBlockers = concretePreflightBlockers(input);
+  if (concreteBlockers.length > 0) return null;
+
+  const reviewSummary = input.review.summary;
+  return {
+    detected: true,
+    changedFiles: input.changedFiles.count,
+    threshold: input.maxChangedFiles,
+    reviewVerdict: input.review.verdict,
+    ...(reviewSummary ? { reviewSummary } : {}),
+    concreteBlockers,
+    explanation:
+      `Large platform release risk: ${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}, and review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects. Treat this as a manual release sign-off gate.`,
+  };
+}
+
+function concretePreflightBlockers(input: {
+  issues: Issue[];
+  health: HealthScore;
+  review: PreflightReviewEvidence;
+  supplyChain: { errorIssues: number; warningIssues: number };
+}): string[] {
+  const blockers: string[] = [];
+  if (input.health.errors > 0) blockers.push('health');
+  if (input.supplyChain.errorIssues > 0) blockers.push('supply-chain');
+  if (input.issues.some((issue) => issue.id.startsWith('plugin:') && issue.severity === 'error')) blockers.push('plugin');
+  if ((input.review.newTaintFlows ?? 0) > 0) blockers.push('taint');
+  if ((input.review.newDataflowRisks ?? 0) > 0) blockers.push('dataflow');
+  return blockers;
+}
+
+function formatReviewBlockMessage(
+  review: PreflightReviewEvidence,
+  releaseScale: PreflightReleaseScaleEvidence | null,
+): string {
+  if (releaseScale?.detected) {
+    return `Review verdict is block due to scale/complexity risk: ${review.summary ?? 'review requires manual sign-off'}`;
+  }
+  return 'Review verdict is block';
+}
+
+function formatReviewCheckReason(
+  review: PreflightReviewEvidence,
+  releaseScale?: PreflightReleaseScaleEvidence | null,
+): string {
+  if (review.verdict === 'block' && releaseScale?.detected) {
+    return `scale/complexity: ${review.summary ?? review.verdict}`;
+  }
+  return review.summary ?? review.verdict ?? 'review unavailable';
+}
+
 function buildEvidence(input: {
   health: HealthScore;
   changedFiles: PreflightChangedFiles;
@@ -388,6 +476,7 @@ function buildEvidence(input: {
   issues: Issue[];
   pluginsEnabledForRun: boolean;
   review: PreflightReviewEvidence;
+  releaseScale: PreflightReleaseScaleEvidence | null;
 }): PreflightEvidence {
   const pluginIssues = input.issues.filter((issue) => issue.id.startsWith('plugin:'));
   const supplyChainIssues = input.issues.filter((issue) => issue.category === 'supply-chain');
@@ -437,6 +526,7 @@ function buildEvidence(input: {
       errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
       warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
     },
+    ...(input.releaseScale ? { releaseScale: input.releaseScale } : {}),
   };
 }
 
@@ -446,6 +536,7 @@ function buildRequiredChecks(
   changedFiles: PreflightChangedFiles,
   review: PreflightReviewEvidence,
   supplyChain?: { errorIssues: number; warningIssues: number },
+  releaseScale?: PreflightReleaseScaleEvidence | null,
 ): PreflightRequiredCheck[] {
   const checks: PreflightRequiredCheck[] = [
     {
@@ -487,7 +578,7 @@ function buildRequiredChecks(
       mode === 'before_edit'
         ? 'review is not required before edits'
         : review.available
-          ? review.summary ?? review.verdict
+          ? formatReviewCheckReason(review, releaseScale)
           : review.reason ?? 'review unavailable',
   });
   return checks;

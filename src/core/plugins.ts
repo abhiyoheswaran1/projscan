@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { FileEntry, Issue, IssueSeverity } from '../types.js';
+import type { CodeGraph } from './codeGraph.js';
+import type { FileEntry, Issue, IssueSeverity, DataflowReport, SemanticGraphReport } from '../types.js';
 
 /**
  * Stable local plugin API (2.0+).
@@ -56,8 +57,15 @@ export interface PluginReporterManifest extends PluginManifestBase {
 
 export type PluginManifest = PluginAnalyzerManifest | PluginReporterManifest;
 
+export interface PluginAnalyzerContext {
+  schemaVersion: 1;
+  getCodeGraph: () => Promise<CodeGraph>;
+  getSemanticGraph: () => Promise<SemanticGraphReport>;
+  getDataflow: () => Promise<DataflowReport>;
+}
+
 export interface PluginAnalyzerExports {
-  check: (rootPath: string, files: FileEntry[]) => Promise<Issue[]> | Issue[];
+  check: (rootPath: string, files: FileEntry[], context?: PluginAnalyzerContext) => Promise<Issue[]> | Issue[];
 }
 
 export interface PluginReporterContext<TPayload = unknown> {
@@ -417,12 +425,13 @@ export async function runAnalyzerPlugins(
   plugins: LoadedPlugin[],
   rootPath: string,
   files: FileEntry[],
+  context?: PluginAnalyzerContext,
 ): Promise<Issue[]> {
   const out: Issue[] = [];
   for (const p of plugins) {
     let raw: Issue[];
     try {
-      raw = (await p.exports.check(rootPath, files)) ?? [];
+      raw = (await p.exports.check(rootPath, files, context)) ?? [];
     } catch (err) {
       process.stderr.write(
         `[projscan] plugin "${p.manifest.name}" threw during check: ${err instanceof Error ? err.message : String(err)}. ignored for this run.\n`,

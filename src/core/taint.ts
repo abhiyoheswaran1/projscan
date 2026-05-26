@@ -90,6 +90,8 @@ export const DEFAULT_TAINT_SINKS: ReadonlyArray<string> = [
   //             included only when call-shaped helpers wrap it (e.g. setInnerHtml).
 ];
 
+const JAVASCRIPT_CHILD_PROCESS_SINKS = new Set(['exec', 'execSync', 'spawn', 'spawnSync']);
+
 export interface TaintFlow {
   /** Bare function name where the source was called. */
   sourceFn: string;
@@ -155,6 +157,7 @@ export interface TaintReport {
 export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport {
   const sources = new Set([...DEFAULT_TAINT_SOURCES, ...config.sources]);
   const sinks = new Set([...DEFAULT_TAINT_SINKS, ...config.sinks]);
+  const customSinks = new Set(config.sinks);
 
   // Build function index. Key by the (file, name) pair to disambiguate
   // same-named methods on different classes; we project to bare-name
@@ -165,6 +168,8 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     file: string;
     callees: string[]; // bare names from the function's callSites
     references: string[]; // member-expression read idents (1.6+)
+    sourceHit: string | null;
+    sinkHit: string | null;
     hasSource: boolean;
     hasSink: boolean;
   }
@@ -181,15 +186,18 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       totalCallSites += callees.length;
       // Sources match callSites OR references (covers `process.env.X`-style
       // property reads). Sinks are call-shaped, so callSites only.
-      const hasSource =
-        callees.some((c) => sources.has(c)) || references.some((r) => sources.has(r));
-      const hasSink = callees.some((c) => sinks.has(c));
+      const sourceHit = pickHit([...callees, ...references], sources);
+      const sinkHit = pickSinkHit(callees, sinks, customSinks, file, gf);
+      const hasSource = sourceHit !== null;
+      const hasSink = sinkHit !== null;
       const node: FnNode = {
         qualName: fn.name,
         bareName: bareName(fn.name),
         file,
         callees,
         references,
+        sourceHit,
+        sinkHit,
         hasSource,
         hasSink,
       };
@@ -246,8 +254,8 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
         flows.push({
           sourceFn: sourceFn.qualName,
           sinkFn: sourceFn.qualName,
-          source: pickHit([...sourceFn.callees, ...sourceFn.references], sources)!,
-          sink: pickHit(sourceFn.callees, sinks)!,
+          source: sourceFn.sourceHit!,
+          sink: sourceFn.sinkHit!,
           path: [sourceFn.qualName],
           files: [sourceFn.file],
         });
@@ -283,8 +291,8 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
                 flows.push({
                   sourceFn: sourceFn.qualName,
                   sinkFn: candidate.qualName,
-                  source: pickHit([...sourceFn.callees, ...sourceFn.references], sources)!,
-                  sink: pickHit(candidate.callees, sinks)!,
+                  source: sourceFn.sourceHit!,
+                  sink: candidate.sinkHit!,
                   path: newPath.map((n) => n.qualName),
                   files: filesInPath,
                 });
@@ -331,6 +339,41 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     truncatedSources: [...new Set(truncatedSources)].sort(),
     maxDepth: MAX_DEPTH,
   };
+}
+
+function pickSinkHit(
+  callees: string[],
+  sinks: Set<string>,
+  customSinks: Set<string>,
+  file: string,
+  graphFile: { imports: Array<{ source: string; specifiers: string[] }>; adapterId?: string },
+): string | null {
+  for (const callee of callees) {
+    if (!sinks.has(callee)) continue;
+    if (isDefaultMisidentifiedJavaScriptShellSink(callee, customSinks, file, graphFile)) continue;
+    return callee;
+  }
+  return null;
+}
+
+function isDefaultMisidentifiedJavaScriptShellSink(
+  callee: string,
+  customSinks: Set<string>,
+  file: string,
+  graphFile: { imports: Array<{ source: string; specifiers: string[] }>; adapterId?: string },
+): boolean {
+  if (customSinks.has(callee)) return false;
+  if (!JAVASCRIPT_CHILD_PROCESS_SINKS.has(callee)) return false;
+  if (!isJavaScriptLikeFile(file, graphFile.adapterId)) return false;
+  return !graphFile.imports.some(
+    (imp) =>
+      (imp.source === 'node:child_process' || imp.source === 'child_process') &&
+      (imp.specifiers.includes(callee) || imp.specifiers.length === 0),
+  );
+}
+
+function isJavaScriptLikeFile(file: string, adapterId?: string): boolean {
+  return adapterId === 'javascript' || /\.(?:cjs|mjs|js|jsx|ts|tsx)$/.test(file);
 }
 
 function bareName(qualified: string): string {

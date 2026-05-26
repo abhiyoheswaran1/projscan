@@ -60,6 +60,7 @@ test('hardening workplan turns blocking supply-chain evidence into the first p0 
     }),
   );
   expect(report.tasks[0]?.verification.commands).toContain('projscan preflight --format json');
+  expect(report.tasks.some((task) => task.suggestedTools.includes('projscan_semantic_graph'))).toBe(true);
   expect(report.topRisks[0]).toEqual(
     expect.objectContaining({ source: 'supply-chain', severity: 'error' }),
   );

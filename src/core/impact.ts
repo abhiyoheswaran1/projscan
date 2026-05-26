@@ -1,5 +1,5 @@
 import type { CodeGraph } from './codeGraph.js';
-import type { ImpactNode, ImpactReport } from '../types.js';
+import type { ImpactBoundarySummary, ImpactNode, ImpactReport } from '../types.js';
 
 const DEFAULT_MAX_DISTANCE = 10;
 
@@ -68,6 +68,7 @@ function foldInCrossRepo(
     return { ...base, totalReachableByRepo: { '(this repo)': base.totalReachable } };
   }
   const extra: ImpactNode[] = [];
+  const boundarySummary: ImpactBoundarySummary[] = [];
   const totalsByRepo: Record<string, number> = { '(this repo)': base.totalReachable };
   for (const [repoName, repoGraph] of crossRepoGraphs) {
     let count = 0;
@@ -78,14 +79,53 @@ function foldInCrossRepo(
       }
     }
     if (count > 0) totalsByRepo[repoName] = count;
+    boundarySummary.push(...boundarySummariesForRepo(repoName, repoGraph, target.value));
   }
   const reachable = [...base.reachable, ...extra].sort(compareNodes);
+  const sortedBoundaries = boundarySummary.sort(
+    (a, b) => a.repo.localeCompare(b.repo) || a.packageName.localeCompare(b.packageName),
+  );
   return {
     ...base,
     reachable,
     totalReachable: reachable.length,
     totalReachableByRepo: totalsByRepo,
+    ...(sortedBoundaries.length > 0 ? { boundarySummary: sortedBoundaries } : {}),
   };
+}
+
+function boundarySummariesForRepo(
+  repoName: string,
+  repoGraph: CodeGraph,
+  targetValue: string,
+): ImpactBoundarySummary[] {
+  const out: ImpactBoundarySummary[] = [];
+  for (const [packageName, importers] of repoGraph.packageImporters) {
+    if (!packageMatchesTarget(packageName, targetValue)) continue;
+    const files = [...importers].sort();
+    out.push({
+      repo: repoName,
+      packageName,
+      owner: repoName,
+      files,
+      reachableFiles: files.length,
+    });
+  }
+  return out;
+}
+
+function packageMatchesTarget(packageName: string, targetValue: string): boolean {
+  const normalizedTarget = targetValue
+    .split(/[/#]/)
+    .pop()
+    ?.replace(/\.[^.]+$/, '')
+    .toLowerCase();
+  if (!normalizedTarget) return false;
+  return packageName
+    .toLowerCase()
+    .split(/[/@._-]+/)
+    .filter(Boolean)
+    .includes(normalizedTarget);
 }
 
 function impactForFile(graph: CodeGraph, file: string, maxDistance: number): ImpactReport {

@@ -27,6 +27,14 @@ test('agent brief returns compact next-agent context without mutating package ve
     expect.arrayContaining(['projscan doctor --format json', 'projscan preflight --mode before_edit --format json']),
   );
   expect(report.context.totalFiles).toBeGreaterThan(0);
+  expect(report.context.graph).toEqual(
+    expect.objectContaining({
+      schemaVersion: 1,
+      totalFunctions: expect.any(Number),
+      totalCallEdges: expect.any(Number),
+      dataflowRisks: expect.any(Number),
+    }),
+  );
   expect(report.suggestedNextActions.length).toBeGreaterThan(0);
 });
 

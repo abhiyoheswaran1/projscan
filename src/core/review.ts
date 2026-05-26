@@ -10,9 +10,12 @@ import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { computeTaint } from './taint.js';
 import { computeDataflow } from './dataflow.js';
+import { isReviewBlockingDataflowRisk, isTestLikePath } from './reviewDataflow.js';
+import { buildSemanticGraph } from './semanticGraph.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { loadConfig } from '../utils/config.js';
 import type {
+  GraphEvidenceSummary,
   ReviewCycle,
   ReviewContractChange,
   ReviewDataflowRisk,
@@ -232,6 +235,7 @@ export async function computeReview(
   ]);
   const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
   const newDataflowRisks = await computeNewDataflowRisks(rootPath, baseGraph, headGraph, touchedFiles);
+  const graphEvidence = buildReviewGraphEvidence(headGraph, touchedFiles, newDataflowRisks.length);
 
   // Verdict.
   const { verdict, summary } = decideVerdict(
@@ -255,6 +259,7 @@ export async function computeReview(
     contractChanges,
     newTaintFlows,
     newDataflowRisks,
+    graphEvidence,
     verdict,
     summary,
   };
@@ -328,6 +333,35 @@ async function computeNewTaintFlows(
   return out;
 }
 
+function buildReviewGraphEvidence(
+  graph: CodeGraph,
+  touchedFiles: Set<string>,
+  dataflowRisks: number,
+): GraphEvidenceSummary {
+  const semantic = buildSemanticGraph(graph, { maxNodes: 5_000, maxEdges: 10_000 });
+  const changedFunctions = [...touchedFiles].reduce((count, file) => {
+    return count + (graph.files.get(file)?.functions?.length ?? 0);
+  }, 0);
+  return {
+    schemaVersion: 1,
+    changedFiles: touchedFiles.size,
+    changedFunctions,
+    totalFunctions: semantic.metrics.totalFunctions,
+    totalPackages: semantic.metrics.totalPackages,
+    totalCallEdges: semantic.edges.filter((edge) => edge.kind === 'calls').length,
+    dataflowRisks,
+    topPackages: topPackages(graph),
+  };
+}
+
+function topPackages(graph: CodeGraph): string[] {
+  return [...graph.packageImporters.entries()]
+    .map(([name, importers]) => ({ name, count: importers.size }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 5)
+    .map((entry) => entry.name);
+}
+
 async function computeNewDataflowRisks(
   rootPath: string,
   baseGraph: CodeGraph,
@@ -374,28 +408,6 @@ async function computeNewDataflowRisks(
   return out;
 }
 
-
-const BROAD_FILE_IO_REVIEW_SOURCES = new Set(['readFile', 'readFileSync']);
-const BROAD_FILE_IO_REVIEW_SINKS = new Set(['writeFile', 'writeFileSync', 'unlink', 'rm', 'rmSync']);
-
-function isReviewBlockingDataflowRisk(risk: { source: string; sink: string; files: string[] }): boolean {
-  if (risk.files.some(isTestLikePath)) return false;
-  if (BROAD_FILE_IO_REVIEW_SOURCES.has(risk.source)) return false;
-  if (BROAD_FILE_IO_REVIEW_SINKS.has(risk.sink)) return false;
-  return true;
-}
-
-function isTestLikePath(file: string): boolean {
-  const normalized = file.replace(/\\/g, '/');
-  return (
-    normalized.startsWith('test/') ||
-    normalized.startsWith('tests/') ||
-    normalized.includes('/test/') ||
-    normalized.includes('/tests/') ||
-    normalized.includes('/__tests__/') ||
-    /\.(test|spec)\.[^/]+$/.test(normalized)
-  );
-}
 
 function reviewDataflowRiskKey(risk: {
   kind: string;
@@ -1072,6 +1084,7 @@ export function shapeReviewForTier(
       verdict: report.verdict,
       summary: report.summary,
       totals,
+      graphEvidence: report.graphEvidence,
       tier,
     };
   }
@@ -1106,6 +1119,7 @@ export function shapeReviewForTier(
     contractChanges: report.contractChanges?.slice(0, TOP) ?? [],
     newTaintFlows: report.newTaintFlows?.slice(0, 5) ?? [],
     newDataflowRisks: report.newDataflowRisks?.slice(0, 5) ?? [],
+    graphEvidence: report.graphEvidence,
     verdict: report.verdict,
     summary: report.summary,
     totals,
