@@ -3,7 +3,6 @@ import chalk from 'chalk';
 
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import { computeReview } from '../../core/review.js';
-import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportReview } from '../../reporters/consoleReporter.js';
 import { reportReviewJson } from '../../reporters/jsonReporter.js';
 import { reportReviewMarkdown } from '../../reporters/markdownReporter.js';
@@ -24,29 +23,11 @@ export function registerReview(): void {
       const spinner = format === 'console' ? ora('Reviewing PR...').start() : null;
 
       try {
-        const report = await computeReview(rootPath, { base: cmdOpts.base, head: cmdOpts.head });
-
-        if (cmdOpts.package && report.available) {
-          const ws = await detectWorkspaces(rootPath);
-          const target = cmdOpts.package;
-          const allChangedPaths = [
-            ...report.prDiff.filesAdded,
-            ...report.prDiff.filesRemoved,
-            ...report.prDiff.filesModified.map((f) => f.relativePath),
-          ];
-          const allowed = new Set(filterFilesByPackage(ws, target, allChangedPaths));
-          report.prDiff.filesAdded = report.prDiff.filesAdded.filter((f) => allowed.has(f));
-          report.prDiff.filesRemoved = report.prDiff.filesRemoved.filter((f) => allowed.has(f));
-          report.prDiff.filesModified = report.prDiff.filesModified.filter((f) => allowed.has(f.relativePath));
-          report.prDiff.totalFilesChanged =
-            report.prDiff.filesAdded.length +
-            report.prDiff.filesRemoved.length +
-            report.prDiff.filesModified.length;
-          report.changedFiles = report.changedFiles.filter((f) => allowed.has(f.relativePath));
-          report.newCycles = report.newCycles.filter((c) => c.files.some((f) => allowed.has(f)));
-          report.riskyFunctions = report.riskyFunctions.filter((f) => allowed.has(f.file));
-          report.dependencyChanges = report.dependencyChanges.filter((d) => d.workspace === target);
-        }
+        const report = await computeReview(rootPath, {
+          base: cmdOpts.base,
+          head: cmdOpts.head,
+          package: cmdOpts.package,
+        });
 
         if (spinner) spinner.stop();
 

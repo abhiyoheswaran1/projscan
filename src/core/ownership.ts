@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { detectWorkspaces } from './monorepo.js';
 
 export type OwnershipLookup = (relativePath: string) => string | undefined;
 
@@ -14,6 +15,14 @@ interface OwnershipRule {
 const CODEOWNERS_CANDIDATES = ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'];
 
 export async function loadOwnership(rootPath: string): Promise<OwnershipLookup | undefined> {
+  const packageLookup = await loadPackageOwnership(rootPath);
+  const codeownersLookup = await loadCodeownersOwnership(rootPath);
+  if (!packageLookup) return codeownersLookup;
+  if (!codeownersLookup) return packageLookup;
+  return (relativePath: string) => codeownersLookup(relativePath) ?? packageLookup(relativePath);
+}
+
+async function loadCodeownersOwnership(rootPath: string): Promise<OwnershipLookup | undefined> {
   for (const candidate of CODEOWNERS_CANDIDATES) {
     try {
       const content = await fs.readFile(path.join(rootPath, candidate), 'utf-8');
@@ -22,6 +31,50 @@ export async function loadOwnership(rootPath: string): Promise<OwnershipLookup |
       const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : '';
       if (code !== 'ENOENT') return undefined;
     }
+  }
+  return undefined;
+}
+
+async function loadPackageOwnership(rootPath: string): Promise<OwnershipLookup | undefined> {
+  const workspaces = await detectWorkspaces(rootPath);
+  const rules: Array<{ prefix: string; owner: string }> = [];
+  for (const pkg of workspaces.packages) {
+    const owner = await readPackageOwner(path.join(rootPath, pkg.relativePath, 'package.json'));
+    if (!owner) continue;
+    rules.push({ prefix: normalizePath(pkg.relativePath), owner });
+  }
+  if (rules.length === 0) return undefined;
+  rules.sort((a, b) => b.prefix.length - a.prefix.length);
+  return (relativePath: string) => {
+    const normalized = normalizePath(relativePath);
+    for (const rule of rules) {
+      if (rule.prefix === '') return rule.owner;
+      if (normalized === rule.prefix || normalized.startsWith(`${rule.prefix}/`)) return rule.owner;
+    }
+    return undefined;
+  };
+}
+
+async function readPackageOwner(packageJsonPath: string): Promise<string | undefined> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(packageJsonPath, 'utf-8');
+  } catch {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(raw) as { owner?: unknown; owners?: unknown; projscan?: { owner?: unknown; owners?: unknown } };
+    return normalizeOwnerValue(parsed.projscan?.owner ?? parsed.projscan?.owners ?? parsed.owner ?? parsed.owners);
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeOwnerValue(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+  if (Array.isArray(value)) {
+    const owners = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    return owners.length > 0 ? owners.map((owner) => owner.trim()).join(' ') : undefined;
   }
   return undefined;
 }

@@ -1,4 +1,5 @@
 import type { CodeGraph } from './codeGraph.js';
+import { isGeneratedLikePath, isTestLikePath } from './pathClassifiers.js';
 import type { DataflowRisk } from '../types.js';
 
 export interface DataflowRiskFilterContext {
@@ -7,6 +8,7 @@ export interface DataflowRiskFilterContext {
   customSinks: Set<string>;
   includeTests: boolean;
   includeBroadFileIo: boolean;
+  includeGenerated: boolean;
 }
 
 const BROAD_FILE_IO_DATAFLOW_SOURCES = new Set(['readFile', 'readFileSync']);
@@ -19,9 +21,15 @@ export function shouldIncludeDataflowRisk(
   sinkFile = risk.files[risk.files.length - 1],
 ): boolean {
   if (!context.includeTests && risk.files.some(isTestLikePath)) return false;
+  if (!context.includeGenerated && isDefaultGeneratedCodeRisk(risk, context)) return false;
   if (!context.includeBroadFileIo && isDefaultBroadFileIoRisk(risk, context)) return false;
   if (isDefaultMisidentifiedJavaScriptShellSink(risk, context, sinkFile)) return false;
   return true;
+}
+
+function isDefaultGeneratedCodeRisk(risk: DataflowRisk, context: DataflowRiskFilterContext): boolean {
+  if (!risk.files.some(isGeneratedLikePath)) return false;
+  return !context.customSources.has(risk.source) && !context.customSinks.has(risk.sink);
 }
 
 function isDefaultBroadFileIoRisk(risk: DataflowRisk, context: DataflowRiskFilterContext): boolean {
@@ -53,16 +61,4 @@ function isDefaultMisidentifiedJavaScriptShellSink(
 
 function isJavaScriptLikeFile(file: string, adapterId?: string): boolean {
   return adapterId === 'javascript' || /\.(?:cjs|mjs|js|jsx|ts|tsx)$/.test(file);
-}
-
-function isTestLikePath(file: string): boolean {
-  const normalized = file.replace(/\\/g, '/');
-  return (
-    normalized.startsWith('test/') ||
-    normalized.startsWith('tests/') ||
-    normalized.includes('/test/') ||
-    normalized.includes('/tests/') ||
-    normalized.includes('/__tests__/') ||
-    /\.(test|spec)\.[^/]+$/.test(normalized)
-  );
 }

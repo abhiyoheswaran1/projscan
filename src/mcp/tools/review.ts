@@ -1,5 +1,4 @@
 import { computeReview, selectReviewTier, shapeReviewForTier } from '../../core/review.js';
-import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { emitProgress } from '../progress.js';
 import type { McpTool } from './_shared.js';
 
@@ -41,33 +40,9 @@ export const reviewTool: McpTool = {
     const head = typeof args.head === 'string' ? args.head : undefined;
     const intent = typeof args.intent === 'string' ? args.intent : undefined;
     emitProgress(1, 4, 'building base + head graphs');
-    const report = await computeReview(rootPath, { base, head, intent });
-
-    if (typeof args.package === 'string' && args.package.length > 0 && report.available) {
-      emitProgress(2, 4, 'scoping to workspace');
-      const ws = await detectWorkspaces(rootPath);
-      const target = args.package;
-      const allChangedPaths = [
-        ...report.prDiff.filesAdded,
-        ...report.prDiff.filesRemoved,
-        ...report.prDiff.filesModified.map((f) => f.relativePath),
-      ];
-      const allowed = new Set(filterFilesByPackage(ws, target, allChangedPaths));
-
-      report.prDiff.filesAdded = report.prDiff.filesAdded.filter((f) => allowed.has(f));
-      report.prDiff.filesRemoved = report.prDiff.filesRemoved.filter((f) => allowed.has(f));
-      report.prDiff.filesModified = report.prDiff.filesModified.filter((f) => allowed.has(f.relativePath));
-      report.prDiff.totalFilesChanged =
-        report.prDiff.filesAdded.length +
-        report.prDiff.filesRemoved.length +
-        report.prDiff.filesModified.length;
-      report.changedFiles = report.changedFiles.filter((f) => allowed.has(f.relativePath));
-      report.newCycles = report.newCycles.filter((c) => c.files.some((f) => allowed.has(f)));
-      report.riskyFunctions = report.riskyFunctions.filter((f) => allowed.has(f.file));
-      report.dependencyChanges = report.dependencyChanges.filter(
-        (d) => d.workspace === target,
-      );
-    }
+    const packageName = typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
+    if (packageName) emitProgress(2, 4, 'scoping to workspace');
+    const report = await computeReview(rootPath, { base, head, intent, package: packageName });
 
     emitProgress(4, 4, 'done');
 

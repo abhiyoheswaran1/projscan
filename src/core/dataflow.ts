@@ -1,6 +1,7 @@
 import type { FunctionInfo } from './ast.js';
 import type { CodeGraph } from './codeGraph.js';
 import { shouldIncludeDataflowRisk, type DataflowRiskFilterContext } from './dataflowFilters.js';
+import { frameworkRequestSourceForFunction } from './frameworkSources.js';
 import {
   DEFAULT_TAINT_SINKS,
   DEFAULT_TAINT_SOURCES,
@@ -15,6 +16,8 @@ export interface DataflowOptions {
   includeTests?: boolean;
   /** Include broad default readFile/writeFile-style risks. Custom sources/sinks still report. */
   includeBroadFileIo?: boolean;
+  /** Include default risks whose paths touch generated/codegen files. Custom sources/sinks still report. */
+  includeGenerated?: boolean;
 }
 
 interface FnNode {
@@ -56,6 +59,7 @@ export function computeDataflow(
     customSinks,
     includeTests: options.includeTests === true,
     includeBroadFileIo: options.includeBroadFileIo === true,
+    includeGenerated: options.includeGenerated === true,
   };
   if (index.fns.length === 0 || index.totalCallSites === 0) {
     return {
@@ -201,7 +205,14 @@ function functionNode(
 ): FnNode {
   const callees = fn.callSites ?? [];
   const references = fn.references ?? [];
-  const source = pickHit([...callees, ...references], sources);
+  const source =
+    frameworkRequestSourceForFunction(
+      file,
+      fn.name,
+      fn.memberCallSites ?? [],
+      fn.parameters ?? [],
+      sources,
+    ) ?? pickHit([...callees, ...references], sources);
   const sink = pickHit(callees, sinks);
   return {
     id: `${file}::${fn.name}@${fn.line}`,

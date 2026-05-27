@@ -12,7 +12,10 @@ const CACHE_FILE = 'graph.json';
 // v5: added `references` to per-function entries (1.6 "Operator" — taint
 // analysis needs property-shaped reads). v4 caches are discarded on first
 // 1.6 run so taint sees populated references on every parsed function.
-const CACHE_VERSION = 5;
+// v6: added receiver-sensitive `memberCallSites` and `parameters` for
+// framework request-source precision. v5 caches are rebuilt so route
+// handlers do not fall back to ambiguous bare member names.
+const CACHE_VERSION = 6;
 
 interface SerializedGraph {
   version: number;

@@ -160,6 +160,82 @@ export async function sendSecret() {
     ).toBe(true);
   });
 
+
+  it('treats Next route request.json as a framework request source', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'search', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  return db.query(body.sql);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some(
+        (risk) =>
+          risk.sourceFn === 'POST' &&
+          risk.sinkFn === 'POST' &&
+          risk.source === 'request.json' &&
+          risk.sink === 'query',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat route response helpers as request body sources', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'search', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function POST() {
+  const response = Response.json({ ok: true });
+  db.query('select 1');
+  return response;
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.find(
+        (risk) =>
+          risk.sourceFn === 'POST' &&
+          risk.source === 'request.json' &&
+          risk.sink === 'query',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('suppresses generated-code risks by default with an explicit opt-in', async () => {
+    await fs.mkdir(path.join(tmp, 'src', '__generated__'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'src', '__generated__', 'client.ts'),
+      `import { exec } from 'node:child_process';
+
+export function generatedClient() {
+  const command = process.env.GENERATED_CMD;
+  exec(command ?? 'echo generated');
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    expect(report.risks).toEqual([]);
+
+    const withGenerated = computeDataflow(graph, { sources: [], sinks: [] }, { includeGenerated: true });
+    expect(withGenerated.risks.some((risk) => risk.sourceFn === 'generatedClient')).toBe(true);
+  });
+
   it('does not treat RegExp.exec as a child_process exec sink', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'regex.ts'),

@@ -71,6 +71,14 @@ export interface FunctionInfo {
    */
   callSites?: string[];
   /**
+   * Qualified member call sites for JavaScript/TypeScript functions, such as
+   * `request.json` or `db.query`. Bare `callSites` remains the stable
+   * cross-language field; this keeps receiver-sensitive checks precise.
+   */
+  memberCallSites?: string[];
+  /** Function parameter names when the adapter can recover them. */
+  parameters?: string[];
+  /**
    * Per-function fan-out (1.2.0+): count of distinct callee names from
    * `callSites`, restricted to names that are defined as functions
    * SOMEWHERE in the graph. External / library / unresolved calls do not
@@ -274,8 +282,18 @@ function collectFunctions(
     const name = nameForFunctionNode(node, parentClassName, bindingName);
     const line = (node as NodeWithLoc).loc?.start.line ?? 0;
     const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const { cc, callSites, references } = analyzeBabelBody(node);
-    out.push({ name, line, endLine, cyclomaticComplexity: cc, callSites, references });
+    const { cc, callSites, memberCallSites, references } = analyzeBabelBody(node);
+    const parameters = functionParamNames(node);
+    out.push({
+      name,
+      line,
+      endLine,
+      cyclomaticComplexity: cc,
+      callSites,
+      memberCallSites,
+      parameters,
+      references,
+    });
 
     // Recurse into nested functions so they emit their own entries. The body
     // walker (`countCcInBody`) skips nested functions for CC, but we still need
@@ -380,11 +398,17 @@ function nameForFunctionNode(
  * function body. Nested functions are opaque (their decisions and calls
  * belong to them). Used to populate per-function CC + fan-out.
  */
-function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[]; references: string[] } {
+function analyzeBabelBody(fnNode: Node): {
+  cc: number;
+  callSites: string[];
+  memberCallSites: string[];
+  references: string[];
+} {
   const body = (fnNode as { body?: Node }).body;
-  if (!body) return { cc: 1, callSites: [], references: [] };
+  if (!body) return { cc: 1, callSites: [], memberCallSites: [], references: [] };
   let decisions = 0;
   const calls = new Set<string>();
+  const memberCalls = new Set<string>();
   const refs = new Set<string>();
   // MemberExpression nodes that ARE in callee position get their rightmost
   // identifier added to callSites instead of references — track them here so
@@ -399,6 +423,8 @@ function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[]; refe
       const callee = (n as { callee?: Node }).callee;
       const name = babelCalleeName(callee);
       if (name) calls.add(name);
+      const memberName = babelQualifiedMemberName(callee);
+      if (memberName) memberCalls.add(memberName);
       if (callee && (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression')) {
         calleeMembers.add(callee);
       }
@@ -408,7 +434,34 @@ function analyzeBabelBody(fnNode: Node): { cc: number; callSites: string[]; refe
       collectMemberReadIdents(n, refs);
     }
   });
-  return { cc: decisions + 1, callSites: [...calls], references: [...refs] };
+  return {
+    cc: decisions + 1,
+    callSites: [...calls],
+    memberCallSites: [...memberCalls],
+    references: [...refs],
+  };
+}
+
+function functionParamNames(fnNode: Node): string[] {
+  const params = (fnNode as { params?: Node[] }).params ?? [];
+  const out = new Set<string>();
+  for (const param of params) {
+    const name = bindingIdentifierName(param);
+    if (name) out.add(name);
+  }
+  return [...out];
+}
+
+function bindingIdentifierName(node: Node | null | undefined): string | null {
+  if (!node) return null;
+  if (node.type === 'Identifier') return (node as { name?: string }).name ?? null;
+  if (node.type === 'AssignmentPattern') {
+    return bindingIdentifierName((node as { left?: Node }).left);
+  }
+  if (node.type === 'RestElement') {
+    return bindingIdentifierName((node as { argument?: Node }).argument);
+  }
+  return null;
 }
 
 /**
@@ -436,6 +489,28 @@ function babelCalleeName(node: Node | null | undefined): string | null {
     const property = (node as { property?: Node }).property;
     if (property) return babelCalleeName(property);
   }
+  return null;
+}
+
+function babelQualifiedMemberName(node: Node | null | undefined): string | null {
+  if (!node || (node.type !== 'MemberExpression' && node.type !== 'OptionalMemberExpression')) {
+    return null;
+  }
+  const member = node as { object?: Node; property?: Node; computed?: boolean };
+  if (member.computed || !member.object || !member.property) return null;
+  const objectName = babelMemberObjectName(member.object);
+  const propertyName = babelMemberPropertyName(member.property);
+  return objectName && propertyName ? `${objectName}.${propertyName}` : null;
+}
+
+function babelMemberObjectName(node: Node): string | null {
+  if (node.type === 'Identifier' || node.type === 'ThisExpression') return babelCalleeName(node);
+  return babelQualifiedMemberName(node);
+}
+
+function babelMemberPropertyName(node: Node): string | null {
+  if (node.type === 'Identifier') return (node as { name?: string }).name ?? null;
+  if (node.type === 'StringLiteral') return (node as { value?: string }).value ?? null;
   return null;
 }
 
