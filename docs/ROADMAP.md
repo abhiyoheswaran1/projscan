@@ -53,28 +53,26 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.2 (2026)
+### Now — 3.0.3 (2026)
 
-**3.0.2 "Agent Graph Readiness"** makes the 3.0 graph platform harder to misuse during real agent work:
+**3.0.3 "Agent Review Precision"** makes review and dataflow evidence safer for monorepo agents:
 
-- Release readiness, CI, and the release workflow run the graph corpus baseline gate so parser, semantic-graph, and dataflow fixture regressions fail before publish.
-- `release:check` validates existing remote version tags against `HEAD`, including peeled annotated tags, so agents cannot mistake a stale tag for a ready release.
-- Custom dataflow sources and sinks stay visible even when broad default file-I/O noise is filtered.
-- `projscan_impact` / `computeImpact` prefer CODEOWNERS-derived owners in cross-repo boundary summaries when sibling repos expose ownership metadata.
-- `projscan_release_train` / `projscan release-train` now understand `3.0.x` graph-readiness and `3.1.x` graph-expansion product lines.
+- Package-scoped review filtering now happens inside `computeReview`, before verdicting, across cycles, taint, dataflow, contract changes, graph evidence, summaries, and verdicts.
+- Next route request-body dataflow recognizes `request.json()`, `request.formData()`, `request.text()`, and `request.arrayBuffer()` only when they are called on route handler request parameters.
+- Generated/codegen risks are quiet by default for dataflow and review gates, while custom source/sink risks remain visible.
+- Ownership lookup falls back to workspace package metadata when CODEOWNERS has no match.
 
-### Recently Completed — 3.0.1 (2026)
+### Recently Completed — 3.0.2 (2026)
 
-**3.0.1 "Graph Operations Platform"** turned the 3.0 graph contract into an operational agent substrate with graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, a golden graph corpus, and hardened dataflow precision.
+**3.0.2 "Agent Graph Readiness"** made the 3.0 graph platform harder to misuse during real agent work with graph corpus release gates, remote tag integrity checks, custom dataflow visibility, CODEOWNERS impact ownership, and 3.x release-train planning.
 
-### Next — 3.0.3 / 3.1.0
+### Next — 3.1.0
 
-The next bundle is being prepared as a single 3.0.3 patch train rather than several small patch releases:
+The next larger line should deepen graph expansion without rushing another same-day patch:
 
-- Apply package-scoped review filtering to taint, dataflow, graph evidence, summaries, and verdicts.
-- Continue hardening dataflow precision around framework routes, request handlers, and generated-code boundaries.
-- Deepen ownership and package-boundary metadata without expanding the stable schema.
-- Keep release operations boring: no tag or publish until the branch is merged to main, release checks pass from main, and the user explicitly asks for release.
+- Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
+- Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
+- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
 
 ## Non-goals
 
@@ -105,6 +103,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.3** (2026-05-27) | Agent Review Precision | Package-scoped review verdicts, receiver-sensitive route request sources, generated-code review/dataflow filtering, package owner fallback, and v5 GitHub Actions |
 | **3.0.2** (2026-05-27) | Agent Graph Readiness | Graph corpus release gates, custom dataflow visibility, remote tag integrity, CODEOWNERS impact ownership, and 3.x release-train planning |
 | **3.0.1** (2026-05-26) | Graph Operations Platform | Graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, golden graph corpus, and hardened dataflow precision |
 | **3.0.0** (2026-05-23) | Deep Graph Platform | Stable v3 semantic graph, dataflow risk engine, bridge-helper review blocks, 39-tool MCP surface, and public graph/dataflow APIs |

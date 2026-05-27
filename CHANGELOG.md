@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.3] — 2026-05-27 — "Agent Review Precision"
+
 ### Added
 
 - Package-scoped review now runs inside `computeReview` before verdict calculation, so CLI and MCP callers get scoped cycles, taint, dataflow, contract, graph evidence, summaries, and verdicts consistently.
