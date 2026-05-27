@@ -33,6 +33,10 @@ export const dataflowTool: McpTool = {
         type: 'boolean',
         description: 'Include broad readFile/writeFile-style default risks. Default false.',
       },
+      include_generated: {
+        type: 'boolean',
+        description: 'Include default risks that touch generated/codegen files. Default false.',
+      },
       max_tokens: {
         type: 'number',
         description: 'Cap the response to roughly this many tokens.',
@@ -62,6 +66,7 @@ export const dataflowTool: McpTool = {
     const report = computeDataflow(graph, { sources, sinks }, {
       includeTests: args.include_tests === true,
       includeBroadFileIo: args.include_broad_file_io === true,
+      includeGenerated: args.include_generated === true,
     });
     return {
       ...report,

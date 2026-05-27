@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Package-scoped review now runs inside `computeReview` before verdict calculation, so CLI and MCP callers get scoped cycles, taint, dataflow, contract, graph evidence, summaries, and verdicts consistently.
+- Dataflow now recognizes Next-style route request body readers (`request.json()`, `request.formData()`, `request.text()`, `request.arrayBuffer()`) as framework request sources only inside route handlers.
+- `projscan dataflow` / `projscan_dataflow` now expose an explicit generated-code opt-in while suppressing default generated/codegen risks by default.
+- Ownership lookup now falls back to workspace package owner metadata when CODEOWNERS does not match.
+
+### Fixed
+
+- Package-scoped review no longer blocks on cycles or taint/dataflow risks introduced in other workspace packages, and no longer leaks unrelated package entrypoint contract changes.
+- Framework request-source detection now requires a route handler request parameter receiver, avoiding false positives from response helpers such as `Response.json()`.
+- Graph caches now rebuild for receiver-sensitive function metadata so framework request-source detection does not use stale bare-call data.
+- Review-time generated-code filtering now matches dataflow filtering: default generated risks are quiet, while custom source/sink risks remain visible.
+- CI and release workflows use `actions/checkout@v5` and `actions/setup-node@v5`, addressing the Node 20 action runtime deprecation warning.
+
 ## [3.0.2] — 2026-05-27 — "Agent Graph Readiness"
 
 ### Added

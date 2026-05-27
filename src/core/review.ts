@@ -10,7 +10,8 @@ import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { computeTaint } from './taint.js';
 import { computeDataflow } from './dataflow.js';
-import { isReviewBlockingDataflowRisk, isTestLikePath } from './reviewDataflow.js';
+import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
+import { isReviewBlockingDataflowRisk, isReviewBlockingFlow } from './reviewDataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { loadConfig } from '../utils/config.js';
@@ -41,6 +42,8 @@ export interface ReviewOptions {
    * NOT affect the verdict — verdict stays structural.
    */
   intent?: string;
+  /** Optional workspace package name used to scope every review section before verdicting. */
+  package?: string;
 }
 
 const HIGH_CC_THRESHOLD = 10;
@@ -153,6 +156,8 @@ export async function computeReview(
   const headPackageManifests = await readManifests(rootPath);
 
   const prDiff = diffGraphs(baseRef, baseSha, headRef, headSha, baseGraph, headGraph);
+  await scopePrDiffToPackage(rootPath, prDiff, options.package);
+  const graphScopeFiles = await resolvePackageScopeFiles(rootPath, headGraph, options.package);
 
   // Build the per-file enriched view. Index head hotspots by path for O(1) lookup.
   const hotspotByPath = new Map<string, number>();
@@ -207,23 +212,30 @@ export async function computeReview(
   // on overlap with base cycles.
   const headCoupling = computeCoupling(headGraph);
   const baseCoupling = computeCoupling(baseGraph);
-  const newCycles = classifyNewCycles(baseCoupling.cycles, headCoupling.cycles, prDiff.filesAdded);
+  const newCycles = scopeCyclesToFiles(
+    classifyNewCycles(baseCoupling.cycles, headCoupling.cycles, prDiff.filesAdded),
+    graphScopeFiles,
+  );
 
   // Risky functions: compare per-file function lists between base and head.
   const riskyFunctions = findRiskyFunctions(baseGraph, headGraph, prDiff);
 
   // Dependency changes across root + workspaces.
-  const dependencyChanges = diffManifests(basePackageManifests, headPackageManifests);
+  const dependencyChanges = scopeDependencyChanges(
+    diffManifests(basePackageManifests, headPackageManifests),
+    options.package,
+  );
   const contractChanges = buildContractChanges(
     prDiff,
     baseGraph,
     headGraph,
     basePackageManifests,
     headPackageManifests,
+    options.package,
   );
 
   // 1.6+ — taint flows newly introduced at head. A flow is "new" iff
-  //   (a) the (sourceFn, sinkFn) pair didn't exist at base, AND
+  //   (a) the (sourceFn, sinkFn, source, sink) flow didn't exist at base, AND
   //   (b) at least one file along the flow's path is in the PR diff.
   // (b) prevents a base-graph parse failure from avalanching every
   // pre-existing head flow into a false "new" verdict. Project config
@@ -235,7 +247,12 @@ export async function computeReview(
   ]);
   const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
   const newDataflowRisks = await computeNewDataflowRisks(rootPath, baseGraph, headGraph, touchedFiles);
-  const graphEvidence = buildReviewGraphEvidence(headGraph, touchedFiles, newDataflowRisks.length);
+  const graphEvidence = buildReviewGraphEvidence(
+    headGraph,
+    touchedFiles,
+    newDataflowRisks.length,
+    graphScopeFiles,
+  );
 
   // Verdict.
   const { verdict, summary } = decideVerdict(
@@ -273,6 +290,44 @@ export async function computeReview(
   return report;
 }
 
+
+async function resolvePackageScopeFiles(
+  rootPath: string,
+  graph: CodeGraph,
+  packageName: string | undefined,
+): Promise<Set<string> | undefined> {
+  if (!packageName) return undefined;
+  const workspaces = await detectWorkspaces(rootPath);
+  return new Set(filterFilesByPackage(workspaces, packageName, [...graph.files.keys()]));
+}
+
+async function scopePrDiffToPackage(
+  rootPath: string,
+  prDiff: PrDiffReport,
+  packageName: string | undefined,
+): Promise<void> {
+  if (!packageName) return;
+  const workspaces = await detectWorkspaces(rootPath);
+  const allChangedPaths = [
+    ...prDiff.filesAdded,
+    ...prDiff.filesRemoved,
+    ...prDiff.filesModified.map((file) => file.relativePath),
+  ];
+  const allowed = new Set(filterFilesByPackage(workspaces, packageName, allChangedPaths));
+  prDiff.filesAdded = prDiff.filesAdded.filter((file) => allowed.has(file));
+  prDiff.filesRemoved = prDiff.filesRemoved.filter((file) => allowed.has(file));
+  prDiff.filesModified = prDiff.filesModified.filter((file) => allowed.has(file.relativePath));
+  prDiff.totalFilesChanged = prDiff.filesAdded.length + prDiff.filesRemoved.length + prDiff.filesModified.length;
+}
+
+function scopeDependencyChanges(
+  changes: ReviewDependencyChange[],
+  packageName: string | undefined,
+): ReviewDependencyChange[] {
+  if (!packageName) return changes;
+  return changes.filter((change) => change.workspace === packageName);
+}
+
 function applyIntent(report: ReviewReport, rawIntent?: string): void {
   const intent = parseIntent(rawIntent);
   if (intent) {
@@ -301,13 +356,14 @@ async function computeNewTaintFlows(
   const sinks = config.taint?.sinks ?? [];
   const baseReport = computeTaint(baseGraph, { sources, sinks });
   const headReport = computeTaint(headGraph, { sources, sinks });
+  const filterContext = { customSources: new Set(sources), customSinks: new Set(sinks) };
   if (!headReport.available) return [];
   const baseFlowKeys = new Set(
-    baseReport.available ? baseReport.flows.map((f) => `${f.sourceFn}::${f.sinkFn}`) : [],
+    baseReport.available ? baseReport.flows.map(reviewTaintFlowKey) : [],
   );
   const out: ReviewTaintFlow[] = [];
   for (const flow of headReport.flows) {
-    const key = `${flow.sourceFn}::${flow.sinkFn}`;
+    const key = reviewTaintFlowKey(flow);
     if (baseFlowKeys.has(key)) continue;
     // Restrict to flows the PR actually had a hand in: at least one file
     // along the path must be in the change set. A genuinely-introduced flow
@@ -316,7 +372,7 @@ async function computeNewTaintFlows(
     // real flow. Without it, a base-graph parse failure would surface every
     // pre-existing head flow as "new" and avalanche the verdict to block.
     if (!flow.files.some((f) => touchedFiles.has(f))) continue;
-    if (flow.files.some(isTestLikePath)) continue;
+    if (!isReviewBlockingFlow(flow, filterContext)) continue;
     out.push({
       sourceFn: flow.sourceFn,
       sinkFn: flow.sinkFn,
@@ -333,14 +389,25 @@ async function computeNewTaintFlows(
   return out;
 }
 
+function reviewTaintFlowKey(flow: {
+  sourceFn: string;
+  sinkFn: string;
+  source: string;
+  sink: string;
+}): string {
+  return `${flow.sourceFn}:${flow.sinkFn}:${flow.source}:${flow.sink}`;
+}
+
 function buildReviewGraphEvidence(
   graph: CodeGraph,
   touchedFiles: Set<string>,
   dataflowRisks: number,
+  scopeFiles?: Set<string>,
 ): GraphEvidenceSummary {
-  const semantic = buildSemanticGraph(graph, { maxNodes: 5_000, maxEdges: 10_000 });
+  const evidenceGraph = scopeFiles ? scopeGraphToFiles(graph, scopeFiles) : graph;
+  const semantic = buildSemanticGraph(evidenceGraph, { maxNodes: 5_000, maxEdges: 10_000 });
   const changedFunctions = [...touchedFiles].reduce((count, file) => {
-    return count + (graph.files.get(file)?.functions?.length ?? 0);
+    return count + (evidenceGraph.files.get(file)?.functions?.length ?? 0);
   }, 0);
   return {
     schemaVersion: 1,
@@ -350,8 +417,36 @@ function buildReviewGraphEvidence(
     totalPackages: semantic.metrics.totalPackages,
     totalCallEdges: semantic.edges.filter((edge) => edge.kind === 'calls').length,
     dataflowRisks,
-    topPackages: topPackages(graph),
+    topPackages: topPackages(evidenceGraph),
   };
+}
+
+function scopeGraphToFiles(graph: CodeGraph, files: Set<string>): CodeGraph {
+  const scopedFiles = new Map([...graph.files.entries()].filter(([file]) => files.has(file)));
+  const packageImporters = filterImporterMap(graph.packageImporters, files);
+  const localImporters = new Map<string, Set<string>>();
+  for (const [target, importers] of graph.localImporters) {
+    if (!files.has(target)) continue;
+    const scopedImporters = new Set([...importers].filter((file) => files.has(file)));
+    if (scopedImporters.size > 0) localImporters.set(target, scopedImporters);
+  }
+  const symbolDefs = filterImporterMap(graph.symbolDefs, files);
+  return {
+    files: scopedFiles,
+    packageImporters,
+    localImporters,
+    symbolDefs,
+    scannedFiles: scopedFiles.size,
+  };
+}
+
+function filterImporterMap(source: Map<string, Set<string>>, files: Set<string>): Map<string, Set<string>> {
+  const filtered = new Map<string, Set<string>>();
+  for (const [name, importers] of source) {
+    const scopedImporters = new Set([...importers].filter((file) => files.has(file)));
+    if (scopedImporters.size > 0) filtered.set(name, scopedImporters);
+  }
+  return filtered;
 }
 
 function topPackages(graph: CodeGraph): string[] {
@@ -373,6 +468,7 @@ async function computeNewDataflowRisks(
   const sinks = config.taint?.sinks ?? [];
   const baseReport = computeDataflow(baseGraph, { sources, sinks });
   const headReport = computeDataflow(headGraph, { sources, sinks });
+  const filterContext = { customSources: new Set(sources), customSinks: new Set(sinks) };
   if (!headReport.available) return [];
   const baseRiskKeys = new Set(
     baseReport.available ? baseReport.risks.map(reviewDataflowRiskKey) : [],
@@ -385,7 +481,7 @@ async function computeNewDataflowRisks(
     const key = reviewDataflowRiskKey(risk);
     if (baseRiskKeys.has(key)) continue;
     if (!risk.files.some((f) => touchedFiles.has(f))) continue;
-    if (!isReviewBlockingDataflowRisk(risk)) continue;
+    if (!isReviewBlockingDataflowRisk(risk, filterContext)) continue;
     out.push({
       kind: risk.kind,
       sourceFn: risk.sourceFn,
@@ -422,6 +518,11 @@ function reviewDataflowRiskKey(risk: {
 }
 
 // ── cycle classification ──────────────────────────────────
+
+function scopeCyclesToFiles(cycles: ReviewCycle[], scopeFiles?: Set<string>): ReviewCycle[] {
+  if (!scopeFiles) return cycles;
+  return cycles.filter((cycle) => cycle.files.some((file) => scopeFiles.has(file)));
+}
 
 function classifyNewCycles(
   baseCycles: { files: string[] }[],
@@ -687,6 +788,7 @@ function buildContractChanges(
   headGraph: CodeGraph,
   baseManifests: Map<string, ManifestSnapshot>,
   headManifests: Map<string, ManifestSnapshot>,
+  packageName?: string,
 ): ReviewContractChange[] {
   const changes: ReviewContractChange[] = [];
   for (const file of prDiff.filesAdded) {
@@ -721,8 +823,21 @@ function buildContractChanges(
     }
   }
 
-  changes.push(...entrypointContractChanges(baseManifests, headManifests));
+  changes.push(
+    ...entrypointContractChanges(
+      scopeManifestsByPackage(baseManifests, packageName),
+      scopeManifestsByPackage(headManifests, packageName),
+    ),
+  );
   return changes;
+}
+
+function scopeManifestsByPackage(
+  manifests: Map<string, ManifestSnapshot>,
+  packageName?: string,
+): Map<string, ManifestSnapshot> {
+  if (!packageName) return manifests;
+  return new Map([...manifests].filter(([, manifest]) => manifest.workspace === packageName));
 }
 
 function exportContractChange(

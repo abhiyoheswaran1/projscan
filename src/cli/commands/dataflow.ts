@@ -22,6 +22,7 @@ export function registerDataflow(): void {
     .option('--max-risks <count>', 'maximum risks to return', parsePositiveInt)
     .option('--include-tests', 'include dataflow risks that touch test files')
     .option('--include-broad-file-io', 'include broad readFile/writeFile-style default risks')
+    .option('--include-generated', 'include default risks that touch generated/codegen files')
     .action(
       async (cmdOpts: {
         source?: string[];
@@ -29,6 +30,7 @@ export function registerDataflow(): void {
         maxRisks?: number;
         includeTests?: boolean;
         includeBroadFileIo?: boolean;
+        includeGenerated?: boolean;
       }) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -45,6 +47,7 @@ export function registerDataflow(): void {
         const report = computeDataflow(graph, { sources, sinks }, {
           includeTests: cmdOpts.includeTests === true,
           includeBroadFileIo: cmdOpts.includeBroadFileIo === true,
+          includeGenerated: cmdOpts.includeGenerated === true,
         });
         const shaped = {
           ...report,

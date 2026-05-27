@@ -1,4 +1,5 @@
 import type { CodeGraph } from './codeGraph.js';
+import { FRAMEWORK_REQUEST_SOURCES, frameworkRequestSourceForFunction } from './frameworkSources.js';
 
 /**
  * Lightweight taint flow analysis (1.6+).
@@ -67,6 +68,7 @@ export const DEFAULT_TAINT_SOURCES: ReadonlyArray<string> = [
   'readFileSync',
   'stdin', // process.stdin
   'getInput', // common test/CLI input
+  ...FRAMEWORK_REQUEST_SOURCES,
 ];
 
 export const DEFAULT_TAINT_SINKS: ReadonlyArray<string> = [
@@ -186,7 +188,14 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       totalCallSites += callees.length;
       // Sources match callSites OR references (covers `process.env.X`-style
       // property reads). Sinks are call-shaped, so callSites only.
-      const sourceHit = pickHit([...callees, ...references], sources);
+      const sourceHit =
+        frameworkRequestSourceForFunction(
+          file,
+          fn.name,
+          fn.memberCallSites ?? [],
+          fn.parameters ?? [],
+          sources,
+        ) ?? pickHit([...callees, ...references], sources);
       const sinkHit = pickSinkHit(callees, sinks, customSinks, file, gf);
       const hasSource = sourceHit !== null;
       const hasSink = sinkHit !== null;

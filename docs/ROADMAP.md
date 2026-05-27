@@ -67,11 +67,14 @@ We are *not* trying to be:
 
 **3.0.1 "Graph Operations Platform"** turned the 3.0 graph contract into an operational agent substrate with graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, a golden graph corpus, and hardened dataflow precision.
 
-### Next — 3.0.x / 3.1.0
+### Next — 3.0.3 / 3.1.0
+
+The next bundle is being prepared as a single 3.0.3 patch train rather than several small patch releases:
 
 - Apply package-scoped review filtering to taint, dataflow, graph evidence, summaries, and verdicts.
 - Continue hardening dataflow precision around framework routes, request handlers, and generated-code boundaries.
 - Deepen ownership and package-boundary metadata without expanding the stable schema.
+- Keep release operations boring: no tag or publish until the branch is merged to main, release checks pass from main, and the user explicitly asks for release.
 
 ## Non-goals
 

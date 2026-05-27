@@ -18,6 +18,18 @@ function fixtureGraph(): CodeGraph {
     callSites: ['foo'],
     lineCount: 10,
     cyclomaticComplexity: 7,
+    functions: [
+      {
+        name: 'POST',
+        line: 3,
+        endLine: 6,
+        cyclomaticComplexity: 1,
+        callSites: ['json'],
+        memberCallSites: ['request.json'],
+        parameters: ['request'],
+        references: [],
+      },
+    ],
     mtimeMs: 12345,
     parseOk: true,
   });
@@ -53,6 +65,8 @@ describe('indexCache', () => {
     expect(entry?.exports[0].name).toBe('foo');
     expect(entry?.mtimeMs).toBe(12345);
     expect(entry?.cyclomaticComplexity).toBe(7);
+    expect(entry?.functions?.[0]?.memberCallSites).toEqual(['request.json']);
+    expect(entry?.functions?.[0]?.parameters).toEqual(['request']);
   });
 
   it('rejects a v2 cache (post-0.11 CC requires rebuild)', async () => {
