@@ -65,8 +65,8 @@ projscan start                      # First-60-seconds workflow orientation
 projscan first-run                  # First-run setup diagnostics for CLI + MCP
 projscan init mcp --client all      # Ready-to-paste MCP client configs
 projscan init policy --team security # Team policy starter .projscanrc.json
-projscan init github-action       # PR workflow with projscan evidence comment
-projscan recipes                    # Agent workflow recipes
+projscan init github-action       # PR workflow with evidence comments + block enforcement
+projscan recipes                    # Agent workflow recipes, including team bootstrap + PR automation
 projscan workplan --mode bug_hunt   # Prioritized agent execution plan
 projscan bug-hunt --format json     # Bug-hunt fix queue with verification commands
 projscan agent-brief --intent bug_hunt   # Compact next-agent context packet
@@ -115,8 +115,8 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | `projscan first-run` | First-run setup diagnostics for Node, Git, config, plugins, and MCP startup |
 | `projscan init mcp` | Ready-to-paste MCP client configs for popular agent clients |
 | `projscan init policy` | Team policy starter kits for frontend, platform, security, and monorepo teams |
-| `projscan init github-action` | GitHub Actions PR workflow that posts projscan evidence comments |
-| `projscan recipes` | Agent workflow recipes for before edit, bug hunt, approval, handoff, and pre-merge |
+| `projscan init github-action` | GitHub Actions PR workflow that posts projscan evidence comments and fails only on preflight blocks |
+| `projscan recipes` | Agent workflow recipes for team bootstrap, PR automation, before edit, bug hunt, approval, handoff, and pre-merge |
 | `projscan workplan` | Agent execution plan - prioritized tasks with evidence, tools, verification, and handoff text |
 | `projscan bug-hunt` | Prioritized bug-hunt fix queue from doctor, preflight, hotspot, and session evidence |
 | `projscan agent-brief` | Compact next-agent context packet with focus items, guardrails, repo context, and next actions |

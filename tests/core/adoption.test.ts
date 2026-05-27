@@ -6,6 +6,7 @@ import {
   computeFirstRunDiagnostics,
   getGithubActionStarter,
   getPolicyStarterKit,
+  getWorkflowRecipes,
   writeGithubActionStarter,
   writePolicyStarterKit,
 } from '../../src/core/adoption.js';
@@ -53,8 +54,32 @@ test('GitHub Action starter wires PR comments to projscan evidence', () => {
 
   expect(starter.workflow).toContain('pull-requests: write');
   expect(starter.workflow).toContain('npx -y projscan start --mode before_merge --format json');
+  expect(starter.workflow).toContain('Enforce preflight verdict');
+  expect(starter.workflow).toContain("r.verdict === 'block'");
   expect(starter.workflow).toContain('npx -y projscan evidence-pack --pr-comment');
   expect(starter.nextCommands).toContain('git add .github/workflows/projscan.yml');
+});
+
+test('workflow recipes include team bootstrap and PR automation paths', () => {
+  const catalog = getWorkflowRecipes();
+
+  expect(catalog.recipes.map((recipe) => recipe.id)).toEqual(
+    expect.arrayContaining(['team_bootstrap', 'pr_automation']),
+  );
+  expect(catalog.recipes.find((recipe) => recipe.id === 'team_bootstrap')?.commands).toEqual(
+    expect.arrayContaining([
+      'projscan init policy --team platform',
+      'projscan init github-action',
+      'projscan start --mode before_edit --format json',
+    ]),
+  );
+  expect(catalog.recipes.find((recipe) => recipe.id === 'pr_automation')?.commands).toEqual(
+    expect.arrayContaining([
+      'projscan init github-action',
+      'projscan preflight --mode before_merge --format json',
+      'projscan evidence-pack --pr-comment',
+    ]),
+  );
 });
 
 test('GitHub Action starter writes once and refuses accidental overwrite', async () => {
@@ -67,6 +92,8 @@ test('GitHub Action starter writes once and refuses accidental overwrite', async
     expect(refused.created).toBe(false);
     expect(refused.reason).toContain('already exists');
     const workflow = await fs.readFile(path.join(root, '.github', 'workflows', 'projscan.yml'), 'utf-8');
+    expect(workflow).toContain('Enforce preflight verdict');
+    expect(workflow).toContain("r.verdict === 'block'");
     expect(workflow).toContain('npx -y projscan evidence-pack --pr-comment');
   } finally {
     await fs.rm(root, { recursive: true, force: true });

@@ -51,6 +51,7 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
   expect(report.prComment).toContain('## projscan approval evidence');
   expect(report.prComment).toContain('**Verdict:**');
   expect(report.prComment).toContain('### Verification');
+  expect(report.prComment).toContain('### Suggested Next Actions');
   expect(report.prComment).toContain('projscan preflight --mode before_merge --format json');
 });
 

@@ -244,6 +244,32 @@ export function getWorkflowRecipes(): WorkflowRecipeCatalog {
         handoff: 'If preflight returns caution or block, follow suggestedNextActions before editing.',
       },
       {
+        id: 'team_bootstrap',
+        name: 'Team Bootstrap',
+        useWhen: 'Adopt projscan for a team or new repository.',
+        outcome: 'A team policy, PR workflow, and first start report that make adoption repeatable.',
+        commands: [
+          'projscan init policy --team platform',
+          'projscan init github-action',
+          'projscan start --mode before_edit --format json',
+        ],
+        mcpTools: ['projscan_adoption', 'projscan_start'],
+        handoff: 'Pick the closest team starter, commit the generated policy/workflow, then tune thresholds after the first PR.',
+      },
+      {
+        id: 'pr_automation',
+        name: 'PR Automation',
+        useWhen: 'Put projscan evidence directly in pull request review.',
+        outcome: 'Pull requests receive an approval comment and fail CI only when preflight returns block.',
+        commands: [
+          'projscan init github-action',
+          'projscan preflight --mode before_merge --format json',
+          'projscan evidence-pack --pr-comment',
+        ],
+        mcpTools: ['projscan_preflight', 'projscan_evidence_pack'],
+        handoff: 'Treat block as a hard CI failure; use PR comment next actions for caution-level follow-up.',
+      },
+      {
         id: 'bug_hunt',
         name: 'Bug Hunt',
         useWhen: 'Run a focused polish or stabilization pass.',
@@ -658,6 +684,7 @@ export function getGithubActionStarter(): GithubActionStarter {
     rationale: [
       'Runs projscan where review decisions already happen: the pull request.',
       'Posts the same concise approval evidence that `projscan evidence-pack --pr-comment` prints locally.',
+      'Fails CI only when the machine-readable preflight verdict is block.',
       'Keeps the workflow tool-only: no source upload, no API key, no embedded LLM.',
     ],
   };
@@ -733,4 +760,8 @@ jobs:
           if ! gh pr comment "\${{ github.event.pull_request.number }}" --body-file projscan-comment.md --edit-last; then
             gh pr comment "\${{ github.event.pull_request.number }}" --body-file projscan-comment.md
           fi
+
+      - name: Enforce preflight verdict
+        run: >
+          node -e "const fs = require('node:fs'); const r = JSON.parse(fs.readFileSync('projscan-preflight.json', 'utf8')); if (r.verdict === 'block') { console.error(r.summary || 'projscan preflight blocked this change'); process.exit(1); }"
 `;

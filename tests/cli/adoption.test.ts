@@ -44,11 +44,22 @@ test('recipes renders the adoption workflow catalog', async () => {
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
   expect(payload.recipes.map((recipe: { id: string }) => recipe.id)).toEqual(
-    expect.arrayContaining(['before_edit', 'bug_hunt', 'release_approval', 'handoff', 'pre_merge']),
+    expect.arrayContaining([
+      'before_edit',
+      'bug_hunt',
+      'release_approval',
+      'handoff',
+      'pre_merge',
+      'team_bootstrap',
+      'pr_automation',
+    ]),
   );
   expect(payload.recipes[0].commands).toContain('projscan preflight --mode before_edit --format json');
   expect(payload.recipes.find((recipe: { id: string }) => recipe.id === 'bug_hunt').mcpTools).toContain(
     'projscan_bug_hunt',
+  );
+  expect(payload.recipes.find((recipe: { id: string }) => recipe.id === 'team_bootstrap').commands).toContain(
+    'projscan init github-action',
   );
 });
 
@@ -106,6 +117,8 @@ test('init github-action writes a PR workflow as JSON', async () => {
   expect(payload.nextCommands).toContain('git add .github/workflows/projscan.yml');
   const workflow = await fs.readFile(path.join(tmp, '.github', 'workflows', 'projscan.yml'), 'utf-8');
   expect(workflow).toContain('npx -y projscan start --mode before_merge --format json');
+  expect(workflow).toContain('Enforce preflight verdict');
+  expect(workflow).toContain("r.verdict === 'block'");
   expect(workflow).toContain('npx -y projscan evidence-pack --pr-comment');
 });
 

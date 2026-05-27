@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-27.
+Last reviewed 2026-05-28.
 
 ---
 
@@ -66,14 +66,20 @@ We are *not* trying to be:
 
 **3.0.2 "Agent Graph Readiness"** made the 3.0 graph platform harder to misuse during real agent work with graph corpus release gates, remote tag integrity checks, custom dataflow visibility, CODEOWNERS impact ownership, and 3.x release-train planning.
 
-### Next — 3.1.0
+### Next — Unreleased 3.0.x Adoption Polish
+
+The current unreleased patch line should make projscan easier to install as a repeatable team habit before we start another larger feature line:
+
+- Team workflow adoption: first-60-seconds `projscan start`, policy starter kits, persisted handoffs, PR comment evidence, bootstrap recipes, block-only PR workflow enforcement, and preflight calibration for scale-only commit readiness.
+- Keep the first team PR useful: comments should include the next commands an engineer can run, not just a verdict.
+- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
+
+### Later — 3.1.0
 
 The next larger line should deepen graph expansion without rushing another same-day patch:
 
-- Team workflow adoption: first-60-seconds `projscan start`, policy starter kits, persisted handoffs, and PR comment evidence so teams can build a repeatable habit around projscan.
 - Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
 - Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
-- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
 
 ## Non-goals
 

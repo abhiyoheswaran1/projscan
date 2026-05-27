@@ -355,7 +355,7 @@ function buildPreflightReasons(input: {
     }
     if (input.review.verdict === 'block') {
       reasons.push({
-        severity: 'error',
+        severity: input.mode === 'before_commit' && input.releaseScale?.detected ? 'warning' : 'error',
         source: 'review',
         message: formatReviewBlockMessage(input.review, input.releaseScale),
         tool: 'projscan_review',
@@ -414,13 +414,24 @@ function buildReleaseScaleEvidence(input: {
   maxChangedFiles: number;
 }): PreflightReleaseScaleEvidence | null {
   if (input.mode === 'before_edit') return null;
-  if (!input.changedFiles.available || input.changedFiles.count <= input.maxChangedFiles) return null;
+  if (!input.changedFiles.available) return null;
   if (!input.review.available || input.review.verdict !== 'block') return null;
 
   const concreteBlockers = concretePreflightBlockers(input);
   if (concreteBlockers.length > 0) return null;
 
   const reviewSummary = input.review.summary;
+  const changedFileThresholdExceeded = input.changedFiles.count > input.maxChangedFiles;
+  const reviewScaleOnly = isScaleComplexityReviewBlock(reviewSummary);
+  if (!changedFileThresholdExceeded && !reviewScaleOnly) return null;
+
+  const triggers = [
+    changedFileThresholdExceeded
+      ? `${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}`
+      : undefined,
+    reviewScaleOnly && reviewSummary ? `review signal: ${trimTrailingSentencePunctuation(reviewSummary)}` : undefined,
+  ].filter(Boolean);
+
   return {
     detected: true,
     changedFiles: input.changedFiles.count,
@@ -429,8 +440,17 @@ function buildReleaseScaleEvidence(input: {
     ...(reviewSummary ? { reviewSummary } : {}),
     concreteBlockers,
     explanation:
-      `Large platform release risk: ${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}, and review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects. Treat this as a manual release sign-off gate.`,
+      `Large platform release risk: ${triggers.join('; ')}. Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects. Treat this as a manual release sign-off gate.`,
   };
+}
+
+function isScaleComplexityReviewBlock(summary: string | undefined): boolean {
+  if (!summary?.includes('Maximum changed-file risk score')) return false;
+  return !summary.includes('new import cycle');
+}
+
+function trimTrailingSentencePunctuation(value: string): string {
+  return value.trim().replace(/[.]+$/u, '');
 }
 
 function concretePreflightBlockers(input: {
@@ -570,7 +590,9 @@ function buildRequiredChecks(
         : !review.available
           ? 'unavailable'
           : review.verdict === 'block'
-            ? 'fail'
+            ? mode === 'before_commit' && releaseScale?.detected
+              ? 'warn'
+              : 'fail'
             : review.verdict === 'review'
               ? 'warn'
               : 'pass',

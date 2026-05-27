@@ -61,6 +61,7 @@ test('projscan_adoption returns recipes and first-run diagnostics', async () => 
     recipes: { recipes: Array<{ id: string; commands: string[] }> };
   };
   expect(recipes.recipes.recipes.map((recipe) => recipe.id)).toContain('release_approval');
+  expect(recipes.recipes.recipes.map((recipe) => recipe.id)).toContain('team_bootstrap');
 
   const firstRun = (await handler?.({ action: 'first_run' }, tmp)) as {
     firstRun: { diagnostics: Array<{ id: string; status: string }> };

@@ -73,6 +73,7 @@ export async function computeEvidencePack(
 export function renderEvidencePackPrComment(report: EvidencePackReport): string {
   const blockers = report.approval.blockingReasons.slice(0, 5);
   const commands = dedupeStrings(report.artifacts.flatMap((artifact) => artifact.commands)).slice(0, 8);
+  const nextActions = report.suggestedNextActions.slice(0, 5);
   const lines = [
     '## projscan approval evidence',
     '',
@@ -88,6 +89,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '',
     '### Verification',
     ...commands.map((command) => `- \`${command}\``),
+    '',
+    '### Suggested Next Actions',
+    ...(nextActions.length > 0 ? nextActions.map(formatSuggestedAction) : ['- None recorded.']),
     '',
     `Approval guidance: ${report.approval.recommendation}`,
   ];
@@ -188,6 +192,14 @@ function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[
     ...changelogEntries.map((entry) => `- ${entry}`),
     'Keep claims grounded in the completed product evidence.',
   ].join('\n');
+}
+
+function formatSuggestedAction(action: PreflightSuggestedAction): string {
+  const references = [
+    action.command ? `\`${action.command}\`` : undefined,
+    action.tool ? `MCP \`${action.tool}\`` : undefined,
+  ].filter(Boolean);
+  return references.length > 0 ? `- ${action.label}: ${references.join(' / ')}` : `- ${action.label}`;
 }
 
 function packVerdict(artifacts: EvidencePackArtifact[]): EvidencePackVerdict {
