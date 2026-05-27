@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.2 "Agent Graph Readiness".
+Update the projscan website for projscan 3.0.3 "Agent Review Precision".
 
 Core positioning:
 - Name: projscan
@@ -17,8 +17,8 @@ Core positioning:
 
 What to highlight above the fold:
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
-- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with opt-ins for test files and broad file IO.
-- `projscan review` / `projscan_review`: one-call PR review now blocks new bridge-helper dataflow risks as well as new taint flows.
+- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with opt-ins for test files, broad file IO, and generated/codegen paths.
+- `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
 - `projscan first-run` / `projscan_adoption { action: "first_run" }`: first-run diagnostics across Node.js, package metadata, Git, config, Tree-sitter runtime, plugins, and MCP startup.
 - `projscan recipes` / `projscan_adoption { action: "recipes" }`: workflow recipes for before edit, bug hunt, release approval, handoff, and pre-merge.
@@ -41,7 +41,7 @@ Feature sections to update:
 - Readiness Evidence: product-line planning, approval packets, and smoke/focused/full regression matrices.
 - Agent Trust: preflight verdicts before edit, commit, and merge; required checks; suggested next tool calls.
 - Multi-agent coordination: `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now`.
-- Deeper review intelligence: `contractChanges` for export and package-entrypoint changes, `newTaintFlows`, hardened `newDataflowRisks`, compact `graphEvidence`, and preflight `releaseScale` evidence for large platform releases.
+- Deeper review intelligence: package-scoped `contractChanges`, `newTaintFlows`, hardened `newDataflowRisks`, compact package-scoped `graphEvidence`, generated-code review filtering, and preflight `releaseScale` evidence for large platform releases.
 - Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
 - Release trust: public stability contract, Node.js >= 18 support, packed-install smoke testing, MCP Registry descriptor validation.
 - Screenshots/media: use the latest README media from docs/, especially projscan-reporter-plugin.png/gif and npx projscan --help.gif.
