@@ -132,6 +132,34 @@ export async function rewrite() {
     ).toBe(true);
   });
 
+  it('keeps default readFile flows into custom sinks visible without broad file IO opt-in', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'exfiltrate.ts'),
+      `import fs from 'node:fs/promises';
+
+declare function sendRemote(value: string): void;
+
+export async function sendSecret() {
+  const raw = await fs.readFile('secret.txt', 'utf-8');
+  sendRemote(raw);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: ['sendRemote'] });
+
+    expect(
+      report.risks.some(
+        (risk) =>
+          risk.sourceFn === 'sendSecret' &&
+          risk.sinkFn === 'sendSecret' &&
+          risk.source === 'readFile' &&
+          risk.sink === 'sendRemote',
+      ),
+    ).toBe(true);
+  });
+
   it('does not treat RegExp.exec as a child_process exec sink', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'regex.ts'),

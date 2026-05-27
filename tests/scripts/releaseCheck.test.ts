@@ -67,12 +67,55 @@ describe('release readiness check', () => {
     expect(report.nextAction.command).toBe('git switch main && git pull --ff-only origin main');
     expect(check(report, 'release-branch')?.status).toBe('block');
   });
+
+  it('blocks when origin already has the version tag but its peeled commit differs from HEAD', () => {
+    const root = createReleaseFixture();
+
+    const report = createReleaseCheckReport({
+      root,
+      runGates: false,
+      remote: true,
+      gitRunner: fakeGit({
+        status: '',
+        remoteTag:
+          'cccccccccccccccccccccccccccccccccccccccc\trefs/tags/v2.2.0\n' +
+          'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/tags/v2.2.0^{}\n',
+      }),
+    }) as ReleaseCheckReport;
+
+    expect(report.status).toBe('blocked');
+    expect(report.git.remoteTag).toBe('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(check(report, 'remote-tag')?.status).toBe('block');
+    expect(report.nextAction.kind).toBe('fix-blockers');
+  });
+
+  it('runs the graph corpus check as part of release gates after build and stability', () => {
+    const root = createReleaseFixture();
+    const gates: string[] = [];
+
+    const report = createReleaseCheckReport({
+      root,
+      runGates: true,
+      remote: false,
+      gitRunner: fakeGit({ status: '' }),
+      gateRunner: (_root: string, command: string, args: string[]) => {
+        gates.push([command, ...args].join(' '));
+        return { status: 0 };
+      },
+    }) as ReleaseCheckReport;
+
+    expect(report.status).toBe('ready');
+    expect(gates).toContain('npm run check:graph-corpus');
+    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(gates.indexOf('npm run build'));
+    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(gates.indexOf('npm run check:stability'));
+  });
 });
 
 interface ReleaseCheckReport {
   status: 'ready' | 'blocked' | 'needs-action';
   version: string;
   tag: string;
+  git: { remoteTag: string | null };
   nextAction: { kind: string; command?: string };
   checks: Array<{ id: string; status: string }>;
 }
@@ -117,7 +160,7 @@ function createReleaseFixture(): string {
   return root;
 }
 
-function fakeGit({ branch = 'main', status }: { branch?: string; status: string }) {
+function fakeGit({ branch = 'main', status, remoteTag = '' }: { branch?: string; status: string; remoteTag?: string }) {
   return (_root: string, args: string[]) => {
     const command = args.join(' ');
     const responses: Record<string, { ok: boolean; stdout: string; stderr?: string; status?: number }> = {
@@ -128,6 +171,7 @@ function fakeGit({ branch = 'main', status }: { branch?: string; status: string 
       'rev-parse --abbrev-ref --symbolic-full-name @{u}': { ok: true, stdout: 'origin/main\n' },
       'rev-list --left-right --count HEAD...@{u}': { ok: true, stdout: '0\t0\n' },
       'rev-list -n 1 v2.2.0': { ok: false, stdout: '', stderr: 'fatal: ambiguous argument', status: 128 },
+      'ls-remote --tags origin refs/tags/v2.2.0 refs/tags/v2.2.0^{}': { ok: true, stdout: remoteTag },
     };
 
     return responses[command] ?? { ok: false, stdout: '', stderr: `unexpected git command: ${command}`, status: 1 };

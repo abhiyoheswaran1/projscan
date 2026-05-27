@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeImpact } from '../../src/core/impact.js';
+import { createOwnershipLookup } from '../../src/core/ownership.js';
 import type { CodeGraph, GraphFile } from '../../src/core/codeGraph.js';
 
 function file(
@@ -321,6 +322,41 @@ describe('computeImpact cross-repo (1.6+)', () => {
         owner: 'sdk',
         files: ['app/use.ts'],
         reachableFiles: 1,
+      },
+    ]);
+  });
+
+
+  it('uses CODEOWNERS-derived ownership for cross-repo package boundaries', () => {
+    const local = makeGraph(
+      [file('src/foo.ts', ['foo'])],
+      [],
+      { foo: ['src/foo.ts'] },
+    );
+    const sdk = makeGraph(
+      [file('app/use.ts', [], ['@acme/foo'], ['foo']), file('generated/client.ts', [], ['@acme/foo'])],
+      [],
+      {},
+      { '@acme/foo': ['app/use.ts', 'generated/client.ts'] },
+    );
+    const owners = createOwnershipLookup('app/* @sdk-team\ngenerated/* @codegen-team\n');
+
+    const r = computeImpact(
+      local,
+      { kind: 'symbol', value: 'foo' },
+      {
+        crossRepoGraphs: new Map([['sdk', sdk]]),
+        crossRepoOwnership: new Map([['sdk', owners]]),
+      },
+    );
+
+    expect(r.boundarySummary).toEqual([
+      {
+        repo: 'sdk',
+        packageName: '@acme/foo',
+        owner: '@sdk-team',
+        files: ['app/use.ts', 'generated/client.ts'],
+        reachableFiles: 2,
       },
     ]);
   });

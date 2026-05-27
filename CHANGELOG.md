@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.2] — 2026-05-27 — "Agent Graph Readiness"
+
+### Added
+
+- Release readiness, CI, and the tag-triggered release workflow now run the graph corpus baseline gate so parser, semantic-graph, and dataflow fixture regressions are caught before publish.
+- Cross-repo impact boundary summaries now prefer CODEOWNERS-derived owners when sibling repositories expose ownership metadata, falling back to the repo name when no owner matches.
+- `projscan_release_train` / `projscan release-train` now understand `3.0.x` graph-readiness and `3.1.x` graph-expansion product lines.
+
+### Fixed
+
+- Custom dataflow sources and sinks are no longer hidden by the broad default file-I/O filter; user-configured flows stay visible unless callers explicitly filter them downstream.
+- `npm run release:check` now blocks when an existing remote version tag resolves to a commit other than `HEAD`, including annotated tags via peeled refs.
+
 ## [3.0.1] — 2026-05-26 — "Graph Operations Platform"
 
 ### Added

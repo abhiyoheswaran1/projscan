@@ -120,6 +120,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: node scripts/check-stability.mjs
+      - run: npm run check:graph-corpus
       - run: npm run sbom:generate
 
       - name: Slice CHANGELOG entry

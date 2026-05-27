@@ -58,6 +58,26 @@ test('release train defaults to the six-line product plan', async () => {
   );
 });
 
+test('release train plans 3.x graph platform lines', async () => {
+  const root = await makeTempProject('3.0.1');
+
+  const report = await computeReleaseTrain(root, {
+    lines: ['3.0.x', '3.1.x'],
+  });
+
+  expect(report.plan.lines).toEqual(['3.0.x', '3.1.x']);
+  expect(report.tracks.map((track) => track.theme)).toEqual(['Graph Operations Readiness', 'Graph Intelligence Expansion']);
+  expect(report.tracks[0]?.scope).toEqual(
+    expect.arrayContaining(['graph corpus release gate', 'dataflow precision hardening', 'ownership-aware impact']),
+  );
+  expect(report.tracks[1]?.scope).toEqual(
+    expect.arrayContaining(['package-scoped review evidence', 'framework route dataflow precision']),
+  );
+  expect(report.tasks.map((task) => task.id)).toEqual(
+    expect.arrayContaining(['rt-3-0-graph-readiness', 'rt-3-1-graph-expansion', 'rt-plan-readiness']),
+  );
+});
+
 test('release train marks blockers when preflight blocks', async () => {
   const root = await makeTempProject('2.2.0');
   await writeJson(path.join(root, 'package.json'), {

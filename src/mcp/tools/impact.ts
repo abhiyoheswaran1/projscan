@@ -2,6 +2,7 @@ import { scanRepository } from '../../core/repositoryScanner.js';
 import { buildCodeGraph, type CodeGraph } from '../../core/codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from '../../core/indexCache.js';
 import { computeImpact } from '../../core/impact.js';
+import { loadOwnership, type OwnershipLookup } from '../../core/ownership.js';
 import { loadWorkspace } from '../../core/workspace.js';
 import { paginate, listChecksum, readPageParams } from '../pagination.js';
 import { emitProgress } from '../progress.js';
@@ -61,10 +62,10 @@ export const impactTool: McpTool = {
     emitProgress(2, 3, 'computing impact');
     const target = file ? { kind: 'file' as const, value: file } : { kind: 'symbol' as const, value: symbol! };
     const crossRepo = args.cross_repo === true;
-    const crossRepoGraphs = crossRepo ? await buildCrossRepoGraphs(rootPath) : undefined;
+    const crossRepoContext = crossRepo ? await buildCrossRepoContext(rootPath) : undefined;
     const report = computeImpact(graph, target, {
       ...(maxDistance !== undefined ? { maxDistance } : {}),
-      ...(crossRepoGraphs ? { crossRepoGraphs } : {}),
+      ...(crossRepoContext ? { crossRepoGraphs: crossRepoContext.graphs, crossRepoOwnership: crossRepoContext.ownership } : {}),
     });
     const page = paginate(report.reachable, readPageParams(args), listChecksum(report.reachable));
     emitProgress(3, 3, 'done');
@@ -83,18 +84,21 @@ export const impactTool: McpTool = {
  * registered or no siblings exist; the impact module handles that
  * case as a no-op cross-repo fold.
  */
-async function buildCrossRepoGraphs(rootPath: string): Promise<Map<string, CodeGraph>> {
-  const out = new Map<string, CodeGraph>();
+async function buildCrossRepoContext(rootPath: string): Promise<{ graphs: Map<string, CodeGraph>; ownership: Map<string, OwnershipLookup> }> {
+  const graphs = new Map<string, CodeGraph>();
+  const ownership = new Map<string, OwnershipLookup>();
   const workspace = await loadWorkspace(rootPath);
-  if (!workspace || workspace.repos.length === 0) return out;
+  if (!workspace || workspace.repos.length === 0) return { graphs, ownership };
   for (const repo of workspace.repos) {
     try {
       const scan = await scanRepository(repo.path);
       const repoGraph = await buildCodeGraph(repo.path, scan.files);
-      out.set(repo.name, repoGraph);
+      graphs.set(repo.name, repoGraph);
+      const ownerLookup = await loadOwnership(repo.path);
+      if (ownerLookup) ownership.set(repo.name, ownerLookup);
     } catch {
       // Skip repos that fail to scan (transient I/O, missing dir, etc.).
     }
   }
-  return out;
+  return { graphs, ownership };
 }
