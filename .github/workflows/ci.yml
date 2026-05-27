@@ -40,6 +40,7 @@ jobs:
       - run: npm run smoke:packed-install
       - run: npm run lint
       - run: npm run check:stability
+      - run: npm run check:graph-corpus
 
       # Dogfood: run projscan against itself. The CLI is freshly built above.
       # Threshold 90 because the false-positive ceiling we hit pre-1.1.1 is

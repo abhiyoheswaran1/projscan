@@ -1,4 +1,5 @@
 import type { CodeGraph } from './codeGraph.js';
+import type { OwnershipLookup } from './ownership.js';
 import type { ImpactBoundarySummary, ImpactNode, ImpactReport } from '../types.js';
 
 const DEFAULT_MAX_DISTANCE = 10;
@@ -14,6 +15,8 @@ export interface ImpactOptions {
    * name from the workspace); values are the per-repo CodeGraph.
    */
   crossRepoGraphs?: Map<string, CodeGraph>;
+  /** Optional per-repo owner lookup used to annotate cross-repo boundary summaries. */
+  crossRepoOwnership?: Map<string, OwnershipLookup>;
 }
 
 /**
@@ -50,7 +53,7 @@ export function computeImpact(
   // mode: any sibling-repo file whose callSites includes the symbol
   // name is a cross-repo direct caller (distance 1).
   if (options.crossRepoGraphs && options.crossRepoGraphs.size > 0) {
-    return foldInCrossRepo(base, target, options.crossRepoGraphs);
+    return foldInCrossRepo(base, target, options.crossRepoGraphs, options.crossRepoOwnership);
   }
   return base;
 }
@@ -59,6 +62,7 @@ function foldInCrossRepo(
   base: ImpactReport,
   target: { kind: 'file' | 'symbol'; value: string },
   crossRepoGraphs: Map<string, CodeGraph>,
+  crossRepoOwnership?: Map<string, OwnershipLookup>,
 ): ImpactReport {
   if (!base.available) return base;
   if (target.kind !== 'symbol') {
@@ -79,7 +83,7 @@ function foldInCrossRepo(
       }
     }
     if (count > 0) totalsByRepo[repoName] = count;
-    boundarySummary.push(...boundarySummariesForRepo(repoName, repoGraph, target.value));
+    boundarySummary.push(...boundarySummariesForRepo(repoName, repoGraph, target.value, crossRepoOwnership?.get(repoName)));
   }
   const reachable = [...base.reachable, ...extra].sort(compareNodes);
   const sortedBoundaries = boundarySummary.sort(
@@ -98,6 +102,7 @@ function boundarySummariesForRepo(
   repoName: string,
   repoGraph: CodeGraph,
   targetValue: string,
+  ownerForFile?: OwnershipLookup,
 ): ImpactBoundarySummary[] {
   const out: ImpactBoundarySummary[] = [];
   for (const [packageName, importers] of repoGraph.packageImporters) {
@@ -106,12 +111,21 @@ function boundarySummariesForRepo(
     out.push({
       repo: repoName,
       packageName,
-      owner: repoName,
+      owner: ownerForBoundary(files, ownerForFile) ?? repoName,
       files,
       reachableFiles: files.length,
     });
   }
   return out;
+}
+
+function ownerForBoundary(files: string[], ownerForFile?: OwnershipLookup): string | undefined {
+  if (!ownerForFile) return undefined;
+  for (const file of files) {
+    const owner = ownerForFile(file);
+    if (owner) return owner;
+  }
+  return undefined;
 }
 
 function packageMatchesTarget(packageName: string, targetValue: string): boolean {

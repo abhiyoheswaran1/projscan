@@ -320,21 +320,40 @@ function checkGitState(ctx, releaseTag) {
     return;
   }
 
-  const remoteTag = git(ctx, ['ls-remote', '--tags', 'origin', `refs/tags/${releaseTag}`], { timeout: 15000 });
+  const remoteTag = git(ctx, ['ls-remote', '--tags', 'origin', `refs/tags/${releaseTag}`, `refs/tags/${releaseTag}^{}`], {
+    timeout: 15000,
+  });
   if (!remoteTag.ok) {
     addCheck(ctx, 'remote-tag', 'Remote tag', 'warn', `Could not check origin/${releaseTag}`, remoteTag.stderr.trim());
     return;
   }
 
-  const remoteLine = remoteTag.stdout.trim();
-  ctx.gitState.remoteTag = remoteLine ? remoteLine.split(/\s+/)[0] : null;
+  ctx.gitState.remoteTag = parseRemoteTagCommit(remoteTag.stdout, releaseTag);
   addCheck(
     ctx,
     'remote-tag',
     'Remote tag',
-    'ok',
-    ctx.gitState.remoteTag ? `origin already has ${releaseTag}` : `origin does not have ${releaseTag}`,
+    ctx.gitState.remoteTag && ctx.gitState.remoteTag !== ctx.gitState.head ? 'block' : 'ok',
+    !ctx.gitState.remoteTag
+      ? `origin does not have ${releaseTag}`
+      : ctx.gitState.remoteTag === ctx.gitState.head
+        ? `origin already has ${releaseTag} at HEAD`
+        : `origin has ${releaseTag} at ${shortSha(ctx.gitState.remoteTag)}, not HEAD ${shortSha(ctx.gitState.head)}`,
   );
+}
+
+function parseRemoteTagCommit(stdout, releaseTag) {
+  const directRef = `refs/tags/${releaseTag}`;
+  const peeledRef = `${directRef}^{}`;
+  let directCommit = null;
+
+  for (const line of stdout.trim().split('\n').filter(Boolean)) {
+    const [sha, ref] = line.trim().split(/\s+/);
+    if (ref === peeledRef) return sha;
+    if (ref === directRef) directCommit = sha;
+  }
+
+  return directCommit;
 }
 
 function runReleaseGates(ctx) {
@@ -344,6 +363,7 @@ function runReleaseGates(ctx) {
     ['tests', 'npm', ['test']],
     ['lint', 'npm', ['run', 'lint']],
     ['stability', 'npm', ['run', 'check:stability']],
+    ['graph-corpus', 'npm', ['run', 'check:graph-corpus']],
     ['sbom', 'npm', ['run', 'sbom:generate']],
     ['packed-install-smoke', 'npm', ['run', 'smoke:packed-install']],
   ];

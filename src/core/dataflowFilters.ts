@@ -27,9 +27,10 @@ export function shouldIncludeDataflowRisk(
 function isDefaultBroadFileIoRisk(risk: DataflowRisk, context: DataflowRiskFilterContext): boolean {
   const defaultSource = !context.customSources.has(risk.source);
   const defaultSink = !context.customSinks.has(risk.sink);
+  if (!defaultSource || !defaultSink) return false;
   return (
-    (defaultSource && BROAD_FILE_IO_DATAFLOW_SOURCES.has(risk.source)) ||
-    (defaultSink && BROAD_FILE_IO_DATAFLOW_SINKS.has(risk.sink))
+    BROAD_FILE_IO_DATAFLOW_SOURCES.has(risk.source) ||
+    BROAD_FILE_IO_DATAFLOW_SINKS.has(risk.sink)
   );
 }
 

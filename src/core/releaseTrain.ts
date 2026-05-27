@@ -74,6 +74,42 @@ export async function computeReleaseTrain(
 }
 
 function trackForLine(line: string): ReleaseTrainTrack {
+  if (line.startsWith('3.0')) {
+    return {
+      line,
+      theme: 'Graph Operations Readiness',
+      outcome: 'Agents can trust graph-backed review, impact, dataflow, and release gates during everyday repo work.',
+      includedInPlan: true,
+      scope: [
+        'graph corpus release gate',
+        'dataflow precision hardening',
+        'ownership-aware impact',
+      ],
+      successCriteria: [
+        'release readiness runs the graph corpus baseline gate',
+        'custom dataflow rules stay visible when users configure them',
+        'impact boundary summaries identify likely owners when metadata exists',
+      ],
+    };
+  }
+  if (line.startsWith('3.1')) {
+    return {
+      line,
+      theme: 'Graph Intelligence Expansion',
+      outcome: 'Agents get narrower package-scoped evidence and richer framework-aware dataflow before editing high-risk paths.',
+      includedInPlan: true,
+      scope: [
+        'package-scoped review evidence',
+        'framework route dataflow precision',
+        'deeper ownership and package boundary metadata',
+      ],
+      successCriteria: [
+        'review package filters apply to taint, dataflow, graph evidence, and verdicts',
+        'route and request-handler dataflow avoids generated-code noise',
+        'impact reports keep ownership context without expanding the stable schema',
+      ],
+    };
+  }
   if (line.startsWith('2.3')) {
     return {
       line,
@@ -193,6 +229,38 @@ function trackForLine(line: string): ReleaseTrainTrack {
 }
 
 function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
+  if (track.line.startsWith('3.0')) {
+    return [
+      {
+        id: 'rt-3-0-graph-readiness',
+        priority: 'p0',
+        title: 'Harden graph operations readiness',
+        why: 'Agents trust projscan when graph/dataflow signals are gated, precise, and routed to the right owners.',
+        track: track.line,
+        files: ['scripts/release-check.mjs', 'src/core/dataflowFilters.ts', 'src/core/impact.ts'],
+        verification: {
+          commands: ['npm run release:check', 'npm run check:graph-corpus', 'projscan impact --symbol foo --cross-repo --format json'],
+          expected: 'Release readiness includes graph corpus checks, custom dataflow rules remain visible, and impact reports ownership boundaries.',
+        },
+      },
+    ];
+  }
+  if (track.line.startsWith('3.1')) {
+    return [
+      {
+        id: 'rt-3-1-graph-expansion',
+        priority: 'p1',
+        title: 'Expand graph intelligence precision',
+        why: 'The next product step should make high-risk review evidence narrower and framework-aware without forcing agents to inspect full graphs.',
+        track: track.line,
+        files: ['src/core/review.ts', 'src/core/dataflow.ts', 'src/core/impact.ts'],
+        verification: {
+          commands: ['projscan review --base main --head HEAD --format json', 'projscan dataflow --format json'],
+          expected: 'Review and dataflow evidence are scoped to the relevant package, route, and ownership boundaries.',
+        },
+      },
+    ];
+  }
   if (track.line.startsWith('2.3')) {
     return [
       {

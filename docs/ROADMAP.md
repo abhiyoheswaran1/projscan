@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-26.
+Last reviewed 2026-05-27.
 
 ---
 
@@ -53,26 +53,25 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.1 (2026)
+### Now — 3.0.2 (2026)
 
-**3.0.1 "Graph Operations Platform"** turns the 3.0 graph contract into an operational agent substrate:
+**3.0.2 "Agent Graph Readiness"** makes the 3.0 graph platform harder to misuse during real agent work:
 
-- `projscan_review` carries compact graph evidence alongside verdicts so agents can reason about changed functions, call edges, package pressure, and dataflow-risk counts without pulling the full graph.
-- Workplans and agent briefs consume semantic graph/dataflow context directly and recommend `projscan_semantic_graph` when review evidence needs expansion.
-- `projscan_impact` / `computeImpact` summarize cross-repo package and ownership boundaries when sibling graphs are available.
-- Analyzer plugins can read the code graph, semantic graph, and dataflow report through an optional read-only context while staying on manifest schema v1.
-- A golden graph corpus measures bundled language fixture quality across functions, imports, calls, symbols, packages, and dataflow risks.
-- Dataflow bridge detection is hardened against generic-name false positives before review blocks a merge.
+- Release readiness, CI, and the release workflow run the graph corpus baseline gate so parser, semantic-graph, and dataflow fixture regressions fail before publish.
+- `release:check` validates existing remote version tags against `HEAD`, including peeled annotated tags, so agents cannot mistake a stale tag for a ready release.
+- Custom dataflow sources and sinks stay visible even when broad default file-I/O noise is filtered.
+- `projscan_impact` / `computeImpact` prefer CODEOWNERS-derived owners in cross-repo boundary summaries when sibling repos expose ownership metadata.
+- `projscan_release_train` / `projscan release-train` now understand `3.0.x` graph-readiness and `3.1.x` graph-expansion product lines.
 
-### Recently Completed — 3.0.0 (2026)
+### Recently Completed — 3.0.1 (2026)
 
-**3.0.0 "Deep Graph Platform"** added the stable v3 semantic graph, dataflow risk engine, review-time bridge-risk blocking, and public graph/dataflow APIs.
+**3.0.1 "Graph Operations Platform"** turned the 3.0 graph contract into an operational agent substrate with graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, a golden graph corpus, and hardened dataflow precision.
 
 ### Next — 3.0.x / 3.1.0
 
-- Expand boundary-aware impact into richer workspace ownership metadata when projects expose CODEOWNERS or package-owner files.
-- Promote graph corpus checks into CI/release workflows where downstream adopters want repeatable parser/dataflow quality gates.
+- Apply package-scoped review filtering to taint, dataflow, graph evidence, summaries, and verdicts.
 - Continue hardening dataflow precision around framework routes, request handlers, and generated-code boundaries.
+- Deepen ownership and package-boundary metadata without expanding the stable schema.
 
 ## Non-goals
 
@@ -103,6 +102,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.2** (2026-05-27) | Agent Graph Readiness | Graph corpus release gates, custom dataflow visibility, remote tag integrity, CODEOWNERS impact ownership, and 3.x release-train planning |
 | **3.0.1** (2026-05-26) | Graph Operations Platform | Graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, golden graph corpus, and hardened dataflow precision |
 | **3.0.0** (2026-05-23) | Deep Graph Platform | Stable v3 semantic graph, dataflow risk engine, bridge-helper review blocks, 39-tool MCP surface, and public graph/dataflow APIs |
 | **2.9.0** (2026-05-23) | Adoption Layer | MCP client config snippets, workflow recipes, first-run diagnostics, adoption MCP tool, plugin gallery, and console guidance polish |
