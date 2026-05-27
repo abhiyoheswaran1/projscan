@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { PLUGIN_PREVIEW_FLAG, discoverPluginManifests } from './plugins.js';
+import type { ProjscanConfig } from '../types.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -60,6 +61,43 @@ export interface AgentWorkflowRecipe {
 export interface WorkflowRecipeCatalog {
   schemaVersion: 1;
   recipes: AgentWorkflowRecipe[];
+}
+
+export const POLICY_STARTER_TEAMS = ['frontend', 'platform', 'security', 'monorepo'] as const;
+
+export type PolicyStarterTeam = (typeof POLICY_STARTER_TEAMS)[number];
+
+export interface PolicyStarterKit {
+  schemaVersion: 1;
+  team: PolicyStarterTeam;
+  label: string;
+  config: ProjscanConfig;
+  nextCommands: string[];
+  rationale: string[];
+}
+
+export interface WritePolicyStarterOptions {
+  force?: boolean;
+}
+
+export interface WritePolicyStarterResult extends PolicyStarterKit {
+  target: string;
+  created: boolean;
+  reason?: string;
+}
+
+export interface GithubActionStarter {
+  schemaVersion: 1;
+  filename: '.github/workflows/projscan.yml';
+  workflow: string;
+  nextCommands: string[];
+  rationale: string[];
+}
+
+export interface WriteGithubActionStarterResult extends GithubActionStarter {
+  target: string;
+  created: boolean;
+  reason?: string;
 }
 
 export type FirstRunStatus = 'pass' | 'warn' | 'fail' | 'info';
@@ -467,3 +505,232 @@ async function git(rootPath: string, args: string[]): Promise<{ stdout: string; 
     maxBuffer: 1024 * 1024,
   });
 }
+
+
+export function isPolicyStarterTeam(value: unknown): value is PolicyStarterTeam {
+  return typeof value === 'string' && (POLICY_STARTER_TEAMS as readonly string[]).includes(value);
+}
+
+export function getPolicyStarterKit(team: PolicyStarterTeam): PolicyStarterKit {
+  const kit = POLICY_KITS[team];
+  return {
+    schemaVersion: 1,
+    team,
+    label: kit.label,
+    config: cloneConfig(kit.config),
+    nextCommands: [...kit.nextCommands],
+    rationale: [...kit.rationale],
+  };
+}
+
+export async function writePolicyStarterKit(
+  rootPath: string,
+  team: PolicyStarterTeam,
+  options: WritePolicyStarterOptions = {},
+): Promise<WritePolicyStarterResult> {
+  const target = path.join(rootPath, '.projscanrc.json');
+  const kit = getPolicyStarterKit(team);
+  try {
+    await fs.access(target);
+    if (options.force !== true) {
+      return {
+        ...kit,
+        target,
+        created: false,
+        reason: '.projscanrc.json already exists; pass --force to overwrite it.',
+      };
+    }
+  } catch {
+    // file does not exist
+  }
+  await fs.writeFile(target, `${JSON.stringify(kit.config, null, 2)}\n`, 'utf-8');
+  return {
+    ...kit,
+    target,
+    created: true,
+  };
+}
+
+const POLICY_KITS: Record<PolicyStarterTeam, Omit<PolicyStarterKit, 'schemaVersion' | 'team'>> = {
+  frontend: {
+    label: 'Frontend team policy',
+    config: {
+      minScore: 75,
+      hotspots: { limit: 12, since: '90 days ago' },
+      ignore: ['.next', 'dist', 'build', 'coverage', 'storybook-static'],
+      disableRules: [],
+      severityOverrides: {
+        'test-missing': 'warning',
+      },
+    },
+    nextCommands: [
+      'projscan start --mode before_edit --format json',
+      'projscan preflight --mode before_edit --format json',
+      'projscan quality-scorecard --format json',
+    ],
+    rationale: [
+      'Frontend teams need fast feedback on generated build directories and test readiness.',
+      'The starter keeps generated output quiet while still surfacing changed-code risk.',
+    ],
+  },
+  platform: {
+    label: 'Platform team policy',
+    config: {
+      minScore: 80,
+      baseRef: 'main',
+      hotspots: { limit: 15, since: '120 days ago' },
+      ignore: ['dist', 'build', 'coverage', '.turbo', '.cache'],
+      disableRules: [],
+    },
+    nextCommands: [
+      'projscan start --mode before_edit --format json',
+      'projscan workplan --mode before_merge --format json',
+      'projscan regression-plan --level focused --format json',
+    ],
+    rationale: [
+      'Platform teams usually care about stable merge gates and broad blast radius.',
+      'This starter pins the base ref and keeps hotspot windows wide enough for infrastructure churn.',
+    ],
+  },
+  security: {
+    label: 'Security team policy',
+    config: {
+      minScore: 90,
+      baseRef: 'main',
+      hotspots: { limit: 20, since: '180 days ago' },
+      ignore: ['dist', 'build', 'coverage'],
+      disableRules: [],
+      severityOverrides: {
+        'unused-dependency': 'warning',
+      },
+      taint: {
+        sources: ['req.body', 'request.json', 'process.env', 'cookies', 'headers'],
+        sinks: ['exec', 'eval', 'spawn', 'query', 'raw', 'innerHTML'],
+      },
+    },
+    nextCommands: [
+      'projscan preflight --mode before_edit --format json',
+      'projscan dataflow --format json',
+      'projscan audit --format sarif',
+    ],
+    rationale: [
+      'Security teams need stricter score thresholds and project-specific taint names.',
+      'The starter keeps custom source/sink expansion explicit and reviewable in git.',
+    ],
+  },
+  monorepo: {
+    label: 'Monorepo team policy',
+    config: {
+      minScore: 80,
+      baseRef: 'main',
+      hotspots: { limit: 20, since: '120 days ago' },
+      ignore: ['dist', 'build', 'coverage', '.turbo', '.nx', '.next'],
+      disableRules: [],
+      monorepo: {
+        importPolicy: [{ from: '*', allow: ['*'] }],
+      },
+    },
+    nextCommands: [
+      'projscan workspaces --format json',
+      'projscan start --mode before_edit --format json',
+      'projscan review --package <name> --format json',
+    ],
+    rationale: [
+      'Monorepos need package ownership and import boundaries to be visible early.',
+      'The starter makes the policy block explicit so teams can tighten it package by package.',
+    ],
+  },
+};
+
+function cloneConfig(config: ProjscanConfig): ProjscanConfig {
+  return JSON.parse(JSON.stringify(config)) as ProjscanConfig;
+}
+
+export function getGithubActionStarter(): GithubActionStarter {
+  return {
+    schemaVersion: 1,
+    filename: '.github/workflows/projscan.yml',
+    workflow: GITHUB_ACTION_WORKFLOW,
+    nextCommands: [
+      'git add .github/workflows/projscan.yml',
+      'git commit -m "ci: add projscan PR workflow"',
+    ],
+    rationale: [
+      'Runs projscan where review decisions already happen: the pull request.',
+      'Posts the same concise approval evidence that `projscan evidence-pack --pr-comment` prints locally.',
+      'Keeps the workflow tool-only: no source upload, no API key, no embedded LLM.',
+    ],
+  };
+}
+
+export async function writeGithubActionStarter(
+  rootPath: string,
+  options: WritePolicyStarterOptions = {},
+): Promise<WriteGithubActionStarterResult> {
+  const starter = getGithubActionStarter();
+  const target = path.join(rootPath, starter.filename);
+  try {
+    await fs.access(target);
+    if (options.force !== true) {
+      return {
+        ...starter,
+        target,
+        created: false,
+        reason: '.github/workflows/projscan.yml already exists; pass --force to overwrite it.',
+      };
+    }
+  } catch {
+    // file does not exist
+  }
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, starter.workflow, 'utf-8');
+  return {
+    ...starter,
+    target,
+    created: true,
+  };
+}
+
+const GITHUB_ACTION_WORKFLOW = `name: projscan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: projscan PR evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Orient workflow
+        run: npx -y projscan start --mode before_merge --format json --quiet > projscan-start.json
+
+      - name: Run preflight gate
+        run: npx -y projscan preflight --mode before_merge --format json --quiet > projscan-preflight.json
+
+      - name: Build PR comment
+        run: npx -y projscan evidence-pack --pr-comment --quiet > projscan-comment.md
+
+      - name: Publish PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          if ! gh pr comment "\${{ github.event.pull_request.number }}" --body-file projscan-comment.md --edit-last; then
+            gh pr comment "\${{ github.event.pull_request.number }}" --body-file projscan-comment.md
+          fi
+`;

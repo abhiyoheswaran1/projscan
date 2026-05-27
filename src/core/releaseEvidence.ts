@@ -18,6 +18,7 @@ import type {
 export interface ComputeEvidencePackOptions {
   lines?: string[];
   includeWebsitePrompt?: boolean;
+  includePrComment?: boolean;
   maxFindings?: number;
 }
 
@@ -45,7 +46,7 @@ export async function computeEvidencePack(
     })),
   ]);
 
-  return {
+  const report: EvidencePackReport = {
     schemaVersion: 1,
     currentVersion: train.currentVersion,
     readOnly: true,
@@ -65,6 +66,32 @@ export async function computeEvidencePack(
     ...(options.includeWebsitePrompt ? { websitePrompt: buildWebsitePrompt(train, changelogEntries) } : {}),
     suggestedNextActions,
   };
+  return options.includePrComment ? { ...report, prComment: renderEvidencePackPrComment(report) } : report;
+}
+
+
+export function renderEvidencePackPrComment(report: EvidencePackReport): string {
+  const blockers = report.approval.blockingReasons.slice(0, 5);
+  const commands = dedupeStrings(report.artifacts.flatMap((artifact) => artifact.commands)).slice(0, 8);
+  const lines = [
+    '## projscan approval evidence',
+    '',
+    `**Verdict:** ${report.verdict}`,
+    `**Version:** ${report.currentVersion ?? 'unknown'}`,
+    `**Summary:** ${report.summary}`,
+    '',
+    '### Artifacts',
+    ...report.artifacts.map((artifact) => `- **${artifact.title}:** ${artifact.status} - ${artifact.summary}`),
+    '',
+    '### Blocking Reasons',
+    ...(blockers.length > 0 ? blockers.map((reason) => `- ${reason}`) : ['- None recorded.']),
+    '',
+    '### Verification',
+    ...commands.map((command) => `- \`${command}\``),
+    '',
+    `Approval guidance: ${report.approval.recommendation}`,
+  ];
+  return `${lines.join('\n')}\n`;
 }
 
 function buildArtifacts(

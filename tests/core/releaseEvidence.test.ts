@@ -39,6 +39,21 @@ test('evidence pack composes the four-line product plan without changing package
   expect(report.approval.recommendation.length).toBeGreaterThan(0);
 });
 
+
+test('evidence pack can render a concise PR comment for GitHub review', async () => {
+  const root = await makeTempProject('2.2.0');
+
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 3,
+  });
+
+  expect(report.prComment).toContain('## projscan approval evidence');
+  expect(report.prComment).toContain('**Verdict:**');
+  expect(report.prComment).toContain('### Verification');
+  expect(report.prComment).toContain('projscan preflight --mode before_merge --format json');
+});
+
 async function makeTempProject(version: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-evidence-pack-'));
   tempRoots.push(root);

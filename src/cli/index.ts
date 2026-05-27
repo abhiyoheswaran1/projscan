@@ -46,6 +46,7 @@ import { registerRegressionPlan } from './commands/regressionPlan.js';
 import { registerAgentBrief } from './commands/agentBrief.js';
 import { registerQualityScorecard } from './commands/qualityScorecard.js';
 import { registerFirstRun, registerRecipes } from './commands/recipes.js';
+import { registerStart } from './commands/start.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -92,6 +93,7 @@ registerEvidencePack();
 registerRegressionPlan();
 registerAgentBrief();
 registerQualityScorecard();
+registerStart();
 registerRecipes();
 registerFirstRun();
 registerHelp();

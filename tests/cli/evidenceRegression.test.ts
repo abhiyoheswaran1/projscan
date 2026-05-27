@@ -52,6 +52,16 @@ test('evidence-pack renders JSON and keeps package version unchanged', async () 
   expect(pkg.version).toBe('2.2.0');
 });
 
+
+test('evidence-pack prints a PR comment markdown artifact', async () => {
+  const result = await runCli(['evidence-pack', '--pr-comment', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('## projscan approval evidence');
+  expect(result.stdout).toContain('### Verification');
+  expect(result.stdout).toContain('projscan preflight --mode before_merge --format json');
+});
+
 test('regression-plan renders a full command matrix', async () => {
   const result = await runCli(['regression-plan', '--level', 'full', '--format', 'json', '--quiet']);
 

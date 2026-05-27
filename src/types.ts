@@ -512,6 +512,7 @@ export interface EvidencePackReport {
   artifacts: EvidencePackArtifact[];
   changelogEntries: string[];
   websitePrompt?: string;
+  prComment?: string;
   suggestedNextActions: PreflightSuggestedAction[];
 }
 
@@ -592,6 +593,68 @@ export interface AgentBriefReport {
   focus: AgentBriefItem[];
   guardrails: AgentBriefGuardrail[];
   suggestedNextActions: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
+
+export interface WorkplanHandoffPayload {
+  summary: string;
+  verdict: PreflightVerdict;
+  mode: WorkplanMode;
+  next: string[];
+  verificationCommands: string[];
+  coordination: WorkplanCoordination;
+  markdown: string;
+}
+
+export interface StartWorkflowRecommendation {
+  id: string;
+  name: string;
+  why: string;
+  commands: string[];
+  mcpTools: string[];
+}
+
+export interface StartRisk {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  source: string;
+  files: string[];
+  command: string;
+}
+
+export interface StartAdoptionGap {
+  id: string;
+  status: 'info' | 'warn' | 'fail';
+  title: string;
+  summary: string;
+  command?: string;
+}
+
+export interface StartReport {
+  schemaVersion: 1;
+  readOnly: true;
+  rootPath: string;
+  mode: WorkplanMode;
+  summary: string;
+  setup: {
+    overall: 'pass' | 'warn' | 'fail' | 'info';
+    diagnostics: Array<{ id: string; label: string; status: 'pass' | 'warn' | 'fail' | 'info'; summary: string; detail?: string; command?: string }>;
+  };
+  recommendedWorkflow: StartWorkflowRecommendation;
+  evidence: {
+    workplanVerdict: PreflightVerdict;
+    workplanSummary: string;
+    qualityVerdict: QualityScorecardVerdict;
+    qualitySummary: string;
+    healthScore: number;
+    mcpReady: boolean;
+  };
+  topRisks: StartRisk[];
+  adoptionGaps: StartAdoptionGap[];
+  nextActions: PreflightSuggestedAction[];
+  handoff?: WorkplanHandoffPayload;
   truncated?: boolean;
 }
 

@@ -68,6 +68,47 @@ test('first-run reports setup diagnostics without mutating the project', async (
   await expect(fs.access(path.join(tmp, '.projscanrc.json'))).rejects.toThrow();
 });
 
+
+test('init policy writes a team policy starter as JSON', async () => {
+  const result = await runCli(['init', 'policy', '--team', 'security', '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.created).toBe(true);
+  expect(payload.team).toBe('security');
+  expect(payload.config.minScore).toBeGreaterThanOrEqual(85);
+  expect(payload.nextCommands).toContain('projscan preflight --mode before_edit --format json');
+
+  const config = JSON.parse(await fs.readFile(path.join(tmp, '.projscanrc.json'), 'utf-8'));
+  expect(config.taint.sinks).toEqual(expect.arrayContaining(['exec', 'eval']));
+});
+
+test('init policy refuses to overwrite without force', async () => {
+  await runCli(['init', 'policy', '--team', 'frontend', '--format', 'json', '--quiet']);
+  const result = await runCli(['init', 'policy', '--team', 'platform', '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.created).toBe(false);
+  expect(payload.reason).toContain('already exists');
+  const config = JSON.parse(await fs.readFile(path.join(tmp, '.projscanrc.json'), 'utf-8'));
+  expect(config.ignore).toEqual(expect.arrayContaining(['.next', 'dist']));
+});
+
+
+test('init github-action writes a PR workflow as JSON', async () => {
+  const result = await runCli(['init', 'github-action', '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.created).toBe(true);
+  expect(payload.target).toContain('.github/workflows/projscan.yml');
+  expect(payload.nextCommands).toContain('git add .github/workflows/projscan.yml');
+  const workflow = await fs.readFile(path.join(tmp, '.github', 'workflows', 'projscan.yml'), 'utf-8');
+  expect(workflow).toContain('npx -y projscan start --mode before_merge --format json');
+  expect(workflow).toContain('npx -y projscan evidence-pack --pr-comment');
+});
+
 async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   try {
     const result = await execFileAsync(process.execPath, [cliPath, ...args], {

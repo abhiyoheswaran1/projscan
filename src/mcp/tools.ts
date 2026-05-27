@@ -48,6 +48,7 @@ import { regressionPlanTool } from './tools/regressionPlan.js';
 import { agentBriefTool } from './tools/agentBrief.js';
 import { qualityScorecardTool } from './tools/qualityScorecard.js';
 import { adoptionTool } from './tools/adoption.js';
+import { startTool } from './tools/start.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -93,6 +94,7 @@ const tools: McpTool[] = [
   agentBriefTool,
   qualityScorecardTool,
   adoptionTool,
+  startTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

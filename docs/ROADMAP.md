@@ -70,6 +70,7 @@ We are *not* trying to be:
 
 The next larger line should deepen graph expansion without rushing another same-day patch:
 
+- Team workflow adoption: first-60-seconds `projscan start`, policy starter kits, persisted handoffs, and PR comment evidence so teams can build a repeatable habit around projscan.
 - Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
 - Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
 - Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.

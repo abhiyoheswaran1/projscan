@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+
+### Added
+
+- `projscan start` / `projscan_start` provide a read-only first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, next commands, and optional handoff payload.
+- `projscan init policy` writes team policy starter kits for frontend, platform, security, and monorepo teams with conservative overwrite protection.
+- `projscan handoff --write <file>` persists the next-agent handoff as a markdown artifact.
+- `projscan evidence-pack --pr-comment` renders approval evidence as a concise GitHub PR comment.
+- `projscan init github-action` writes a pull-request workflow that runs projscan and posts that PR evidence automatically.
+
 ## [3.0.3] — 2026-05-27 — "Agent Review Precision"
 
 ### Added

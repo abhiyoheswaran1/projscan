@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
-import { computeWorkplan } from '../../src/core/workplan.js';
+import { buildWorkplanHandoff, computeWorkplan } from '../../src/core/workplan.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import type { WorkplanMode, WorkplanPriority } from '../../src/types.js';
 
@@ -112,6 +112,21 @@ test('workplan carries touched-file coordination into the handoff', async () => 
   expect(report.coordination.touchedFiles).toEqual(['src/index.ts']);
   expect(report.coordination.recommendedNextAgent).toContain('preflight');
   expect(report.tasks.some((task) => task.handoffText.includes('src/index.ts'))).toBe(true);
+});
+
+
+test('workplan handoff payload is reusable and includes verification commands', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeWorkplan(root, { mode: 'before_edit', maxTasks: 3 });
+  const handoff = buildWorkplanHandoff(report);
+
+  expect(handoff.summary).toBe(report.summary);
+  expect(handoff.verdict).toBe(report.verdict);
+  expect(handoff.next.length).toBeGreaterThan(0);
+  expect(handoff.verificationCommands).toEqual(expect.arrayContaining(['projscan preflight --format json']));
+  expect(handoff.markdown).toContain('## Next');
+  expect(handoff.markdown).toContain('projscan preflight --format json');
 });
 
 async function makeTempProject(): Promise<string> {

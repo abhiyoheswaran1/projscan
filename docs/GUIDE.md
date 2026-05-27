@@ -112,11 +112,12 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
+- **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
-- **`projscan_adoption` / `projscan init mcp` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, repeatable agent workflow recipes, and setup diagnostics without mutating the repo.
+- **`projscan_adoption` / `projscan init mcp` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, policy starters, PR workflow scaffolding, repeatable agent workflow recipes, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, changelog, and optional website prompt evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
@@ -1065,6 +1066,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 **Core tools include:**
 
 *Structural / agent-native:*
+- `projscan_start` — first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
 - `projscan_graph` — structural query over the AST code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Milliseconds on a warm cache.
 - `projscan_semantic_graph` — stable v3 semantic graph with file/function/package/symbol nodes and normalized structural edges.
 - `projscan_dataflow` — direct, propagated, and bridge source-to-sink dataflow risks over the function graph.
@@ -1382,7 +1384,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 39 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # 40 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

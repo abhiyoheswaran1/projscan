@@ -8,6 +8,7 @@ import type {
   SessionConflict,
   WorkplanCoordination,
   WorkplanEvidence,
+  WorkplanHandoffPayload,
   WorkplanMode,
   WorkplanPriority,
   WorkplanReport,
@@ -86,6 +87,47 @@ export async function computeWorkplan(
     ]),
     ...(truncated ? { truncated: true } : {}),
   };
+}
+
+
+export function buildWorkplanHandoff(report: WorkplanReport): WorkplanHandoffPayload {
+  const next = report.tasks.slice(0, 5).map((task) => task.handoffText);
+  const verificationCommands = unique(report.tasks.flatMap((task) => task.verification.commands)).slice(0, 12);
+  return {
+    summary: report.summary,
+    verdict: report.verdict,
+    mode: report.mode,
+    next,
+    verificationCommands,
+    coordination: report.coordination,
+    markdown: renderWorkplanHandoffMarkdown(report, next, verificationCommands),
+  };
+}
+
+function renderWorkplanHandoffMarkdown(
+  report: WorkplanReport,
+  next: string[],
+  verificationCommands: string[],
+): string {
+  const lines = [
+    '# Agent Handoff',
+    '',
+    `**Mode:** ${report.mode}`,
+    `**Verdict:** ${report.verdict}`,
+    '',
+    report.summary,
+    '',
+    '## Next',
+    ...(next.length > 0 ? next.map((item) => `- ${item}`) : ['- Preserve the current baseline.']),
+    '',
+    '## Verification',
+    ...(verificationCommands.length > 0 ? verificationCommands.map((command) => `- \`${command}\``) : ['- `projscan preflight --format json`']),
+    '',
+    '## Coordination',
+    `- ${report.coordination.recommendedNextAgent}`,
+    ...report.coordination.touchedFiles.slice(0, 10).map((file) => `- touched: ${file}`),
+  ];
+  return `${lines.join('\n')}\n`;
 }
 
 function modeToPreflightMode(mode: WorkplanMode): PreflightMode {

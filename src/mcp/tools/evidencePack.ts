@@ -17,6 +17,10 @@ export const evidencePackTool: McpTool = {
         type: 'boolean',
         description: 'Include website-update prompt text in the response.',
       },
+      pr_comment: {
+        type: 'boolean',
+        description: 'Include a concise GitHub PR comment markdown artifact in the response.',
+      },
       max_findings: {
         type: 'number',
         description: 'Maximum bug-hunt findings to include. Default: 10, max: 25.',
@@ -33,6 +37,7 @@ export const evidencePackTool: McpTool = {
         ? args.lines.filter((line): line is string => typeof line === 'string')
         : undefined,
       includeWebsitePrompt: args.website_prompt === true,
+      includePrComment: args.pr_comment === true,
       maxFindings:
         typeof args.max_findings === 'number' && Number.isFinite(args.max_findings)
           ? args.max_findings

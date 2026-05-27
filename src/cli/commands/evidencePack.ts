@@ -16,6 +16,7 @@ export function registerEvidencePack(): void {
     .description('Assemble approval evidence from product planning, bug-hunt, workplan, and preflight signals')
     .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
     .option('--website-prompt', 'include website-update prompt text')
+    .option('--pr-comment', 'print a GitHub PR comment markdown artifact')
     .option('--max-findings <count>', 'maximum bug-hunt findings to include', parsePositiveInt)
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -26,11 +27,16 @@ export function registerEvidencePack(): void {
         const report = await computeEvidencePack(getRootPath(), {
           lines: cmdOpts.line,
           includeWebsitePrompt: cmdOpts.websitePrompt === true,
+          includePrComment: cmdOpts.prComment === true,
           maxFindings: cmdOpts.maxFindings,
         });
 
         if (format === 'json') {
           console.log(JSON.stringify(report, null, 2));
+          return;
+        }
+        if (cmdOpts.prComment === true && report.prComment) {
+          console.log(report.prComment.trimEnd());
           return;
         }
         printEvidencePack(report);
