@@ -101,6 +101,8 @@ test('large release PR comment stays manual-review calibrated instead of calling
 
   expectUsefulPrComment(report);
   expect(report.prSummary?.trust.verdict).toBe('manual_review');
+  expect(report.verdict).toBe('caution');
+  expect(report.prComment).toContain('**Verdict:** caution');
   expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
   expect(report.prSummary?.trust.manualReviewSignals.join(' ')).toMatch(/Large platform release risk|scale\/complexity/i);
   expect(report.prComment).toContain('- actual defects: none');

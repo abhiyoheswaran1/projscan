@@ -2,7 +2,7 @@
 
 Date: 2026-05-28
 Branch: `feat/3.0.5-proof-of-usefulness`
-Status: prepared for PR validation, not released
+Status: PR opened for validation, not released
 
 ## What 3.0.5 Proves
 
@@ -14,8 +14,10 @@ Status: prepared for PR validation, not released
 
 ## PR Proof
 
-- PR: to be filled after the 3.0.5 proof PR is opened.
-- Actual generated PR comment: to be captured in `docs/examples/pr-comments/actual-3.0.5-pr.md` after the PR exists.
+- PR: https://github.com/abhiyoheswaran1/projscan/pull/45
+- Actual generated PR comment: `docs/examples/pr-comments/actual-3.0.5-pr.md`
+- Posted PR proof comment: https://github.com/abhiyoheswaran1/projscan/pull/45#issuecomment-4563604117
+- Proof source: generated locally from the built 3.0.5 CLI with `projscan evidence-pack --pr-comment --quiet` after the PR was opened.
 
 ## Verification Checklist
 

@@ -50,7 +50,7 @@ export async function computeEvidencePack(
     computePreflight(rootPath, { mode: 'before_merge', maxChangedFiles: options.preflightMaxChangedFiles }),
   ]);
   const artifacts = buildArtifacts(train, bugHunt, workplan, preflight);
-  const verdict = packVerdict(artifacts);
+  const rawVerdict = packVerdict(artifacts);
   const blockingReasons = blockingEvidence(preflight, bugHunt, workplan);
   const changelogEntries = buildChangelogEntries();
   const suggestedNextActions = dedupeActions([
@@ -68,6 +68,7 @@ export async function computeEvidencePack(
     loadOwnership(rootPath).catch(() => undefined),
   ]);
   const prSummary = buildPrSummary(workplan, bugHunt, preflight, suggestedNextActions, baselineTrend, ownership);
+  const verdict = calibrateEvidencePackVerdict(rawVerdict, prSummary);
 
   const report: EvidencePackReport = {
     schemaVersion: 1,
@@ -663,6 +664,16 @@ function packVerdict(artifacts: EvidencePackArtifact[]): EvidencePackVerdict {
   if (artifacts.some((artifact) => artifact.status === 'blocked')) return 'blocked';
   if (artifacts.some((artifact) => artifact.status === 'caution')) return 'caution';
   return 'ready';
+}
+
+function calibrateEvidencePackVerdict(
+  verdict: EvidencePackVerdict,
+  prSummary: EvidencePackPrSummary,
+): EvidencePackVerdict {
+  if (verdict === 'blocked' && prSummary.trust.verdict === 'manual_review' && prSummary.trust.concreteBlockers.length === 0) {
+    return 'caution';
+  }
+  return verdict;
 }
 
 function summarize(
