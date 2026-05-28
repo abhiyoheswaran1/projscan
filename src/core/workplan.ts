@@ -1,5 +1,6 @@
 import { computePreflight, type ComputePreflightOptions } from './preflight.js';
 import { buildRiskNow } from './sessionResources.js';
+import { loadOwnership, type OwnershipLookup } from './ownership.js';
 import type {
   PreflightMode,
   PreflightReason,
@@ -57,7 +58,10 @@ export async function computeWorkplan(
     maxChangedFiles: options.maxChangedFiles,
     enablePlugins: options.enablePlugins,
   } satisfies ComputePreflightOptions);
-  const riskNow = await safeRiskNow(rootPath);
+  const [riskNow, ownership] = await Promise.all([
+    safeRiskNow(rootPath),
+    loadOwnership(rootPath).catch(() => undefined),
+  ]);
   const coordination = buildCoordination(preflight.verdict, riskNow.touchedFiles, riskNow.conflicts);
   const tasks = rankWorkplanTasks([
     ...tasksFromPreflight(preflight.reasons),
@@ -65,8 +69,8 @@ export async function computeWorkplan(
     ...modeTasks(mode, preflight.verdict, coordination.touchedFiles),
   ]);
   const maxTasks = normalizeMaxTasks(options.maxTasks);
-  const limitedTasks = tasks.slice(0, maxTasks);
-  const topRisks = buildTopRisks(preflight.reasons, coordination.conflicts);
+  const limitedTasks = annotateTasksWithOwners(tasks.slice(0, maxTasks), ownership);
+  const topRisks = annotateTopRisksWithOwners(buildTopRisks(preflight.reasons, coordination.conflicts), ownership);
   const truncated =
     tasks.length > limitedTasks.length ||
     preflight.truncated === true ||
@@ -533,6 +537,49 @@ function buildTopRisks(reasons: PreflightReason[], conflicts: SessionConflict[])
       return a.message.localeCompare(b.message);
     })
     .slice(0, MAX_TOP_RISKS);
+}
+
+
+function annotateTasksWithOwners(
+  tasks: WorkplanTask[],
+  ownership: OwnershipLookup | undefined,
+): WorkplanTask[] {
+  if (!ownership) return tasks;
+  return tasks.map((task) => {
+    const owner = ownerForTask(task, ownership);
+    if (!owner) return task;
+    return {
+      ...task,
+      owner,
+      handoffText: compact(`${task.handoffText} Owner: ${owner}.`, HANDOFF_LIMIT),
+    };
+  });
+}
+
+function annotateTopRisksWithOwners(
+  risks: WorkplanTopRisk[],
+  ownership: OwnershipLookup | undefined,
+): WorkplanTopRisk[] {
+  if (!ownership) return risks;
+  return risks.map((risk) => {
+    const owner = ownerForFiles([risk.file].filter((file): file is string => typeof file === 'string'), ownership);
+    return owner ? { ...risk, owner } : risk;
+  });
+}
+
+function ownerForTask(task: WorkplanTask, ownership: OwnershipLookup): string | undefined {
+  const evidenceFiles = task.evidence
+    .map((item) => item.file)
+    .filter((file): file is string => typeof file === 'string' && file.length > 0);
+  return ownerForFiles([...task.files, ...evidenceFiles], ownership);
+}
+
+function ownerForFiles(files: string[], ownership: OwnershipLookup): string | undefined {
+  for (const file of unique(files)) {
+    const owner = ownership(file);
+    if (owner) return owner;
+  }
+  return undefined;
 }
 
 function summarizeWorkplan(

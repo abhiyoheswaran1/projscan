@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 
+import { computeStartReport } from '../../core/start.js';
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
 import {
   getGithubActionStarter,
@@ -12,12 +13,15 @@ import {
   POLICY_STARTER_TEAMS,
   writeGithubActionStarter,
   writePolicyStarterKit,
+  writeTeamStarterKit,
   type McpConfigCatalog,
   type McpConfigGuide,
   type PolicyStarterTeam,
+  type TeamStarterKit,
   type WriteGithubActionStarterResult,
   type WritePolicyStarterResult,
 } from '../../core/adoption.js';
+import type { StartReport } from '../../types.js';
 
 /**
  * `projscan init` (1.6+) — scaffold `.projscanrc.json` for new
@@ -84,6 +88,35 @@ export function registerInit(): void {
           return;
         }
         printPolicyStarterResult(result);
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exit(1);
+      }
+    });
+
+
+  init
+    .command('team')
+    .description('Bootstrap team policy, PR workflow, CODEOWNERS starter, baseline memory, and a start report')
+    .option('--team <team>', `team: ${POLICY_STARTER_TEAMS.join(', ')}`, 'platform')
+    .option('--force', 'overwrite existing starter files')
+    .action(async (opts: { team?: string; force?: boolean }) => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('init team');
+      const team = parsePolicyTeam(opts.team);
+      try {
+        const rootPath = getRootPath();
+        const result = {
+          schemaVersion: 1,
+          team: await writeTeamStarterKit(rootPath, team, { force: opts.force === true }),
+          start: await computeStartReport(rootPath, { mode: 'before_edit', maxTasks: 5, maxRisks: 5 }),
+        };
+        if (format === 'json') {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+        printTeamStarterResult(result);
       } catch (error) {
         console.error(chalk.red(error instanceof Error ? error.message : String(error)));
         process.exit(1);
@@ -195,6 +228,33 @@ function printPolicyStarterResult(result: WritePolicyStarterResult): void {
   console.log('');
   console.log(chalk.bold('Policy'));
   console.log(prefixIndent(JSON.stringify(result.config, null, 2), '  '));
+}
+
+
+function printTeamStarterResult(result: { schemaVersion: number; team: TeamStarterKit; start: StartReport }): void {
+  console.log('');
+  console.log(chalk.bold(`Team Bootstrap: ${result.team.team}`));
+  console.log(`  policy       ${result.team.created.policy ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  PR workflow  ${result.team.created.githubAction ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  CODEOWNERS   ${result.team.created.codeowners ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  baseline     ${result.team.created.baseline ? chalk.green('created') : chalk.yellow('kept')}`);
+  if (result.team.reasons.length > 0) {
+    console.log('');
+    for (const reason of result.team.reasons) console.log(chalk.dim(`  ${reason}`));
+  }
+  console.log('');
+  console.log(chalk.bold('Start Summary'));
+  console.log(`  ${result.start.summary}`);
+  console.log('');
+  console.log(chalk.bold('Onboarding'));
+  for (const step of result.team.onboarding) {
+    console.log(`  ${step.title}`);
+    console.log(chalk.dim(`    ${step.why}`));
+    if (step.command) console.log(`    ${step.command}`);
+  }
+  console.log('');
+  console.log(chalk.bold('Next Commands'));
+  for (const command of result.team.nextCommands) console.log(`  ${command}`);
 }
 
 function prefixIndent(text: string, indent: string): string {

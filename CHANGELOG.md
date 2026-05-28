@@ -7,8 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.4] — 2026-05-28 — "Team Adoption Loop"
+
 ### Added
 
+- `projscan init team` bootstraps team policy, GitHub PR evidence workflow, CODEOWNERS starter, baseline memory, a first `projscan start` report, and an onboarding checklist for the first team PR.
+- `projscan mcp doctor` verifies client setup and returns paste-ready MCP config for Codex, Claude, Cursor, Continue, Windsurf, Cline, Zed, Gemini, or all clients.
+- Evidence-pack PR comments now lead with a reviewer-facing verdict, trust calibration, baseline trend, top risks, team routing, verification commands, exact next commands, and suggested next actions.
+- Evidence-pack PR comments now include a validator for required sections, GitHub comment size, render sanity, and actionable commands; generated GitHub workflows run it before posting.
+- Baseline diffs now include trend memory for score direction, new hotspots, and recurring noisy rules.
+- Workplans now route tasks and top risks through CODEOWNERS or package-owner metadata when ownership is available.
+- Added practical analyzer plugin examples for API route ownership, security-sensitive file review, and monorepo boundary checks.
 - `projscan start` / `projscan_start` provide a read-only first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, next commands, and optional handoff payload.
 - `projscan init policy` writes team policy starter kits for frontend, platform, security, and monorepo teams with conservative overwrite protection.
 - `projscan handoff --write <file>` persists the next-agent handoff as a markdown artifact.
@@ -16,6 +25,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan init github-action` writes a pull-request workflow that runs projscan, posts PR evidence automatically, and fails only when preflight returns `block`.
 - `projscan recipes` now includes team-bootstrap and PR-automation playbooks so teams can install policy, CI, and first-run habits from one catalog.
 - `projscan preflight --mode before_commit` now treats scale-only review blocks as manual sign-off cautions while preserving hard blocks for concrete taint, dataflow, health, plugin, supply-chain, and before-merge release gates.
+
+### Fixed
+
+- Release-scale review blocks in evidence-pack PR comments are now labeled as manual release gates instead of actual-defect blockers when preflight reports no concrete taint, dataflow, health, plugin, or supply-chain blocker.
+- Bug-hunt now treats pure hotspot churn as a watchlist/top-suspect signal instead of an immediate fix queue when doctor, preflight, and session evidence are clean.
 
 ## [3.0.3] — 2026-05-27 — "Agent Review Precision"
 

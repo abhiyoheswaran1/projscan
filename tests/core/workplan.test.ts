@@ -115,6 +115,22 @@ test('workplan carries touched-file coordination into the handoff', async () => 
 });
 
 
+
+test('workplan routes touched files to CODEOWNERS owners', async () => {
+  const root = await makeTempProject();
+  await fs.mkdir(path.join(root, '.github'), { recursive: true });
+  await fs.writeFile(path.join(root, '.github', 'CODEOWNERS'), 'src/** @platform-team\n');
+  const { session } = await loadSession(root);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(root, session);
+
+  const report = await computeWorkplan(root, { mode: 'before_edit' });
+  const task = report.tasks.find((entry) => entry.id === 'wp-session-handoff');
+
+  expect(task?.owner).toBe('@platform-team');
+  expect(task?.handoffText).toContain('@platform-team');
+});
+
 test('workplan handoff payload is reusable and includes verification commands', async () => {
   const root = await makeTempProject();
 

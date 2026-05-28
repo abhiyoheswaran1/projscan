@@ -1,10 +1,13 @@
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { afterEach, expect, test } from 'vitest';
 import { computeBugHunt } from '../../src/core/bugHunt.js';
 
 const tempRoots: string[] = [];
+const execFileAsync = promisify(execFile);
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
@@ -56,6 +59,42 @@ test('bug hunt includes clean verification guidance when no issues are found', a
   expect(report.verificationMatrix.length).toBeGreaterThan(0);
 });
 
+
+test('bug hunt treats pure hotspot churn as watchlist instead of an immediate fix queue', async () => {
+  const root = await makeTempProject({
+    packageJson: {
+      name: 'fixture',
+      version: '0.0.0',
+      type: 'module',
+      devDependencies: { vitest: '^3.0.0' },
+      eslintConfig: { root: true },
+      prettier: {},
+    },
+    testFile: true,
+    gitignore: true,
+  });
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'agent@example.com']);
+  await git(root, ['config', 'user.name', 'Agent']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'baseline']);
+  for (let i = 0; i < 8; i += 1) {
+    await fs.writeFile(path.join(root, 'src', 'index.ts'), `export const value = ${i};
+`);
+    await git(root, ['add', 'src/index.ts']);
+    await git(root, ['commit', '-m', `touch ${i}`]);
+  }
+
+  const report = await computeBugHunt(root, { maxFindings: 5 });
+
+  expect(report.health.errors).toBe(0);
+  expect(report.health.warnings).toBe(0);
+  expect(report.evidence.hotspotCount).toBeGreaterThan(0);
+  expect(report.verdict).toBe('clean');
+  expect(report.fixQueue[0]?.id).toBe('bh-verify-clean');
+  expect(report.topSuspects.some((finding) => finding.source === 'hotspot')).toBe(true);
+});
+
 test('bug hunt applies project config before ranking doctor issues', async () => {
   const root = await makeTempProject();
   await writeJson(path.join(root, '.projscanrc.json'), {
@@ -74,6 +113,11 @@ test('bug hunt applies project config before ranking doctor issues', async () =>
   expect(report.evidence.issueCounts).toEqual({ errors: 0, warnings: 0, infos: 0 });
   expect(report.fixQueue.some((finding) => finding.id.includes('missing-test-framework'))).toBe(false);
 });
+
+
+async function git(root: string, args: string[]): Promise<void> {
+  await execFileAsync('git', args, { cwd: root });
+}
 
 async function makeTempProject(options: {
   packageJson?: Record<string, unknown>;

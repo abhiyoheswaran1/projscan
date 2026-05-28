@@ -4,6 +4,11 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { PLUGIN_PREVIEW_FLAG, discoverPluginManifests } from './plugins.js';
+import { analyzeHotspots } from './hotspotAnalyzer.js';
+import { collectIssues } from './issueEngine.js';
+import { scanRepository } from './repositoryScanner.js';
+import { saveBaseline } from '../utils/baseline.js';
+import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import type { ProjscanConfig } from '../types.js';
 
 const execFileAsync = promisify(execFile);
@@ -98,6 +103,54 @@ export interface WriteGithubActionStarterResult extends GithubActionStarter {
   target: string;
   created: boolean;
   reason?: string;
+}
+
+export interface TeamOnboardingStep {
+  id: 'review-generated-files' | 'verify-mcp-setup' | 'open-first-pr' | 'tune-after-baseline';
+  title: string;
+  why: string;
+  command?: string;
+  files?: string[];
+}
+
+export interface TeamStarterKit {
+  schemaVersion: 1;
+  team: PolicyStarterTeam;
+  created: {
+    policy: boolean;
+    githubAction: boolean;
+    codeowners: boolean;
+    baseline: boolean;
+  };
+  files: {
+    policy: string;
+    githubAction: string;
+    codeowners: string;
+    baseline: string;
+  };
+  nextCommands: string[];
+  rationale: string[];
+  reasons: string[];
+  onboarding: TeamOnboardingStep[];
+}
+
+export interface McpSetupDoctorCheck {
+  id: string;
+  status: 'pass' | 'warn' | 'fail' | 'info';
+  summary: string;
+  detail?: string;
+}
+
+export interface McpSetupDoctorReport {
+  schemaVersion: 1;
+  client: McpClientId;
+  status: 'pass' | 'warn' | 'fail';
+  summary: string;
+  expected: { command: string; runWithoutInstall: string; install: string };
+  whereToPaste: string;
+  configText: string;
+  checks: McpSetupDoctorCheck[];
+  nextCommands: string[];
 }
 
 export type FirstRunStatus = 'pass' | 'warn' | 'fail' | 'info';
@@ -247,14 +300,14 @@ export function getWorkflowRecipes(): WorkflowRecipeCatalog {
         id: 'team_bootstrap',
         name: 'Team Bootstrap',
         useWhen: 'Adopt projscan for a team or new repository.',
-        outcome: 'A team policy, PR workflow, and first start report that make adoption repeatable.',
+        outcome: 'A team policy, PR workflow, ownership starter, baseline memory, MCP setup check, and first start report that make adoption repeatable.',
         commands: [
-          'projscan init policy --team platform',
-          'projscan init github-action',
+          'projscan init team --team platform',
           'projscan start --mode before_edit --format json',
+          'projscan mcp doctor --client codex --format json',
         ],
         mcpTools: ['projscan_adoption', 'projscan_start'],
-        handoff: 'Pick the closest team starter, commit the generated policy/workflow, then tune thresholds after the first PR.',
+        handoff: 'Run init team once, commit the generated policy/workflow/ownership/baseline files, then tune thresholds after the first PR.',
       },
       {
         id: 'pr_automation',
@@ -577,6 +630,205 @@ export async function writePolicyStarterKit(
   };
 }
 
+
+export async function writeTeamStarterKit(
+  rootPath: string,
+  team: PolicyStarterTeam,
+  options: WritePolicyStarterOptions = {},
+): Promise<TeamStarterKit> {
+  const policy = await writePolicyStarterKit(rootPath, team, options);
+  const action = await writeGithubActionStarter(rootPath, options);
+  const codeowners = await writeCodeownersStarter(rootPath, team, options);
+  const baseline = await writeInitialBaseline(rootPath, options);
+  return {
+    schemaVersion: 1,
+    team,
+    created: {
+      policy: policy.created,
+      githubAction: action.created,
+      codeowners: codeowners.created,
+      baseline: baseline.created,
+    },
+    files: {
+      policy: policy.target,
+      githubAction: action.target,
+      codeowners: codeowners.target,
+      baseline: baseline.target,
+    },
+    nextCommands: [
+      'projscan start --mode before_edit --format json',
+      'projscan mcp doctor --client codex --format json',
+      'projscan evidence-pack --pr-comment',
+    ],
+    rationale: [
+      'Bootstraps policy, PR evidence automation, ownership routing, and baseline memory in one command.',
+      'The generated PR workflow posts evidence before enforcing block-only preflight failure.',
+    ],
+    reasons: [policy.reason, action.reason, codeowners.reason, baseline.reason].filter((item): item is string => typeof item === 'string'),
+    onboarding: buildTeamOnboarding(team),
+  };
+}
+
+function buildTeamOnboarding(team: PolicyStarterTeam): TeamOnboardingStep[] {
+  return [
+    {
+      id: 'review-generated-files',
+      title: 'Review generated starter files',
+      why: 'Confirm policy thresholds, PR workflow behavior, CODEOWNERS handles, and baseline memory before committing the bootstrap.',
+      command: 'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json',
+      files: ['.projscanrc.json', '.github/workflows/projscan.yml', '.github/CODEOWNERS', '.projscan-baseline.json'],
+    },
+    {
+      id: 'verify-mcp-setup',
+      title: 'Verify MCP setup',
+      why: 'Make sure the coding agent can start projscan before the first team PR depends on MCP evidence.',
+      command: 'projscan mcp doctor --client codex --format json',
+    },
+    {
+      id: 'open-first-pr',
+      title: 'Open the first PR with evidence',
+      why: 'The first PR should show the verdict, trust calibration, owner routing, baseline trend, and next commands in one reviewer surface.',
+      command: 'projscan evidence-pack --pr-comment',
+    },
+    {
+      id: 'tune-after-baseline',
+      title: `Tune the ${team} policy after the first baseline`,
+      why: 'Treat cautions as calibration data first; tighten thresholds only after the first real team review.',
+      command: 'projscan preflight --mode before_merge --format json',
+    },
+  ];
+}
+
+async function writeCodeownersStarter(
+  rootPath: string,
+  team: PolicyStarterTeam,
+  options: WritePolicyStarterOptions,
+): Promise<{ target: string; created: boolean; reason?: string }> {
+  const target = path.join(rootPath, '.github', 'CODEOWNERS');
+  try {
+    await fs.access(target);
+    if (options.force !== true) return { target, created: false, reason: '.github/CODEOWNERS already exists; pass --force to overwrite it.' };
+  } catch {
+    // file does not exist
+  }
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, buildCodeownersStarter(team), 'utf-8');
+  return { target, created: true };
+}
+
+function buildCodeownersStarter(team: PolicyStarterTeam): string {
+  const owner = TEAM_OWNER_HANDLES[team];
+  return [
+    '# Generated by projscan init team. Replace these handles with your real owners.',
+    `* ${owner}`,
+    `src/** ${owner}`,
+    `docs/** ${owner}`,
+    `.github/** ${owner}`,
+    '',
+  ].join('\n');
+}
+
+const TEAM_OWNER_HANDLES: Record<PolicyStarterTeam, string> = {
+  frontend: '@frontend-team',
+  platform: '@platform-team',
+  security: '@security-team',
+  monorepo: '@monorepo-team',
+};
+
+async function writeInitialBaseline(
+  rootPath: string,
+  options: WritePolicyStarterOptions,
+): Promise<{ target: string; created: boolean; reason?: string }> {
+  const target = path.join(rootPath, '.projscan-baseline.json');
+  try {
+    await fs.access(target);
+    if (options.force !== true) return { target, created: false, reason: '.projscan-baseline.json already exists; pass --force to overwrite it.' };
+  } catch {
+    // file does not exist
+  }
+  const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
+  const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
+  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const hotspotReport = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
+  await saveBaseline(rootPath, issues, hotspotReport);
+  return { target, created: true };
+}
+
+export async function computeMcpSetupDoctor(
+  rootPath: string,
+  client: McpClientId = 'all',
+): Promise<McpSetupDoctorReport> {
+  const guide = getMcpConfigGuide(client);
+  const configText = guide.client === 'all'
+    ? guide.configs.map((entry) => `# ${entry.displayName}\n${entry.configText}`).join('\n\n')
+    : guide.configText;
+  const whereToPaste = guide.client === 'all'
+    ? 'Use the matching client-specific config block.'
+    : guide.whereToPaste;
+  const checks: McpSetupDoctorCheck[] = [
+    checkNodeVersion(),
+    {
+      id: 'server-command',
+      status: 'pass',
+      summary: 'MCP server command uses local stdio startup.',
+      detail: INSTALL.mcpServerCommand,
+    },
+    {
+      id: 'config-shape',
+      status: configText.includes('projscan') && configText.includes('npx') ? 'pass' : 'fail',
+      summary: 'Config snippet includes the projscan stdio server.',
+      detail: whereToPaste,
+    },
+    await checkProjectMcpConfig(rootPath, client),
+  ];
+  const status = checks.some((check) => check.status === 'fail') ? 'fail' : checks.some((check) => check.status === 'warn') ? 'warn' : 'pass';
+  return {
+    schemaVersion: 1,
+    client,
+    status,
+    summary: `${status}: ${client} MCP setup uses ${INSTALL.mcpServerCommand}`,
+    expected: {
+      command: INSTALL.mcpServerCommand,
+      runWithoutInstall: INSTALL.runWithoutInstall,
+      install: INSTALL.command,
+    },
+    whereToPaste,
+    configText,
+    checks,
+    nextCommands: ['projscan init mcp --client all', `projscan mcp doctor --client ${client} --format json`, 'npx -y projscan mcp'],
+  };
+}
+
+async function checkProjectMcpConfig(rootPath: string, client: McpClientId): Promise<McpSetupDoctorCheck> {
+  const candidates = clientConfigCandidates(client);
+  for (const candidate of candidates) {
+    try {
+      const raw = await fs.readFile(path.join(rootPath, candidate), 'utf-8');
+      return {
+        id: 'project-config',
+        status: raw.includes('projscan') ? 'pass' : 'warn',
+        summary: raw.includes('projscan') ? `Found projscan in ${candidate}.` : `Found ${candidate}, but it does not mention projscan.`,
+        detail: candidate,
+      };
+    } catch {
+      // try next
+    }
+  }
+  return {
+    id: 'project-config',
+    status: 'info',
+    summary: 'No project-local MCP config found; paste the snippet into the client settings if needed.',
+  };
+}
+
+function clientConfigCandidates(client: McpClientId): string[] {
+  if (client === 'cursor') return ['.cursor/mcp.json'];
+  if (client === 'continue') return ['.continue/config.json'];
+  if (client === 'codex') return ['.codex/config.toml'];
+  if (client === 'all') return ['.cursor/mcp.json', '.continue/config.json', '.codex/config.toml'];
+  return [];
+}
+
 const POLICY_KITS: Record<PolicyStarterTeam, Omit<PolicyStarterKit, 'schemaVersion' | 'team'>> = {
   frontend: {
     label: 'Frontend team policy',
@@ -684,6 +936,7 @@ export function getGithubActionStarter(): GithubActionStarter {
     rationale: [
       'Runs projscan where review decisions already happen: the pull request.',
       'Posts the same concise approval evidence that `projscan evidence-pack --pr-comment` prints locally.',
+      'Validates the generated PR comment before posting so the first review surface keeps verdict, trust calibration, routing, and commands intact.',
       'Fails CI only when the machine-readable preflight verdict is block.',
       'Keeps the workflow tool-only: no source upload, no API key, no embedded LLM.',
     ],
@@ -751,6 +1004,10 @@ jobs:
 
       - name: Build PR comment
         run: npx -y projscan evidence-pack --pr-comment --quiet > projscan-comment.md
+
+      - name: Validate PR comment
+        run: >
+          node -e "const fs = require('node:fs'); const body = fs.readFileSync('projscan-comment.md', 'utf8'); const required = ['## projscan approval evidence', '### Verdict', '### Trust Calibration', '### Baseline Trend', '### Top Risks', '### Team Routing', '### Verification', '### Next Commands']; const missing = required.filter((section) => !body.includes(section)); if (missing.length > 0 || body.length > 65536 || /undefined|\\[object Object\\]/.test(body)) { console.error('Invalid projscan PR comment: ' + missing.join(', ')); process.exit(1); }"
 
       - name: Publish PR comment
         if: github.event_name == 'pull_request'

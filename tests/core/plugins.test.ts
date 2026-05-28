@@ -675,3 +675,18 @@ describe('plugins — reporter runtime', () => {
     }
   });
 });
+
+
+describe('packaged real-world plugin examples', () => {
+  it('validates API ownership, security-sensitive, and monorepo boundary examples', async () => {
+    const root = path.resolve(__dirname, '..', '..');
+    const names = ['api-route-ownership', 'security-sensitive-files', 'monorepo-boundary'];
+
+    for (const name of names) {
+      const raw = await fs.readFile(path.join(root, 'docs', 'examples', 'plugins', `${name}.projscan-plugin.json`), 'utf-8');
+      const manifest = JSON.parse(raw);
+      expect(validateManifest(manifest).ok).toBe(true);
+      await expect(fs.access(path.join(root, 'docs', 'examples', 'plugins', `${name}.mjs`))).resolves.toBeUndefined();
+    }
+  });
+});

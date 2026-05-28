@@ -63,13 +63,14 @@ export { computeGraphCorpus } from './core/graphCorpus.js';
 export { buildWorkplanHandoff, computeWorkplan } from './core/workplan.js';
 export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
-export { computeEvidencePack, renderEvidencePackPrComment } from './core/releaseEvidence.js';
+export { computeEvidencePack, renderEvidencePackPrComment, validateEvidencePackPrComment } from './core/releaseEvidence.js';
 export { computeRegressionPlan } from './core/regressionPlan.js';
 export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { computeStartReport } from './core/start.js';
 export {
   computeFirstRunDiagnostics,
+  computeMcpSetupDoctor,
   getGithubActionStarter,
   getMcpConfigGuide,
   getPolicyStarterKit,
@@ -77,6 +78,7 @@ export {
   isPolicyStarterTeam,
   writeGithubActionStarter,
   writePolicyStarterKit,
+  writeTeamStarterKit,
 } from './core/adoption.js';
 export type {
   AgentWorkflowRecipe,
@@ -85,6 +87,10 @@ export type {
   McpConfigCatalog,
   McpConfigGuide,
   McpClientId,
+  McpSetupDoctorCheck,
+  McpSetupDoctorReport,
+  TeamStarterKit,
+  TeamOnboardingStep,
   WorkflowRecipeCatalog,
   GithubActionStarter,
   PolicyStarterKit,
@@ -182,7 +188,10 @@ export type {
   BugHuntVerdict,
   EvidencePackArtifact,
   EvidencePackArtifactStatus,
+  EvidencePackPrCommentValidation,
+  EvidencePackPrCommentValidationCheck,
   EvidencePackReport,
+  EvidencePackTrustCalibration,
   EvidencePackVerdict,
   RegressionPlanLevel,
   RegressionPlanReport,

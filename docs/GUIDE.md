@@ -114,12 +114,12 @@ When the agent first opens a repo, or before starting a refactor, the question i
 
 - **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
-- **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands.
+- **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
-- **`projscan_adoption` / `projscan init mcp` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, policy starters, PR workflow scaffolding with block-only enforcement, repeatable team-bootstrap and PR-automation recipes, and setup diagnostics.
+- **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
-- **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, changelog, suggested next actions, and optional website prompt or PR-comment evidence in one response.
+- **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, trust calibration, owner routing, baseline trend, changelog, suggested next actions, and optional website prompt or validated PR-comment evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
 - **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, supply-chain trust, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
 - **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, plugin-policy, supply-chain, and release-scale evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging; scale-only commit blocks are cautions, while merge gates still require manual release sign-off.
@@ -1078,7 +1078,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_bug_hunt` — prioritized bug-hunt fix queue with per-target verification.
 - `projscan_agent_brief` — compact next-agent context packet with focus items, guardrails, repo context, and suggested next actions.
 - `projscan_quality_scorecard` — dimensioned quality view with top risks and verification commands.
-- `projscan_adoption` — adoption helper for MCP client snippets, agent workflow recipes, and first-run diagnostics.
+- `projscan_adoption` — adoption helper for MCP client snippets, MCP setup doctor, agent workflow recipes, and first-run diagnostics.
 - `projscan_release_train` — product-line readiness plan with scope and next-action evidence.
 - `projscan_evidence_pack` — approval packet with planning, bug-hunt, workplan, preflight, changelog, and website prompt evidence.
 - `projscan_regression_plan` — smoke/focused/full regression matrix with deduplicated verification commands.
@@ -1268,7 +1268,7 @@ Findings show up in **Security → Code scanning**; PR annotations are automatic
 
 ### 2. Plain workflow (no SARIF upload)
 
-If you'd rather skip Code Scanning, the repo ships `.github/projscan-ci.yml` - a drop-in workflow that runs `projscan ci` and posts a markdown health report as a PR comment.
+If you'd rather skip Code Scanning, `projscan init github-action` writes a pull-request workflow that builds a projscan evidence comment, validates required review sections before posting, and fails only on concrete preflight blocks. The repo also ships `.github/projscan-ci.yml` as a lower-level health-report workflow.
 
 ### 3. Any CI - raw `projscan ci`
 

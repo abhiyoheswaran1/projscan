@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { baselineFromIssues, computeDiff } from '../../src/utils/baseline.js';
 import type { HotspotReport, Issue } from '../../src/types.js';
 
-function makeIssue(severity: 'error' | 'warning' | 'info', title: string): Issue {
+function makeIssue(severity: 'error' | 'warning' | 'info', title: string, id = title): Issue {
   return {
-    id: title,
+    id,
     title,
     description: title,
     severity,
@@ -50,6 +50,28 @@ describe('baseline with hotspots', () => {
     const baseline = baselineFromIssues(issues, hotspots);
     expect(baseline.hotspots).toHaveLength(2);
     expect(baseline.hotspots?.[0].relativePath).toBe('src/a.ts');
+  });
+
+  it('summarizes trend memory with new hotspots and recurring noisy rules', () => {
+    const before = baselineFromIssues(
+      [makeIssue('warning', 'legacy file', 'legacy-rule'), makeIssue('warning', 'legacy file again', 'legacy-rule')],
+      makeHotspotReport([{ relativePath: 'src/old.ts', riskScore: 15, churn: 1 }]),
+    );
+
+    const diff = computeDiff(
+      before,
+      [makeIssue('warning', 'legacy file still here', 'legacy-rule'), makeIssue('warning', 'new warning', 'new-rule')],
+      makeHotspotReport([
+        { relativePath: 'src/old.ts', riskScore: 12, churn: 1 },
+        { relativePath: 'src/new.ts', riskScore: 44, churn: 4 },
+      ]),
+    );
+
+    expect(diff.trend.scoreDirection).toMatch(/down|flat|up/);
+    expect(diff.trend.newHotspots).toEqual(expect.arrayContaining(['src/new.ts']));
+    expect(diff.trend.recurringNoisyRules).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'legacy-rule', before: 2, after: 1 })]),
+    );
   });
 
   it('omits hotspots when the report is unavailable', () => {

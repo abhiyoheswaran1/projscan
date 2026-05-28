@@ -7,6 +7,7 @@ import type {
   HotspotDelta,
   HotspotDiffSummary,
   HotspotReport,
+  BaselineTrend,
   Issue,
 } from '../types.js';
 import { calculateScore } from './scoreCalculator.js';
@@ -30,6 +31,7 @@ export function baselineFromIssues(issues: Issue[], hotspotReport?: HotspotRepor
     grade,
     issues: issues.map((i) => ({ id: i.id, title: i.title, severity: i.severity })),
     hotspots,
+    issueRuleCounts: countIssuesById(issues),
     timestamp: new Date().toISOString(),
   };
 }
@@ -72,13 +74,15 @@ export function computeDiff(
   const hotspotDiff =
     before.hotspots && after.hotspots ? diffHotspots(before.hotspots, after.hotspots) : undefined;
 
+  const scoreDelta = after.score - before.score;
   return {
     before,
     after,
-    scoreDelta: after.score - before.score,
+    scoreDelta,
     newIssues,
     resolvedIssues,
     hotspotDiff,
+    trend: buildTrend(scoreDelta, before, after, hotspotDiff),
   };
 }
 
@@ -137,6 +141,50 @@ function diffHotspots(before: BaselineHotspot[], after: BaselineHotspot[]): Hots
   resolved.sort((a, b) => (b.beforeScore ?? 0) - (a.beforeScore ?? 0));
 
   return { rose, fell, appeared, resolved };
+}
+
+function buildTrend(
+  scoreDelta: number,
+  before: Baseline,
+  after: Baseline,
+  hotspotDiff?: HotspotDiffSummary,
+): BaselineTrend {
+  const roundedDelta = round1(scoreDelta);
+  const recurringNoisyRules = recurringRules(before.issueRuleCounts ?? countBaselineIssuesById(before), after.issueRuleCounts ?? countBaselineIssuesById(after));
+  const newHotspots = (hotspotDiff?.appeared ?? []).map((entry) => entry.relativePath).slice(0, 5);
+  const scoreDirection = roundedDelta > 0 ? 'up' : roundedDelta < 0 ? 'down' : 'flat';
+  const summary = [
+    `score ${scoreDirection}${roundedDelta === 0 ? '' : ` ${roundedDelta > 0 ? '+' : ''}${roundedDelta}`}`,
+    newHotspots.length > 0 ? `${newHotspots.length} new hotspot(s)` : 'no new hotspots',
+    recurringNoisyRules.length > 0 ? `${recurringNoisyRules.length} recurring noisy rule(s)` : 'no recurring noisy rules',
+  ].join('; ');
+  return {
+    scoreDirection,
+    scoreDelta: roundedDelta,
+    newHotspots,
+    recurringNoisyRules,
+    summary,
+  };
+}
+
+function countIssuesById(issues: Issue[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const issue of issues) counts[issue.id] = (counts[issue.id] ?? 0) + 1;
+  return counts;
+}
+
+function countBaselineIssuesById(baseline: Baseline): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const issue of baseline.issues) counts[issue.id] = (counts[issue.id] ?? 0) + 1;
+  return counts;
+}
+
+function recurringRules(before: Record<string, number>, after: Record<string, number>): BaselineTrend['recurringNoisyRules'] {
+  return Object.keys(before)
+    .filter((id) => before[id] > 0 && (after[id] ?? 0) > 0)
+    .map((id) => ({ id, before: before[id], after: after[id] ?? 0 }))
+    .sort((a, b) => b.after - a.after || b.before - a.before || a.id.localeCompare(b.id))
+    .slice(0, 5);
 }
 
 function round1(n: number): number {

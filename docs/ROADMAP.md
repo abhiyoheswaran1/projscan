@@ -53,9 +53,9 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.3 (2026)
+### Now — 3.0.4 (2026)
 
-**3.0.3 "Agent Review Precision"** makes review and dataflow evidence safer for monorepo agents:
+**3.0.4 "Team Adoption Loop"** makes first-team adoption and PR evidence safer for engineering teams:
 
 - Package-scoped review filtering now happens inside `computeReview`, before verdicting, across cycles, taint, dataflow, contract changes, graph evidence, summaries, and verdicts.
 - Next route request-body dataflow recognizes `request.json()`, `request.formData()`, `request.text()`, and `request.arrayBuffer()` only when they are called on route handler request parameters.
@@ -110,6 +110,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.4** (2026-05-28) | Team Adoption Loop | Team bootstrap, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration |
 | **3.0.3** (2026-05-27) | Agent Review Precision | Package-scoped review verdicts, receiver-sensitive route request sources, generated-code review/dataflow filtering, package owner fallback, and v5 GitHub Actions |
 | **3.0.2** (2026-05-27) | Agent Graph Readiness | Graph corpus release gates, custom dataflow visibility, remote tag integrity, CODEOWNERS impact ownership, and 3.x release-train planning |
 | **3.0.1** (2026-05-26) | Graph Operations Platform | Graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, golden graph corpus, and hardened dataflow precision |
