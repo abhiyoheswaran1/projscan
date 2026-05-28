@@ -188,6 +188,162 @@ export async function POST(request: Request) {
     ).toBe(true);
   });
 
+  it('treats Next route request.formData request.text and request.arrayBuffer as framework request sources', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'upload'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'upload', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function POST(request: Request) {
+  const form = await request.formData();
+  return db.query(String(form.get('sql')));
+}
+
+export async function PUT(request: Request) {
+  const raw = await request.text();
+  return db.query(raw);
+}
+
+export async function PATCH(request: Request) {
+  const bytes = await request.arrayBuffer();
+  return db.query(String(bytes.byteLength));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceFn: 'POST', source: 'request.formData', sink: 'query' }),
+        expect.objectContaining({ sourceFn: 'PUT', source: 'request.text', sink: 'query' }),
+        expect.objectContaining({ sourceFn: 'PATCH', source: 'request.arrayBuffer', sink: 'query' }),
+      ]),
+    );
+  });
+
+  it('does not treat ordinary req-shaped helpers as Express request sources', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'helpers.ts'),
+      `const db = { query(sql: string) { return sql; } };
+
+export function saveSearch(req: { body: { sql: string } }) {
+  return db.query(req.body.sql);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks.find((risk) => risk.source === 'express.req.body')).toBeUndefined();
+    expect(report.risks.find((risk) => risk.sourceFn === 'saveSearch')).toBeUndefined();
+  });
+
+  it('does not let DB imports make cache query helpers look like DB sinks', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'cache.ts'),
+      `import { Pool } from 'pg';
+
+const cache = { query(key: string) { return key; } };
+const pool = new Pool();
+
+export function searchCache() {
+  const key = process.env.CACHE_KEY;
+  return cache.query(key ?? 'fallback');
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query')).toBeUndefined();
+  });
+
+  it('keeps imported database query helpers as default sinks', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql; }\n',
+    );
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'search', 'route.ts'),
+      `import { query } from '../../../src/db';
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  return query(body.sql);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some((risk) => risk.source === 'request.json' && risk.sink === 'query' && risk.sourceFn === 'POST'),
+    ).toBe(true);
+  });
+
+  it('keeps destructured database query aliases as default sinks', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'server.ts'),
+      `import express from 'express';
+
+const app = express();
+const pool = { query(sql: string) { return sql; } };
+
+app.post('/users', (req, res) => {
+  const { query } = pool;
+  const sql = req.body.sql;
+  query(sql);
+  res.json({ ok: true });
+});
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some((risk) => risk.source === 'express.req.body' && risk.sink === 'query'),
+    ).toBe(true);
+  });
+
+  it('detects Express request body into a database query without flagging non-database query helpers', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'server.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.post('/users', (req, res) => {
+  const sql = req.body.sql;
+  db.query(sql);
+  res.json({ ok: true });
+});
+
+export function searchCache(req: { body: { key: string } }) {
+  return cache.query(req.body.key);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some(
+        (risk) => risk.source === 'express.req.body' && risk.sink === 'query' && risk.files.includes('src/server.ts'),
+      ),
+    ).toBe(true);
+    expect(report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query')).toBeUndefined();
+  });
+
   it('does not treat route response helpers as request body sources', async () => {
     await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
     await fs.writeFile(

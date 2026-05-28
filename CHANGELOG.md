@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.5] — 2026-05-28 — "Proof of Usefulness"
+
+### Added
+
+- Added an end-to-end team adoption harness that proves `projscan init team` through baseline, generated GitHub Action, PR evidence comment, preflight, and owner routing as one workflow.
+- Added a five-scenario PR comment benchmark suite covering docs-only, auth/API ownership, dataflow/security, large release, and generated-code PRs.
+- Added explicit fix-first recommendations across bug-hunt, workplan, start, quality-scorecard, and evidence-pack PR comments so agents know what to fix first, who owns it, and which command proves it.
+- Baseline trend memory now records risk direction, quality-score before/after, new/resolved issue counts, and a compact "changed since baseline" summary for PR comments.
+- Framework-aware dataflow now recognizes Express request body/query/params/header/cookie sources and keeps JavaScript DB query sinks receiver-sensitive to reduce cache/query false positives.
+
+### Changed
+
+- Evidence-pack PR comments now include a required "First Fix" section and route changed files through CODEOWNERS/package ownership even when the top risk list is clean.
+- Large release preflight calibration now labels configured scale-threshold risk as manual release sign-off when no concrete taint, dataflow, health, plugin, or supply-chain blocker exists.
+- The generated GitHub Action PR-comment validator now requires the first-fix and suggested-action sections plus at least one exact actionable command.
+
+### Fixed
+
+- Generated-code PR comment benchmarks guard against default generated taint/dataflow anxiety while preserving custom source/sink visibility.
+- Dataflow DB sink detection avoids treating unrelated cache-style `query` calls as database sinks unless the receiver/import context is database-like.
+
 ## [3.0.4] — 2026-05-28 — "Team Adoption Loop"
 
 ### Added

@@ -15,7 +15,11 @@ const CACHE_FILE = 'graph.json';
 // v6: added receiver-sensitive `memberCallSites` and `parameters` for
 // framework request-source precision. v5 caches are rebuilt so route
 // handlers do not fall back to ambiguous bare member names.
-const CACHE_VERSION = 6;
+// v7: added optional `contextualCallSite` so Express callback handlers can
+// be distinguished from ordinary req-shaped helpers.
+// v8: added `directCallSites` and `memberAliases` so bare imported DB
+// helpers stay visible without treating cache.query() as a raw SQL sink.
+const CACHE_VERSION = 8;
 
 interface SerializedGraph {
   version: number;

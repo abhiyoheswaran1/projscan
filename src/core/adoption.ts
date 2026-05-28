@@ -1006,8 +1006,30 @@ jobs:
         run: npx -y projscan evidence-pack --pr-comment --quiet > projscan-comment.md
 
       - name: Validate PR comment
-        run: >
-          node -e "const fs = require('node:fs'); const body = fs.readFileSync('projscan-comment.md', 'utf8'); const required = ['## projscan approval evidence', '### Verdict', '### Trust Calibration', '### Baseline Trend', '### Top Risks', '### Team Routing', '### Verification', '### Next Commands']; const missing = required.filter((section) => !body.includes(section)); if (missing.length > 0 || body.length > 65536 || /undefined|\\[object Object\\]/.test(body)) { console.error('Invalid projscan PR comment: ' + missing.join(', ')); process.exit(1); }"
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = fs.readFileSync('projscan-comment.md', 'utf8');
+          const required = [
+            '## projscan approval evidence',
+            '### Verdict',
+            '### Trust Calibration',
+            '### Baseline Trend',
+            '### Top Risks',
+            '### First Fix',
+            '### Team Routing',
+            '### Verification',
+            '### Next Commands',
+            '### Suggested Next Actions',
+          ];
+          const missing = required.filter((section) => !body.includes(section));
+          const actionable = ['projscan ', 'npm ', 'npx ', 'gh ', 'git '].some((command) => body.includes(command));
+          const invalidTokens = body.includes('undefined') || body.includes('[object Object]');
+          if (missing.length > 0 || body.length > 65536 || invalidTokens || !actionable) {
+            console.error('Invalid projscan PR comment: ' + missing.concat(actionable ? [] : ['missing actionable command']).join(', '));
+            process.exit(1);
+          }
+          NODE
 
       - name: Publish PR comment
         if: github.event_name == 'pull_request'

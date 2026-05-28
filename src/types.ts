@@ -372,6 +372,18 @@ export interface WorkplanVerification {
   expected: string;
 }
 
+export interface FixFirstRecommendation {
+  id: string;
+  title: string;
+  source: string;
+  priority: WorkplanPriority;
+  whyFirst: string;
+  files: string[];
+  owner?: string;
+  commands: string[];
+  expected?: string;
+}
+
 export interface WorkplanTask {
   id: string;
   priority: WorkplanPriority;
@@ -403,6 +415,7 @@ export interface WorkplanReport {
   summary: string;
   topRisks: WorkplanTopRisk[];
   tasks: WorkplanTask[];
+  fixFirst?: FixFirstRecommendation;
   coordination: WorkplanCoordination;
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
@@ -480,6 +493,7 @@ export interface BugHuntReport {
   };
   topSuspects: BugHuntFinding[];
   fixQueue: BugHuntFinding[];
+  fixFirst?: FixFirstRecommendation;
   verificationMatrix: Array<{ command: string; reason: string; expected: string }>;
   truncated?: boolean;
 }
@@ -524,6 +538,8 @@ export interface EvidencePackPrSummary {
   trust: EvidencePackTrustCalibration;
   topRisks: EvidencePackTopRisk[];
   teamRoutes: EvidencePackTeamRoute[];
+  ownershipSuggestion?: string;
+  fixFirst?: FixFirstRecommendation;
   nextCommands: string[];
   baselineTrend?: BaselineTrend;
 }
@@ -699,6 +715,7 @@ export interface StartReport {
     mcpReady: boolean;
   };
   topRisks: StartRisk[];
+  fixFirst?: FixFirstRecommendation;
   adoptionGaps: StartAdoptionGap[];
   nextActions: PreflightSuggestedAction[];
   handoff?: WorkplanHandoffPayload;
@@ -752,6 +769,7 @@ export interface QualityScorecardReport {
   health: HealthScore;
   dimensions: QualityScorecardDimension[];
   topRisks: QualityScorecardRisk[];
+  fixFirst?: FixFirstRecommendation;
   commands: string[];
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
@@ -854,6 +872,13 @@ export interface BaselineRecurringRule {
 export interface BaselineTrend {
   scoreDirection: 'up' | 'down' | 'flat';
   scoreDelta: number;
+  riskDirection?: 'up' | 'down' | 'flat';
+  riskDelta?: number;
+  qualityScoreBefore?: number;
+  qualityScoreAfter?: number;
+  newIssueCount?: number;
+  resolvedIssueCount?: number;
+  changedSinceBaseline?: string[];
   newHotspots: string[];
   recurringNoisyRules: BaselineRecurringRule[];
   summary: string;

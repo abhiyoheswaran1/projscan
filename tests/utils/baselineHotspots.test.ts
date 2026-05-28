@@ -68,10 +68,35 @@ describe('baseline with hotspots', () => {
     );
 
     expect(diff.trend.scoreDirection).toMatch(/down|flat|up/);
+    expect(diff.trend.riskDirection).toMatch(/down|flat|up/);
+    expect(diff.trend.qualityScoreBefore).toBe(before.score);
+    expect(diff.trend.qualityScoreAfter).toBe(diff.after.score);
+    expect(diff.trend.newIssueCount).toBe(2);
+    expect(diff.trend.resolvedIssueCount).toBe(2);
+    expect(diff.trend.changedSinceBaseline).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/2 new issue/),
+        expect.stringMatching(/2 resolved issue/),
+        expect.stringMatching(/new hotspot.*src\/new\.ts/),
+      ]),
+    );
     expect(diff.trend.newHotspots).toEqual(expect.arrayContaining(['src/new.ts']));
     expect(diff.trend.recurringNoisyRules).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'legacy-rule', before: 2, after: 1 })]),
     );
+  });
+
+
+  it('accepts older BaselineTrend-shaped mocks without the 3.0.5 optional fields', () => {
+    const trend: import('../../src/types.js').BaselineTrend = {
+      scoreDirection: 'flat',
+      scoreDelta: 0,
+      newHotspots: [],
+      recurringNoisyRules: [],
+      summary: 'score flat; no new hotspots; no recurring noisy rules',
+    };
+
+    expect(trend.summary).toContain('score flat');
   });
 
   it('omits hotspots when the report is unavailable', () => {

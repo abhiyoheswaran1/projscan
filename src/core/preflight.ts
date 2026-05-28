@@ -415,14 +415,13 @@ function buildReleaseScaleEvidence(input: {
 }): PreflightReleaseScaleEvidence | null {
   if (input.mode === 'before_edit') return null;
   if (!input.changedFiles.available) return null;
-  if (!input.review.available || input.review.verdict !== 'block') return null;
 
   const concreteBlockers = concretePreflightBlockers(input);
   if (concreteBlockers.length > 0) return null;
 
   const reviewSummary = input.review.summary;
   const changedFileThresholdExceeded = input.changedFiles.count > input.maxChangedFiles;
-  const reviewScaleOnly = isScaleComplexityReviewBlock(reviewSummary);
+  const reviewScaleOnly = input.review.available && input.review.verdict === 'block' && isScaleComplexityReviewBlock(reviewSummary);
   if (!changedFileThresholdExceeded && !reviewScaleOnly) return null;
 
   const triggers = [
@@ -432,15 +431,20 @@ function buildReleaseScaleEvidence(input: {
     reviewScaleOnly && reviewSummary ? `review signal: ${trimTrailingSentencePunctuation(reviewSummary)}` : undefined,
   ].filter(Boolean);
 
+  const reviewBlocksOnScale = input.review.available && input.review.verdict === 'block';
+  const explanationTail = reviewBlocksOnScale
+    ? 'Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects.'
+    : 'This is a configured scale threshold/manual review signal, not a concrete taint, dataflow, health, plugin, or supply-chain defect.';
+
   return {
     detected: true,
     changedFiles: input.changedFiles.count,
     threshold: input.maxChangedFiles,
-    reviewVerdict: input.review.verdict,
+    ...(input.review.verdict ? { reviewVerdict: input.review.verdict } : {}),
     ...(reviewSummary ? { reviewSummary } : {}),
     concreteBlockers,
     explanation:
-      `Large platform release risk: ${triggers.join('; ')}. Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects. Treat this as a manual release sign-off gate.`,
+      `Large platform release risk: ${triggers.join('; ')}. ${explanationTail} Treat this as a manual release sign-off gate.`,
   };
 }
 

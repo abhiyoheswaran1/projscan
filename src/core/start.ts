@@ -1,4 +1,5 @@
 import { computeFirstRunDiagnostics, getWorkflowRecipes, type AgentWorkflowRecipe } from './adoption.js';
+import { fixFirstFromStartRisk } from './fixFirst.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildWorkplanHandoff, computeWorkplan, isWorkplanMode } from './workplan.js';
 import type {
@@ -37,6 +38,7 @@ export async function computeStartReport(
   ]);
   const workflow = chooseWorkflow(mode, getWorkflowRecipes().recipes);
   const topRisks = combineRisks(workplan, quality.topRisks, maxRisks);
+  const fixFirst = workplan.fixFirst ?? fixFirstFromStartRisk(topRisks[0]);
   const adoptionGaps = setup.diagnostics
     .filter((diagnostic) => diagnostic.status !== 'pass')
     .map((diagnostic): StartAdoptionGap => ({
@@ -56,7 +58,7 @@ export async function computeStartReport(
     readOnly: true,
     rootPath,
     mode,
-    summary: summarize(mode, workplan, quality.topRisks.length, adoptionGaps.length),
+    summary: summarize(mode, workplan, quality.topRisks.length, adoptionGaps.length, fixFirst?.title),
     setup: {
       overall: setup.overall,
       diagnostics: setup.diagnostics,
@@ -71,6 +73,7 @@ export async function computeStartReport(
       mcpReady: setup.diagnostics.find((diagnostic) => diagnostic.id === 'mcp-startup')?.status === 'pass',
     },
     topRisks,
+    ...(fixFirst ? { fixFirst } : {}),
     adoptionGaps,
     nextActions,
     ...(options.includeHandoff ? { handoff: buildWorkplanHandoff(workplan) } : {}),
@@ -182,6 +185,7 @@ function summarize(
   workplan: WorkplanReport,
   qualityRisks: number,
   adoptionGaps: number,
+  fixFirstTitle?: string,
 ): string {
-  return `start: ${mode} recommends ${workplan.tasks[0]?.title ?? 'preserving the baseline'} with ${qualityRisks} quality risk(s) and ${adoptionGaps} adoption gap(s)`;
+  return `start: ${mode} recommends ${fixFirstTitle ?? workplan.tasks[0]?.title ?? 'preserving the baseline'} with ${qualityRisks} quality risk(s) and ${adoptionGaps} adoption gap(s)`;
 }
