@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "name": "monorepo-boundary",
+  "kind": "analyzer",
+  "module": "./monorepo-boundary.mjs",
+  "category": "architecture",
+  "description": "Flags package code that reaches across monorepo boundaries with deep relative imports"
+}

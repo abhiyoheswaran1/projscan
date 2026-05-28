@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "name": "security-sensitive-files",
+  "kind": "analyzer",
+  "module": "./security-sensitive-files.mjs",
+  "category": "security",
+  "description": "Highlights files that should get security-conscious review"
+}

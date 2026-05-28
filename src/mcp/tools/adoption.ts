@@ -1,5 +1,6 @@
 import {
   computeFirstRunDiagnostics,
+  computeMcpSetupDoctor,
   getMcpConfigGuide,
   getWorkflowRecipes,
   isMcpClientId,
@@ -15,14 +16,14 @@ export const adoptionTool: McpTool = {
     properties: {
       action: {
         type: 'string',
-        enum: ['mcp_config', 'recipes', 'first_run'],
+        enum: ['mcp_config', 'recipes', 'first_run', 'mcp_doctor'],
         description:
           'What to return. mcp_config returns client snippets, recipes returns agent workflow recipes, first_run checks setup diagnostics. Default: recipes.',
       },
       client: {
         type: 'string',
         description:
-          'For action=mcp_config: all, claude-desktop, claude-code, cursor, codex, continue, windsurf, cline, zed, or gemini. Default: all.',
+          'For action=mcp_config or action=mcp_doctor: all, claude-desktop, claude-code, cursor, codex, continue, windsurf, cline, zed, or gemini. Default: all.',
       },
       max_tokens: {
         type: 'number',
@@ -35,6 +36,10 @@ export const adoptionTool: McpTool = {
     if (action === 'mcp_config') {
       const client = isMcpClientId(args.client) ? args.client : 'all';
       return { config: getMcpConfigGuide(client) };
+    }
+    if (action === 'mcp_doctor') {
+      const client = isMcpClientId(args.client) ? args.client : 'all';
+      return { mcpDoctor: await computeMcpSetupDoctor(rootPath, client) };
     }
     if (action === 'first_run') {
       return { firstRun: await computeFirstRunDiagnostics(rootPath) };

@@ -46,10 +46,12 @@ export async function computeBugHunt(
     ...(hotspots.available ? hotspots.hotspots.map(hotspotToFinding) : []),
   ]);
 
-  const fixQueue = findings.length > 0
-    ? findings.slice(0, maxFindings)
+  const immediateFixes = findings.filter(isImmediateFixFinding);
+  const fixQueue = immediateFixes.length > 0
+    ? immediateFixes.slice(0, maxFindings)
     : [cleanVerificationFinding()];
-  const verdict = bugHuntVerdict(issues, findings, actionablePreflightReasons);
+  const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
+  const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
 
   return {
     schemaVersion: 1,
@@ -67,10 +69,10 @@ export async function computeBugHunt(
       touchedFiles: riskNow.touchedFiles,
       conflicts: riskNow.conflicts.length,
     },
-    topSuspects: fixQueue,
+    topSuspects,
     fixQueue,
     verificationMatrix: buildVerificationMatrix(verdict),
-    ...(findings.length > fixQueue.length ? { truncated: true } : {}),
+    ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length ? { truncated: true } : {}),
   };
 }
 
@@ -157,9 +159,9 @@ function hotspotToFinding(
 ): BugHuntFinding {
   return {
     id: `bh-hotspot-${slug(hotspot.relativePath)}`,
-    priority: hotspot.riskScore >= 70 ? 'p0' : hotspot.riskScore >= 30 ? 'p1' : 'p2',
+    priority: hotspot.issueIds.length > 0 ? (hotspot.riskScore >= 70 ? 'p1' : 'p2') : 'p2',
     source: 'hotspot',
-    title: `Inspect risky hotspot ${hotspot.relativePath}`,
+    title: `${hotspot.issueIds.length > 0 ? 'Inspect' : 'Watch'} risky hotspot ${hotspot.relativePath}`,
     why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)} combines churn, complexity, and issue density.`,
     files: [hotspot.relativePath],
     evidence: [
@@ -233,6 +235,12 @@ function buildVerificationMatrix(verdict: BugHuntVerdict): BugHuntReport['verifi
       expected: 'Focused tests and the project test suite pass.',
     },
   ];
+}
+
+function isImmediateFixFinding(finding: BugHuntFinding): boolean {
+  if (finding.source === 'verification') return false;
+  if (finding.source !== 'hotspot') return true;
+  return finding.evidence.some((entry) => typeof entry.issueId === 'string' && entry.issueId.length > 0);
 }
 
 function bugHuntVerdict(

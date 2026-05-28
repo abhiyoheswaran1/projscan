@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "name": "api-route-ownership",
+  "kind": "analyzer",
+  "module": "./api-route-ownership.mjs",
+  "category": "ownership",
+  "description": "Flags API routes that are not covered by CODEOWNERS-style routing"
+}

@@ -379,6 +379,7 @@ export interface WorkplanTask {
   why: string;
   evidence: WorkplanEvidence[];
   files: string[];
+  owner?: string;
   suggestedTools: string[];
   verification: WorkplanVerification;
   handoffText: string;
@@ -386,6 +387,7 @@ export interface WorkplanTask {
 
 export interface WorkplanTopRisk extends WorkplanEvidence {
   priority: WorkplanPriority;
+  owner?: string;
 }
 
 export interface WorkplanCoordination {
@@ -494,6 +496,49 @@ export interface EvidencePackArtifact {
   commands: string[];
 }
 
+export interface EvidencePackTopRisk {
+  priority: WorkplanPriority;
+  title: string;
+  files: string[];
+  owner?: string;
+  command: string;
+}
+
+export interface EvidencePackTeamRoute {
+  owner: string;
+  files: string[];
+  reason: string;
+}
+
+export interface EvidencePackTrustCalibration {
+  verdict: 'clean' | 'manual_review' | 'actual_defect';
+  summary: string;
+  concreteBlockers: string[];
+  manualReviewSignals: string[];
+  watchSignals: string[];
+}
+
+export interface EvidencePackPrSummary {
+  verdictLabel: string;
+  decision: string;
+  trust: EvidencePackTrustCalibration;
+  topRisks: EvidencePackTopRisk[];
+  teamRoutes: EvidencePackTeamRoute[];
+  nextCommands: string[];
+  baselineTrend?: BaselineTrend;
+}
+
+export interface EvidencePackPrCommentValidationCheck {
+  id: string;
+  status: 'pass' | 'warn' | 'fail';
+  summary: string;
+}
+
+export interface EvidencePackPrCommentValidation {
+  status: 'pass' | 'warn' | 'fail';
+  checks: EvidencePackPrCommentValidationCheck[];
+}
+
 export interface EvidencePackReport {
   schemaVersion: 1;
   currentVersion: string | null;
@@ -512,6 +557,9 @@ export interface EvidencePackReport {
   artifacts: EvidencePackArtifact[];
   changelogEntries: string[];
   websitePrompt?: string;
+  prComment?: string;
+  prCommentValidation?: EvidencePackPrCommentValidation;
+  prSummary?: EvidencePackPrSummary;
   suggestedNextActions: PreflightSuggestedAction[];
 }
 
@@ -592,6 +640,68 @@ export interface AgentBriefReport {
   focus: AgentBriefItem[];
   guardrails: AgentBriefGuardrail[];
   suggestedNextActions: PreflightSuggestedAction[];
+  truncated?: boolean;
+}
+
+
+export interface WorkplanHandoffPayload {
+  summary: string;
+  verdict: PreflightVerdict;
+  mode: WorkplanMode;
+  next: string[];
+  verificationCommands: string[];
+  coordination: WorkplanCoordination;
+  markdown: string;
+}
+
+export interface StartWorkflowRecommendation {
+  id: string;
+  name: string;
+  why: string;
+  commands: string[];
+  mcpTools: string[];
+}
+
+export interface StartRisk {
+  id: string;
+  priority: WorkplanPriority;
+  title: string;
+  source: string;
+  files: string[];
+  command: string;
+}
+
+export interface StartAdoptionGap {
+  id: string;
+  status: 'info' | 'warn' | 'fail';
+  title: string;
+  summary: string;
+  command?: string;
+}
+
+export interface StartReport {
+  schemaVersion: 1;
+  readOnly: true;
+  rootPath: string;
+  mode: WorkplanMode;
+  summary: string;
+  setup: {
+    overall: 'pass' | 'warn' | 'fail' | 'info';
+    diagnostics: Array<{ id: string; label: string; status: 'pass' | 'warn' | 'fail' | 'info'; summary: string; detail?: string; command?: string }>;
+  };
+  recommendedWorkflow: StartWorkflowRecommendation;
+  evidence: {
+    workplanVerdict: PreflightVerdict;
+    workplanSummary: string;
+    qualityVerdict: QualityScorecardVerdict;
+    qualitySummary: string;
+    healthScore: number;
+    mcpReady: boolean;
+  };
+  topRisks: StartRisk[];
+  adoptionGaps: StartAdoptionGap[];
+  nextActions: PreflightSuggestedAction[];
+  handoff?: WorkplanHandoffPayload;
   truncated?: boolean;
 }
 
@@ -717,6 +827,7 @@ export interface Baseline {
   grade: HealthScore['grade'];
   issues: { id: string; title: string; severity: IssueSeverity }[];
   hotspots?: BaselineHotspot[];
+  issueRuleCounts?: Record<string, number>;
   timestamp: string;
 }
 
@@ -734,6 +845,20 @@ export interface HotspotDiffSummary {
   resolved: HotspotDelta[];
 }
 
+export interface BaselineRecurringRule {
+  id: string;
+  before: number;
+  after: number;
+}
+
+export interface BaselineTrend {
+  scoreDirection: 'up' | 'down' | 'flat';
+  scoreDelta: number;
+  newHotspots: string[];
+  recurringNoisyRules: BaselineRecurringRule[];
+  summary: string;
+}
+
 export interface DiffResult {
   before: Baseline;
   after: Baseline;
@@ -741,6 +866,7 @@ export interface DiffResult {
   newIssues: string[];
   resolvedIssues: string[];
   hotspotDiff?: HotspotDiffSummary;
+  trend: BaselineTrend;
 }
 
 // === Reporter Interface ===

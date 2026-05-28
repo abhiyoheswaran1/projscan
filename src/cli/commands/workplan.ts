@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 
 import {
@@ -7,7 +9,7 @@ import {
   program,
   setupLogLevel,
 } from '../_shared.js';
-import { computeWorkplan, isWorkplanMode } from '../../core/workplan.js';
+import { buildWorkplanHandoff, computeWorkplan, isWorkplanMode } from '../../core/workplan.js';
 import type { WorkplanMode, WorkplanReport, WorkplanTask } from '../../types.js';
 
 export function registerWorkplan(): void {
@@ -52,6 +54,7 @@ export function registerWorkplan(): void {
     .description('Print a concise agent handoff from the current workplan')
     .option('--mode <mode>', 'workplan mode to summarize', 'before_edit')
     .option('--max-tasks <count>', 'maximum number of tasks to include', parsePositiveInt)
+    .option('--write <file>', 'write a markdown handoff artifact to this path')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -64,8 +67,20 @@ export function registerWorkplan(): void {
           maxTasks: cmdOpts.maxTasks ?? 5,
         });
 
+        const handoff = buildWorkplanHandoff(report);
+        if (typeof cmdOpts.write === 'string' && cmdOpts.write.length > 0) {
+          const target = path.resolve(getRootPath(), cmdOpts.write);
+          await fs.mkdir(path.dirname(target), { recursive: true });
+          await fs.writeFile(target, handoff.markdown, 'utf-8');
+          if (format === 'json') {
+            console.log(JSON.stringify({ handoff: { ...handoff, writtenTo: target } }, null, 2));
+            return;
+          }
+          console.log(chalk.green(`Wrote handoff to ${target}`));
+          return;
+        }
         if (format === 'json') {
-          console.log(JSON.stringify({ handoff: buildHandoffPayload(report) }, null, 2));
+          console.log(JSON.stringify({ handoff }, null, 2));
           return;
         }
         printHandoff(report);
@@ -142,20 +157,4 @@ function printHandoff(report: WorkplanReport): void {
   console.log('');
   console.log(chalk.bold('Coordination'));
   console.log(`- ${report.coordination.recommendedNextAgent}`);
-}
-
-function buildHandoffPayload(report: WorkplanReport): {
-  summary: string;
-  verdict: WorkplanReport['verdict'];
-  mode: WorkplanMode;
-  next: string[];
-  coordination: WorkplanReport['coordination'];
-} {
-  return {
-    summary: report.summary,
-    verdict: report.verdict,
-    mode: report.mode,
-    next: report.tasks.slice(0, 5).map((task) => task.handoffText),
-    coordination: report.coordination,
-  };
 }

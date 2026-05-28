@@ -3,31 +3,35 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.3 "Agent Review Precision".
+Update the projscan website for projscan 3.0.4.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 39 tools, graph evidence, dataflow. Offline.
-- One-line homepage copy: Agent-first code intelligence for AI coding agents: stable semantic graph, bridge dataflow risk detection, ready-to-paste MCP setup, workflow recipes, first-run diagnostics, workplans, bug-hunt queues, readiness evidence, compact agent briefs, quality scorecards, preflight safety, review intelligence, shared session context, and local team plugins.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, graph evidence, dataflow. Offline.
+- One-line homepage copy: Agent-first code intelligence for AI coding agents: stable semantic graph, bridge dataflow risk detection, ready-to-paste MCP setup, team bootstrap recipes, PR evidence automation, first-run diagnostics, workplans, bug-hunt queues, readiness evidence, compact agent briefs, quality scorecards, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
 - MCP server command: npx -y projscan mcp
 - Requirements: Node.js >= 18
 
 What to highlight above the fold:
+- `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
 - `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
+- `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
+- `projscan init github-action`: pull-request workflow scaffold that runs projscan, posts PR evidence comments, and fails CI only when preflight returns `block`.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
 - `projscan first-run` / `projscan_adoption { action: "first_run" }`: first-run diagnostics across Node.js, package metadata, Git, config, Tree-sitter runtime, plugins, and MCP startup.
-- `projscan recipes` / `projscan_adoption { action: "recipes" }`: workflow recipes for before edit, bug hunt, release approval, handoff, and pre-merge.
+- `projscan recipes` / `projscan_adoption { action: "recipes" }`: workflow recipes for team bootstrap, PR automation, before edit, bug hunt, release approval, handoff, and pre-merge.
+- `projscan handoff --write docs/agent-handoff.md`: persists a concise next-agent handoff artifact.
 - `projscan workplan` / `projscan_workplan`: ordered agent execution plans with evidence, suggested tools, verification commands, and handoff text.
 - `projscan bug-hunt` / `projscan_bug_hunt`: prioritized fix queues from doctor, preflight, hotspots, and session signals.
 - `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, guardrails, and next actions.
 - `projscan quality-scorecard` / `projscan_quality_scorecard`: dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and commands.
-- `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`.
-- 39 MCP tools for structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
+- `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
+- 40 MCP tools for structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init` and `projscan plugin test`.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
@@ -35,11 +39,11 @@ What to highlight above the fold:
 
 Feature sections to update:
 - Deep Graph Platform: stable semantic graph, dataflow risk engine, review-time bridge risk blocking, and public graph/dataflow APIs.
-- Adoption Layer: MCP client snippets, agent workflow recipes, and first-run diagnostics that make setup obvious in under five minutes.
+- Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, and first-run diagnostics that make setup obvious in under five minutes.
 - Agent Mission Control: workplans, handoffs, agent briefs, and scorecards that keep long-running agent work coordinated.
 - Autonomous Bug Hunt: ranked fix queues with evidence and verification commands.
-- Readiness Evidence: product-line planning, approval packets, and smoke/focused/full regression matrices.
-- Agent Trust: preflight verdicts before edit, commit, and merge; required checks; suggested next tool calls.
+- Readiness Evidence: product-line planning, approval packets, GitHub PR comment evidence with suggested next actions, block-only PR workflow enforcement, and smoke/focused/full regression matrices.
+- Agent Trust: preflight verdicts before edit, commit, and merge; required checks; suggested next tool calls; clearer separation between concrete blockers and scale-only release sign-off.
 - Multi-agent coordination: `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now`.
 - Deeper review intelligence: package-scoped `contractChanges`, `newTaintFlows`, hardened `newDataflowRisks`, compact package-scoped `graphEvidence`, generated-code review filtering, and preflight `releaseScale` evidence for large platform releases.
 - Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
@@ -51,6 +55,9 @@ Calls to action:
 - "Inspect the semantic graph" with npx projscan semantic-graph --format json.
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.
 - "Run first-run diagnostics" with npx projscan first-run.
+- "Orient the next workflow" with npx projscan start --format json.
+- "Initialize team policy" with npx projscan init policy --team security.
+- "Add PR evidence automation" with npx projscan init github-action, highlighting that the generated workflow posts evidence before enforcing block-only failure.
 - "Pick an agent workflow" with npx projscan recipes.
 - "Plan the next agent pass" with npx projscan workplan --mode bug_hunt --format json.
 - "Run a safety preflight" with npx projscan preflight --format json.

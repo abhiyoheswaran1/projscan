@@ -40,6 +40,31 @@ Files:
 - `docs/examples/plugins/graph-context.projscan-plugin.json`
 - `docs/examples/plugins/graph-context.mjs`
 
+
+### `api-route-ownership`
+
+Flags API route files that are not covered by CODEOWNERS-style routing, so PRs that change externally visible routes get a clear team owner.
+
+Files:
+- `docs/examples/plugins/api-route-ownership.projscan-plugin.json`
+- `docs/examples/plugins/api-route-ownership.mjs`
+
+### `security-sensitive-files`
+
+Highlights auth, crypto, secrets, payment, middleware, and environment-related paths for explicit security-conscious review.
+
+Files:
+- `docs/examples/plugins/security-sensitive-files.projscan-plugin.json`
+- `docs/examples/plugins/security-sensitive-files.mjs`
+
+### `monorepo-boundary`
+
+Flags package source files that reach across monorepo boundaries with deep relative imports instead of package entrypoints or declared workspace dependencies.
+
+Files:
+- `docs/examples/plugins/monorepo-boundary.projscan-plugin.json`
+- `docs/examples/plugins/monorepo-boundary.mjs`
+
 ## Reporter Plugins
 
 ### `team-radar`

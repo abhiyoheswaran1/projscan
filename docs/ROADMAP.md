@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-27.
+Last reviewed 2026-05-28.
 
 ---
 
@@ -53,9 +53,9 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.3 (2026)
+### Now — 3.0.4 (2026)
 
-**3.0.3 "Agent Review Precision"** makes review and dataflow evidence safer for monorepo agents:
+**3.0.4 "Team Adoption Loop"** makes first-team adoption and PR evidence safer for engineering teams:
 
 - Package-scoped review filtering now happens inside `computeReview`, before verdicting, across cycles, taint, dataflow, contract changes, graph evidence, summaries, and verdicts.
 - Next route request-body dataflow recognizes `request.json()`, `request.formData()`, `request.text()`, and `request.arrayBuffer()` only when they are called on route handler request parameters.
@@ -66,13 +66,20 @@ We are *not* trying to be:
 
 **3.0.2 "Agent Graph Readiness"** made the 3.0 graph platform harder to misuse during real agent work with graph corpus release gates, remote tag integrity checks, custom dataflow visibility, CODEOWNERS impact ownership, and 3.x release-train planning.
 
-### Next — 3.1.0
+### Next — Unreleased 3.0.x Adoption Polish
+
+The current unreleased patch line should make projscan easier to install as a repeatable team habit before we start another larger feature line:
+
+- Team workflow adoption: first-60-seconds `projscan start`, policy starter kits, persisted handoffs, PR comment evidence, bootstrap recipes, block-only PR workflow enforcement, and preflight calibration for scale-only commit readiness.
+- Keep the first team PR useful: comments should include the next commands an engineer can run, not just a verdict.
+- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
+
+### Later — 3.1.0
 
 The next larger line should deepen graph expansion without rushing another same-day patch:
 
 - Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
 - Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
-- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
 
 ## Non-goals
 
@@ -103,6 +110,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.4** (2026-05-28) | Team Adoption Loop | Team bootstrap, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration |
 | **3.0.3** (2026-05-27) | Agent Review Precision | Package-scoped review verdicts, receiver-sensitive route request sources, generated-code review/dataflow filtering, package owner fallback, and v5 GitHub Actions |
 | **3.0.2** (2026-05-27) | Agent Graph Readiness | Graph corpus release gates, custom dataflow visibility, remote tag integrity, CODEOWNERS impact ownership, and 3.x release-train planning |
 | **3.0.1** (2026-05-26) | Graph Operations Platform | Graph-backed review/workplan/brief evidence, cross-repo boundary impact, plugin graph context, golden graph corpus, and hardened dataflow precision |

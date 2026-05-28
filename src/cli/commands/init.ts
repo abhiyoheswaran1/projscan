@@ -2,8 +2,26 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 
+import { computeStartReport } from '../../core/start.js';
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
-import { getMcpConfigGuide, isMcpClientId, MCP_CLIENT_IDS, type McpConfigCatalog, type McpConfigGuide } from '../../core/adoption.js';
+import {
+  getGithubActionStarter,
+  getMcpConfigGuide,
+  isMcpClientId,
+  isPolicyStarterTeam,
+  MCP_CLIENT_IDS,
+  POLICY_STARTER_TEAMS,
+  writeGithubActionStarter,
+  writePolicyStarterKit,
+  writeTeamStarterKit,
+  type McpConfigCatalog,
+  type McpConfigGuide,
+  type PolicyStarterTeam,
+  type TeamStarterKit,
+  type WriteGithubActionStarterResult,
+  type WritePolicyStarterResult,
+} from '../../core/adoption.js';
+import type { StartReport } from '../../types.js';
 
 /**
  * `projscan init` (1.6+) — scaffold `.projscanrc.json` for new
@@ -22,6 +40,83 @@ export function registerInit(): void {
       const rootPath = getRootPath();
       try {
         await runInit(rootPath, opts.force === true);
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exit(1);
+      }
+    });
+
+
+
+
+
+  init
+    .command('github-action')
+    .description('Write a GitHub Actions workflow that posts projscan PR evidence')
+    .option('--force', 'overwrite an existing .github/workflows/projscan.yml')
+    .action(async (opts: { force?: boolean }) => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('init github-action');
+      try {
+        const result = await writeGithubActionStarter(getRootPath(), { force: opts.force === true });
+        if (format === 'json') {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+        printGithubActionStarterResult(result);
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exit(1);
+      }
+    });
+
+  init
+    .command('policy')
+    .description('Write a team policy starter .projscanrc.json')
+    .option('--team <team>', `team: ${POLICY_STARTER_TEAMS.join(', ')}`, 'platform')
+    .option('--force', 'overwrite an existing .projscanrc.json')
+    .action(async (opts: { team?: string; force?: boolean }) => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('init policy');
+      const team = parsePolicyTeam(opts.team);
+      try {
+        const result = await writePolicyStarterKit(getRootPath(), team, { force: opts.force === true });
+        if (format === 'json') {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+        printPolicyStarterResult(result);
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exit(1);
+      }
+    });
+
+
+  init
+    .command('team')
+    .description('Bootstrap team policy, PR workflow, CODEOWNERS starter, baseline memory, and a start report')
+    .option('--team <team>', `team: ${POLICY_STARTER_TEAMS.join(', ')}`, 'platform')
+    .option('--force', 'overwrite existing starter files')
+    .action(async (opts: { team?: string; force?: boolean }) => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('init team');
+      const team = parsePolicyTeam(opts.team);
+      try {
+        const rootPath = getRootPath();
+        const result = {
+          schemaVersion: 1,
+          team: await writeTeamStarterKit(rootPath, team, { force: opts.force === true }),
+          start: await computeStartReport(rootPath, { mode: 'before_edit', maxTasks: 5, maxRisks: 5 }),
+        };
+        if (format === 'json') {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+        printTeamStarterResult(result);
       } catch (error) {
         console.error(chalk.red(error instanceof Error ? error.message : String(error)));
         process.exit(1);
@@ -90,6 +185,76 @@ async function runInit(rootPath: string, force: boolean): Promise<void> {
   console.log('');
   console.log(chalk.dim('  Tune the score threshold, ignore globs, or disabled rules as needed.'));
   console.log(chalk.dim('  Then run `projscan ci --min-score 70` (or whatever you set).'));
+}
+
+
+
+
+
+function printGithubActionStarterResult(result: WriteGithubActionStarterResult): void {
+  console.log('');
+  if (result.created) {
+    console.log(chalk.green(`✓ Created ${result.filename}`));
+  } else {
+    console.log(chalk.yellow(`⚠ ${result.reason ?? 'GitHub Action starter was not written.'}`));
+    console.log(chalk.dim('  Pass --force to overwrite the existing workflow.'));
+  }
+  console.log('');
+  console.log(chalk.bold('Next Commands'));
+  for (const command of result.nextCommands) console.log(`  ${command}`);
+  console.log('');
+  console.log(chalk.bold('Workflow Preview'));
+  console.log(prefixIndent(getGithubActionStarter().workflow.trimEnd(), '  '));
+}
+
+function parsePolicyTeam(value: unknown): PolicyStarterTeam {
+  if (isPolicyStarterTeam(value)) return value;
+  console.error(chalk.red(`Unsupported --team ${String(value)}.`));
+  console.error(chalk.dim(`Supported teams: ${POLICY_STARTER_TEAMS.join(', ')}`));
+  process.exit(1);
+}
+
+function printPolicyStarterResult(result: WritePolicyStarterResult): void {
+  console.log('');
+  if (result.created) {
+    console.log(chalk.green(`✓ Created .projscanrc.json for ${result.label}`));
+  } else {
+    console.log(chalk.yellow(`⚠ ${result.reason ?? 'Policy starter was not written.'}`));
+    console.log(chalk.dim('  Pass --force to overwrite with the selected policy starter.'));
+  }
+  console.log('');
+  console.log(chalk.bold('Next Commands'));
+  for (const command of result.nextCommands) console.log(`  ${command}`);
+  console.log('');
+  console.log(chalk.bold('Policy'));
+  console.log(prefixIndent(JSON.stringify(result.config, null, 2), '  '));
+}
+
+
+function printTeamStarterResult(result: { schemaVersion: number; team: TeamStarterKit; start: StartReport }): void {
+  console.log('');
+  console.log(chalk.bold(`Team Bootstrap: ${result.team.team}`));
+  console.log(`  policy       ${result.team.created.policy ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  PR workflow  ${result.team.created.githubAction ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  CODEOWNERS   ${result.team.created.codeowners ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(`  baseline     ${result.team.created.baseline ? chalk.green('created') : chalk.yellow('kept')}`);
+  if (result.team.reasons.length > 0) {
+    console.log('');
+    for (const reason of result.team.reasons) console.log(chalk.dim(`  ${reason}`));
+  }
+  console.log('');
+  console.log(chalk.bold('Start Summary'));
+  console.log(`  ${result.start.summary}`);
+  console.log('');
+  console.log(chalk.bold('Onboarding'));
+  for (const step of result.team.onboarding) {
+    console.log(`  ${step.title}`);
+    console.log(chalk.dim(`    ${step.why}`));
+    if (step.command) console.log(`    ${step.command}`);
+  }
+  console.log('');
+  console.log(chalk.bold('Next Commands'));
+  for (const command of result.team.nextCommands) console.log(`  ${command}`);
 }
 
 function prefixIndent(text: string, indent: string): string {

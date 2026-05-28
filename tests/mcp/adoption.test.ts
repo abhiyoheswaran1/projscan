@@ -30,7 +30,7 @@ test('lists projscan_adoption as an MCP tool', () => {
   expect(tool?.inputSchema.properties).toEqual(
     expect.objectContaining({
       action: expect.objectContaining({
-        enum: ['mcp_config', 'recipes', 'first_run'],
+        enum: ['mcp_config', 'recipes', 'first_run', 'mcp_doctor'],
       }),
       client: expect.objectContaining({ type: 'string' }),
     }),
@@ -61,6 +61,13 @@ test('projscan_adoption returns recipes and first-run diagnostics', async () => 
     recipes: { recipes: Array<{ id: string; commands: string[] }> };
   };
   expect(recipes.recipes.recipes.map((recipe) => recipe.id)).toContain('release_approval');
+  expect(recipes.recipes.recipes.map((recipe) => recipe.id)).toContain('team_bootstrap');
+
+  const doctor = (await handler?.({ action: 'mcp_doctor', client: 'codex' }, tmp)) as {
+    mcpDoctor: { client: string; expected: { command: string } };
+  };
+  expect(doctor.mcpDoctor.client).toBe('codex');
+  expect(doctor.mcpDoctor.expected.command).toBe('npx -y projscan mcp');
 
   const firstRun = (await handler?.({ action: 'first_run' }, tmp)) as {
     firstRun: { diagnostics: Array<{ id: string; status: string }> };

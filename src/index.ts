@@ -60,14 +60,26 @@ export { computeReview } from './core/review.js';
 export { buildSemanticGraph } from './core/semanticGraph.js';
 export { computeDataflow, type DataflowOptions } from './core/dataflow.js';
 export { computeGraphCorpus } from './core/graphCorpus.js';
-export { computeWorkplan } from './core/workplan.js';
+export { buildWorkplanHandoff, computeWorkplan } from './core/workplan.js';
 export { computeReleaseTrain } from './core/releaseTrain.js';
 export { computeBugHunt } from './core/bugHunt.js';
-export { computeEvidencePack } from './core/releaseEvidence.js';
+export { computeEvidencePack, renderEvidencePackPrComment, validateEvidencePackPrComment } from './core/releaseEvidence.js';
 export { computeRegressionPlan } from './core/regressionPlan.js';
 export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
-export { computeFirstRunDiagnostics, getMcpConfigGuide, getWorkflowRecipes } from './core/adoption.js';
+export { computeStartReport } from './core/start.js';
+export {
+  computeFirstRunDiagnostics,
+  computeMcpSetupDoctor,
+  getGithubActionStarter,
+  getMcpConfigGuide,
+  getPolicyStarterKit,
+  getWorkflowRecipes,
+  isPolicyStarterTeam,
+  writeGithubActionStarter,
+  writePolicyStarterKit,
+  writeTeamStarterKit,
+} from './core/adoption.js';
 export type {
   AgentWorkflowRecipe,
   FirstRunDiagnostic,
@@ -75,7 +87,16 @@ export type {
   McpConfigCatalog,
   McpConfigGuide,
   McpClientId,
+  McpSetupDoctorCheck,
+  McpSetupDoctorReport,
+  TeamStarterKit,
+  TeamOnboardingStep,
   WorkflowRecipeCatalog,
+  GithubActionStarter,
+  PolicyStarterKit,
+  PolicyStarterTeam,
+  WriteGithubActionStarterResult,
+  WritePolicyStarterResult,
 } from './core/adoption.js';
 export { suggestFixForIssue, previewSuggestionForIssue, syntheticIssue, findIssue } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
@@ -167,7 +188,10 @@ export type {
   BugHuntVerdict,
   EvidencePackArtifact,
   EvidencePackArtifactStatus,
+  EvidencePackPrCommentValidation,
+  EvidencePackPrCommentValidationCheck,
   EvidencePackReport,
+  EvidencePackTrustCalibration,
   EvidencePackVerdict,
   RegressionPlanLevel,
   RegressionPlanReport,
@@ -178,10 +202,15 @@ export type {
   QualityScorecardRisk,
   QualityScorecardStatus,
   QualityScorecardVerdict,
+  StartAdoptionGap,
+  StartReport,
+  StartRisk,
+  StartWorkflowRecommendation,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,
   WorkplanCoordination,
+  WorkplanHandoffPayload,
   WorkplanEvidence,
   WorkplanMode,
   WorkplanPriority,
