@@ -25,7 +25,7 @@ AI coding agents are becoming the primary interface to code. Today, when you ask
 
 The stable local plugin platform turns that same pipeline into a team substrate: analyzer plugins add project-specific findings, and reporter plugins render `doctor`, `analyze`, and `ci` in your team's own voice without changing the underlying scan.
 
-The 3.0.5 loop focuses on the first useful team PR: `projscan init team` creates policy, CI, ownership, and baseline memory; `projscan evidence-pack --pr-comment` posts a compact verdict with trust calibration, top risks, a First Fix, owner routing, baseline trend memory, and exact next commands.
+The 3.0.5 loop focuses on the first useful team PR: `projscan init team` creates policy, CI, ownership, and baseline memory; `projscan evidence-pack --pr-comment` posts a compact verdict with trust calibration, top risks, a First Fix, owner routing, baseline trend memory, reviewer feedback prompts, and exact next commands; `projscan dogfood` checks whether that loop is ready across real repos.
 
 Humans get the same thing through the CLI.
 
@@ -78,6 +78,7 @@ projscan quality-scorecard --format json # Dimensioned quality view
 projscan release-train --format json          # Product readiness plan
 projscan evidence-pack --website-prompt  # Approval packet with product evidence
 projscan evidence-pack --pr-comment # PR comment with trust calibration + First Fix
+projscan dogfood --repo ../api --repo ../web --format json # Multi-repo adoption proof loop
 projscan regression-plan --level full    # Risk-based verification matrix
 projscan handoff                    # Concise next-agent handoff
 projscan handoff --write docs/agent-handoff.md # Persist next-agent handoff artifact
@@ -129,6 +130,7 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | `projscan quality-scorecard` | Dimensioned quality view with health, security, tests, maintainability, coordination, and top risks |
 | `projscan release-train` | Plan upcoming product lines with readiness evidence |
 | `projscan evidence-pack` | Assemble approval evidence from planning, bug-hunt, workplan, preflight, trust calibration, First Fix, owner routing, and baseline trend memory |
+| `projscan dogfood` | Evaluate 1+ real repos for PR-comment readiness, repeat-use readiness, MCP readiness, and reviewer feedback prompts |
 | `projscan regression-plan` | Build a smoke, focused, or full regression matrix from product risk signals |
 | `projscan handoff` | Concise next-agent handoff from the current workplan |
 | `projscan doctor` | Health check - missing tooling, architecture smells, security and supply-chain risks |
@@ -411,6 +413,15 @@ Current state of the projscan codebase as scored by projscan itself:
 | Dogfood threshold | `--min-score 90` (CI fails below this) |
 
 The `--min-score 90` threshold is deliberately tight: a regression that drops the score by more than ten points fails the build. The current ten-point margin (90 → 100) is for room to breathe, not slack.
+
+For adoption proof, run the product against multiple real repos and capture first-PR feedback:
+
+```sh
+projscan dogfood --repo ../api --repo ../web --repo ../worker --format json
+projscan evidence-pack --pr-comment
+```
+
+The dogfood report checks PR-comment readiness, repeat-use commands, MCP readiness, and the exact feedback questions a reviewer should answer before rollout.
 
 The hotspots projscan finds in itself are real signals — the reporters in particular have grown organically across releases and are candidates for a 2.0-era refactor (tracked in `docs/ROADMAP.md` "Under consideration"). We choose to ship the signal honestly rather than tune the score to hide it.
 

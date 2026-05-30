@@ -143,6 +143,9 @@ export function summarizePreflight(report: PreflightReport): string {
   if (report.reasons.length === 0) {
     return `${report.verdict}: no blocking or cautionary signals found`;
   }
+  if (report.evidence.releaseScale?.detected) {
+    return `${report.verdict}: manual release sign-off recommended for large platform release risk`;
+  }
   return `${report.verdict}: ${report.reasons[0].message}`;
 }
 
@@ -355,7 +358,7 @@ function buildPreflightReasons(input: {
     }
     if (input.review.verdict === 'block') {
       reasons.push({
-        severity: input.mode === 'before_commit' && input.releaseScale?.detected ? 'warning' : 'error',
+        severity: input.releaseScale?.detected ? 'warning' : 'error',
         source: 'review',
         message: formatReviewBlockMessage(input.review, input.releaseScale),
         tool: 'projscan_review',
@@ -594,7 +597,7 @@ function buildRequiredChecks(
         : !review.available
           ? 'unavailable'
           : review.verdict === 'block'
-            ? mode === 'before_commit' && releaseScale?.detected
+            ? releaseScale?.detected
               ? 'warn'
               : 'fail'
             : review.verdict === 'review'

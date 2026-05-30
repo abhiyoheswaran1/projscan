@@ -34,6 +34,11 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   expect(report.evidence.workplanVerdict).toMatch(/proceed|caution|block/);
   expect(report.evidence.qualityVerdict).toMatch(/excellent|healthy|needs_attention|blocked/);
   expect(report.topRisks.length).toBeGreaterThan(0);
+  expect(report.adoptionLoop?.cadence).toBe('every_pr');
+  expect(report.adoptionLoop?.metrics.map((metric) => metric.id)).toEqual(
+    expect.arrayContaining(['first_pr_useful', 'manual_review_rate', 'repeat_use_commands']),
+  );
+  expect(report.adoptionLoop?.nextCommands).toContain('projscan evidence-pack --pr-comment');
   expect(report.nextActions.length).toBeGreaterThan(0);
   expect(report.handoff?.next.length).toBeGreaterThan(0);
 });

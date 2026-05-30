@@ -6,6 +6,7 @@ import type {
   PreflightSuggestedAction,
   QualityScorecardRisk,
   StartAdoptionGap,
+  StartAdoptionLoop,
   StartReport,
   StartRisk,
   StartWorkflowRecommendation,
@@ -48,8 +49,10 @@ export async function computeStartReport(
       summary: diagnostic.summary,
       ...(diagnostic.command ? { command: diagnostic.command } : {}),
     }));
+  const adoptionLoop = buildAdoptionLoop();
   const nextActions = dedupeActions([
     ...workflow.commands.map((command) => ({ label: `Run ${workflow.name}`, command })),
+    ...adoptionLoop.nextCommands.map((command) => ({ label: 'Keep using projscan every PR', command })),
     ...workplan.suggestedNextActions,
     ...quality.suggestedNextActions,
   ]);
@@ -75,11 +78,44 @@ export async function computeStartReport(
     topRisks,
     ...(fixFirst ? { fixFirst } : {}),
     adoptionGaps,
+    adoptionLoop,
     nextActions,
     ...(options.includeHandoff ? { handoff: buildWorkplanHandoff(workplan) } : {}),
     ...(workplan.truncated === true || quality.truncated === true ? { truncated: true } : {}),
   };
   return report;
+}
+
+function buildAdoptionLoop(): StartAdoptionLoop {
+  return {
+    cadence: 'every_pr',
+    why: 'projscan is useful when it becomes PR muscle memory: comment, fix first, route owners, capture feedback, and compare against the last good baseline.',
+    metrics: [
+      {
+        id: 'first_pr_useful',
+        label: 'First PR usefulness',
+        target: 'Reviewer says the PR comment saved 10-20 minutes or identified one missed risk.',
+        command: 'projscan evidence-pack --pr-comment',
+      },
+      {
+        id: 'manual_review_rate',
+        label: 'Manual review rate',
+        target: 'Most uncertain findings stay caution/manual review; actual blocks stay rare and concrete.',
+        command: 'projscan preflight --mode before_merge --format json',
+      },
+      {
+        id: 'repeat_use_commands',
+        label: 'Repeat-use commands',
+        target: 'Every PR has evidence-pack, preflight, and owner routing before merge.',
+        command: 'projscan start --mode before_merge --format json',
+      },
+    ],
+    nextCommands: [
+      'projscan evidence-pack --pr-comment',
+      'projscan preflight --mode before_merge --format json',
+      'projscan dogfood --repo <path-to-repo> --format json',
+    ],
+  };
 }
 
 function normalizeMode(value: WorkplanMode | undefined): WorkplanMode {

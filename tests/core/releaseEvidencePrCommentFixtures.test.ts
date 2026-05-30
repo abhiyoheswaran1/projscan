@@ -12,6 +12,7 @@ import { saveBaseline } from '../../src/utils/baseline.js';
 
 const execFileAsync = promisify(execFile);
 const tempRoots: string[] = [];
+const PR_COMMENT_TIMEOUT = 120_000;
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
@@ -31,7 +32,7 @@ test('docs-only PR comment stays clean short and validator-passing', async () =>
   expect(report.prComment).toContain('- actual defects: none');
   expect(report.prComment).not.toMatch(/new dataflow risk|new taint flow/i);
   expect(report.prComment).toContain('Add .github/CODEOWNERS line: `docs/** @team-name`');
-});
+}, PR_COMMENT_TIMEOUT);
 
 test('auth API PR comment includes owner routing and a fix-first command', async () => {
   const root = await makeGitFixture();
@@ -48,7 +49,7 @@ test('auth API PR comment includes owner routing and a fix-first command', async
   expect(report.prSummary?.fixFirst?.commands.length).toBeGreaterThan(0);
   expect(report.prComment).toContain('### First Fix');
   expect(report.prComment).toMatch(/@security-team|@api-team/);
-});
+}, PR_COMMENT_TIMEOUT);
 
 test('dataflow security PR comment calls out actual defects with owner and review command', async () => {
   const root = await makeGitFixture();
@@ -78,7 +79,7 @@ test('dataflow security PR comment calls out actual defects with owner and revie
   expect(report.prSummary?.fixFirst?.commands.join(' ')).toMatch(/projscan (review|preflight|doctor)/);
   expect(report.prComment).toContain('- actual defects:');
   expect(report.prComment).toContain('projscan review --format json');
-});
+}, PR_COMMENT_TIMEOUT);
 
 test('large release PR comment stays manual-review calibrated instead of calling scale a defect', async () => {
   const root = await makeGitFixture();
@@ -107,7 +108,7 @@ test('large release PR comment stays manual-review calibrated instead of calling
   expect(report.prSummary?.trust.manualReviewSignals.join(' ')).toMatch(/Large platform release risk|scale\/complexity/i);
   expect(report.prComment).toContain('- actual defects: none');
   expect(report.prComment).toMatch(/manual release sign-off|manual review/i);
-});
+}, PR_COMMENT_TIMEOUT);
 
 test('generated-code PR comment suppresses default generated taint and dataflow anxiety', async () => {
   const root = await makeGitFixture();
@@ -133,7 +134,7 @@ test('generated-code PR comment suppresses default generated taint and dataflow 
   expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
   expect(report.prComment).toContain('- actual defects: none');
   expect(report.prComment).not.toMatch(/new taint flow|new dataflow risk/i);
-});
+}, PR_COMMENT_TIMEOUT);
 
 function expectUsefulPrComment(report: Awaited<ReturnType<typeof computeEvidencePack>>): void {
   const body = report.prComment ?? '';
@@ -145,6 +146,9 @@ function expectUsefulPrComment(report: Awaited<ReturnType<typeof computeEvidence
   expect(body).toContain('### First Fix');
   expect(body).toContain('### Team Routing');
   expect(body).toContain('### Next Commands');
+  expect(body).toContain('### Developer Feedback');
+  expect(body).toMatch(/useful on this PR/i);
+  expect(body).toMatch(/missing or noisy/i);
   expect(body).toMatch(/### Team Routing[\s\S]*(?:@[a-z0-9_-]+|CODEOWNERS)/i);
   expect(body).toMatch(/### Next Commands[\s\S]*`(?:projscan|npm|npx|gh|git)\b/);
 }

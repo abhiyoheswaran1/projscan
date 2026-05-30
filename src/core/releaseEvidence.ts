@@ -138,6 +138,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '### Suggested Next Actions',
     ...(nextActions.length > 0 ? nextActions.map(formatSuggestedAction) : ['- None recorded.']),
     '',
+    '### Developer Feedback',
+    ...formatDeveloperFeedback(),
+    '',
     `Approval guidance: ${formatApprovalGuidance(report)}`,
   ];
   return `${lines.join('\n')}\n`;
@@ -156,6 +159,7 @@ const REQUIRED_PR_COMMENT_SECTIONS = [
   '### Verification',
   '### Next Commands',
   '### Suggested Next Actions',
+  '### Developer Feedback',
 ] as const;
 
 const GITHUB_COMMENT_LIMIT = 65_536;
@@ -650,6 +654,14 @@ function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[
     ...changelogEntries.map((entry) => `- ${entry}`),
     'Keep claims grounded in the completed product evidence.',
   ].join('\n');
+}
+
+function formatDeveloperFeedback(): string[] {
+  return [
+    '- Was this useful on this PR? Ask the reviewer whether the comment saved 10-20 minutes.',
+    '- What was missing or noisy? Capture one missing signal, one noisy rule, or `none` before merge.',
+    '- Keep using it every PR: `projscan evidence-pack --pr-comment` and `projscan dogfood --repo <path-to-repo> --format json`.',
+  ];
 }
 
 function formatSuggestedAction(action: PreflightSuggestedAction): string {

@@ -73,6 +73,12 @@ function printStart(report: StartReport): void {
   console.log('');
   console.log(chalk.bold('Top Risks'));
   for (const risk of report.topRisks.slice(0, 5)) printRisk(risk);
+  if (report.adoptionLoop) {
+    console.log('');
+    console.log(chalk.bold('Repeat Use Loop'));
+    console.log(report.adoptionLoop.why);
+    for (const command of report.adoptionLoop.nextCommands.slice(0, 3)) console.log('- ' + command);
+  }
   if (report.adoptionGaps.length > 0) {
     console.log('');
     console.log(chalk.bold('Adoption Gaps'));

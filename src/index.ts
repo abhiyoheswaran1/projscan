@@ -68,6 +68,7 @@ export { computeRegressionPlan } from './core/regressionPlan.js';
 export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { computeStartReport } from './core/start.js';
+export { computeDogfoodReport } from './core/dogfood.js';
 export {
   computeFirstRunDiagnostics,
   computeMcpSetupDoctor,
@@ -203,9 +204,14 @@ export type {
   QualityScorecardStatus,
   QualityScorecardVerdict,
   StartAdoptionGap,
+  StartAdoptionLoop,
+  StartAdoptionLoopMetric,
   StartReport,
   StartRisk,
   StartWorkflowRecommendation,
+  DogfoodReport,
+  DogfoodRepoResult,
+  DogfoodRepoStatus,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,

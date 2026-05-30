@@ -17,6 +17,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   diagram: ['console', 'json', 'markdown'],
   diff: ['console', 'json', 'markdown'],
   doctor: ['console', 'json', 'markdown', 'sarif', 'html'],
+  dogfood: ['console', 'json'],
   'evidence-pack': ['console', 'json'],
   explain: ['console', 'json', 'markdown'],
   'explain-issue': ['console', 'json', 'markdown'],

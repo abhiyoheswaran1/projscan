@@ -695,6 +695,20 @@ export interface StartAdoptionGap {
   command?: string;
 }
 
+export interface StartAdoptionLoopMetric {
+  id: string;
+  label: string;
+  target: string;
+  command?: string;
+}
+
+export interface StartAdoptionLoop {
+  cadence: 'every_pr';
+  why: string;
+  metrics: StartAdoptionLoopMetric[];
+  nextCommands: string[];
+}
+
 export interface StartReport {
   schemaVersion: 1;
   readOnly: true;
@@ -717,9 +731,45 @@ export interface StartReport {
   topRisks: StartRisk[];
   fixFirst?: FixFirstRecommendation;
   adoptionGaps: StartAdoptionGap[];
+  adoptionLoop?: StartAdoptionLoop;
   nextActions: PreflightSuggestedAction[];
   handoff?: WorkplanHandoffPayload;
   truncated?: boolean;
+}
+
+export type DogfoodRepoStatus = 'pass' | 'warn' | 'fail';
+
+export interface DogfoodRepoResult {
+  path: string;
+  name: string;
+  status: DogfoodRepoStatus;
+  healthScore: number;
+  mcpReady: boolean;
+  prCommentReady: boolean;
+  repeatUseReady: boolean;
+  verdict: EvidencePackVerdict;
+  gaps: string[];
+  feedbackQuestions: string[];
+  nextCommands: string[];
+}
+
+export interface DogfoodReport {
+  schemaVersion: 1;
+  readOnly: true;
+  rootPath: string;
+  targetRepoCount: number;
+  summary: string;
+  repos: DogfoodRepoResult[];
+  totals: {
+    reposEvaluated: number;
+    passingRepos: number;
+    warningRepos: number;
+    failingRepos: number;
+    prCommentReady: number;
+    repeatUseReady: number;
+    mcpReady: number;
+  };
+  suggestedNextActions: PreflightSuggestedAction[];
 }
 
 export interface GraphCorpusFixtureMetrics {
