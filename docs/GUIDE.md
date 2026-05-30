@@ -32,6 +32,7 @@ As of 0.6.0, **ProjScan is agent-first**: the MCP server is the primary interfac
   - [coverage](#coverage)
   - [badge](#badge)
   - [mcp](#mcp)
+  - [dogfood](#dogfood)
 - [Health Score](#health-score)
 - [Output Formats](#output-formats)
   - [Console](#console-default)
@@ -112,12 +113,12 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
-- **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
+- **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, repeat-use metrics, next commands, and optional handoff payload.
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
-- **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, and setup diagnostics.
+- **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, reviewer feedback prompts, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, trust calibration, owner routing, baseline trend, changelog, suggested next actions, and optional website prompt or validated PR-comment evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
@@ -129,7 +130,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
+**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json` and capture first-PR feedback. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -655,6 +656,16 @@ Touches come from three sources:
 `projscan_session { action: "current" | "touched" | "events" | "reset" }` is the MCP-side mirror.
 
 ---
+
+### dogfood
+
+`projscan dogfood` is the adoption proof loop. It evaluates one or more real repositories and reports whether each repo can produce a validated PR comment, expose the repeat-use loop in `projscan start`, and pass basic MCP/setup readiness.
+
+```bash
+projscan dogfood --repo ../api --repo ../web --repo ../worker --format json
+```
+
+Use it before broader rollout. The report includes feedback questions for the first real PR: did the comment save 10-20 minutes, what was missing or noisy, and which owner or command should have been clearer.
 
 ## Health Score
 

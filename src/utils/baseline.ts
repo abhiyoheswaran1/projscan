@@ -82,7 +82,7 @@ export function computeDiff(
     newIssues,
     resolvedIssues,
     hotspotDiff,
-    trend: buildTrend(scoreDelta, before, after, hotspotDiff),
+    trend: buildTrend(scoreDelta, before, after, hotspotDiff, newIssues, resolvedIssues),
   };
 }
 
@@ -147,24 +147,53 @@ function buildTrend(
   scoreDelta: number,
   before: Baseline,
   after: Baseline,
-  hotspotDiff?: HotspotDiffSummary,
+  hotspotDiff: HotspotDiffSummary | undefined,
+  newIssues: string[],
+  resolvedIssues: string[],
 ): BaselineTrend {
   const roundedDelta = round1(scoreDelta);
+  const riskDelta = round1(-scoreDelta);
   const recurringNoisyRules = recurringRules(before.issueRuleCounts ?? countBaselineIssuesById(before), after.issueRuleCounts ?? countBaselineIssuesById(after));
   const newHotspots = (hotspotDiff?.appeared ?? []).map((entry) => entry.relativePath).slice(0, 5);
   const scoreDirection = roundedDelta > 0 ? 'up' : roundedDelta < 0 ? 'down' : 'flat';
+  const riskDirection = riskDelta > 0 ? 'up' : riskDelta < 0 ? 'down' : 'flat';
+  const changedSinceBaseline = buildChangedSinceBaseline(newIssues, resolvedIssues, newHotspots, recurringNoisyRules);
   const summary = [
     `score ${scoreDirection}${roundedDelta === 0 ? '' : ` ${roundedDelta > 0 ? '+' : ''}${roundedDelta}`}`,
+    `risk ${riskDirection}${riskDelta === 0 ? '' : ` ${riskDelta > 0 ? '+' : ''}${riskDelta}`}`,
     newHotspots.length > 0 ? `${newHotspots.length} new hotspot(s)` : 'no new hotspots',
     recurringNoisyRules.length > 0 ? `${recurringNoisyRules.length} recurring noisy rule(s)` : 'no recurring noisy rules',
   ].join('; ');
   return {
     scoreDirection,
     scoreDelta: roundedDelta,
+    riskDirection,
+    riskDelta,
+    qualityScoreBefore: before.score,
+    qualityScoreAfter: after.score,
+    newIssueCount: newIssues.length,
+    resolvedIssueCount: resolvedIssues.length,
+    changedSinceBaseline,
     newHotspots,
     recurringNoisyRules,
     summary,
   };
+}
+
+function buildChangedSinceBaseline(
+  newIssues: string[],
+  resolvedIssues: string[],
+  newHotspots: string[],
+  recurringNoisyRules: BaselineTrend['recurringNoisyRules'],
+): string[] {
+  const changes: string[] = [];
+  changes.push(newIssues.length > 0 ? `${newIssues.length} new issue(s): ${newIssues.slice(0, 3).join('; ')}` : '0 new issues');
+  changes.push(resolvedIssues.length > 0 ? `${resolvedIssues.length} resolved issue(s): ${resolvedIssues.slice(0, 3).join('; ')}` : '0 resolved issues');
+  changes.push(newHotspots.length > 0 ? `new hotspot(s): ${newHotspots.join(', ')}` : 'no new hotspots');
+  if (recurringNoisyRules.length > 0) {
+    changes.push(`recurring noisy rule(s): ${recurringNoisyRules.map((rule) => `${rule.id} ${rule.before}->${rule.after}`).join(', ')}`);
+  }
+  return changes.slice(0, 5);
 }
 
 function countIssuesById(issues: Issue[]): Record<string, number> {

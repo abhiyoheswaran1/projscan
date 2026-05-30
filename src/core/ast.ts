@@ -78,6 +78,12 @@ export interface FunctionInfo {
   memberCallSites?: string[];
   /** Function parameter names when the adapter can recover them. */
   parameters?: string[];
+  /** Bare identifier call sites, excluding member calls like cache.query(). */
+  directCallSites?: string[];
+  /** Local aliases for member functions, e.g. query=pool.query from const { query } = pool. */
+  memberAliases?: string[];
+  /** Qualified call expression this function was passed to, e.g. app.post for Express callbacks. */
+  contextualCallSite?: string;
   /**
    * Per-function fan-out (1.2.0+): count of distinct callee names from
    * `callSites`, restricted to names that are defined as functions
@@ -248,7 +254,7 @@ export function parseSource(filePath: string, content: string): AstResult {
  */
 function extractFunctionsFromBabel(program: Node): FunctionInfo[] {
   const out: FunctionInfo[] = [];
-  collectFunctions(program, null, null, out);
+  collectFunctions(program, null, null, out, null);
   return out;
 }
 
@@ -275,6 +281,7 @@ function collectFunctions(
   parentClassName: string | null,
   bindingName: string | null,
   out: FunctionInfo[],
+  contextualCallSite: string | null,
 ): void {
   if (!node || typeof node !== 'object') return;
 
@@ -282,7 +289,7 @@ function collectFunctions(
     const name = nameForFunctionNode(node, parentClassName, bindingName);
     const line = (node as NodeWithLoc).loc?.start.line ?? 0;
     const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const { cc, callSites, memberCallSites, references } = analyzeBabelBody(node);
+    const { cc, callSites, memberCallSites, directCallSites, memberAliases, references } = analyzeBabelBody(node);
     const parameters = functionParamNames(node);
     out.push({
       name,
@@ -291,7 +298,10 @@ function collectFunctions(
       cyclomaticComplexity: cc,
       callSites,
       memberCallSites,
+      directCallSites,
+      memberAliases,
       parameters,
+      ...(contextualCallSite ? { contextualCallSite } : {}),
       references,
     });
 
@@ -306,7 +316,7 @@ function collectFunctions(
   if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
     const className = (node as { id?: { name?: string } }).id?.name ?? null;
     const body = (node as { body?: Node }).body;
-    if (body) collectFunctions(body, className, null, out);
+    if (body) collectFunctions(body, className, null, out, null);
     return;
   }
 
@@ -314,7 +324,7 @@ function collectFunctions(
     const id = (node as { id?: { type: string; name?: string } }).id;
     const init = (node as { init?: Node | null }).init;
     const name = id && id.type === 'Identifier' ? (id.name ?? null) : null;
-    if (init) collectFunctions(init, parentClassName, name, out);
+    if (init) collectFunctions(init, parentClassName, name, out, null);
     return;
   }
 
@@ -322,13 +332,24 @@ function collectFunctions(
     const left = (node as { left?: { type: string; name?: string } }).left;
     const right = (node as { right?: Node }).right;
     const name = left && left.type === 'Identifier' ? (left.name ?? null) : null;
-    if (right) collectFunctions(right, parentClassName, name, out);
+    if (right) collectFunctions(right, parentClassName, name, out, null);
     return;
   }
 
   if (node.type === 'ExportDefaultDeclaration') {
     const decl = (node as { declaration?: Node }).declaration;
-    if (decl) collectFunctions(decl, parentClassName, 'default', out);
+    if (decl) collectFunctions(decl, parentClassName, 'default', out, null);
+    return;
+  }
+
+  const callContext = callExpressionContext(node);
+  if (callContext) {
+    const args = (node as { arguments?: unknown[] }).arguments ?? [];
+    for (const arg of args) {
+      if (arg && typeof arg === 'object' && 'type' in arg) {
+        collectFunctions(arg as Node, parentClassName, null, out, callContext);
+      }
+    }
     return;
   }
 
@@ -339,13 +360,21 @@ function collectFunctions(
     if (Array.isArray(child)) {
       for (const item of child) {
         if (item && typeof item === 'object' && 'type' in item) {
-          collectFunctions(item as Node, parentClassName, null, out);
+          collectFunctions(item as Node, parentClassName, null, out, null);
         }
       }
     } else if (typeof child === 'object' && 'type' in child) {
-      collectFunctions(child as Node, parentClassName, null, out);
+      collectFunctions(child as Node, parentClassName, null, out, null);
     }
   }
+}
+
+function callExpressionContext(node: Node): string | null {
+  if (node.type !== 'CallExpression' && node.type !== 'OptionalCallExpression' && node.type !== 'NewExpression') {
+    return null;
+  }
+  const callee = (node as { callee?: Node }).callee;
+  return babelQualifiedMemberName(callee) ?? babelCalleeName(callee);
 }
 
 function descendForNestedFunctions(
@@ -357,7 +386,7 @@ function descendForNestedFunctions(
   if (!body) return;
   // Body of a function expression/declaration is a BlockStatement (or, for
   // arrows, possibly an Expression). Either way, walk it.
-  walkChildren(body, (child) => collectFunctions(child, parentClassName, null, out));
+  walkChildren(body, (child) => collectFunctions(child, parentClassName, null, out, null));
 }
 
 function nameForFunctionNode(
@@ -402,13 +431,17 @@ function analyzeBabelBody(fnNode: Node): {
   cc: number;
   callSites: string[];
   memberCallSites: string[];
+  directCallSites: string[];
+  memberAliases: string[];
   references: string[];
 } {
   const body = (fnNode as { body?: Node }).body;
-  if (!body) return { cc: 1, callSites: [], memberCallSites: [], references: [] };
+  if (!body) return { cc: 1, callSites: [], memberCallSites: [], directCallSites: [], memberAliases: [], references: [] };
   let decisions = 0;
   const calls = new Set<string>();
+  const directCalls = new Set<string>();
   const memberCalls = new Set<string>();
+  const aliases = new Set<string>();
   const refs = new Set<string>();
   // MemberExpression nodes that ARE in callee position get their rightmost
   // identifier added to callSites instead of references — track them here so
@@ -423,12 +456,14 @@ function analyzeBabelBody(fnNode: Node): {
       const callee = (n as { callee?: Node }).callee;
       const name = babelCalleeName(callee);
       if (name) calls.add(name);
+      if (name && callee?.type === 'Identifier') directCalls.add(name);
       const memberName = babelQualifiedMemberName(callee);
       if (memberName) memberCalls.add(memberName);
       if (callee && (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression')) {
         calleeMembers.add(callee);
       }
     }
+    if (n.type === 'VariableDeclarator') collectMemberAliases(n, aliases);
     if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') {
       if (calleeMembers.has(n)) return;
       collectMemberReadIdents(n, refs);
@@ -438,6 +473,8 @@ function analyzeBabelBody(fnNode: Node): {
     cc: decisions + 1,
     callSites: [...calls],
     memberCallSites: [...memberCalls],
+    directCallSites: [...directCalls],
+    memberAliases: [...aliases],
     references: [...refs],
   };
 }
@@ -479,6 +516,22 @@ function collectMemberReadIdents(node: Node, out: Set<string>): void {
       if (name) out.add(name);
     }
     cur = m.object ?? null;
+  }
+}
+
+function collectMemberAliases(node: Node, out: Set<string>): void {
+  const decl = node as { id?: Node; init?: Node | null };
+  if (!decl.id || decl.id.type !== 'ObjectPattern' || !decl.init) return;
+  const objectName = babelQualifiedMemberName(decl.init) ?? babelCalleeName(decl.init);
+  if (!objectName) return;
+  const properties = (decl.id as { properties?: Node[] }).properties ?? [];
+  for (const property of properties) {
+    if (!property || property.type !== 'ObjectProperty') continue;
+    const prop = property as { key?: Node; value?: Node; computed?: boolean };
+    if (prop.computed || !prop.key || !prop.value) continue;
+    const keyName = babelMemberPropertyName(prop.key);
+    const aliasName = bindingIdentifierName(prop.value);
+    if (keyName && aliasName) out.add(aliasName + '=' + objectName + '.' + keyName);
   }
 }
 

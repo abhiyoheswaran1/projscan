@@ -1,4 +1,5 @@
 import { analyzeHotspots } from './hotspotAnalyzer.js';
+import { fixFirstFromQualityRisk } from './fixFirst.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
@@ -43,6 +44,8 @@ export async function computeQualityScorecard(
     ...riskNow.conflicts.map(conflictToRisk),
   ]);
   const topRisks = allRisks.slice(0, maxRisks);
+  const visibleTopRisks = topRisks.length > 0 ? topRisks : [baselineRisk()];
+  const fixFirst = fixFirstFromQualityRisk(visibleTopRisks[0]);
   const verdict = deriveQualityScorecardVerdict(dimensions, health.score);
 
   return {
@@ -51,7 +54,8 @@ export async function computeQualityScorecard(
     summary: summarize(verdict, dimensions, health.score),
     health,
     dimensions,
-    topRisks: topRisks.length > 0 ? topRisks : [baselineRisk()],
+    topRisks: visibleTopRisks,
+    ...(fixFirst ? { fixFirst } : {}),
     commands: buildCommands(verdict),
     suggestedNextActions: suggestedActions(topRisks),
     ...(allRisks.length > topRisks.length ? { truncated: true } : {}),

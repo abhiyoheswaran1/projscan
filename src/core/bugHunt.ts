@@ -1,5 +1,6 @@
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { collectIssues } from './issueEngine.js';
+import { fixFirstFromBugHuntFinding } from './fixFirst.js';
 import { computePreflight } from './preflight.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
@@ -52,6 +53,7 @@ export async function computeBugHunt(
     : [cleanVerificationFinding()];
   const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
   const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
+  const fixFirst = fixFirstFromBugHuntFinding(fixQueue[0]);
 
   return {
     schemaVersion: 1,
@@ -71,6 +73,7 @@ export async function computeBugHunt(
     },
     topSuspects,
     fixQueue,
+    ...(fixFirst ? { fixFirst } : {}),
     verificationMatrix: buildVerificationMatrix(verdict),
     ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length ? { truncated: true } : {}),
   };

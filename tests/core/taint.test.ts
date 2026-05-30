@@ -134,6 +134,115 @@ export function customDangerousSink(v: string | undefined) { return v; }
     expect(report.flowCount).toBeGreaterThan(0);
   });
 
+  it('detects Express handler request body into a database query', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'server.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+
+app.post('/users', (req, res) => {
+  const sql = req.body.sql;
+  db.query(sql);
+  res.json({ ok: true });
+});
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query'),
+    ).toBe(true);
+  });
+
+  it('does not treat ordinary req-shaped helpers as Express taint sources', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'helpers.ts'),
+      `const db = { query(sql: string) { return sql; } };
+
+export function saveSearch(req: { body: { sql: string } }) {
+  return db.query(req.body.sql);
+}
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(report.flows.find((flow) => flow.source === 'express.req.body')).toBeUndefined();
+    expect(report.flows.find((flow) => flow.sourceFn === 'saveSearch')).toBeUndefined();
+  });
+
+  it('keeps imported database query helpers as taint sinks', async () => {
+    await fs.writeFile(path.join(tmp, 'src', 'db.ts'), 'export function query(sql: string) { return sql; }\n');
+    await fs.writeFile(
+      path.join(tmp, 'src', 'server.ts'),
+      `import express from 'express';
+import { query } from './db';
+
+const app = express();
+
+app.post('/users', (req, res) => {
+  const sql = req.body.sql;
+  query(sql);
+  res.json({ ok: true });
+});
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query')).toBe(true);
+  });
+
+  it('keeps destructured database query aliases as taint sinks', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'server.ts'),
+      `import express from 'express';
+
+const app = express();
+const pool = { query(sql: string) { return sql; } };
+
+app.post('/users', (req, res) => {
+  const { query } = pool;
+  const sql = req.body.sql;
+  query(sql);
+  res.json({ ok: true });
+});
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query')).toBe(true);
+  });
+
+  it('does not let DB imports make cache query helpers look like DB sinks', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'cache.ts'),
+      `import { Pool } from 'pg';
+
+const cache = { query(key: string) { return key; } };
+const pool = new Pool();
+
+export function searchCache() {
+  const key = process.env.CACHE_KEY;
+  return cache.query(key ?? 'fallback');
+}
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(report.flows.find((flow) => flow.sourceFn === 'searchCache' && flow.sink === 'query')).toBeUndefined();
+  });
+
   it('returns available:false when no functions have callSites', async () => {
     // Empty-ish project with no .ts files in /src.
     const graph = await buildGraph();

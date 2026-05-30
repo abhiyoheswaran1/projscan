@@ -53,18 +53,19 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.4 (2026)
+### Now — 3.0.5 (2026)
 
-**3.0.4 "Team Adoption Loop"** makes first-team adoption and PR evidence safer for engineering teams:
+**3.0.5 "Proof of Usefulness"** makes the first successful team PR the product's hero surface:
 
-- Package-scoped review filtering now happens inside `computeReview`, before verdicting, across cycles, taint, dataflow, contract changes, graph evidence, summaries, and verdicts.
-- Next route request-body dataflow recognizes `request.json()`, `request.formData()`, `request.text()`, and `request.arrayBuffer()` only when they are called on route handler request parameters.
-- Generated/codegen risks are quiet by default for dataflow and review gates, while custom source/sink risks remain visible.
-- Ownership lookup falls back to workspace package metadata when CODEOWNERS has no match.
+- End-to-end adoption harness proves `projscan init team` through baseline, GitHub Action, PR evidence comment, preflight, and owner routing together.
+- PR comment benchmarks now cover safe docs-only, risky auth/API, dataflow/security, large release, and generated-code PRs so trust calibration cannot drift quietly.
+- Fix-first recommendations are visible across agent-facing reports and PR comments with owner hints and exact next commands.
+- Baseline trend memory now shows risk up/down, quality-score movement, new/resolved issue counts, new hotspots, recurring noisy rules, and changed-since-baseline summaries.
+- Next.js and Express dataflow packs keep request sources and database sinks framework-aware while suppressing generated-code anxiety by default.
 
-### Recently Completed — 3.0.2 (2026)
+### Recently Completed — 3.0.4 (2026)
 
-**3.0.2 "Agent Graph Readiness"** made the 3.0 graph platform harder to misuse during real agent work with graph corpus release gates, remote tag integrity checks, custom dataflow visibility, CODEOWNERS impact ownership, and 3.x release-train planning.
+**3.0.4 "Team Adoption Loop"** made first-team adoption safer with `projscan init team`, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration.
 
 ### Next — Unreleased 3.0.x Adoption Polish
 
@@ -110,6 +111,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.5** (2026-05-28) | Proof of Usefulness | End-to-end adoption harness, five-scenario PR comment benchmarks, fix-first output, richer baseline trend memory, Express/Next dataflow precision, and scale-risk calibration |
 | **3.0.4** (2026-05-28) | Team Adoption Loop | Team bootstrap, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration |
 | **3.0.3** (2026-05-27) | Agent Review Precision | Package-scoped review verdicts, receiver-sensitive route request sources, generated-code review/dataflow filtering, package owner fallback, and v5 GitHub Actions |
 | **3.0.2** (2026-05-27) | Agent Graph Readiness | Graph corpus release gates, custom dataflow visibility, remote tag integrity, CODEOWNERS impact ownership, and 3.x release-train planning |

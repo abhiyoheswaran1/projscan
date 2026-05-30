@@ -301,7 +301,7 @@ test('before_commit treats scale-only review blocks as manual sign-off caution',
   expect(report.requiredChecks.find((check) => check.name === 'review')?.status).toBe('warn');
 });
 
-test('before_merge labels scale-only review blocks as large platform release risk', async () => {
+test('before_merge treats scale-only review blocks as manual sign-off caution', async () => {
   const root = await makeTempProject();
   await git(root, ['init']);
   await git(root, ['config', 'user.email', 'agent@example.com']);
@@ -349,7 +349,7 @@ test('before_merge labels scale-only review blocks as large platform release ris
     maxChangedFiles: 1,
   });
 
-  expect(report.verdict).toBe('block');
+  expect(report.verdict).toBe('caution');
   expect(report.evidence.releaseScale).toEqual(
     expect.objectContaining({
       detected: true,
@@ -367,12 +367,15 @@ test('before_merge labels scale-only review blocks as large platform release ris
       }),
       expect.objectContaining({
         source: 'review',
-        severity: 'error',
+        severity: 'warning',
         message: expect.stringContaining('scale/complexity'),
       }),
     ]),
   );
   expect(report.evidence.releaseScale?.changedFiles).toBeGreaterThan(1);
+  expect(report.summary).toContain('manual release sign-off');
+  expect(report.summary).not.toContain('block:');
+  expect(report.requiredChecks.find((check) => check.name === 'review')?.status).toBe('warn');
   expect(report.requiredChecks.find((check) => check.name === 'review')?.reason).toContain(
     'scale/complexity',
   );

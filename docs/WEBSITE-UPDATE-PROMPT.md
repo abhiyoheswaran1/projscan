@@ -3,13 +3,13 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.4.
+Update the projscan website for projscan 3.0.5.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, graph evidence, dataflow. Offline.
-- One-line homepage copy: Agent-first code intelligence for AI coding agents: stable semantic graph, bridge dataflow risk detection, ready-to-paste MCP setup, team bootstrap recipes, PR evidence automation, first-run diagnostics, workplans, bug-hunt queues, readiness evidence, compact agent briefs, quality scorecards, preflight safety, review intelligence, shared session context, and local team plugins.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, PR evidence, graph/dataflow. Offline.
+- One-line homepage copy: Agent-first code intelligence for AI coding agents: stable semantic graph, bridge dataflow risk detection, ready-to-paste MCP setup, team bootstrap recipes, PR evidence automation, first-run diagnostics, fix-first recommendations, baseline trend memory, framework-aware dataflow, dogfood adoption proof, repeat-use metrics, workplans, bug-hunt queues, readiness evidence, compact agent briefs, quality scorecards, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
 - MCP server command: npx -y projscan mcp
@@ -18,8 +18,9 @@ Core positioning:
 What to highlight above the fold:
 - `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
-- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with opt-ins for test files, broad file IO, and generated/codegen paths.
+- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js and Express request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
+- `projscan dogfood --repo ../api --repo ../web --repo ../worker --format json`: adoption proof loop across real repos with PR-comment readiness, repeat-use readiness, MCP readiness, and reviewer feedback questions.
 - `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
 - `projscan init github-action`: pull-request workflow scaffold that runs projscan, posts PR evidence comments, and fails CI only when preflight returns `block`.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
@@ -37,9 +38,19 @@ What to highlight above the fold:
 - Command-dependent output formats: console, json, markdown, sarif, and html.
 - Offline-first behavior: no source upload, no telemetry, no API key.
 
+Real proof examples to add:
+- Before projscan: a PR review comment that only says "run tests" or dumps scanner output.
+- After projscan: a compact PR comment with verdict, actual defects vs manual review, top risks, First Fix, owner routing, baseline trend, and commands like `projscan review --format json`.
+- Onboarding flow: `npx projscan init team --team security` creating policy, GitHub Action, CODEOWNERS, baseline memory, and next commands.
+- MCP setup proof: `npx projscan mcp doctor --client codex --format json` returning the exact config block to paste.
+- Calibration proof: docs-only and generated-code PR examples stay calm; dataflow/security PRs show actual defects; large release PRs show manual release sign-off.
+- Use the shipped PR comment examples as website source material: docs/examples/pr-comments/docs-only.md, auth-api.md, dataflow-security.md, large-release.md, generated-code.md, actual-3.0.5-pr.md, and before-after.md.
+- Link the onboarding proof doc: docs/FIRST-10-MINUTES.md.
+- Link the adoption proof loop: docs/ADOPTION-PROOF.md.
+
 Feature sections to update:
 - Deep Graph Platform: stable semantic graph, dataflow risk engine, review-time bridge risk blocking, and public graph/dataflow APIs.
-- Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, and first-run diagnostics that make setup obvious in under five minutes.
+- Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, first-run diagnostics, dogfood proof across 3+ repos, and repeat-use metrics that make setup obvious in under ten minutes.
 - Agent Mission Control: workplans, handoffs, agent briefs, and scorecards that keep long-running agent work coordinated.
 - Autonomous Bug Hunt: ranked fix queues with evidence and verification commands.
 - Readiness Evidence: product-line planning, approval packets, GitHub PR comment evidence with suggested next actions, block-only PR workflow enforcement, and smoke/focused/full regression matrices.
@@ -55,6 +66,7 @@ Calls to action:
 - "Inspect the semantic graph" with npx projscan semantic-graph --format json.
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.
 - "Run first-run diagnostics" with npx projscan first-run.
+- "Prove adoption across real repos" with npx projscan dogfood --repo ../api --repo ../web --repo ../worker --format json.
 - "Orient the next workflow" with npx projscan start --format json.
 - "Initialize team policy" with npx projscan init policy --team security.
 - "Add PR evidence automation" with npx projscan init github-action, highlighting that the generated workflow posts evidence before enforcing block-only failure.

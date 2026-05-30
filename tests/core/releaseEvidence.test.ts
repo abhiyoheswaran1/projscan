@@ -189,6 +189,19 @@ test('PR comment validator fails when the GitHub review surface loses required s
   expect(validation.checks.find((check) => check.id === 'required-sections')?.summary).toContain('Team Routing');
 });
 
+test('PR comment validator fails when developer feedback is removed', async () => {
+  const root = await makeTempProject('2.2.0');
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 3,
+  });
+  const broken = report.prComment!.replace('### Developer Feedback', '### Reviewer Notes');
+  const validation = validateEvidencePackPrComment(broken, report);
+
+  expect(validation.status).toBe('fail');
+  expect(validation.checks.find((check) => check.id === 'required-sections')?.summary).toContain('Developer Feedback');
+});
+
 async function makeTempProject(version: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-evidence-pack-'));
   tempRoots.push(root);

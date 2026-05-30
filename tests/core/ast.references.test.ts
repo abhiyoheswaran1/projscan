@@ -90,6 +90,19 @@ describe('FunctionInfo.references (1.6+)', () => {
     expect(inner!.references ?? []).not.toContain('env');
   });
 
+  it('tracks direct calls and destructured member aliases separately from member calls', () => {
+    const out = fns(`function f() {
+  const { query: runQuery } = pool;
+  runQuery('select 1');
+  cache.query('value');
+}`);
+    expect(out).toHaveLength(1);
+    expect(out[0].callSites).toEqual(expect.arrayContaining(['runQuery', 'query']));
+    expect(out[0].directCallSites).toEqual(['runQuery']);
+    expect(out[0].memberCallSites).toEqual(['cache.query']);
+    expect(out[0].memberAliases).toEqual(['runQuery=pool.query']);
+  });
+
   it('captures reads inside arrow callbacks (the taint default-source case)', () => {
     // The most common real-world pattern: a route handler reads
     // process.env inside an inline arrow.

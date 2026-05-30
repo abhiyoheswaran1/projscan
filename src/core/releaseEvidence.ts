@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { computeBugHunt } from './bugHunt.js';
+import { fixFirstFromChangedFiles, fixFirstFromEvidenceRisk } from './fixFirst.js';
 import { computePreflight } from './preflight.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
@@ -19,7 +20,9 @@ import type {
   EvidencePackPrCommentValidation,
   EvidencePackPrSummary,
   EvidencePackReport,
+  EvidencePackTeamRoute,
   EvidencePackTopRisk,
+  FixFirstRecommendation,
   EvidencePackVerdict,
   PreflightReport,
   PreflightSuggestedAction,
@@ -33,6 +36,7 @@ export interface ComputeEvidencePackOptions {
   includeWebsitePrompt?: boolean;
   includePrComment?: boolean;
   maxFindings?: number;
+  preflightMaxChangedFiles?: number;
 }
 
 export async function computeEvidencePack(
@@ -43,10 +47,10 @@ export async function computeEvidencePack(
     computeReleaseTrain(rootPath, { lines: options.lines }),
     computeBugHunt(rootPath, { maxFindings: options.maxFindings }),
     computeWorkplan(rootPath, { mode: 'release', maxTasks: 6 }),
-    computePreflight(rootPath, { mode: 'before_merge' }),
+    computePreflight(rootPath, { mode: 'before_merge', maxChangedFiles: options.preflightMaxChangedFiles }),
   ]);
   const artifacts = buildArtifacts(train, bugHunt, workplan, preflight);
-  const verdict = packVerdict(artifacts);
+  const rawVerdict = packVerdict(artifacts);
   const blockingReasons = blockingEvidence(preflight, bugHunt, workplan);
   const changelogEntries = buildChangelogEntries();
   const suggestedNextActions = dedupeActions([
@@ -64,13 +68,14 @@ export async function computeEvidencePack(
     loadOwnership(rootPath).catch(() => undefined),
   ]);
   const prSummary = buildPrSummary(workplan, bugHunt, preflight, suggestedNextActions, baselineTrend, ownership);
+  const verdict = calibrateEvidencePackVerdict(rawVerdict, prSummary);
 
   const report: EvidencePackReport = {
     schemaVersion: 1,
     currentVersion: train.currentVersion,
     readOnly: true,
     verdict,
-    summary: summarize(verdict, train, blockingReasons),
+    summary: summarize(verdict, train.currentVersion, blockingReasons),
     train: {
       lines: train.plan.lines,
       readiness: train.readiness,
@@ -118,8 +123,11 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '### Top Risks',
     ...(pr?.topRisks.length ? pr.topRisks.map(formatPrRisk) : ['- No prioritized risks recorded.']),
     '',
+    '### First Fix',
+    ...(pr?.fixFirst ? formatFixFirst(pr.fixFirst) : ['- No immediate fix-first target. Preserve the baseline and rerun the verification commands.']),
+    '',
     '### Team Routing',
-    ...(pr?.teamRoutes.length ? pr.teamRoutes.map(formatTeamRoute) : ['- No owner hints found. Add CODEOWNERS or package owner metadata for routing.']),
+    ...(pr?.teamRoutes.length ? pr.teamRoutes.map(formatTeamRoute) : formatMissingOwnerHint(pr)),
     '',
     '### Verification',
     ...commands.map((command) => `- \`${command}\``),
@@ -129,6 +137,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '',
     '### Suggested Next Actions',
     ...(nextActions.length > 0 ? nextActions.map(formatSuggestedAction) : ['- None recorded.']),
+    '',
+    '### Developer Feedback',
+    ...formatDeveloperFeedback(),
     '',
     `Approval guidance: ${formatApprovalGuidance(report)}`,
   ];
@@ -143,10 +154,12 @@ const REQUIRED_PR_COMMENT_SECTIONS = [
   '### Trust Calibration',
   '### Baseline Trend',
   '### Top Risks',
+  '### First Fix',
   '### Team Routing',
   '### Verification',
   '### Next Commands',
   '### Suggested Next Actions',
+  '### Developer Feedback',
 ] as const;
 
 const GITHUB_COMMENT_LIMIT = 65_536;
@@ -227,9 +240,12 @@ function buildPrSummary(
   ownership: OwnershipLookup | undefined,
 ): EvidencePackPrSummary {
   const topRisks = buildPrTopRisks(workplan, bugHunt, ownership);
-  const teamRoutes = buildTeamRoutes(topRisks);
+  const changedFileRoutes = buildChangedFileTeamRoutes(preflight, ownership);
+  const teamRoutes = mergeTeamRoutes([...buildTeamRoutes(topRisks), ...changedFileRoutes]);
+  const ownershipSuggestion = teamRoutes.length === 0 ? buildOwnershipSuggestion(preflight) : undefined;
   const trust = calibratePreflightTrust(preflight);
   const nextCommands = buildPrNextCommands(nextActions);
+  const fixFirst = buildPrFixFirst(topRisks, preflight, changedFileRoutes);
   const concreteBlockers = concreteDefectMessages(preflight);
   const verdictLabel = concreteBlockers.length > 0
     ? 'Concrete blocker'
@@ -251,6 +267,8 @@ function buildPrSummary(
     trust,
     topRisks,
     teamRoutes,
+    ...(ownershipSuggestion ? { ownershipSuggestion } : {}),
+    ...(fixFirst ? { fixFirst } : {}),
     nextCommands,
     ...(baselineTrend ? { baselineTrend } : {}),
   };
@@ -350,7 +368,7 @@ function buildPrTopRisks(
   }).slice(0, 3);
 }
 
-function buildTeamRoutes(risks: EvidencePackTopRisk[]) {
+function buildTeamRoutes(risks: EvidencePackTopRisk[]): EvidencePackTeamRoute[] {
   const byOwner = new Map<string, Set<string>>();
   for (const risk of risks) {
     if (!risk.owner) continue;
@@ -405,13 +423,29 @@ function formatTrustCalibration(trust: EvidencePackPrSummary['trust']): string[]
 }
 
 function formatBaselineTrend(trend: BaselineTrend): string[] {
+  const riskDirection = trend.riskDirection ?? inferRiskDirection(trend.scoreDelta);
+  const riskDelta = trend.riskDelta ?? -trend.scoreDelta;
+  const changedSinceBaseline = trend.changedSinceBaseline ?? [];
+  const qualityBefore = trend.qualityScoreBefore;
+  const qualityAfter = trend.qualityScoreAfter;
+  const quality = typeof qualityBefore === 'number' && typeof qualityAfter === 'number'
+    ? ` (quality ${qualityBefore}->${qualityAfter})`
+    : '';
   return [
     `- ${trend.summary}`,
+    `- risk from baseline: ${riskDirection}${riskDelta === 0 ? '' : ` ${riskDelta > 0 ? '+' : ''}${riskDelta}`}${quality}`,
+    ...(changedSinceBaseline.length > 0 ? [`- changed since baseline: ${changedSinceBaseline.join('; ')}`] : []),
     ...(trend.newHotspots.length > 0 ? [`- new hotspots: ${trend.newHotspots.join(', ')}`] : []),
     ...(trend.recurringNoisyRules.length > 0
       ? [`- recurring noisy rules: ${trend.recurringNoisyRules.map((rule) => `${rule.id} (${rule.before}->${rule.after})`).join(', ')}`]
       : []),
   ];
+}
+
+function inferRiskDirection(scoreDelta: number): 'up' | 'down' | 'flat' {
+  if (scoreDelta < 0) return 'up';
+  if (scoreDelta > 0) return 'down';
+  return 'flat';
 }
 
 function formatPrRisk(risk: EvidencePackTopRisk): string {
@@ -422,6 +456,106 @@ function formatPrRisk(risk: EvidencePackTopRisk): string {
 
 function formatTeamRoute(route: { owner: string; files: string[]; reason: string }): string {
   return `- ${route.owner}: ${route.reason}${route.files.length > 0 ? ` (${route.files.join(', ')})` : ''}`;
+}
+
+function formatMissingOwnerHint(pr: EvidencePackPrSummary | undefined): string[] {
+  if (pr?.ownershipSuggestion) {
+    return [
+      `- No owner hints found. Add .github/CODEOWNERS line: \`${pr.ownershipSuggestion}\``,
+      '- Replace `@team-name` with the owning team before merging.',
+    ];
+  }
+  return ['- No owner hints found. Add .github/CODEOWNERS or package owner metadata for routing.'];
+}
+
+
+function formatFixFirst(fix: FixFirstRecommendation): string[] {
+  return [
+    `- **${fix.priority}** ${fix.title}${fix.owner ? ` owner: ${fix.owner}` : ''}`,
+    `- why first: ${fix.whyFirst}`,
+    ...(fix.files.length > 0 ? [`- files: ${fix.files.join(', ')}`] : []),
+    ...fix.commands.slice(0, 4).map((command) => `- run: \`${command}\``),
+    ...(fix.expected ? [`- fixed when: ${fix.expected}`] : []),
+  ];
+}
+
+function buildPrFixFirst(
+  risks: EvidencePackTopRisk[],
+  preflight: PreflightReport,
+  changedFileRoutes: EvidencePackTeamRoute[],
+): FixFirstRecommendation | undefined {
+  const riskFix = fixFirstFromEvidenceRisk(risks[0]);
+  if (riskFix) return riskFix;
+  const route = changedFileRoutes[0];
+  if (route) return fixFirstFromChangedFiles(route.files, route.owner);
+  const changedFiles = preflight.evidence.changedFiles?.files ?? [];
+  return fixFirstFromChangedFiles(changedFiles);
+}
+
+function buildOwnershipSuggestion(preflight: PreflightReport): string | undefined {
+  const paths = (preflight.evidence.changedFiles?.files ?? [])
+    .map(normalizeChangedFilePath)
+    .filter((file) => file.length > 0 && !file.endsWith('package-lock.json') && !file.startsWith('.projscan-'));
+  if (paths.length === 0) return undefined;
+
+  const counts = new Map<string, number>();
+  for (const file of paths) {
+    const pattern = codeownersPatternForPath(file);
+    counts.set(pattern, (counts.get(pattern) ?? 0) + 1);
+  }
+  const [pattern] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
+  return pattern ? `${pattern} @team-name` : undefined;
+}
+
+function normalizeChangedFilePath(value: string): string {
+  return value.replace(/^(?:[ MADRCU?!]{1,2}|\?\?)\s+/, '').trim();
+}
+
+function codeownersPatternForPath(file: string): string {
+  const normalized = file.replace(/\\/g, '/');
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return '*';
+  if (parts.length >= 2 && ['src', 'app', 'packages', 'apps', 'services'].includes(parts[0])) {
+    return `${parts[0]}/${parts[1]}/**`;
+  }
+  if (parts.length >= 2 && parts[0] === '.github') return '.github/**';
+  if (parts.length >= 2) return `${parts[0]}/**`;
+  return normalized;
+}
+function buildChangedFileTeamRoutes(
+  preflight: PreflightReport,
+  ownership: OwnershipLookup | undefined,
+): EvidencePackTeamRoute[] {
+  if (!ownership) return [];
+  const byOwner = new Map<string, Set<string>>();
+  for (const rawFile of preflight.evidence.changedFiles?.files ?? []) {
+    const file = normalizeChangedFilePath(rawFile);
+    if (!file) continue;
+    const owner = ownership(file);
+    if (!owner) continue;
+    const files = byOwner.get(owner) ?? new Set<string>();
+    files.add(file);
+    byOwner.set(owner, files);
+  }
+  return [...byOwner.entries()].map(([owner, files]) => ({
+    owner,
+    files: [...files].slice(0, 5),
+    reason: 'owns changed file(s) in this PR',
+  }));
+}
+
+function mergeTeamRoutes(routes: EvidencePackTeamRoute[]): EvidencePackTeamRoute[] {
+  const byOwner = new Map<string, EvidencePackTeamRoute>();
+  for (const route of routes) {
+    const existing = byOwner.get(route.owner);
+    if (!existing) {
+      byOwner.set(route.owner, { ...route, files: [...route.files] });
+      continue;
+    }
+    existing.files = [...new Set([...existing.files, ...route.files])].slice(0, 5);
+    if (!existing.reason.includes(route.reason)) existing.reason = `${existing.reason}; ${route.reason}`;
+  }
+  return [...byOwner.values()].slice(0, 5);
 }
 
 function buildArtifacts(
@@ -522,6 +656,14 @@ function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[
   ].join('\n');
 }
 
+function formatDeveloperFeedback(): string[] {
+  return [
+    '- Was this useful on this PR? Ask the reviewer whether the comment saved 10-20 minutes.',
+    '- What was missing or noisy? Capture one missing signal, one noisy rule, or `none` before merge.',
+    '- Keep using it every PR: `projscan evidence-pack --pr-comment` and `projscan dogfood --repo <path-to-repo> --format json`.',
+  ];
+}
+
 function formatSuggestedAction(action: PreflightSuggestedAction): string {
   const references = [
     action.command ? `\`${action.command}\`` : undefined,
@@ -536,18 +678,29 @@ function packVerdict(artifacts: EvidencePackArtifact[]): EvidencePackVerdict {
   return 'ready';
 }
 
+function calibrateEvidencePackVerdict(
+  verdict: EvidencePackVerdict,
+  prSummary: EvidencePackPrSummary,
+): EvidencePackVerdict {
+  if (verdict === 'blocked' && prSummary.trust.verdict === 'manual_review' && prSummary.trust.concreteBlockers.length === 0) {
+    return 'caution';
+  }
+  return verdict;
+}
+
 function summarize(
   verdict: EvidencePackVerdict,
-  train: ReleaseTrainReport,
+  currentVersion: string | null | undefined,
   blockingReasons: string[],
 ): string {
+  const version = currentVersion ?? 'current version';
   if (verdict === 'blocked') {
     return `blocked: ${blockingReasons[0] ?? 'product evidence still contains blocking signals'}`;
   }
   if (verdict === 'caution') {
-    return `caution: ${train.plan.lines.join(', ')} evidence is assembled but still needs explicit review`;
+    return `caution: ${version} evidence is assembled but still needs explicit review`;
   }
-  return `ready: ${train.plan.lines.join(', ')} evidence is assembled for approval`;
+  return `ready: ${version} evidence is assembled for approval`;
 }
 
 function approvalRecommendation(verdict: EvidencePackVerdict): string {

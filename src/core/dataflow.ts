@@ -1,5 +1,5 @@
 import type { FunctionInfo } from './ast.js';
-import type { CodeGraph } from './codeGraph.js';
+import type { CodeGraph, GraphFile } from './codeGraph.js';
 import { shouldIncludeDataflowRisk, type DataflowRiskFilterContext } from './dataflowFilters.js';
 import { frameworkRequestSourceForFunction } from './frameworkSources.js';
 import {
@@ -42,6 +42,8 @@ interface FnIndex {
 }
 
 const DEFAULT_MAX_DEPTH = 12;
+const CALL_SHAPED_DEFAULT_SOURCES = new Set(['getInput', 'readFile', 'readFileSync', 'stdin']);
+const DEFAULT_HTTP_PROPERTY_SOURCES = new Set(['body', 'query', 'params', 'headers', 'cookies']);
 
 export function computeDataflow(
   graph: CodeGraph,
@@ -52,7 +54,7 @@ export function computeDataflow(
   const customSinks = new Set(config.sinks ?? []);
   const sources = new Set([...DEFAULT_TAINT_SOURCES, ...customSources]);
   const sinks = new Set([...DEFAULT_TAINT_SINKS, ...customSinks]);
-  const index = buildFunctionIndex(graph, sources, sinks);
+  const index = buildFunctionIndex(graph, sources, sinks, customSources, customSinks);
   const filterContext: DataflowRiskFilterContext = {
     graph,
     customSources,
@@ -167,6 +169,8 @@ function buildFunctionIndex(
   graph: CodeGraph,
   sources: Set<string>,
   sinks: Set<string>,
+  customSources: Set<string>,
+  customSinks: Set<string>,
 ): FnIndex {
   const fns: FnNode[] = [];
   const byBareName = new Map<string, FnNode[]>();
@@ -174,7 +178,7 @@ function buildFunctionIndex(
   let totalCallSites = 0;
   for (const [file, entry] of graph.files) {
     for (const fn of entry.functions ?? []) {
-      const node = functionNode(file, fn, sources, sinks);
+      const node = functionNode(file, entry, fn, sources, sinks, customSources, customSinks);
       totalCallSites += node.callees.length;
       fns.push(node);
       const list = byBareName.get(node.bareName) ?? [];
@@ -199,21 +203,30 @@ function buildImportedFilesByFile(graph: CodeGraph): Map<string, Set<string>> {
 
 function functionNode(
   file: string,
+  graphFile: GraphFile,
   fn: FunctionInfo,
   sources: Set<string>,
   sinks: Set<string>,
+  customSources: Set<string>,
+  customSinks: Set<string>,
 ): FnNode {
   const callees = fn.callSites ?? [];
+  const directCallSites = fn.directCallSites ?? [];
+  const memberCallSites = fn.memberCallSites ?? [];
+  const memberAliases = fn.memberAliases ?? [];
   const references = fn.references ?? [];
   const source =
     frameworkRequestSourceForFunction(
       file,
       fn.name,
-      fn.memberCallSites ?? [],
+      memberCallSites,
       fn.parameters ?? [],
       sources,
-    ) ?? pickHit([...callees, ...references], sources);
-  const sink = pickHit(callees, sinks);
+      references,
+      fn.contextualCallSite,
+      graphFile.imports,
+    ) ?? pickSourceHit(callees, references, sources, customSources);
+  const sink = pickSinkHit(callees, directCallSites, memberCallSites, memberAliases, sinks, customSinks, file, graphFile);
   return {
     id: `${file}::${fn.name}@${fn.line}`,
     qualName: fn.name,
@@ -317,11 +330,114 @@ function isCollisionProneCallee(callee: string): boolean {
   return COLLISION_PRONE_CALLEES.has(callee) || callee.length <= 2;
 }
 
-function pickHit(values: string[], set: Set<string>): string | null {
-  for (const value of values) {
-    if (set.has(value)) return value;
+function pickSourceHit(
+  callees: string[],
+  references: string[],
+  sources: Set<string>,
+  customSources: Set<string>,
+): string | null {
+  for (const value of references) {
+    if (customSources.has(value)) return value;
+    if (sources.has(value) && !DEFAULT_HTTP_PROPERTY_SOURCES.has(value)) return value;
+  }
+  for (const value of callees) {
+    if (customSources.has(value) || CALL_SHAPED_DEFAULT_SOURCES.has(value)) return value;
   }
   return null;
+}
+
+
+const DEFAULT_DATABASE_SINKS = new Set(['query', 'execute', '$queryRaw', '$executeRaw', 'raw']);
+const DATABASE_RECEIVERS = new Set([
+  'db',
+  'database',
+  'pool',
+  'client',
+  'connection',
+  'conn',
+  'prisma',
+  'knex',
+  'sequelize',
+  'repository',
+  'repo',
+  'manager',
+  'sql',
+]);
+const DATABASE_MODULE_NAMES = new Set(['db', 'database', 'sql', 'pool', 'client', 'repository', 'repo']);
+const KNOWN_DATABASE_PACKAGES = new Set([
+  'pg',
+  'postgres',
+  'mysql',
+  'mysql2',
+  'sqlite3',
+  'better-sqlite3',
+  'knex',
+  'sequelize',
+  '@prisma/client',
+]);
+
+function pickSinkHit(
+  callees: string[],
+  directCallSites: string[],
+  memberCallSites: string[],
+  memberAliases: string[],
+  sinks: Set<string>,
+  customSinks: Set<string>,
+  file: string,
+  graphFile: { imports: Array<{ source: string; specifiers: string[] }>; adapterId?: string },
+): string | null {
+  for (const callee of callees) {
+    if (!sinks.has(callee)) continue;
+    if (isDefaultMisidentifiedDatabaseSink(callee, directCallSites, memberCallSites, memberAliases, customSinks, file, graphFile)) continue;
+    return callee;
+  }
+  return null;
+}
+
+function isDefaultMisidentifiedDatabaseSink(
+  callee: string,
+  directCallSites: string[],
+  memberCallSites: string[],
+  memberAliases: string[],
+  customSinks: Set<string>,
+  file: string,
+  graphFile: { imports: Array<{ source: string; specifiers: string[] }>; adapterId?: string },
+): boolean {
+  if (customSinks.has(callee)) return false;
+  if (!DEFAULT_DATABASE_SINKS.has(callee)) return false;
+  if (!isJavaScriptLikeFile(file, graphFile.adapterId)) return false;
+  if (memberCallSites.some((member) => isDatabaseMemberCall(member, callee))) return false;
+  if (directCallSites.includes(callee) && isImportedDatabaseHelper(callee, graphFile.imports)) return false;
+  if (directCallSites.includes(callee) && memberAliases.some((alias) => isDatabaseMemberAlias(alias, callee))) return false;
+  return true;
+}
+
+function isDatabaseMemberCall(member: string, callee: string): boolean {
+  const parts = member.split('.');
+  if (parts[parts.length - 1] !== callee) return false;
+  const receiver = parts.length >= 2 ? parts[parts.length - 2].toLowerCase() : '';
+  return DATABASE_RECEIVERS.has(receiver);
+}
+
+function isImportedDatabaseHelper(callee: string, imports: Array<{ source: string; specifiers: string[] }>): boolean {
+  return imports.some((imp) => imp.specifiers.includes(callee) && isDatabaseModule(imp.source));
+}
+
+function isDatabaseModule(source: string): boolean {
+  if (KNOWN_DATABASE_PACKAGES.has(source)) return true;
+  const normalized = source.replace(/\\/g, '/');
+  const last = normalized.split('/').pop() ?? normalized;
+  const basename = last.replace(/\.(?:c|m)?(?:j|t)sx?$/i, '').toLowerCase();
+  return DATABASE_MODULE_NAMES.has(basename);
+}
+
+function isDatabaseMemberAlias(alias: string, callee: string): boolean {
+  const [localName, member] = alias.split('=');
+  return localName === callee && isDatabaseMemberCall(member ?? '', callee);
+}
+
+function isJavaScriptLikeFile(file: string, adapterId?: string): boolean {
+  return adapterId === 'javascript' || /\.(?:cjs|mjs|js|jsx|ts|tsx)$/.test(file);
 }
 
 function bareName(qualified: string): string {

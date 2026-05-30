@@ -1,6 +1,8 @@
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 import {
   computeFirstRunDiagnostics,
@@ -13,6 +15,7 @@ import {
   writeTeamStarterKit,
 } from '../../src/core/adoption.js';
 
+const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 test('first-run diagnostics recognize the built Tree-sitter runtime', async () => {
@@ -61,9 +64,45 @@ test('GitHub Action starter wires PR comments to projscan evidence', () => {
   expect(starter.workflow).toContain('npx -y projscan evidence-pack --pr-comment');
   expect(starter.workflow).toContain('Validate PR comment');
   expect(starter.workflow).toContain('Trust Calibration');
+  expect(starter.workflow).toContain('Suggested Next Actions');
+  expect(starter.workflow).toContain('actionable command');
   expect(starter.nextCommands).toContain('git add .github/workflows/projscan.yml');
 });
 
+test('GitHub Action PR comment validator runs in a real shell', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-action-validator-'));
+  try {
+    const script = extractWorkflowRunScript(getGithubActionStarter().workflow, 'Validate PR comment');
+    expect(script).toContain("node <<'NODE'");
+    expect(script).not.toContain('`(?:projscan');
+
+    await fs.writeFile(
+      path.join(root, 'projscan-comment.md'),
+      [
+        '## projscan approval evidence',
+        '### Verdict',
+        '### Trust Calibration',
+        '### Baseline Trend',
+        '### Top Risks',
+        '### First Fix',
+        '### Team Routing',
+        '### Verification',
+        '- `projscan preflight --format json`',
+        '### Next Commands',
+        '- `npm test`',
+        '### Suggested Next Actions',
+        '- Run `projscan review --format json`',
+        '',
+      ].join('\n'),
+    );
+    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).resolves.toBeDefined();
+
+    await fs.writeFile(path.join(root, 'projscan-comment.md'), '## projscan approval evidence\n');
+    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({ code: 1 });
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 test('workflow recipes include team bootstrap and PR automation paths', () => {
   const catalog = getWorkflowRecipes();
 
@@ -146,3 +185,17 @@ test('GitHub Action starter writes once and refuses accidental overwrite', async
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+function extractWorkflowRunScript(workflow: string, stepName: string): string {
+  const lines = workflow.split('\n');
+  const stepIndex = lines.findIndex((line) => line.trim() === `- name: ${stepName}`);
+  expect(stepIndex).toBeGreaterThanOrEqual(0);
+  const runIndex = lines.findIndex((line, index) => index > stepIndex && line.trim() === 'run: |');
+  expect(runIndex).toBeGreaterThan(stepIndex);
+  const out: string[] = [];
+  for (const line of lines.slice(runIndex + 1)) {
+    if (line.startsWith('      - name:')) break;
+    out.push(line.startsWith('          ') ? line.slice(10) : line);
+  }
+  return out.join('\n');
+}

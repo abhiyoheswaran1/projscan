@@ -1,3 +1,4 @@
+import { fixFirstFromWorkplanRisk, fixFirstFromWorkplanTask } from './fixFirst.js';
 import { computePreflight, type ComputePreflightOptions } from './preflight.js';
 import { buildRiskNow } from './sessionResources.js';
 import { loadOwnership, type OwnershipLookup } from './ownership.js';
@@ -71,6 +72,7 @@ export async function computeWorkplan(
   const maxTasks = normalizeMaxTasks(options.maxTasks);
   const limitedTasks = annotateTasksWithOwners(tasks.slice(0, maxTasks), ownership);
   const topRisks = annotateTopRisksWithOwners(buildTopRisks(preflight.reasons, coordination.conflicts), ownership);
+  const fixFirst = fixFirstFromWorkplanTask(limitedTasks[0]) ?? fixFirstFromWorkplanRisk(topRisks[0]);
   const truncated =
     tasks.length > limitedTasks.length ||
     preflight.truncated === true ||
@@ -84,6 +86,7 @@ export async function computeWorkplan(
     summary: summarizeWorkplan(mode, preflight.verdict, limitedTasks, topRisks),
     topRisks,
     tasks: limitedTasks,
+    ...(fixFirst ? { fixFirst } : {}),
     coordination,
     suggestedNextActions: dedupeActions([
       ...preflight.suggestedNextActions,

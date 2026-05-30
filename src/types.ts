@@ -372,6 +372,18 @@ export interface WorkplanVerification {
   expected: string;
 }
 
+export interface FixFirstRecommendation {
+  id: string;
+  title: string;
+  source: string;
+  priority: WorkplanPriority;
+  whyFirst: string;
+  files: string[];
+  owner?: string;
+  commands: string[];
+  expected?: string;
+}
+
 export interface WorkplanTask {
   id: string;
   priority: WorkplanPriority;
@@ -403,6 +415,7 @@ export interface WorkplanReport {
   summary: string;
   topRisks: WorkplanTopRisk[];
   tasks: WorkplanTask[];
+  fixFirst?: FixFirstRecommendation;
   coordination: WorkplanCoordination;
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
@@ -480,6 +493,7 @@ export interface BugHuntReport {
   };
   topSuspects: BugHuntFinding[];
   fixQueue: BugHuntFinding[];
+  fixFirst?: FixFirstRecommendation;
   verificationMatrix: Array<{ command: string; reason: string; expected: string }>;
   truncated?: boolean;
 }
@@ -524,6 +538,8 @@ export interface EvidencePackPrSummary {
   trust: EvidencePackTrustCalibration;
   topRisks: EvidencePackTopRisk[];
   teamRoutes: EvidencePackTeamRoute[];
+  ownershipSuggestion?: string;
+  fixFirst?: FixFirstRecommendation;
   nextCommands: string[];
   baselineTrend?: BaselineTrend;
 }
@@ -679,6 +695,20 @@ export interface StartAdoptionGap {
   command?: string;
 }
 
+export interface StartAdoptionLoopMetric {
+  id: string;
+  label: string;
+  target: string;
+  command?: string;
+}
+
+export interface StartAdoptionLoop {
+  cadence: 'every_pr';
+  why: string;
+  metrics: StartAdoptionLoopMetric[];
+  nextCommands: string[];
+}
+
 export interface StartReport {
   schemaVersion: 1;
   readOnly: true;
@@ -699,10 +729,47 @@ export interface StartReport {
     mcpReady: boolean;
   };
   topRisks: StartRisk[];
+  fixFirst?: FixFirstRecommendation;
   adoptionGaps: StartAdoptionGap[];
+  adoptionLoop?: StartAdoptionLoop;
   nextActions: PreflightSuggestedAction[];
   handoff?: WorkplanHandoffPayload;
   truncated?: boolean;
+}
+
+export type DogfoodRepoStatus = 'pass' | 'warn' | 'fail';
+
+export interface DogfoodRepoResult {
+  path: string;
+  name: string;
+  status: DogfoodRepoStatus;
+  healthScore: number;
+  mcpReady: boolean;
+  prCommentReady: boolean;
+  repeatUseReady: boolean;
+  verdict: EvidencePackVerdict;
+  gaps: string[];
+  feedbackQuestions: string[];
+  nextCommands: string[];
+}
+
+export interface DogfoodReport {
+  schemaVersion: 1;
+  readOnly: true;
+  rootPath: string;
+  targetRepoCount: number;
+  summary: string;
+  repos: DogfoodRepoResult[];
+  totals: {
+    reposEvaluated: number;
+    passingRepos: number;
+    warningRepos: number;
+    failingRepos: number;
+    prCommentReady: number;
+    repeatUseReady: number;
+    mcpReady: number;
+  };
+  suggestedNextActions: PreflightSuggestedAction[];
 }
 
 export interface GraphCorpusFixtureMetrics {
@@ -752,6 +819,7 @@ export interface QualityScorecardReport {
   health: HealthScore;
   dimensions: QualityScorecardDimension[];
   topRisks: QualityScorecardRisk[];
+  fixFirst?: FixFirstRecommendation;
   commands: string[];
   suggestedNextActions: PreflightSuggestedAction[];
   truncated?: boolean;
@@ -854,6 +922,13 @@ export interface BaselineRecurringRule {
 export interface BaselineTrend {
   scoreDirection: 'up' | 'down' | 'flat';
   scoreDelta: number;
+  riskDirection?: 'up' | 'down' | 'flat';
+  riskDelta?: number;
+  qualityScoreBefore?: number;
+  qualityScoreAfter?: number;
+  newIssueCount?: number;
+  resolvedIssueCount?: number;
+  changedSinceBaseline?: string[];
   newHotspots: string[];
   recurringNoisyRules: BaselineRecurringRule[];
   summary: string;
