@@ -53,6 +53,73 @@ test('dogfood renders multi-repo usefulness evidence as JSON', async () => {
   );
 });
 
+
+test('dogfood accepts reviewer feedback and prints market validation JSON', async () => {
+  const feedbackPath = path.join(tmp, 'feedback.json');
+  await fs.writeFile(
+    feedbackPath,
+    JSON.stringify(
+      {
+        responses: [
+          {
+            repo: 'api',
+            pr: 'https://github.com/acme/api/pull/1',
+            reviewer: '@api-reviewer',
+            useful: true,
+            minutesSaved: 12,
+            preventedBadEdit: true,
+            ownerRoutingClear: true,
+            nextCommandClear: true,
+            falsePositiveRules: [],
+            missingSignals: ['none'],
+            noisyFindings: ['none'],
+          },
+          {
+            repo: 'web',
+            pr: 'https://github.com/acme/web/pull/2',
+            reviewer: '@web-reviewer',
+            useful: true,
+            minutesSaved: 8,
+            preventedBadEdit: false,
+            ownerRoutingClear: true,
+            nextCommandClear: true,
+            falsePositiveRules: ['style:generated-css'],
+            missingSignals: ['none'],
+            noisyFindings: ['generated CSS warning'],
+          },
+        ],
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+
+  const result = await runCli([
+    'dogfood',
+    '--repo',
+    repoA,
+    '--repo',
+    repoB,
+    '--repo',
+    repoC,
+    '--target-repos',
+    '3',
+    '--feedback',
+    feedbackPath,
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.marketValidation.feedback.responses).toBe(2);
+  expect(report.marketValidation.feedback.minutesSaved.total).toBe(20);
+  expect(report.marketValidation.feedback.preventedBadEdits).toBe(1);
+  expect(report.marketValidation.falsePositive.totalReports).toBe(1);
+  expect(report.marketValidation.websiteProof.markdown).toContain('20 minutes saved');
+});
+
 async function makeRepo(name: string): Promise<string> {
   const root = path.join(tmp, name);
   await fs.mkdir(path.join(root, 'src'), { recursive: true });

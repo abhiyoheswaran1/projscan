@@ -58,3 +58,12 @@ Track these locally or in release notes after each adoption run:
 
 If output is vague, noisy, or not actionable, tune projscan before expanding rollout. Trust is the product. A caution that says exactly what to review is better than a red block that makes engineers stop reading.
 
+## Structured Feedback Capture
+
+For real validation, run dogfood with reviewer feedback instead of relying only on readiness checks:
+
+```sh
+projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+The report now includes `marketValidation` with repo coverage, useful responses, total minutes saved, risky edits prevented, false-positive reports, and `websiteProof.markdown` for public proof copy. See `docs/MARKET-VALIDATION.md` for the feedback file schema.

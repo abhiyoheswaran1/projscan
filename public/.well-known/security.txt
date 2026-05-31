@@ -1,0 +1,6 @@
+# Vulnerability disclosure
+# https://www.rfc-editor.org/rfc/rfc9116
+
+Contact: mailto:support@baseframelabs.com
+Expires: 2027-03-31T00:00:00.000Z
+Preferred-Languages: en

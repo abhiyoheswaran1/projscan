@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.5.
+Update the projscan website for projscan 3.0.6.
 
 Core positioning:
 - Name: projscan
@@ -14,6 +14,13 @@ Core positioning:
 - Run without install: npx projscan
 - MCP server command: npx -y projscan mcp
 - Requirements: Node.js >= 18
+
+Baseframe Labs umbrella requirements:
+- Treat Baseframe Labs as the umbrella brand/family only, not the legal subject and not a formed LLC/corp.
+- Use support@baseframelabs.com for generic support and vulnerability-disclosure contact.
+- Add a small footer link reading part of Baseframe Labs with /brand/baseframe-labs/wordmark-light.svg on light backgrounds or wordmark-dark.svg on dark backgrounds.
+- Serve /.well-known/security.txt with RFC 9116 Contact, Expires, Preferred-Languages, and product-appropriate Canonical/Policy only when the deployed domain has those URLs.
+- Do not rename projscan, rewrite privacy/terms legal subjects, or add corporate designators for Baseframe Labs.
 
 What to highlight above the fold:
 - `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
@@ -78,3 +85,7 @@ Calls to action:
 - "Run a local health check" with npx projscan doctor.
 - "Author a local plugin" linking to docs/PLUGIN-AUTHORING.md.
 ```
+
+## Market validation proof assets
+
+Use `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and copy `marketValidation.websiteProof.markdown` into the website update source material. Prefer measured claims such as minutes saved, risky edits prevented, false-positive reports tracked, and real repo count over generic scanner language.

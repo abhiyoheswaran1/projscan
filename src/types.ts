@@ -739,6 +739,79 @@ export interface StartReport {
 
 export type DogfoodRepoStatus = 'pass' | 'warn' | 'fail';
 
+export interface DogfoodFeedbackResponse {
+  repo?: string;
+  pr?: string;
+  reviewer?: string;
+  useful?: boolean;
+  minutesSaved?: number;
+  preventedBadEdit?: boolean;
+  ownerRoutingClear?: boolean;
+  nextCommandClear?: boolean;
+  falsePositiveRules?: string[];
+  missingSignals?: string[];
+  noisyFindings?: string[];
+  note?: string;
+}
+
+export interface DogfoodFeedbackInput {
+  responses: DogfoodFeedbackResponse[];
+}
+
+export interface DogfoodRepoValidation {
+  feedbackResponses: number;
+  usefulResponses: number;
+  minutesSaved: number;
+  preventedBadEdits: number;
+  ownerRoutingClear: number;
+  nextCommandClear: number;
+  falsePositiveRules: string[];
+  missingSignals: string[];
+  noisyFindings: string[];
+}
+
+export interface DogfoodWebsiteProof {
+  headline: string;
+  metrics: string[];
+  bullets: string[];
+  markdown: string;
+}
+
+export interface DogfoodMarketValidation {
+  status: 'proven' | 'needs_feedback' | 'needs_more_repos' | 'needs_tuning';
+  summary: string;
+  repoCoverage: {
+    target: number;
+    evaluated: number;
+    targetMet: boolean;
+  };
+  feedback: {
+    responses: number;
+    usefulResponses: number;
+    usefulnessRate: number;
+    preventedBadEdits: number;
+    ownerRoutingClear: number;
+    nextCommandClear: number;
+    minutesSaved: {
+      total: number;
+      average: number;
+      max: number;
+    };
+  };
+  falsePositive: {
+    totalReports: number;
+    noisyRules: Array<{ rule: string; count: number }>;
+    missingSignals: Array<{ signal: string; count: number }>;
+    noisyFindings: Array<{ finding: string; count: number }>;
+  };
+  firstPr: {
+    readyRepos: number;
+    repeatUseReadyRepos: number;
+    requiredFeedbackQuestions: string[];
+  };
+  websiteProof: DogfoodWebsiteProof;
+}
+
 export interface DogfoodRepoResult {
   path: string;
   name: string;
@@ -750,6 +823,7 @@ export interface DogfoodRepoResult {
   verdict: EvidencePackVerdict;
   gaps: string[];
   feedbackQuestions: string[];
+  validation: DogfoodRepoValidation;
   nextCommands: string[];
 }
 
@@ -768,7 +842,12 @@ export interface DogfoodReport {
     prCommentReady: number;
     repeatUseReady: number;
     mcpReady: number;
+    usefulFeedback: number;
+    minutesSaved: number;
+    preventedBadEdits: number;
+    falsePositiveReports: number;
   };
+  marketValidation: DogfoodMarketValidation;
   suggestedNextActions: PreflightSuggestedAction[];
 }
 

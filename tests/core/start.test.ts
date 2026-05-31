@@ -36,9 +36,10 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   expect(report.topRisks.length).toBeGreaterThan(0);
   expect(report.adoptionLoop?.cadence).toBe('every_pr');
   expect(report.adoptionLoop?.metrics.map((metric) => metric.id)).toEqual(
-    expect.arrayContaining(['first_pr_useful', 'manual_review_rate', 'repeat_use_commands']),
+    expect.arrayContaining(['first_pr_useful', 'manual_review_rate', 'repeat_use_commands', 'market_validation_feedback']),
   );
   expect(report.adoptionLoop?.nextCommands).toContain('projscan evidence-pack --pr-comment');
+  expect(report.adoptionLoop?.nextCommands).toContain('projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json');
   expect(report.nextActions.length).toBeGreaterThan(0);
   expect(report.handoff?.next.length).toBeGreaterThan(0);
 });

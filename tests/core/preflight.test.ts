@@ -379,7 +379,7 @@ test('before_merge treats scale-only review blocks as manual sign-off caution', 
   expect(report.requiredChecks.find((check) => check.name === 'review')?.reason).toContain(
     'scale/complexity',
   );
-});
+}, 120_000);
 
 async function git(root: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: root });

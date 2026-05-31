@@ -109,10 +109,17 @@ function buildAdoptionLoop(): StartAdoptionLoop {
         target: 'Every PR has evidence-pack, preflight, and owner routing before merge.',
         command: 'projscan start --mode before_merge --format json',
       },
+      {
+        id: 'market_validation_feedback',
+        label: 'Market validation feedback',
+        target: 'At least three real reviewers confirm usefulness, minutes saved, prevented risk, and false-positive/noisy-rule status.',
+        command: 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
+      },
     ],
     nextCommands: [
       'projscan evidence-pack --pr-comment',
       'projscan preflight --mode before_merge --format json',
+      'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
       'projscan dogfood --repo <path-to-repo> --format json',
     ],
   };

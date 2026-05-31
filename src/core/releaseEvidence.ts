@@ -659,8 +659,12 @@ function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[
 function formatDeveloperFeedback(): string[] {
   return [
     '- Was this useful on this PR? Ask the reviewer whether the comment saved 10-20 minutes.',
+    '- Minutes saved: `0|5|10|20+`.',
+    '- Prevented bad edit or missed review step: `yes|no`.',
+    '- Owner routing clear: `yes|no`. Next command clear: `yes|no`.',
+    '- False positives or noisy rules: `none|<rule ids>`.',
     '- What was missing or noisy? Capture one missing signal, one noisy rule, or `none` before merge.',
-    '- Keep using it every PR: `projscan evidence-pack --pr-comment` and `projscan dogfood --repo <path-to-repo> --format json`.',
+    '- Keep using it every PR: `projscan evidence-pack --pr-comment` and `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`.',
   ];
 }
 

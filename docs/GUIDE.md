@@ -665,7 +665,13 @@ Touches come from three sources:
 projscan dogfood --repo ../api --repo ../web --repo ../worker --format json
 ```
 
-Use it before broader rollout. The report includes feedback questions for the first real PR: did the comment save 10-20 minutes, what was missing or noisy, and which owner or command should have been clearer.
+For market validation, add structured first-PR reviewer feedback:
+
+```bash
+projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+Use it before broader rollout. The report includes feedback questions for the first real PR: did the comment save 10-20 minutes, what was missing or noisy, and which owner or command should have been clearer. With `--feedback`, the report also includes `marketValidation`: useful response count, total minutes saved, risky edits prevented, false-positive reports, and website-ready proof markdown.
 
 ## Health Score
 

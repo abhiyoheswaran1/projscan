@@ -63,3 +63,13 @@ projscan diff --save-baseline
 Then tune CODEOWNERS and policy rules so projscan routes real risk to the right team and keeps uncertain findings as manual review instead of scary blockers.
 
 For the repeatable rollout loop, see [Adoption Proof Loop](ADOPTION-PROOF.md).
+
+## 8. Capture first-PR validation feedback
+
+After a reviewer sees the generated PR comment, record the answers in `.projscan-feedback.json`, then run:
+
+```sh
+projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+Look at `marketValidation.status`. `proven` means the team has enough repo coverage and useful first-PR feedback. `needs_tuning` means fix noisy or unclear output before broader rollout.

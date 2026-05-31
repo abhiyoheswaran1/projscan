@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.6] — 2026-05-31 — "Market Validation Loop"
+
+### Added
+
+- Added structured market-validation evidence to `projscan dogfood --feedback`, including reviewer usefulness, minutes saved, prevented bad edits, false-positive tracking, and website-ready proof markdown.
+- Added market-validation docs with the first-PR feedback schema and proof loop.
+- Added Baseframe Labs umbrella brand assets, README family-brand footer, and a web-ready RFC 9116 security disclosure file using support@baseframelabs.com.
+
+### Changed
+
+- First-run adoption guidance and PR comments now point teams to the feedback-backed dogfood loop so repeat use is measured instead of assumed.
+
+### Fixed
+
+- Removed stale untracked duplicate docs and unrelated release-hygiene artifacts before release validation.
+
 ## [3.0.5] — 2026-05-28 — "Proof of Usefulness"
 
 ### Added
