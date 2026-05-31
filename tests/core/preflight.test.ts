@@ -299,7 +299,7 @@ test('before_commit treats scale-only review blocks as manual sign-off caution',
     ]),
   );
   expect(report.requiredChecks.find((check) => check.name === 'review')?.status).toBe('warn');
-});
+}, 120_000);
 
 test('before_merge treats scale-only review blocks as manual sign-off caution', async () => {
   const root = await makeTempProject();

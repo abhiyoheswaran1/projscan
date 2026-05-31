@@ -69,6 +69,8 @@ export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { computeStartReport } from './core/start.js';
 export { computeDogfoodReport } from './core/dogfood.js';
+export { computeTrialReport } from './core/trial.js';
+export { addFeedbackResponse, createFeedbackTemplate, readFeedbackFile, summarizeFeedback, summarizeFeedbackFile } from './core/feedback.js';
 export {
   computeFirstRunDiagnostics,
   computeMcpSetupDoctor,
@@ -211,12 +213,16 @@ export type {
   StartWorkflowRecommendation,
   DogfoodFeedbackInput,
   DogfoodFeedbackResponse,
+  FeedbackSummaryReport,
+  FeedbackTemplateResult,
   DogfoodMarketValidation,
   DogfoodReport,
   DogfoodRepoResult,
   DogfoodRepoStatus,
   DogfoodRepoValidation,
   DogfoodWebsiteProof,
+  TrialReport,
+  TrialVerdict,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,

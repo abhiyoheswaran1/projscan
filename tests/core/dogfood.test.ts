@@ -67,6 +67,19 @@ test('dogfood report rolls reviewer feedback into market validation and website 
           noisyFindings: ['none'],
         },
         {
+          repo: 'api-service',
+          pr: 'https://github.com/acme/api-service/pull/43',
+          reviewer: '@platform-reviewer',
+          useful: true,
+          minutesSaved: 7,
+          preventedBadEdit: false,
+          ownerRoutingClear: true,
+          nextCommandClear: true,
+          falsePositiveRules: [],
+          missingSignals: [],
+          noisyFindings: [],
+        },
+        {
           repo: 'web-app',
           pr: 'https://github.com/acme/web-app/pull/17',
           reviewer: '@frontend-reviewer',
@@ -97,24 +110,82 @@ test('dogfood report rolls reviewer feedback into market validation and website 
   });
 
   expect(report.marketValidation.status).toBe('proven');
-  expect(report.marketValidation.feedback.responses).toBe(3);
-  expect(report.marketValidation.feedback.usefulResponses).toBe(3);
-  expect(report.marketValidation.feedback.minutesSaved.total).toBe(45);
+  expect(report.marketValidation.feedback.responses).toBe(4);
+  expect(report.marketValidation.feedback.usefulResponses).toBe(4);
+  expect(report.marketValidation.feedback.minutesSaved.total).toBe(52);
   expect(report.marketValidation.feedback.preventedBadEdits).toBe(2);
+  expect(report.marketValidation.value.ready).toBe(true);
+  expect(report.marketValidation.repeatUse.ready).toBe(true);
+  expect(report.marketValidation.repeatUse.distinctPrs).toBe(4);
+  expect(report.marketValidation.repeatUse.repeatedRepos).toBe(1);
   expect(report.marketValidation.falsePositive.totalReports).toBe(1);
   expect(report.marketValidation.falsePositive.noisyRules[0]).toEqual({
     rule: 'dead-code:generated-barrel',
     count: 1,
   });
   expect(report.marketValidation.websiteProof.markdown).toContain('3 real repo(s)');
-  expect(report.marketValidation.websiteProof.markdown).toContain('45 minutes saved');
+  expect(report.marketValidation.websiteProof.markdown).toContain('52 minutes saved');
   expect(report.marketValidation.websiteProof.markdown).toContain('2 risky edits prevented');
+  expect(report.marketValidation.websiteProof.markdown).toContain('1 repo(s) with repeat PR feedback');
   expect(report.repos[1].validation.falsePositiveRules).toContain('dead-code:generated-barrel');
   expect(report.suggestedNextActions.map((action) => action.command)).toContain(
     'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
   );
 });
 
+
+test('dogfood requires measured value and repeat PR use before market validation is proven', async () => {
+  const repos = [
+    await makeRepo('api-service'),
+    await makeRepo('web-app'),
+    await makeRepo('worker'),
+  ];
+
+  const report = await computeDogfoodReport(process.cwd(), {
+    repos,
+    targetRepoCount: 3,
+    feedback: {
+      responses: [
+        {
+          repo: 'api-service',
+          pr: 'https://github.com/acme/api-service/pull/1',
+          reviewer: '@platform-reviewer',
+          useful: true,
+          minutesSaved: 5,
+          preventedBadEdit: false,
+          ownerRoutingClear: true,
+          nextCommandClear: true,
+        },
+        {
+          repo: 'web-app',
+          pr: 'https://github.com/acme/web-app/pull/2',
+          reviewer: '@frontend-reviewer',
+          useful: true,
+          minutesSaved: 5,
+          preventedBadEdit: false,
+          ownerRoutingClear: true,
+          nextCommandClear: true,
+        },
+        {
+          repo: 'worker',
+          pr: 'https://github.com/acme/worker/pull/3',
+          reviewer: '@backend-reviewer',
+          useful: true,
+          minutesSaved: 5,
+          preventedBadEdit: false,
+          ownerRoutingClear: true,
+          nextCommandClear: true,
+        },
+      ],
+    },
+  });
+
+  expect(report.marketValidation.status).toBe('needs_tuning');
+  expect(report.marketValidation.value.ready).toBe(false);
+  expect(report.marketValidation.repeatUse.ready).toBe(false);
+  expect(report.marketValidation.summary).toContain('0 repo(s) with repeat PR feedback');
+  expect(report.marketValidation.websiteProof.headline).toContain('needs tuning');
+});
 
 test('dogfood requires at least three useful reviewer responses before market validation is proven', async () => {
   const repos = [

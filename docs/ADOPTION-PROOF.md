@@ -52,7 +52,8 @@ Track these locally or in release notes after each adoption run:
 | First PR usefulness | reviewer says useful, time-saving, or risk-finding | `projscan evidence-pack --pr-comment` |
 | Manual review rate | uncertain cases stay caution/manual review; hard blocks stay rare | `projscan preflight --mode before_merge --format json` |
 | Repeat-use commands | every PR has evidence, preflight, and owner routing | `projscan start --mode before_merge --format json` |
-| Dogfood breadth | at least 3 representative repos evaluated | `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json` |
+| Feedback artifact | repeatable reviewer evidence exists | `projscan feedback init --output .projscan-feedback.json` + `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10` |
+| Dogfood breadth | at least 3 representative repos evaluated | `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` |
 
 ## Tuning Rule
 
@@ -60,10 +61,23 @@ If output is vague, noisy, or not actionable, tune projscan before expanding rol
 
 ## Structured Feedback Capture
 
-For real validation, run dogfood with reviewer feedback instead of relying only on readiness checks:
+For real validation, capture reviewer feedback with the CLI, then run dogfood with that artifact instead of relying only on readiness checks:
 
 ```sh
+projscan feedback init --output .projscan-feedback.json
+projscan feedback add --file .projscan-feedback.json --repo api --pr https://github.com/acme/api/pull/42 --reviewer @alice --useful true --minutes-saved 10
+projscan feedback summary --file .projscan-feedback.json --format json
 projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
-The report now includes `marketValidation` with repo coverage, useful responses, total minutes saved, risky edits prevented, false-positive reports, and `websiteProof.markdown` for public proof copy. See `docs/MARKET-VALIDATION.md` for the feedback file schema.
+The report now includes `marketValidation` with repo coverage, useful responses, average and total minutes saved, risky edits prevented, repeat PR evidence, false-positive reports, and `websiteProof.markdown` for public proof copy. `proven` requires 3+ useful responses, value measured at 10+ average minutes saved or at least one prevented bad edit, false positives under control, and repeat PR feedback. See `docs/MARKET-VALIDATION.md` for the feedback workflow.
+
+## One-Command Trial Report
+
+After feedback exists, run the full local trial report:
+
+```sh
+projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+`trial.verdict` is the adoption decision surface: `adopt` means the repo coverage, measured value, repeat PR use, and trust gates are ready; `pilot`, `tune`, and `setup` explain what to do next.

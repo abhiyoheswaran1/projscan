@@ -43,10 +43,10 @@ const baselinePath = path.join(root, 'stability-baseline.json');
 const STABLE_CLI_COMMANDS = [
   'agent-brief', 'analyze', 'apply-fix', 'audit', 'badge', 'bug-hunt', 'ci', 'coupling', 'coverage',
   'dataflow', 'dependencies', 'diagram', 'diff', 'doctor', 'dogfood', 'evidence-pack', 'explain', 'explain-issue',
-  'file', 'first-run', 'fix', 'fix-suggest', 'handoff', 'hotspots', 'impact', 'init',
+  'feedback', 'file', 'first-run', 'fix', 'fix-suggest', 'handoff', 'hotspots', 'impact', 'init',
   'install-hook', 'mcp', 'memory', 'outdated', 'plugin', 'preflight',
   'pr-diff', 'quality-scorecard', 'recipes', 'release-train', 'regression-plan',
-  'review', 'search', 'semantic-graph', 'session', 'structure', 'taint', 'upgrade', 'watch',
+  'review', 'search', 'semantic-graph', 'session', 'structure', 'taint', 'trial', 'upgrade', 'watch',
   'workplan', 'workspace', 'workspaces',
 ];
 

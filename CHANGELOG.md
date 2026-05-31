@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.7] — 2026-05-31 — "Trial Adoption Report"
+
+### Added
+
+- Added `projscan trial`, a local adoption-readiness report that wraps first-run activation, dogfood, feedback summary, market validation, trust signals, and website proof.
+- Added `projscan feedback` with `init`, `add`, and `summary` subcommands so teams can capture measured reviewer feedback without hand-writing JSON.
+
+### Changed
+
+- Hardened `projscan dogfood --feedback` so market validation only becomes `proven` after repo coverage, 3+ useful responses, measured value, false-positive balance, and repeat PR feedback are all present.
+- Updated adoption, first-10-minutes, market-validation, guide, README, and website prompt docs to use the new feedback workflow.
+
+
 ## [3.0.6] — 2026-05-31 — "Market Validation Loop"
 
 ### Added

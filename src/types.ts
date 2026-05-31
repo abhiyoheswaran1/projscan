@@ -755,12 +755,53 @@ export interface DogfoodFeedbackResponse {
 }
 
 export interface DogfoodFeedbackInput {
+  schemaVersion?: 1;
+  questions?: string[];
   responses: DogfoodFeedbackResponse[];
+}
+
+export interface FeedbackTemplateResult extends DogfoodFeedbackInput {
+  schemaVersion: 1;
+  path: string;
+  createdAt: string;
+  instructions: string[];
+}
+
+export interface FeedbackSummaryReport {
+  schemaVersion: 1;
+  path: string;
+  responses: number;
+  usefulResponses: number;
+  distinctRepos: number;
+  distinctPrs: number;
+  minutesSaved: {
+    total: number;
+    average: number;
+    max: number;
+  };
+  preventedBadEdits: number;
+  ownerRoutingClear: number;
+  nextCommandClear: number;
+  repeatUse: {
+    distinctPrs: number;
+    repeatedRepos: number;
+    requiredDistinctPrs: number;
+    requiredRepeatedRepos: number;
+    ready: boolean;
+  };
+  falsePositive: {
+    totalReports: number;
+    noisyRules: Array<{ rule: string; count: number }>;
+    missingSignals: Array<{ signal: string; count: number }>;
+    noisyFindings: Array<{ finding: string; count: number }>;
+  };
+  nextDogfoodCommand: string;
 }
 
 export interface DogfoodRepoValidation {
   feedbackResponses: number;
   usefulResponses: number;
+  prRefs: string[];
   minutesSaved: number;
   preventedBadEdits: number;
   ownerRoutingClear: number;
@@ -809,6 +850,19 @@ export interface DogfoodMarketValidation {
     repeatUseReadyRepos: number;
     requiredFeedbackQuestions: string[];
   };
+  value: {
+    averageMinutesSaved: number;
+    requiredAverageMinutesSaved: number;
+    preventedBadEdits: number;
+    ready: boolean;
+  };
+  repeatUse: {
+    distinctPrs: number;
+    repeatedRepos: number;
+    requiredDistinctPrs: number;
+    requiredRepeatedRepos: number;
+    ready: boolean;
+  };
   websiteProof: DogfoodWebsiteProof;
 }
 
@@ -849,6 +903,33 @@ export interface DogfoodReport {
   };
   marketValidation: DogfoodMarketValidation;
   suggestedNextActions: PreflightSuggestedAction[];
+}
+
+export type TrialVerdict = 'adopt' | 'pilot' | 'tune' | 'setup';
+
+export interface TrialReport {
+  schemaVersion: 1;
+  readOnly: true;
+  rootPath: string;
+  verdict: TrialVerdict;
+  summary: string;
+  activation: {
+    status: 'pass' | 'warn' | 'fail';
+    setupOverall: 'pass' | 'warn' | 'fail';
+    healthScore: number;
+    mcpReady: boolean;
+    adoptionLoopReady: boolean;
+    firstPrCommand: string;
+    feedbackCommand: string;
+  };
+  feedback?: FeedbackSummaryReport;
+  dogfood: DogfoodReport;
+  decision: {
+    adoptable: boolean;
+    reasons: string[];
+  };
+  websiteProof: DogfoodWebsiteProof;
+  nextCommands: PreflightSuggestedAction[];
 }
 
 export interface GraphCorpusFixtureMetrics {

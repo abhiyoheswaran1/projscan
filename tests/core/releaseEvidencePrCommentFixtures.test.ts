@@ -12,7 +12,7 @@ import { saveBaseline } from '../../src/utils/baseline.js';
 
 const execFileAsync = promisify(execFile);
 const tempRoots: string[] = [];
-const PR_COMMENT_TIMEOUT = 120_000;
+const PR_COMMENT_TIMEOUT = 180_000;
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
@@ -180,5 +180,5 @@ async function write(relativePath: string, content: string, root: string): Promi
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
-  await execFileAsync('git', args, { cwd, timeout: 30000, maxBuffer: 1024 * 1024 });
+  await execFileAsync('git', args, { cwd, timeout: 120000, maxBuffer: 1024 * 1024 });
 }

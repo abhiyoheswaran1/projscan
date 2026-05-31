@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { MIN_REPEAT_FEEDBACK_PRS, MIN_REPEAT_FEEDBACK_REPOS } from './feedback.js';
 import { computeEvidencePack } from './releaseEvidence.js';
 import { computeStartReport } from './start.js';
 import type {
@@ -27,8 +28,11 @@ const FEEDBACK_QUESTIONS = [
   'Minutes saved: 0, 5, 10, 20+?',
   'Did projscan prevent a risky edit or missed review step?',
 ] as const;
-const FEEDBACK_CAPTURE_COMMAND = 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
+const FEEDBACK_INIT_COMMAND = 'projscan feedback init --output .projscan-feedback.json';
+const FEEDBACK_CAPTURE_COMMAND = 'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+const DOGFOOD_WITH_FEEDBACK_COMMAND = 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
 const MIN_USEFUL_REVIEWER_RESPONSES = 3;
+const MIN_AVERAGE_MINUTES_SAVED = 10;
 
 export async function computeDogfoodReport(
   rootPath: string,
@@ -90,7 +94,9 @@ async function evaluateRepo(
       'projscan init team --team platform',
       'projscan evidence-pack --pr-comment',
       'projscan preflight --mode before_merge --format json',
+      FEEDBACK_INIT_COMMAND,
       FEEDBACK_CAPTURE_COMMAND,
+      DOGFOOD_WITH_FEEDBACK_COMMAND,
     ],
   };
 }
@@ -135,6 +141,7 @@ function summarizeRepoFeedback(feedback: DogfoodFeedbackResponse[]): DogfoodRepo
   return {
     feedbackResponses: feedback.length,
     usefulResponses: feedback.filter((response) => response.useful === true).length,
+    prRefs: cleanSignals(feedback.map((response) => response.pr ?? '')),
     minutesSaved: sumNumbers(feedback.map((response) => response.minutesSaved)),
     preventedBadEdits: feedback.filter((response) => response.preventedBadEdit === true).length,
     ownerRoutingClear: feedback.filter((response) => response.ownerRoutingClear === true).length,
@@ -227,8 +234,22 @@ function buildMarketValidation(
       max: Math.max(0, ...repos.map((repo) => repo.validation.minutesSaved)),
     },
   };
-  const status = marketStatus(repoCoverage.targetMet, responseCount, usefulResponses, falsePositive.totalReports);
-  const summary = summarizeMarketValidation(status, repoCoverage.evaluated, targetRepoCount, feedback, falsePositive.totalReports);
+  const repeatUse = summarizeRepeatUse(repos);
+  const value = {
+    averageMinutesSaved: feedback.minutesSaved.average,
+    requiredAverageMinutesSaved: MIN_AVERAGE_MINUTES_SAVED,
+    preventedBadEdits,
+    ready: feedback.minutesSaved.average >= MIN_AVERAGE_MINUTES_SAVED || preventedBadEdits > 0,
+  };
+  const status = marketStatus({
+    targetMet: repoCoverage.targetMet,
+    responses: responseCount,
+    usefulResponses,
+    falsePositiveReports: falsePositive.totalReports,
+    valueReady: value.ready,
+    repeatUseReady: repeatUse.ready,
+  });
+  const summary = summarizeMarketValidation(status, repoCoverage.evaluated, targetRepoCount, feedback, falsePositive.totalReports, value, repeatUse);
   return {
     status,
     summary,
@@ -236,20 +257,26 @@ function buildMarketValidation(
     feedback,
     falsePositive,
     firstPr,
-    websiteProof: buildWebsiteProof(repos, feedback, falsePositive.totalReports, status),
+    value,
+    repeatUse,
+    websiteProof: buildWebsiteProof(repos, feedback, falsePositive.totalReports, status, repeatUse),
   };
 }
 
-function marketStatus(
-  targetMet: boolean,
-  responses: number,
-  usefulResponses: number,
-  falsePositiveReports: number,
-): DogfoodMarketValidation['status'] {
-  if (!targetMet) return 'needs_more_repos';
-  if (responses === 0) return 'needs_feedback';
-  if (usefulResponses < MIN_USEFUL_REVIEWER_RESPONSES) return 'needs_tuning';
-  if (falsePositiveReports > usefulResponses) return 'needs_tuning';
+function marketStatus(input: {
+  targetMet: boolean;
+  responses: number;
+  usefulResponses: number;
+  falsePositiveReports: number;
+  valueReady: boolean;
+  repeatUseReady: boolean;
+}): DogfoodMarketValidation['status'] {
+  if (!input.targetMet) return 'needs_more_repos';
+  if (input.responses === 0) return 'needs_feedback';
+  if (input.usefulResponses < MIN_USEFUL_REVIEWER_RESPONSES) return 'needs_tuning';
+  if (input.falsePositiveReports > input.usefulResponses) return 'needs_tuning';
+  if (!input.valueReady) return 'needs_tuning';
+  if (!input.repeatUseReady) return 'needs_tuning';
   return 'proven';
 }
 
@@ -259,8 +286,10 @@ function summarizeMarketValidation(
   target: number,
   feedback: DogfoodMarketValidation['feedback'],
   falsePositiveReports: number,
+  value: DogfoodMarketValidation['value'],
+  repeatUse: DogfoodMarketValidation['repeatUse'],
 ): string {
-  const base = evaluated + '/' + target + ' repo target; ' + feedback.responses + ' reviewer response(s); ' + feedback.minutesSaved.total + ' minutes saved; ' + feedback.preventedBadEdits + ' risky edit(s) prevented; ' + falsePositiveReports + ' false-positive report(s)';
+  const base = evaluated + '/' + target + ' repo target; ' + feedback.responses + ' reviewer response(s); ' + feedback.minutesSaved.total + ' minutes saved; avg ' + value.averageMinutesSaved + '/' + value.requiredAverageMinutesSaved + ' min target; ' + feedback.preventedBadEdits + ' risky edit(s) prevented; ' + falsePositiveReports + ' false-positive report(s); ' + repeatUse.repeatedRepos + ' repo(s) with repeat PR feedback';
   if (status === 'proven') return 'market validation proven: ' + base;
   if (status === 'needs_more_repos') return 'market validation needs more repos: ' + base;
   if (status === 'needs_feedback') return 'market validation needs reviewer feedback: ' + base;
@@ -272,6 +301,7 @@ function buildWebsiteProof(
   feedback: DogfoodMarketValidation['feedback'],
   falsePositiveReports: number,
   status: DogfoodMarketValidation['status'],
+  repeatUse: DogfoodMarketValidation['repeatUse'],
 ): DogfoodMarketValidation['websiteProof'] {
   const repoCount = repos.length;
   const headline = buildWebsiteProofHeadline(status, repoCount);
@@ -280,6 +310,7 @@ function buildWebsiteProof(
     feedback.responses + ' reviewer response(s)',
     feedback.minutesSaved.total + ' minutes saved',
     feedback.preventedBadEdits + ' risky edits prevented',
+    repeatUse.repeatedRepos + ' repo(s) with repeat PR feedback',
     falsePositiveReports + ' false-positive report(s) tracked',
   ];
   const claimBullet =
@@ -289,6 +320,7 @@ function buildWebsiteProof(
   const bullets = [
     'Generated PR comments were validated before posting.',
     'Reviewer feedback is captured as structured dogfood evidence.',
+    'Repeat PR use is measured separately from first-PR usefulness.',
     'False positives, missing signals, owner clarity, and next-command clarity are visible in one report.',
     claimBullet,
   ];
@@ -335,8 +367,16 @@ function buildDogfoodActions(
       command: 'projscan dogfood --repo <path-to-repo> --format json',
     },
     {
+      label: 'Initialize structured reviewer feedback',
+      command: FEEDBACK_INIT_COMMAND,
+    },
+    {
       label: 'Capture first PR feedback as structured evidence',
       command: FEEDBACK_CAPTURE_COMMAND,
+    },
+    {
+      label: 'Roll feedback into dogfood validation',
+      command: DOGFOOD_WITH_FEEDBACK_COMMAND,
     },
     {
       label: 'Capture first PR feedback',
@@ -374,6 +414,22 @@ function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedA
     result.push(action);
   }
   return result;
+}
+
+function summarizeRepeatUse(repos: DogfoodRepoResult[]): DogfoodMarketValidation['repeatUse'] {
+  const distinctPrs = countDistinct(repos.flatMap((repo) => repo.validation.prRefs));
+  const repeatedRepos = repos.filter((repo) => countDistinct(repo.validation.prRefs) >= 2).length;
+  return {
+    distinctPrs,
+    repeatedRepos,
+    requiredDistinctPrs: MIN_REPEAT_FEEDBACK_PRS,
+    requiredRepeatedRepos: MIN_REPEAT_FEEDBACK_REPOS,
+    ready: distinctPrs >= MIN_REPEAT_FEEDBACK_PRS && repeatedRepos >= MIN_REPEAT_FEEDBACK_REPOS,
+  };
+}
+
+function countDistinct(values: string[]): number {
+  return new Set(values.map(normalizeMatchValue).filter(Boolean)).size;
 }
 
 function countSignals<T extends 'rule' | 'signal' | 'finding'>(

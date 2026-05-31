@@ -66,10 +66,13 @@ For the repeatable rollout loop, see [Adoption Proof Loop](ADOPTION-PROOF.md).
 
 ## 8. Capture first-PR validation feedback
 
-After a reviewer sees the generated PR comment, record the answers in `.projscan-feedback.json`, then run:
+After a reviewer sees the generated PR comment, record the answers with the feedback command, then run dogfood with that artifact:
 
 ```sh
+projscan feedback init --output .projscan-feedback.json
+projscan feedback add --file .projscan-feedback.json --repo api --pr https://github.com/acme/api/pull/42 --reviewer @alice --useful true --minutes-saved 10
+projscan feedback summary --file .projscan-feedback.json --format json
 projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
-Look at `marketValidation.status`. `proven` means the team has enough repo coverage and useful first-PR feedback. `needs_tuning` means fix noisy or unclear output before broader rollout.
+Look at `marketValidation.status`. `proven` now requires repo coverage, at least three useful responses, measured value (10+ average minutes saved or a prevented bad edit), false positives under control, and repeat PR feedback. `needs_tuning` means fix noisy or unclear output before broader rollout.

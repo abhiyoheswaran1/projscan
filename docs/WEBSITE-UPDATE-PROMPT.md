@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.6.
+Update the projscan website for projscan 3.0.7.
 
 Core positioning:
 - Name: projscan
@@ -27,7 +27,7 @@ What to highlight above the fold:
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
 - `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js and Express request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
-- `projscan dogfood --repo ../api --repo ../web --repo ../worker --format json`: adoption proof loop across real repos with PR-comment readiness, repeat-use readiness, MCP readiness, and reviewer feedback questions.
+- `projscan feedback summary --file .projscan-feedback.json --format json` + `projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json`: adoption proof loop across real repos with measured reviewer feedback, repeat-use readiness, MCP readiness, and false-positive tracking.
 - `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
 - `projscan init github-action`: pull-request workflow scaffold that runs projscan, posts PR evidence comments, and fails CI only when preflight returns `block`.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
@@ -73,7 +73,7 @@ Calls to action:
 - "Inspect the semantic graph" with npx projscan semantic-graph --format json.
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.
 - "Run first-run diagnostics" with npx projscan first-run.
-- "Prove adoption across real repos" with npx projscan dogfood --repo ../api --repo ../web --repo ../worker --format json.
+- "Prove adoption across real repos" with npx projscan feedback summary --file .projscan-feedback.json --format json, then npx projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json.
 - "Orient the next workflow" with npx projscan start --format json.
 - "Initialize team policy" with npx projscan init policy --team security.
 - "Add PR evidence automation" with npx projscan init github-action, highlighting that the generated workflow posts evidence before enforcing block-only failure.
@@ -88,4 +88,4 @@ Calls to action:
 
 ## Market validation proof assets
 
-Use `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and copy `marketValidation.websiteProof.markdown` into the website update source material. Prefer measured claims such as minutes saved, risky edits prevented, false-positive reports tracked, and real repo count over generic scanner language.
+Use `projscan feedback summary --file .projscan-feedback.json --format json`, then `projscan trial --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and copy `websiteProof.markdown` into the website update source material. Prefer measured claims such as minutes saved, risky edits prevented, false-positive reports tracked, and real repo count over generic scanner language.

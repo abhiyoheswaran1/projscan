@@ -664,7 +664,7 @@ function formatDeveloperFeedback(): string[] {
     '- Owner routing clear: `yes|no`. Next command clear: `yes|no`.',
     '- False positives or noisy rules: `none|<rule ids>`.',
     '- What was missing or noisy? Capture one missing signal, one noisy rule, or `none` before merge.',
-    '- Keep using it every PR: `projscan evidence-pack --pr-comment` and `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`.',
+    '- Keep using it every PR: `projscan evidence-pack --pr-comment`, `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10`, then `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`.',
   ];
 }
 

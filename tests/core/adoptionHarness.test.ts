@@ -83,5 +83,5 @@ async function readRelative(root: string, relativePath: string): Promise<string>
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
-  await execFileAsync('git', args, { cwd, timeout: 30000, maxBuffer: 1024 * 1024 });
+  await execFileAsync('git', args, { cwd, timeout: 120000, maxBuffer: 1024 * 1024 });
 }

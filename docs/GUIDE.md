@@ -130,7 +130,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json` and capture first-PR feedback. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
+**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan feedback init --output .projscan-feedback.json`, capture reviewer responses with `projscan feedback add`, then run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -657,6 +657,16 @@ Touches come from three sources:
 
 ---
 
+### trial
+
+`projscan trial` is the top-level local adoption-readiness report. It wraps first-run activation, multi-repo dogfood, reviewer feedback summary, market validation, trust signals, and website proof into one verdict: `adopt`, `pilot`, `tune`, or `setup`.
+
+```bash
+projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+Use it when deciding whether projscan is useful enough for a team to run on every PR.
+
 ### dogfood
 
 `projscan dogfood` is the adoption proof loop. It evaluates one or more real repositories and reports whether each repo can produce a validated PR comment, expose the repeat-use loop in `projscan start`, and pass basic MCP/setup readiness.
@@ -665,13 +675,16 @@ Touches come from three sources:
 projscan dogfood --repo ../api --repo ../web --repo ../worker --format json
 ```
 
-For market validation, add structured first-PR reviewer feedback:
+For market validation, capture structured reviewer feedback first:
 
 ```bash
+projscan feedback init --output .projscan-feedback.json
+projscan feedback add --file .projscan-feedback.json --repo api --pr https://github.com/acme/api/pull/42 --reviewer @alice --useful true --minutes-saved 10
+projscan feedback summary --file .projscan-feedback.json --format json
 projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
-Use it before broader rollout. The report includes feedback questions for the first real PR: did the comment save 10-20 minutes, what was missing or noisy, and which owner or command should have been clearer. With `--feedback`, the report also includes `marketValidation`: useful response count, total minutes saved, risky edits prevented, false-positive reports, and website-ready proof markdown.
+Use it before broader rollout. The report includes feedback questions for the first real PR: did the comment save 10-20 minutes, what was missing or noisy, and which owner or command should have been clearer. With `--feedback`, the report also includes `marketValidation`: useful response count, total minutes saved, risky edits prevented, repeat PR use, false-positive reports, and website-ready proof markdown.
 
 ## Health Score
 
