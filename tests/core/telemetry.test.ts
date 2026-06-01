@@ -64,6 +64,7 @@ test('enable, record, and disable use anonymous sanitized product-health events 
 
   expect(result.status).toBe('sent');
   expect(sent).toHaveLength(1);
+  const expectedCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
   expect(sent[0][0]).toMatchObject({
     eventType: 'command_run',
     commandCategory: 'evidence',
@@ -72,7 +73,7 @@ test('enable, record, and disable use anonymous sanitized product-health events 
     status: 'success',
     durationBucket: '1-5s',
     platform: process.platform,
-    ci: false,
+    ci: expectedCi,
   });
   const serialized = JSON.stringify(sent);
   expect(serialized).not.toContain(tmp);
