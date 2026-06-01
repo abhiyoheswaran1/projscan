@@ -36,7 +36,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 ### Configuration
 
 - **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`. New keys may be added; existing keys will not change name or type.
-- **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. The name remains stable in 3.x as the explicit local-code trust gate. (`PROJSCAN_TELEMETRY` was removed when telemetry was dropped.)
+- **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. `PROJSCAN_TELEMETRY_HOME`, `PROJSCAN_TELEMETRY_ENDPOINT`, `PROJSCAN_TELEMETRY_DISABLED`, and `PROJSCAN_TELEMETRY_NO_NETWORK` control the explicit opt-in telemetry storage, endpoint, hard-disable, and queue-only modes. Existing names remain stable in 3.x.
 
 ### Plugin API
 

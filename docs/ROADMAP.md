@@ -53,16 +53,20 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.7 (2026)
+### Now — 3.0.9 (2026)
 
-**3.0.7 "Trial Adoption Report"** turns the adoption loop into measured product proof:
+**3.0.9 "Opt-in Product Telemetry"** adds a transparent repeat-use measurement layer without weakening the local-first promise:
 
-- `projscan feedback` records first-PR reviewer feedback as structured evidence: minutes saved, prevented bad edits, false positives, owner clarity, next-command clarity, and repeat PR use.
-- `projscan dogfood --feedback` only marks market validation as proven after repo coverage, three or more useful responses, measured value, false-positive balance, and repeat PR feedback are all present.
-- `projscan trial` rolls onboarding checks, dogfood, feedback, trust signals, and website-ready proof into one adoption verdict.
-- Public docs now steer teams toward the first useful PR comment, measured reviewer feedback, and repeat-use validation instead of a one-time scanner run.
+- Telemetry stays off by default and is enabled only through `projscan telemetry enable` or the interactive `projscan init team` prompt.
+- `projscan telemetry status|enable|disable|explain` makes the boundary inspectable and reversible.
+- Events are anonymous product-health buckets only: command category, success/failure, duration, version/platform, setup booleans, repeat-use buckets, and optional feedback buckets.
+- `projscan feedback add` remains the explicit value signal for minutes saved, prevented bad edits, and false-positive tuning.
 
-### Recently Completed — 3.0.6 and 3.0.5 (2026)
+### Recently Completed — 3.0.8 to 3.0.5 (2026)
+
+**3.0.8 "Legal and Trust Hardening"** added public legal, vulnerability-reporting, contribution, and brand-trust surfaces for open-source adoption.
+
+**3.0.7 "Trial Adoption Report"** turned the adoption loop into measured product proof with reviewer feedback, dogfood gates, and trial verdicts.
 
 **3.0.6 "Market Validation Loop"** added structured market-validation evidence and Baseframe Labs umbrella-brand surfaces for public marketing and vulnerability-disclosure contact.
 
@@ -113,6 +117,8 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.9** (2026-06-01) | Opt-in Product Telemetry | Default-off telemetry controls, anonymous product-health buckets, feedback outcome buckets, and public telemetry docs |
+| **3.0.8** (2026-06-01) | Legal and Trust Hardening | Public legal/trust documents, vulnerability reporting, contribution provenance, and canonical icon packaging |
 | **3.0.7** (2026-05-31) | Trial Adoption Report | Adoption trial verdict, structured reviewer feedback capture, measured market-validation gates, and refreshed adoption docs |
 | **3.0.6** (2026-05-31) | Market Validation Loop | Feedback-backed dogfood evidence, minutes-saved/prevented-edit tracking, false-positive reporting, Baseframe Labs brand surfaces, and security disclosure assets |
 | **3.0.5** (2026-05-28) | Proof of Usefulness | End-to-end adoption harness, five-scenario PR comment benchmarks, fix-first output, richer baseline trend memory, Express/Next dataflow precision, and scale-risk calibration |

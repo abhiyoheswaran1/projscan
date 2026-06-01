@@ -59,3 +59,7 @@ The `marketValidation` block reports whether the proof is:
 ## Website Proof
 
 Use `marketValidation.websiteProof.markdown` as the source for website examples. When the status is not `proven`, the generated copy stays provisional so the website does not claim usefulness before repo coverage, reviewer feedback, and false-positive tuning are ready.
+
+## Telemetry and feedback
+
+`projscan telemetry enable` can help measure whether opted-in users run projscan again after setup, generate PR evidence, or keep MCP configured. It is default-off and anonymous. It does not prove usefulness by itself; usefulness comes from explicit `projscan feedback add` responses that measure minutes saved, prevented bad edits, false positives, owner clarity, and next-command clarity.

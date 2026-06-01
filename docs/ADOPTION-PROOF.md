@@ -83,3 +83,7 @@ projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan
 ```
 
 `trial.verdict` is the adoption decision surface: `adopt` means the repo coverage, measured value, repeat PR use, and trust gates are ready; `pilot`, `tune`, and `setup` explain what to do next.
+
+## Optional product-health telemetry
+
+For teams that want repeat-use evidence without uploading code, use `projscan telemetry explain` during rollout. Telemetry stays off by default and only sends anonymous product-health buckets after explicit opt-in. It can show setup completion and repeat usage, but reviewer value still comes from `projscan feedback add`.

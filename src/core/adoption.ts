@@ -106,7 +106,7 @@ export interface WriteGithubActionStarterResult extends GithubActionStarter {
 }
 
 export interface TeamOnboardingStep {
-  id: 'review-generated-files' | 'verify-mcp-setup' | 'open-first-pr' | 'tune-after-baseline';
+  id: 'review-generated-files' | 'telemetry-opt-in' | 'verify-mcp-setup' | 'open-first-pr' | 'tune-after-baseline';
   title: string;
   why: string;
   command?: string;
@@ -658,6 +658,7 @@ export async function writeTeamStarterKit(
     nextCommands: [
       'projscan start --mode before_edit --format json',
       'projscan mcp doctor --client codex --format json',
+      'projscan telemetry explain',
       'projscan evidence-pack --pr-comment',
     ],
     rationale: [
@@ -677,6 +678,12 @@ function buildTeamOnboarding(team: PolicyStarterTeam): TeamOnboardingStep[] {
       why: 'Confirm policy thresholds, PR workflow behavior, CODEOWNERS handles, and baseline memory before committing the bootstrap.',
       command: 'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json',
       files: ['.projscanrc.json', '.github/workflows/projscan.yml', '.github/CODEOWNERS', '.projscan-baseline.json'],
+    },
+    {
+      id: 'telemetry-opt-in',
+      title: 'Choose anonymous telemetry explicitly',
+      why: 'Telemetry stays off unless the team opts in; the explain command shows the exact product-health fields collected and the data that is never collected.',
+      command: 'projscan telemetry explain',
     },
     {
       id: 'verify-mcp-setup',

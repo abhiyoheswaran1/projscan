@@ -72,6 +72,17 @@ export { computeDogfoodReport } from './core/dogfood.js';
 export { computeTrialReport } from './core/trial.js';
 export { addFeedbackResponse, createFeedbackTemplate, readFeedbackFile, summarizeFeedback, summarizeFeedbackFile } from './core/feedback.js';
 export {
+  buildFeedbackTelemetry,
+  disableTelemetry,
+  enableTelemetry,
+  explainTelemetryPolicy,
+  flushTelemetry,
+  getTelemetryOptInPrompt,
+  getTelemetryStatus,
+  recordCommandTelemetry,
+  recordFeedbackTelemetry,
+} from './core/telemetry.js';
+export {
   computeFirstRunDiagnostics,
   computeMcpSetupDoctor,
   getGithubActionStarter,

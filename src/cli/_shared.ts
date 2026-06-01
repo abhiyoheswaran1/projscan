@@ -9,6 +9,7 @@ import { explainFile as explainProjectFile } from '../core/fileInspector.js';
 import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { loadConfig } from '../utils/config.js';
+import { recordCommandTelemetry } from '../core/telemetry.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import { OUTPUT_FORMATS, formatList, getCommandFormatSupport } from '../utils/formatSupport.js';
 import {
@@ -40,6 +41,35 @@ program
   .option('--config <path>', 'path to .projscanrc config file')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
+
+let activeTelemetryRun: { commandName: string; startedAt: number } | null = null;
+
+program.hook('preAction', (_thisCommand, actionCommand) => {
+  activeTelemetryRun = { commandName: commandPath(actionCommand), startedAt: Date.now() };
+});
+
+program.hook('postAction', async (_thisCommand, actionCommand) => {
+  const run = activeTelemetryRun ?? { commandName: commandPath(actionCommand), startedAt: Date.now() };
+  activeTelemetryRun = null;
+  await recordCommandTelemetry({
+    commandName: run.commandName,
+    status: 'success',
+    durationMs: Date.now() - run.startedAt,
+    rootPath: getRootPath(),
+    version: pkg.version,
+  }).catch(() => undefined);
+});
+
+function commandPath(actionCommand: Command): string {
+  const parts: string[] = [];
+  let current: Command | null = actionCommand;
+  while (current && current.name() !== 'projscan') {
+    const name = current.name();
+    if (name) parts.unshift(name);
+    current = current.parent ?? null;
+  }
+  return parts.join(' ') || actionCommand.name() || 'unknown';
+}
 
 export function getFormat(): ReportFormat {
   const opts = program.opts();

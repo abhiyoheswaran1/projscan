@@ -50,6 +50,7 @@ import { registerQualityScorecard } from './commands/qualityScorecard.js';
 import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerStart } from './commands/start.js';
 import { registerTrial } from './commands/trial.js';
+import { registerTelemetry } from './commands/telemetry.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -100,6 +101,7 @@ registerAgentBrief();
 registerQualityScorecard();
 registerStart();
 registerTrial();
+registerTelemetry();
 registerRecipes();
 registerFirstRun();
 registerHelp();

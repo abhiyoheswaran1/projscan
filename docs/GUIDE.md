@@ -118,7 +118,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
-- **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, adoption trial reports, and setup diagnostics.
+- **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan telemetry` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, default-off telemetry controls, adoption trial reports, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, trust calibration, owner routing, baseline trend, changelog, suggested next actions, and optional website prompt or validated PR-comment evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
@@ -130,7 +130,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan feedback init --output .projscan-feedback.json`, capture reviewer responses with `projscan feedback add`, then run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and `projscan trial --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
+**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan telemetry explain`, then `projscan feedback init --output .projscan-feedback.json`, capture reviewer responses with `projscan feedback add`, then run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and `projscan trial --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -666,6 +666,19 @@ projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan
 ```
 
 Use it when deciding whether projscan is useful enough for a team to run on every PR.
+
+### telemetry
+
+`projscan telemetry` exposes explicit default-off telemetry controls. It is for anonymous product-health metrics only; it never sends source code, file paths, repo names, branch names, package names, usernames, emails, raw findings, secrets, environment values, or scan reports.
+
+```bash
+projscan telemetry status
+projscan telemetry explain
+projscan telemetry enable
+projscan telemetry disable
+```
+
+Use it alongside `projscan feedback`: telemetry can show whether teams finish setup and come back next week, while explicit feedback is still the evidence for minutes saved, prevented bad edits, and false positives.
 
 ### dogfood
 

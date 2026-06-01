@@ -3,12 +3,12 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.8.
+Update the projscan website for projscan 3.0.9.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, PR evidence, graph/dataflow. Offline.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, PR evidence, graph/dataflow. Local.
 - One-line homepage copy: Agent-first code intelligence for AI coding agents: semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
@@ -28,6 +28,8 @@ What to highlight above the fold:
 - `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js and Express request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
 - `projscan feedback summary --file .projscan-feedback.json --format json` + `projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json`: adoption proof loop across real repos with measured reviewer feedback, repeat-use readiness, MCP readiness, and false-positive tracking.
+- `projscan telemetry explain`: transparent default-off telemetry controls for anonymous product-health metrics without source code, paths, repo names, branch names, package names, usernames, raw findings, secrets, or environment values.
+- Telemetry endpoint: add/verify `POST /api/projscan/telemetry` on Baseframe Labs to accept `{ schemaVersion: 1, events: [...] }`, discard unknown fields, store only the documented allowlist from TELEMETRY.md, and return 202.
 - `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
 - `projscan init github-action`: pull-request workflow scaffold that runs projscan, posts PR evidence comments, and fails CI only when preflight returns `block`.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
@@ -43,7 +45,7 @@ What to highlight above the fold:
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init` and `projscan plugin test`.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
-- Offline-first behavior: no source upload, no telemetry, no API key.
+- Local-first trust boundary: no source upload, no hidden telemetry, no API key. Anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt.
 
 Real proof examples to add:
 - Before projscan: a PR review comment that only says "run tests" or dumps scanner output.
@@ -57,7 +59,7 @@ Real proof examples to add:
 
 Feature sections to update:
 - Deep Graph Platform: stable semantic graph, dataflow risk engine, review-time bridge risk blocking, and public graph/dataflow APIs.
-- Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, first-run diagnostics, dogfood proof across 3+ repos, and repeat-use metrics that make setup obvious in under ten minutes.
+- Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, first-run diagnostics, default-off telemetry controls, dogfood proof across 3+ repos, and repeat-use metrics that make setup obvious in under ten minutes.
 - Agent Mission Control: workplans, handoffs, agent briefs, and scorecards that keep long-running agent work coordinated.
 - Autonomous Bug Hunt: ranked fix queues with evidence and verification commands.
 - Readiness Evidence: product-line planning, approval packets, GitHub PR comment evidence with suggested next actions, block-only PR workflow enforcement, and smoke/focused/full regression matrices.
@@ -74,6 +76,7 @@ Calls to action:
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.
 - "Run first-run diagnostics" with npx projscan first-run.
 - "Prove adoption across real repos" with npx projscan feedback summary --file .projscan-feedback.json --format json, then npx projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json.
+- "Review the telemetry boundary" with npx projscan telemetry explain.
 - "Orient the next workflow" with npx projscan start --format json.
 - "Initialize team policy" with npx projscan init policy --team security.
 - "Add PR evidence automation" with npx projscan init github-action, highlighting that the generated workflow posts evidence before enforcing block-only failure.

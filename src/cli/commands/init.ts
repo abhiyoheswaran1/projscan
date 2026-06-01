@@ -3,7 +3,8 @@ import path from 'node:path';
 import chalk from 'chalk';
 
 import { computeStartReport } from '../../core/start.js';
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import { disableTelemetry, enableTelemetry, getTelemetryOptInPrompt, getTelemetryStatus, type TelemetryStatus } from '../../core/telemetry.js';
+import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported, promptYesNo } from '../_shared.js';
 import {
   getGithubActionStarter,
   getMcpConfigGuide,
@@ -107,16 +108,22 @@ export function registerInit(): void {
       const team = parsePolicyTeam(opts.team);
       try {
         const rootPath = getRootPath();
+        const telemetryStatus = await getTelemetryStatus();
         const result = {
           schemaVersion: 1,
           team: await writeTeamStarterKit(rootPath, team, { force: opts.force === true }),
           start: await computeStartReport(rootPath, { mode: 'before_edit', maxTasks: 5, maxRisks: 5 }),
+          telemetry: {
+            status: telemetryStatus,
+            prompt: getTelemetryOptInPrompt(),
+          },
         };
         if (format === 'json') {
           console.log(JSON.stringify(result, null, 2));
           return;
         }
         printTeamStarterResult(result);
+        await maybePromptTelemetryOptIn(format, telemetryStatus);
       } catch (error) {
         console.error(chalk.red(error instanceof Error ? error.message : String(error)));
         process.exit(1);
@@ -231,7 +238,7 @@ function printPolicyStarterResult(result: WritePolicyStarterResult): void {
 }
 
 
-function printTeamStarterResult(result: { schemaVersion: number; team: TeamStarterKit; start: StartReport }): void {
+function printTeamStarterResult(result: { schemaVersion: number; team: TeamStarterKit; start: StartReport; telemetry?: { status: TelemetryStatus; prompt: string } }): void {
   console.log('');
   console.log(chalk.bold(`Team Bootstrap: ${result.team.team}`));
   console.log(`  policy       ${result.team.created.policy ? chalk.green('created') : chalk.yellow('kept')}`);
@@ -255,6 +262,27 @@ function printTeamStarterResult(result: { schemaVersion: number; team: TeamStart
   console.log('');
   console.log(chalk.bold('Next Commands'));
   for (const command of result.team.nextCommands) console.log(`  ${command}`);
+  if (result.telemetry) {
+    console.log('');
+    console.log(chalk.bold('Telemetry'));
+    console.log(`  ${result.telemetry.status.enabled ? 'enabled' : 'disabled'} (default is off; run projscan telemetry explain)`);
+  }
+}
+
+async function maybePromptTelemetryOptIn(format: string, status: TelemetryStatus): Promise<void> {
+  if (format !== 'console') return;
+  if (program.opts().quiet) return;
+  if (status.enabled) return;
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return;
+  console.log('');
+  const yes = await promptYesNo(getTelemetryOptInPrompt());
+  if (yes) {
+    await enableTelemetry();
+    console.log(chalk.green('Telemetry enabled.'));
+  } else {
+    await disableTelemetry();
+    console.log(chalk.dim('Telemetry remains disabled. You can enable it later with projscan telemetry enable.'));
+  }
 }
 
 function prefixIndent(text: string, indent: string): string {

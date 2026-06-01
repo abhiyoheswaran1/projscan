@@ -7,11 +7,13 @@ import {
   createFeedbackTemplate,
   summarizeFeedbackFile,
 } from '../../core/feedback.js';
+import { recordFeedbackTelemetry } from '../../core/telemetry.js';
 import type { DogfoodFeedbackResponse, FeedbackSummaryReport } from '../../types.js';
 import {
   assertFormatSupported,
   getRootPath,
   maybeCompactBanner,
+  pkg,
   program,
   setupLogLevel,
 } from '../_shared.js';
@@ -102,6 +104,7 @@ async function runAdd(cmdOpts: Record<string, unknown>): Promise<void> {
       note: asString(cmdOpts.note),
     };
     const artifact = await addFeedbackResponse(filePath, response);
+    await recordFeedbackTelemetry(response, { rootPath: getRootPath(), version: pkg.version }).catch(() => undefined);
     if (format === 'json') {
       console.log(JSON.stringify(artifact, null, 2));
       return;

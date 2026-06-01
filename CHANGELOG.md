@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.9] — 2026-06-01 — "Opt-in Product Telemetry"
+
+### Added
+
+- Added explicit `projscan telemetry status|enable|disable|explain` controls with default-off anonymous product-health telemetry.
+- Added fixed-allowlist telemetry events for command category, success/failure, duration buckets, version/platform, setup booleans, repeat-use buckets, and optional feedback buckets without source code, file paths, repo names, branch names, package names, usernames, raw findings, or secrets.
+- Added `TELEMETRY.md` and updated onboarding so `projscan init team` asks teams to make a clear telemetry choice.
+
+### Changed
+
+- `projscan feedback add` can now contribute sanitized usefulness buckets to opted-in telemetry while keeping the structured feedback artifact local and explicit.
+- Privacy, README, stability, guide, first-10-minutes, adoption proof, roadmap, and website prompt docs now describe the opt-in telemetry boundary.
+
 ## [3.0.8] — 2026-06-01 — "Legal and Trust Hardening"
 
 ### Added

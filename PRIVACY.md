@@ -26,6 +26,12 @@ projscan may pass `process.env` to child processes such as Git or npm so those t
 
 Security analyzers may flag committed secret-looking strings in repository files. Those findings stay in local output unless you choose to copy, save, or publish them.
 
+## Optional telemetry
+
+Telemetry is off by default. Users can opt in with `projscan telemetry enable` or through the interactive `projscan init team` prompt. When enabled, projscan sends only anonymous product-health events: command category, success/failure, duration bucket, version/platform, setup booleans, repeat-use buckets, and optional feedback buckets. It does not send source code, file paths, repository names, branch names, package names, usernames, email addresses, raw findings, secrets, environment values, or scan reports.
+
+See `TELEMETRY.md` for the full allowlist, controls, endpoint, and environment variables.
+
 ## Feedback artifacts
 
 `projscan feedback` creates local JSON evidence about reviewer usefulness, minutes saved, prevented bad edits, false positives, owner clarity, next-command clarity, and repeat PR use. Treat that artifact as team data. Do not commit it if it contains private PR URLs, reviewer handles, or internal notes you do not want public.
