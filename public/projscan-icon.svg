@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <clipPath id="projscan-icon-mask">
+      <rect x="0" y="0" width="512" height="512" rx="114" ry="114" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#projscan-icon-mask)">
+    <!-- App icon background: dark rounded square, matching the site's gray-900 -->
+    <rect x="0" y="0" width="512" height="512" fill="#111827" />
+    <!-- Terminal / code icon (Heroicons command-line, scaled to fill ~62% of the tile) -->
+    <!-- Original viewBox 0 0 24 24, scaled to 320x320, centered at (256,256) = offset 96,96 -->
+    <g transform="translate(96,96) scale(13.333)">
+      <path
+        fill="none"
+        stroke="#4ade80"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3M5.25 20.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"
+      />
+    </g>
+  </g>
+</svg>

@@ -39,7 +39,9 @@ npm run format        # Prettier
 
 ### Reporting Bugs
 
-Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=bug_report.md) with:
+For security vulnerabilities, do not open a public issue. Follow [SECURITY.md](SECURITY.md).
+
+For ordinary bugs, open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=bug_report.md) with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Node.js version and OS
@@ -58,6 +60,26 @@ Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=
 3. Add or update tests as needed
 4. Run `npm test` and `npm run lint` to verify
 5. Write a clear PR description explaining the change
+
+## Legal requirements for contributions
+
+By contributing to projscan, you agree that your contribution will be licensed under the MIT License.
+
+You also certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/) for your contribution. In practical terms:
+
+- you wrote the contribution, or you have the right to submit it under the project license
+- you are not adding code, docs, images, datasets, or generated output that you cannot license to this project
+- you understand that contributions are public and may be redistributed under the MIT License
+
+Maintainers may ask for signed-off commits. Add a sign-off with:
+
+```bash
+git commit --amend --signoff
+```
+
+Do not include secrets, private customer data, proprietary source code, or confidential vulnerability details in issues, pull requests, examples, screenshots, or fixtures.
+
+The MIT License covers project code and docs. It does not grant rights to use the projscan or Baseframe Labs names, icons, or wordmarks in a way that implies endorsement. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Project Structure
 
@@ -184,4 +206,4 @@ A release is a four-step ritual now that `.github/workflows/release.yml` does th
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the MIT License. See [LICENSE](LICENSE), [DISCLAIMER.md](DISCLAIMER.md), and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

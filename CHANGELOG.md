@@ -7,18 +7,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.0.8] — 2026-06-01 — "Legal and Trust Hardening"
+
+### Added
+
+- Added public security, privacy, disclaimer, trademark, and third-party notice documents so teams can review vulnerability reporting, local-first data handling, mark usage, warranty limits, and redistributed dependency notices before adoption.
+- Added a DCO-backed pull request template and contribution guidance to make contribution provenance explicit for future community changes.
+- Added the official projscan icon to the npm package allowlist so downstream documentation and websites can use the canonical asset.
+
+### Changed
+
+- README and issue templates now point developers to the legal and vulnerability-reporting surfaces instead of leaving those expectations implicit.
+- The npm package allowlist now ships the legal/trust documents alongside the CLI and existing public documentation.
+
 ## [3.0.7] — 2026-05-31 — "Trial Adoption Report"
 
 ### Added
 
-- Added `projscan trial`, a local adoption-readiness report that wraps first-run activation, dogfood, feedback summary, market validation, trust signals, and website proof.
-- Added `projscan feedback` with `init`, `add`, and `summary` subcommands so teams can capture measured reviewer feedback without hand-writing JSON.
+- Added `projscan trial`, a local adoption-readiness report that combines onboarding checks, multi-repo validation, reviewer feedback, trust signals, and website-ready proof into one verdict.
+- Added `projscan feedback` with `init`, `add`, and `summary` subcommands so teams can capture minutes saved, prevented bad edits, false positives, owner clarity, next-command clarity, and repeat PR use as structured evidence.
 
 ### Changed
 
-- Hardened `projscan dogfood --feedback` so market validation only becomes `proven` after repo coverage, 3+ useful responses, measured value, false-positive balance, and repeat PR feedback are all present.
-- Updated adoption, first-10-minutes, market-validation, guide, README, and website prompt docs to use the new feedback workflow.
-
+- `projscan dogfood --feedback` now marks market validation as `proven` only when repo coverage, three or more useful reviewer responses, measured value, false-positive balance, and repeat PR feedback are all present.
+- Updated adoption, first-10-minutes, market-validation, guide, README, and website prompt docs around the measured feedback workflow.
 
 ## [3.0.6] — 2026-05-31 — "Market Validation Loop"
 
@@ -31,10 +43,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - First-run adoption guidance and PR comments now point teams to the feedback-backed dogfood loop so repeat use is measured instead of assumed.
-
-### Fixed
-
-- Removed stale untracked duplicate docs and unrelated release-hygiene artifacts before release validation.
 
 ## [3.0.5] — 2026-05-28 — "Proof of Usefulness"
 

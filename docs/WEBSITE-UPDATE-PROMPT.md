@@ -3,13 +3,13 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.7.
+Update the projscan website for projscan 3.0.8.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
 - Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, PR evidence, graph/dataflow. Offline.
-- One-line homepage copy: Agent-first code intelligence for AI coding agents: stable semantic graph, bridge dataflow risk detection, ready-to-paste MCP setup, team bootstrap recipes, PR evidence automation, first-run diagnostics, fix-first recommendations, baseline trend memory, framework-aware dataflow, dogfood adoption proof, repeat-use metrics, workplans, bug-hunt queues, readiness evidence, compact agent briefs, quality scorecards, preflight safety, review intelligence, shared session context, and local team plugins.
+- One-line homepage copy: Agent-first code intelligence for AI coding agents: semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
 - MCP server command: npx -y projscan mcp
@@ -66,7 +66,7 @@ Feature sections to update:
 - Deeper review intelligence: package-scoped `contractChanges`, `newTaintFlows`, hardened `newDataflowRisks`, compact package-scoped `graphEvidence`, generated-code review filtering, and preflight `releaseScale` evidence for large platform releases.
 - Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
 - Release trust: public stability contract, Node.js >= 18 support, packed-install smoke testing, MCP Registry descriptor validation.
-- Screenshots/media: use the latest README media from docs/, especially projscan-reporter-plugin.png/gif and npx projscan --help.gif.
+- Screenshots/media: use the latest README media from docs/, especially projscan-reporter-plugin.png/gif, npx projscan --help.gif, and projscan-adoption-loop.gif.
 
 Calls to action:
 - "Add projscan to your MCP client" with npx projscan init mcp --client all.

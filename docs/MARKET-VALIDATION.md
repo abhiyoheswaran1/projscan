@@ -37,6 +37,18 @@ projscan dogfood \
   --format json
 ```
 
+Then roll the same evidence into the top-level trial report:
+
+```sh
+projscan trial \
+  --repo ../api-service \
+  --repo ../web-app \
+  --repo ../worker \
+  --target-repos 3 \
+  --feedback .projscan-feedback.json \
+  --format json
+```
+
 The `marketValidation` block reports whether the proof is:
 
 - `proven`: the repo target is met, at least three reviewer responses marked the PR comment useful, average minutes saved is 10+ or at least one bad edit was prevented, false-positive reports do not outnumber useful responses, and at least one repo has repeat PR feedback

@@ -13,19 +13,21 @@ A team should be able to run projscan on every pull request because it saves rev
 
 ## Run The Loop Across 3 Repos
 
-Pick three real repos that represent the team: for example API, web, and worker. Run:
+Pick three real repos that represent the team: for example API, web, and worker. After the first PR comment has reviewer feedback, run:
 
 ```sh
-projscan dogfood --repo ../api --repo ../web --repo ../worker --format json
+projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
-The report is read-only and records:
+The reports are read-only and record:
 
 - whether each repo can generate a validated PR comment
 - whether the repeat-use loop is present in `projscan start`
 - whether MCP/setup readiness still has gaps
 - the feedback questions to ask on the first real PR
 - the next commands needed before calling adoption proven
+- the trial verdict: `adopt`, `pilot`, `tune`, or `setup`
 
 ## Validate One Actual PR
 

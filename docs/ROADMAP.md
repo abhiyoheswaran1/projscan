@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-05-28.
+Last reviewed 2026-06-01.
 
 ---
 
@@ -53,27 +53,29 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.5 (2026)
+### Now — 3.0.7 (2026)
 
-**3.0.5 "Proof of Usefulness"** makes the first successful team PR the product's hero surface:
+**3.0.7 "Trial Adoption Report"** turns the adoption loop into measured product proof:
 
-- End-to-end adoption harness proves `projscan init team` through baseline, GitHub Action, PR evidence comment, preflight, and owner routing together.
-- PR comment benchmarks now cover safe docs-only, risky auth/API, dataflow/security, large release, and generated-code PRs so trust calibration cannot drift quietly.
-- Fix-first recommendations are visible across agent-facing reports and PR comments with owner hints and exact next commands.
-- Baseline trend memory now shows risk up/down, quality-score movement, new/resolved issue counts, new hotspots, recurring noisy rules, and changed-since-baseline summaries.
-- Next.js and Express dataflow packs keep request sources and database sinks framework-aware while suppressing generated-code anxiety by default.
+- `projscan feedback` records first-PR reviewer feedback as structured evidence: minutes saved, prevented bad edits, false positives, owner clarity, next-command clarity, and repeat PR use.
+- `projscan dogfood --feedback` only marks market validation as proven after repo coverage, three or more useful responses, measured value, false-positive balance, and repeat PR feedback are all present.
+- `projscan trial` rolls onboarding checks, dogfood, feedback, trust signals, and website-ready proof into one adoption verdict.
+- Public docs now steer teams toward the first useful PR comment, measured reviewer feedback, and repeat-use validation instead of a one-time scanner run.
 
-### Recently Completed — 3.0.4 (2026)
+### Recently Completed — 3.0.6 and 3.0.5 (2026)
 
-**3.0.4 "Team Adoption Loop"** made first-team adoption safer with `projscan init team`, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration.
+**3.0.6 "Market Validation Loop"** added structured market-validation evidence and Baseframe Labs umbrella-brand surfaces for public marketing and vulnerability-disclosure contact.
 
-### Next — Unreleased 3.0.x Adoption Polish
+**3.0.5 "Proof of Usefulness"** made the first successful team PR the product's hero surface with the end-to-end adoption harness, PR comment benchmarks, fix-first recommendations, baseline trend memory, and Express/Next dataflow precision.
 
-The current unreleased patch line should make projscan easier to install as a repeatable team habit before we start another larger feature line:
+### Next — 3.0.x Trust And Proof Polish
 
-- Team workflow adoption: first-60-seconds `projscan start`, policy starter kits, persisted handoffs, PR comment evidence, bootstrap recipes, block-only PR workflow enforcement, and preflight calibration for scale-only commit readiness.
-- Keep the first team PR useful: comments should include the next commands an engineer can run, not just a verdict.
-- Keep release operations boring: merge to `main`, run release checks from `main`, tag from `main`, then publish only on explicit user approval.
+The next patch line should keep improving usefulness, not add random surface area:
+
+- Validate the first PR comment with more real reviewers and record where it saved time, prevented a risky edit, or stayed too vague.
+- Keep blocks rare and concrete; uncertain findings should be clear manual-review cautions.
+- Improve owner routing from CODEOWNERS, package metadata, and common monorepo layouts.
+- Turn the best measured examples into README, website, and docs proof without overstating adoption.
 
 ### Later — 3.1.0
 
@@ -111,6 +113,8 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.0.7** (2026-05-31) | Trial Adoption Report | Adoption trial verdict, structured reviewer feedback capture, measured market-validation gates, and refreshed adoption docs |
+| **3.0.6** (2026-05-31) | Market Validation Loop | Feedback-backed dogfood evidence, minutes-saved/prevented-edit tracking, false-positive reporting, Baseframe Labs brand surfaces, and security disclosure assets |
 | **3.0.5** (2026-05-28) | Proof of Usefulness | End-to-end adoption harness, five-scenario PR comment benchmarks, fix-first output, richer baseline trend memory, Express/Next dataflow precision, and scale-risk calibration |
 | **3.0.4** (2026-05-28) | Team Adoption Loop | Team bootstrap, MCP setup doctor, validated PR evidence comments, baseline trend memory, owner routing, practical plugins, and trust calibration |
 | **3.0.3** (2026-05-27) | Agent Review Precision | Package-scoped review verdicts, receiver-sensitive route request sources, generated-code review/dataflow filtering, package owner fallback, and v5 GitHub Actions |
