@@ -10,6 +10,7 @@ import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { loadConfig } from '../utils/config.js';
 import { recordCommandTelemetry } from '../core/telemetry.js';
+import { enableOfflineMode } from '../core/privacy.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import { OUTPUT_FORMATS, formatList, getCommandFormatSupport } from '../utils/formatSupport.js';
 import {
@@ -39,12 +40,19 @@ program
   .version(pkg.version)
   .option('--format <type>', `output format: ${formatList()} (command-dependent)`, 'console')
   .option('--config <path>', 'path to .projscanrc config file')
+  .option('--include-ignored', 'explicitly include files ignored by .gitignore')
+  .option('--scan-env-values', 'explicitly read .env* file contents during secret checks')
+  .option('--offline', 'block all projscan network-capable features for this run')
   .option('--verbose', 'enable verbose output')
   .option('--quiet', 'suppress non-essential output');
 
 let activeTelemetryRun: { commandName: string; startedAt: number } | null = null;
 
 program.hook('preAction', (_thisCommand, actionCommand) => {
+  const opts = program.opts();
+  if (opts.offline) enableOfflineMode();
+  if (opts.includeIgnored) process.env.PROJSCAN_INCLUDE_IGNORED = '1';
+  if (opts.scanEnvValues) process.env.PROJSCAN_SCAN_ENV_VALUES = '1';
   activeTelemetryRun = { commandName: commandPath(actionCommand), startedAt: Date.now() };
 });
 
@@ -102,6 +110,9 @@ export async function loadProjectConfig(): Promise<ProjscanConfig> {
   const explicit = typeof opts.config === 'string' ? (opts.config as string) : undefined;
   try {
     const { config, source } = await loadConfig(getRootPath(), explicit);
+    if (config.scan?.offline) enableOfflineMode();
+    if (config.scan?.includeIgnored) process.env.PROJSCAN_INCLUDE_IGNORED = '1';
+    if (config.scan?.scanEnvValues) process.env.PROJSCAN_SCAN_ENV_VALUES = '1';
     if (source && !opts.quiet && getFormat() === 'console') {
       console.error(chalk.dim(`  [config: ${path.relative(getRootPath(), source) || source}]`));
     }

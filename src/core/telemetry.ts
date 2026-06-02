@@ -8,6 +8,7 @@ export const TELEMETRY_HOME_ENV = 'PROJSCAN_TELEMETRY_HOME';
 export const TELEMETRY_ENDPOINT_ENV = 'PROJSCAN_TELEMETRY_ENDPOINT';
 export const TELEMETRY_DISABLED_ENV = 'PROJSCAN_TELEMETRY_DISABLED';
 export const TELEMETRY_NO_NETWORK_ENV = 'PROJSCAN_TELEMETRY_NO_NETWORK';
+const OFFLINE_ENV = 'PROJSCAN_OFFLINE';
 
 const CONFIG_FILE = 'telemetry.json';
 const QUEUE_FILE = 'telemetry-queue.jsonl';
@@ -246,6 +247,7 @@ export async function recordCommandTelemetry(
   input: CommandTelemetryInput,
   options: TelemetryOptions = {},
 ): Promise<RecordTelemetryResult> {
+  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
   if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
   const paths = resolveTelemetryPaths(options);
   const loaded = await readConfig(paths.configPath, options.now);
@@ -284,6 +286,7 @@ export async function recordFeedbackTelemetry(
 }
 
 export async function flushTelemetry(options: TelemetryOptions = {}): Promise<RecordTelemetryResult> {
+  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
   if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
   if (process.env[TELEMETRY_NO_NETWORK_ENV] === '1') return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
   const paths = resolveTelemetryPaths(options);
@@ -578,6 +581,11 @@ async function defaultSender(batch: TelemetryEvent[], endpoint: string): Promise
 
 function generateAnonymousId(): string {
   return 'psn_' + crypto.randomUUID();
+}
+
+function isOfflineMode(): boolean {
+  const value = process.env[OFFLINE_ENV];
+  return value === '1' || value === 'true' || value === 'yes';
 }
 
 function isRuntimeTelemetryDisabled(): boolean {

@@ -89,4 +89,13 @@ describe('CLI format handling', () => {
     expect(result.stderr).toContain('Supported formats: console, json, markdown');
     expect(result.stdout).toBe('');
   });
+
+  it('exposes a fast trust smoke script for privacy and onboarding regressions', async () => {
+    const raw = await fs.readFile(path.join(repoRoot, 'package.json'), 'utf-8');
+    const pkg = JSON.parse(raw) as { scripts: Record<string, string> };
+
+    expect(pkg.scripts['test:trust-smoke']).toBe(
+      'vitest run tests/cli/privacyCheck.test.ts tests/cli/start.test.ts tests/cli/preflight.test.ts tests/mcp/start.test.ts tests/mcp/preflight.test.ts tests/mcp/fileChangedNotifications.test.ts tests/core/repositoryScanner.gitignore.test.ts tests/core/issueEngine.trustConfig.test.ts tests/utils/changedFiles.test.ts tests/core/auditRunner.offline.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/core/telemetry.test.ts tests/analyzers/securityCheck.test.ts --test-timeout 60000 --hook-timeout 60000',
+    );
+  });
 });

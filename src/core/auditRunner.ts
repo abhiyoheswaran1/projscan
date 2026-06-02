@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AuditFinding, AuditReport, AuditSeverity } from '../types.js';
 import { detectWorkspaces } from './monorepo.js';
+import { OFFLINE_ENV, isOfflineMode } from './privacy.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +41,10 @@ export async function runAudit(
   rootPath: string,
   options: AuditOptions = {},
 ): Promise<AuditReport> {
+  if (isOfflineMode()) {
+    return unavailable(`${OFFLINE_ENV} is enabled - npm audit network access is blocked`);
+  }
+
   const hasPackageJson = await fileExists(path.join(rootPath, 'package.json'));
   if (!hasPackageJson) {
     return unavailable('No package.json found in this directory');

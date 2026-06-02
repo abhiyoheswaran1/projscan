@@ -9,9 +9,9 @@
 
 **Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans and a local plugin layer for team-specific policy and reporting.
 
-[AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/GUIDE.md) · [Roadmap](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/ROADMAP.md)
+[AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/GUIDE.md) · [Roadmap](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/ROADMAP.md)
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/projscan-reporter-plugin.png" alt="projscan reporter plugin running in a macOS-style terminal window with a team health summary" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/projscan-reporter-plugin.png" alt="projscan reporter plugin running in a macOS-style terminal window with a team health summary" width="700">
 
 </div>
 
@@ -27,13 +27,13 @@ For teams, projscan turns that context into a repeatable PR habit. `projscan ini
 
 The local plugin platform lets teams add project-specific findings and render `doctor`, `analyze`, and `ci` in their own voice without changing the scan pipeline. Humans get the same information through the CLI.
 
-**Everything is local-first. No source upload. No API keys. Anonymous product telemetry is off by default and only runs after explicit opt-in.**
+**Everything is local-first. No source upload. No API keys. `.gitignore` is respected by default. `.env` values are path-only unless explicitly enabled. Anonymous product telemetry is off by default and only runs after explicit opt-in.**
 
 ```bash
 npx projscan
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
 
 Run `projscan doctor` for a focused health check:
 
@@ -41,7 +41,7 @@ Run `projscan doctor` for a focused health check:
 npx projscan doctor
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 ## Install
 
@@ -57,60 +57,45 @@ npx projscan
 
 ## Quick Start
 
-Run inside any repository:
+Run this path first inside a repository:
 
 ```bash
-projscan                            # Full project analysis
-projscan start                      # First-60-seconds workflow orientation
-projscan first-run                  # First-run setup diagnostics for CLI + MCP
-projscan init mcp --client all      # Ready-to-paste MCP client configs
-projscan mcp doctor --client codex   # Verify MCP setup and paste config
-projscan init policy --team security # Team policy starter .projscanrc.json
-projscan init team --team security  # Policy + PR workflow + CODEOWNERS + baseline + first-PR checklist
-projscan init github-action       # PR workflow with validated evidence comments + block enforcement
-projscan recipes                    # Agent workflow recipes, including team bootstrap + PR automation
-projscan workplan --mode bug_hunt   # Prioritized agent execution plan
-projscan bug-hunt --format json     # Bug-hunt fix queue with verification commands
-projscan agent-brief --intent bug_hunt   # Compact next-agent context packet
-projscan quality-scorecard --format json # Dimensioned quality view
-projscan release-train --format json          # Product readiness plan
-projscan evidence-pack --website-prompt  # Approval packet with product evidence
-projscan evidence-pack --pr-comment # PR comment with trust calibration + First Fix
-projscan telemetry explain                         # See the default-off telemetry boundary
-projscan feedback init --output .projscan-feedback.json # Create reviewer feedback evidence
-projscan dogfood --repo ../api --repo ../web --format json # Multi-repo adoption proof loop
-projscan trial --repo ../api --repo ../web --feedback .projscan-feedback.json --format json # Adoption-readiness report
-projscan regression-plan --level full    # Risk-based verification matrix
-projscan handoff                    # Concise next-agent handoff
-projscan handoff --write docs/agent-handoff.md # Persist next-agent handoff artifact
-projscan preflight --format json    # Agent safety gate with supply-chain evidence
-projscan doctor                     # Health check, including security and supply-chain risks
-projscan hotspots                   # Rank files by risk (churn × complexity × issues × ownership)
-projscan semantic-graph --format json # Stable v3 file/function/package/symbol graph
-projscan dataflow --format json     # Focused direct, propagated, and bridge dataflow risks
-projscan search <query>             # BM25-ranked search (content + symbols + path)
-projscan file <path>                # Drill into a file - purpose, risk, ownership, issues
-projscan fix                        # Auto-fix detected issues
-projscan ci                         # CI health gate (exits 1 on low score)
-projscan ci --changed-only          # Gate only on this PR's diff
-projscan ci --format sarif          # SARIF 2.1.0 for GitHub Code Scanning
-projscan outdated                   # Declared-vs-installed drift (offline)
-projscan audit                      # npm audit, normalized + SARIF-ready
-projscan upgrade <pkg>              # Preview upgrade impact (local CHANGELOG + importers)
-projscan coverage                   # Coverage × hotspots - scariest untested files
-projscan diff                       # Compare health + hotspot trends against a baseline
-projscan diagram                    # Architecture visualization
-projscan structure                  # Directory tree
-projscan mcp                        # Run as an MCP server for AI coding agents
-projscan plugin list                # Discover local analyzer/reporter plugins
-projscan plugin init --kind analyzer --name policy
-projscan plugin test .projscan-plugins/policy.projscan-plugin.json
-PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
+projscan privacy-check          # Show exactly what can be read, written, or contacted
+projscan start                  # First-60-seconds workflow orientation
+projscan preflight --format json # Proceed/caution/block safety gate
+projscan evidence-pack --pr-comment # Reviewer-ready PR evidence
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
+For MCP clients:
 
-For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/GUIDE.md)**.
+```bash
+projscan first-run
+projscan init mcp --client all
+projscan mcp doctor --client codex
+projscan mcp
+```
+
+For team rollout after the first local run is trusted:
+
+```bash
+projscan init team --team security
+projscan telemetry explain
+projscan feedback init --output .projscan-feedback.json
+projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
+```
+
+For maintainers changing trust-sensitive behavior:
+
+```bash
+npm run test:trust-smoke
+```
+
+The full command catalog is below. Most users should start with the four-command path above instead of scanning the catalog.
+
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
+
+For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/GUIDE.md)**.
 
 ## Commands
 
@@ -133,6 +118,7 @@ For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiy
 | `projscan evidence-pack` | Assemble approval evidence from planning, bug-hunt, workplan, preflight, trust calibration, First Fix, owner routing, and baseline trend memory |
 | `projscan trial` | Produce one adoption-readiness report from onboarding, dogfood, feedback, trust signals, and website proof |
 | `projscan feedback` | Capture measured reviewer feedback: minutes saved, prevented bad edits, false positives, and repeat PR use |
+| `projscan privacy-check` | Verify the local trust boundary: telemetry, offline mode, scan root, .gitignore handling, ignored-file count, .env content scanning, and network-capable endpoints |
 | `projscan telemetry` | Explicit default-off telemetry controls: status, enable, disable, and explain |
 | `projscan dogfood` | Evaluate 1+ real repos for PR-comment readiness, repeat-use readiness, MCP readiness, and reviewer feedback prompts |
 | `projscan regression-plan` | Build a smoke, focused, or full regression matrix from product risk signals |
@@ -175,31 +161,31 @@ projscan --help
 <details>
 <summary><strong>projscan structure</strong> - Directory tree with file counts</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
 </details>
 
 <details>
 <summary><strong>projscan diagram</strong> - Architecture visualization</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
 </details>
 
 <details>
 <summary><strong>projscan dependencies</strong> - Dependency analysis</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
 </details>
 
 <details>
 <summary><strong>projscan explain</strong> - File explanation</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20explain.gif" alt="npx projscan explain" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20explain.gif" alt="npx projscan explain" width="700">
 </details>
 
 <details>
 <summary><strong>projscan badge</strong> - Health badge generation</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
 </details>
 
 ### Output Formats
@@ -221,7 +207,7 @@ Run `projscan help` for the generated command-by-command support matrix.
 
 projscan can load local plugins from `.projscan-plugins/` when `PROJSCAN_PLUGINS_PREVIEW=1` is set. The environment flag is kept for explicit local-code opt-in. Analyzer plugins emit normal projscan issues; reporter plugins render supported CLI commands with team-specific output.
 
-**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/plugin.schema.json) as the stable contract.
+**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/plugin.schema.json) as the stable contract.
 
 ```bash
 projscan plugin list
@@ -230,9 +216,9 @@ PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-radar --min-score 80
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
 
-Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
+Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
 
 ### Options
 
@@ -240,6 +226,9 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 |------|-------------|
 | `--format <type>` | Output format: console, json, markdown, sarif, html (command-dependent) |
 | `--config <path>` | Path to a `.projscanrc` config file |
+| `--include-ignored` | Explicitly include files hidden by Git ignore rules |
+| `--scan-env-values` | Explicitly read `.env*` contents during secret checks |
+| `--offline` | Block projscan network-capable features for this run |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 | `--reporter <name>` | Render `doctor`, `analyze`, or `ci` with a local reporter plugin |
@@ -394,7 +383,7 @@ If you read projscan's [Socket report](https://socket.dev/npm/package/projscan),
 ### Audit it yourself
 
 - **Source is open** at [github.com/abhiyoheswaran1/projscan](https://github.com/abhiyoheswaran1/projscan). The npm tarball matches the `dist/` produced by `npm run build` at the matching tag.
-- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/STABILITY.md).
+- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/STABILITY.md).
 - **Run it offline:** `npm install -g projscan` followed by anything except `audit` and `--mode semantic` works without network.
 - **Drop privilege further:** in CI, run projscan in a sandbox that disallows network egress; everything except `audit` will pass.
 
@@ -445,7 +434,7 @@ projscan ci --changed-only                     # Gate only on this PR's diff
 projscan ci --format sarif > projscan.sarif    # SARIF for Code Scanning
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
 
 ### GitHub Action (recommended)
 
@@ -493,6 +482,11 @@ Drop a `.projscanrc.json` at your repo root to set defaults - CLI flags always w
   "minScore": 80,
   "baseRef": "origin/main",
   "ignore": ["**/fixtures/**", "**/generated/**"],
+  "scan": {
+    "includeIgnored": false,
+    "scanEnvValues": false,
+    "offline": false
+  },
   "disableRules": ["missing-editorconfig", "large-*"],
   "severityOverrides": {
     "missing-prettier": "info"
@@ -509,12 +503,15 @@ Fields:
 - `minScore` - default `ci` threshold (0–100)
 - `baseRef` - default base ref for `--changed-only`
 - `ignore` - extra glob patterns added to the built-in ignore list
+- `scan.includeIgnored` - opt into scanning files hidden by Git ignore rules
+- `scan.scanEnvValues` - opt into reading `.env*` contents during secret checks
+- `scan.offline` - block projscan network-capable features by default
 - `disableRules` - silence rules by id; supports wildcard `prefix-*`
 - `severityOverrides` - remap a rule's severity (`info` / `warning` / `error`)
 - `hotspots.limit` / `hotspots.since` - defaults for the `hotspots` command
 - `monorepo.importPolicy` - cross-package import allow/deny rules in monorepos *(0.14+)*
 
-See [`docs/GUIDE.md` → Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
+See [`docs/GUIDE.md` → Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
 
 ## Tracking Health Over Time
 
@@ -527,7 +524,7 @@ projscan diff                       # Compare against baseline
 projscan diff --format markdown     # Markdown diff for PRs
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
 
 ## Hotspots - Where to Fix First
 
@@ -616,7 +613,7 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 **This is the primary way to use projscan.** `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query your codebase with real structural accuracy - not regex, not grep.
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.0.9/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v3.1.0/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
 
 Two questions an agent asks; structural answers in milliseconds. *"What breaks if I rename `buildCodeGraph`?"* → 31 direct callers, 97 files reachable. *"Where should I fix first?"* → ranked hotspots with AST cyclomatic complexity, churn, and ownership signals.
 
@@ -813,7 +810,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_apply_fix`** *(1.6)* - mechanically execute the safe fix templates. Default is dry-run; pass `confirm: true` to write. Atomic writes, per-apply rollback record at `.projscan-cache/rollbacks/<id>.json`. Reverse with `action: "rollback", rollback_id: ...`. Six templates supported at this release: `unused-dependency-*`, `missing-test-framework`, `missing-eslint`, `missing-prettier`, `missing-editorconfig`, `missing-readme`.
 - **`projscan_taint`** *(1.6)* - source-to-sink reachability over the per-function call graph. Built-in defaults cover common JS / Python sources (`process.env`, `req.body`, etc.) and sinks (`exec`, `eval`, `db.query`, etc.). Project-specific names go in `.projscanrc.json` `taint`. `projscan_review` automatically diffs taint flows between base and head and **blocks any PR that introduces a new flow**. In 3.0.2, review surfaces hardened `newDataflowRisks`, compact `graphEvidence`, and graph-readiness gates for safer handoff.
 
-Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.0.9/docs/PLUGIN-AUTHORING.md).
+Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v3.1.0/docs/PLUGIN-AUTHORING.md).
 
 ### Context-window budgeting
 

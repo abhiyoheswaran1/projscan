@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { FileEntry, UpgradePreview } from '../types.js';
 import { drift as semverDrift, parse as parseSemver, compare as compareSemver } from '../utils/semver.js';
 import { buildImportGraph, filesImporting } from './importGraph.js';
+import { OFFLINE_ENV, isOfflineMode } from './privacy.js';
 
 const CHANGELOG_NAMES = ['CHANGELOG.md', 'CHANGELOG', 'History.md', 'HISTORY.md'];
 
@@ -81,11 +82,15 @@ export async function previewUpgrade(
   let latest = installed;
   let registryError: string | undefined;
   if (options.checkRegistry) {
-    const fetched = await fetchLatestFromRegistry(pkgName, options);
-    if (fetched.ok) {
-      latest = fetched.version;
+    if (isOfflineMode()) {
+      registryError = `${OFFLINE_ENV} is enabled - registry network access is blocked`;
     } else {
-      registryError = fetched.error;
+      const fetched = await fetchLatestFromRegistry(pkgName, options);
+      if (fetched.ok) {
+        latest = fetched.version;
+      } else {
+        registryError = fetched.error;
+      }
     }
   }
 

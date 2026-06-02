@@ -49,7 +49,7 @@ Opt-in state is stored in the user config directory, or in `PROJSCAN_TELEMETRY_H
 https://www.baseframelabs.com/api/projscan/telemetry
 ```
 
-The endpoint can be overridden with `PROJSCAN_TELEMETRY_ENDPOINT`. Set `PROJSCAN_TELEMETRY_DISABLED=1` to force telemetry off in CI or managed environments. Set `PROJSCAN_TELEMETRY_NO_NETWORK=1` to keep enabled telemetry queued locally without sending network requests.
+The endpoint can be overridden with `PROJSCAN_TELEMETRY_ENDPOINT`. Set `PROJSCAN_TELEMETRY_DISABLED=1` to force telemetry off in CI or managed environments. Set `PROJSCAN_TELEMETRY_NO_NETWORK=1` to keep enabled telemetry queued locally without sending network requests. Set `PROJSCAN_OFFLINE=1` or pass `--offline` to skip telemetry recording and sending for the run as part of projscan's broader no-network guard.
 
 ## Endpoint payload
 

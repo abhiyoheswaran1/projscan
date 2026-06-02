@@ -7,6 +7,14 @@ export interface ScanResult {
   files: FileEntry[];
   directoryTree: DirectoryNode;
   scanDurationMs: number;
+  scanBoundary: ScanBoundary;
+}
+
+export interface ScanBoundary {
+  source: 'git' | 'glob';
+  gitignoreRespected: boolean;
+  includeIgnored: boolean;
+  ignoredFileCount: number;
 }
 
 export interface FileEntry {
@@ -313,11 +321,32 @@ export interface PreflightEvidence {
     reason?: string;
   };
   session?: {
+    kind?: 'remembered-session';
     id: string;
     touchedFiles: string[];
     totalTouchedFiles?: number;
     eventCount: number;
+    note?: string;
     truncated?: boolean;
+  };
+  riskSources?: {
+    currentWorktree: {
+      kind: 'current-worktree';
+      available: boolean;
+      count: number;
+      files: string[];
+      baseRef: string | null;
+      reason?: string;
+    };
+    sessionMemory: {
+      kind: 'remembered-session';
+      id: string;
+      touchedFiles: string[];
+      totalTouchedFiles: number;
+      eventCount: number;
+      note: string;
+      truncated?: boolean;
+    };
   };
   hotspots?: {
     touched: Array<{ file: string; riskScore: number }>;
@@ -727,6 +756,23 @@ export interface StartReport {
     qualitySummary: string;
     healthScore: number;
     mcpReady: boolean;
+    riskSources: {
+      currentWorktree: {
+        kind: 'current-worktree';
+        available: boolean;
+        count: number;
+        files: string[];
+        baseRef: string | null;
+        reason?: string;
+      };
+      sessionMemory: {
+        kind: 'remembered-session';
+        touchedFiles: string[];
+        totalTouchedFiles: number;
+        note: string;
+        truncated?: boolean;
+      };
+    };
   };
   topRisks: StartRisk[];
   fixFirst?: FixFirstRecommendation;
@@ -1223,6 +1269,11 @@ export interface ProjscanConfig {
     since?: string;
   };
   ignore?: string[];
+  scan?: {
+    includeIgnored?: boolean;
+    scanEnvValues?: boolean;
+    offline?: boolean;
+  };
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
   /**

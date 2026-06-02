@@ -87,6 +87,34 @@ describe('securityCheck', () => {
   });
 
   describe('hardcoded secret detection', () => {
+    it('does not read .env file contents by default', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (p) => {
+        if (String(p).endsWith('.gitignore')) return '.env\n';
+        if (String(p).endsWith('.env')) return FAKE_AWS_ACCESS_KEY;
+        return '';
+      });
+      const files = [makeFile('.env')];
+      const issues = await check('/proj', files);
+
+      expect(issues.find((i) => i.id === 'env-file-committed')).toBeDefined();
+      expect(issues.find((i) => i.id === 'hardcoded-secret')).toBeUndefined();
+      expect(fs.readFile).not.toHaveBeenCalledWith('/proj/.env', 'utf-8');
+    });
+
+    it('reads .env file contents only when explicitly enabled', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (p) => {
+        if (String(p).endsWith('.gitignore')) return '.env\n';
+        if (String(p).endsWith('.env')) return FAKE_AWS_ACCESS_KEY;
+        return '';
+      });
+      const files = [makeFile('.env')];
+      const issues = await check('/proj', files, { scanEnvValues: true });
+
+      expect(issues.find((i) => i.id === 'env-file-committed')).toBeDefined();
+      expect(issues.find((i) => i.id === 'hardcoded-secret')).toBeDefined();
+      expect(fs.readFile).toHaveBeenCalledWith('/proj/.env', 'utf-8');
+    });
+
     it('should detect AWS access keys', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';

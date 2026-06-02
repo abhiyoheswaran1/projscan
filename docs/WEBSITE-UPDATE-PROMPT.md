@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.0.9.
+Update the projscan website for projscan 3.1.0.
 
 Core positioning:
 - Name: projscan
@@ -28,6 +28,7 @@ What to highlight above the fold:
 - `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js and Express request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
 - `projscan feedback summary --file .projscan-feedback.json --format json` + `projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json`: adoption proof loop across real repos with measured reviewer feedback, repeat-use readiness, MCP readiness, and false-positive tracking.
+- `projscan privacy-check`: visible trust report for telemetry status, offline mode, Git ignore handling, ignored-file count, `.env` content scanning, plugin execution, local write surfaces, report-export sensitivity, and known network-capable endpoints.
 - `projscan telemetry explain`: transparent default-off telemetry controls for anonymous product-health metrics without source code, paths, repo names, branch names, package names, usernames, raw findings, secrets, or environment values.
 - Telemetry endpoint: add/verify `POST /api/projscan/telemetry` on Baseframe Labs to accept `{ schemaVersion: 1, events: [...] }`, discard unknown fields, store only the documented allowlist from TELEMETRY.md, and return 202.
 - `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
@@ -45,7 +46,7 @@ What to highlight above the fold:
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init` and `projscan plugin test`.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
-- Local-first trust boundary: no source upload, no hidden telemetry, no API key. Anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt.
+- Local-first trust boundary: no source upload, no hidden telemetry, no API key. `projscan privacy-check` shows the boundary before scanning; anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt.
 
 Real proof examples to add:
 - Before projscan: a PR review comment that only says "run tests" or dumps scanner output.
@@ -76,6 +77,7 @@ Calls to action:
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.
 - "Run first-run diagnostics" with npx projscan first-run.
 - "Prove adoption across real repos" with npx projscan feedback summary --file .projscan-feedback.json --format json, then npx projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json.
+- "Review the privacy boundary" with npx projscan privacy-check --offline.
 - "Review the telemetry boundary" with npx projscan telemetry explain.
 - "Orient the next workflow" with npx projscan start --format json.
 - "Initialize team policy" with npx projscan init policy --team security.

@@ -136,10 +136,11 @@ async function statusNames(rootPath: string): Promise<string[]> {
   );
   const out = new Set<string>();
   for (const raw of stdout.split('\n')) {
-    const line = raw.trim();
-    if (!line) continue;
-    // Format: "XY path" or "XY orig -> new" for renames
-    const withoutStatus = line.replace(/^..\s+/, '');
+    if (!raw.trim()) continue;
+    // Format: "XY path" or "XY orig -> new" for renames. Keep leading
+    // status columns intact until after the regex strips them; trimming first
+    // turns " M file" into "M file" and leaks the status into the path.
+    const withoutStatus = raw.replace(/^..\s+/, '').trim();
     const renamed = withoutStatus.includes(' -> ')
       ? withoutStatus.split(' -> ').pop()!
       : withoutStatus;

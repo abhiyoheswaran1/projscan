@@ -232,6 +232,33 @@ test('preflight session evidence prefers most recent touched files', async () =>
   ]);
 });
 
+test('preflight separates current worktree evidence from remembered session context', async () => {
+  const root = await makeTempProject();
+  const { session } = await loadSession(root);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(root, session);
+
+  const report = await computePreflight(root, { mode: 'before_edit' });
+
+  expect(report.evidence.riskSources?.currentWorktree).toEqual(
+    expect.objectContaining({
+      kind: 'current-worktree',
+      available: false,
+      count: 0,
+      reason: 'changed-file detection is not required before edits',
+    }),
+  );
+  expect(report.evidence.riskSources?.sessionMemory).toEqual(
+    expect.objectContaining({
+      kind: 'remembered-session',
+      touchedFiles: ['src/index.ts'],
+      totalTouchedFiles: 1,
+      note: expect.stringContaining('remembered'),
+    }),
+  );
+  expect(report.evidence.session?.kind).toBe('remembered-session');
+});
+
 test('before_commit treats scale-only review blocks as manual sign-off caution', async () => {
   const root = await makeTempProject();
   await git(root, ['init']);

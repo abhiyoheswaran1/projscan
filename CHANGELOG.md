@@ -7,6 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.1.0] — 2026-06-02 — "Trust Boundary Hardening"
+
+### Added
+
+- Added `projscan privacy-check`, a visible trust report that shows telemetry status, offline mode, scan root, Git ignore handling, ignored-file count, `.env` content scanning, plugin execution, local write surfaces, report export sensitivity, and known network-capable endpoints.
+- Added `--offline` / `PROJSCAN_OFFLINE=1` / `scan.offline: true` to block known network-capable features across telemetry, npm audit, registry checks, and optional semantic model loading.
+- Added explicit opt-ins for trust-sensitive scanning: `--include-ignored` / `scan.includeIgnored: true` for ignored files and `--scan-env-values` / `scan.scanEnvValues: true` for `.env*` value scanning.
+- Added a fast `npm run test:trust-smoke` gate covering privacy, offline, MCP start/preflight/watch, Git ignore behavior, session/worktree split, telemetry, and secret-scanning defaults.
+
+### Changed
+
+- Repository scanning now respects Git's visible-file boundary by default: tracked files plus untracked non-ignored files from `git ls-files --cached --others --exclude-standard`.
+- `.env*` files are path-only by default: tracked environment files can be flagged by filename without reading their values unless the user explicitly opts in.
+- `projscan start` and `projscan preflight` now separate current Git/worktree evidence from remembered session context so old agent-session touches do not look like current risk.
+- Local analyzer/reporter plugin trust is surfaced in `privacy-check`; plugins remain disabled unless `PROJSCAN_PLUGINS_PREVIEW=1` is explicitly set.
+- The README and first-run guide now lead with the opinionated adoption path: `privacy-check`, `start`, `preflight`, and `evidence-pack` before the larger command catalog.
+
+### Fixed
+
+- Fixed self-scan false positives from trust test fixtures while preserving coverage for explicit `.env` value scanning.
+- Fixed changed-file normalization so porcelain status prefixes such as `M ` do not leak into current-worktree paths.
+- Fixed MCP file-change notification readiness so watch tests and file-change events are deterministic.
+
 ## [3.0.9] — 2026-06-01 — "Opt-in Product Telemetry"
 
 ### Added

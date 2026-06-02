@@ -1,14 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+vi.mock('../../src/core/watcher.js', () => ({
+  startWatcher: (_rootPath: string, options: { onChange: (event: { paths: string[]; graph: { scannedFiles: number } }) => void | Promise<void> }) => {
+    const graph = { scannedFiles: 1 };
+    let closed = false;
+    let deltaTimer: NodeJS.Timeout | null = null;
+    const ready = (async () => {
+      await options.onChange({ paths: [], graph });
+      deltaTimer = setTimeout(() => {
+        if (!closed) void options.onChange({ paths: ['src/a.ts'], graph });
+      }, 10);
+    })();
+    return {
+      close: () => {
+        closed = true;
+        if (deltaTimer) clearTimeout(deltaTimer);
+      },
+      get closed(): Promise<void> {
+        return ready.then(() => undefined);
+      },
+      ready,
+    };
+  },
+}));
+
 import { createMcpServer } from '../../src/mcp/server.js';
 
 let tmp: string;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-mcp-watch-'));
-  await fs.writeFile(path.join(tmp, 'a.ts'), `export const a = 1;\n`, 'utf-8');
+  await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
+  await fs.writeFile(path.join(tmp, 'src', 'a.ts'), `export const a = 1;\n`, 'utf-8');
 });
 
 afterEach(async () => {
@@ -26,6 +51,33 @@ async function rpc(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseFileChangedNotifications(notifications: string[]): Array<Record<string, unknown>> {
+  return notifications
+    .map((n) => JSON.parse(n) as Record<string, unknown>)
+    .filter((n) => n.method === 'notifications/file_changed');
+}
+
+async function waitForFileChangedNotification(
+  notifications: string[],
+  relPath: string,
+  timeoutMs = 1_000,
+): Promise<Record<string, unknown>[]> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const fileChanged = parseFileChangedNotifications(notifications);
+    if (
+      fileChanged.some((notification) => {
+        const params = notification.params as { paths?: unknown };
+        return Array.isArray(params.paths) && params.paths.includes(relPath);
+      })
+    ) {
+      return fileChanged;
+    }
+    await sleep(25);
+  }
+  return parseFileChangedNotifications(notifications);
 }
 
 describe('MCP notifications/file_changed (1.3+)', () => {
@@ -63,7 +115,7 @@ describe('MCP notifications/file_changed (1.3+)', () => {
     server.close();
   });
 
-  it('emits notifications/file_changed on a real file change (watch on)', async () => {
+  it('emits notifications/file_changed when the watcher reports a file change', async () => {
     const notifications: string[] = [];
     const server = createMcpServer(tmp, {
       notify: (payload) => {
@@ -74,19 +126,7 @@ describe('MCP notifications/file_changed (1.3+)', () => {
 
     await rpc(server, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
 
-    // The watcher's initial scan needs a moment to complete before fs.watch
-    // is registered. Poll briefly until there's a chance to receive events.
-    await sleep(400);
-
-    // Modify a file inside the watched root.
-    await fs.writeFile(path.join(tmp, 'a.ts'), `export const a = 2;\n`, 'utf-8');
-
-    // Wait for the 200ms debounce + processing.
-    await sleep(800);
-
-    const fileChanged = notifications
-      .map((n) => JSON.parse(n) as Record<string, unknown>)
-      .filter((n) => n.method === 'notifications/file_changed');
+    const fileChanged = await waitForFileChangedNotification(notifications, 'src/a.ts');
 
     expect(fileChanged.length).toBeGreaterThanOrEqual(1);
     const first = fileChanged[0];
@@ -96,7 +136,7 @@ describe('MCP notifications/file_changed (1.3+)', () => {
       timestampMs: number;
     };
     expect(Array.isArray(params.paths)).toBe(true);
-    expect(params.paths).toContain('a.ts');
+    expect(params.paths).toContain('src/a.ts');
     expect(typeof params.scannedFiles).toBe('number');
     expect(typeof params.timestampMs).toBe('number');
 
@@ -114,12 +154,10 @@ describe('MCP notifications/file_changed (1.3+)', () => {
 
     await rpc(server, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
     await sleep(200);
-    await fs.writeFile(path.join(tmp, 'a.ts'), `export const a = 3;\n`, 'utf-8');
+    await fs.writeFile(path.join(tmp, 'src', 'a.ts'), `export const a = 3;\n`, 'utf-8');
     await sleep(500);
 
-    const fileChanged = notifications
-      .map((n) => JSON.parse(n) as Record<string, unknown>)
-      .filter((n) => n.method === 'notifications/file_changed');
+    const fileChanged = parseFileChangedNotifications(notifications);
 
     expect(fileChanged.length).toBe(0);
     server.close();

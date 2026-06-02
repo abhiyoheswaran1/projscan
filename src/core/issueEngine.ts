@@ -1,4 +1,4 @@
-import type { FileEntry, Issue } from '../types.js';
+import type { FileEntry, Issue, ProjscanConfig } from '../types.js';
 import { check as eslintCheck } from '../analyzers/eslintCheck.js';
 import { check as prettierCheck } from '../analyzers/prettierCheck.js';
 import { check as testCheck } from '../analyzers/testCheck.js';
@@ -20,9 +20,17 @@ import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { computeDataflow } from './dataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { loadPlugins, runAnalyzerPlugins, pluginsEnabled, type PluginAnalyzerContext } from './plugins.js';
+import { loadConfig } from '../utils/config.js';
 import type { DataflowReport, SemanticGraphReport } from '../types.js';
 
+const SCAN_ENV_VALUES_ENV = 'PROJSCAN_SCAN_ENV_VALUES';
+
 type Checker = (rootPath: string, files: FileEntry[]) => Promise<Issue[]>;
+
+export interface IssueCollectionOptions {
+  scanEnvValues?: boolean;
+  useConfig?: boolean;
+}
 
 const checkers: Checker[] = [
   eslintCheck,
@@ -30,7 +38,6 @@ const checkers: Checker[] = [
   testCheck,
   architectureCheck,
   dependencyRiskCheck,
-  securityCheck,
   supplyChainCheck,
   unusedDependencyCheck,
   deadCodeCheck,
@@ -48,8 +55,16 @@ const checkers: Checker[] = [
   pythonUnusedDependencyCheck,
 ];
 
-export async function collectIssues(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
-  const results = await Promise.all(checkers.map((check) => check(rootPath, files)));
+export async function collectIssues(
+  rootPath: string,
+  files: FileEntry[],
+  options: IssueCollectionOptions = {},
+): Promise<Issue[]> {
+  const scanEnvValues = await shouldScanEnvValues(rootPath, options);
+  const results = await Promise.all([
+    ...checkers.map((check) => check(rootPath, files)),
+    securityCheck(rootPath, files, { scanEnvValues }),
+  ]);
   const issues = results.flat();
 
   // 1.10+ — fold in issues from loaded analyzer plugins. No-op unless
@@ -85,6 +100,13 @@ export async function collectIssues(rootPath: string, files: FileEntry[]): Promi
   void recordRunInMemory(rootPath, issues);
 
   return issues;
+}
+
+async function shouldScanEnvValues(rootPath: string, options: IssueCollectionOptions): Promise<boolean> {
+  if (options.scanEnvValues === true || process.env[SCAN_ENV_VALUES_ENV] === '1') return true;
+  if (options.useConfig === false) return false;
+  const config = await loadConfig(rootPath).catch(() => ({ config: {} as ProjscanConfig }));
+  return config.config.scan?.scanEnvValues === true;
 }
 
 function createPluginAnalyzerContext(rootPath: string, files: FileEntry[]): PluginAnalyzerContext {

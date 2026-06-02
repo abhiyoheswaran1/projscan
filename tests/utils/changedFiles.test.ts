@@ -76,6 +76,19 @@ describe('getChangedFiles', () => {
     expect(result.files).toContain('uncommitted.txt');
   });
 
+  it('normalizes modified working-tree paths without porcelain status prefixes', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one changed');
+
+    const result = await getChangedFiles(repo);
+    expect(result.available).toBe(true);
+    expect(result.files).toContain('a.txt');
+    expect(result.files).not.toContain('M a.txt');
+  });
+
   it('returns available=false when base ref does not exist', async () => {
     await fs.writeFile(path.join(repo, 'a.txt'), 'one');
     await git(repo, ['add', 'a.txt']);

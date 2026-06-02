@@ -51,6 +51,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   'plugin init': ['console', 'json'],
   'plugin test': ['console', 'json'],
   preflight: ['console', 'json'],
+  'privacy-check': ['console', 'json'],
   'pr-diff': ['console', 'json', 'markdown', 'html'],
   'quality-scorecard': ['console', 'json'],
   'release-train': ['console', 'json'],

@@ -1,7 +1,9 @@
 import { computeFirstRunDiagnostics, getWorkflowRecipes, type AgentWorkflowRecipe } from './adoption.js';
+import { loadSession } from './session.js';
 import { fixFirstFromStartRisk } from './fixFirst.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildWorkplanHandoff, computeWorkplan, isWorkplanMode } from './workplan.js';
+import { getChangedFiles } from '../utils/changedFiles.js';
 import type {
   PreflightSuggestedAction,
   QualityScorecardRisk,
@@ -32,10 +34,11 @@ export async function computeStartReport(
   const mode = normalizeMode(options.mode);
   const maxTasks = normalizeLimit(options.maxTasks, DEFAULT_MAX_TASKS, 12);
   const maxRisks = normalizeLimit(options.maxRisks, DEFAULT_MAX_RISKS, 12);
-  const [setup, workplan, quality] = await Promise.all([
+  const [setup, workplan, quality, riskSources] = await Promise.all([
     computeFirstRunDiagnostics(rootPath),
     computeWorkplan(rootPath, { mode, maxTasks }),
     computeQualityScorecard(rootPath, { maxRisks }),
+    buildStartRiskSources(rootPath),
   ]);
   const workflow = chooseWorkflow(mode, getWorkflowRecipes().recipes);
   const topRisks = combineRisks(workplan, quality.topRisks, maxRisks);
@@ -74,6 +77,7 @@ export async function computeStartReport(
       qualitySummary: quality.summary,
       healthScore: quality.health.score,
       mcpReady: setup.diagnostics.find((diagnostic) => diagnostic.id === 'mcp-startup')?.status === 'pass',
+      riskSources,
     },
     topRisks,
     ...(fixFirst ? { fixFirst } : {}),
@@ -84,6 +88,45 @@ export async function computeStartReport(
     ...(workplan.truncated === true || quality.truncated === true ? { truncated: true } : {}),
   };
   return report;
+}
+
+
+async function buildStartRiskSources(rootPath: string): Promise<StartReport['evidence']['riskSources']> {
+  const [changed, sessionResult] = await Promise.all([
+    getChangedFiles(rootPath).catch((err) => ({
+      available: false,
+      reason: err instanceof Error ? err.message : String(err),
+      baseRef: null,
+      files: [],
+    })),
+    loadSession(rootPath).catch(() => null),
+  ]);
+  const touchedFiles = sessionResult
+    ? Object.values(sessionResult.session.touchedFiles)
+        .sort((a, b) => {
+          const byTime = Date.parse(b.lastTouchedAt) - Date.parse(a.lastTouchedAt);
+          return byTime !== 0 ? byTime : a.file.localeCompare(b.file);
+        })
+        .map((touch) => touch.file)
+    : [];
+  const visibleTouched = touchedFiles.slice(0, 40);
+  return {
+    currentWorktree: {
+      kind: 'current-worktree',
+      available: changed.available,
+      count: changed.files.length,
+      files: changed.files.slice(0, 40),
+      baseRef: changed.baseRef,
+      ...(changed.reason ? { reason: changed.reason } : {}),
+    },
+    sessionMemory: {
+      kind: 'remembered-session',
+      touchedFiles: visibleTouched,
+      totalTouchedFiles: touchedFiles.length,
+      note: 'Remembered session context comes from prior projscan tool results, explicit touches, and MCP watch events. It may include files outside the current Git/worktree diff.',
+      ...(touchedFiles.length > visibleTouched.length ? { truncated: true } : {}),
+    },
+  };
 }
 
 function buildAdoptionLoop(): StartAdoptionLoop {

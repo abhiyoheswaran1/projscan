@@ -134,7 +134,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     try {
       switch (request.method) {
         case 'initialize':
-          return handleInitialize(id, request.params);
+          return await handleInitialize(id, request.params);
         case 'notifications/initialized':
         case 'initialized':
           return null;
@@ -167,7 +167,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     }
   }
 
-  function handleInitialize(id: string | number | null, rawParams: unknown): JsonRpcResponse {
+  async function handleInitialize(id: string | number | null, rawParams: unknown): Promise<JsonRpcResponse> {
     const params = (rawParams ?? {}) as { protocolVersion?: string };
     initialized = true;
     const requested = params.protocolVersion;
@@ -175,6 +175,9 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSION;
     if (watchEnabled && !watchStartPromise) {
       watchStartPromise = startFileWatcher();
+    }
+    if (watchStartPromise) {
+      await watchStartPromise;
     }
     return ok(id, {
       protocolVersion: negotiated,

@@ -82,12 +82,9 @@ export function startWatcher(rootPath: string, options: WatchOptions): WatchHand
     await saveCachedGraph(rootPath, graph).catch(() => undefined);
     if (closed) return;
     await options.onChange({ paths: [], graph });
-  })();
-
-  ready.then(() => {
     if (closed) return;
-    void startWatching();
-  });
+    await startWatching();
+  })();
 
   async function startWatching(): Promise<void> {
     try {

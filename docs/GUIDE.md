@@ -113,7 +113,8 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 
 When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
 
-- **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, repeat-use metrics, next commands, and optional handoff payload.
+- **`projscan privacy-check`** — trust boundary report. Shows telemetry/offline status, scan root, Git ignore handling, `.env` content handling, plugin execution status, local write surfaces, report-export sensitivity, and network-capable endpoints.
+- **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, the recommended workflow recipe, workplan, quality scorecard, top risks, adoption gaps, repeat-use metrics, next commands, optional handoff payload, and a split between current Git/worktree evidence and remembered session context.
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, guardrails, and suggested next actions.
@@ -123,14 +124,14 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, trust calibration, owner routing, baseline trend, changelog, suggested next actions, and optional website prompt or validated PR-comment evidence in one response.
 - **`projscan_regression_plan` / `projscan regression-plan`** — regression matrix. Builds smoke, focused, or full verification plans from bug-hunt, preflight, and product risk.
 - **`projscan_doctor` / `projscan doctor`** — single 0–100 health score plus a list of issues across linting, formatting, tests, security, supply-chain trust, dependencies, dead code, and circular imports. Each issue carries a `suggestedAction` hint pointing at the fix-suggest pipeline (0.14+).
-- **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, session, hotspot, plugin-policy, supply-chain, and release-scale evidence. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging; scale-only commit blocks are cautions, while merge gates still require manual release sign-off.
+- **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, remembered session, hotspot, plugin-policy, supply-chain, and release-scale evidence. `evidence.riskSources.currentWorktree` is current Git/worktree evidence; `evidence.riskSources.sessionMemory` is remembered handoff context. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging; scale-only commit blocks are cautions, while merge gates still require manual release sign-off.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
 - **`projscan_semantic_graph` / `projscan semantic-graph`** — stable v3 graph contract with file, function, package, and symbol nodes plus imports, exports, definitions, and calls edges. Use it when an agent needs one normalized graph shape instead of several targeted queries.
 - **`projscan_dataflow` / `projscan dataflow`** — direct, propagated, and bridge source-to-sink dataflow risks. Use it for a focused safety pass before touching command execution, raw SQL, filesystem writes, or DOM sinks.
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** call `projscan_workplan` first when you want an ordered execution plan. For a compact handoff, call `projscan_agent_brief`; for a dedicated polish pass, call `projscan_bug_hunt` and `projscan_quality_scorecard`; for product planning, call `projscan_release_train`, then `projscan_evidence_pack` and `projscan_regression_plan`. For a smaller yes/no gate, call `projscan_preflight`; if it returns `caution` or `block`, follow the suggested next tool calls. For onboarding proof, run `projscan telemetry explain`, then `projscan feedback init --output .projscan-feedback.json`, capture reviewer responses with `projscan feedback add`, then run `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` and `projscan trial --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`. For deeper diagnosis, call `projscan_doctor`; if the score is < 70, call `projscan_hotspots` to find the most worth-fixing files and drill into one with `projscan_file`.
+**Typical agent flow:** start with `projscan privacy-check`, then `projscan_start`, then `projscan_preflight`. If preflight returns `caution` or `block`, follow its suggested next tool calls before editing. Use `projscan_workplan` when you need an ordered execution plan, `projscan_agent_brief` for a compact handoff, and `projscan_evidence_pack --pr-comment` when you need reviewer-facing proof. Deeper tools such as `doctor`, `hotspots`, `dataflow`, `review`, `bug-hunt`, `quality-scorecard`, `dogfood`, and `trial` are follow-up tools, not the first thing a new user needs to understand.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -188,7 +189,7 @@ projscan analyze
 The flagship command. Runs every detection module and produces the full project report.
 
 **What it does internally:**
-1. Walks the file tree (respecting ignore patterns for `node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, and any extra globs from your `.projscanrc`)
+1. Builds the scan file set. In Git repos, projscan uses `git ls-files --cached --others --exclude-standard` by default, then applies built-in noise ignores and `.projscanrc` `ignore` globs. Non-Git folders fall back to the local file walker.
 2. Builds a language breakdown by mapping file extensions to language names
 3. Detects frameworks by inspecting `package.json` dependencies and config file presence
 4. Analyzes dependencies from `package.json`
@@ -804,6 +805,11 @@ ProjScan loads a project-wide config from one of:
   "minScore": 80,
   "baseRef": "origin/main",
   "ignore": ["**/fixtures/**", "**/generated/**"],
+  "scan": {
+    "includeIgnored": false,
+    "scanEnvValues": false,
+    "offline": false
+  },
   "disableRules": ["missing-editorconfig", "large-*"],
   "severityOverrides": {
     "missing-prettier": "info"
@@ -822,6 +828,9 @@ ProjScan loads a project-wide config from one of:
 | `minScore` | number (0–100) | Default threshold for `projscan ci`. Clamped to 0–100. |
 | `baseRef` | string | Default base ref for `--changed-only`. |
 | `ignore` | string[] | Extra glob patterns added to the built-in ignore list (`node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, `.cache`, `.turbo`, `.output`). |
+| `scan.includeIgnored` | boolean | Explicitly include files hidden by Git ignore rules. Default `false`. |
+| `scan.scanEnvValues` | boolean | Explicitly read `.env*` contents during secret-pattern checks. Default `false`; `.env` files are path-only. |
+| `scan.offline` | boolean | Block projscan network-capable features: telemetry sending, `audit`, registry checks, and optional semantic model loading. Default `false`. |
 | `disableRules` | string[] | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`). |
 | `severityOverrides` | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them. |
 | `hotspots.limit` | number (1–100) | Default limit for `projscan hotspots`. |
@@ -908,6 +917,9 @@ Example GitHub Actions snippet:
 |--------|-------------|
 | `--format <type>` | Output format: `console` (default), `json`, `markdown`, `sarif`, `html` (command-dependent) |
 | `--config <path>` | Path to a `.projscanrc` config file |
+| `--include-ignored` | Explicitly include files hidden by Git ignore rules |
+| `--scan-env-values` | Explicitly read `.env*` contents during secret checks |
+| `--offline` | Block projscan network-capable features for this run |
 | `--changed-only` | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 | `--verbose` | Show debug-level logging - useful for diagnosing scan issues |
@@ -986,6 +998,7 @@ ProjScan ships with six analyzer modules:
   - PEM private key headers
   Each finding carries the exact **line number** of the match, which SARIF and GitHub Code Scanning use for inline PR annotations.
 - **Missing `.gitignore` entries**: Warns if `.env` is not in `.gitignore`
+- **Path-only `.env` handling**: Tracked `.env*` files are flagged by filename, but their values are not read unless `--scan-env-values` or `scan.scanEnvValues: true` is set
 
 Every issue carries an optional `locations: IssueLocation[]` field. Analyzers populate it when the finding is tied to a specific file (and sometimes a specific line). This field powers SARIF output and `--changed-only` filtering.
 

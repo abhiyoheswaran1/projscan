@@ -388,10 +388,10 @@ function buildPreflightReasons(input: {
   for (const hotspot of hotspotTouches.slice(0, 3)) {
     reasons.push({
       severity: 'warning',
-      source: 'hotspots',
+      source: 'session',
       file: hotspot.relativePath,
-      message: `Touched file overlaps high-risk hotspot ${hotspot.relativePath} (risk ${hotspot.riskScore})`,
-      tool: 'projscan_hotspots',
+      message: `Remembered session context touched high-risk hotspot ${hotspot.relativePath} (risk ${hotspot.riskScore})`,
+      tool: 'projscan_session',
     });
   }
 
@@ -537,11 +537,32 @@ function buildEvidence(input: {
       ...(input.review.reason ? { reason: input.review.reason } : {}),
     },
     session: {
+      kind: 'remembered-session',
       id: input.session.id,
       touchedFiles: sessionTouchedFiles,
       totalTouchedFiles: input.session.touchedFiles.length,
       eventCount: input.session.eventCount,
+      note: 'remembered session context comes from previous projscan tool results, explicit touches, and MCP file-watch events. It is not the same as current Git/worktree changes.',
       ...(input.session.touchedFiles.length > MAX_EVIDENCE_FILES ? { truncated: true } : {}),
+    },
+    riskSources: {
+      currentWorktree: {
+        kind: 'current-worktree',
+        available: input.changedFiles.available,
+        count: input.changedFiles.count,
+        files: changedEvidenceFiles,
+        baseRef: input.changedFiles.baseRef,
+        ...(input.changedFiles.reason ? { reason: input.changedFiles.reason } : {}),
+      },
+      sessionMemory: {
+        kind: 'remembered-session',
+        id: input.session.id,
+        touchedFiles: sessionTouchedFiles,
+        totalTouchedFiles: input.session.touchedFiles.length,
+        eventCount: input.session.eventCount,
+        note: 'remembered session context is useful for agent handoff, but it may include older files that are not part of the current Git/worktree diff.',
+        ...(input.session.touchedFiles.length > MAX_EVIDENCE_FILES ? { truncated: true } : {}),
+      },
     },
     hotspots: { touched },
     plugins: {
@@ -634,11 +655,11 @@ function buildSuggestedActions(
       tool: 'projscan_doctor',
     });
   }
-  if (reasons.some((reason) => reason.source === 'hotspots')) {
+  if (reasons.some((reason) => reason.source === 'hotspots' || reason.source === 'session')) {
     actions.push({
-      label: 'Inspect touched hotspots',
-      command: 'projscan hotspots --format json',
-      tool: 'projscan_hotspots',
+      label: 'Inspect remembered session hotspots',
+      command: 'projscan session touched --format json',
+      tool: 'projscan_session',
     });
   }
   if (mode !== 'before_edit' && !changedFiles.available) {

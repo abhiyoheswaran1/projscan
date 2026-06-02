@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
+import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { computeStartReport } from '../../src/core/start.js';
 
 const tempRoots: string[] = [];
@@ -52,6 +53,24 @@ test('start report recommends the bug-hunt recipe for bug_hunt mode', async () =
   expect(report.recommendedWorkflow.id).toBe('bug_hunt');
   expect(report.recommendedWorkflow.name).toBe('Bug Hunt');
   expect(report.recommendedWorkflow.mcpTools).toContain('projscan_bug_hunt');
+});
+
+test('start report separates current worktree context from remembered session context', async () => {
+  const root = await makeTempProject();
+  const { session } = await loadSession(root);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(root, session);
+
+  const report = await computeStartReport(root, { mode: 'before_edit', maxTasks: 2 });
+
+  expect(report.evidence.riskSources.currentWorktree.kind).toBe('current-worktree');
+  expect(report.evidence.riskSources.sessionMemory).toEqual(
+    expect.objectContaining({
+      kind: 'remembered-session',
+      touchedFiles: expect.arrayContaining(['src/index.ts']),
+      totalTouchedFiles: 1,
+    }),
+  );
 });
 
 async function makeTempProject(): Promise<string> {

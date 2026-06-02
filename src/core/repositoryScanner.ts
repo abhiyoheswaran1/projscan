@@ -1,17 +1,63 @@
+import { execFile } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { walkFiles, getDefaultIgnorePatterns } from '../utils/fileWalker.js';
-import type { ScanResult, FileEntry, DirectoryNode } from '../types.js';
+import { loadConfig } from '../utils/config.js';
+import type { ScanResult, FileEntry, DirectoryNode, ScanBoundary, ProjscanConfig } from '../types.js';
+
+const execFileAsync = promisify(execFile);
+const INCLUDE_IGNORED_ENV = 'PROJSCAN_INCLUDE_IGNORED';
 
 export interface ScanOptions {
   ignore?: string[];
+  includeIgnored?: boolean;
+  useConfig?: boolean;
 }
 
-export async function scanRepository(rootPath: string, options?: ScanOptions): Promise<ScanResult> {
+export async function scanRepository(rootPath: string, options: ScanOptions = {}): Promise<ScanResult> {
   const start = performance.now();
-  const ignore = options?.ignore?.length
-    ? [...getDefaultIgnorePatterns(), ...options.ignore]
-    : undefined;
-  const files = await walkFiles(rootPath, ignore ? { ignore } : undefined);
+  const config = options.useConfig === false
+    ? {}
+    : (await loadConfig(rootPath).catch(() => ({ config: {} as ProjscanConfig }))).config;
+  const ignore = mergeIgnorePatterns(config.ignore, options.ignore);
+  const includeIgnored =
+    options.includeIgnored === true ||
+    config.scan?.includeIgnored === true ||
+    process.env[INCLUDE_IGNORED_ENV] === '1';
+
+  let files: FileEntry[];
+  let scanBoundary: ScanBoundary;
+
+  if (includeIgnored) {
+    files = await walkWithProjscanIgnores(rootPath, ignore);
+    scanBoundary = {
+      source: 'glob',
+      gitignoreRespected: false,
+      includeIgnored: true,
+      ignoredFileCount: await countGitIgnoredFiles(rootPath),
+    };
+  } else {
+    const gitBoundary = await listGitVisibleFiles(rootPath);
+    if (gitBoundary) {
+      const visible = new Set(gitBoundary.files);
+      files = (await walkWithProjscanIgnores(rootPath, ignore)).filter((file) => visible.has(file.relativePath));
+      scanBoundary = {
+        source: 'git',
+        gitignoreRespected: true,
+        includeIgnored: false,
+        ignoredFileCount: gitBoundary.ignoredFileCount,
+      };
+    } else {
+      files = await walkWithProjscanIgnores(rootPath, ignore);
+      scanBoundary = {
+        source: 'glob',
+        gitignoreRespected: false,
+        includeIgnored: false,
+        ignoredFileCount: 0,
+      };
+    }
+  }
+
   const directoryTree = buildDirectoryTree(files, rootPath);
   // 1.9+ — exclude the empty-string "directory" key (some file
   // walkers emit '' for root-level entries instead of '.'). The root
@@ -28,7 +74,52 @@ export async function scanRepository(rootPath: string, options?: ScanOptions): P
     files,
     directoryTree,
     scanDurationMs,
+    scanBoundary,
   };
+}
+
+function mergeIgnorePatterns(configIgnore?: string[], optionIgnore?: string[]): string[] | undefined {
+  const merged = [...(configIgnore ?? []), ...(optionIgnore ?? [])].filter((entry) => entry.length > 0);
+  return merged.length > 0 ? [...new Set(merged)] : undefined;
+}
+
+async function walkWithProjscanIgnores(rootPath: string, ignore?: string[]): Promise<FileEntry[]> {
+  const patterns = ignore?.length ? [...getDefaultIgnorePatterns(), ...ignore] : undefined;
+  return walkFiles(rootPath, patterns ? { ignore: patterns } : undefined);
+}
+
+async function listGitVisibleFiles(rootPath: string): Promise<{ files: string[]; ignoredFileCount: number } | null> {
+  try {
+    await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: rootPath });
+    const [{ stdout }, ignoredFileCount] = await Promise.all([
+      execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
+        cwd: rootPath,
+        maxBuffer: 32 * 1024 * 1024,
+      }),
+      countGitIgnoredFiles(rootPath),
+    ]);
+    return { files: parseGitFileList(stdout), ignoredFileCount };
+  } catch {
+    return null;
+  }
+}
+
+async function countGitIgnoredFiles(rootPath: string): Promise<number> {
+  try {
+    const { stdout } = await execFileAsync('git', ['ls-files', '--others', '--ignored', '--exclude-standard'], {
+      cwd: rootPath,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return parseGitFileList(stdout).length;
+  } catch {
+    return 0;
+  }
+}
+
+function parseGitFileList(stdout: string): string[] {
+  return stdout
+    .split('\n')
+    .filter((line) => line.length > 0);
 }
 
 function buildDirectoryTree(files: FileEntry[], rootPath: string): DirectoryNode {

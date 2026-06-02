@@ -10,6 +10,8 @@
  *     model…" message on the first run.
  */
 
+import { isOfflineMode } from './privacy.js';
+
 export const DEFAULT_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_DIM = 384;
 
@@ -53,6 +55,7 @@ const MAX_CACHED_PIPELINES = 2;
 const pipelines = new Map<string, Promise<EmbedderPipeline>>();
 
 async function tryLoadTransformers(): Promise<TransformersModule | null> {
+  if (isOfflineMode()) return null;
   if (cachedModule !== undefined) return cachedModule;
   try {
     const mod = (await import('@xenova/transformers')) as TransformersModule;

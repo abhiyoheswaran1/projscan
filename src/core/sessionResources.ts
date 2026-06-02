@@ -82,7 +82,7 @@ export function detectSessionConflicts(files: string[], graph?: CodeGraph): Sess
       conflicts.push({
         kind: 'same-file',
         files: [file],
-        message: `${file} was touched ${count} times in this session`,
+        message: `Remembered session context touched ${file} ${count} times`,
         severity: 'warning',
       });
     }
@@ -94,7 +94,7 @@ export function detectSessionConflicts(files: string[], graph?: CodeGraph): Sess
     conflicts.push({
       kind: 'same-workspace',
       files: sameWorkspace,
-      message: `${sameWorkspace[0]} and ${sameWorkspace[1]} are in the same package or top-level area`,
+      message: `Remembered session context includes ${sameWorkspace[0]} and ${sameWorkspace[1]} in the same package or top-level area`,
       severity: 'warning',
     });
   }
@@ -105,7 +105,7 @@ export function detectSessionConflicts(files: string[], graph?: CodeGraph): Sess
       conflicts.push({
         kind: 'import-related',
         files: importRelated,
-        message: `${importRelated[0]} and ${importRelated[1]} are connected by the local import graph`,
+        message: `Remembered session context includes ${importRelated[0]} and ${importRelated[1]} connected by the local import graph`,
         severity: 'warning',
       });
     }
@@ -209,7 +209,7 @@ function detectHotspotConflicts(
     .map((hotspot) => ({
       kind: 'hotspot-overlap' as const,
       files: [hotspot.file],
-      message: `${hotspot.file} is a touched high-risk hotspot (risk ${hotspot.riskScore})`,
+      message: `Remembered session context touched high-risk hotspot ${hotspot.file} (risk ${hotspot.riskScore})`,
       severity: 'warning' as const,
     }));
 }
@@ -230,9 +230,9 @@ function buildHandoffActions(conflicts: SessionConflict[]): PreflightSuggestedAc
   }
   if (conflicts.some((conflict) => conflict.kind === 'hotspot-overlap')) {
     actions.push({
-      label: 'Inspect touched hotspots',
-      tool: 'projscan_hotspots',
-      command: 'projscan hotspots --format json',
+      label: 'Inspect remembered session hotspots',
+      tool: 'projscan_session',
+      command: 'projscan session touched --format json',
     });
   }
   return actions;

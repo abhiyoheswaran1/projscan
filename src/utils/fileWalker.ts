@@ -28,7 +28,7 @@ const DEFAULT_IGNORE = [
   '**/venv/**',
   '**/.venv/**',
   '**/env/**',
-  '**/.env/**',
+  '**/.env/**/*',
   '**/__pycache__/**',
   '**/.tox/**',
   '**/.pytest_cache/**',

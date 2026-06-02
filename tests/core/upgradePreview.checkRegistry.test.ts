@@ -63,6 +63,26 @@ describe('previewUpgrade with checkRegistry (1.3+)', () => {
     expect(lastRequestPath).toBeNull(); // never reached the network
   });
 
+  it('offline mode blocks registry checks even when requested', async () => {
+    const previous = process.env.PROJSCAN_OFFLINE;
+    process.env.PROJSCAN_OFFLINE = '1';
+    try {
+      const preview = await previewUpgrade(tmp, 'lodash', NO_FILES, {
+        checkRegistry: true,
+        registryUrl,
+      });
+
+      expect(preview.available).toBe(true);
+      expect(preview.latest).toBe('4.17.20');
+      expect(preview.latestSource).toBe('installed');
+      expect(preview.registryError).toContain('PROJSCAN_OFFLINE');
+      expect(lastRequestPath).toBeNull();
+    } finally {
+      if (previous === undefined) delete process.env.PROJSCAN_OFFLINE;
+      else process.env.PROJSCAN_OFFLINE = previous;
+    }
+  });
+
   it('checkRegistry: true populates latest from the registry', async () => {
     mockResponse = { status: 200, body: { version: '4.17.21' } };
     const preview = await previewUpgrade(tmp, 'lodash', NO_FILES, {

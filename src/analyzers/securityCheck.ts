@@ -30,7 +30,15 @@ const SECRET_PATTERNS: { name: string; pattern: RegExp }[] = [
   },
 ];
 
-export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
+function isEnvLikeFile(relativePath: string): boolean {
+  return path.basename(relativePath).startsWith('.env');
+}
+
+export interface SecurityCheckOptions {
+  scanEnvValues?: boolean;
+}
+
+export async function check(rootPath: string, files: FileEntry[], options: SecurityCheckOptions = {}): Promise<Issue[]> {
   const issues: Issue[] = [];
 
   // Detection 1: Sensitive .env files
@@ -78,6 +86,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   const filesToScan = files.filter(
     (f) =>
       f.sizeBytes <= MAX_FILE_SIZE &&
+      (options.scanEnvValues === true || !isEnvLikeFile(f.relativePath)) &&
       (SCANNABLE_EXTENSIONS.has(f.extension) ||
         path.basename(f.relativePath).startsWith('.env')),
   );

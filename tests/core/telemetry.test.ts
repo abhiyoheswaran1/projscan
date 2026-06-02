@@ -86,6 +86,31 @@ test('enable, record, and disable use anonymous sanitized product-health events 
   expect(disabled.queueLength).toBe(0);
 });
 
+test('offline mode suppresses telemetry sending even when explicitly enabled', async () => {
+  const previous = process.env.PROJSCAN_OFFLINE;
+  process.env.PROJSCAN_OFFLINE = '1';
+  try {
+    await enableTelemetry({ configDir: tmp });
+    let sent = false;
+    const result = await recordCommandTelemetry(
+      { commandName: 'doctor', status: 'success', durationMs: 10, version: '3.0.9', rootPath: tmp },
+      {
+        configDir: tmp,
+        sender: async () => {
+          sent = true;
+          return { ok: true, status: 202 };
+        },
+      },
+    );
+
+    expect(result).toEqual({ status: 'skipped', reason: 'PROJSCAN_OFFLINE' });
+    expect(sent).toBe(false);
+  } finally {
+    if (previous === undefined) delete process.env.PROJSCAN_OFFLINE;
+    else process.env.PROJSCAN_OFFLINE = previous;
+  }
+});
+
 test('feedback telemetry buckets explicit outcomes without leaking repo, PR, or reviewer identity', () => {
   const feedback = buildFeedbackTelemetry({
     repo: 'secret-api',

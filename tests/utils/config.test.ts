@@ -65,6 +65,19 @@ describe('loadConfig', () => {
     expect(result.config.minScore).toBe(100);
   });
 
+  it('normalizes scan privacy options', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscanrc.json'),
+      JSON.stringify({ scan: { includeIgnored: true, scanEnvValues: true, offline: true } }),
+    );
+    const result = await loadConfig(tmp);
+    expect(result.config.scan).toEqual({
+      includeIgnored: true,
+      scanEnvValues: true,
+      offline: true,
+    });
+  });
+
   it('normalizes hotspots options', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),

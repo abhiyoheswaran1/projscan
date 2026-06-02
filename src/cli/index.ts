@@ -51,6 +51,7 @@ import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerStart } from './commands/start.js';
 import { registerTrial } from './commands/trial.js';
 import { registerTelemetry } from './commands/telemetry.js';
+import { registerPrivacyCheck } from './commands/privacyCheck.js';
 import { registerHelp } from './commands/help.js';
 
 registerAnalyze();
@@ -102,6 +103,7 @@ registerQualityScorecard();
 registerStart();
 registerTrial();
 registerTelemetry();
+registerPrivacyCheck();
 registerRecipes();
 registerFirstRun();
 registerHelp();

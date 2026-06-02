@@ -53,16 +53,20 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.0.9 (2026)
+### Now — 3.1.0 (2026)
 
-**3.0.9 "Opt-in Product Telemetry"** adds a transparent repeat-use measurement layer without weakening the local-first promise:
+**3.1.0 "Trust Boundary Hardening"** makes the local-first trust boundary visible and enforceable before broader adoption:
 
-- Telemetry stays off by default and is enabled only through `projscan telemetry enable` or the interactive `projscan init team` prompt.
-- `projscan telemetry status|enable|disable|explain` makes the boundary inspectable and reversible.
-- Events are anonymous product-health buckets only: command category, success/failure, duration, version/platform, setup booleans, repeat-use buckets, and optional feedback buckets.
-- `projscan feedback add` remains the explicit value signal for minutes saved, prevented bad edits, and false-positive tuning.
+- `projscan privacy-check` reports telemetry status, offline mode, scan root, Git ignore handling, ignored-file count, `.env` content scanning, plugin execution, local write surfaces, report export sensitivity, and known network-capable endpoints.
+- Scans respect Git's visible-file boundary by default: tracked files plus untracked non-ignored files. Ignored files require explicit opt-in with `--include-ignored` or `scan.includeIgnored: true`.
+- `.env*` files are path-only by default. Tracked environment files can be flagged by filename without reading values unless `--scan-env-values` or `scan.scanEnvValues: true` is enabled.
+- `--offline`, `PROJSCAN_OFFLINE=1`, and `scan.offline: true` block known network-capable features across telemetry, npm audit, registry checks, and optional semantic model loading.
+- `projscan start` and `projscan preflight` separate current Git/worktree evidence from remembered session context so old agent-session touches do not look like current risk.
+- `npm run test:trust-smoke` gives maintainers a fast release gate for privacy, offline, MCP start/preflight/watch, Git ignore behavior, telemetry, and secret-scanning defaults.
 
-### Recently Completed — 3.0.8 to 3.0.5 (2026)
+### Recently Completed — 3.0.9 to 3.0.5 (2026)
+
+**3.0.9 "Opt-in Product Telemetry"** added transparent default-off telemetry controls for anonymous product-health metrics without source code, paths, repo names, branch names, package names, usernames, raw findings, secrets, or environment values.
 
 **3.0.8 "Legal and Trust Hardening"** added public legal, vulnerability-reporting, contribution, and brand-trust surfaces for open-source adoption.
 
@@ -72,7 +76,7 @@ We are *not* trying to be:
 
 **3.0.5 "Proof of Usefulness"** made the first successful team PR the product's hero surface with the end-to-end adoption harness, PR comment benchmarks, fix-first recommendations, baseline trend memory, and Express/Next dataflow precision.
 
-### Next — 3.0.x Trust And Proof Polish
+### Next — 3.1.x Adoption Proof Polish
 
 The next patch line should keep improving usefulness, not add random surface area:
 
@@ -80,13 +84,15 @@ The next patch line should keep improving usefulness, not add random surface are
 - Keep blocks rare and concrete; uncertain findings should be clear manual-review cautions.
 - Improve owner routing from CODEOWNERS, package metadata, and common monorepo layouts.
 - Turn the best measured examples into README, website, and docs proof without overstating adoption.
+- Keep reducing startup/test friction around the trust smoke path so teams can run it before every release.
 
-### Later — 3.1.0
+### Later — 3.2.0
 
 The next larger line should deepen graph expansion without rushing another same-day patch:
 
 - Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
 - Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
+- Explore stronger report-export controls for teams that want path redaction or scoped evidence artifacts.
 
 ## Non-goals
 
@@ -117,7 +123,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
-| **3.0.9** (2026-06-01) | Opt-in Product Telemetry | Default-off telemetry controls, anonymous product-health buckets, feedback outcome buckets, and public telemetry docs |
+| **3.1.0** (2026-06-02) | Trust Boundary Hardening | Privacy-check trust report, Git-visible scan boundary, path-only `.env` defaults, offline mode, session/worktree risk split, and fast trust smoke gate |
 | **3.0.8** (2026-06-01) | Legal and Trust Hardening | Public legal/trust documents, vulnerability reporting, contribution provenance, and canonical icon packaging |
 | **3.0.7** (2026-05-31) | Trial Adoption Report | Adoption trial verdict, structured reviewer feedback capture, measured market-validation gates, and refreshed adoption docs |
 | **3.0.6** (2026-05-31) | Market Validation Loop | Feedback-backed dogfood evidence, minutes-saved/prevented-edit tracking, false-positive reporting, Baseframe Labs brand surfaces, and security disclosure assets |
