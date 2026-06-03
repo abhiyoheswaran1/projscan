@@ -49,6 +49,7 @@ import { agentBriefTool } from './tools/agentBrief.js';
 import { qualityScorecardTool } from './tools/qualityScorecard.js';
 import { adoptionTool } from './tools/adoption.js';
 import { startTool } from './tools/start.js';
+import { understandTool } from './tools/understand.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -95,6 +96,7 @@ const tools: McpTool[] = [
   qualityScorecardTool,
   adoptionTool,
   startTool,
+  understandTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

@@ -3,13 +3,13 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.3.0.
+Update the projscan website for projscan 3.4.0.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 40 tools, PR evidence, graph/dataflow. Local.
-- One-line homepage copy: Agent-first code intelligence for AI coding agents: semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 41 tools, repo understanding. Local.
+- One-line homepage copy: Agent-first code intelligence for AI coding agents: repo understanding, cited claims, semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
 - MCP server command: npx -y projscan mcp
@@ -24,6 +24,7 @@ Baseframe Labs umbrella requirements:
 
 What to highlight above the fold:
 - `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, `firstTenMinutes`, recommended workflow, top risks, adoption gaps, and next commands.
+- `projscan understand` / `projscan_understand`: cited repo-comprehension surface with `map`, `flow`, `contracts`, `change`, and `verify` views; file/symbol-backed `claims`, `readFirst`, `unknowns`, change readiness, verification tiers, and exact next commands.
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
 - `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js, Express, and Hono request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
@@ -42,7 +43,7 @@ What to highlight above the fold:
 - `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, coordination hints, guardrails, and next actions.
 - `projscan quality-scorecard` / `projscan_quality_scorecard`: dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and commands.
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
-- 40 MCP tools for structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
+- 41 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init`, `projscan plugin test`, trust guidance, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
@@ -53,12 +54,14 @@ Real proof examples to add:
 - After projscan: a compact PR comment with verdict, actual defects vs manual review, top risks, First Fix, owner routing, baseline trend, and commands like `projscan review --format json`.
 - Onboarding flow: `npx projscan init team --team security` creating policy, GitHub Action, CODEOWNERS, baseline memory, and next commands.
 - MCP setup proof: `npx projscan mcp doctor --client codex --format json` returning the exact config block to paste.
+- Repo understanding proof: `npx projscan understand --view change --intent "rename auth token loader" --format json` returning cited claims, blast radius, rollback, verification commands, and unknowns.
 - Calibration proof: docs-only and generated-code PR examples stay calm; dataflow/security PRs show actual defects; large release PRs show manual release sign-off.
 - Use the shipped PR comment examples as website source material: docs/examples/pr-comments/docs-only.md, auth-api.md, dataflow-security.md, large-release.md, generated-code.md, actual-3.0.5-pr.md, and before-after.md.
 - Link the onboarding proof doc: docs/FIRST-10-MINUTES.md.
 - Link the adoption proof loop: docs/ADOPTION-PROOF.md.
 
 Feature sections to update:
+- Repo Understanding: `projscan understand` / `projscan_understand` with cited map, flow, contracts, change-readiness, and verification views for working engineers before they edit.
 - Deep Graph Platform: stable semantic graph, dataflow risk engine, review-time bridge risk blocking, and public graph/dataflow APIs.
 - Adoption Layer: MCP client snippets, team policy starters, PR workflow automation, bootstrap recipes, first-run diagnostics, default-off telemetry controls, dogfood proof across 3+ repos, and repeat-use metrics that make setup obvious in under ten minutes.
 - Agent Mission Control: workplans, handoffs, agent briefs, and scorecards that keep long-running agent work coordinated.
@@ -72,6 +75,10 @@ Feature sections to update:
 - Screenshots/media: use the latest README media from docs/, especially projscan-reporter-plugin.png/gif, npx projscan --help.gif, and projscan-adoption-loop.gif.
 
 Calls to action:
+- "Understand the repo" with npx projscan understand --view map --format json.
+- "Trace runtime flow" with npx projscan understand --view flow --format json.
+- "Plan a safe change" with npx projscan understand --view change --intent "rename auth token loader" --format json.
+- "Build a verification map" with npx projscan understand --view verify --format json.
 - "Add projscan to your MCP client" with npx projscan init mcp --client all.
 - "Inspect the semantic graph" with npx projscan semantic-graph --format json.
 - "Run a dataflow safety pass" with npx projscan dataflow --format json.

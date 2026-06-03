@@ -46,7 +46,7 @@ const STABLE_CLI_COMMANDS = [
   'feedback', 'file', 'first-run', 'fix', 'fix-suggest', 'handoff', 'hotspots', 'impact', 'init',
   'install-hook', 'mcp', 'memory', 'outdated', 'plugin', 'preflight',
   'pr-diff', 'quality-scorecard', 'recipes', 'release-train', 'regression-plan',
-  'review', 'search', 'semantic-graph', 'session', 'structure', 'taint', 'trial', 'upgrade', 'watch',
+  'review', 'search', 'semantic-graph', 'session', 'structure', 'taint', 'trial', 'understand', 'upgrade', 'watch',
   'workplan', 'workspace', 'workspaces',
 ];
 

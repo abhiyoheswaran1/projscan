@@ -119,6 +119,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, coordination hints, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
+- **`projscan_understand` / `projscan understand`** — cited repo-comprehension surface. Returns repo maps, runtime flow maps, contract maps, change-readiness guidance, verification tiers, unknowns, read-first files, and exact next commands.
 - **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan telemetry` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, default-off telemetry controls, adoption trial reports, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
 - **`projscan_evidence_pack` / `projscan evidence-pack`** — approval packet. Combines planning, bug-hunt, workplan, preflight, trust calibration, owner routing, baseline trend, changelog, suggested next actions, and optional website prompt or validated PR-comment evidence in one response.
@@ -131,7 +132,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** start with `projscan privacy-check`, then `projscan_start`, then `projscan_preflight`. If preflight returns `caution` or `block`, follow its suggested next tool calls before editing. Use `projscan_workplan` when you need an ordered execution plan, `projscan_agent_brief` for a compact handoff, and `projscan_evidence_pack --pr-comment` when you need reviewer-facing proof. Deeper tools such as `doctor`, `hotspots`, `dataflow`, `review`, `bug-hunt`, `quality-scorecard`, `dogfood`, and `trial` are follow-up tools, not the first thing a new user needs to understand.
+**Typical agent flow:** start with `projscan privacy-check`, then `projscan_start`, then `projscan_understand`, then `projscan_preflight`. If preflight returns `caution` or `block`, follow its suggested next tool calls before editing. Use `projscan_workplan` when you need an ordered execution plan, `projscan_agent_brief` for a compact handoff, and `projscan_evidence_pack --pr-comment` when you need reviewer-facing proof. Deeper tools such as `doctor`, `hotspots`, `dataflow`, `review`, `bug-hunt`, `quality-scorecard`, `dogfood`, and `trial` are follow-up tools.
 
 ### 2. Review — "is this PR safe to merge?"
 
@@ -279,6 +280,36 @@ targeted `projscan_graph` queries.
 |------|-------------|---------|
 | `--max-nodes <n>` | Maximum nodes to return | 10000 |
 | `--max-edges <n>` | Maximum edges to return | 25000 |
+
+### understand
+
+```bash
+projscan understand --view map --format json
+projscan understand --view flow --format json
+projscan understand --view contracts --format json
+projscan understand --view change --intent "rename auth token loader" --format json
+projscan understand --view verify --format json
+```
+
+Repo understanding for engineers before they edit. The command returns a cited report with `claims`, `readFirst`, `entrypoints`, `boundaries`, `flows`, `contracts`, `changeReadiness`, `verification`, `risks`, `unknowns`, and exact next commands.
+
+Views:
+
+| View | Use it for |
+|------|------------|
+| `map` | Orient around entrypoints, package boundaries, read-first files, risks, and unknowns |
+| `flow` | Trace runtime paths and side-effect sinks through graph-backed evidence |
+| `contracts` | Inspect public exports, config/env contracts, and likely breaking-change risks |
+| `change` | Tie an intent to blast radius, first safe edit, owner state, rollback, and verification commands |
+| `verify` | Build minimal, focused, and full proof tiers plus direct-test gap evidence |
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--view <view>` | `map`, `flow`, `contracts`, `change`, or `verify` | `map` |
+| `--intent <text>` | Planned change or question for change-readiness output | none |
+| `--max-items <n>` | Maximum items per section | 8 |
 
 ### dataflow
 
@@ -1440,7 +1471,7 @@ src/
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
 │   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
-│   ├── tools.ts                 # 40 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # 41 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

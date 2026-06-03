@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.4.0] — 2026-06-04 — "Repo Understanding"
+
+### Added
+
+- Added `projscan understand`, a repo-comprehension command for working engineers that produces cited repo maps, runtime flow maps, contract maps, change-readiness guidance, and verification proof plans.
+- Added MCP tool `projscan_understand` with `map`, `flow`, `contracts`, `change`, and `verify` views for agent-facing repo understanding.
+- Added file/symbol-backed `claims`, `readFirst`, `entrypoints`, `boundaries`, `flows`, `contracts`, `changeReadiness`, `verification`, `risks`, `unknowns`, and exact next commands to the understand report.
+- Added change-readiness output that ties an optional intent to blast radius, first safe edit, owner state, rollback command, and verification commands.
+- Added verification tiers that separate minimal, focused, and full proof commands while surfacing source files without direct filename-matched tests.
+
+### Changed
+
+- Generated MCP tool manifest now includes 41 tools with `projscan_understand` as the repo-comprehension surface.
+- Website update guidance now highlights repo understanding, cited claims, unknowns, change readiness, and verification maps as the primary 3.4.0 product story.
 
 ## [3.3.0] — 2026-06-03 — "Roadmap Evidence Polish"
 

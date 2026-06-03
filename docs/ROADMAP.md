@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-03.
+Last reviewed 2026-06-04.
 
 ---
 
@@ -53,20 +53,28 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.2.x to 3.9.x Roadmap Train
+### Now — 3.4.x Engineer Comprehension
 
-The active release train is intentionally canonicalized as eight concrete workstreams. `projscan release-train` now defaults to these lines for the 3.1+ branch so maintainers, agents, and docs plan from the same product map instead of generic quality placeholders.
+3.4.0 makes repo understanding a first-class product surface for working engineers and agents. The release is centered on `projscan understand` and `projscan_understand`, with five cited views that answer the questions developers ask before making a real change.
 
-| Line | Theme | Product Outcome | Release Gate |
+| View | Surface | Product Outcome | Release Gate |
 |---|---|---|---|
-| **3.2.x** | Roadmap Canonicalization | Release planning names the real product bets and stays read-only. | `projscan release-train --format json` returns all eight tracks with concrete tasks. |
-| **3.3.x** | Adoption Proof Polish | Dogfood/trial reports show the next missing proof gate before claiming adoption. | `marketValidation.proofGates` and `nextProofStep` explain repo coverage, reviewer feedback, repeat use, measured value, and false-positive balance. |
-| **3.4.x** | PR Evidence Quality | Reviewer-facing PR comments lead with the decision and first action. | PR evidence includes `### Reviewer Decision` with ship/review/fix-first state and an exact first command. |
-| **3.5.x** | First 10 Minutes UX | A new team gets one guided path from trust boundary to first PR evidence. | `projscan start` and `projscan first-run` expose the same `firstTenMinutes` command path. |
-| **3.6.x** | Maintainability Hardening | Static roadmap data and evidence formatting move into focused helpers. | Roadmap catalog and evidence helper tests keep orchestration modules small. |
-| **3.7.x** | Graph And Dataflow Precision | Dataflow catches more real framework request sources without broad false positives. | Hono route handlers detect `c.req.json()` sources while ordinary Hono-shaped helpers stay quiet. |
-| **3.8.x** | Plugin Ecosystem | Local plugin testing explains trust, enablement, and graph/dataflow context needs. | `projscan plugin test --format json` returns `trust`, `commands`, and `context` guidance. |
-| **3.9.x** | Multi-Agent Coordination | Agents can separate current worktree risk from remembered session context before parallel edits continue. | Session resources and agent briefs include `coordinationHints` with exact follow-up commands. |
+| **Repo Map** | `--view map` | Engineers can orient around entrypoints, boundaries, read-first files, risks, unknowns, and exact next commands. | JSON includes cited `claims`, `entrypoints`, `boundaries`, `readFirst`, `risks`, `unknowns`, and commands. |
+| **Flow Map** | `--view flow` | Engineers can trace runtime paths and side-effect sinks before editing a path. | JSON includes cited `flows`, side effects, dataflow-backed risk claims, and flow-specific commands. |
+| **Contract Map** | `--view contracts` | Engineers can inspect public exports, config/env contracts, and likely breaking-change risks. | JSON includes `publicExports`, `configContracts`, `breakingChangeRisks`, and contract commands. |
+| **Change Readiness** | `--view change --intent <text>` | Engineers can tie a planned change to blast radius, safe first edit, owner state, rollback, and verification commands. | JSON preserves the intent and returns `changeReadiness` with blast radius and rollback evidence. |
+| **Verification Map** | `--view verify` | Engineers can choose minimal, focused, and full proof tiers while seeing direct-test gaps. | JSON includes verification tiers, direct-test evidence, gaps, and proof commands. |
+
+### Recently Completed — 3.4.0 (2026)
+
+**3.4.0 "Repo Understanding"** gives real engineering teams a cited orientation layer before edits begin:
+
+- `projscan understand` and MCP `projscan_understand` expose `map`, `flow`, `contracts`, `change`, and `verify` views from one stable report shape.
+- Repo maps identify entrypoints, boundaries, read-first files, cited claims, unknowns, risks, and next commands.
+- Flow maps trace runtime paths and side-effect sinks with graph/dataflow-backed citations.
+- Contract maps summarize public exports, config/env contracts, and likely breaking-change risks.
+- Change-readiness output connects an optional intent to blast radius, first safe edit, owner state, rollback, and verification commands.
+- Verification maps separate minimal, focused, and full proof tiers while surfacing source files without direct filename-matched tests.
 
 ### Recently Completed — 3.3.0 (2026)
 
@@ -104,7 +112,7 @@ The active release train is intentionally canonicalized as eight concrete workst
 
 ### Later
 
-Later work should only expand the moat after the eight-track train is verified in real use:
+Later work should expand the moat after 3.4.0 repo-understanding output is verified in real engineering workflows:
 
 - Broaden framework dataflow precision from narrow, tested source patterns rather than broad source-name matching.
 - Add adoption examples from real agent orchestration, package ownership, and custom policy plugin workflows.
@@ -139,6 +147,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.4.0** (2026-06-04) | Repo Understanding | `projscan understand` / `projscan_understand` with cited repo, flow, contract, change-readiness, and verification maps for working engineers |
 | **3.3.0** (2026-06-03) | Roadmap Evidence Polish | Adoption proof gates, reviewer decision evidence, first-ten-minutes/start coordination hints, Hono request-source precision, plugin trust guidance, generated PR-comment validation, and evidence helper extraction |
 | **3.2.0** (2026-06-03) | Roadmap Train | Canonical 3.2-3.9 release train surfaced in release planning and roadmap docs |
 | **3.1.0** (2026-06-02) | Trust Boundary Hardening | Privacy-check trust report, Git-visible scan boundary, path-only `.env` defaults, offline mode, session/worktree risk split, and fast trust smoke gate |

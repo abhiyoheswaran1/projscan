@@ -68,6 +68,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   structure: ['console', 'json', 'markdown'],
   taint: ['console', 'json'],
   trial: ['console', 'json'],
+  understand: ['console', 'json'],
   telemetry: ['console', 'json'],
   'telemetry status': ['console', 'json'],
   'telemetry enable': ['console', 'json'],

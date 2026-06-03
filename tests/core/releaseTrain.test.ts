@@ -87,7 +87,7 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
   expect(report.tracks.map((track) => track.theme)).toEqual([
     'Roadmap Canonicalization',
     'Adoption Proof Polish',
-    'PR Evidence Quality',
+    'Repo Understanding',
     'First 10 Minutes UX',
     'Maintainability Hardening',
     'Graph And Dataflow Precision',
@@ -98,7 +98,7 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
     expect.arrayContaining([
       'rt-3-2-roadmap-canonicalization',
       'rt-3-3-adoption-proof-polish',
-      'rt-3-4-pr-evidence-quality',
+      'rt-3-4-repo-understanding',
       'rt-3-5-first-10-minutes-ux',
       'rt-3-6-maintainability-hardening',
       'rt-3-7-graph-dataflow-precision',
@@ -109,6 +109,16 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
   expect(report.tasks.find((task) => task.id === 'rt-3-6-maintainability-hardening')?.files).toEqual(
     expect.arrayContaining(['src/core/roadmapCatalog.ts', 'src/core/releaseEvidence.ts']),
   );
+});
+
+test('release train defaults to repo understanding for 3.4 and newer', async () => {
+  const root = await makeTempProject('3.4.0');
+
+  const report = await computeReleaseTrain(root);
+
+  expect(report.plan.lines).toEqual(['3.4.x']);
+  expect(report.tracks.map((track) => track.theme)).toEqual(['Repo Understanding']);
+  expect(report.tasks.map((task) => task.id)).toEqual(expect.arrayContaining(['rt-3-4-repo-understanding', 'rt-plan-readiness']));
 });
 
 test('release train marks blockers when preflight blocks', async () => {

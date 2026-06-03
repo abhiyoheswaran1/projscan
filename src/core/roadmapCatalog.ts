@@ -7,6 +7,7 @@ interface RoadmapCatalogEntry {
 }
 
 export const ROADMAP_3_2_LINES = ['3.2.x', '3.3.x', '3.4.x', '3.5.x', '3.6.x', '3.7.x', '3.8.x', '3.9.x'] as const;
+export const ROADMAP_3_4_LINES = ['3.4.x'] as const;
 
 const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
   '3.2.x': {
@@ -60,23 +61,23 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
   '3.4.x': {
     line: '3.4.x',
     track: {
-      theme: 'PR Evidence Quality',
-      outcome: 'Reviewer-facing PR comments lead with the decision, first fix, owner routing, and exact verification command.',
+      theme: 'Repo Understanding',
+      outcome: 'Working engineers can ask one command for cited map, flow, contracts, change readiness, and verification proof before editing.',
       includedInPlan: true,
-      scope: ['reviewer decision summary', 'owner-explicit risk lines', 'calibrated trust language'],
-      successCriteria: ['PR comments distinguish ship, review, and fix-first states', 'top risks include owner state and exact commands', 'existing validator still passes'],
+      scope: ['cited repo map', 'runtime flow map', 'contract map', 'change-readiness guidance', 'verification proof tiers'],
+      successCriteria: ['understand exposes map, flow, contracts, change, and verify views', 'MCP and CLI return the same report shape', 'docs and website prompt name all shipped views'],
     },
     tasks: [
       {
-        id: 'rt-3-4-pr-evidence-quality',
+        id: 'rt-3-4-repo-understanding',
         priority: 'p0',
-        title: 'Improve reviewer decision evidence',
-        why: 'A PR comment is useful only when a reviewer can act without reading every raw tool payload.',
+        title: 'Ship cited repo understanding',
+        why: 'Real engineers need a reliable map of entrypoints, flows, contracts, change blast radius, and proof commands before they trust an agent to edit.',
         track: '3.4.x',
-        files: ['src/core/releaseEvidence.ts', 'tests/core/releaseEvidence.test.ts', 'tests/core/releaseEvidencePrCommentFixtures.test.ts'],
+        files: ['src/core/understand.ts', 'src/cli/commands/understand.ts', 'src/mcp/tools/understand.ts', 'README.md', 'docs/WEBSITE-UPDATE-PROMPT.md'],
         verification: {
-          commands: ['projscan evidence-pack --pr-comment', 'npm test'],
-          expected: 'PR evidence includes a reviewer decision, first fix, owner routing, and exact next commands.',
+          commands: ['projscan understand --view map --format json', 'projscan understand --view verify --format json', 'npm test'],
+          expected: 'Understand returns cited repo, flow, contract, change-readiness, and verification maps through CLI and MCP.',
         },
       },
     ],
@@ -207,7 +208,8 @@ export function defaultRoadmapLinesForVersion(version: string | null): string[] 
   if (!version) return undefined;
   const [major = 0, minor = 0] = version.split('.').map((part) => Number.parseInt(part, 10));
   if (!Number.isFinite(major) || !Number.isFinite(minor)) return undefined;
-  if (major > 3 || (major === 3 && minor >= 1)) return [...ROADMAP_3_2_LINES];
+  if (major > 3 || (major === 3 && minor >= 4)) return [...ROADMAP_3_4_LINES];
+  if (major === 3 && minor >= 1) return [...ROADMAP_3_2_LINES];
   return undefined;
 }
 

@@ -53,6 +53,7 @@ import { registerTrial } from './commands/trial.js';
 import { registerTelemetry } from './commands/telemetry.js';
 import { registerPrivacyCheck } from './commands/privacyCheck.js';
 import { registerHelp } from './commands/help.js';
+import { registerUnderstand } from './commands/understand.js';
 
 registerAnalyze();
 registerDoctor();
@@ -104,6 +105,7 @@ registerStart();
 registerTrial();
 registerTelemetry();
 registerPrivacyCheck();
+registerUnderstand();
 registerRecipes();
 registerFirstRun();
 registerHelp();
