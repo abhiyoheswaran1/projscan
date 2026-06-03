@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { computePreflight } from './preflight.js';
+import { defaultRoadmapLinesForVersion, roadmapTasksForLine, roadmapTrackForLine } from './roadmapCatalog.js';
 import type {
   PreflightSuggestedAction,
   ReleaseTrainReport,
@@ -74,6 +75,8 @@ export async function computeReleaseTrain(
 }
 
 function trackForLine(line: string): ReleaseTrainTrack {
+  const roadmapTrack = roadmapTrackForLine(line);
+  if (roadmapTrack) return roadmapTrack;
   if (line.startsWith('3.0')) {
     return {
       line,
@@ -229,6 +232,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
 }
 
 function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
+  const roadmapTasks = roadmapTasksForLine(track.line);
+  if (roadmapTasks.length > 0) return roadmapTasks;
   if (track.line.startsWith('3.0')) {
     return [
       {
@@ -399,6 +404,8 @@ async function readPackageVersion(rootPath: string): Promise<string | null> {
 function normalizeLines(lines: string[] | undefined, currentVersion: string | null): string[] {
   const cleaned = (lines ?? []).map((line) => line.trim()).filter(Boolean);
   if (cleaned.length > 0) return [...new Set(cleaned)];
+  const catalogLines = defaultRoadmapLinesForVersion(currentVersion);
+  if (catalogLines) return catalogLines;
   const [major = 0, minor = 0] = (currentVersion ?? '2.2.0').split('.').map((part) => Number.parseInt(part, 10));
   const safeMajor = Number.isFinite(major) ? major : 2;
   const safeMinor = Number.isFinite(minor) ? minor : 2;

@@ -127,6 +127,8 @@ test('dogfood report rolls reviewer feedback into market validation and website 
   expect(report.marketValidation.websiteProof.markdown).toContain('52 minutes saved');
   expect(report.marketValidation.websiteProof.markdown).toContain('2 risky edits prevented');
   expect(report.marketValidation.websiteProof.markdown).toContain('1 repo(s) with repeat PR feedback');
+  expect(report.marketValidation.nextProofStep).toBe('Adoption proof is ready for public claims.');
+  expect(report.marketValidation.proofGates.every((gate) => gate.status === 'pass')).toBe(true);
   expect(report.repos[1].validation.falsePositiveRules).toContain('dead-code:generated-barrel');
   expect(report.suggestedNextActions.map((action) => action.command)).toContain(
     'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
@@ -184,6 +186,8 @@ test('dogfood requires measured value and repeat PR use before market validation
   expect(report.marketValidation.value.ready).toBe(false);
   expect(report.marketValidation.repeatUse.ready).toBe(false);
   expect(report.marketValidation.summary).toContain('0 repo(s) with repeat PR feedback');
+  expect(report.marketValidation.nextProofStep).toBe('Capture repeat PR feedback in at least 1 repo(s).');
+  expect(report.marketValidation.proofGates.find((gate) => gate.id === 'repeat-use')?.status).toBe('fail');
   expect(report.marketValidation.websiteProof.headline).toContain('needs tuning');
 });
 
@@ -216,6 +220,8 @@ test('dogfood requires at least three useful reviewer responses before market va
   });
 
   expect(report.marketValidation.status).toBe('needs_tuning');
+  expect(report.marketValidation.nextProofStep).toBe('Collect at least 2 more useful reviewer response(s).');
+  expect(report.marketValidation.proofGates.find((gate) => gate.id === 'useful-feedback')?.status).toBe('fail');
   expect(report.marketValidation.websiteProof.headline).not.toContain('proved useful');
 });
 
@@ -229,6 +235,8 @@ test('dogfood website proof copy stays provisional until feedback proves usefuln
   const needsFeedback = await computeDogfoodReport(process.cwd(), { repos, targetRepoCount: 3 });
 
   expect(needsFeedback.marketValidation.status).toBe('needs_feedback');
+  expect(needsFeedback.marketValidation.nextProofStep).toBe('Capture structured reviewer feedback from the first real PR.');
+  expect(needsFeedback.marketValidation.proofGates.find((gate) => gate.id === 'reviewer-feedback')?.status).toBe('fail');
   expect(needsFeedback.marketValidation.websiteProof.headline).toContain('needs reviewer feedback');
   expect(needsFeedback.marketValidation.websiteProof.markdown).not.toContain('proved useful across');
 

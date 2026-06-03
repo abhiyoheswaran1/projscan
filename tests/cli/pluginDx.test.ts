@@ -45,6 +45,9 @@ test('plugin init and plugin test work through the CLI', async () => {
   const payload = JSON.parse(testResult.stdout);
   expect(payload.ok).toBe(true);
   expect(payload.diagnostics).toEqual([]);
+  expect(payload.trust.reminder).toContain('Local plugins execute code');
+  expect(payload.commands.enable).toContain('PROJSCAN_PLUGINS_PREVIEW=1');
+  expect(payload.context.requested).toBe(false);
 });
 
 test('plugin test exits non-zero and prints JSON diagnostics for broken plugins', async () => {

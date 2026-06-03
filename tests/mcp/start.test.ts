@@ -44,6 +44,7 @@ test('projscan_start returns first-run guidance and next actions', async () => {
       mode: string;
       recommendedWorkflow: { id: string; commands: string[] };
       nextActions: Array<{ command?: string }>;
+      firstTenMinutes: { commands: Array<{ command: string }> };
       handoff?: { next: string[] };
     };
   };
@@ -52,6 +53,7 @@ test('projscan_start returns first-run guidance and next actions', async () => {
   expect(result.start.mode).toBe('release');
   expect(result.start.recommendedWorkflow.id).toBe('release_approval');
   expect(result.start.recommendedWorkflow.commands).toContain('projscan release-train --format json');
+  expect(result.start.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
   expect(result.start.nextActions.length).toBeGreaterThan(0);
   expect(result.start.handoff?.next.length).toBeGreaterThan(0);
 });

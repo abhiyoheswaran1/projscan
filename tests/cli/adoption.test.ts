@@ -72,8 +72,13 @@ test('first-run reports setup diagnostics without mutating the project', async (
   expect(payload.diagnostics.map((diagnostic: { id: string }) => diagnostic.id)).toEqual(
     expect.arrayContaining(['node', 'package-json', 'git', 'projscan-config', 'plugins', 'mcp-startup']),
   );
+  expect(payload.firstTenMinutes.commands.map((step: { command: string }) => step.command).slice(0, 3)).toEqual([
+    'projscan privacy-check --offline',
+    'projscan start --mode before_edit',
+    'projscan preflight --mode before_edit --format json',
+  ]);
   expect(payload.nextCommands).toEqual(
-    expect.arrayContaining(['projscan init mcp --client all', 'projscan recipes']),
+    expect.arrayContaining(['projscan privacy-check --offline', 'projscan init mcp --client all', 'projscan recipes']),
   );
 
   await expect(fs.access(path.join(tmp, '.projscanrc.json'))).rejects.toThrow();

@@ -78,6 +78,39 @@ test('release train plans 3.x graph platform lines', async () => {
   );
 });
 
+test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and newer', async () => {
+  const root = await makeTempProject('3.1.0');
+
+  const report = await computeReleaseTrain(root);
+
+  expect(report.plan.lines).toEqual(['3.2.x', '3.3.x', '3.4.x', '3.5.x', '3.6.x', '3.7.x', '3.8.x', '3.9.x']);
+  expect(report.tracks.map((track) => track.theme)).toEqual([
+    'Roadmap Canonicalization',
+    'Adoption Proof Polish',
+    'PR Evidence Quality',
+    'First 10 Minutes UX',
+    'Maintainability Hardening',
+    'Graph And Dataflow Precision',
+    'Plugin Ecosystem',
+    'Multi-Agent Coordination',
+  ]);
+  expect(report.tasks.map((task) => task.id)).toEqual(
+    expect.arrayContaining([
+      'rt-3-2-roadmap-canonicalization',
+      'rt-3-3-adoption-proof-polish',
+      'rt-3-4-pr-evidence-quality',
+      'rt-3-5-first-10-minutes-ux',
+      'rt-3-6-maintainability-hardening',
+      'rt-3-7-graph-dataflow-precision',
+      'rt-3-8-plugin-ecosystem',
+      'rt-3-9-multi-agent-coordination',
+    ]),
+  );
+  expect(report.tasks.find((task) => task.id === 'rt-3-6-maintainability-hardening')?.files).toEqual(
+    expect.arrayContaining(['src/core/roadmapCatalog.ts', 'src/core/releaseEvidence.ts']),
+  );
+});
+
 test('release train marks blockers when preflight blocks', async () => {
   const root = await makeTempProject('2.2.0');
   await writeJson(path.join(root, 'package.json'), {

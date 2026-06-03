@@ -63,6 +63,7 @@ export async function computeAgentBrief(
       topDirectories: topDirectories(scan.files),
       touchedFiles: riskNow.touchedFiles.slice(0, 12),
       conflicts: riskNow.conflicts.length,
+      coordinationHints: riskNow.coordinationHints,
       ...(graphContext ? { graph: graphContext } : {}),
     },
     focus,
@@ -98,11 +99,22 @@ function topPackagesByImporters(graph: CodeGraph): string[] {
     .map((entry) => entry.name);
 }
 
-async function safeRiskNow(rootPath: string): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {
+async function safeRiskNow(rootPath: string): Promise<Pick<Awaited<ReturnType<typeof buildRiskNow>>, 'touchedFiles' | 'conflicts' | 'coordinationHints'>> {
   try {
     return await buildRiskNow(rootPath);
   } catch {
-    return { touchedFiles: [], conflicts: [] };
+    return {
+      touchedFiles: [],
+      conflicts: [],
+      coordinationHints: [
+        {
+          id: 'current-worktree-check',
+          label: 'Separate current worktree evidence from session memory',
+          message: 'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
+          command: 'projscan preflight --mode before_edit --format json',
+        },
+      ],
+    };
   }
 }
 

@@ -9,7 +9,7 @@ projscan plugin test .projscan-plugins/<name>.projscan-plugin.json
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor
 ```
 
-Local plugins are code execution. Only enable plugins you trust.
+Local plugins are code execution. Only enable plugins you trust. `projscan plugin test --format json` returns `trust`, `commands`, and `context` guidance so agents can validate a plugin, see the preview flag, and detect graph/dataflow context needs before execution.
 
 ## Analyzer Plugins
 
@@ -34,7 +34,7 @@ Files:
 
 ### `graph-context`
 
-Demonstrates analyzer access to the optional graph/dataflow context. It reads the semantic graph and dataflow report through `context.getSemanticGraph()` and `context.getDataflow()` and emits a compact architecture summary issue.
+Demonstrates analyzer access to the optional graph/dataflow context. It reads the semantic graph and dataflow report through `context.getSemanticGraph()` and `context.getDataflow()` and emits a compact architecture summary issue. The test result marks `context.requested: true` and lists `semanticGraph` plus `dataflow` capabilities.
 
 Files:
 - `docs/examples/plugins/graph-context.projscan-plugin.json`

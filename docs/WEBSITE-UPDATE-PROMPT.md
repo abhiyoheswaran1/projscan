@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.1.0.
+Update the projscan website for projscan 3.2.0.
 
 Core positioning:
 - Name: projscan
@@ -23,28 +23,28 @@ Baseframe Labs umbrella requirements:
 - Do not rename projscan, rewrite privacy/terms legal subjects, or add corporate designators for Baseframe Labs.
 
 What to highlight above the fold:
-- `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
+- `projscan start` / `projscan_start`: first-60-seconds repo orientation with setup diagnostics, `firstTenMinutes`, recommended workflow, top risks, adoption gaps, and next commands.
 - `projscan semantic-graph` / `projscan_semantic_graph`: stable v3 semantic graph with file, function, package, and symbol nodes plus normalized imports, exports, definitions, and calls edges.
-- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js and Express request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
+- `projscan dataflow` / `projscan_dataflow`: focused direct, propagated, and bridge source-to-sink risks over the function graph, with Next.js, Express, and Hono request sources, receiver-sensitive DB/write sinks, and opt-ins for test files, broad file IO, and generated/codegen paths.
 - `projscan review` / `projscan_review`: one-call PR review now scopes cycles, taint, dataflow, contracts, graph evidence, summaries, and verdicts inside the requested workspace package before verdicting.
-- `projscan feedback summary --file .projscan-feedback.json --format json` + `projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json`: adoption proof loop across real repos with measured reviewer feedback, repeat-use readiness, MCP readiness, and false-positive tracking.
+- `projscan feedback summary --file .projscan-feedback.json --format json` + `projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json`: adoption proof loop across real repos with `proofGates`, `nextProofStep`, measured reviewer feedback, repeat-use readiness, MCP readiness, and false-positive tracking.
 - `projscan privacy-check`: visible trust report for telemetry status, offline mode, Git ignore handling, ignored-file count, `.env` content scanning, plugin execution, local write surfaces, report-export sensitivity, and known network-capable endpoints.
 - `projscan telemetry explain`: transparent default-off telemetry controls for anonymous product-health metrics without source code, paths, repo names, branch names, package names, usernames, raw findings, secrets, or environment values.
 - Telemetry endpoint: add/verify `POST /api/projscan/telemetry` on Baseframe Labs to accept `{ schemaVersion: 1, events: [...] }`, discard unknown fields, store only the documented allowlist from TELEMETRY.md, and return 202.
 - `projscan init policy --team <team>`: policy starter kits for frontend, platform, security, and monorepo teams.
 - `projscan init github-action`: pull-request workflow scaffold that runs projscan, posts PR evidence comments, and fails CI only when preflight returns `block`.
 - `projscan init mcp` / `projscan_adoption { action: "mcp_config" }`: ready-to-paste MCP configuration for Claude Desktop, Claude Code, Cursor, Codex, Continue, Windsurf, Cline, Zed, Gemini, or all supported clients.
-- `projscan first-run` / `projscan_adoption { action: "first_run" }`: first-run diagnostics across Node.js, package metadata, Git, config, Tree-sitter runtime, plugins, and MCP startup.
+- `projscan first-run` / `projscan_adoption { action: "first_run" }`: first-run diagnostics across Node.js, package metadata, Git, config, Tree-sitter runtime, plugins, MCP startup, and the shared `firstTenMinutes` path.
 - `projscan recipes` / `projscan_adoption { action: "recipes" }`: workflow recipes for team bootstrap, PR automation, before edit, bug hunt, release approval, handoff, and pre-merge.
 - `projscan handoff --write docs/agent-handoff.md`: persists a concise next-agent handoff artifact.
 - `projscan workplan` / `projscan_workplan`: ordered agent execution plans with evidence, suggested tools, verification commands, and handoff text.
 - `projscan bug-hunt` / `projscan_bug_hunt`: prioritized fix queues from doctor, preflight, hotspots, and session signals.
-- `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, guardrails, and next actions.
+- `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, coordination hints, guardrails, and next actions.
 - `projscan quality-scorecard` / `projscan_quality_scorecard`: dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and commands.
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
 - 40 MCP tools for structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
-- Stable local analyzer and reporter plugins, now with `projscan plugin init` and `projscan plugin test`.
+- Stable local analyzer and reporter plugins, now with `projscan plugin init`, `projscan plugin test`, trust guidance, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
 - Local-first trust boundary: no source upload, no hidden telemetry, no API key. `projscan privacy-check` shows the boundary before scanning; anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt.
 
@@ -65,7 +65,7 @@ Feature sections to update:
 - Autonomous Bug Hunt: ranked fix queues with evidence and verification commands.
 - Readiness Evidence: product-line planning, approval packets, GitHub PR comment evidence with suggested next actions, block-only PR workflow enforcement, and smoke/focused/full regression matrices.
 - Agent Trust: preflight verdicts before edit, commit, and merge; required checks; suggested next tool calls; clearer separation between concrete blockers and scale-only release sign-off.
-- Multi-agent coordination: `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now`.
+- Multi-agent coordination: `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now`, each with `coordinationHints` that separate current worktree checks from remembered session context.
 - Deeper review intelligence: package-scoped `contractChanges`, `newTaintFlows`, hardened `newDataflowRisks`, compact package-scoped `graphEvidence`, generated-code review filtering, and preflight `releaseScale` evidence for large platform releases.
 - Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
 - Release trust: public stability contract, Node.js >= 18 support, packed-install smoke testing, MCP Registry descriptor validation.

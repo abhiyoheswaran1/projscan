@@ -193,6 +193,14 @@ shape. For reporter plugins, it renders sample `doctor`, `analyze`, and `ci`
 payloads for the commands listed in the manifest and verifies each render returns
 a string.
 
+The JSON result also includes three guidance blocks:
+
+- `trust`: reminds callers that local plugins execute repository code, stay local-only, and require `PROJSCAN_PLUGINS_PREVIEW=1` before execution.
+- `commands`: gives copyable `validate`, `test`, and preview-enabled `enable` commands for the same manifest.
+- `context`: reports whether the plugin requested graph/dataflow context and lists detected capabilities such as `semanticGraph` and `dataflow`.
+
+Graph-aware analyzers should keep context access lazy. Only call `context.getSemanticGraph()` or `context.getDataflow()` when the plugin needs that evidence for its issues.
+
 ## List
 
 ```sh

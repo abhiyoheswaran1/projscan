@@ -1,6 +1,7 @@
 import { computeFirstRunDiagnostics, getWorkflowRecipes, type AgentWorkflowRecipe } from './adoption.js';
 import { loadSession } from './session.js';
 import { fixFirstFromStartRisk } from './fixFirst.js';
+import { buildFirstTenMinutes } from './onboarding.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildWorkplanHandoff, computeWorkplan, isWorkplanMode } from './workplan.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
@@ -53,7 +54,9 @@ export async function computeStartReport(
       ...(diagnostic.command ? { command: diagnostic.command } : {}),
     }));
   const adoptionLoop = buildAdoptionLoop();
+  const firstTenMinutes = buildFirstTenMinutes();
   const nextActions = dedupeActions([
+    ...firstTenMinutes.commands.map((step) => ({ label: `First 10 minutes: ${step.label}`, command: step.command })),
     ...workflow.commands.map((command) => ({ label: `Run ${workflow.name}`, command })),
     ...adoptionLoop.nextCommands.map((command) => ({ label: 'Keep using projscan every PR', command })),
     ...workplan.suggestedNextActions,
@@ -70,6 +73,7 @@ export async function computeStartReport(
       diagnostics: setup.diagnostics,
     },
     recommendedWorkflow: workflow,
+    firstTenMinutes,
     evidence: {
       workplanVerdict: workplan.verdict,
       workplanSummary: workplan.summary,

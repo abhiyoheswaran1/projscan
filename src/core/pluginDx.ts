@@ -88,9 +88,10 @@ export async function testPlugin(
     });
   }
 
+  const guidance = await buildPluginTestGuidance(resolvedManifestPath, modulePath);
   return manifest.kind === 'analyzer'
-    ? testAnalyzerPlugin(resolvedManifestPath, manifest, exportsObj, options)
-    : testReporterPlugin(resolvedManifestPath, manifest, exportsObj, options);
+    ? testAnalyzerPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance)
+    : testReporterPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance);
 }
 
 function analyzerManifest(name: string, modulePath: string): PluginAnalyzerManifest {
@@ -166,6 +167,7 @@ async function testAnalyzerPlugin(
   manifest: PluginAnalyzerManifest,
   exportsObj: Record<string, unknown>,
   options: TestPluginOptions,
+  guidance: PluginResultGuidance,
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.check !== 'function') {
     return failResult(manifestPath, {
@@ -207,6 +209,7 @@ async function testAnalyzerPlugin(
     manifestPath,
     ok: true,
     diagnostics: [],
+    ...guidance,
     analyzer: { issues },
   };
 }
@@ -216,6 +219,7 @@ async function testReporterPlugin(
   manifest: PluginReporterManifest,
   exportsObj: Record<string, unknown>,
   options: TestPluginOptions,
+  guidance: PluginResultGuidance,
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.render !== 'function') {
     return failResult(manifestPath, {
@@ -259,6 +263,7 @@ async function testReporterPlugin(
     manifestPath,
     ok: true,
     diagnostics: [],
+    ...guidance,
     reporter: { outputs },
   };
 }
@@ -275,6 +280,35 @@ function sampleReporterPayload(command: PluginReporterCommand): unknown {
   }
 }
 
+type PluginResultGuidance = Pick<PluginTestResult, 'trust' | 'commands' | 'context'>;
+
+async function buildPluginTestGuidance(manifestPath: string, modulePath?: string): Promise<PluginResultGuidance> {
+  const source = modulePath ? await fs.readFile(modulePath, 'utf-8').catch(() => '') : '';
+  const capabilities: PluginTestResult['context']['capabilities'] = [];
+  if (/getSemanticGraph\s*\(/.test(source)) capabilities.push('semanticGraph');
+  if (/getDataflow\s*\(/.test(source)) capabilities.push('dataflow');
+  const requested = capabilities.length > 0 || /check\s*[:=]?\s*(?:async\s*)?\([^)]*context/.test(source);
+  return {
+    trust: {
+      localOnly: true,
+      previewFlag: 'PROJSCAN_PLUGINS_PREVIEW=1',
+      reminder: 'Local plugins execute code from this repository. Only enable plugins you trust.',
+    },
+    commands: {
+      validate: `projscan plugin validate ${manifestPath}`,
+      test: `projscan plugin test ${manifestPath} --format json`,
+      enable: `PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor`,
+    },
+    context: {
+      requested,
+      capabilities,
+      note: requested
+        ? 'This analyzer appears to request optional graph/dataflow context; test it before enabling preview execution.'
+        : 'No optional graph/dataflow analyzer context request was detected.',
+    },
+  };
+}
+
 function failResult(
   manifestPath: string,
   diagnostic: { code: string; severity: IssueSeverity; message: string },
@@ -284,6 +318,27 @@ function failResult(
     manifestPath,
     ok: false,
     diagnostics: [diagnostic],
+    ...defaultPluginTestGuidance(manifestPath),
+  };
+}
+
+function defaultPluginTestGuidance(manifestPath: string): PluginResultGuidance {
+  return {
+    trust: {
+      localOnly: true,
+      previewFlag: 'PROJSCAN_PLUGINS_PREVIEW=1',
+      reminder: 'Local plugins execute code from this repository. Only enable plugins you trust.',
+    },
+    commands: {
+      validate: `projscan plugin validate ${manifestPath}`,
+      test: `projscan plugin test ${manifestPath} --format json`,
+      enable: 'PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor',
+    },
+    context: {
+      requested: false,
+      capabilities: [],
+      note: 'Plugin context capabilities were not inspected because validation failed before module testing.',
+    },
   };
 }
 

@@ -223,6 +223,53 @@ export async function PATCH(request: Request) {
     );
   });
 
+  it('treats Hono route context request JSON as a framework request source', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hono.ts'),
+      `import { Hono } from 'hono';
+
+declare const db: { query(sql: string): unknown };
+const app = new Hono();
+
+app.post('/search', async (c) => {
+  const body = await c.req.json();
+  return db.query(body.sql);
+});
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some(
+        (risk) =>
+          risk.source === 'hono.req.json' &&
+          risk.sink === 'query' &&
+          risk.files.includes('src/hono.ts'),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat ordinary Hono-shaped helpers as route request sources', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hono-helper.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function helper(c: { req: { json(): Promise<{ sql: string }> } }) {
+  const body = await c.req.json();
+  return db.query(body.sql);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks.find((risk) => risk.source === 'hono.req.json')).toBeUndefined();
+    expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat ordinary req-shaped helpers as Express request sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'helpers.ts'),

@@ -8,6 +8,7 @@ import type {
   PreflightSuggestedAction,
   RiskNowResource,
   SessionConflict,
+  SessionCoordinationHint,
   SessionHandoff,
   SessionResourceSummary,
 } from '../types.js';
@@ -38,6 +39,7 @@ export async function buildSessionSummary(rootPath: string): Promise<SessionReso
     recentIssues,
     highRiskTouchedFiles,
     staleSignals,
+    coordinationHints: buildCoordinationHints(touchedFiles, []),
     ...(touchedFiles.length > MAX_TOUCHED_FILES ? { truncated: true } : {}),
   };
 }
@@ -50,6 +52,7 @@ export async function buildHandoff(rootPath: string): Promise<SessionHandoff> {
     summary,
     remainingRisks: riskNow.conflicts,
     suggestedNextActions: buildHandoffActions(riskNow.conflicts),
+    coordinationHints: buildCoordinationHints(summary.touchedFiles, riskNow.conflicts),
     avoidRepeating: buildAvoidRepeating(summary),
   };
 }
@@ -67,6 +70,7 @@ export async function buildRiskNow(rootPath: string): Promise<RiskNowResource> {
     schemaVersion: 1,
     conflicts,
     touchedFiles: touchedFiles.slice(0, MAX_TOUCHED_FILES),
+    coordinationHints: buildCoordinationHints(touchedFiles, conflicts),
     ...(touchedFiles.length > MAX_TOUCHED_FILES || conflicts.length >= MAX_CONFLICTS
       ? { truncated: true }
       : {}),
@@ -212,6 +216,37 @@ function detectHotspotConflicts(
       message: `Remembered session context touched high-risk hotspot ${hotspot.file} (risk ${hotspot.riskScore})`,
       severity: 'warning' as const,
     }));
+}
+
+function buildCoordinationHints(
+  touchedFiles: string[],
+  conflicts: SessionConflict[],
+): SessionCoordinationHint[] {
+  const hints: SessionCoordinationHint[] = [
+    {
+      id: 'current-worktree-check',
+      label: 'Separate current worktree evidence from session memory',
+      message: 'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
+      command: 'projscan preflight --mode before_edit --format json',
+    },
+  ];
+  if (touchedFiles.length > 0) {
+    hints.push({
+      id: 'remembered-session-context',
+      label: 'Review remembered session touches',
+      message: `${touchedFiles.length} touched file(s) come from remembered session context, not necessarily the current Git diff.`,
+      command: 'projscan session touched --format json',
+    });
+  }
+  if (conflicts.length > 0) {
+    hints.push({
+      id: 'resolve-conflicts',
+      label: 'Resolve coordination conflicts before parallel edits continue',
+      message: `${conflicts.length} coordination conflict(s) need an owner or preflight check before handoff.`,
+      command: 'projscan agent-brief --intent next_agent --format json',
+    });
+  }
+  return hints;
 }
 
 function buildHandoffActions(conflicts: SessionConflict[]): PreflightSuggestedAction[] {

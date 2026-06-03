@@ -3,13 +3,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+import { buildFirstTenMinutes } from './onboarding.js';
 import { PLUGIN_PREVIEW_FLAG, discoverPluginManifests } from './plugins.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { saveBaseline } from '../utils/baseline.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
-import type { ProjscanConfig } from '../types.js';
+import type { ProjscanConfig, StartFirstTenMinutes } from '../types.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -169,6 +170,7 @@ export interface FirstRunReport {
   rootPath: string;
   overall: FirstRunStatus;
   diagnostics: FirstRunDiagnostic[];
+  firstTenMinutes: StartFirstTenMinutes;
   nextCommands: string[];
 }
 
@@ -388,17 +390,20 @@ export async function computeFirstRunDiagnostics(rootPath: string): Promise<Firs
     checkMcpStartup(),
   ];
   const overall = summarizeDiagnostics(diagnostics);
+  const firstTenMinutes = buildFirstTenMinutes();
   return {
     schemaVersion: 1,
     rootPath,
     overall,
     diagnostics,
-    nextCommands: [
+    firstTenMinutes,
+    nextCommands: dedupeCommands([
+      ...firstTenMinutes.commands.map((step) => step.command),
       'projscan init mcp --client all',
       'projscan recipes',
       'projscan preflight --mode before_edit --format json',
       'projscan doctor',
-    ],
+    ]),
   };
 }
 
@@ -575,6 +580,10 @@ function summarizeDiagnostics(diagnostics: FirstRunDiagnostic[]): FirstRunStatus
   if (diagnostics.some((diagnostic) => diagnostic.status === 'fail')) return 'fail';
   if (diagnostics.some((diagnostic) => diagnostic.status === 'warn')) return 'warn';
   return 'pass';
+}
+
+function dedupeCommands(commands: string[]): string[] {
+  return [...new Set(commands)];
 }
 
 async function git(rootPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {

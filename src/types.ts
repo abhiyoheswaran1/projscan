@@ -681,6 +681,7 @@ export interface AgentBriefReport {
     touchedFiles: string[];
     conflicts: number;
     graph?: GraphEvidenceSummary;
+    coordinationHints: SessionCoordinationHint[];
   };
   focus: AgentBriefItem[];
   guardrails: AgentBriefGuardrail[];
@@ -738,6 +739,19 @@ export interface StartAdoptionLoop {
   nextCommands: string[];
 }
 
+export interface StartFirstTenMinutesStep {
+  id: string;
+  label: string;
+  why: string;
+  command: string;
+}
+
+export interface StartFirstTenMinutes {
+  title: string;
+  outcome: string;
+  commands: StartFirstTenMinutesStep[];
+}
+
 export interface StartReport {
   schemaVersion: 1;
   readOnly: true;
@@ -749,6 +763,7 @@ export interface StartReport {
     diagnostics: Array<{ id: string; label: string; status: 'pass' | 'warn' | 'fail' | 'info'; summary: string; detail?: string; command?: string }>;
   };
   recommendedWorkflow: StartWorkflowRecommendation;
+  firstTenMinutes: StartFirstTenMinutes;
   evidence: {
     workplanVerdict: PreflightVerdict;
     workplanSummary: string;
@@ -867,6 +882,13 @@ export interface DogfoodWebsiteProof {
 export interface DogfoodMarketValidation {
   status: 'proven' | 'needs_feedback' | 'needs_more_repos' | 'needs_tuning';
   summary: string;
+  proofGates: Array<{
+    id: 'repo-coverage' | 'reviewer-feedback' | 'useful-feedback' | 'repeat-use' | 'measured-value' | 'false-positive-balance';
+    status: 'pass' | 'fail';
+    summary: string;
+    command: string;
+  }>;
+  nextProofStep: string;
   repoCoverage: {
     target: number;
     evaluated: number;
@@ -1031,6 +1053,13 @@ export interface QualityScorecardReport {
   truncated?: boolean;
 }
 
+export interface SessionCoordinationHint {
+  id: 'current-worktree-check' | 'remembered-session-context' | 'resolve-conflicts';
+  label: string;
+  message: string;
+  command: string;
+}
+
 export interface SessionResourceSummary {
   schemaVersion: 1;
   sessionId: string;
@@ -1038,6 +1067,7 @@ export interface SessionResourceSummary {
   recentIssues: Issue[];
   highRiskTouchedFiles: Array<{ file: string; riskScore: number }>;
   staleSignals: string[];
+  coordinationHints: SessionCoordinationHint[];
   truncated?: boolean;
 }
 
@@ -1053,6 +1083,7 @@ export interface SessionHandoff {
   summary: SessionResourceSummary;
   remainingRisks: SessionConflict[];
   suggestedNextActions: PreflightSuggestedAction[];
+  coordinationHints: SessionCoordinationHint[];
   avoidRepeating: string[];
 }
 
@@ -1060,6 +1091,7 @@ export interface RiskNowResource {
   schemaVersion: 1;
   conflicts: SessionConflict[];
   touchedFiles: string[];
+  coordinationHints: SessionCoordinationHint[];
   truncated?: boolean;
 }
 
@@ -1068,6 +1100,21 @@ export interface PluginTestResult {
   manifestPath: string;
   ok: boolean;
   diagnostics: Array<{ code: string; severity: IssueSeverity; message: string }>;
+  trust: {
+    localOnly: true;
+    previewFlag: 'PROJSCAN_PLUGINS_PREVIEW=1';
+    reminder: string;
+  };
+  commands: {
+    validate: string;
+    test: string;
+    enable: string;
+  };
+  context: {
+    requested: boolean;
+    capabilities: Array<'semanticGraph' | 'dataflow'>;
+    note: string;
+  };
   analyzer?: { issues: Issue[] };
   reporter?: { outputs: Array<{ command: string; text: string }> };
 }

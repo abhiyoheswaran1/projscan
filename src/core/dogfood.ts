@@ -250,9 +250,13 @@ function buildMarketValidation(
     repeatUseReady: repeatUse.ready,
   });
   const summary = summarizeMarketValidation(status, repoCoverage.evaluated, targetRepoCount, feedback, falsePositive.totalReports, value, repeatUse);
+  const proofGates = buildProofGates(repoCoverage, feedback, value, repeatUse, falsePositive.totalReports);
+  const nextProofStep = nextProofStepFromGates(status, proofGates);
   return {
     status,
     summary,
+    proofGates,
+    nextProofStep,
     repoCoverage,
     feedback,
     falsePositive,
@@ -278,6 +282,76 @@ function marketStatus(input: {
   if (!input.valueReady) return 'needs_tuning';
   if (!input.repeatUseReady) return 'needs_tuning';
   return 'proven';
+}
+
+function buildProofGates(
+  repoCoverage: DogfoodMarketValidation['repoCoverage'],
+  feedback: DogfoodMarketValidation['feedback'],
+  value: DogfoodMarketValidation['value'],
+  repeatUse: DogfoodMarketValidation['repeatUse'],
+  falsePositiveReports: number,
+): DogfoodMarketValidation['proofGates'] {
+  const moreRepos = Math.max(0, repoCoverage.target - repoCoverage.evaluated);
+  const moreUsefulResponses = Math.max(0, MIN_USEFUL_REVIEWER_RESPONSES - feedback.usefulResponses);
+  const moreRepeatedRepos = Math.max(0, repeatUse.requiredRepeatedRepos - repeatUse.repeatedRepos);
+  return [
+    {
+      id: 'repo-coverage',
+      status: repoCoverage.targetMet ? 'pass' : 'fail',
+      summary: repoCoverage.targetMet
+        ? `${repoCoverage.evaluated}/${repoCoverage.target} repo target met.`
+        : `Add ${moreRepos} more repo(s) before calling adoption proven.`,
+      command: 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json',
+    },
+    {
+      id: 'reviewer-feedback',
+      status: feedback.responses > 0 ? 'pass' : 'fail',
+      summary: feedback.responses > 0
+        ? `${feedback.responses} reviewer response(s) captured.`
+        : 'Capture structured reviewer feedback from the first real PR.',
+      command: FEEDBACK_CAPTURE_COMMAND,
+    },
+    {
+      id: 'useful-feedback',
+      status: feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES ? 'pass' : 'fail',
+      summary: feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES
+        ? `${feedback.usefulResponses} useful reviewer response(s) captured.`
+        : `Collect at least ${moreUsefulResponses} more useful reviewer response(s).`,
+      command: FEEDBACK_CAPTURE_COMMAND,
+    },
+    {
+      id: 'repeat-use',
+      status: repeatUse.ready ? 'pass' : 'fail',
+      summary: repeatUse.ready
+        ? `${repeatUse.repeatedRepos} repo(s) with repeat PR feedback and ${repeatUse.distinctPrs} distinct PR(s).`
+        : `Capture repeat PR feedback in at least ${moreRepeatedRepos} repo(s).`,
+      command: DOGFOOD_WITH_FEEDBACK_COMMAND,
+    },
+    {
+      id: 'measured-value',
+      status: value.ready ? 'pass' : 'fail',
+      summary: value.ready
+        ? `Measured value ready: ${value.averageMinutesSaved} average minutes saved or ${value.preventedBadEdits} risky edit(s) prevented.`
+        : 'Record 10+ average minutes saved or at least one prevented risky edit.',
+      command: FEEDBACK_CAPTURE_COMMAND,
+    },
+    {
+      id: 'false-positive-balance',
+      status: falsePositiveReports <= feedback.usefulResponses ? 'pass' : 'fail',
+      summary: falsePositiveReports <= feedback.usefulResponses
+        ? `${falsePositiveReports} false-positive report(s) do not outnumber ${feedback.usefulResponses} useful response(s).`
+        : 'Tune false-positive reports until they no longer outnumber useful responses.',
+      command: 'projscan memory stable --format json',
+    },
+  ];
+}
+
+function nextProofStepFromGates(
+  status: DogfoodMarketValidation['status'],
+  proofGates: DogfoodMarketValidation['proofGates'],
+): string {
+  if (status === 'proven') return 'Adoption proof is ready for public claims.';
+  return proofGates.find((gate) => gate.status === 'fail')?.summary ?? 'Review adoption proof gates before expanding rollout.';
 }
 
 function summarizeMarketValidation(

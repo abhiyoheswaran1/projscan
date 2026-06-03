@@ -37,6 +37,7 @@ test('trial report marks a product trial adoptable when repo, feedback, value, a
   expect(report.activation.status).toBe('pass');
   expect(report.activation.healthScore).toBeGreaterThanOrEqual(90);
   expect(report.dogfood.marketValidation.status).toBe('proven');
+  expect(report.dogfood.marketValidation.nextProofStep).toBe('Adoption proof is ready for public claims.');
   expect(report.feedback?.repeatUse.ready).toBe(true);
   expect(report.decision.adoptable).toBe(true);
   expect(report.decision.reasons).toContain('trial is adoption-ready');
@@ -56,6 +57,7 @@ test('trial report stays in pilot mode until reviewer feedback proves value and 
 
   expect(report.verdict).toBe('pilot');
   expect(report.dogfood.marketValidation.status).toBe('needs_feedback');
+  expect(report.dogfood.marketValidation.nextProofStep).toBe('Capture structured reviewer feedback from the first real PR.');
   expect(report.decision.adoptable).toBe(false);
   expect(report.decision.reasons).toContain('reviewer feedback has not been captured');
   expect(report.nextCommands.map((action) => action.command)).toEqual(

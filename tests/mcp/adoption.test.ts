@@ -70,7 +70,13 @@ test('projscan_adoption returns recipes and first-run diagnostics', async () => 
   expect(doctor.mcpDoctor.expected.command).toBe('npx -y projscan mcp');
 
   const firstRun = (await handler?.({ action: 'first_run' }, tmp)) as {
-    firstRun: { diagnostics: Array<{ id: string; status: string }> };
+    firstRun: {
+      diagnostics: Array<{ id: string; status: string }>;
+      firstTenMinutes: { commands: Array<{ command: string }> };
+    };
   };
   expect(firstRun.firstRun.diagnostics.map((diagnostic) => diagnostic.id)).toContain('mcp-startup');
+  expect(firstRun.firstRun.firstTenMinutes.commands.map((step) => step.command)).toContain(
+    'projscan evidence-pack --pr-comment',
+  );
 });

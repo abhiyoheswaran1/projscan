@@ -114,6 +114,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     `- ${pr?.verdictLabel ?? report.verdict}: ${pr?.decision ?? report.approval.recommendation}`,
     ...(blockers.length > 0 ? blockers.map((reason) => `- ${blockingReasonLabel}: ${reason}`) : ['- blockers: none recorded']),
     '',
+    '### Reviewer Decision',
+    ...formatReviewerDecision(report),
+    '',
     '### Trust Calibration',
     ...(pr?.trust ? formatTrustCalibration(pr.trust) : ['- Trust signals unavailable; run `projscan preflight --mode before_merge --format json`.']),
     '',
@@ -151,6 +154,7 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
 const REQUIRED_PR_COMMENT_SECTIONS = [
   '## projscan approval evidence',
   '### Verdict',
+  '### Reviewer Decision',
   '### Trust Calibration',
   '### Baseline Trend',
   '### Top Risks',
@@ -405,6 +409,35 @@ function formatApprovalGuidance(report: EvidencePackReport): string {
     return 'Require human release sign-off; no actual-defect blocker is recorded unless reviewers confirm one.';
   }
   return report.approval.recommendation;
+}
+
+function formatReviewerDecision(report: EvidencePackReport): string[] {
+  const trust = report.prSummary?.trust;
+  const decision = reviewerDecision(report);
+  const firstCommand = report.prSummary?.fixFirst?.commands[0]
+    ?? report.prSummary?.nextCommands[0]
+    ?? report.suggestedNextActions.find((action) => action.command)?.command
+    ?? 'projscan preflight --mode before_merge --format json';
+  const routedOwners = report.prSummary?.teamRoutes.map((route) => route.owner) ?? [];
+  const ownerState = routedOwners.length > 0 ? routedOwners.join(', ') : 'unassigned';
+  const reason = trust?.verdict === 'actual_defect'
+    ? 'Concrete blockers are present; fix the first item before approval.'
+    : trust?.verdict === 'manual_review'
+      ? 'Manual review or release sign-off is required; no concrete blocker is recorded unless listed above.'
+      : 'No concrete defect or manual-review signal is recorded; preserve the baseline and run verification.';
+  return [
+    `- decision: ${decision}`,
+    `- reason: ${reason}`,
+    `- owner state: ${ownerState}`,
+    `- first command: \`${firstCommand}\``,
+  ];
+}
+
+function reviewerDecision(report: EvidencePackReport): 'ship' | 'review' | 'fix first' {
+  const trust = report.prSummary?.trust.verdict;
+  if (trust === 'actual_defect' || report.verdict === 'blocked') return trust === 'manual_review' ? 'review' : 'fix first';
+  if (trust === 'manual_review' || report.verdict === 'caution') return trust === 'clean' ? 'ship' : 'review';
+  return 'ship';
 }
 
 function formatTrustCalibration(trust: EvidencePackPrSummary['trust']): string[] {

@@ -23,6 +23,12 @@ test('first-run diagnostics recognize the built Tree-sitter runtime', async () =
   const treeSitter = report.diagnostics.find((diagnostic) => diagnostic.id === 'tree-sitter');
 
   expect(treeSitter?.status).toBe('pass');
+  expect(report.firstTenMinutes.commands.map((step) => step.command).slice(0, 3)).toEqual([
+    'projscan privacy-check --offline',
+    'projscan start --mode before_edit',
+    'projscan preflight --mode before_edit --format json',
+  ]);
+  expect(report.nextCommands).toContain('projscan privacy-check --offline');
 });
 
 test('policy starter kits expose team-specific projscan config', () => {

@@ -29,6 +29,8 @@ The reports are read-only and record:
 - the next commands needed before calling adoption proven
 - the trial verdict: `adopt`, `pilot`, `tune`, or `setup`
 
+`dogfood.marketValidation.proofGates` now gives a pass/fail checklist for repo coverage, reviewer feedback, useful feedback, repeat use, measured value, and false-positive balance. `dogfood.marketValidation.nextProofStep` names the one next action before the team should claim adoption is proven.
+
 ## Validate One Actual PR
 
 On the first real PR, post or paste:
@@ -72,7 +74,7 @@ projscan feedback summary --file .projscan-feedback.json --format json
 projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
-The report now includes `marketValidation` with repo coverage, useful responses, average and total minutes saved, risky edits prevented, repeat PR evidence, false-positive reports, and `websiteProof.markdown` for public proof copy. `proven` requires 3+ useful responses, value measured at 10+ average minutes saved or at least one prevented bad edit, false positives under control, and repeat PR feedback. See `docs/MARKET-VALIDATION.md` for the feedback workflow.
+The report now includes `marketValidation` with repo coverage, useful responses, average and total minutes saved, risky edits prevented, repeat PR evidence, false-positive reports, `proofGates`, `nextProofStep`, and `websiteProof.markdown` for public proof copy. `proven` requires 3+ useful responses, value measured at 10+ average minutes saved or at least one prevented bad edit, false positives under control, and repeat PR feedback. See `docs/MARKET-VALIDATION.md` for the feedback workflow.
 
 ## One-Command Trial Report
 

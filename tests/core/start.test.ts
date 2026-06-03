@@ -32,6 +32,12 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   );
   expect(report.recommendedWorkflow.id).toBe('before_edit');
   expect(report.recommendedWorkflow.commands).toContain('projscan preflight --mode before_edit --format json');
+  expect(report.firstTenMinutes.commands.slice(0, 3).map((step) => step.command)).toEqual([
+    'projscan privacy-check --offline',
+    'projscan start --mode before_edit',
+    'projscan preflight --mode before_edit --format json',
+  ]);
+  expect(report.firstTenMinutes.commands.map((step) => step.id)).toContain('first-pr-evidence');
   expect(report.evidence.workplanVerdict).toMatch(/proceed|caution|block/);
   expect(report.evidence.qualityVerdict).toMatch(/excellent|healthy|needs_attention|blocked/);
   expect(report.topRisks.length).toBeGreaterThan(0);

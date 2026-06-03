@@ -29,6 +29,10 @@ test('scaffolds an analyzer plugin that validates and tests cleanly', async () =
 
   expect(testResult.ok).toBe(true);
   expect(testResult.diagnostics).toEqual([]);
+  expect(testResult.trust.reminder).toContain('Local plugins execute code');
+  expect(testResult.commands.validate).toContain('projscan plugin validate');
+  expect(testResult.commands.test).toContain('projscan plugin test');
+  expect(testResult.context.requested).toBe(false);
   expect(testResult.analyzer?.issues).toEqual([]);
 });
 
@@ -44,6 +48,32 @@ test('scaffolds a reporter plugin that renders supported sample payloads', async
     'ci',
   ]);
   expect(testResult.reporter?.outputs.every((output) => output.text.length > 0)).toBe(true);
+});
+
+test('plugin test reports graph context capability requests', async () => {
+  const manifestPath = await writePlugin({
+    manifest: {
+      schemaVersion: 1,
+      name: 'graph-context',
+      kind: 'analyzer',
+      module: './broken.mjs',
+      category: 'architecture',
+    },
+    moduleSource: `export default {
+      async check(_rootPath, _files, context) {
+        if (!context) return [];
+        await context.getSemanticGraph();
+        await context.getDataflow();
+        return [];
+      }
+    };`,
+  });
+
+  const result = await testPlugin(manifestPath, { fixtureRoot: tmp });
+
+  expect(result.ok).toBe(true);
+  expect(result.context.requested).toBe(true);
+  expect(result.context.capabilities).toEqual(expect.arrayContaining(['semanticGraph', 'dataflow']));
 });
 
 test('plugin test reports missing analyzer exports with structured diagnostics', async () => {

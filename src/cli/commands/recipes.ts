@@ -76,6 +76,12 @@ function printFirstRun(report: FirstRunReport): void {
     printDiagnostic(diagnostic);
   }
   console.log('');
+  console.log(chalk.bold(report.firstTenMinutes.title));
+  console.log(chalk.dim(`  outcome: ${report.firstTenMinutes.outcome}`));
+  for (const step of report.firstTenMinutes.commands) {
+    console.log(`  ${chalk.cyan(step.command)} ${chalk.dim(`- ${step.label}`)}`);
+  }
+  console.log('');
   console.log(chalk.bold('Next commands'));
   for (const command of report.nextCommands) {
     console.log(`  ${chalk.cyan(command)}`);

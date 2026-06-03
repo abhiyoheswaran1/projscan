@@ -52,6 +52,7 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
   expect(report.prComment).toContain('## projscan approval evidence');
   expect(report.prComment).toContain('**Verdict:**');
   expect(report.prComment).toContain('### Verdict');
+  expect(report.prComment).toContain('### Reviewer Decision');
   expect(report.prComment).toContain('### Top Risks');
   expect(report.prComment).toContain('### Team Routing');
   expect(report.prComment).toContain('### Baseline Trend');
@@ -171,6 +172,8 @@ test('PR comments label manual release gates without actual-defect blocker wordi
 
   const comment = renderEvidencePackPrComment(report);
 
+  expect(comment).toContain('### Reviewer Decision');
+  expect(comment).toContain('- decision: review');
   expect(comment).toContain('- manual gate: Large platform release risk');
   expect(comment).not.toContain('- blocker: Review verdict is block due to scale/complexity risk');
   expect(comment).toContain('Approval guidance: Require human release sign-off');

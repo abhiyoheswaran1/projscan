@@ -34,6 +34,8 @@ test('start renders machine-readable orientation JSON', async () => {
   expect(report.schemaVersion).toBe(1);
   expect(report.readOnly).toBe(true);
   expect(report.recommendedWorkflow.id).toBe('bug_hunt');
+  expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
+  expect(report.firstTenMinutes.commands.map((step: { command: string }) => step.command)).toContain('projscan evidence-pack --pr-comment');
   expect(report.nextActions.length).toBeGreaterThan(0);
 });
 

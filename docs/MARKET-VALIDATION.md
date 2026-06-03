@@ -56,6 +56,19 @@ The `marketValidation` block reports whether the proof is:
 - `needs_feedback`: dogfood ran, but no reviewer feedback was captured
 - `needs_tuning`: feedback exists but value, repeat use, false positives, or clarity need work first
 
+It also includes `proofGates`, a stable checklist of the adoption blockers that matter most:
+
+| Gate | What It Proves | Next Command |
+|---|---|---|
+| `repo-coverage` | Enough representative repos were evaluated. | `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json` |
+| `reviewer-feedback` | Real reviewer responses exist. | `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true` |
+| `useful-feedback` | At least three responses found value. | `projscan feedback summary --file .projscan-feedback.json --format json` |
+| `repeat-use` | More than one PR or repo has feedback. | `projscan dogfood --feedback .projscan-feedback.json --format json` |
+| `measured-value` | Time saved or a bad edit prevented is measured. | `projscan feedback add --minutes-saved 10 --prevented-bad-edit` |
+| `false-positive-balance` | Noise does not outnumber useful feedback. | `projscan feedback summary --file .projscan-feedback.json --format json` |
+
+Use `nextProofStep` as the single next action in release notes or adoption reviews; it is deliberately shorter than the full gate list.
+
 ## Website Proof
 
 Use `marketValidation.websiteProof.markdown` as the source for website examples. When the status is not `proven`, the generated copy stays provisional so the website does not claim usefulness before repo coverage, reviewer feedback, and false-positive tuning are ready.

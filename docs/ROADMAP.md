@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-01.
+Last reviewed 2026-06-03.
 
 ---
 
@@ -53,9 +53,24 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.1.0 (2026)
+### Now — 3.2.x to 3.9.x Roadmap Train
 
-**3.1.0 "Trust Boundary Hardening"** makes the local-first trust boundary visible and enforceable before broader adoption:
+The active release train is intentionally canonicalized as eight concrete workstreams. `projscan release-train` now defaults to these lines for the 3.1+ branch so maintainers, agents, and docs plan from the same product map instead of generic quality placeholders.
+
+| Line | Theme | Product Outcome | Release Gate |
+|---|---|---|---|
+| **3.2.x** | Roadmap Canonicalization | Release planning names the real product bets and stays read-only. | `projscan release-train --format json` returns all eight tracks with concrete tasks. |
+| **3.3.x** | Adoption Proof Polish | Dogfood/trial reports show the next missing proof gate before claiming adoption. | `marketValidation.proofGates` and `nextProofStep` explain repo coverage, reviewer feedback, repeat use, measured value, and false-positive balance. |
+| **3.4.x** | PR Evidence Quality | Reviewer-facing PR comments lead with the decision and first action. | PR evidence includes `### Reviewer Decision` with ship/review/fix-first state and an exact first command. |
+| **3.5.x** | First 10 Minutes UX | A new team gets one guided path from trust boundary to first PR evidence. | `projscan start` and `projscan first-run` expose the same `firstTenMinutes` command path. |
+| **3.6.x** | Maintainability Hardening | Static roadmap data and evidence formatting move into focused helpers. | Roadmap catalog and evidence helper tests keep orchestration modules small. |
+| **3.7.x** | Graph And Dataflow Precision | Dataflow catches more real framework request sources without broad false positives. | Hono route handlers detect `c.req.json()` sources while ordinary Hono-shaped helpers stay quiet. |
+| **3.8.x** | Plugin Ecosystem | Local plugin testing explains trust, enablement, and graph/dataflow context needs. | `projscan plugin test --format json` returns `trust`, `commands`, and `context` guidance. |
+| **3.9.x** | Multi-Agent Coordination | Agents can separate current worktree risk from remembered session context before parallel edits continue. | Session resources and agent briefs include `coordinationHints` with exact follow-up commands. |
+
+### Recently Completed — 3.1.0 (2026)
+
+**3.1.0 "Trust Boundary Hardening"** made the local-first trust boundary visible and enforceable before broader adoption:
 
 - `projscan privacy-check` reports telemetry status, offline mode, scan root, Git ignore handling, ignored-file count, `.env` content scanning, plugin execution, local write surfaces, report export sensitivity, and known network-capable endpoints.
 - Scans respect Git's visible-file boundary by default: tracked files plus untracked non-ignored files. Ignored files require explicit opt-in with `--include-ignored` or `scan.includeIgnored: true`.
@@ -76,22 +91,12 @@ We are *not* trying to be:
 
 **3.0.5 "Proof of Usefulness"** made the first successful team PR the product's hero surface with the end-to-end adoption harness, PR comment benchmarks, fix-first recommendations, baseline trend memory, and Express/Next dataflow precision.
 
-### Next — 3.1.x Adoption Proof Polish
+### Later
 
-The next patch line should keep improving usefulness, not add random surface area:
+Later work should only expand the moat after the eight-track train is verified in real use:
 
-- Validate the first PR comment with more real reviewers and record where it saved time, prevented a risky edit, or stayed too vague.
-- Keep blocks rare and concrete; uncertain findings should be clear manual-review cautions.
-- Improve owner routing from CODEOWNERS, package metadata, and common monorepo layouts.
-- Turn the best measured examples into README, website, and docs proof without overstating adoption.
-- Keep reducing startup/test friction around the trust smoke path so teams can run it before every release.
-
-### Later — 3.2.0
-
-The next larger line should deepen graph expansion without rushing another same-day patch:
-
-- Expand graph/dataflow precision around additional framework conventions and cross-package boundaries.
-- Add more adoption examples for agent orchestration, package ownership, and custom policy plugins.
+- Broaden framework dataflow precision from narrow, tested source patterns rather than broad source-name matching.
+- Add adoption examples from real agent orchestration, package ownership, and custom policy plugin workflows.
 - Explore stronger report-export controls for teams that want path redaction or scoped evidence artifacts.
 
 ## Non-goals
@@ -123,6 +128,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.2.0** (2026-06-03) | Roadmap Train | Canonical 3.2-3.9 release train, proof gates, reviewer decisions, first-ten-minutes path, Hono dataflow precision, plugin trust guidance, and coordination hints |
 | **3.1.0** (2026-06-02) | Trust Boundary Hardening | Privacy-check trust report, Git-visible scan boundary, path-only `.env` defaults, offline mode, session/worktree risk split, and fast trust smoke gate |
 | **3.0.8** (2026-06-01) | Legal and Trust Hardening | Public legal/trust documents, vulnerability reporting, contribution provenance, and canonical icon packaging |
 | **3.0.7** (2026-05-31) | Trial Adoption Report | Adoption trial verdict, structured reviewer feedback capture, measured market-validation gates, and refreshed adoption docs |

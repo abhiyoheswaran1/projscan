@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { computeAgentBrief } from '../../src/core/agentBrief.js';
+import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 
 const tempRoots: string[] = [];
 
@@ -13,6 +14,10 @@ afterEach(async () => {
 test('agent brief returns compact next-agent context without mutating package version', async () => {
   const root = await makeTempProject('2.2.0');
   await fs.writeFile(path.join(root, 'src', 'danger.ts'), 'eval("console.log(1)");\n');
+
+  const { session } = await loadSession(root);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(root, session);
 
   const report = await computeAgentBrief(root, { intent: 'bug_hunt', maxItems: 4 });
 
@@ -27,6 +32,8 @@ test('agent brief returns compact next-agent context without mutating package ve
     expect.arrayContaining(['projscan doctor --format json', 'projscan preflight --mode before_edit --format json']),
   );
   expect(report.context.totalFiles).toBeGreaterThan(0);
+  expect(report.context.coordinationHints.map((hint) => hint.id)).toContain('remembered-session-context');
+  expect(report.context.coordinationHints.map((hint) => hint.command)).toContain('projscan session touched --format json');
   expect(report.context.graph).toEqual(
     expect.objectContaining({
       schemaVersion: 1,

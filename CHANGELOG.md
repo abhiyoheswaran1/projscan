@@ -7,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.2.0] — 2026-06-03 — "Roadmap Train"
+
+### Added
+
+- Added the canonical 3.2.x through 3.9.x roadmap train to `projscan release-train`, covering roadmap canonicalization, adoption proof polish, PR evidence quality, first-ten-minutes UX, maintainability hardening, graph/dataflow precision, plugin ecosystem guidance, and multi-agent coordination.
+- Added `firstTenMinutes` to `projscan start`, `projscan first-run`, and the adoption MCP first-run response so the first trust, orientation, preflight, MCP, evidence, feedback, and dogfood commands stay in one shared order.
+- Added `marketValidation.proofGates` and `marketValidation.nextProofStep` to dogfood/trial adoption proof output.
+- Added `trust`, `commands`, and `context` guidance to `projscan plugin test --format json`.
+- Added `coordinationHints` to session resources and agent briefs so agents can distinguish current worktree checks, remembered session context, and conflict resolution commands.
+
+### Changed
+
+- PR comment evidence now includes a `### Reviewer Decision` section with a ship/review/fix-first decision, reason, owner state, and first command.
+- Dataflow framework-source detection now recognizes Hono route-context request reads such as `c.req.json()` while guarding ordinary Hono-shaped helpers.
+- Roadmap data and first-ten-minutes onboarding guidance now live in focused core helpers instead of being embedded only in orchestration modules.
+
+
 ## [3.1.0] — 2026-06-02 — "Trust Boundary Hardening"
 
 ### Added

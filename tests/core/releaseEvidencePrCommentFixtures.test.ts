@@ -143,6 +143,8 @@ function expectUsefulPrComment(report: Awaited<ReturnType<typeof computeEvidence
   expect(report.prCommentValidation?.status).toBe('pass');
   expect(body.length).toBeLessThan(12000);
   expect(body).toContain('### Verdict');
+  expect(body).toContain('### Reviewer Decision');
+  expect(body).toMatch(/### Reviewer Decision[\s\S]*- decision: (ship|review|fix first)/);
   expect(body).toContain('### First Fix');
   expect(body).toContain('### Team Routing');
   expect(body).toContain('### Next Commands');

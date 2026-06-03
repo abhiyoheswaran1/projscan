@@ -41,6 +41,10 @@ test('risk-now returns JSON-compatible conflict data from touched files', async 
   expect(payload.schemaVersion).toBe(1);
   expect([...payload.touchedFiles].sort()).toEqual(['src/a.ts', 'src/b.ts']);
   expect(Array.isArray(payload.conflicts)).toBe(true);
+  expect(payload.coordinationHints.map((hint: { id: string }) => hint.id)).toEqual(
+    expect.arrayContaining(['remembered-session-context', 'resolve-conflicts']),
+  );
+  expect(payload.coordinationHints.map((hint: { command?: string }) => hint.command)).toContain('projscan session touched --format json');
   const sameWorkspace = payload.conflicts.find(
     (conflict: { kind?: string }) => conflict.kind === 'same-workspace',
   );
@@ -57,6 +61,7 @@ test('handoff includes summary, remaining risks, and next actions', async () => 
   expect(payload.schemaVersion).toBe(1);
   expect(payload.summary.sessionId).toMatch(/^[0-9a-f-]{36}$/);
   expect(payload.remainingRisks.length).toBeGreaterThan(0);
+  expect(payload.coordinationHints.map((hint: { id: string }) => hint.id)).toContain('current-worktree-check');
   expect(payload.suggestedNextActions).toEqual(
     expect.arrayContaining([expect.objectContaining({ tool: 'projscan_preflight' })]),
   );

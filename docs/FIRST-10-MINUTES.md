@@ -1,6 +1,6 @@
 # First 10 Minutes With projscan
 
-Use this flow when adding projscan to a team repo for the first time.
+Use this flow when adding projscan to a team repo for the first time. `projscan start --format json` and `projscan first-run --format json` both expose this path as `firstTenMinutes`, so humans and MCP agents see the same command order.
 
 ## 1. Install
 
@@ -11,6 +11,7 @@ npm i -D projscan
 For an agent or MCP-only setup, you can also run through npx without committing the dependency:
 
 ```sh
+npx -y projscan first-run --format json
 npx -y projscan start --mode before_edit
 ```
 
@@ -30,6 +31,8 @@ projscan preflight --mode before_edit --format json
 ```
 
 `start` gives the first workflow and separates current Git/worktree context from remembered session context. `preflight` gives the proceed/caution/block decision before an agent starts editing.
+
+In JSON output, `firstTenMinutes.commands` starts with the same three commands: `projscan privacy-check --offline`, `projscan start --mode before_edit`, and `projscan preflight --mode before_edit --format json`.
 
 ## 4. Bootstrap the team setup
 
