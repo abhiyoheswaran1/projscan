@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 
+## [3.3.0] — 2026-06-03 — "Roadmap Evidence Polish"
+
+### Added
+
+- Added adoption proof gates and `marketValidation.nextProofStep` output so dogfood and trial reports identify the next missing proof step before public adoption claims.
+- Added reviewer-decision evidence to generated PR comments, including decision, reason, owner state, and first command.
+- Added top-level `coordinationHints` to `projscan start` output so start reports expose current-worktree checks and remembered-session follow-up commands.
+- Added full first-ten-minutes and coordination-hint sections to human `projscan start` console output.
+- Added generated GitHub Action validation for the `### Reviewer Decision` PR-comment section.
+
+### Changed
+
+- Dataflow framework-source detection recognizes Hono route-context request reads such as `c.req.json()` while preserving ordinary Hono-shaped helper false-positive guards.
+- `projscan plugin test --format json` returns trust reminders, validation commands, enablement commands, and graph/dataflow context guidance for local plugin authors.
+- PR comment rendering and validation now live in `src/core/evidenceComment.ts`, keeping release evidence orchestration smaller while preserving the existing public exports.
+
 ## [3.2.0] — 2026-06-03 — "Roadmap Train"
 
 ### Added

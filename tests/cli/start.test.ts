@@ -36,7 +36,20 @@ test('start renders machine-readable orientation JSON', async () => {
   expect(report.recommendedWorkflow.id).toBe('bug_hunt');
   expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
   expect(report.firstTenMinutes.commands.map((step: { command: string }) => step.command)).toContain('projscan evidence-pack --pr-comment');
+  expect(report.coordinationHints.map((hint: { id: string }) => hint.id)).toContain('current-worktree-check');
   expect(report.nextActions.length).toBeGreaterThan(0);
+});
+
+test('start console shows the full first-ten-minutes path and coordination hints', async () => {
+  const result = await runCli(['start', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('First 10 Minutes');
+  expect(result.stdout).toContain('projscan privacy-check --offline');
+  expect(result.stdout).toContain('projscan evidence-pack --pr-comment');
+  expect(result.stdout).toContain('projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json');
+  expect(result.stdout).toContain('Coordination Hints');
+  expect(result.stdout).toContain('projscan preflight --mode before_edit --format json');
 });
 
 test('start rejects unsupported formats through the shared matrix', async () => {

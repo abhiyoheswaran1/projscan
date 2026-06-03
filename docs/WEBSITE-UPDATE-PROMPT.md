@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.2.0.
+Update the projscan website for projscan 3.3.0.
 
 Core positioning:
 - Name: projscan

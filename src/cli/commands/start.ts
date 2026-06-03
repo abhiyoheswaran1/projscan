@@ -66,6 +66,16 @@ function printStart(report: StartReport): void {
   console.log(`Health: ${report.evidence.healthScore}/100 (${report.evidence.qualityVerdict})`);
   console.log(`Workflow: ${report.recommendedWorkflow.name}`);
   console.log('');
+  console.log(chalk.bold('First 10 Minutes'));
+  for (const step of report.firstTenMinutes.commands) {
+    console.log(`- ${step.label}: ${step.command}`);
+  }
+  console.log('');
+  console.log(chalk.bold('Coordination Hints'));
+  for (const hint of report.coordinationHints) {
+    console.log(`- ${hint.label}: ${hint.command}`);
+  }
+  console.log('');
   console.log(chalk.bold('Next Commands'));
   for (const action of report.nextActions.slice(0, 5)) {
     if (action.command) console.log(`- ${action.command}`);

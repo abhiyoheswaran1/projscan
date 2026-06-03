@@ -1029,6 +1029,7 @@ jobs:
           const required = [
             '## projscan approval evidence',
             '### Verdict',
+            '### Reviewer Decision',
             '### Trust Calibration',
             '### Baseline Trend',
             '### Top Risks',

@@ -68,6 +68,17 @@ The active release train is intentionally canonicalized as eight concrete workst
 | **3.8.x** | Plugin Ecosystem | Local plugin testing explains trust, enablement, and graph/dataflow context needs. | `projscan plugin test --format json` returns `trust`, `commands`, and `context` guidance. |
 | **3.9.x** | Multi-Agent Coordination | Agents can separate current worktree risk from remembered session context before parallel edits continue. | Session resources and agent briefs include `coordinationHints` with exact follow-up commands. |
 
+### Recently Completed — 3.3.0 (2026)
+
+**3.3.0 "Roadmap Evidence Polish"** made the planned roadmap surfaces concrete across adoption proof, reviewer evidence, onboarding, dataflow precision, plugin authoring, and multi-agent coordination:
+
+- Dogfood and trial reports expose proof gates plus `marketValidation.nextProofStep` before adoption claims are treated as proven.
+- PR evidence comments include `### Reviewer Decision` with decision, reason, owner state, and first command; generated GitHub Action validation now requires that section.
+- `projscan start` includes top-level `coordinationHints`, and human console output shows the full first-ten-minutes path plus coordination follow-up commands.
+- Hono route-context request reads such as `c.req.json()` are detected as framework request sources while ordinary Hono-shaped helpers stay quiet.
+- `projscan plugin test --format json` returns trust, commands, and graph/dataflow context guidance for local plugin authors.
+- PR comment rendering and validation moved into a focused evidence-comment helper while preserving existing public exports.
+
 ### Recently Completed — 3.1.0 (2026)
 
 **3.1.0 "Trust Boundary Hardening"** made the local-first trust boundary visible and enforceable before broader adoption:
@@ -128,7 +139,8 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
-| **3.2.0** (2026-06-03) | Roadmap Train | Canonical 3.2-3.9 release train, proof gates, reviewer decisions, first-ten-minutes path, Hono dataflow precision, plugin trust guidance, and coordination hints |
+| **3.3.0** (2026-06-03) | Roadmap Evidence Polish | Adoption proof gates, reviewer decision evidence, first-ten-minutes/start coordination hints, Hono request-source precision, plugin trust guidance, generated PR-comment validation, and evidence helper extraction |
+| **3.2.0** (2026-06-03) | Roadmap Train | Canonical 3.2-3.9 release train surfaced in release planning and roadmap docs |
 | **3.1.0** (2026-06-02) | Trust Boundary Hardening | Privacy-check trust report, Git-visible scan boundary, path-only `.env` defaults, offline mode, session/worktree risk split, and fast trust smoke gate |
 | **3.0.8** (2026-06-01) | Legal and Trust Hardening | Public legal/trust documents, vulnerability reporting, contribution provenance, and canonical icon packaging |
 | **3.0.7** (2026-05-31) | Trial Adoption Report | Adoption trial verdict, structured reviewer feedback capture, measured market-validation gates, and refreshed adoption docs |

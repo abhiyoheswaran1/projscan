@@ -38,6 +38,8 @@ test('start report gives a compact first-60-seconds workflow without mutating th
     'projscan preflight --mode before_edit --format json',
   ]);
   expect(report.firstTenMinutes.commands.map((step) => step.id)).toContain('first-pr-evidence');
+  expect(report.coordinationHints.map((hint) => hint.id)).toContain('current-worktree-check');
+  expect(report.coordinationHints[0]?.message).toMatch(/Current worktree evidence sees \d+ changed file\(s\)/);
   expect(report.evidence.workplanVerdict).toMatch(/proceed|caution|block/);
   expect(report.evidence.qualityVerdict).toMatch(/excellent|healthy|needs_attention|blocked/);
   expect(report.topRisks.length).toBeGreaterThan(0);
@@ -77,6 +79,9 @@ test('start report separates current worktree context from remembered session co
       totalTouchedFiles: 1,
     }),
   );
+  expect(report.coordinationHints.map((hint) => hint.id)).toContain('remembered-session-context');
+  expect(report.coordinationHints.map((hint) => hint.command)).toContain('projscan session touched --format json');
+  expect(report.coordinationHints.find((hint) => hint.id === 'remembered-session-context')?.message).toContain('1 touched file(s)');
 });
 
 async function makeTempProject(): Promise<string> {

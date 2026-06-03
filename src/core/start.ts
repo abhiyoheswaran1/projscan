@@ -13,6 +13,7 @@ import type {
   StartReport,
   StartRisk,
   StartWorkflowRecommendation,
+  SessionCoordinationHint,
   WorkplanMode,
   WorkplanReport,
   WorkplanTopRisk,
@@ -55,6 +56,7 @@ export async function computeStartReport(
     }));
   const adoptionLoop = buildAdoptionLoop();
   const firstTenMinutes = buildFirstTenMinutes();
+  const coordinationHints = buildStartCoordinationHints(riskSources);
   const nextActions = dedupeActions([
     ...firstTenMinutes.commands.map((step) => ({ label: `First 10 minutes: ${step.label}`, command: step.command })),
     ...workflow.commands.map((command) => ({ label: `Run ${workflow.name}`, command })),
@@ -74,6 +76,7 @@ export async function computeStartReport(
     },
     recommendedWorkflow: workflow,
     firstTenMinutes,
+    coordinationHints,
     evidence: {
       workplanVerdict: workplan.verdict,
       workplanSummary: workplan.summary,
@@ -94,6 +97,26 @@ export async function computeStartReport(
   return report;
 }
 
+
+function buildStartCoordinationHints(riskSources: StartReport['evidence']['riskSources']): SessionCoordinationHint[] {
+  const hints: SessionCoordinationHint[] = [
+    {
+      id: 'current-worktree-check',
+      label: 'Separate current worktree evidence from session memory',
+      message: `Current worktree evidence sees ${riskSources.currentWorktree.count} changed file(s); remembered session context may include older agent touches.`,
+      command: 'projscan preflight --mode before_edit --format json',
+    },
+  ];
+  if (riskSources.sessionMemory.totalTouchedFiles > 0) {
+    hints.push({
+      id: 'remembered-session-context',
+      label: 'Review remembered session touches',
+      message: `${riskSources.sessionMemory.totalTouchedFiles} touched file(s) come from remembered session context, not necessarily the current Git diff.`,
+      command: 'projscan session touched --format json',
+    });
+  }
+  return hints;
+}
 
 async function buildStartRiskSources(rootPath: string): Promise<StartReport['evidence']['riskSources']> {
   const [changed, sessionResult] = await Promise.all([

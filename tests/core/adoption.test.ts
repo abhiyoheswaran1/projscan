@@ -69,6 +69,7 @@ test('GitHub Action starter wires PR comments to projscan evidence', () => {
   expect(starter.workflow).toContain("r.verdict === 'block'");
   expect(starter.workflow).toContain('npx -y projscan evidence-pack --pr-comment');
   expect(starter.workflow).toContain('Validate PR comment');
+  expect(starter.workflow).toContain('Reviewer Decision');
   expect(starter.workflow).toContain('Trust Calibration');
   expect(starter.workflow).toContain('Suggested Next Actions');
   expect(starter.workflow).toContain('actionable command');
@@ -87,6 +88,7 @@ test('GitHub Action PR comment validator runs in a real shell', async () => {
       [
         '## projscan approval evidence',
         '### Verdict',
+        '### Reviewer Decision',
         '### Trust Calibration',
         '### Baseline Trend',
         '### Top Risks',
@@ -102,6 +104,13 @@ test('GitHub Action PR comment validator runs in a real shell', async () => {
       ].join('\n'),
     );
     await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).resolves.toBeDefined();
+
+    const withoutReviewerDecision = (await fs.readFile(path.join(root, 'projscan-comment.md'), 'utf-8')).replace(
+      '### Reviewer Decision\n',
+      '',
+    );
+    await fs.writeFile(path.join(root, 'projscan-comment.md'), withoutReviewerDecision);
+    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({ code: 1 });
 
     await fs.writeFile(path.join(root, 'projscan-comment.md'), '## projscan approval evidence\n');
     await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({ code: 1 });

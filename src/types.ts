@@ -764,6 +764,7 @@ export interface StartReport {
   };
   recommendedWorkflow: StartWorkflowRecommendation;
   firstTenMinutes: StartFirstTenMinutes;
+  coordinationHints: SessionCoordinationHint[];
   evidence: {
     workplanVerdict: PreflightVerdict;
     workplanSummary: string;
