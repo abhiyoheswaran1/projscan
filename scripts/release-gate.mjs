@@ -40,9 +40,9 @@ if (errors.length > 0) {
 
 console.error(`release gate supply-chain scan passed: 0 error(s), ${warnings.length} warning(s).`);
 
-// Audit the dependency set that ships to users. Dev-only tooling is still
-// exercised by CI, but it is not installed by consumers of the published package.
-await run('npm', ['audit', '--omit=dev', '--audit-level=moderate'], 'npm audit --omit=dev');
+// Audit the full dependency set, including dev tooling used by tests, release
+// checks, and local validation. Dev-only criticals can still compromise release work.
+await run('npm', ['audit', '--audit-level=moderate'], 'npm audit');
 await run('npm', ['audit', 'signatures'], 'npm audit signatures');
 
 console.error('release gate passed.');

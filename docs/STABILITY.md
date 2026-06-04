@@ -63,7 +63,7 @@ These can change in any release without a major bump.
 - **Internal modules** under `src/core/`, `src/analyzers/`, `src/reporters/`, `src/utils/`, `src/cli/`, `src/mcp/` (except where re-exported from `src/index.ts`).
 - **Score magnitudes**: the numeric values of `riskScore` (hotspots), `score` (doctor), `instability` (coupling), and similar derived numbers may shift between releases as the underlying formulas evolve. The *ranking* and *direction* of change are stable; absolute thresholds in your CI may need recalibration after upgrades. (Example: 0.11 swapped LOC for AST cyclomatic complexity in `riskScore`, dropping absolute values without changing the ordering.)
 - **Console-format whitespace, colors, ASCII drawings, spinner messages, banner art.** Anything visual in the terminal output is for humans; do not parse it. Use `--format json` or `--format sarif` for programmatic use.
-- **Cache file format** (`.projscan-cache/`). Bumped on schema changes; old caches are discarded silently and rebuilt. Don't commit, share, or parse.
+- **Cache file format** (`.projscan-cache/`). Bumped on schema changes; old caches are discarded silently and rebuilt. Cross-repo workspace registrations live at `.projscan-cache/workspace.json` and are treated as local trust state. Don't commit, share, or parse.
 - **Index cache version, tool-manifest layout details beyond the documented top-level keys, internal vendored wasm grammar versions** (we may upgrade tree-sitter grammars at any time; the *captured* node types and behaviour are what matters).
 - **Bundled file paths** under `dist/` not exported via `package.json#exports` or `bin`.
 

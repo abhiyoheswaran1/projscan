@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test } from 'vitest';
 import type { PreflightMode, PreflightReason, PreflightReport } from '../../src/types.js';
 import {
   computePreflight,
@@ -14,8 +14,16 @@ import { loadSession, recordTouch, saveSession } from '../../src/core/session.js
 
 const tempRoots: string[] = [];
 const execFileAsync = promisify(execFile);
+let originalPluginFlag: string | undefined;
+
+beforeEach(() => {
+  originalPluginFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
+  delete process.env.PROJSCAN_PLUGINS_PREVIEW;
+});
 
 afterEach(async () => {
+  if (originalPluginFlag === undefined) delete process.env.PROJSCAN_PLUGINS_PREVIEW;
+  else process.env.PROJSCAN_PLUGINS_PREVIEW = originalPluginFlag;
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
@@ -70,7 +78,8 @@ test('before_edit works outside git and returns a complete report', async () => 
   expect(report.evidence.changedFiles?.available).toBe(false);
 });
 
-test('plugin policy errors block preflight', async () => {
+test('plugin policy errors block preflight when preview execution is already trusted', async () => {
+  process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
   const root = await makeTempProject();
   await writeErrorPlugin(root);
 
@@ -85,6 +94,21 @@ test('plugin policy errors block preflight', async () => {
       (reason) => reason.source === 'plugin' && reason.severity === 'error',
     ),
   ).toBe(true);
+});
+
+
+
+test('preflight enablePlugins option does not enable local plugin code without preview flag', async () => {
+  const root = await makeTempProject();
+  const markerPath = path.join(root, 'plugin-executed.txt');
+  await writeMarkerPlugin(root, markerPath);
+
+  const report = await computePreflight(root, { mode: 'before_edit', enablePlugins: true });
+
+  expect(report.verdict).not.toBe('block');
+  expect(report.evidence.plugins).toEqual(expect.objectContaining({ enabled: false }));
+  expect(report.reasons.some((reason) => reason.source === 'plugin')).toBe(false);
+  await expect(fs.access(markerPath)).rejects.toThrow();
 });
 
 test('known compromised package versions block preflight', async () => {
@@ -423,6 +447,38 @@ async function makeTempProject(): Promise<string> {
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+
+async function writeMarkerPlugin(root: string, markerPath: string): Promise<void> {
+  const pluginDir = path.join(root, '.projscan-plugins');
+  await fs.mkdir(pluginDir, { recursive: true });
+  await fs.writeFile(
+    path.join(pluginDir, 'marker.projscan-plugin.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      name: 'marker',
+      kind: 'analyzer',
+      module: './marker.mjs',
+      category: 'policy',
+    }),
+  );
+  await fs.writeFile(
+    path.join(pluginDir, 'marker.mjs'),
+    `import { writeFile } from 'node:fs/promises';
+await writeFile(${JSON.stringify(markerPath)}, 'executed');
+export default {
+  check: () => [{
+    id: 'marker-policy',
+    title: 'Marker policy',
+    description: 'This should not execute unless the preview flag is already set.',
+    severity: 'error',
+    category: 'policy',
+    fixAvailable: false,
+  }],
+};
+`,
+  );
 }
 
 async function writeErrorPlugin(root: string): Promise<void> {

@@ -4,8 +4,10 @@ import { pathToFileURL } from 'node:url';
 import { scanRepository } from './repositoryScanner.js';
 import {
   PLUGIN_DIR,
+  PLUGIN_PREVIEW_FLAG,
   PLUGIN_MANIFEST_EXT,
   PLUGIN_REPORTER_COMMANDS,
+  pluginsEnabled,
   readPluginManifestFile,
   type PluginAnalyzerExports,
   type PluginAnalyzerManifest,
@@ -31,6 +33,7 @@ export interface InitPluginResult {
 
 export interface TestPluginOptions {
   fixtureRoot?: string;
+  execute?: boolean;
 }
 
 export async function initPlugin(
@@ -76,22 +79,66 @@ export async function testPlugin(
 
   const manifest = manifestResult.manifest;
   const modulePath = path.resolve(path.dirname(resolvedManifestPath), manifest.module);
+  const guidance = await buildPluginTestGuidance(resolvedManifestPath, modulePath);
+  const staticCheck = await checkModuleReadable(modulePath);
+  if (!staticCheck.ok) {
+    return failResult(
+      resolvedManifestPath,
+      {
+        code: 'module-load-error',
+        severity: 'error',
+        message: staticCheck.message,
+      },
+      guidance,
+      staticExecution(),
+    );
+  }
+
+  if (options.execute !== true) {
+    return {
+      schemaVersion: 1,
+      manifestPath: resolvedManifestPath,
+      ok: true,
+      diagnostics: [],
+      ...guidance,
+      execution: staticExecution(),
+    };
+  }
+
+  if (!pluginsEnabled()) {
+    return failResult(
+      resolvedManifestPath,
+      {
+        code: 'plugin-execution-disabled',
+        severity: 'error',
+        message: `plugin execution requires ${PLUGIN_PREVIEW_FLAG}=1 and --execute`,
+      },
+      guidance,
+      staticExecution(`Set ${PLUGIN_PREVIEW_FLAG}=1 and pass --execute to import and run local plugin code.`),
+    );
+  }
+
   let exportsObj: Record<string, unknown>;
+  const executed = executeMode();
   try {
     const mod = await importPluginModule(modulePath);
     exportsObj = (mod.default ?? mod) as Record<string, unknown>;
   } catch (err) {
-    return failResult(resolvedManifestPath, {
-      code: 'module-load-error',
-      severity: 'error',
-      message: `plugin module failed to load: ${err instanceof Error ? err.message : String(err)}`,
-    });
+    return failResult(
+      resolvedManifestPath,
+      {
+        code: 'module-load-error',
+        severity: 'error',
+        message: `plugin module failed to load: ${err instanceof Error ? err.message : String(err)}`,
+      },
+      guidance,
+      executed,
+    );
   }
 
-  const guidance = await buildPluginTestGuidance(resolvedManifestPath, modulePath);
   return manifest.kind === 'analyzer'
-    ? testAnalyzerPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance)
-    : testReporterPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance);
+    ? testAnalyzerPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance, executed)
+    : testReporterPlugin(resolvedManifestPath, manifest, exportsObj, options, guidance, executed);
 }
 
 function analyzerManifest(name: string, modulePath: string): PluginAnalyzerManifest {
@@ -168,13 +215,14 @@ async function testAnalyzerPlugin(
   exportsObj: Record<string, unknown>,
   options: TestPluginOptions,
   guidance: PluginResultGuidance,
+  execution: PluginTestResult['execution'],
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.check !== 'function') {
     return failResult(manifestPath, {
       code: 'invalid-analyzer-export',
       severity: 'error',
       message: `analyzer plugin "${manifest.name}" missing required export "check"`,
-    });
+    }, guidance, execution);
   }
   const rootPath = options.fixtureRoot ?? path.dirname(path.dirname(manifestPath));
   const scan = await scanRepository(rootPath);
@@ -186,14 +234,14 @@ async function testAnalyzerPlugin(
       code: 'analyzer-runtime-error',
       severity: 'error',
       message: `analyzer plugin "${manifest.name}" threw: ${err instanceof Error ? err.message : String(err)}`,
-    });
+    }, guidance, execution);
   }
   if (!Array.isArray(rawIssues)) {
     return failResult(manifestPath, {
       code: 'invalid-analyzer-result',
       severity: 'error',
       message: `analyzer plugin "${manifest.name}" returned ${typeof rawIssues}; expected Issue[]`,
-    });
+    }, guidance, execution);
   }
   const issues = rawIssues as Issue[];
   const malformed = issues.find((issue) => !isIssueShape(issue));
@@ -202,7 +250,7 @@ async function testAnalyzerPlugin(
       code: 'invalid-analyzer-issue',
       severity: 'error',
       message: `analyzer plugin "${manifest.name}" returned a malformed issue`,
-    });
+    }, guidance, execution);
   }
   return {
     schemaVersion: 1,
@@ -210,6 +258,7 @@ async function testAnalyzerPlugin(
     ok: true,
     diagnostics: [],
     ...guidance,
+    execution,
     analyzer: { issues },
   };
 }
@@ -220,13 +269,14 @@ async function testReporterPlugin(
   exportsObj: Record<string, unknown>,
   options: TestPluginOptions,
   guidance: PluginResultGuidance,
+  execution: PluginTestResult['execution'],
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.render !== 'function') {
     return failResult(manifestPath, {
       code: 'invalid-reporter-export',
       severity: 'error',
       message: `reporter plugin "${manifest.name}" missing required export "render"`,
-    });
+    }, guidance, execution);
   }
 
   const rootPath = options.fixtureRoot ?? path.dirname(path.dirname(manifestPath));
@@ -246,14 +296,14 @@ async function testReporterPlugin(
         code: 'reporter-render-error',
         severity: 'error',
         message: `reporter plugin "${manifest.name}" threw for ${command}: ${err instanceof Error ? err.message : String(err)}`,
-      });
+      }, guidance, execution);
     }
     if (typeof text !== 'string') {
       return failResult(manifestPath, {
         code: 'reporter-render-error',
         severity: 'error',
         message: `reporter plugin "${manifest.name}" returned ${typeof text}; expected string`,
-      });
+      }, guidance, execution);
     }
     outputs.push({ command, text });
   }
@@ -264,6 +314,7 @@ async function testReporterPlugin(
     ok: true,
     diagnostics: [],
     ...guidance,
+    execution,
     reporter: { outputs },
   };
 }
@@ -297,7 +348,8 @@ async function buildPluginTestGuidance(manifestPath: string, modulePath?: string
     commands: {
       validate: `projscan plugin validate ${manifestPath}`,
       test: `projscan plugin test ${manifestPath} --format json`,
-      enable: `PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor`,
+      execute: `${PLUGIN_PREVIEW_FLAG}=1 projscan plugin test ${manifestPath} --execute --format json`,
+      enable: `${PLUGIN_PREVIEW_FLAG}=1 projscan doctor`,
     },
     context: {
       requested,
@@ -312,13 +364,47 @@ async function buildPluginTestGuidance(manifestPath: string, modulePath?: string
 function failResult(
   manifestPath: string,
   diagnostic: { code: string; severity: IssueSeverity; message: string },
+  guidance: PluginResultGuidance = defaultPluginTestGuidance(manifestPath),
+  execution: PluginTestResult['execution'] = staticExecution(),
 ): PluginTestResult {
   return {
     schemaVersion: 1,
     manifestPath,
     ok: false,
     diagnostics: [diagnostic],
-    ...defaultPluginTestGuidance(manifestPath),
+    ...guidance,
+    execution,
+  };
+}
+
+
+async function checkModuleReadable(modulePath: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    await fs.access(modulePath);
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      message: `plugin module is not readable at ${modulePath}: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+function staticExecution(note = 'Static validation completed without importing or running local plugin code.'): PluginTestResult['execution'] {
+  return {
+    requested: false,
+    executed: false,
+    mode: 'static',
+    note,
+  };
+}
+
+function executeMode(): PluginTestResult['execution'] {
+  return {
+    requested: true,
+    executed: true,
+    mode: 'execute',
+    note: 'Local plugin module was imported and executed because --execute was requested and the preview flag was enabled.',
   };
 }
 
@@ -332,7 +418,8 @@ function defaultPluginTestGuidance(manifestPath: string): PluginResultGuidance {
     commands: {
       validate: `projscan plugin validate ${manifestPath}`,
       test: `projscan plugin test ${manifestPath} --format json`,
-      enable: 'PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor',
+      execute: `${PLUGIN_PREVIEW_FLAG}=1 projscan plugin test ${manifestPath} --execute --format json`,
+      enable: `${PLUGIN_PREVIEW_FLAG}=1 projscan doctor`,
     },
     context: {
       requested: false,

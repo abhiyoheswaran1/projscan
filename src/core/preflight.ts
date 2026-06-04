@@ -3,7 +3,7 @@ import { collectIssues } from './issueEngine.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeReview } from './review.js';
 import { loadSession } from './session.js';
-import { PLUGIN_PREVIEW_FLAG, pluginsEnabled } from './plugins.js';
+import { pluginsEnabled } from './plugins.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -102,7 +102,7 @@ export async function computePreflight(
     session,
     hotspots,
     issues,
-    pluginsEnabledForRun: options.enablePlugins === true || pluginsEnabled(),
+    pluginsEnabledForRun: pluginsEnabled(),
     review,
     releaseScale,
   });
@@ -152,17 +152,9 @@ export function summarizePreflight(report: PreflightReport): string {
 async function collectIssuesWithPluginOption(
   rootPath: string,
   files: FileEntry[],
-  enablePlugins?: boolean,
+  _enablePlugins?: boolean,
 ): Promise<Issue[]> {
-  if (enablePlugins !== true) return collectIssues(rootPath, files);
-  const previous = process.env[PLUGIN_PREVIEW_FLAG];
-  process.env[PLUGIN_PREVIEW_FLAG] = '1';
-  try {
-    return await collectIssues(rootPath, files);
-  } finally {
-    if (previous === undefined) delete process.env[PLUGIN_PREVIEW_FLAG];
-    else process.env[PLUGIN_PREVIEW_FLAG] = previous;
-  }
+  return collectIssues(rootPath, files);
 }
 
 async function safeChangedFiles(

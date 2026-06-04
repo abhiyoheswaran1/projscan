@@ -6,6 +6,7 @@ import {
   loadOrCreateWorkspace,
   loadWorkspace,
   removeRepo,
+  resolveTrustedWorkspaceRepoPath,
   saveWorkspace,
   type Workspace,
 } from '../../core/workspace.js';
@@ -76,7 +77,8 @@ async function runAdd(repoPath: string, name?: string): Promise<void> {
   const rootPath = getRootPath();
   try {
     const w = await loadOrCreateWorkspace(rootPath);
-    const entry = addRepo(w, repoPath, name);
+    const trustedRepoPath = await resolveTrustedWorkspaceRepoPath(rootPath, repoPath);
+    const entry = addRepo(w, trustedRepoPath, name);
     await saveWorkspace(rootPath, w);
     console.log(chalk.green(`✓ Registered "${entry.name}" at ${entry.path}`));
     console.log(chalk.dim(`  ${w.repos.length} repo${w.repos.length === 1 ? '' : 's'} in workspace.`));

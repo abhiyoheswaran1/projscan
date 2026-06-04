@@ -460,6 +460,7 @@ export interface PluginDiagnostic {
     | 'invalid-category'
     | 'invalid-commands'
     | 'invalid-description'
+    | 'invalid-manifest-path'
     | 'invalid-json'
     | 'read-error'
     | 'plugins-disabled'

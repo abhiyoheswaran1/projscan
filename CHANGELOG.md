@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.4.1] — 2026-06-04 — "Security Hardening"
+
+### Security
+
+- `projscan plugin test` now validates statically by default and imports/runs plugin code only when `--execute` or `--confirm-execute` is passed with `PROJSCAN_PLUGINS_PREVIEW=1` already set.
+- MCP `projscan_workplan` `enable_plugins` now only requests plugin evidence when the server process already has `PROJSCAN_PLUGINS_PREVIEW=1`; preflight no longer mutates `PROJSCAN_PLUGINS_PREVIEW` internally.
+- MCP `projscan_plugin validate` now rejects absolute paths, `..` traversal, and manifests outside `<root>/.projscan-plugins/` after realpath resolution.
+- Cross-repo workspace graph now reads locally trusted registrations from `.projscan-cache/workspace.json`, ignores project-root `.projscan-workspace.json`, canonicalizes sibling repo paths, caps registered repos, and avoids unbounded trusted workspace graph scans.
+- Upgraded Vitest to `^4.1.8` and changed the release gate to run a full dependency audit, including dev dependencies.
+
 ## [3.4.0] — 2026-06-04 — "Repo Understanding"
 
 ### Added

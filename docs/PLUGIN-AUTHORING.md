@@ -184,19 +184,18 @@ Use `plugin test` after editing a plugin:
 ```sh
 projscan plugin test .projscan-plugins/policy.projscan-plugin.json
 projscan plugin test .projscan-plugins/policy.projscan-plugin.json --format json
-projscan plugin test .projscan-plugins/policy.projscan-plugin.json --fixture ./test-fixture
+PROJSCAN_PLUGINS_PREVIEW=1 projscan plugin test .projscan-plugins/policy.projscan-plugin.json --execute
+PROJSCAN_PLUGINS_PREVIEW=1 projscan plugin test .projscan-plugins/policy.projscan-plugin.json --execute --fixture ./test-fixture
 ```
 
-For analyzer plugins, the test runner loads the module, scans the fixture root,
-runs `check(rootPath, files)`, and verifies every returned issue has the required
-shape. For reporter plugins, it renders sample `doctor`, `analyze`, and `ci`
-payloads for the commands listed in the manifest and verifies each render returns
-a string.
+By default, `plugin test` validates the manifest, checks that the module file is readable, and reports guidance without importing or running plugin code. Add `--execute` only when you intentionally want to run local plugin code, and set `PROJSCAN_PLUGINS_PREVIEW=1` in the process environment.
+
+In execute mode, analyzer plugins scan the fixture root, run `check(rootPath, files)`, and verify every returned issue has the required shape. Reporter plugins render sample `doctor`, `analyze`, and `ci` payloads for the commands listed in the manifest and verify each render returns a string.
 
 The JSON result also includes three guidance blocks:
 
 - `trust`: reminds callers that local plugins execute repository code, stay local-only, and require `PROJSCAN_PLUGINS_PREVIEW=1` before execution.
-- `commands`: gives copyable `validate`, `test`, and preview-enabled `enable` commands for the same manifest.
+- `commands`: gives copyable `validate`, static `test`, preview-enabled `execute`, and `enable` commands for the same manifest.
 - `context`: reports whether the plugin requested graph/dataflow context and lists detected capabilities such as `semanticGraph` and `dataflow`.
 
 Graph-aware analyzers should keep context access lazy. Only call `context.getSemanticGraph()` or `context.getDataflow()` when the plugin needs that evidence for its issues.

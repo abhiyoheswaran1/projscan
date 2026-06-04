@@ -1,3 +1,4 @@
+import { pluginsEnabled } from '../../core/plugins.js';
 import { computeWorkplan, isWorkplanMode } from '../../core/workplan.js';
 import type { WorkplanMode } from '../../types.js';
 import type { McpTool } from './_shared.js';
@@ -43,7 +44,8 @@ export const workplanTool: McpTool = {
       },
       enable_plugins: {
         type: 'boolean',
-        description: 'Enable local analyzer plugins for this run, equivalent to PROJSCAN_PLUGINS_PREVIEW=1.',
+        description:
+          'Request local analyzer plugin evidence only when this MCP server process already has PROJSCAN_PLUGINS_PREVIEW=1. This argument never enables plugin execution by itself.',
       },
       max_tokens: {
         type: 'number',
@@ -65,7 +67,7 @@ export const workplanTool: McpTool = {
           typeof args.max_tasks === 'number' && Number.isFinite(args.max_tasks)
             ? args.max_tasks
             : undefined,
-        enablePlugins: args.enable_plugins === true,
+        enablePlugins: args.enable_plugins === true && pluginsEnabled(),
       }),
     };
   },

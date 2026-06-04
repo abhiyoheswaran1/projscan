@@ -6,10 +6,11 @@ the manifest and module into `.projscan-plugins/`, then run:
 ```bash
 projscan plugin validate .projscan-plugins/<name>.projscan-plugin.json
 projscan plugin test .projscan-plugins/<name>.projscan-plugin.json
+PROJSCAN_PLUGINS_PREVIEW=1 projscan plugin test .projscan-plugins/<name>.projscan-plugin.json --execute
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor
 ```
 
-Local plugins are code execution. Only enable plugins you trust. `projscan plugin test --format json` returns `trust`, `commands`, and `context` guidance so agents can validate a plugin, see the preview flag, and detect graph/dataflow context needs before execution.
+Local plugins are code execution. Only enable plugins you trust. `projscan plugin test --format json` is static by default and returns `trust`, `commands`, `execution`, and `context` guidance so agents can validate a plugin, see the preview flag, and detect graph/dataflow context needs before execution.
 
 ## Analyzer Plugins
 

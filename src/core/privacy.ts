@@ -114,6 +114,12 @@ export function knownLocalWriteSurfaces(): LocalWriteSurfaceInfo[] {
       containsUserData: true,
     },
     {
+      name: 'cross-repo workspace registration',
+      path: '.projscan-cache/workspace.json',
+      trigger: 'projscan workspace add for locally trusted sibling repo registration',
+      containsUserData: true,
+    },
+    {
       name: 'project memory',
       path: '.projscan-memory/memory.json',
       trigger: 'project memory and severity/confidence drift features',

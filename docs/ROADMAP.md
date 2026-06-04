@@ -84,7 +84,7 @@ We are *not* trying to be:
 - PR evidence comments include `### Reviewer Decision` with decision, reason, owner state, and first command; generated GitHub Action validation now requires that section.
 - `projscan start` includes top-level `coordinationHints`, and human console output shows the full first-ten-minutes path plus coordination follow-up commands.
 - Hono route-context request reads such as `c.req.json()` are detected as framework request sources while ordinary Hono-shaped helpers stay quiet.
-- `projscan plugin test --format json` returns trust, commands, and graph/dataflow context guidance for local plugin authors.
+- `projscan plugin test --format json` returns trust, commands, execution, and graph/dataflow context guidance for local plugin authors while staying static unless `--execute` and `PROJSCAN_PLUGINS_PREVIEW=1` are both present.
 - PR comment rendering and validation moved into a focused evidence-comment helper while preserving existing public exports.
 
 ### Recently Completed — 3.1.0 (2026)

@@ -1262,7 +1262,14 @@ export interface PluginTestResult {
   commands: {
     validate: string;
     test: string;
+    execute: string;
     enable: string;
+  };
+  execution: {
+    requested: boolean;
+    executed: boolean;
+    mode: 'static' | 'execute';
+    note: string;
   };
   context: {
     requested: boolean;

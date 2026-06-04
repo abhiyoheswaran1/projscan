@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpTool } from './_shared.js';
 import { loadWorkspace } from '../../core/workspace.js';
@@ -81,6 +82,9 @@ export const workspaceGraphTool: McpTool = {
   },
 };
 
+const MAX_WORKSPACE_GRAPH_FILES = 5000;
+const SKIPPED_WORKSPACE_DIRS = new Set(['.git', '.projscan-cache', 'node_modules', 'dist', 'build', 'coverage', '.next', '.nuxt']);
+
 interface RepoSummary {
   name: string;
   path: string;
@@ -90,11 +94,34 @@ interface RepoSummary {
 
 async function buildPerRepoGraph(repoPath: string): Promise<CodeGraph | null> {
   try {
+    const withinCap = await isWithinWorkspaceGraphFileCap(repoPath);
+    if (!withinCap) return null;
     const scan = await scanRepository(repoPath);
+    if (scan.files.length > MAX_WORKSPACE_GRAPH_FILES) return null;
     return await buildCodeGraph(repoPath, scan.files);
   } catch {
     return null;
   }
+}
+
+async function isWithinWorkspaceGraphFileCap(rootPath: string): Promise<boolean> {
+  let count = 0;
+  const stack = [rootPath];
+  while (stack.length > 0) {
+    const dir = stack.pop();
+    if (!dir) continue;
+    const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (!SKIPPED_WORKSPACE_DIRS.has(entry.name)) stack.push(path.join(dir, entry.name));
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      count += 1;
+      if (count > MAX_WORKSPACE_GRAPH_FILES) return false;
+    }
+  }
+  return true;
 }
 
 async function listView(

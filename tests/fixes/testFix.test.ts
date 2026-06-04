@@ -16,7 +16,7 @@ import { execSync } from 'node:child_process';
 import { fileExists } from '../../src/utils/fileHelpers.js';
 
 describe('testFix', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   it('has correct metadata', () => {
     expect(testFix.id).toBe('add-tests');

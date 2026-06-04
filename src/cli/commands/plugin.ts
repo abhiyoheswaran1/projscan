@@ -49,8 +49,10 @@ export function registerPlugin(): void {
 
   plugin
     .command('test <manifest>')
-    .description('Validate, load, and execute a local plugin against fixture payloads')
+    .description('Validate a local plugin; execution requires --execute and PROJSCAN_PLUGINS_PREVIEW=1')
     .option('--fixture <path>', 'fixture root for analyzer plugins')
+    .option('--execute', 'import and run local plugin code after static validation')
+    .option('--confirm-execute', 'alias for --execute; confirms local code execution')
     .action(async (manifest: string, cmdOpts) => {
       await runTest(manifest, cmdOpts);
     });
@@ -175,7 +177,7 @@ async function runInit(cmdOpts: { kind?: string; name?: string }): Promise<void>
   }
 }
 
-async function runTest(manifestPath: string, cmdOpts: { fixture?: string }): Promise<void> {
+async function runTest(manifestPath: string, cmdOpts: { fixture?: string; execute?: boolean; confirmExecute?: boolean }): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const format = assertFormatSupported('plugin test');
@@ -185,13 +187,19 @@ async function runTest(manifestPath: string, cmdOpts: { fixture?: string }): Pro
     typeof cmdOpts.fixture === 'string'
       ? path.resolve(rootPath, cmdOpts.fixture)
       : rootPath;
-  const result = await testPlugin(resolvedManifestPath, { fixtureRoot });
+  const execute = cmdOpts.execute === true || cmdOpts.confirmExecute === true;
+  const result = await testPlugin(resolvedManifestPath, { fixtureRoot, execute });
   if (format === 'json') {
     console.log(JSON.stringify(result, null, 2));
     if (!result.ok) process.exit(1);
     return;
   }
   if (result.ok) {
+    if (!result.execution.executed) {
+      console.log(chalk.green(`✓ ${manifestPath} passed static plugin validation.`));
+      console.log(chalk.dim(`  execution skipped. Run ${result.commands.execute} to import and test local code.`));
+      return;
+    }
     console.log(chalk.green(`✓ ${manifestPath} loaded and passed plugin test.`));
     if (result.analyzer) {
       console.log(chalk.dim(`  analyzer issues: ${result.analyzer.issues.length}`));

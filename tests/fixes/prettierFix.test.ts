@@ -11,7 +11,7 @@ vi.mock('node:fs/promises');
 import { execSync } from 'node:child_process';
 
 describe('prettierFix', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   it('has correct metadata', () => {
     expect(prettierFix.id).toBe('add-prettier');

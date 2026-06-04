@@ -21,7 +21,7 @@ export function registerWorkplan(): void {
     .option('--head-ref <ref>', 'git head ref for merge/release checks')
     .option('--max-changed-files <count>', 'caution threshold for changed files', parsePositiveInt)
     .option('--max-tasks <count>', 'maximum number of tasks to return', parsePositiveInt)
-    .option('--enable-plugins', 'enable local analyzer plugins for this run')
+    .option('--enable-plugins', 'include plugin evidence when PROJSCAN_PLUGINS_PREVIEW=1 is already set')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();

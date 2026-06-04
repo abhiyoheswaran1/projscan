@@ -12,7 +12,7 @@ import path from 'node:path';
  * Disambiguation: this is DIFFERENT from `src/core/monorepo.ts`'s
  * `WorkspaceInfo`, which detects intra-repo packages (npm/yarn/pnpm/
  * Lerna/Nx) within a single repo. The cross-repo workspace lives at
- * `<cwd>/.projscan-workspace.json`; the monorepo workspace is
+ * `<cwd>/.projscan-cache/workspace.json`; the monorepo workspace is
  * detected from package.json/pnpm-workspace.yaml/etc.
  *
  * Local-only state. No network. Schema-versioned. Best-effort writes
@@ -20,7 +20,8 @@ import path from 'node:path';
  */
 
 export const WORKSPACE_SCHEMA_VERSION = 1;
-const WORKSPACE_FILENAME = '.projscan-workspace.json';
+export const WORKSPACE_MAX_REPOS = 20;
+const WORKSPACE_FILENAME = path.join('.projscan-cache', 'workspace.json');
 
 export interface WorkspaceRepo {
   /** Absolute path to the registered repo's root. */
@@ -42,7 +43,7 @@ export interface Workspace {
 
 /**
  * Load the workspace at `rootPath` (the directory whose
- * `.projscan-workspace.json` we read). Returns null if the file is
+ * `.projscan-cache/workspace.json` we read). Returns null if the file is
  * missing, corrupt, or schema-mismatched. Never throws.
  */
 export async function loadWorkspace(rootPath: string): Promise<Workspace | null> {
@@ -62,7 +63,7 @@ export async function loadWorkspace(rootPath: string): Promise<Workspace | null>
   if (!isWorkspaceShape(parsed) || parsed.schemaVersion !== WORKSPACE_SCHEMA_VERSION) {
     return null;
   }
-  return parsed;
+  return trustWorkspace(rootPath, parsed);
 }
 
 /**
@@ -77,6 +78,30 @@ export async function loadOrCreateWorkspace(rootPath: string): Promise<Workspace
     createdAt: new Date().toISOString(),
     repos: [],
   };
+}
+
+
+export async function resolveTrustedWorkspaceRepoPath(rootPath: string, repoPath: string): Promise<string> {
+  if (typeof repoPath !== 'string' || repoPath.length === 0) {
+    throw new Error('Repo path is required.');
+  }
+  const rootReal = await realpathOrResolve(rootPath);
+  const resolved = path.resolve(repoPath);
+  let repoReal: string;
+  try {
+    repoReal = await fs.realpath(resolved);
+  } catch (err) {
+    throw new Error(
+      `Repo "${resolved}" must exist before registration: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
+  if (!isTrustedSiblingRepo(rootReal, repoReal)) {
+    throw new Error(
+      `Repo "${repoReal}" is outside the trusted sibling workspace boundary for "${rootReal}". Register repos that live beside the current project under the same parent directory.`,
+    );
+  }
+  return repoReal;
 }
 
 /**
@@ -127,10 +152,47 @@ export function removeRepo(workspace: Workspace, pathOrName: string): WorkspaceR
 export async function saveWorkspace(rootPath: string, workspace: Workspace): Promise<void> {
   try {
     const filePath = workspaceFilePath(rootPath);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, JSON.stringify(workspace, null, 2), 'utf-8');
   } catch {
     // best-effort
   }
+}
+
+
+async function trustWorkspace(rootPath: string, workspace: Workspace): Promise<Workspace | null> {
+  const rootReal = await realpathOrResolve(rootPath);
+  const repos: WorkspaceRepo[] = [];
+  const seenPaths = new Set<string>();
+  const seenNames = new Set<string>();
+  for (const repo of workspace.repos) {
+    let repoReal: string;
+    try {
+      repoReal = await fs.realpath(repo.path);
+    } catch {
+      continue;
+    }
+    if (!isTrustedSiblingRepo(rootReal, repoReal)) continue;
+    if (seenPaths.has(repoReal) || seenNames.has(repo.name)) continue;
+    seenPaths.add(repoReal);
+    seenNames.add(repo.name);
+    repos.push({ path: repoReal, name: repo.name });
+    if (repos.length >= WORKSPACE_MAX_REPOS) break;
+  }
+  if (repos.length === 0) return null;
+  return { ...workspace, repos };
+}
+
+async function realpathOrResolve(inputPath: string): Promise<string> {
+  return fs.realpath(inputPath).catch(() => path.resolve(inputPath));
+}
+
+function isTrustedSiblingRepo(rootReal: string, repoReal: string): boolean {
+  if (repoReal === rootReal) return false;
+  const base = path.dirname(rootReal);
+  const relative = path.relative(base, repoReal);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return false;
+  return relative.split(path.sep).length === 1;
 }
 
 function workspaceFilePath(rootPath: string): string {

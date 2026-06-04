@@ -42,7 +42,7 @@ beforeEach(async () => {
     `export function auth() { return 2; }\nexport const greet = () => 'hi';\n`,
   );
 
-  // Register both repos with the workspace at workspaceRoot.
+  // Register both repos with the trusted local workspace cache at workspaceRoot.
   const wsFile = {
     schemaVersion: 1,
     createdAt: new Date().toISOString(),
@@ -51,8 +51,9 @@ beforeEach(async () => {
       { path: consumerRepo, name: 'consumer' },
     ],
   };
+  await fs.mkdir(path.join(workspaceRoot, '.projscan-cache'), { recursive: true });
   await fs.writeFile(
-    path.join(workspaceRoot, '.projscan-workspace.json'),
+    path.join(workspaceRoot, '.projscan-cache', 'workspace.json'),
     JSON.stringify(wsFile),
   );
 });
@@ -109,6 +110,38 @@ describe('projscan_workspace_graph (1.6+)', () => {
     // greet is only in consumer — should NOT appear.
     expect(shared.find((s) => s.symbol === 'greet')).toBeUndefined();
     server.close();
+  });
+
+
+
+  it('ignores checked-in project workspace files before scanning registered paths', async () => {
+    const fresh = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-ws-untrusted-'));
+    const root = path.join(fresh, 'root');
+    const outside = path.join(fresh, 'nested', 'outside');
+    await fs.mkdir(root, { recursive: true });
+    await fs.mkdir(path.join(outside, 'src'), { recursive: true });
+    await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'root' }));
+    await fs.writeFile(path.join(outside, 'package.json'), JSON.stringify({ name: 'outside' }));
+    await fs.writeFile(path.join(outside, 'src', 'secret.ts'), 'export const secret = 1;\n');
+    await fs.writeFile(
+      path.join(root, '.projscan-workspace.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        repos: [{ path: outside, name: 'outside' }],
+      }),
+    );
+
+    try {
+      const server = createMcpServer(root);
+      await init(server);
+      const result = await call(server, 1, { action: 'list' });
+      expect(result.available).toBe(false);
+      expect(result.repos).toEqual([]);
+      server.close();
+    } finally {
+      await fs.rm(fresh, { recursive: true, force: true });
+    }
   });
 
   it('returns unavailable when no workspace is registered', async () => {

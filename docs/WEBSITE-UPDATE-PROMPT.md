@@ -3,7 +3,7 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.4.0.
+Update the projscan website for projscan 3.4.1.
 
 Core positioning:
 - Name: projscan
@@ -45,9 +45,9 @@ What to highlight above the fold:
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
 - 41 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
-- Stable local analyzer and reporter plugins, now with `projscan plugin init`, `projscan plugin test`, trust guidance, validation commands, and graph/dataflow context hints.
+- Stable local analyzer and reporter plugins, now with `projscan plugin init`, static-by-default `projscan plugin test`, explicit `--execute` plus `PROJSCAN_PLUGINS_PREVIEW=1` execution, trust guidance, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
-- Local-first trust boundary: no source upload, no hidden telemetry, no API key. `projscan privacy-check` shows the boundary before scanning; anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt.
+- Local-first trust boundary: no source upload, no hidden telemetry, no API key. `projscan privacy-check` shows the boundary before scanning; anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt. MCP workplans cannot enable plugin execution by request argument alone, and cross-repo workspace graph reads only locally registered sibling repos from `.projscan-cache/workspace.json`.
 
 Real proof examples to add:
 - Before projscan: a PR review comment that only says "run tests" or dumps scanner output.

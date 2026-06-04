@@ -84,6 +84,52 @@ describe('projscan_plugin MCP tool', () => {
     server.close();
   });
 
+
+
+  it('rejects absolute manifest paths outside the project plugin directory', async () => {
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-outside-'));
+    try {
+      const manifestPath = path.join(outside, 'outside.projscan-plugin.json');
+      await fs.writeFile(
+        manifestPath,
+        JSON.stringify({
+          schemaVersion: 1,
+          name: 'outside',
+          kind: 'analyzer',
+          module: './outside.mjs',
+          category: 'custom',
+        }),
+      );
+      const server = createMcpServer(tmp);
+      await init(server);
+      const result = await call(server, 'projscan_plugin', {
+        action: 'validate',
+        manifest_path: manifestPath,
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        diagnostic: { code: 'invalid-manifest-path' },
+      });
+      server.close();
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects manifest validation paths containing traversal segments', async () => {
+    const server = createMcpServer(tmp);
+    await init(server);
+    const result = await call(server, 'projscan_plugin', {
+      action: 'validate',
+      manifest_path: '.projscan-plugins/../package.json',
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'invalid-manifest-path' },
+    });
+    server.close();
+  });
+
   it('includes diagnostics in list results', async () => {
     await fs.writeFile(path.join(tmp, '.projscan-plugins', 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
     const server = createMcpServer(tmp);

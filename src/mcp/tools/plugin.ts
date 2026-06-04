@@ -1,6 +1,9 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { McpTool } from './_shared.js';
 import {
+  PLUGIN_DIR,
+  PLUGIN_MANIFEST_EXT,
   PLUGIN_PREVIEW_FLAG,
   discoverPluginManifests,
   pluginsEnabled,
@@ -30,7 +33,7 @@ export const pluginTool: McpTool = {
       },
       manifest_path: {
         type: 'string',
-        description: '"validate" only — repo-relative or absolute path to a *.projscan-plugin.json file.',
+        description: '"validate" only — repo-relative path under .projscan-plugins/ to a *.projscan-plugin.json file.',
       },
     },
   },
@@ -63,8 +66,9 @@ export const pluginTool: McpTool = {
       case 'validate': {
         const p = typeof args.manifest_path === 'string' ? args.manifest_path : '';
         if (!p) throw new Error('validate action requires a "manifest_path" argument');
-        const manifestPath = path.isAbsolute(p) ? p : path.resolve(rootPath, p);
-        const result = await readPluginManifestFile(manifestPath);
+        const resolved = await resolveMcpManifestPath(rootPath, p);
+        if (!resolved.ok) return resolved.failure;
+        const result = await readPluginManifestFile(resolved.manifestPath);
         return result.ok
           ? { ok: true, manifest: result.manifest }
           : { ok: false, error: result.reason, diagnostic: result.diagnostic };
@@ -74,3 +78,54 @@ export const pluginTool: McpTool = {
     }
   },
 };
+
+
+type ManifestPathResolution =
+  | { ok: true; manifestPath: string }
+  | { ok: false; failure: Record<string, unknown> };
+
+async function resolveMcpManifestPath(rootPath: string, inputPath: string): Promise<ManifestPathResolution> {
+  if (path.isAbsolute(inputPath)) {
+    return invalidManifestPath('manifest_path must be relative to the project root');
+  }
+  if (inputPath.split(/[/\\]/).some((segment) => segment === '..')) {
+    return invalidManifestPath('manifest_path must not contain ".." path segments');
+  }
+  if (!inputPath.endsWith(PLUGIN_MANIFEST_EXT)) {
+    return invalidManifestPath(`manifest_path must end with ${PLUGIN_MANIFEST_EXT}`);
+  }
+
+  const rootReal = await fs.realpath(rootPath).catch(() => path.resolve(rootPath));
+  const pluginDir = path.join(rootReal, PLUGIN_DIR);
+  const pluginDirReal = await fs.realpath(pluginDir).catch(() => pluginDir);
+  const candidate = path.resolve(rootReal, inputPath);
+  if (!isInsideDirectory(candidate, pluginDirReal)) {
+    return invalidManifestPath(`manifest_path must live under ${PLUGIN_DIR}/`);
+  }
+
+  const candidateReal = await fs.realpath(candidate).catch(() => candidate);
+  if (!isInsideDirectory(candidateReal, pluginDirReal)) {
+    return invalidManifestPath(`manifest_path must resolve under ${PLUGIN_DIR}/`);
+  }
+  return { ok: true, manifestPath: candidateReal };
+}
+
+function isInsideDirectory(candidate: string, directory: string): boolean {
+  const relative = path.relative(directory, candidate);
+  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function invalidManifestPath(message: string): ManifestPathResolution {
+  return {
+    ok: false,
+    failure: {
+      ok: false,
+      error: message,
+      diagnostic: {
+        code: 'invalid-manifest-path',
+        message,
+        hint: `Use a path like ${PLUGIN_DIR}/policy${PLUGIN_MANIFEST_EXT}.`,
+      },
+    },
+  };
+}
