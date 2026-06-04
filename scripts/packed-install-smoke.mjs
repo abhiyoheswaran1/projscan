@@ -7,6 +7,7 @@ const repoRoot = process.cwd();
 const tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'projscan-packed-install-'));
 const packDir = path.join(tmpRoot, 'pack');
 const projectDir = path.join(tmpRoot, 'project');
+const trustHome = path.join(tmpRoot, 'plugin-trust');
 const npmCacheDir = process.env.PROJSCAN_NPM_CACHE ?? path.join(os.tmpdir(), 'projscan-packed-install-npm-cache');
 
 function assert(condition, message) {
@@ -174,9 +175,16 @@ try {
   );
   assert(pluginTest.ok === true, 'fixture plugin did not pass plugin test');
 
+  // Trust-on-first-use: the plugin only executes after its bytes are approved.
+  // Use an isolated trust store under the temp root so the smoke run never
+  // touches the real ~/.config trust store.
+  runProjscan(binPath, ['plugin', 'trust', 'policy', '--quiet'], {
+    env: { PROJSCAN_PLUGIN_TRUST_HOME: trustHome },
+  });
+
   const doctor = parseJson(
     runProjscan(binPath, ['doctor', '--format', 'json', '--quiet'], {
-      env: { PROJSCAN_PLUGINS_PREVIEW: '1' },
+      env: { PROJSCAN_PLUGINS_PREVIEW: '1', PROJSCAN_PLUGIN_TRUST_HOME: trustHome },
     }),
     'doctor',
   );
