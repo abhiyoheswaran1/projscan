@@ -3,7 +3,11 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.4.1.
+Update the projscan website for projscan 3.5.0.
+
+Headline for this release (3.5.0 — "Plugin Trust"):
+- Local plugins now run under trust-on-first-use: even with PROJSCAN_PLUGINS_PREVIEW=1, a plugin module only executes after its exact bytes are approved with `projscan plugin trust <name>`, and a changed module reverts to untrusted. Approving a plugin is a deliberate CLI action and is never exposed over the MCP server.
+- `projscan fix` installs dev tooling with `npm install --ignore-scripts`, so applying a fix in an untrusted repo can no longer run that repo's npm lifecycle scripts.
 
 Core positioning:
 - Name: projscan
@@ -45,7 +49,7 @@ What to highlight above the fold:
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
 - 41 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
-- Stable local analyzer and reporter plugins, now with `projscan plugin init`, static-by-default `projscan plugin test`, explicit `--execute` plus `PROJSCAN_PLUGINS_PREVIEW=1` execution, trust guidance, validation commands, and graph/dataflow context hints.
+- Stable local analyzer and reporter plugins, now with `projscan plugin init`, static-by-default `projscan plugin test`, trust-on-first-use execution (`projscan plugin trust` / `untrust`, per-plugin trust status in `plugin list`) on top of `PROJSCAN_PLUGINS_PREVIEW=1`, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
 - Local-first trust boundary: no source upload, no hidden telemetry, no API key. `projscan privacy-check` shows the boundary before scanning; anonymous product telemetry is default-off and only runs after explicit opt-in with `projscan telemetry enable` or the interactive `projscan init team` prompt. MCP workplans cannot enable plugin execution by request argument alone, and cross-repo workspace graph reads only locally registered sibling repos from `.projscan-cache/workspace.json`.
 
@@ -70,7 +74,7 @@ Feature sections to update:
 - Agent Trust: preflight verdicts before edit, commit, and merge; required checks; suggested next tool calls; clearer separation between concrete blockers and scale-only release sign-off.
 - Multi-agent coordination: `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now`, each with `coordinationHints` that separate current worktree checks from remembered session context.
 - Deeper review intelligence: package-scoped `contractChanges`, `newTaintFlows`, hardened `newDataflowRisks`, compact package-scoped `graphEvidence`, generated-code review filtering, and preflight `releaseScale` evidence for large platform releases.
-- Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
+- Plugin Platform: analyzer plugins add findings; reporter plugins render doctor, analyze, and ci in a team-specific voice; init/test commands make authoring practical; trust-on-first-use approval gates execution per module; the Plugin Gallery includes policy, team health, security radar, and release-readiness examples.
 - Release trust: public stability contract, Node.js >= 18 support, packed-install smoke testing, MCP Registry descriptor validation.
 - Screenshots/media: use the latest README media from docs/, especially projscan-reporter-plugin.png/gif, npx projscan --help.gif, and projscan-adoption-loop.gif.
 
