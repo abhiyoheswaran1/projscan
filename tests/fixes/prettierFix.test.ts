@@ -3,12 +3,12 @@ import fs from 'node:fs/promises';
 import { prettierFix } from '../../src/fixes/prettierFix.js';
 
 vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }));
 
 vi.mock('node:fs/promises');
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 describe('prettierFix', () => {
   beforeEach(() => vi.resetAllMocks());
@@ -18,16 +18,29 @@ describe('prettierFix', () => {
     expect(prettierFix.issueId).toBe('missing-prettier');
   });
 
-  it('installs prettier with 60s timeout', async () => {
+  it('installs prettier via execFile (no shell) with --ignore-scripts and a 60s timeout', async () => {
     vi.mocked(fs.writeFile).mockResolvedValue();
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ scripts: {} }));
 
     await prettierFix.apply('/proj');
 
-    expect(execSync).toHaveBeenCalledWith(
-      'npm install --save-dev prettier',
-      expect.objectContaining({ timeout: 60_000 }),
+    expect(execFileSync).toHaveBeenCalledWith(
+      'npm',
+      ['install', '--save-dev', '--ignore-scripts', 'prettier'],
+      expect.objectContaining({ cwd: '/proj', timeout: 60_000 }),
     );
+  });
+
+  // Security regression guard (Finding 1): see testFix for the full rationale.
+  // `--ignore-scripts` blocks lifecycle-script RCE from a hostile scanned repo.
+  it('always passes --ignore-scripts so a hostile repo cannot run lifecycle scripts', async () => {
+    vi.mocked(fs.writeFile).mockResolvedValue();
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ scripts: {} }));
+
+    await prettierFix.apply('/proj');
+
+    const args = vi.mocked(execFileSync).mock.calls[0][1] as string[];
+    expect(args).toContain('--ignore-scripts');
   });
 
   it('writes .prettierrc config', async () => {

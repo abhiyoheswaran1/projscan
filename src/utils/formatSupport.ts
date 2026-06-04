@@ -50,6 +50,8 @@ export const COMMAND_FORMAT_SUPPORT = {
   'plugin validate': ['console', 'json'],
   'plugin init': ['console', 'json'],
   'plugin test': ['console', 'json'],
+  'plugin trust': ['console', 'json'],
+  'plugin untrust': ['console', 'json'],
   preflight: ['console', 'json'],
   'privacy-check': ['console', 'json'],
   'pr-diff': ['console', 'json', 'markdown', 'html'],

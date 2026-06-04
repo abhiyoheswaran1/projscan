@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Fix } from '../types.js';
@@ -10,7 +10,10 @@ export const prettierFix: Fix = {
   issueId: 'missing-prettier',
 
   async apply(rootPath: string): Promise<void> {
-    execSync('npm install --save-dev prettier', {
+    // `--ignore-scripts`: see testFix — rootPath is untrusted, so block the
+    // scanned repo's npm lifecycle scripts (RCE vector). execFile (no shell)
+    // avoids putting anything on a shell command line.
+    execFileSync('npm', ['install', '--save-dev', '--ignore-scripts', 'prettier'], {
       cwd: rootPath,
       stdio: 'pipe',
       timeout: 60_000,

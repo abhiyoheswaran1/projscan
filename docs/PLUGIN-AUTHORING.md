@@ -1,12 +1,24 @@
 # Plugin Authoring
 
 projscan 2.0 stabilizes the local analyzer and reporter plugin contract.
-Plugin execution is opt-in via `PROJSCAN_PLUGINS_PREVIEW=1` so repositories
-must explicitly trust local plugin code before it runs.
+Plugin execution is gated by two independent controls:
 
-Plugins are local code. Enabling the opt-in flag means you trust the plugin code in
-the repository, the same way you trust project scripts in `package.json`.
-projscan does not fetch remote plugin code.
+1. **Opt-in flag** — set `PROJSCAN_PLUGINS_PREVIEW=1` to enable the plugin system at all.
+2. **Trust-on-first-use** — even with the flag on, each plugin **module** must be
+   explicitly approved with `projscan plugin trust <name>` before projscan will
+   execute it. Approval pins the module's SHA-256; if the file later changes, it
+   reverts to untrusted and must be re-approved. Untrusted plugins are discovered
+   and listed but never run.
+
+This means setting the flag globally (e.g. in your shell profile) can't silently
+execute attacker-authored code from a repository you happen to scan — you still
+have to approve each module once. The trust store lives in your user config
+directory (`$XDG_CONFIG_HOME/projscan` or `~/.config/projscan`,
+overridable with `PROJSCAN_PLUGIN_TRUST_HOME`), never inside the scanned repo.
+
+Plugins are local code. Approving one means you trust that code in the repository,
+the same way you trust project scripts in `package.json`. projscan does not fetch
+remote plugin code.
 
 ## Layout
 
@@ -208,11 +220,28 @@ projscan plugin list --format json
 ```
 
 The list command discovers manifests whether or not execution is enabled. It
-shows `enabled:false` until the opt-in flag is set.
+shows `enabled:false` until the opt-in flag is set, and a per-plugin `trust`
+status (`trusted` / `untrusted` / `changed`) so you can see what would actually run.
+
+## Trust
+
+Approve a plugin's current module bytes before it can execute:
+
+```sh
+projscan plugin trust policy        # approve one plugin by name
+projscan plugin trust --all         # approve every valid discovered plugin
+projscan plugin untrust policy      # revoke approval
+```
+
+Trust is intentionally a human CLI action — it is not exposed over the MCP server,
+so an agent can't approve a plugin on your behalf.
 
 ## Enable
 
+Enabling requires both the opt-in flag and a trusted module:
+
 ```sh
+projscan plugin trust --all
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor
 PROJSCAN_PLUGINS_PREVIEW=1 projscan ci
 PROJSCAN_PLUGINS_PREVIEW=1 projscan analyze

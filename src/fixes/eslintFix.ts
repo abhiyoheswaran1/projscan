@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Fix } from '../types.js';
@@ -18,7 +18,11 @@ export const eslintFix: Fix = {
       packages.push('@typescript-eslint/parser', '@typescript-eslint/eslint-plugin');
     }
 
-    execSync(`npm install --save-dev ${packages.join(' ')}`, {
+    // execFile (no shell) keeps the package names off any shell command line,
+    // and `--ignore-scripts` blocks the scanned repo's npm lifecycle scripts —
+    // rootPath is potentially untrusted, so a plain `npm install` here would be
+    // an RCE vector the moment a user runs `projscan fix`. See testFix.
+    execFileSync('npm', ['install', '--save-dev', '--ignore-scripts', ...packages], {
       cwd: rootPath,
       stdio: 'pipe',
       timeout: 60_000,

@@ -180,8 +180,8 @@ export async function buildPrivacyCheckReport(
       discoveredManifestCount: pluginManifests.length,
       localCodeExecution: pluginExecutionEnabled,
       note: pluginExecutionEnabled
-        ? 'Local plugins are enabled and run as trusted local code from this repository.'
-        : `Local plugins are disabled unless ${PLUGIN_PREVIEW_FLAG}=1 is explicitly set.`,
+        ? 'Local plugin execution is enabled, but each plugin module additionally requires explicit trust-on-first-use approval (`projscan plugin trust <name>`) before it runs.'
+        : `Local plugins are disabled unless ${PLUGIN_PREVIEW_FLAG}=1 is set, and each module must then be approved with \`projscan plugin trust\`.`,
     },
     localWrites: {
       surfaces: knownLocalWriteSurfaces(),

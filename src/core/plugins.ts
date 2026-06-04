@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { CodeGraph } from './codeGraph.js';
 import type { FileEntry, Issue, IssueSeverity, DataflowReport, SemanticGraphReport } from '../types.js';
+import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
 
 /**
  * Stable local plugin API (2.0+).
@@ -211,6 +212,14 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
     const modulePath = path.resolve(path.dirname(entry.manifestPath), entry.manifest.module);
     try {
       await assertPluginModuleReadable(entry.manifest.module, modulePath);
+      // Trust-on-first-use gate: never import (execute) a module the user
+      // hasn't explicitly approved. The preview flag opts a user into the
+      // plugin *system*; trust opts them into each specific module's bytes.
+      const trust = await getPluginTrustStatus(modulePath);
+      if (trust.status !== 'trusted') {
+        process.stderr.write(untrustedAnalyzerWarning(entry.manifest.name, trust.status));
+        continue;
+      }
       const mod = await importPluginModule(modulePath);
       const exportsObj = (mod.default ?? mod) as Partial<PluginAnalyzerExports>;
       if (typeof exportsObj.check !== 'function') {
@@ -303,6 +312,13 @@ async function loadReporterPlugin(
   const modulePath = path.resolve(path.dirname(manifestPath), manifest.module);
   try {
     await assertPluginModuleReadable(manifest.module, modulePath);
+    // Trust-on-first-use gate — see loadPlugins. Reporters render to stdout,
+    // but importing the module still runs its top-level code, so the same
+    // approval requirement applies.
+    const trust = await getPluginTrustStatus(modulePath);
+    if (trust.status !== 'trusted') {
+      return pluginRuntimeFail(untrustedReporterDiagnostic(manifest.name, trust.status));
+    }
     const mod = await importPluginModule(modulePath);
     const exportsObj = (mod.default ?? mod) as Partial<PluginReporterExports>;
     if (typeof exportsObj.render !== 'function') {
@@ -378,6 +394,26 @@ function describePluginModuleLoadError(
     };
   }
   return { message: formatError(err) };
+}
+
+function untrustedAnalyzerWarning(name: string, status: PluginTrustStatus): string {
+  const reason =
+    status === 'changed'
+      ? 'module changed since it was trusted'
+      : 'module is not trusted';
+  const verb = status === 'changed' ? 'Re-run' : 'Run';
+  return `[projscan] plugin "${name}" ${reason}; skipped (not executed). ${verb} \`projscan plugin trust ${name}\` to approve this module.\n`;
+}
+
+function untrustedReporterDiagnostic(name: string, status: PluginTrustStatus): PluginDiagnostic {
+  const changed = status === 'changed';
+  return {
+    code: 'plugin-untrusted',
+    message: changed
+      ? `reporter plugin "${name}" changed since it was trusted; not executed`
+      : `reporter plugin "${name}" is not trusted; not executed`,
+    hint: `${changed ? 'Re-run' : 'Run'} \`projscan plugin trust ${name}\` to approve this reporter.`,
+  };
 }
 
 function importPluginModule(modulePath: string): Promise<Record<string, unknown>> {
@@ -468,7 +504,8 @@ export interface PluginDiagnostic {
     | 'reporter-unsupported-command'
     | 'invalid-reporter-export'
     | 'reporter-load-error'
-    | 'reporter-render-error';
+    | 'reporter-render-error'
+    | 'plugin-untrusted';
   message: string;
   field?: string;
   hint?: string;

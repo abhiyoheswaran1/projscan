@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { testFix } from '../../src/fixes/testFix.js';
 
 vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }));
 
 vi.mock('node:fs/promises');
@@ -12,7 +12,7 @@ vi.mock('../../src/utils/fileHelpers.js', () => ({
   fileExists: vi.fn(),
 }));
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileExists } from '../../src/utils/fileHelpers.js';
 
 describe('testFix', () => {
@@ -23,7 +23,7 @@ describe('testFix', () => {
     expect(testFix.issueId).toBe('missing-test-framework');
   });
 
-  it('installs vitest with 60s timeout', async () => {
+  it('installs vitest via execFile (no shell) with --ignore-scripts and a 60s timeout', async () => {
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ scripts: {} }));
     vi.mocked(fs.writeFile).mockResolvedValue();
     vi.mocked(fs.mkdir).mockResolvedValue(undefined);
@@ -31,10 +31,27 @@ describe('testFix', () => {
 
     await testFix.apply('/proj');
 
-    expect(execSync).toHaveBeenCalledWith(
-      'npm install --save-dev vitest',
-      expect.objectContaining({ timeout: 60_000 }),
+    expect(execFileSync).toHaveBeenCalledWith(
+      'npm',
+      ['install', '--save-dev', '--ignore-scripts', 'vitest'],
+      expect.objectContaining({ cwd: '/proj', timeout: 60_000 }),
     );
+  });
+
+  // Security regression guard (Finding 1): `npm install` in the scanned repo
+  // runs that repo's preinstall/install/postinstall/prepare lifecycle scripts.
+  // `--ignore-scripts` is the control that stops a malicious scanned repo from
+  // achieving RCE the moment a user runs `projscan fix`.
+  it('always passes --ignore-scripts so a hostile repo cannot run lifecycle scripts', async () => {
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ scripts: {} }));
+    vi.mocked(fs.writeFile).mockResolvedValue();
+    vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+    vi.mocked(fileExists).mockResolvedValue(false);
+
+    await testFix.apply('/proj');
+
+    const args = vi.mocked(execFileSync).mock.calls[0][1] as string[];
+    expect(args).toContain('--ignore-scripts');
   });
 
   it('adds test scripts to package.json', async () => {

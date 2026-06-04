@@ -9,6 +9,7 @@ import {
   pluginsEnabled,
   readPluginManifestFile,
 } from '../../core/plugins.js';
+import { getPluginTrustStatus } from '../../core/pluginTrust.js';
 
 /**
  * `projscan_plugin` — discover and validate stable local analyzer/reporter
@@ -21,7 +22,7 @@ import {
 export const pluginTool: McpTool = {
   name: 'projscan_plugin',
   description:
-    'Discover and validate stable local analyzer and reporter plugins under .projscan-plugins/. Execution is opt-in via the PROJSCAN_PLUGINS_PREVIEW=1 env flag because plugins are local code. Use action:"list" to see what is discoverable today, action:"validate" to check a manifest before committing it.',
+    'Discover and validate stable local analyzer and reporter plugins under .projscan-plugins/. Execution is opt-in via the PROJSCAN_PLUGINS_PREVIEW=1 env flag AND each module must be approved with trust-on-first-use; the list reports a per-plugin `trust` status (trusted / untrusted / changed). Approving a plugin is a deliberate human action via the `projscan plugin trust <name>` CLI — it is intentionally not exposed here. Use action:"list" to see what is discoverable and whether it would run, action:"validate" to check a manifest before committing it.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -42,25 +43,34 @@ export const pluginTool: McpTool = {
     switch (action) {
       case 'list': {
         const entries = await discoverPluginManifests(rootPath);
+        const plugins = await Promise.all(
+          entries.map(async (e) => {
+            if (!e.manifest) {
+              return { manifestPath: e.manifestPath, ok: false, error: e.error, diagnostic: e.diagnostic };
+            }
+            const modulePath = path.resolve(path.dirname(e.manifestPath), e.manifest.module);
+            const trust = await getPluginTrustStatus(modulePath);
+            return {
+              manifestPath: e.manifestPath,
+              ok: true,
+              name: e.manifest.name,
+              kind: e.manifest.kind,
+              module: e.manifest.module,
+              ...(e.manifest.kind === 'analyzer'
+                ? { category: e.manifest.category }
+                : { commands: e.manifest.commands }),
+              description: e.manifest.description,
+              // Whether this module would actually execute: even with the
+              // preview flag on, an untrusted/changed module is skipped.
+              trust: trust.status,
+            };
+          }),
+        );
         return {
           enabled: pluginsEnabled(),
           envFlag: PLUGIN_PREVIEW_FLAG,
           count: entries.length,
-          plugins: entries.map((e) => ({
-            manifestPath: e.manifestPath,
-            ok: e.manifest !== null,
-            ...(e.manifest
-              ? {
-                  name: e.manifest.name,
-                  kind: e.manifest.kind,
-                  module: e.manifest.module,
-                  ...(e.manifest.kind === 'analyzer'
-                    ? { category: e.manifest.category }
-                    : { commands: e.manifest.commands }),
-                  description: e.manifest.description,
-                }
-              : { error: e.error, diagnostic: e.diagnostic }),
-          })),
+          plugins,
         };
       }
       case 'validate': {
