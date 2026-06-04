@@ -1,11 +1,9 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { spawnCli } from '../helpers/cli.js';
 
-const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
@@ -60,19 +58,5 @@ test('init team surfaces the telemetry opt-in choice without enabling it in JSON
 });
 
 async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const result = await execFileAsync(process.execPath, [cliPath, ...args], {
-      cwd: tmp,
-      env: { ...process.env, PROJSCAN_TELEMETRY_HOME: telemetryHome, PROJSCAN_TELEMETRY_NO_NETWORK: '1' },
-      maxBuffer: 1024 * 1024,
-    });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; code?: number };
-    return {
-      stdout: e.stdout ?? '',
-      stderr: e.stderr ?? '',
-      exitCode: typeof e.code === 'number' ? e.code : 1,
-    };
-  }
+  return spawnCli(cliPath, args, { cwd: tmp, env: { ...process.env, PROJSCAN_TELEMETRY_HOME: telemetryHome, PROJSCAN_TELEMETRY_NO_NETWORK: '1' } });
 }

@@ -1,16 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { spawnCli } from '../helpers/cli.js';
 import {
   COMMAND_FORMAT_SUPPORT,
   OUTPUT_FORMATS,
   formatSupportRows,
 } from '../../src/utils/formatSupport.js';
 
-const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
@@ -29,17 +27,7 @@ afterEach(async () => {
 });
 
 async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const result = await execFileAsync(process.execPath, [cliPath, ...args], {
-      cwd: tmp,
-      env: process.env,
-      maxBuffer: 1024 * 1024,
-    });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; code?: number };
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: typeof e.code === 'number' ? e.code : 1 };
-  }
+  return spawnCli(cliPath, args, { cwd: tmp });
 }
 
 describe('CLI format handling', () => {

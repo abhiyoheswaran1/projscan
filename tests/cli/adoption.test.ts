@@ -1,11 +1,9 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { spawnCli } from '../helpers/cli.js';
 
-const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
@@ -84,7 +82,6 @@ test('first-run reports setup diagnostics without mutating the project', async (
   await expect(fs.access(path.join(tmp, '.projscanrc.json'))).rejects.toThrow();
 });
 
-
 test('init policy writes a team policy starter as JSON', async () => {
   const result = await runCli(['init', 'policy', '--team', 'security', '--format', 'json', '--quiet']);
 
@@ -110,8 +107,6 @@ test('init policy refuses to overwrite without force', async () => {
   const config = JSON.parse(await fs.readFile(path.join(tmp, '.projscanrc.json'), 'utf-8'));
   expect(config.ignore).toEqual(expect.arrayContaining(['.next', 'dist']));
 });
-
-
 
 test('init team bootstraps policy workflow ownership baseline and start report', async () => {
   const result = await runCli(['init', 'team', '--team', 'security', '--format', 'json', '--quiet']);
@@ -162,19 +157,5 @@ test('init github-action writes a PR workflow as JSON', async () => {
 });
 
 async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const result = await execFileAsync(process.execPath, [cliPath, ...args], {
-      cwd: tmp,
-      env: process.env,
-      maxBuffer: 1024 * 1024,
-    });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; code?: number };
-    return {
-      stdout: e.stdout ?? '',
-      stderr: e.stderr ?? '',
-      exitCode: typeof e.code === 'number' ? e.code : 1,
-    };
-  }
+  return spawnCli(cliPath, args, { cwd: tmp });
 }
