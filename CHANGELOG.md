@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.5.0] — 2026-06-04 — "Plugin Trust"
+
+### Security
+
+- `projscan fix` now installs dev tooling (ESLint, Prettier, Vitest) with `npm install --ignore-scripts`, so applying a fix in an untrusted repository can no longer execute that repo's `preinstall`/`postinstall`/`prepare` lifecycle scripts. The install also no longer goes through a shell.
+- Local plugins now require explicit trust-on-first-use approval in addition to `PROJSCAN_PLUGINS_PREVIEW=1`: a plugin module only executes after you approve its exact bytes with `projscan plugin trust <name>`. If the module changes, it reverts to untrusted until re-approved. Untrusted plugins are still discovered and listed but never run.
+
+### Added
+
+- `projscan plugin trust <name>` / `projscan plugin trust --all` / `projscan plugin untrust <name>` to manage approved plugin modules. `projscan plugin list` and the MCP `projscan_plugin` list action now report a per-plugin `trust` status (`trusted` / `untrusted` / `changed`). Approving a plugin is a deliberate CLI action and is intentionally not exposed over the MCP server.
+
 ## [3.4.1] — 2026-06-04 — "Security Hardening"
 
 ### Security
