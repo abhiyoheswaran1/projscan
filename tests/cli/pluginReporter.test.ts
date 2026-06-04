@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
+import { spawnCli } from '../helpers/cli.js';
 
-const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
@@ -43,20 +41,8 @@ async function runCli(
   args: string[],
   env: Record<string, string | undefined> = {},
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const result = await execFileAsync(process.execPath, [cliPath, ...args], {
-      cwd: tmp,
-      // Isolate the trust store per test so approvals never touch ~/.config.
-      env: { ...process.env, PROJSCAN_PLUGIN_TRUST_HOME: trustHome, ...env },
-      maxBuffer: 1024 * 1024,
-    });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; code?: number };
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: typeof e.code === 'number' ? e.code : 1 };
-  }
+  return spawnCli(cliPath, args, { cwd: tmp, env: { ...process.env, PROJSCAN_PLUGIN_TRUST_HOME: trustHome, ...env } });
 }
-
 
 async function writePluginFixture(root: string): Promise<void> {
   const pluginDir = path.join(root, '.projscan-plugins');
