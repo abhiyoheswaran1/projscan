@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Fix } from '../types.js';
@@ -11,7 +11,13 @@ export const testFix: Fix = {
   issueId: 'missing-test-framework',
 
   async apply(rootPath: string): Promise<void> {
-    execSync('npm install --save-dev vitest', {
+    // `--ignore-scripts`: rootPath is the scanned (potentially untrusted) repo.
+    // Without it, `npm install` would run that repo's preinstall/install/
+    // postinstall/prepare lifecycle scripts — and any installed dependency's
+    // install scripts — turning `projscan fix` into arbitrary code execution
+    // on a hostile repo. execFile (no shell) also keeps package names off any
+    // shell command line.
+    execFileSync('npm', ['install', '--save-dev', '--ignore-scripts', 'vitest'], {
       cwd: rootPath,
       stdio: 'pipe',
       timeout: 60_000,

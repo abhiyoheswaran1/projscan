@@ -11,19 +11,28 @@ import {
   summarizePreflight,
 } from '../../src/core/preflight.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
+import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
 
 const tempRoots: string[] = [];
 const execFileAsync = promisify(execFile);
 let originalPluginFlag: string | undefined;
+let originalTrustHome: string | undefined;
+let trustHome: string;
 
-beforeEach(() => {
+beforeEach(async () => {
   originalPluginFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
+  originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
   delete process.env.PROJSCAN_PLUGINS_PREVIEW;
+  trustHome = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-preflight-trust-'));
+  process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
 });
 
 afterEach(async () => {
   if (originalPluginFlag === undefined) delete process.env.PROJSCAN_PLUGINS_PREVIEW;
   else process.env.PROJSCAN_PLUGINS_PREVIEW = originalPluginFlag;
+  if (originalTrustHome === undefined) delete process.env[PLUGIN_TRUST_HOME_ENV];
+  else process.env[PLUGIN_TRUST_HOME_ENV] = originalTrustHome;
+  await fs.rm(trustHome, { recursive: true, force: true });
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
 });
 
@@ -82,6 +91,8 @@ test('plugin policy errors block preflight when preview execution is already tru
   process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
   const root = await makeTempProject();
   await writeErrorPlugin(root);
+  // Trust-on-first-use: the plugin only executes once its bytes are approved.
+  await trustPlugin(path.join(root, '.projscan-plugins', 'policy.mjs'), 'policy');
 
   const report = await computePreflight(root, { mode: 'before_edit', enablePlugins: true });
 

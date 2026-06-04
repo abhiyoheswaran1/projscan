@@ -3,13 +3,19 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createMcpServer } from '../../src/mcp/server.js';
+import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
 
 let tmp: string;
+let trustHome: string;
 let originalFlag: string | undefined;
+let originalTrustHome: string | undefined;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-mcp-'));
+  trustHome = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-mcp-trust-'));
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
+  originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
+  process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
   await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
   await fs.mkdir(path.join(tmp, '.projscan-plugins'), { recursive: true });
 });
@@ -17,7 +23,10 @@ beforeEach(async () => {
 afterEach(async () => {
   if (originalFlag === undefined) delete process.env.PROJSCAN_PLUGINS_PREVIEW;
   else process.env.PROJSCAN_PLUGINS_PREVIEW = originalFlag;
+  if (originalTrustHome === undefined) delete process.env[PLUGIN_TRUST_HOME_ENV];
+  else process.env[PLUGIN_TRUST_HOME_ENV] = originalTrustHome;
   await fs.rm(tmp, { recursive: true, force: true });
+  await fs.rm(trustHome, { recursive: true, force: true });
 });
 
 async function init(server: ReturnType<typeof createMcpServer>): Promise<void> {
@@ -211,6 +220,7 @@ describe('projscan_plugin MCP tool', () => {
         }],
       };`,
     );
+    await trustPlugin(path.join(tmp, '.projscan-plugins', 'policy.mjs'), 'policy');
     const server = createMcpServer(tmp);
     await init(server);
     const doctor = await call(server, 'projscan_doctor', {});
@@ -219,6 +229,51 @@ describe('projscan_plugin MCP tool', () => {
     const analyze = await call(server, 'projscan_analyze', {});
     const analyzeIssues = analyze.issues as Array<{ id: string }>;
     expect(analyzeIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(true);
+    server.close();
+  });
+
+  it('does NOT run an untrusted plugin through MCP doctor', async () => {
+    process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
+    await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
+    await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
+      JSON.stringify({ schemaVersion: 1, name: 'policy', kind: 'analyzer', module: './policy.mjs', category: 'custom' }),
+    );
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'policy.mjs'),
+      `export default { check: async () => [{ id: 'mcp-rule', title: 't', description: 'd', severity: 'warning', category: 'custom', fixAvailable: false }] };`,
+    );
+    // Intentionally NOT trusted.
+    const server = createMcpServer(tmp);
+    await init(server);
+    const doctor = await call(server, 'projscan_doctor', {});
+    const doctorIssues = doctor.issues as Array<{ id: string }>;
+    expect(doctorIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(false);
+    server.close();
+  });
+
+  it('reports per-plugin trust status in the list action', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
+      JSON.stringify({ schemaVersion: 1, name: 'policy', kind: 'analyzer', module: './policy.mjs', category: 'custom' }),
+    );
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'policy.mjs'),
+      `export default { check: async () => [] };`,
+    );
+    const server = createMcpServer(tmp);
+    await init(server);
+
+    const before = await call(server, 'projscan_plugin', { action: 'list' });
+    const beforePlugin = (before.plugins as Array<{ name?: string; trust?: string }>).find((p) => p.name === 'policy');
+    expect(beforePlugin?.trust).toBe('untrusted');
+
+    await trustPlugin(path.join(tmp, '.projscan-plugins', 'policy.mjs'), 'policy');
+
+    const after = await call(server, 'projscan_plugin', { action: 'list' });
+    const afterPlugin = (after.plugins as Array<{ name?: string; trust?: string }>).find((p) => p.name === 'policy');
+    expect(afterPlugin?.trust).toBe('trusted');
     server.close();
   });
 });

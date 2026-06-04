@@ -5,13 +5,24 @@ import os from 'node:os';
 import { scanRepository } from '../../src/core/repositoryScanner.js';
 import { collectIssues } from '../../src/core/issueEngine.js';
 import { calculateScore } from '../../src/utils/scoreCalculator.js';
+import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
 
 let tmp: string;
+let trustHome: string;
 let originalFlag: string | undefined;
+let originalTrustHome: string | undefined;
+
+/** Approve a plugin module under tmp/.projscan-plugins so the TOFU gate runs it. */
+async function trustFixtureModule(rel: string): Promise<void> {
+  await trustPlugin(path.join(tmp, '.projscan-plugins', rel), rel.replace(/\.[^.]+$/, ''));
+}
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-pipeline-'));
+  trustHome = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-pipeline-trust-'));
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
+  originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
+  process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
   await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
@@ -40,12 +51,16 @@ beforeEach(async () => {
       }],
     };`,
   );
+  await trustFixtureModule('policy.mjs');
 });
 
 afterEach(async () => {
   if (originalFlag === undefined) delete process.env.PROJSCAN_PLUGINS_PREVIEW;
   else process.env.PROJSCAN_PLUGINS_PREVIEW = originalFlag;
+  if (originalTrustHome === undefined) delete process.env[PLUGIN_TRUST_HOME_ENV];
+  else process.env[PLUGIN_TRUST_HOME_ENV] = originalTrustHome;
   await fs.rm(tmp, { recursive: true, force: true });
+  await fs.rm(trustHome, { recursive: true, force: true });
 });
 
 async function collectFixtureIssues() {
@@ -90,6 +105,7 @@ describe('plugin analyzer pipeline', () => {
         },
       };`,
     );
+    await trustFixtureModule('policy.mjs'); // content changed → re-approve
 
     const issues = await collectFixtureIssues();
 
@@ -130,6 +146,7 @@ describe('plugin analyzer pipeline', () => {
       path.join(exampleDir, 'graph-context.mjs'),
       path.join(tmp, '.projscan-plugins', 'graph-context.mjs'),
     );
+    await trustFixtureModule('graph-context.mjs');
 
     const issues = await collectFixtureIssues();
 

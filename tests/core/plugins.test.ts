@@ -14,19 +14,29 @@ import {
   runAnalyzerPlugins,
   validateManifest,
 } from '../../src/core/plugins.js';
+import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
 
 let tmp: string;
+let trustHome: string;
 let originalFlag: string | undefined;
+let originalTrustHome: string | undefined;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugins-'));
+  trustHome = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugins-trust-'));
   originalFlag = process.env[PLUGIN_PREVIEW_FLAG];
+  originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
+  // Isolate the trust store so these tests never touch the real ~/.config.
+  process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
 });
 
 afterEach(async () => {
   if (originalFlag === undefined) delete process.env[PLUGIN_PREVIEW_FLAG];
   else process.env[PLUGIN_PREVIEW_FLAG] = originalFlag;
+  if (originalTrustHome === undefined) delete process.env[PLUGIN_TRUST_HOME_ENV];
+  else process.env[PLUGIN_TRUST_HOME_ENV] = originalTrustHome;
   await fs.rm(tmp, { recursive: true, force: true });
+  await fs.rm(trustHome, { recursive: true, force: true });
 });
 
 async function writeManifest(name: string, body: unknown): Promise<string> {
@@ -37,10 +47,15 @@ async function writeManifest(name: string, body: unknown): Promise<string> {
   return p;
 }
 
+// Writes a plugin module AND trusts its current bytes. The trust-on-first-use
+// gate is exercised in detail in pluginTrustGate.test.ts; here we want to test
+// the load/import mechanics, so every module this helper writes is approved.
 async function writeModule(rel: string, source: string): Promise<void> {
   const dir = path.join(tmp, PLUGIN_DIR);
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, rel), source, 'utf-8');
+  const modulePath = path.join(dir, rel);
+  await fs.writeFile(modulePath, source, 'utf-8');
+  await trustPlugin(modulePath, rel.replace(/\.[^.]+$/, ''));
 }
 
 async function captureStderr(fn: () => Promise<unknown>): Promise<string> {
