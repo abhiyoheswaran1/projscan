@@ -6,7 +6,7 @@ Use this prompt when updating the public projscan website after the npm, GitHub,
 Update the projscan website for projscan 3.6.0.
 
 Headline for this release (3.6.0 — "Swarm Coordination"):
-- New 4.x arc: projscan is now the coordination substrate for parallel agents working one repo across git worktrees. `projscan collisions` / `projscan_collision` surface same-file and dependency overlaps before branches merge; `projscan claim` / `projscan_claim` are advisory leases (with `--ttl` expiry) over files, dirs, or symbols, shared across worktrees; `projscan merge-risk` / `projscan_merge_risk` give a safe integration order plus conflict hotspots.
+- New Swarm Coordination arc: projscan is now the coordination substrate for parallel agents working one repo across git worktrees. `projscan collisions` / `projscan_collision` surface same-file and dependency overlaps before branches merge; `projscan claim` / `projscan_claim` are advisory leases (with `--ttl` expiry) over files, dirs, or symbols, shared across worktrees; `projscan merge-risk` / `projscan_merge_risk` give a safe integration order plus conflict hotspots.
 - `projscan route` / `projscan_route` maps a stated goal to the right tool; `projscan coordinate` / `projscan_coordinate` folds it all into one readiness verdict (clear / caution / conflicted). Strictly local-first — no daemon, no cloud.
 - Also: semantic search degrades gracefully to BM25 when the embedding model can't load (offline / rate-limited) instead of crashing.
 
