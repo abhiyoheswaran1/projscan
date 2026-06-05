@@ -121,7 +121,7 @@ const TEMPLATES: Template[] = [
       where: [{ file: 'package.json' }],
       instruction:
         'Run `projscan_dependencies` to see the full list, then `projscan_outdated` and `projscan_audit` for surface area. ' +
-        'For each dep that looks suspicious, run `projscan_graph { direction: "package_importers", target: "<name>" }` to see what (if anything) actually uses it. ' +
+        'For each dep that looks suspicious, run `projscan_semantic_graph { query: { direction: "package_importers", symbol: "<name>" } }` to see what (if anything) actually uses it. ' +
         'Drop the ones with zero importers; consider native replacements for shimming-shaped deps (e.g. `lodash/get` → optional chaining).',
     }),
   },
@@ -139,7 +139,7 @@ const TEMPLATES: Template[] = [
         why: i.description,
         where: i.locations ?? [{ file: 'package.json' }],
         instruction:
-          `Audit "${name}": call \`projscan_graph { direction: "package_importers", target: "${name}" }\` to see who imports it. ` +
+          `Audit "${name}": call \`projscan_semantic_graph { query: { direction: "package_importers", symbol: "${name}" } }\` to see who imports it. ` +
           `If it can be replaced with a lighter/native alternative, plan that migration; if it must stay, pin to an exact version (drop the \`^\` / \`>=\`) and document the choice.`,
       };
     },
@@ -194,7 +194,7 @@ const TEMPLATES: Template[] = [
         'Catch-all directories (utils/helpers/lib/shared) are the project graveyard. Every file under one is implicitly "miscellaneous", which means changes touching it also rarely have a clear owner.',
       where: i.locations ?? [],
       instruction:
-        'Group the files under the flagged directory by domain (e.g. `auth/`, `format/`, `validation/`) using `projscan_graph` to see which symbols are imported together. ' +
+        'Group the files under the flagged directory by domain (e.g. `auth/`, `format/`, `validation/`) using `projscan_semantic_graph` to see which symbols are imported together. ' +
         'Move them into domain-named subdirectories. Update imports - your editor\'s rename-and-update should handle the bulk; finish with a `projscan analyze` to verify no leftover imports broke.',
     }),
   },
@@ -210,7 +210,7 @@ const TEMPLATES: Template[] = [
         'Either case deserves resolution: cleanup or an explicit "public" annotation.',
       where: i.locations ?? [],
       instruction:
-        'For each flagged file: confirm with `projscan_graph { direction: "importers", target: "<file>" }`. ' +
+        'For each flagged file: confirm with `projscan_semantic_graph { query: { direction: "importers", file: "<file>" } }`. ' +
         'If the result is genuinely empty AND this isn\'t package.json#main / #exports, delete the file (or just the unused exports). ' +
         'If it IS public surface (entry point, re-exported), add it to package.json#exports or list the file in .projscanrc `disableRules: ["dead-code"]`.',
     }),
@@ -557,7 +557,7 @@ function staticHeadlineFor(issue: Issue): string | null {
   if (issue.id.startsWith('audit-')) return 'Try `npm audit fix`, then upgrade or pin manually.';
   if (issue.id.startsWith('cycle-detected-')) return 'Break the cycle by extracting a shared module.';
   if (issue.id.startsWith('large-') && issue.id.endsWith('-dir')) return 'Split the directory by domain.';
-  if (issue.id === 'dead-code' || issue.id.startsWith('dead-code-')) return 'Confirm with `projscan_graph importers` then delete or expose.';
+  if (issue.id === 'dead-code' || issue.id.startsWith('dead-code-')) return 'Confirm with `projscan_semantic_graph { query: { direction: "importers", file: "<file>" } }` then delete or expose.';
   if (issue.id === 'missing-test-framework' || issue.id === 'missing-python-test-framework')
     return issue.id.includes('python') ? 'Install pytest + write one smoke test.' : 'Install vitest + write one smoke test.';
   if (issue.id === 'no-test-files' || issue.id === 'no-python-test-files') return 'Write the first test against your top hotspot.';

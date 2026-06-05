@@ -31,10 +31,9 @@ describe('Python end-to-end via MCP handlers', () => {
     expect(pythonIds.length).toBeGreaterThan(0);
   });
 
-  it('projscan_graph direction=importers returns importers for pkg/core.py', async () => {
-    const result = (await runTool('projscan_graph', {
-      file: 'pkg/core.py',
-      direction: 'importers',
+  it('projscan_semantic_graph query=importers returns importers for pkg/core.py', async () => {
+    const result = (await runTool('projscan_semantic_graph', {
+      query: { direction: 'importers', file: 'pkg/core.py' },
     })) as { importers?: string[]; files?: string[] };
     const arr = result.importers ?? result.files ?? [];
     expect(arr.length).toBeGreaterThan(0);

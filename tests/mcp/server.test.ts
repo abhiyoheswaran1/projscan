@@ -55,7 +55,7 @@ describe('MCP server', () => {
     const names = response.result.tools.map((t) => t.name);
     expect(names).toContain('projscan_doctor');
     expect(names).toContain('projscan_hotspots');
-    expect(names).toContain('projscan_explain');
+    expect(names).toContain('projscan_file');
     expect(names).toContain('projscan_coupling');
     expect(names.length).toBe(getToolDefinitions().length);
   });
@@ -118,22 +118,26 @@ describe('MCP server', () => {
     expect(payload).toHaveProperty('totalFiles');
   });
 
-  it('projscan_explain rejects paths outside the root', async () => {
+  it('projscan_file refuses to read paths outside the root', async () => {
     const server = createMcpServer(process.cwd());
     const response = (await send(server, {
       jsonrpc: '2.0',
       id: 6,
       method: 'tools/call',
       params: {
-        name: 'projscan_explain',
+        name: 'projscan_file',
         arguments: { file: '../../../etc/passwd' },
       },
     })) as {
       result: { content: Array<{ text: string }>; isError: boolean };
     };
 
-    expect(response.result.isError).toBe(true);
-    expect(response.result.content[0].text).toMatch(/inside the project root|ENOENT/);
+    // projscan_file reports the rejection in its payload rather than throwing,
+    // but the security guarantee is the same: it never reads out-of-root
+    // content. Assert the refusal is signalled and no passwd content leaks.
+    const text = response.result.content[0].text;
+    expect(text).toMatch(/outside the project root|not found|ENOENT/i);
+    expect(text).not.toMatch(/root:.*:0:0:|\/bin\/(ba)?sh/);
   });
 
   it('error responses short-circuit budget + cost sidecars', async () => {
@@ -141,15 +145,16 @@ describe('MCP server', () => {
     // bare error text. The cost / budget sidecars (which only make
     // sense for real result payloads) must not appear inside the error
     // content — otherwise an agent inspecting `result.content[0].text`
-    // would see a JSON envelope instead of the error message.
+    // would see a JSON envelope instead of the error message. A missing
+    // required arg makes projscan_file throw, exercising that path.
     const server = createMcpServer(process.cwd());
     const response = (await send(server, {
       jsonrpc: '2.0',
       id: 99,
       method: 'tools/call',
       params: {
-        name: 'projscan_explain',
-        arguments: { file: '../../../etc/passwd', max_tokens: 5 },
+        name: 'projscan_file',
+        arguments: { max_tokens: 5 },
       },
     })) as {
       result: { content: Array<{ text: string }>; isError: boolean };

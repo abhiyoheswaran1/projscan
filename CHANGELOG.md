@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.0] — 2026-06-05 — "Consolidation"
+
+> **Breaking.** The first major since 1.0. Two redundant tools deprecated in
+> 3.8.0 are removed. Both have drop-in replacements — see
+> [docs/MIGRATION-4.0.md](docs/MIGRATION-4.0.md). 47 → 45 MCP tools.
+
+### Removed
+
+- **`projscan_explain` (MCP) / `projscan explain` (CLI).** Use `projscan_file` / `projscan file` — a strict superset (same purpose/imports/exports, plus risk, ownership, churn, CC, coupling).
+- **`projscan_graph` (MCP).** Use `projscan_semantic_graph` with a `query` (see Changed below).
+
+### Changed
+
+- **`projscan_semantic_graph` gains a `query` mode** that subsumes the removed `projscan_graph`: `{ query: { direction, file?, symbol?, limit? } }` answers a single targeted lookup (`imports`, `exports`, `importers`, `symbol_defs`, `package_importers`) instead of serializing the whole graph. With no `query` it returns the full v3 semantic graph as before — so existing callers are unaffected.
+
 ## [3.8.0] — 2026-06-05 — "Graceful Deprecations"
 
 ### Deprecated

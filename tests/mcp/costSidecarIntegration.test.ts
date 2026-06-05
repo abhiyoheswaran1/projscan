@@ -42,10 +42,10 @@ async function init(server: ReturnType<typeof createMcpServer>): Promise<void> {
 }
 
 describe('MCP _cost sidecar (1.5+)', () => {
-  it('attaches _cost.estimatedTokens to projscan_explain results', async () => {
+  it('attaches _cost.estimatedTokens to projscan_file results', async () => {
     const server = createMcpServer(tmp);
     await init(server);
-    const result = await callTool(server, 1, 'projscan_explain', { file: 'src/a.ts' });
+    const result = await callTool(server, 1, 'projscan_file', { file: 'src/a.ts' });
     expect(result._cost).toBeDefined();
     const cost = result._cost as { estimatedTokens: number };
     expect(typeof cost.estimatedTokens).toBe('number');
@@ -76,7 +76,7 @@ describe('MCP _cost sidecar (1.5+)', () => {
     const server = createMcpServer(tmp);
     await init(server);
     // Force truncation by setting an absurdly small max_tokens.
-    const result = await callTool(server, 1, 'projscan_explain', { file: 'src/a.ts', max_tokens: 5 });
+    const result = await callTool(server, 1, 'projscan_file', { file: 'src/a.ts', max_tokens: 5 });
     expect(result._cost).toBeDefined();
     expect(result._budget).toBeDefined();
     server.close();
