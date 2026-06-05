@@ -34,6 +34,7 @@ import { claimTool } from './tools/claim.js';
 import { mergeRiskTool } from './tools/mergeRisk.js';
 import { routeTool } from './tools/route.js';
 import { coordinateTool } from './tools/coordinate.js';
+import { coordinateWatchTool } from './tools/coordinateWatch.js';
 import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
 import { memoryTool } from './tools/memory.js';
@@ -107,6 +108,7 @@ const tools: McpTool[] = [
   mergeRiskTool,
   routeTool,
   coordinateTool,
+  coordinateWatchTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {
