@@ -777,7 +777,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"How do I plan the next six product lines?"* → `projscan_release_train`
 - *"How do I wire projscan into this MCP client?"* → `projscan_adoption { action: "mcp_config", client: "codex" }`
 
-### The 43 MCP tools
+### The 44 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_start`** *(3.0.4)* - first-60-seconds repo orientation. Composes setup diagnostics, `firstTenMinutes`, workflow recipes, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
@@ -802,6 +802,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_impact`** *(0.15)* - transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Use BEFORE renaming or deleting to see what breaks.
 - **`projscan_collision`** *(3.6)* - detect change collisions across the repo's in-flight git worktrees (parallel agents). Flags same-file edits and dependency overlaps (one worktree edits a file another's change imports) before the branches merge. Local-first; needs ≥2 worktrees.
 - **`projscan_claim`** *(3.6)* - advisory claims/leases over files, directories, or symbols, shared across the repo's worktrees. `add` returns contention when another agent already holds an overlapping target; `list` / `release` manage them. Local-first.
+- **`projscan_merge_risk`** *(3.6)* - merge-risk preflight across in-flight worktrees: a safe integration order (merge the least-entangled branch first) plus conflict hotspots (files changed by 2+ worktrees). Builds on `projscan_collision`. Local-first.
 
 **Analysis:**
 - `projscan_analyze` - full project report
