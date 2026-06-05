@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Deprecated
+
+- `projscan_explain` / `projscan explain` → use `projscan_file` / `projscan file` (a strict superset: same purpose/imports/exports plus churn, risk, ownership, and related health).
+- `projscan_graph` → use `projscan_semantic_graph` (the stable v3 successor with the same nodes/edges behind a versioned contract).
+
+  Both still work and are unchanged in 3.x; they are slated for removal in 4.0. Deprecated MCP tools carry a `[DEPRECATED …]` description prefix plus a structured `deprecated` field; the deprecated CLI command prints a one-line notice to stderr. See [docs/MIGRATION-4.0.md](docs/MIGRATION-4.0.md).
+
 ## [3.7.0] — 2026-06-05 — "Coordination Hardening"
 
 ### Added

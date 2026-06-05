@@ -5,6 +5,7 @@ import { program, setupLogLevel, maybeCompactBanner, analyzeFile, assertFormatSu
 import { reportExplanation } from '../../reporters/consoleReporter.js';
 import { reportExplanationJson } from '../../reporters/jsonReporter.js';
 import { reportExplanationMarkdown } from '../../reporters/markdownReporter.js';
+import { formatCliDeprecationNotice } from '../../core/deprecations.js';
 
 export function registerExplain(): void {
   program
@@ -13,6 +14,15 @@ export function registerExplain(): void {
     .action(async (filePath: string) => {
       setupLogLevel();
       maybeCompactBanner();
+      console.error(
+        chalk.yellow(
+          formatCliDeprecationNotice('explain', {
+            since: '3.8.0',
+            replacedBy: 'projscan file',
+            note: 'projscan file is a strict superset (adds churn, risk, ownership, and related health).',
+          }),
+        ),
+      );
       const format = assertFormatSupported('explain');
       const absolutePath = path.resolve(filePath);
 

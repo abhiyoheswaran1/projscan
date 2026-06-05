@@ -12,6 +12,11 @@ import type { McpTool } from './_shared.js';
 
 export const graphTool: McpTool = {
   name: 'projscan_graph',
+  deprecated: {
+    since: '3.8.0',
+    replacedBy: 'projscan_semantic_graph',
+    note: 'projscan_semantic_graph is the stable v3 successor (same nodes/edges with a versioned, supported contract).',
+  },
   description:
     'Query the AST-based code graph directly. Returns imports, exports, importers, or symbol definitions for a file or symbol. Agents should prefer this over analyze/doctor/explain for targeted structural questions - it is much cheaper and more accurate.',
   inputSchema: {

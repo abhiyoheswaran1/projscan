@@ -56,6 +56,7 @@ import { qualityScorecardTool } from './tools/qualityScorecard.js';
 import { adoptionTool } from './tools/adoption.js';
 import { startTool } from './tools/start.js';
 import { understandTool } from './tools/understand.js';
+import { deprecationDescriptionPrefix } from '../core/deprecations.js';
 import type { McpToolDefinition } from '../types.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
@@ -112,7 +113,15 @@ const tools: McpTool[] = [
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {
-  return tools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
+  return tools.map(({ name, description, inputSchema, deprecated }) => {
+    const def: McpToolDefinition = {
+      name,
+      description: deprecated ? deprecationDescriptionPrefix(deprecated) + description : description,
+      inputSchema,
+    };
+    if (deprecated) def.deprecated = deprecated;
+    return def;
+  });
 }
 
 export function getToolHandler(name: string): McpToolHandler | undefined {
