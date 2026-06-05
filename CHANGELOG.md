@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.7.0] — 2026-06-05 — "Coordination Hardening"
+
 ### Added
 
 - `projscan collisions --transitive` (and MCP `projscan_collision { transitive: true }`): opt-in multi-hop dependency overlap detection — flags when one worktree changes a file another worktree's change *transitively* imports, with the `distance` (hops). The 1-hop default stays precise; `--max-distance` bounds the walk.
