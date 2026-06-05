@@ -5,6 +5,7 @@ import { buildSemanticGraph } from './semanticGraph.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
+import { computeCoordination, coordinationHints as toCoordinationHints, type CoordinationSummary } from './coordination.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type {
@@ -39,10 +40,11 @@ export async function computeAgentBrief(
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
   const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
   const health = calculateScore(issues);
-  const [riskNow, hotspots, graphContext] = await Promise.all([
+  const [riskNow, hotspots, graphContext, coordination] = await Promise.all([
     safeRiskNow(rootPath),
     safeHotspots(rootPath, scan.files, issues, maxItems),
     safeGraphContext(rootPath, scan.files),
+    safeCoordination(rootPath),
   ]);
   const allFocus = rankFocus([
     ...issues.slice(0, maxItems * 2).map(issueToFocus),
@@ -63,7 +65,7 @@ export async function computeAgentBrief(
       topDirectories: topDirectories(scan.files),
       touchedFiles: riskNow.touchedFiles.slice(0, 12),
       conflicts: riskNow.conflicts.length,
-      coordinationHints: riskNow.coordinationHints,
+      coordinationHints: [...riskNow.coordinationHints, ...swarmCoordinationHints(coordination)],
       ...(graphContext ? { graph: graphContext } : {}),
     },
     focus,
@@ -97,6 +99,38 @@ function topPackagesByImporters(graph: CodeGraph): string[] {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, 5)
     .map((entry) => entry.name);
+}
+
+async function safeCoordination(rootPath: string): Promise<CoordinationSummary | null> {
+  try {
+    return await computeCoordination(rootPath);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fold the swarm coordination read into a single structured brief hint. Empty
+ * when coordination is unavailable or clear (the common single-worktree case),
+ * so the brief is unchanged unless there's real cross-worktree signal.
+ */
+function swarmCoordinationHints(summary: CoordinationSummary | null): Array<{
+  id: 'swarm-coordination';
+  label: string;
+  message: string;
+  command: string;
+}> {
+  if (!summary) return [];
+  const hints = toCoordinationHints(summary);
+  if (hints.length === 0) return [];
+  return [
+    {
+      id: 'swarm-coordination',
+      label: 'Swarm coordination',
+      message: hints.join(' '),
+      command: 'projscan coordinate --format json',
+    },
+  ];
 }
 
 async function safeRiskNow(rootPath: string): Promise<Pick<Awaited<ReturnType<typeof buildRiskNow>>, 'touchedFiles' | 'conflicts' | 'coordinationHints'>> {

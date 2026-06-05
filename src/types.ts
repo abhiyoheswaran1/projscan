@@ -1208,7 +1208,7 @@ export interface UnderstandReport {
 }
 
 export interface SessionCoordinationHint {
-  id: 'current-worktree-check' | 'remembered-session-context' | 'resolve-conflicts';
+  id: 'current-worktree-check' | 'remembered-session-context' | 'resolve-conflicts' | 'swarm-coordination';
   label: string;
   message: string;
   command: string;

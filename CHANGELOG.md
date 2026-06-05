@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `projscan collisions --transitive` (and MCP `projscan_collision { transitive: true }`): opt-in multi-hop dependency overlap detection — flags when one worktree changes a file another worktree's change *transitively* imports, with the `distance` (hops). The 1-hop default stays precise; `--max-distance` bounds the walk.
 
+### Changed
+
+- `projscan agent-brief` / `projscan_agent_brief` now surfaces a `swarm-coordination` hint when parallel worktrees are in flight — folding the collision / contended-claim / merge-order signal into the brief's `coordinationHints` so the next agent sees swarm state without a separate call. No-op for single-worktree repos.
+
 ## [3.6.0] — 2026-06-05 — "Swarm Coordination"
 
 ### Added
