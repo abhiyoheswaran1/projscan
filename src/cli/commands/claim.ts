@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
-import { addClaim, listClaims, releaseClaim, findContendedClaims } from '../../core/claims.js';
+import { addClaim, listClaims, releaseClaim, pruneClaims, isClaimActive, findContendedClaims } from '../../core/claims.js';
 
 /**
  * `projscan claim` (4.x) — advisory claims/leases so parallel agents see who
@@ -27,15 +27,24 @@ export function registerClaim(): void {
     .description('Claim a file, directory, or symbol')
     .requiredOption('--agent <name>', 'agent holding the claim')
     .option('--note <text>', 'optional note')
-    .action(async (target: string, cmdOpts: { agent: string; note?: string }) => {
+    .option('--ttl <seconds>', 'lease duration in seconds (claim expires after)')
+    .action(async (target: string, cmdOpts: { agent: string; note?: string; ttl?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('claim add');
       const rootPath = getRootPath();
+      const ttlSeconds = cmdOpts.ttl !== undefined ? Number.parseInt(cmdOpts.ttl, 10) : undefined;
+      if (ttlSeconds !== undefined && (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0)) {
+        const message = '--ttl must be a positive number of seconds.';
+        if (format === 'json') console.log(JSON.stringify({ ok: false, error: message }, null, 2));
+        else console.error(chalk.red(message));
+        process.exit(1);
+      }
       const result = await addClaim(rootPath, {
         target,
         agent: cmdOpts.agent,
         ...(cmdOpts.note ? { note: cmdOpts.note } : {}),
+        ...(ttlSeconds !== undefined ? { ttlSeconds } : {}),
       });
       if (format === 'json') {
         console.log(JSON.stringify(result, null, 2));
@@ -80,6 +89,26 @@ export function registerClaim(): void {
           : chalk.dim('  no matching claims to release'),
       );
     });
+
+  claim
+    .command('prune')
+    .description('Remove expired-lease claims')
+    .action(async () => {
+      setupLogLevel();
+      maybeCompactBanner();
+      const format = assertFormatSupported('claim prune');
+      const rootPath = getRootPath();
+      const pruned = await pruneClaims(rootPath);
+      if (format === 'json') {
+        console.log(JSON.stringify({ ok: true, pruned }, null, 2));
+        return;
+      }
+      console.log(
+        pruned.length > 0
+          ? `${chalk.green('✓')} pruned ${pruned.length} expired claim(s)`
+          : chalk.dim('  no expired claims'),
+      );
+    });
 }
 
 async function runList(): Promise<void> {
@@ -99,8 +128,14 @@ async function runList(): Promise<void> {
     console.log(chalk.dim('  no active claims'));
     return;
   }
+  const now = new Date();
   for (const c of claims) {
-    console.log(`  ${chalk.bold(c.target)} ${chalk.dim(`— ${c.agent}`)}${c.note ? chalk.dim(`  (${c.note})`) : ''}`);
+    const lease = c.expiresAt
+      ? isClaimActive(c, now)
+        ? chalk.dim(`  ⏱ expires ${c.expiresAt}`)
+        : chalk.red('  ⏱ expired')
+      : '';
+    console.log(`  ${chalk.bold(c.target)} ${chalk.dim(`— ${c.agent}`)}${c.note ? chalk.dim(`  (${c.note})`) : ''}${lease}`);
     console.log(chalk.dim(`      ${c.id}`));
   }
   // Surface any overlapping holders so contention is visible at a glance.

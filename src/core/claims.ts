@@ -30,6 +30,8 @@ export interface Claim {
   note?: string;
   /** ISO timestamp. */
   claimedAt: string;
+  /** ISO expiry (lease). Absent = never expires. */
+  expiresAt?: string;
 }
 
 export interface AddClaimResult {
@@ -123,22 +125,45 @@ export async function listClaims(rootPath: string): Promise<Claim[]> {
  */
 export async function addClaim(
   rootPath: string,
-  input: { target: string; agent: string; note?: string },
+  input: { target: string; agent: string; note?: string; ttlSeconds?: number },
   now: () => Date = () => new Date(),
 ): Promise<AddClaimResult> {
   const target = normalizeTarget(input.target);
+  const at = now();
   const store = await readStore(rootPath);
-  const contention = store.claims.filter((c) => c.agent !== input.agent && claimTargetsOverlap(c.target, target));
+  // Only ACTIVE claims (not expired leases) by a different agent contend.
+  const contention = store.claims.filter(
+    (c) => c.agent !== input.agent && isClaimActive(c, at) && claimTargetsOverlap(c.target, target),
+  );
   const claim: Claim = {
     id: randomUUID(),
     target,
     agent: input.agent,
     ...(input.note ? { note: input.note } : {}),
-    claimedAt: now().toISOString(),
+    claimedAt: at.toISOString(),
+    ...(input.ttlSeconds && input.ttlSeconds > 0
+      ? { expiresAt: new Date(at.getTime() + input.ttlSeconds * 1000).toISOString() }
+      : {}),
   };
   store.claims.push(claim);
   await writeStore(rootPath, store);
   return { claim, contention };
+}
+
+/** A claim is active unless its lease (expiresAt) has passed. No expiry = active. */
+export function isClaimActive(claim: Claim, now: Date = new Date()): boolean {
+  if (!claim.expiresAt) return true;
+  return new Date(claim.expiresAt).getTime() > now.getTime();
+}
+
+/** Remove expired-lease claims. Returns the claims that were pruned. */
+export async function pruneClaims(rootPath: string, now: Date = new Date()): Promise<Claim[]> {
+  const store = await readStore(rootPath);
+  const pruned = store.claims.filter((c) => !isClaimActive(c, now));
+  if (pruned.length === 0) return [];
+  store.claims = store.claims.filter((c) => isClaimActive(c, now));
+  await writeStore(rootPath, store);
+  return pruned;
 }
 
 /**
