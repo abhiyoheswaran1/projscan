@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `projscan collisions` and MCP `projscan_collision`: detect change collisions across the repo's in-flight git worktrees (parallel agents). Flags same-file edits and dependency overlaps — where one worktree changes a file another worktree's change imports, via the import graph — before the branches merge. Local-first; needs at least two worktrees. First step of the 4.x agent-swarm coordination arc.
+- `projscan claim` and MCP `projscan_claim`: advisory claims/leases over files, directories, or symbols, shared across the repo's git worktrees so parallel agents see who owns what. Adding a claim surfaces contention when another agent already holds an overlapping target; claims list and release explicitly. Local-first.
 
 ### Fixed
 

@@ -30,6 +30,7 @@ import { fixSuggestTool } from './tools/fixSuggest.js';
 import { explainIssueTool } from './tools/explainIssue.js';
 import { impactTool } from './tools/impact.js';
 import { collisionTool } from './tools/collision.js';
+import { claimTool } from './tools/claim.js';
 import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
 import { memoryTool } from './tools/memory.js';
@@ -99,6 +100,7 @@ const tools: McpTool[] = [
   startTool,
   understandTool,
   collisionTool,
+  claimTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {
