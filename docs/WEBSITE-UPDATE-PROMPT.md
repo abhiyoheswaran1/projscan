@@ -3,13 +3,12 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.7.0.
+Update the projscan website for projscan 3.8.0.
 
-Headline for this release (3.7.0 — "Coordination Hardening"):
-- The Swarm Coordination arc (parallel agents working one repo across git worktrees) goes deeper: collision detection adds opt-in transitive (multi-hop) dependency recall; coordination signal is now woven into `projscan agent-brief` and `projscan preflight` (advisory caution, never a hard block) so it shows up where agents already look.
-- Live coordination: `projscan coordinate --watch` streams the swarm readiness as it changes, and MCP `projscan_coordinate_watch` pushes `notifications/projscan/coordination_changed` so an agent reacts to other agents' work without re-asking. Strictly local-first — no daemon, no cloud.
-- Background on the arc itself (shipped in 3.6.0): `projscan_collision`, `projscan_claim` (leased), `projscan_merge_risk`, `projscan_route`, `projscan_coordinate`.
-- Also: semantic search degrades gracefully to BM25 when the embedding model can't load (offline / rate-limited) instead of crashing.
+Headline for this release (3.8.0 — "Graceful Deprecations"):
+- Deprecate-before-remove groundwork for the 4.0 tool-surface consolidation: tools and CLI commands are never removed without a warning window first. projscan now ships a reversible deprecation signal — deprecated MCP tools carry a `[DEPRECATED since X, removed in 4.0 — use Y]` description prefix plus a structured `deprecated` field; deprecated CLI commands print a one-line stderr notice and still exit 0.
+- First, conservative deprecations: `projscan_explain` → `projscan_file` (a strict superset), and `projscan_graph` → `projscan_semantic_graph` (the stable v3 successor). Both still work in all of 3.x. See the new docs/MIGRATION-4.0.md.
+- Strictly local-first — no daemon, no cloud.
 
 Core positioning:
 - Name: projscan
