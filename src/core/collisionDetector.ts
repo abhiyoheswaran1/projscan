@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { scanRepository } from './repositoryScanner.js';
 import { buildCodeGraph, importersOf } from './codeGraph.js';
+import { computeImpact } from './impact.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 
 const execFileAsync = promisify(execFile);
@@ -37,6 +38,8 @@ export interface Collision {
   worktreeB: string;
   fileB: string;
   reason: string;
+  /** Import hops for a dependency collision (1 = direct, >=2 = transitive). */
+  distance?: number;
 }
 
 export interface CollisionWorktreeSummary {
@@ -57,6 +60,14 @@ export interface CollisionReport {
 export interface DetectCollisionsOptions {
   /** Base ref each worktree is diffed against. Defaults to the usual fallbacks. */
   baseRef?: string;
+  /**
+   * Also report transitive (multi-hop) dependency overlaps, not just direct
+   * imports. Default false — the 1-hop default stays precise (low false
+   * positives); transitive recall is opt-in for deeper but noisier coverage.
+   */
+  transitive?: boolean;
+  /** Max import hops for transitive recall (default 5). */
+  maxDistance?: number;
 }
 
 /** Parse `git worktree list --porcelain` into structured refs. Local-first. */
@@ -175,6 +186,7 @@ export async function detectCollisions(
               fileA: file,
               worktreeB: b.ref.path,
               fileB: other,
+              distance: 1,
               reason: `${other} (changed in the other worktree) imports ${file} (changed here).`,
             });
           }
@@ -193,8 +205,49 @@ export async function detectCollisions(
               fileA: other,
               worktreeB: b.ref.path,
               fileB: file,
+              distance: 1,
               reason: `${other} (changed here) imports ${file} (changed in the other worktree).`,
             });
+          }
+        }
+      }
+
+      // Transitive overlap (opt-in) — multi-hop dependency edges via the impact
+      // graph. Only distance >= 2 here; distance 1 is the precise pass above.
+      if (options.transitive) {
+        const maxDistance = options.maxDistance ?? 5;
+        for (const file of aFiles) {
+          if (bSet.has(file)) continue;
+          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance }).reachable) {
+            if (node.distance >= 2 && bSet.has(node.file) && !aSet.has(node.file)) {
+              collisions.push({
+                kind: 'dependency',
+                severity: 'medium',
+                worktreeA: a.ref.path,
+                fileA: file,
+                worktreeB: b.ref.path,
+                fileB: node.file,
+                distance: node.distance,
+                reason: `${node.file} (changed in the other worktree) transitively imports ${file} (changed here), ${node.distance} hops away.`,
+              });
+            }
+          }
+        }
+        for (const file of b.files) {
+          if (aSet.has(file)) continue;
+          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance }).reachable) {
+            if (node.distance >= 2 && aSet.has(node.file) && !bSet.has(node.file)) {
+              collisions.push({
+                kind: 'dependency',
+                severity: 'medium',
+                worktreeA: a.ref.path,
+                fileA: node.file,
+                worktreeB: b.ref.path,
+                fileB: file,
+                distance: node.distance,
+                reason: `${node.file} (changed here) transitively imports ${file} (changed in the other worktree), ${node.distance} hops away.`,
+              });
+            }
           }
         }
       }
@@ -210,6 +263,29 @@ export async function detectCollisions(
       changedFileCount: c.files.length,
       baseRef: c.baseRef,
     })),
-    collisions,
+    collisions: dedupeCollisions(collisions),
   };
+}
+
+/**
+ * Same-file collisions pass through; dependency collisions are deduped per
+ * oriented (worktreeA, fileA, worktreeB, fileB) pair, keeping the shortest
+ * distance — so a transitive path can't re-report a pair the direct (distance
+ * 1) pass already found.
+ */
+function dedupeCollisions(list: Collision[]): Collision[] {
+  const sameFile: Collision[] = [];
+  const bestDependency = new Map<string, Collision>();
+  for (const c of list) {
+    if (c.kind === 'same-file') {
+      sameFile.push(c);
+      continue;
+    }
+    const key = `${c.worktreeA}|${c.fileA}|${c.worktreeB}|${c.fileB}`;
+    const existing = bestDependency.get(key);
+    if (!existing || (c.distance ?? Infinity) < (existing.distance ?? Infinity)) {
+      bestDependency.set(key, c);
+    }
+  }
+  return [...sameFile, ...bestDependency.values()];
 }

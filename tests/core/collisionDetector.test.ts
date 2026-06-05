@@ -30,6 +30,11 @@ beforeEach(async () => {
     'import { query } from "./db.js"; export function login() { return query("select 1"); }\n',
   );
   await fs.writeFile(path.join(root, 'src', 'unrelated.ts'), 'export const x = 1;\n');
+  // service.ts → auth.ts → db.ts: service is two hops from db (transitive only).
+  await fs.writeFile(
+    path.join(root, 'src', 'service.ts'),
+    'import { login } from "./auth.js"; export function run() { return login(); }\n',
+  );
   await git(root, 'add', '.');
   await git(root, 'commit', '-q', '-m', 'base');
 
@@ -106,5 +111,38 @@ describe('detectCollisions', () => {
 
     expect(report.available).toBe(true);
     expect(report.collisions).toEqual([]);
+  });
+});
+
+describe('detectCollisions — transitive recall (opt-in)', () => {
+  beforeEach(async () => {
+    // Agent A (main): edit db.ts. Agent B: edit service.ts (service → auth → db,
+    // so service is TWO hops from db — invisible to the precise 1-hop default).
+    await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql.trim(); }\n');
+    await fs.writeFile(
+      path.join(sibling, 'src', 'service.ts'),
+      'import { login } from "./auth.js"; export function run() { return login() + 1; }\n',
+    );
+    await git(sibling, 'commit', '-qam', 'b edits service');
+  });
+
+  it('does NOT flag the two-hop dependency by default (precise 1-hop)', async () => {
+    const report = await detectCollisions(root);
+    const dep = report.collisions.filter(
+      (c) => c.kind === 'dependency' && (c.fileA === 'src/service.ts' || c.fileB === 'src/service.ts'),
+    );
+    expect(dep).toEqual([]);
+  });
+
+  it('flags the two-hop dependency when transitive recall is enabled, with a distance', async () => {
+    const report = await detectCollisions(root, { transitive: true });
+    const hit = report.collisions.find(
+      (c) =>
+        c.kind === 'dependency' &&
+        ((c.fileA === 'src/db.ts' && c.fileB === 'src/service.ts') ||
+          (c.fileA === 'src/service.ts' && c.fileB === 'src/db.ts')),
+    );
+    expect(hit).toBeDefined();
+    expect(hit?.distance).toBe(2);
   });
 });

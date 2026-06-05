@@ -18,10 +18,25 @@ export const collisionTool: McpTool = {
         description:
           'Base ref each worktree is diffed against to compute its changed files. Default: origin/main → main → master → HEAD~1, then the working tree.',
       },
+      transitive: {
+        type: 'boolean',
+        description:
+          'Also report multi-hop dependency overlaps (one worktree changed a file another transitively imports), each with a `distance`. Default false — the 1-hop default stays precise; this trades precision for deeper recall.',
+      },
+      max_distance: {
+        type: 'number',
+        description: 'Max import hops when `transitive` is set. Default 5.',
+      },
     },
   },
   handler: async (args, rootPath) => {
     const baseRef = typeof args.base_ref === 'string' && args.base_ref.length > 0 ? args.base_ref : undefined;
-    return detectCollisions(rootPath, baseRef ? { baseRef } : {});
+    const transitive = args.transitive === true;
+    const maxDistance = typeof args.max_distance === 'number' && args.max_distance > 0 ? args.max_distance : undefined;
+    return detectCollisions(rootPath, {
+      ...(baseRef ? { baseRef } : {}),
+      ...(transitive ? { transitive: true } : {}),
+      ...(maxDistance !== undefined ? { maxDistance } : {}),
+    });
   },
 };
