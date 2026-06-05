@@ -92,27 +92,41 @@ async function getPipeline(model: string, onFirstLoad?: (m: string) => void): Pr
   const mod = await tryLoadTransformers();
   if (!mod) return null;
 
-  let existing = pipelines.get(model);
-  if (existing) {
+  let loading = pipelines.get(model);
+  if (loading) {
     // Bump on access so the LRU cache treats the recently-used model as
     // hot. Map insertion order = recency.
     pipelines.delete(model);
-    pipelines.set(model, existing);
-    return existing;
+    pipelines.set(model, loading);
+  } else {
+    onFirstLoad?.(`Loading embedding model ${model} (first run downloads ~25MB)...`);
+    loading = mod.pipeline('feature-extraction', model, {
+      quantized: true,
+    });
+    pipelines.set(model, loading);
+    // Evict the least-recently-used pipeline when over the bound. Map
+    // iteration is in insertion order, so the first key is the oldest.
+    while (pipelines.size > MAX_CACHED_PIPELINES) {
+      const oldest = pipelines.keys().next().value;
+      if (oldest === undefined) break;
+      pipelines.delete(oldest);
+    }
   }
-  onFirstLoad?.(`Loading embedding model ${model} (first run downloads ~25MB)...`);
-  existing = mod.pipeline('feature-extraction', model, {
-    quantized: true,
-  });
-  pipelines.set(model, existing);
-  // Evict the least-recently-used pipeline when over the bound. Map
-  // iteration is in insertion order, so the first key is the oldest.
-  while (pipelines.size > MAX_CACHED_PIPELINES) {
-    const oldest = pipelines.keys().next().value;
-    if (oldest === undefined) break;
-    pipelines.delete(oldest);
+
+  try {
+    return await loading;
+  } catch (err) {
+    // Model download / instantiation failed — offline, an HTTP 429 from the
+    // model host (huggingface.co rate-limits unauthenticated CI traffic), or a
+    // corrupt local cache. Drop the rejected promise so it can't poison the
+    // cache for the rest of the process, and degrade gracefully to null so
+    // callers fall back to BM25 instead of throwing.
+    pipelines.delete(model);
+    process.stderr.write(
+      `[projscan] embedding model "${model}" failed to load: ${err instanceof Error ? err.message : String(err)}. Semantic features disabled for this run.\n`,
+    );
+    return null;
   }
-  return existing;
 }
 
 /**
