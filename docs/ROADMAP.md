@@ -65,7 +65,7 @@ Strictly **local-first**: same-repo / same-machine swarms via the shared `.projs
 | **Collision detection** (flagship) | `projscan_collision` | When two in-flight worktrees/branches have overlapping blast radius, surface it before they collide — "Agent A's rename of `buildCodeGraph` breaks the call site Agent B is mid-edit on." |
 | **Claims / leases** | `projscan_claim` | An agent claims a file / symbol / subsystem; projscan tracks who owns what in the active swarm and warns on contention. Local, opt-in. |
 | **Merge-risk preflight** | `projscan_preflight` (multi-branch) | Given the set of in-flight worktrees, return the safe integration order and where conflict risk concentrates. |
-| **Agent-ergonomic surface** | intent router | One adaptive entry tool returning budget-shaped next actions, shrinking the 42-tool list footprint agents pay for on every turn. Likely the 4.0 stability break. |
+| **Agent-ergonomic surface** | intent router | One adaptive entry tool returning budget-shaped next actions, shrinking the 43-tool list footprint agents pay for on every turn. Likely the 4.0 stability break. |
 | **Outcome proof** | dogfood / trial | Measure agent task success and token cost *with vs without* the coordination layer — outcomes, not just adoption gates. |
 
 Success signals: collisions prevented pre-merge, integration-failure-rate reduction, tokens saved per turn via the router, first external swarm adopter.
