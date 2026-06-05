@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeCoordination, coordinationHints } from '../../src/core/coordination.js';
+import { summarizeCoordination, coordinationHints, coordinationSignature } from '../../src/core/coordination.js';
 import type { CollisionReport } from '../../src/core/collisionDetector.js';
 import type { Claim } from '../../src/core/claims.js';
 import type { MergeRiskReport } from '../../src/core/mergeRisk.js';
@@ -88,6 +88,33 @@ describe('summarizeCoordination', () => {
     });
     expect(out.available).toBe(false);
     expect(out.reason).toBe('only one worktree');
+  });
+});
+
+describe('coordinationSignature', () => {
+  const base = (collisions: Parameters<typeof collisionReport>[0]['collisions'] = []) =>
+    summarizeCoordination({
+      collisionReport: collisionReport({
+        worktrees: [
+          { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
+        ],
+        collisions,
+      }),
+      claims: [],
+      mergeRisk: mergeRisk({}),
+    });
+
+  it('is stable for equivalent coordination state', () => {
+    expect(coordinationSignature(base())).toBe(coordinationSignature(base()));
+  });
+
+  it('changes when a collision appears', () => {
+    const before = coordinationSignature(base());
+    const after = coordinationSignature(
+      base([{ kind: 'same-file', severity: 'high', worktreeA: '/a', fileA: 'x.ts', worktreeB: '/b', fileB: 'x.ts', reason: '' }]),
+    );
+    expect(after).not.toBe(before);
   });
 });
 
