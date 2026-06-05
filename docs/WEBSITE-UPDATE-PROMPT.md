@@ -12,7 +12,7 @@ Headline for this release (3.5.0 — "Plugin Trust"):
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 43 tools, repo understanding. Local.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 44 tools, repo understanding. Local.
 - One-line homepage copy: Agent-first code intelligence for AI coding agents: repo understanding, cited claims, semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
@@ -47,7 +47,7 @@ What to highlight above the fold:
 - `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, coordination hints, guardrails, and next actions.
 - `projscan quality-scorecard` / `projscan_quality_scorecard`: dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and commands.
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
-- 43 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
+- 44 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init`, static-by-default `projscan plugin test`, trust-on-first-use execution (`projscan plugin trust` / `untrust`, per-plugin trust status in `plugin list`) on top of `PROJSCAN_PLUGINS_PREVIEW=1`, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.
