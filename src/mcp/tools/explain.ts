@@ -3,6 +3,11 @@ import { explainFile, type McpTool } from './_shared.js';
 
 export const explainTool: McpTool = {
   name: 'projscan_explain',
+  deprecated: {
+    since: '3.8.0',
+    replacedBy: 'projscan_file',
+    note: 'projscan_file is a strict superset (same purpose/imports/exports plus churn, risk, ownership, and related health).',
+  },
   description:
     'Explain a single file: purpose, imports, exports, and potential issues. Useful for understanding unfamiliar code before editing.',
   inputSchema: {
