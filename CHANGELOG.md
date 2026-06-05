@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan claim` and MCP `projscan_claim`: advisory claims/leases over files, directories, or symbols, shared across the repo's git worktrees so parallel agents see who owns what. Adding a claim surfaces contention when another agent already holds an overlapping target; claims list and release explicitly. Local-first.
 - `projscan merge-risk` and MCP `projscan_merge_risk`: merge-risk preflight across in-flight worktrees — a safe integration order (merge the least-entangled branch first) and the files where conflict risk concentrates (changed by two or more worktrees). Builds on collision detection. Local-first.
 - `projscan route` and MCP `projscan_route`: map a stated goal (e.g. "what breaks if I rename X", "coordinate parallel agents") to the right projscan tool with the exact call, or list the full capability catalog. A discovery entry point over the tool surface — deterministic keyword routing, no inference.
+- `projscan coordinate` and MCP `projscan_coordinate`: one-call swarm coordination read that composes collisions, claims, and merge-risk into a `readiness` verdict (clear / caution / conflicted) with counts and the recommended integration order — the single entry point for the 4.x coordination arc.
 
 ### Fixed
 
