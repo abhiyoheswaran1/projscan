@@ -10,6 +10,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   badge: ['console'],
   'bug-hunt': ['console', 'json'],
   ci: ['console', 'json', 'markdown', 'sarif'],
+  collisions: ['console', 'json'],
   coupling: ['console', 'json', 'markdown', 'html'],
   coverage: ['console', 'json', 'markdown', 'html'],
   dependencies: ['console', 'json', 'markdown'],

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `projscan collisions` and MCP `projscan_collision`: detect change collisions across the repo's in-flight git worktrees (parallel agents). Flags same-file edits and dependency overlaps — where one worktree changes a file another worktree's change imports, via the import graph — before the branches merge. Local-first; needs at least two worktrees. First step of the 4.x agent-swarm coordination arc.
+
+### Fixed
+
+- Semantic search now degrades to BM25 when the embedding model can't be loaded (offline, model-host rate limits, or a corrupt cache) instead of throwing, and a transient load failure no longer poisons the in-process model cache.
+
 ## [3.5.0] — 2026-06-04 — "Plugin Trust"
 
 ### Security
