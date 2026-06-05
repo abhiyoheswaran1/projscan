@@ -3,17 +3,17 @@
 Use this prompt when updating the public projscan website after the npm, GitHub, and MCP Registry release surfaces are live.
 
 ```text
-Update the projscan website for projscan 3.8.0.
+Update the projscan website for projscan 4.0.0.
 
-Headline for this release (3.8.0 — "Graceful Deprecations"):
-- Deprecate-before-remove groundwork for the 4.0 tool-surface consolidation: tools and CLI commands are never removed without a warning window first. projscan now ships a reversible deprecation signal — deprecated MCP tools carry a `[DEPRECATED since X, removed in 4.0 — use Y]` description prefix plus a structured `deprecated` field; deprecated CLI commands print a one-line stderr notice and still exit 0.
-- First, conservative deprecations: `projscan_explain` → `projscan_file` (a strict superset), and `projscan_graph` → `projscan_semantic_graph` (the stable v3 successor). Both still work in all of 3.x. See the new docs/MIGRATION-4.0.md.
-- Strictly local-first — no daemon, no cloud.
+Headline for this release (4.0.0 — "Consolidation"):
+- The first major since 1.0. The two tools deprecated in 3.8.0 are removed (47 → 45 MCP tools), each with a drop-in replacement — see docs/MIGRATION-4.0.md.
+- `projscan_explain` → `projscan_file` (a strict superset). `projscan_graph` → `projscan_semantic_graph`, which gains a targeted `query` mode ({ direction, file?, symbol? }) that subsumes the old graph tool while still returning the full v3 graph when called with no query.
+- Deprecate-before-remove throughout: nothing was removed without a prior deprecation window. The broader long-tail consolidation is deliberately deferred until real usage signal justifies it. Strictly local-first — no daemon, no cloud.
 
 Core positioning:
 - Name: projscan
 - MCP Registry name: io.github.abhiyoheswaran1/projscan
-- Registry description: Agent-first code intelligence over MCP. 11 langs, 47 tools, repo understanding. Local.
+- Registry description: Agent-first code intelligence over MCP. 11 langs, 45 tools, repo understanding. Local.
 - One-line homepage copy: Agent-first code intelligence for AI coding agents: repo understanding, cited claims, semantic graph, dataflow risk detection, MCP setup, team bootstrap, PR evidence, measured adoption proof, workplans, bug-hunt queues, preflight safety, review intelligence, shared session context, and local team plugins.
 - Install: npm install -g projscan
 - Run without install: npx projscan
@@ -48,7 +48,7 @@ What to highlight above the fold:
 - `projscan agent-brief` / `projscan_agent_brief`: compact context packets for the next agent, including focus items, repo context, coordination hints, guardrails, and next actions.
 - `projscan quality-scorecard` / `projscan_quality_scorecard`: dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and commands.
 - `projscan preflight` / `projscan_preflight`: one safety gate returning `proceed`, `caution`, or `block`, with release-scale evidence that downgrades scale-only commit readiness to caution while keeping merge sign-off explicit.
-- 47 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
+- 45 MCP tools for repo understanding, structural code intelligence, semantic graph, dataflow, adoption guidance, and release readiness.
 - 11 AST-backed languages: JavaScript, TypeScript, Python, Go, Java, Ruby, Rust, PHP, C#, Kotlin, Swift, and C++.
 - Stable local analyzer and reporter plugins, now with `projscan plugin init`, static-by-default `projscan plugin test`, trust-on-first-use execution (`projscan plugin trust` / `untrust`, per-plugin trust status in `plugin list`) on top of `PROJSCAN_PLUGINS_PREVIEW=1`, validation commands, and graph/dataflow context hints.
 - Command-dependent output formats: console, json, markdown, sarif, and html.

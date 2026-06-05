@@ -159,8 +159,7 @@ projscan diagnoses but does not run an LLM. The agent (the LLM) is what writes t
 Before the agent commits to a refactor (or accepts a name-rename suggestion), the question is: *who depends on this thing, transitively?*
 
 - **`projscan_impact` / `projscan impact`** *(0.15+)* — transitive blast-radius. File mode returns every file that transitively imports the target, ranked by BFS distance. Symbol mode returns the symbol's definition file(s), the files that directly call it (their callSites match), and the transitive importers of those callers. Cycle-safe; depth-bounded.
-- **`projscan_graph` / `projscan graph`** — direct one-hop queries: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer.
-- **`projscan_semantic_graph` / `projscan semantic-graph`** — full graph projection when a refactor needs file, function, package, and symbol context in one contract.
+- **`projscan_semantic_graph` (`query` mode) / `projscan semantic-graph`** — direct one-hop queries via `query: { direction, file?, symbol? }`: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer. With no `query`, returns the full graph projection (file, function, package, and symbol context in one contract). *(Subsumes the former `projscan_graph`, removed in 4.0.)*
 
 **Typical agent flow:** before renaming or deleting an export, call `projscan_impact --symbol <name>` to see the dependent set; before deleting a file, call `projscan_impact <path>`. The truncated flag tells you whether the actual blast radius extends beyond what you saw.
 
@@ -272,7 +271,7 @@ Returns the stable semantic graph contract: `schemaVersion: 3`, `nodes`, `edges`
 
 Use this when an agent needs one graph-shaped payload for planning, ownership
 analysis, plugin logic, or custom visualization instead of making several
-targeted `projscan_graph` queries.
+targeted `projscan_semantic_graph` queries.
 
 **Options:**
 
@@ -492,22 +491,6 @@ projscan fix -y
 | Prettier | `.prettierrc` with sensible defaults | `prettier` |
 | Test framework | `vitest.config.ts` + sample test file, adds `test` script to package.json | `vitest` |
 | EditorConfig | `.editorconfig` (UTF-8, LF, 2-space indent, trim trailing whitespace) | Nothing |
-
-### explain
-
-```bash
-projscan explain <file>
-```
-
-Analyzes a single file and explains what it does. Uses regex-based static analysis - no AI, no network calls.
-
-**What it detects:**
-- **Purpose** - Inferred from the file name and directory
-- **Imports** - Both ES module `import` and CommonJS `require` statements
-- **Exports** - Functions, classes, variables, types, interfaces, default exports
-- **Potential issues** - Files over 500 lines, `console.log` statements, TODO/FIXME comments, usage of `any` type
-
-<img src="npx%20projscan%20explain.gif" alt="npx projscan explain" width="700">
 
 ### diagram
 
@@ -1154,8 +1137,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 *Structural / agent-native:*
 - `projscan_start` — first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
-- `projscan_graph` — structural query over the AST code graph. Directions: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Milliseconds on a warm cache.
-- `projscan_semantic_graph` — stable v3 semantic graph with file/function/package/symbol nodes and normalized structural edges.
+- `projscan_semantic_graph` — the code graph, two ways. With no `query`: the stable v3 semantic graph (file/function/package/symbol nodes and normalized structural edges). With `query: { direction, file?, symbol? }`: a targeted structural query (`imports`, `exports`, `importers`, `symbol_defs`, `package_importers`) in milliseconds on a warm cache. *(Subsumes the former `projscan_graph`, removed in 4.0.)*
 - `projscan_dataflow` — direct, propagated, and bridge source-to-sink dataflow risks over the function graph.
 - `projscan_search` — BM25-ranked search. Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Optional semantic mode + sub-file chunking with the `@xenova/transformers` peer dep.
 - `projscan_coupling` — per-file fan-in / fan-out / instability + Tarjan circular-import cycles.
@@ -1178,8 +1160,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_doctor` — health score + issues with inline `suggestedAction` hints.
 - `projscan_preflight` — compact `proceed` / `caution` / `block` gate with health, changed-file, review, session, plugin, and supply-chain evidence.
 - `projscan_hotspots` — ranked file risk (or top-N risky functions with `view: "functions"`).
-- `projscan_file` — per-file inspection (purpose, risk, ownership, related issues, CC, fan-in/out, per-function CC table).
-- `projscan_explain` — purpose, imports, exports, smells.
+- `projscan_file` — per-file inspection (purpose, imports, exports, smells, risk, ownership, related issues, CC, fan-in/out, per-function CC table).
 - `projscan_structure` — directory tree.
 - `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction".
 
