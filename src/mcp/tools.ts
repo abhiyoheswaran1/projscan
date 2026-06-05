@@ -32,6 +32,7 @@ import { impactTool } from './tools/impact.js';
 import { collisionTool } from './tools/collision.js';
 import { claimTool } from './tools/claim.js';
 import { mergeRiskTool } from './tools/mergeRisk.js';
+import { routeTool } from './tools/route.js';
 import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
 import { memoryTool } from './tools/memory.js';
@@ -103,6 +104,7 @@ const tools: McpTool[] = [
   collisionTool,
   claimTool,
   mergeRiskTool,
+  routeTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {
