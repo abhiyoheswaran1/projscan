@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-04.
+Last reviewed 2026-06-05.
 
 ---
 
@@ -44,6 +44,7 @@ Four plays, in order:
 2. **Lean into multi-agent** — make projscan the *shared substrate* for agent swarms. This is where the market is moving and where our context-budget design pays off. ✅ Largely shipped (1.4 Session, 1.5 Budgeted by default + Project Memory).
 3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). ✅ Shipped in the 1.6 arc.
 4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. ✅ The 1.7 → 2.0 arc turns this into a platform contract.
+5. **Coordinate the swarm** — the new arc (4.x). Plays 1–4 made projscan the best *single-agent* code-intelligence server; the market has moved to multi-agent orchestration, where the unsolved pain is concurrent-change arbitration across parallel agents. Turn the graph + impact + session primitives into a local-first coordination layer (collision detection, claims/leases, merge-risk preflight) and shrink the tool surface agents pay for. 🚧 In progress — see Now.
 
 We are *not* trying to be:
 - A coding agent (we're what agents call into).
@@ -53,17 +54,28 @@ We are *not* trying to be:
 
 ## Now / Next / Later
 
-### Now — 3.4.x Engineer Comprehension
+### Now — 4.x: The Coordination Substrate for Agent Swarms
 
-3.4.0 makes repo understanding a first-class product surface for working engineers and agents. The release is centered on `projscan understand` and `projscan_understand`, with five cited views that answer the questions developers ask before making a real change.
+The single-agent journey is complete and stable: understand → review → fix → impact → live, across 11 languages, under the 1.0 contract. The next arc moves projscan from *describing* and *acting on* code to **coordinating concurrent change** — the unsolved, fastest-growing problem (multi-agent orchestration is the dominant 2026 pattern) when several agents (parallel worktrees, sub-agents, swarms) edit one repo at once. Today's "multi-agent" support is shallow (a session touch-log + current-vs-remembered hints); the hard problem — concurrent-change arbitration — is untouched, and projscan already owns the primitives to win it (semantic graph, blast-radius/impact, durable sessions, budget-aware output).
 
-| View | Surface | Product Outcome | Release Gate |
-|---|---|---|---|
-| **Repo Map** | `--view map` | Engineers can orient around entrypoints, boundaries, read-first files, risks, unknowns, and exact next commands. | JSON includes cited `claims`, `entrypoints`, `boundaries`, `readFirst`, `risks`, `unknowns`, and commands. |
-| **Flow Map** | `--view flow` | Engineers can trace runtime paths and side-effect sinks before editing a path. | JSON includes cited `flows`, side effects, dataflow-backed risk claims, and flow-specific commands. |
-| **Contract Map** | `--view contracts` | Engineers can inspect public exports, config/env contracts, and likely breaking-change risks. | JSON includes `publicExports`, `configContracts`, `breakingChangeRisks`, and contract commands. |
-| **Change Readiness** | `--view change --intent <text>` | Engineers can tie a planned change to blast radius, safe first edit, owner state, rollback, and verification commands. | JSON preserves the intent and returns `changeReadiness` with blast radius and rollback evidence. |
-| **Verification Map** | `--view verify` | Engineers can choose minimal, focused, and full proof tiers while seeing direct-test gaps. | JSON includes verification tiers, direct-test evidence, gaps, and proof commands. |
+Strictly **local-first**: same-repo / same-machine swarms via the shared `.projscan-cache`, never a daemon, cloud, or cross-machine server (that would be a SaaS non-goal).
+
+| Epic | Surface (planned) | Product Outcome |
+|---|---|---|
+| **Collision detection** (flagship) | `projscan_collision` | When two in-flight worktrees/branches have overlapping blast radius, surface it before they collide — "Agent A's rename of `buildCodeGraph` breaks the call site Agent B is mid-edit on." |
+| **Claims / leases** | `projscan_claim` | An agent claims a file / symbol / subsystem; projscan tracks who owns what in the active swarm and warns on contention. Local, opt-in. |
+| **Merge-risk preflight** | `projscan_preflight` (multi-branch) | Given the set of in-flight worktrees, return the safe integration order and where conflict risk concentrates. |
+| **Agent-ergonomic surface** | intent router | One adaptive entry tool returning budget-shaped next actions, shrinking the 41-tool list footprint agents pay for on every turn. Likely the 4.0 stability break. |
+| **Outcome proof** | dogfood / trial | Measure agent task success and token cost *with vs without* the coordination layer — outcomes, not just adoption gates. |
+
+Success signals: collisions prevented pre-merge, integration-failure-rate reduction, tokens saved per turn via the router, first external swarm adopter.
+
+### Recently Completed — 3.5.0 (2026)
+
+**3.5.0 "Plugin Trust"** hardened the two surfaces that touch untrusted repositories:
+
+- `projscan fix` installs dev tooling with `npm install --ignore-scripts` (no shell), so applying a fix in an untrusted repo can no longer run that repo's npm lifecycle scripts.
+- Local plugins require trust-on-first-use: a plugin module only executes after its exact bytes are approved with `projscan plugin trust`, and a changed module reverts to untrusted. New `plugin trust` / `untrust` commands; per-plugin trust status in `plugin list` and MCP `projscan_plugin` — approving is a deliberate CLI action and is never exposed to agents.
 
 ### Recently Completed — 3.4.0 (2026)
 
@@ -147,6 +159,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
+| **3.5.0** (2026-06-04) | Plugin Trust | `projscan fix` installs with `--ignore-scripts` (no lifecycle-script RCE); local plugins gated by trust-on-first-use (`projscan plugin trust`), plus a hardened, model-degrading embedding path |
 | **3.4.0** (2026-06-04) | Repo Understanding | `projscan understand` / `projscan_understand` with cited repo, flow, contract, change-readiness, and verification maps for working engineers |
 | **3.3.0** (2026-06-03) | Roadmap Evidence Polish | Adoption proof gates, reviewer decision evidence, first-ten-minutes/start coordination hints, Hono request-source precision, plugin trust guidance, generated PR-comment validation, and evidence helper extraction |
 | **3.2.0** (2026-06-03) | Roadmap Train | Canonical 3.2-3.9 release train surfaced in release planning and roadmap docs |

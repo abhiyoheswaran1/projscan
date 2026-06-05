@@ -88,26 +88,26 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
     'Roadmap Canonicalization',
     'Adoption Proof Polish',
     'Repo Understanding',
-    'First 10 Minutes UX',
-    'Maintainability Hardening',
-    'Graph And Dataflow Precision',
-    'Plugin Ecosystem',
-    'Multi-Agent Coordination',
+    'Plugin Trust',
+    'Swarm Collision Detection',
+    'Claims And Leases',
+    'Merge-Risk Preflight',
+    'Agent Ergonomics And Coordination Proof',
   ]);
   expect(report.tasks.map((task) => task.id)).toEqual(
     expect.arrayContaining([
       'rt-3-2-roadmap-canonicalization',
       'rt-3-3-adoption-proof-polish',
       'rt-3-4-repo-understanding',
-      'rt-3-5-first-10-minutes-ux',
-      'rt-3-6-maintainability-hardening',
-      'rt-3-7-graph-dataflow-precision',
-      'rt-3-8-plugin-ecosystem',
-      'rt-3-9-multi-agent-coordination',
+      'rt-3-5-plugin-trust',
+      'rt-3-6-collision-detection',
+      'rt-3-7-claims-leases',
+      'rt-3-8-merge-risk-preflight',
+      'rt-3-9-agent-ergonomics-and-proof',
     ]),
   );
-  expect(report.tasks.find((task) => task.id === 'rt-3-6-maintainability-hardening')?.files).toEqual(
-    expect.arrayContaining(['src/core/roadmapCatalog.ts', 'src/core/releaseEvidence.ts']),
+  expect(report.tasks.find((task) => task.id === 'rt-3-6-collision-detection')?.files).toEqual(
+    expect.arrayContaining(['src/core/collisionDetector.ts', 'src/mcp/tools/collision.ts']),
   );
 });
 
