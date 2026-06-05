@@ -777,7 +777,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"How do I plan the next six product lines?"* → `projscan_release_train`
 - *"How do I wire projscan into this MCP client?"* → `projscan_adoption { action: "mcp_config", client: "codex" }`
 
-### The 46 MCP tools
+### The 47 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_start`** *(3.0.4)* - first-60-seconds repo orientation. Composes setup diagnostics, `firstTenMinutes`, workflow recipes, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
@@ -805,6 +805,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_merge_risk`** *(3.6)* - merge-risk preflight across in-flight worktrees: a safe integration order (merge the least-entangled branch first) plus conflict hotspots (files changed by 2+ worktrees). Builds on `projscan_collision`. Local-first.
 - **`projscan_route`** *(3.6)* - map a stated goal (e.g. "what breaks if I rename X") to the right projscan tool with the exact call, or list the full capability catalog. A discovery entry point over the tool surface; deterministic, no LLM.
 - **`projscan_coordinate`** *(3.6)* - one-call swarm coordination read: composes collisions, claims, and merge-risk into a `readiness` verdict (clear / caution / conflicted) with counts and the recommended integration order. The single entry point for the coordination arc. Local-first.
+- **`projscan_coordinate_watch`** *(3.7)* - long-running coordination watch: polls the in-flight worktrees and emits a `notifications/projscan/coordination_changed` notification whenever the swarm state changes. Pairs with `projscan_coordinate`. `start` / `stop` / `list`.
 
 **Analysis:**
 - `projscan_analyze` - full project report

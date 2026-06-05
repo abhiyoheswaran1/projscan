@@ -61,7 +61,7 @@ The **Swarm Coordination arc shipped in 3.6.0** (see Recently Completed). It was
 What's now:
 
 - **Validate it in real swarm usage.** The arc is built on an unvalidated bet that concurrent-change arbitration is the pain. Before deepening it, find out which of `collision` / `claim` / `merge-risk` / `coordinate` agents actually reach for, and harden from there (transitive collision recall, live `--watch` coordination, integration into `preflight` / `agent_brief`).
-- **`4.0` — tool-surface consolidation (the only planned breaking change).** Today there are 46 MCP tools; `projscan_route` is the additive discovery entry over them. Hiding the long tail behind the router (removing/renaming tools) breaks the 1.0 stability contract, so it is reserved for a deliberate **4.0** with a deprecation cycle — not a minor bump.
+- **`4.0` — tool-surface consolidation (the only planned breaking change).** Today there are 47 MCP tools; `projscan_route` is the additive discovery entry over them. Hiding the long tail behind the router (removing/renaming tools) breaks the 1.0 stability contract, so it is reserved for a deliberate **4.0** with a deprecation cycle — not a minor bump.
 
 Strictly **local-first** throughout: same-repo / same-machine swarms via the shared store, never a daemon, cloud, or cross-machine server (that would be a SaaS non-goal).
 
@@ -76,7 +76,7 @@ Success signals: collisions prevented pre-merge, integration-failure-rate reduct
 - `projscan merge-risk` / `projscan_merge_risk` — safe integration order (merge the least-entangled branch first) plus conflict hotspots.
 - `projscan route` / `projscan_route` — map a stated goal to the right tool (additive discovery entry over the surface; deterministic, no LLM).
 - `projscan coordinate` / `projscan_coordinate` — one-call read folding it all into a `clear` / `caution` / `conflicted` readiness verdict.
-- Also: semantic search degrades to BM25 when the embedding model can't load instead of crashing. 41 → 46 MCP tools.
+- Also: semantic search degrades to BM25 when the embedding model can't load instead of crashing. 41 → 47 MCP tools.
 
 ### Recently Completed — 3.5.0 (2026)
 
@@ -167,7 +167,7 @@ For the full release notes, see [CHANGELOG.md](../CHANGELOG.md).
 
 | Version | Theme | Headline |
 |---|---|---|
-| **3.6.0** (2026-06-05) | Swarm Coordination | Local-first coordination for parallel agents across git worktrees: `projscan_collision`, `projscan_claim` (leased), `projscan_merge_risk`, `projscan_route`, `projscan_coordinate`; graceful embedding degradation; 41 → 46 tools |
+| **3.6.0** (2026-06-05) | Swarm Coordination | Local-first coordination for parallel agents across git worktrees: `projscan_collision`, `projscan_claim` (leased), `projscan_merge_risk`, `projscan_route`, `projscan_coordinate`; graceful embedding degradation; 41 → 47 tools |
 | **3.5.0** (2026-06-04) | Plugin Trust | `projscan fix` installs with `--ignore-scripts` (no lifecycle-script RCE); local plugins gated by trust-on-first-use (`projscan plugin trust`), plus a hardened, model-degrading embedding path |
 | **3.4.0** (2026-06-04) | Repo Understanding | `projscan understand` / `projscan_understand` with cited repo, flow, contract, change-readiness, and verification maps for working engineers |
 | **3.3.0** (2026-06-03) | Roadmap Evidence Polish | Adoption proof gates, reviewer decision evidence, first-ten-minutes/start coordination hints, Hono request-source precision, plugin trust guidance, generated PR-comment validation, and evidence helper extraction |
