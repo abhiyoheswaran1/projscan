@@ -13,15 +13,19 @@ export function registerCollision(): void {
     .command('collisions')
     .description('Detect change collisions across in-flight git worktrees (parallel agents)')
     .option('--base-ref <ref>', 'base ref each worktree is diffed against')
-    .action(async (cmdOpts: { baseRef?: string }) => {
+    .option('--transitive', 'also report multi-hop dependency overlaps (less precise)')
+    .option('--max-distance <n>', 'max import hops for --transitive (default 5)')
+    .action(async (cmdOpts: { baseRef?: string; transitive?: boolean; maxDistance?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('collisions');
       const rootPath = getRootPath();
-      const report = await detectCollisions(
-        rootPath,
-        cmdOpts.baseRef ? { baseRef: cmdOpts.baseRef } : {},
-      );
+      const maxDistance = cmdOpts.maxDistance !== undefined ? Number.parseInt(cmdOpts.maxDistance, 10) : undefined;
+      const report = await detectCollisions(rootPath, {
+        ...(cmdOpts.baseRef ? { baseRef: cmdOpts.baseRef } : {}),
+        ...(cmdOpts.transitive ? { transitive: true } : {}),
+        ...(maxDistance !== undefined && Number.isFinite(maxDistance) && maxDistance > 0 ? { maxDistance } : {}),
+      });
 
       if (format === 'json') {
         console.log(JSON.stringify(report, null, 2));
