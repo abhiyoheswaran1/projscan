@@ -29,6 +29,7 @@ import { reviewTool } from './tools/review.js';
 import { fixSuggestTool } from './tools/fixSuggest.js';
 import { explainIssueTool } from './tools/explainIssue.js';
 import { impactTool } from './tools/impact.js';
+import { collisionTool } from './tools/collision.js';
 import { searchTool } from './tools/search.js';
 import { sessionTool } from './tools/session.js';
 import { memoryTool } from './tools/memory.js';
@@ -97,6 +98,7 @@ const tools: McpTool[] = [
   adoptionTool,
   startTool,
   understandTool,
+  collisionTool,
 ];
 
 export function getToolDefinitions(): McpToolDefinition[] {

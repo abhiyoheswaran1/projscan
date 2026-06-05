@@ -777,7 +777,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - *"How do I plan the next six product lines?"* → `projscan_release_train`
 - *"How do I wire projscan into this MCP client?"* → `projscan_adoption { action: "mcp_config", client: "codex" }`
 
-### The 41 MCP tools
+### The 42 MCP tools
 
 **Structural (0.6.0 / 0.11 / 0.13 / 0.14 / 0.15 - agent-native):**
 - **`projscan_start`** *(3.0.4)* - first-60-seconds repo orientation. Composes setup diagnostics, `firstTenMinutes`, workflow recipes, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
@@ -800,6 +800,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_fix_suggest`** *(0.14)* - structured action prompt for any open issue: headline, why it matters, where, one-paragraph instruction, optional suggested test. Closes the diagnose → fix loop.
 - **`projscan_explain_issue`** *(0.14)* - deep dive on one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - **`projscan_impact`** *(0.15)* - transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Use BEFORE renaming or deleting to see what breaks.
+- **`projscan_collision`** *(3.6)* - detect change collisions across the repo's in-flight git worktrees (parallel agents). Flags same-file edits and dependency overlaps (one worktree edits a file another's change imports) before the branches merge. Local-first; needs ≥2 worktrees.
 
 **Analysis:**
 - `projscan_analyze` - full project report
