@@ -26,14 +26,6 @@
       ],
       "required": []
     },
-    "projscan_explain": {
-      "args": [
-        "file"
-      ],
-      "required": [
-        "file"
-      ]
-    },
     "projscan_file": {
       "args": [
         "file"
@@ -89,23 +81,12 @@
       ],
       "required": []
     },
-    "projscan_graph": {
-      "args": [
-        "direction",
-        "file",
-        "limit",
-        "max_tokens",
-        "symbol"
-      ],
-      "required": [
-        "direction"
-      ]
-    },
     "projscan_semantic_graph": {
       "args": [
         "max_edges",
         "max_nodes",
-        "max_tokens"
+        "max_tokens",
+        "query"
       ],
       "required": []
     },
@@ -230,6 +211,9 @@
     },
     "projscan_dataflow": {
       "args": [
+        "include_broad_file_io",
+        "include_generated",
+        "include_tests",
         "max_risks",
         "max_tokens",
         "sinks",
@@ -304,6 +288,7 @@
         "lines",
         "max_findings",
         "max_tokens",
+        "pr_comment",
         "website_prompt"
       ],
       "required": []
@@ -339,6 +324,71 @@
         "max_tokens"
       ],
       "required": []
+    },
+    "projscan_start": {
+      "args": [
+        "include_handoff",
+        "max_risks",
+        "max_tasks",
+        "max_tokens",
+        "mode"
+      ],
+      "required": []
+    },
+    "projscan_understand": {
+      "args": [
+        "intent",
+        "max_items",
+        "max_tokens",
+        "view"
+      ],
+      "required": []
+    },
+    "projscan_collision": {
+      "args": [
+        "base_ref",
+        "max_distance",
+        "transitive"
+      ],
+      "required": []
+    },
+    "projscan_claim": {
+      "args": [
+        "action",
+        "agent",
+        "id",
+        "note",
+        "target",
+        "ttl_seconds"
+      ],
+      "required": []
+    },
+    "projscan_merge_risk": {
+      "args": [
+        "base_ref"
+      ],
+      "required": []
+    },
+    "projscan_route": {
+      "args": [
+        "intent"
+      ],
+      "required": []
+    },
+    "projscan_coordinate": {
+      "args": [
+        "base_ref"
+      ],
+      "required": []
+    },
+    "projscan_coordinate_watch": {
+      "args": [
+        "action",
+        "base_ref",
+        "interval_seconds",
+        "watchId"
+      ],
+      "required": []
     }
   },
   "cliCommands": [
@@ -356,9 +406,10 @@
     "diagram",
     "diff",
     "doctor",
+    "dogfood",
     "evidence-pack",
-    "explain",
     "explain-issue",
+    "feedback",
     "file",
     "first-run",
     "fix",
@@ -384,6 +435,8 @@
     "session",
     "structure",
     "taint",
+    "trial",
+    "understand",
     "upgrade",
     "watch",
     "workplan",

@@ -61,7 +61,7 @@ The **Swarm Coordination arc shipped in 3.6.0** (see Recently Completed). It was
 What's now:
 
 - **Validate it in real swarm usage.** The arc is built on an unvalidated bet that concurrent-change arbitration is the pain. Before deepening it, find out which of `collision` / `claim` / `merge-risk` / `coordinate` agents actually reach for, and harden from there (transitive collision recall, live `--watch` coordination, integration into `preflight` / `agent_brief`).
-- **`4.0` — tool-surface consolidation (the only planned breaking change).** Today there are 47 MCP tools; `projscan_route` is the additive discovery entry over them. Hiding the long tail behind the router (removing/renaming tools) breaks the 1.0 stability contract, so it is reserved for a deliberate **4.0** with a deprecation cycle — not a minor bump.
+- **`4.0` — tool-surface consolidation (the first breaking release since 1.0).** In progress on the `next` branch (publish held for a real deprecation window). 4.0 removes the two tools deprecated in 3.8.0 — `projscan_explain` (use `projscan_file`) and `projscan_graph` (use `projscan_semantic_graph`, which gains a targeted `query` mode that subsumes it) — taking the surface from 47 → 45. Both have drop-in replacements (see [MIGRATION-4.0.md](MIGRATION-4.0.md)). The *broader* consolidation (routing the long tail behind `projscan_route`) is deliberately deferred until real usage signal justifies which tools to fold — same deprecate-before-remove discipline.
 
 Strictly **local-first** throughout: same-repo / same-machine swarms via the shared store, never a daemon, cloud, or cross-machine server (that would be a SaaS non-goal).
 

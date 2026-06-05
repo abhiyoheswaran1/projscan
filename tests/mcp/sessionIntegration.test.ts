@@ -80,7 +80,7 @@ describe('MCP server auto-touch wiring (1.4+)', () => {
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
-      params: { name: 'projscan_explain', arguments: { file: 'src/a.ts' } },
+      params: { name: 'projscan_file', arguments: { file: 'src/a.ts' } },
     });
 
     // Read the session via the projscan_session tool.
@@ -129,7 +129,7 @@ describe('MCP server auto-touch wiring (1.4+)', () => {
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
-      params: { name: 'projscan_explain', arguments: { file: 'src/a.ts' } },
+      params: { name: 'projscan_file', arguments: { file: 'src/a.ts' } },
     });
     const beforeReset = (await rpc(server, {
       jsonrpc: '2.0',
@@ -168,7 +168,7 @@ describe('MCP server auto-touch wiring (1.4+)', () => {
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
-      params: { name: 'projscan_explain', arguments: { file: 'src/a.ts' } },
+      params: { name: 'projscan_file', arguments: { file: 'src/a.ts' } },
     });
 
     const touchedResp = (await rpc(server, {

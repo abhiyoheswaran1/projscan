@@ -12,7 +12,6 @@
 import { analyzeTool } from './tools/analyze.js';
 import { doctorTool } from './tools/doctor.js';
 import { hotspotsTool } from './tools/hotspots.js';
-import { explainTool } from './tools/explain.js';
 import { fileTool } from './tools/file.js';
 import { structureTool } from './tools/structure.js';
 import { dependenciesTool } from './tools/dependencies.js';
@@ -20,7 +19,6 @@ import { outdatedTool } from './tools/outdated.js';
 import { auditTool } from './tools/audit.js';
 import { upgradeTool } from './tools/upgrade.js';
 import { coverageTool } from './tools/coverage.js';
-import { graphTool } from './tools/graph.js';
 import { semanticGraphTool } from './tools/semanticGraph.js';
 import { couplingTool } from './tools/coupling.js';
 import { workspacesTool } from './tools/workspaces.js';
@@ -66,7 +64,6 @@ const tools: McpTool[] = [
   analyzeTool,
   doctorTool,
   hotspotsTool,
-  explainTool,
   fileTool,
   structureTool,
   dependenciesTool,
@@ -74,7 +71,6 @@ const tools: McpTool[] = [
   auditTool,
   upgradeTool,
   coverageTool,
-  graphTool,
   semanticGraphTool,
   couplingTool,
   workspacesTool,
