@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeCoordination } from '../../src/core/coordination.js';
+import { summarizeCoordination, coordinationHints } from '../../src/core/coordination.js';
 import type { CollisionReport } from '../../src/core/collisionDetector.js';
 import type { Claim } from '../../src/core/claims.js';
 import type { MergeRiskReport } from '../../src/core/mergeRisk.js';
@@ -88,5 +88,55 @@ describe('summarizeCoordination', () => {
     });
     expect(out.available).toBe(false);
     expect(out.reason).toBe('only one worktree');
+  });
+});
+
+describe('coordinationHints', () => {
+  it('returns no hints when coordination is unavailable or clear', () => {
+    expect(coordinationHints(summarizeCoordination({
+      collisionReport: collisionReport({ available: false, reason: 'only one worktree' }),
+      claims: [],
+      mergeRisk: mergeRisk({ available: false }),
+    }))).toEqual([]);
+
+    const clear = summarizeCoordination({
+      collisionReport: collisionReport({
+        worktrees: [
+          { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
+        ],
+      }),
+      claims: [],
+      mergeRisk: mergeRisk({}),
+    });
+    expect(coordinationHints(clear)).toEqual([]);
+  });
+
+  it('summarizes collisions, contention, and merge order when conflicted', () => {
+    const summary = summarizeCoordination({
+      collisionReport: collisionReport({
+        worktrees: [
+          { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
+        ],
+        collisions: [
+          { kind: 'same-file', severity: 'high', worktreeA: '/a', fileA: 'x.ts', worktreeB: '/b', fileB: 'x.ts', reason: '' },
+        ],
+      }),
+      claims: [claim('src/auth.ts', 'a'), claim('src/auth.ts', 'b')],
+      mergeRisk: mergeRisk({
+        integrationOrder: [
+          { worktree: '/b', branch: 'b', riskScore: 0 },
+          { worktree: '/a', branch: 'a', riskScore: 2 },
+        ],
+      }),
+    });
+    const hints = coordinationHints(summary);
+    expect(hints.length).toBeGreaterThan(0);
+    expect(hints.join(' ')).toMatch(/conflicted/i);
+    expect(hints.join(' ')).toMatch(/collision/i);
+    expect(hints.join(' ')).toMatch(/contend/i);
+    // every hint is a non-empty string
+    expect(hints.every((h) => typeof h === 'string' && h.length > 0)).toBe(true);
   });
 });

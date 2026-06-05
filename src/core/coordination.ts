@@ -97,6 +97,29 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
   };
 }
 
+/**
+ * Compact, agent-facing hints derived from a coordination summary — for
+ * surfacing inside other reports (e.g. agent briefs). Empty when coordination
+ * is unavailable or the swarm is clear, so it adds nothing in the common
+ * single-worktree case.
+ */
+export function coordinationHints(summary: CoordinationSummary): string[] {
+  if (!summary.available || summary.readiness === 'clear') return [];
+  const hints: string[] = [`Swarm readiness: ${summary.readiness} — run \`projscan coordinate\` for details.`];
+  if (summary.collisions.high > 0) {
+    hints.push(`${summary.collisions.high} high-severity collision(s) (same file edited by two worktrees).`);
+  }
+  if (summary.collisions.medium > 0) {
+    hints.push(`${summary.collisions.medium} dependency collision(s) across worktrees.`);
+  }
+  if (summary.claims.contendedTargets > 0) {
+    hints.push(`${summary.claims.contendedTargets} claim target(s) contended by multiple agents.`);
+  }
+  const first = summary.mergeRisk.integrationOrder[0];
+  if (first) hints.push(`Merge ${first.branch ?? first.worktree} first (lowest risk).`);
+  return hints;
+}
+
 /** Run the full coordination read for the repo's in-flight worktrees. */
 export async function computeCoordination(
   rootPath: string,
