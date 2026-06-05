@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - `projscan agent-brief` / `projscan_agent_brief` now surfaces a `swarm-coordination` hint when parallel worktrees are in flight — folding the collision / contended-claim / merge-order signal into the brief's `coordinationHints` so the next agent sees swarm state without a separate call. No-op for single-worktree repos.
+- `projscan preflight` / `projscan_preflight` now includes a `coordination` evidence bucket and, when in-flight worktrees collide, a `coordination`-source reason — advisory only (raises `caution`, never a hard `block`). No-op for single-worktree repos, so existing verdicts are unchanged.
 
 ## [3.6.0] — 2026-06-05 — "Swarm Coordination"
 

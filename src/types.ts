@@ -266,7 +266,8 @@ export type PreflightReasonSource =
   | 'hotspots'
   | 'git'
   | 'format'
-  | 'release';
+  | 'release'
+  | 'coordination';
 
 export interface PreflightReason {
   severity: IssueSeverity;
@@ -361,6 +362,13 @@ export interface PreflightEvidence {
     warningIssues: number;
   };
   releaseScale?: PreflightReleaseScaleEvidence;
+  coordination?: {
+    available: boolean;
+    readiness: 'clear' | 'caution' | 'conflicted';
+    worktreeCount: number;
+    collisions: { high: number; medium: number };
+    contendedClaims: number;
+  };
 }
 
 export interface PreflightReport {

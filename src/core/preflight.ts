@@ -4,6 +4,7 @@ import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeReview } from './review.js';
 import { loadSession } from './session.js';
 import { pluginsEnabled } from './plugins.js';
+import { computeCoordination, type CoordinationSummary } from './coordination.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -73,6 +74,7 @@ export async function computePreflight(
   const session = await safeSession(rootPath);
   const hotspots = await safeHotspots(rootPath, scan.files, issues);
   const review = await safeReview(rootPath, mode, options);
+  const coordination = await safeCoordination(rootPath, options.baseRef);
   const maxChangedFiles = options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES;
   const supplyChain = countSupplyChainIssues(issues);
   const releaseScale = buildReleaseScaleEvidence({
@@ -93,6 +95,7 @@ export async function computePreflight(
     hotspots,
     review,
     releaseScale,
+    coordination,
     maxChangedFiles,
   });
   const verdict = decidePreflightVerdict(reasons);
@@ -105,6 +108,7 @@ export async function computePreflight(
     pluginsEnabledForRun: pluginsEnabled(),
     review,
     releaseScale,
+    coordination,
   });
   const truncated =
     evidence.session?.truncated === true ||
@@ -247,6 +251,16 @@ async function safeReview(
   }
 }
 
+/** Coordination evidence for preflight; null when no real cross-worktree read. */
+async function safeCoordination(rootPath: string, baseRef?: string): Promise<CoordinationSummary | null> {
+  try {
+    const summary = await computeCoordination(rootPath, baseRef ? { baseRef } : {});
+    return summary.available ? summary : null;
+  } catch {
+    return null;
+  }
+}
+
 function buildPreflightReasons(input: {
   mode: PreflightMode;
   issues: Issue[];
@@ -256,6 +270,7 @@ function buildPreflightReasons(input: {
   hotspots: HotspotReport | null;
   review: PreflightReviewEvidence;
   releaseScale: PreflightReleaseScaleEvidence | null;
+  coordination: CoordinationSummary | null;
   maxChangedFiles: number;
 }): PreflightReason[] {
   const reasons: PreflightReason[] = [];
@@ -396,6 +411,28 @@ function buildPreflightReasons(input: {
     });
   }
 
+  // Swarm coordination — advisory only: a cross-worktree collision raises
+  // caution (warning), never a hard block. No reason when clear/unavailable.
+  if (input.coordination?.available) {
+    const { collisions, claims, worktreeCount, readiness } = input.coordination;
+    if (readiness === 'conflicted') {
+      const contended = claims.contendedTargets > 0 ? `, ${claims.contendedTargets} contended claim(s)` : '';
+      reasons.push({
+        severity: 'warning',
+        source: 'coordination',
+        message: `Swarm collision risk across ${worktreeCount} in-flight worktrees: ${collisions.high} high / ${collisions.medium} medium${contended}. Run \`projscan coordinate\` before merging.`,
+        tool: 'projscan_coordinate',
+      });
+    } else if (readiness === 'caution') {
+      reasons.push({
+        severity: 'info',
+        source: 'coordination',
+        message: `Dependency overlap with another in-flight worktree (${collisions.medium} medium). Run \`projscan coordinate\`.`,
+        tool: 'projscan_coordinate',
+      });
+    }
+  }
+
   return reasons;
 }
 
@@ -496,6 +533,7 @@ function buildEvidence(input: {
   pluginsEnabledForRun: boolean;
   review: PreflightReviewEvidence;
   releaseScale: PreflightReleaseScaleEvidence | null;
+  coordination: CoordinationSummary | null;
 }): PreflightEvidence {
   const pluginIssues = input.issues.filter((issue) => issue.id.startsWith('plugin:'));
   const supplyChainIssues = input.issues.filter((issue) => issue.category === 'supply-chain');
@@ -567,6 +605,20 @@ function buildEvidence(input: {
       warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
     },
     ...(input.releaseScale ? { releaseScale: input.releaseScale } : {}),
+    ...(input.coordination
+      ? {
+          coordination: {
+            available: true,
+            readiness: input.coordination.readiness,
+            worktreeCount: input.coordination.worktreeCount,
+            collisions: {
+              high: input.coordination.collisions.high,
+              medium: input.coordination.collisions.medium,
+            },
+            contendedClaims: input.coordination.claims.contendedTargets,
+          },
+        }
+      : {}),
   };
 }
 
