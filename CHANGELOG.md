@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.8.0] — 2026-06-05 — "Graceful Deprecations"
+
 ### Deprecated
 
 - `projscan_explain` / `projscan explain` → use `projscan_file` / `projscan file` (a strict superset: same purpose/imports/exports plus churn, risk, ownership, and related health).
