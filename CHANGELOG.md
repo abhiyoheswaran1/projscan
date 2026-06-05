@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [4.0.0] — Unreleased — "Consolidation"
+## [4.0.0] — 2026-06-05 — "Consolidation"
 
 > **Breaking.** The first major since 1.0. Two redundant tools deprecated in
 > 3.8.0 are removed. Both have drop-in replacements — see
