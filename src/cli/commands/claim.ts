@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
-import { addClaim, listClaims, releaseClaim, type Claim } from '../../core/claims.js';
+import { addClaim, listClaims, releaseClaim, findContendedClaims } from '../../core/claims.js';
 
 /**
  * `projscan claim` (4.x) — advisory claims/leases so parallel agents see who
@@ -104,27 +104,9 @@ async function runList(): Promise<void> {
     console.log(chalk.dim(`      ${c.id}`));
   }
   // Surface any overlapping holders so contention is visible at a glance.
-  const contended = findContended(claims);
-  if (contended.length > 0) {
+  const contendedTargets = new Set(findContendedClaims(claims).map((c) => c.target));
+  if (contendedTargets.size > 0) {
     console.log('');
-    console.log(chalk.yellow(`  ⚠ ${contended.length} target(s) claimed by more than one agent`));
+    console.log(chalk.yellow(`  ⚠ ${contendedTargets.size} target(s) claimed by more than one agent`));
   }
-}
-
-function findContended(claims: Claim[]): string[] {
-  const out = new Set<string>();
-  for (let i = 0; i < claims.length; i++) {
-    for (let j = i + 1; j < claims.length; j++) {
-      if (claims[i].agent !== claims[j].agent && overlap(claims[i].target, claims[j].target)) {
-        out.add(claims[i].target);
-        out.add(claims[j].target);
-      }
-    }
-  }
-  return [...out];
-}
-
-function overlap(a: string, b: string): boolean {
-  if (a === b) return true;
-  return b.startsWith(`${a}/`) || a.startsWith(`${b}/`);
 }

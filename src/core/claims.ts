@@ -62,11 +62,25 @@ function normalizeTarget(target: string): string {
 }
 
 /** Two targets overlap if equal, or one is a directory ancestor of the other. */
-function targetsOverlap(a: string, b: string): boolean {
+export function claimTargetsOverlap(a: string, b: string): boolean {
   const na = normalizeTarget(a);
   const nb = normalizeTarget(b);
   if (na === nb) return true;
   return nb.startsWith(`${na}/`) || na.startsWith(`${nb}/`);
+}
+
+/** Claims held by more than one agent on overlapping targets (contention). */
+export function findContendedClaims(claims: Claim[]): Claim[] {
+  const contended = new Set<Claim>();
+  for (let i = 0; i < claims.length; i++) {
+    for (let j = i + 1; j < claims.length; j++) {
+      if (claims[i].agent !== claims[j].agent && claimTargetsOverlap(claims[i].target, claims[j].target)) {
+        contended.add(claims[i]);
+        contended.add(claims[j]);
+      }
+    }
+  }
+  return [...contended];
 }
 
 function isWellShapedClaim(value: unknown): value is Claim {
@@ -114,7 +128,7 @@ export async function addClaim(
 ): Promise<AddClaimResult> {
   const target = normalizeTarget(input.target);
   const store = await readStore(rootPath);
-  const contention = store.claims.filter((c) => c.agent !== input.agent && targetsOverlap(c.target, target));
+  const contention = store.claims.filter((c) => c.agent !== input.agent && claimTargetsOverlap(c.target, target));
   const claim: Claim = {
     id: randomUUID(),
     target,

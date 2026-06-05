@@ -15,6 +15,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   'claim add': ['console', 'json'],
   'claim release': ['console', 'json'],
   collisions: ['console', 'json'],
+  coordinate: ['console', 'json'],
   'merge-risk': ['console', 'json'],
   route: ['console', 'json'],
   coupling: ['console', 'json', 'markdown', 'html'],
