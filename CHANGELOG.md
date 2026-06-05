@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `projscan collisions --transitive` (and MCP `projscan_collision { transitive: true }`): opt-in multi-hop dependency overlap detection — flags when one worktree changes a file another worktree's change *transitively* imports, with the `distance` (hops). The 1-hop default stays precise; `--max-distance` bounds the walk.
+- `projscan coordinate --watch` (`--interval <seconds>`): re-evaluates swarm coordination on an interval and re-emits only when the state changes (console summary, or NDJSON with `--format json`) — a live coordination feed for long-running agent sessions.
 
 ### Changed
 

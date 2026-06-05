@@ -1,6 +1,6 @@
 import { detectCollisions, type CollisionReport } from './collisionDetector.js';
 import { listClaims, findContendedClaims, type Claim } from './claims.js';
-import { computeMergeRisk, type MergeRiskReport } from './mergeRisk.js';
+import { deriveMergeRisk, type MergeRiskReport } from './mergeRisk.js';
 
 /**
  * Coordination summary (4.x arc, epic 5 — the capstone).
@@ -120,15 +120,42 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
   return hints;
 }
 
+/**
+ * A stable fingerprint of the coordination state — readiness, worktree count,
+ * collision counts, and contention. `--watch` mode re-emits only when this
+ * changes between ticks, so stable state stays quiet.
+ */
+export function coordinationSignature(summary: CoordinationSummary): string {
+  return [
+    summary.available ? 'a' : 'u',
+    summary.readiness,
+    summary.worktreeCount,
+    summary.collisions.high,
+    summary.collisions.medium,
+    summary.claims.contendedTargets,
+    summary.mergeRisk.hotspotCount,
+  ].join(':');
+}
+
 /** Run the full coordination read for the repo's in-flight worktrees. */
 export async function computeCoordination(
   rootPath: string,
   options: { baseRef?: string } = {},
 ): Promise<CoordinationSummary> {
-  const [collisionReport, claims, mergeRisk] = await Promise.all([
+  // One collision pass feeds both the summary and the merge-risk derivation —
+  // detectCollisions builds the code graph, so we must not run it twice.
+  const [collisionReport, claims] = await Promise.all([
     detectCollisions(rootPath, options),
     listClaims(rootPath),
-    computeMergeRisk(rootPath, options),
   ]);
+  const { integrationOrder, hotFiles } = deriveMergeRisk(collisionReport);
+  const mergeRisk: MergeRiskReport = {
+    schemaVersion: 1,
+    available: collisionReport.available,
+    ...(collisionReport.reason ? { reason: collisionReport.reason } : {}),
+    integrationOrder,
+    hotFiles,
+    collisions: collisionReport.collisions,
+  };
   return summarizeCoordination({ collisionReport, claims, mergeRisk });
 }
