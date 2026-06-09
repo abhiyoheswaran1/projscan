@@ -71,7 +71,7 @@ Update the shortcut index to include `--review-gate-json` near `--review-gate`, 
 
 ## Tests
 
-- CLI shortcut: `projscan start --review-gate-json --intent "<goal>" --quiet` prints exactly the compact review gate JSON plus newline and no broader Mission Control output.
+- CLI shortcut: `projscan start --review-gate-json --intent "<goal>" --quiet` prints exactly the compact review gate JSON plus newline and no broader start-report output. The JSON object still includes the review gate `markdown` field because it is part of `missionControl.reviewGate`.
 - Saved bundle: `review-gate.json` exists, matches `handoff.reviewGate`, and appears in stdout, README, and manifest.
 - JSON bundle mode: the returned manifest file list includes `review-gate.json`.
 - Shortcut index: `--shortcuts` includes `projscan start --review-gate-json ...`.

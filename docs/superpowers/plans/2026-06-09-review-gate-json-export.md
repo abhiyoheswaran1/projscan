@@ -75,8 +75,8 @@ test('start prints only the review gate JSON when requested', async () => {
   expect(reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(reviewGate.proof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
   expect(reviewGate.worktree.summary).toContain('Current worktree evidence');
-  expect(shortcut.stdout).not.toContain('Mission Control');
-  expect(shortcut.stdout).not.toContain('# Mission Review Gate');
+  expect(shortcut.stdout).not.toContain('Start:');
+  expect(shortcut.stdout).not.toContain('\nMission Control\n');
 });
 ```
 
