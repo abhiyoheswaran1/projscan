@@ -15,7 +15,8 @@ export function registerStart(): void {
   program
     .command('start')
     .description('Orient an engineer or agent with the next best workflow for this repo')
-    .option('--mode <mode>', 'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening', 'before_edit')
+    .option('--mode <mode>', 'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening')
+    .option('--intent <text>', 'plain-language goal to route into the next best action')
     .option('--max-tasks <count>', 'maximum workplan tasks to inspect', parsePositiveInt)
     .option('--max-risks <count>', 'maximum start risks to return', parsePositiveInt)
     .option('--include-handoff', 'include a compact handoff payload')
@@ -28,6 +29,7 @@ export function registerStart(): void {
       try {
         const report = await computeStartReport(getRootPath(), {
           mode,
+          intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
           maxTasks: cmdOpts.maxTasks,
           maxRisks: cmdOpts.maxRisks,
           includeHandoff: cmdOpts.includeHandoff === true,
@@ -45,7 +47,8 @@ export function registerStart(): void {
     });
 }
 
-function parseMode(value: unknown): WorkplanMode {
+function parseMode(value: unknown): WorkplanMode | undefined {
+  if (typeof value === 'undefined') return undefined;
   if (typeof value === 'string' && isWorkplanMode(value)) return value;
   console.error(chalk.red(`Unsupported --mode ${String(value)}.`));
   console.error(chalk.dim('Supported modes: before_edit, before_commit, before_merge, refactor, release, bug_hunt, hardening'));
@@ -63,8 +66,12 @@ function parsePositiveInt(value: string): number {
 function printStart(report: StartReport): void {
   console.log(chalk.bold(`Start: ${report.mode}`));
   console.log(report.summary);
+  console.log(`Mode: ${modeSourceLabel(report.modeSource)}`);
+  console.log(chalk.dim(report.modeReason));
   console.log(`Health: ${report.evidence.healthScore}/100 (${report.evidence.qualityVerdict})`);
   console.log(`Workflow: ${report.recommendedWorkflow.name}`);
+  console.log('');
+  printMissionControl(report);
   console.log('');
   console.log(chalk.bold('First 10 Minutes'));
   for (const step of report.firstTenMinutes.commands) {
@@ -96,6 +103,67 @@ function printStart(report: StartReport): void {
       console.log(`- [${gap.status}] ${gap.title}: ${gap.summary}${gap.command ? ` (${gap.command})` : ''}`);
     }
   }
+}
+
+function modeSourceLabel(source: StartReport['modeSource']): string {
+  if (source === 'intent') return 'inferred from intent';
+  if (source === 'explicit') return 'explicit';
+  return 'default';
+}
+
+function printMissionControl(report: StartReport): void {
+  const mission = report.missionControl;
+  console.log(chalk.bold('Mission Control'));
+  if (mission.intent) console.log(`Intent: ${mission.intent}`);
+  console.log(`Status: ${mission.status}`);
+  console.log(mission.headline);
+  if (mission.routedIntent) {
+    console.log(`Route: ${mission.routedIntent.category} via ${mission.routedIntent.tool} (${routeEvidence(mission.routedIntent)})`);
+  }
+  if (mission.primaryAction.command) console.log(chalk.cyan(mission.primaryAction.command));
+  console.log(chalk.dim(mission.whyNow));
+  if (mission.actionPlan.length > 0) {
+    console.log(chalk.bold('Action Plan'));
+    for (const action of mission.actionPlan.slice(0, 4)) {
+      if (action.command) console.log(`- ${action.label}: ${action.command}`);
+    }
+  }
+  if (mission.readyActions.length > 0) {
+    console.log(chalk.bold('Ready Now'));
+    for (const action of mission.readyActions.slice(0, 4)) {
+      if (action.command) console.log(`- ${action.label}: ${action.command}`);
+    }
+  }
+  if (mission.unresolvedInputs.length > 0) {
+    console.log(chalk.bold('Needs Input'));
+    for (const input of mission.unresolvedInputs.slice(0, 4)) {
+      console.log(`- ${input.name}: replace ${input.placeholder} after ${input.sourceAction}`);
+    }
+  }
+  if (mission.alternatives && mission.alternatives.length > 0) {
+    console.log(chalk.bold('Also Consider'));
+    for (const route of mission.alternatives.slice(0, 3)) {
+      console.log(`- ${route.category}: ${route.cli} (${routeEvidence(route)})`);
+    }
+  }
+  if (mission.successCriteria.length > 0) {
+    console.log(chalk.bold('Done When'));
+    for (const criterion of mission.successCriteria.slice(0, 4)) {
+      console.log(`- ${criterion}`);
+    }
+  }
+  if (mission.proofCommands.length > 0) {
+    console.log(chalk.bold('Ready Proof'));
+    console.log(chalk.dim(mission.proofSummary));
+    for (const command of mission.proofCommands.slice(0, 3)) {
+      console.log(chalk.dim(`- ${command}`));
+    }
+  }
+}
+
+function routeEvidence(route: StartReport['missionControl']['routedIntent']): string {
+  if (!route) return 'confidence: low; matched: none';
+  return `confidence: ${route.confidence}; matched: ${route.matchedKeywords.join(', ') || 'none'}`;
 }
 
 function printRisk(risk: StartRisk): void {

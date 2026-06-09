@@ -1,6 +1,7 @@
-import type { StartFirstTenMinutes } from '../types.js';
+import type { StartFirstTenMinutes, WorkplanMode } from '../types.js';
 
-export function buildFirstTenMinutes(): StartFirstTenMinutes {
+export function buildFirstTenMinutes(mode: WorkplanMode = 'before_edit'): StartFirstTenMinutes {
+  const preflightMode = firstTenMinutesPreflightMode(mode);
   return {
     title: 'First 10 minutes with projscan',
     outcome: 'Verify the local trust boundary, orient the workflow, gate the first edit, then produce reviewer-facing PR evidence.',
@@ -15,13 +16,13 @@ export function buildFirstTenMinutes(): StartFirstTenMinutes {
         id: 'orient',
         label: 'Orient the repo',
         why: 'Combines setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.',
-        command: 'projscan start --mode before_edit',
+        command: `projscan start --mode ${mode}`,
       },
       {
         id: 'preflight',
-        label: 'Gate the first edit',
-        why: 'Returns proceed, caution, or block before an agent changes code.',
-        command: 'projscan preflight --mode before_edit --format json',
+        label: preflightLabel(preflightMode),
+        why: preflightWhy(preflightMode),
+        command: `projscan preflight --mode ${preflightMode} --format json`,
       },
       {
         id: 'mcp-setup',
@@ -49,4 +50,23 @@ export function buildFirstTenMinutes(): StartFirstTenMinutes {
       },
     ],
   };
+}
+
+function firstTenMinutesPreflightMode(mode: WorkplanMode): 'before_edit' | 'before_commit' | 'before_merge' {
+  if (mode === 'before_commit') return 'before_commit';
+  if (mode === 'hardening') return 'before_commit';
+  if (mode === 'before_merge' || mode === 'release') return 'before_merge';
+  return 'before_edit';
+}
+
+function preflightLabel(mode: 'before_edit' | 'before_commit' | 'before_merge'): string {
+  if (mode === 'before_commit') return 'Gate the commit';
+  if (mode === 'before_merge') return 'Gate the merge';
+  return 'Gate the first edit';
+}
+
+function preflightWhy(mode: 'before_edit' | 'before_commit' | 'before_merge'): string {
+  if (mode === 'before_commit') return 'Returns proceed, caution, or block before a developer commits the change.';
+  if (mode === 'before_merge') return 'Returns proceed, caution, or block before a branch is merged or released.';
+  return 'Returns proceed, caution, or block before an agent changes code.';
 }

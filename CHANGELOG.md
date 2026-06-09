@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-06-09 - "Mission Control"
+
+### Added
+
+- Added `projscan start --intent "<goal>"` Mission Control routing: inferred workflow mode, route confidence, matched keywords, ready actions, alternatives, done criteria, proof commands, and a compact handoff prompt.
+- Expanded deterministic intent coverage across privacy, repo orientation, local setup, change planning, public contracts, file impact, package importers, ownership, PR evidence, release readiness, coordination, and session handoff workflows.
+- Added local setup discovery for npm scripts, lint/typecheck, e2e, Storybook, Cypress, Playwright, Docker Compose, migrations, and seed/reset commands.
+- Added Playwright-generated README screenshots for Mission Control and the intent/proof workflow, plus `npm run docs:screenshots` to regenerate them from `docs/demos/projscan-4-1-demo.html`.
+
+### Changed
+
+- `projscan route` now reports weighted confidence and matched keywords, making tool selection more explainable to agents and humans.
+- `projscan semantic-graph` now supports targeted CLI lookups for imports, exports, importers, symbol definitions, and package importers.
+- `projscan dependencies` now reports license summaries, copyleft risk, installed package sizes, and package importer guidance.
+- Verification-oriented intents such as "which tests should I run?" now route to proof planning instead of generic regression planning, while failing/flaky/build questions still route to focused regression workflows.
+
+### Fixed
+
+- Await Project Memory recording so remembered session context is less likely to race with command completion.
+- Await MCP close teardown so watcher/session cleanup is less likely to race with process shutdown.
+
 ## [4.0.0] — 2026-06-05 — "Consolidation"
 
 > **Breaking.** The first major since 1.0. Two redundant tools deprecated in

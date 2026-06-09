@@ -70,6 +70,8 @@ export interface DependencyReport {
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
   risks: DependencyRisk[];
+  licenses?: DependencyLicenseSummary;
+  sizes?: DependencySizeSummary;
   /**
    * Per-workspace breakdown when scanning a monorepo (0.13.0+). Absent for
    * single-package repos. The top-level `totalDependencies`,
@@ -85,6 +87,40 @@ export interface DependencyReport {
     totalDevDependencies: number;
     risks: DependencyRisk[];
   }>;
+}
+
+export interface DependencyLicenseEntry {
+  name: string;
+  version: string;
+  scope: 'production' | 'development';
+  license: string | null;
+  workspace?: string;
+}
+
+export interface DependencyLicenseSummary {
+  packages: DependencyLicenseEntry[];
+  byLicense: Record<string, number>;
+  unknown: string[];
+  copyleft: DependencyLicenseEntry[];
+  noticeCandidates: DependencyLicenseEntry[];
+}
+
+export interface DependencySizeEntry {
+  name: string;
+  version: string;
+  scope: 'production' | 'development';
+  bytes: number | null;
+  formatted: string;
+  installed: boolean;
+  workspace?: string;
+}
+
+export interface DependencySizeSummary {
+  packages: DependencySizeEntry[];
+  largest: DependencySizeEntry[];
+  totalBytes: number;
+  formattedTotal: string;
+  missing: string[];
 }
 
 export interface DependencyRisk {
@@ -760,11 +796,67 @@ export interface StartFirstTenMinutes {
   commands: StartFirstTenMinutesStep[];
 }
 
+export type StartModeSource = 'explicit' | 'intent' | 'default';
+
+export type StartMissionControlStatus = 'ready' | 'needs_setup' | 'needs_attention' | 'blocked';
+
+export interface StartRoutedIntent {
+  intent: string;
+  category: string;
+  tool: string;
+  cli: string;
+  why: string;
+  example: string;
+  confidence: 'high' | 'medium' | 'low';
+  rank: number;
+  score: number;
+  matchedKeywords: string[];
+}
+
+export interface StartUnresolvedInput {
+  name: string;
+  placeholder: string;
+  sourceAction: string;
+  instruction: string;
+}
+
+export interface StartMissionHandoff {
+  nextAction: PreflightSuggestedAction;
+  readyActions: PreflightSuggestedAction[];
+  needsInput: StartUnresolvedInput[];
+  doneWhen: string[];
+  readyProof: {
+    summary: string;
+    commands: string[];
+  };
+}
+
+export interface StartMissionControl {
+  intent?: string;
+  status: StartMissionControlStatus;
+  headline: string;
+  whyNow: string;
+  primaryAction: PreflightSuggestedAction;
+  actionPlan: PreflightSuggestedAction[];
+  readyActions: PreflightSuggestedAction[];
+  routedIntent?: StartRoutedIntent;
+  alternatives?: StartRoutedIntent[];
+  unresolvedInputs: StartUnresolvedInput[];
+  guardrails: PreflightSuggestedAction[];
+  successCriteria: string[];
+  proofSummary: string;
+  proofCommands: string[];
+  handoff: StartMissionHandoff;
+  handoffPrompt: string;
+}
+
 export interface StartReport {
   schemaVersion: 1;
   readOnly: true;
   rootPath: string;
   mode: WorkplanMode;
+  modeSource: StartModeSource;
+  modeReason: string;
   summary: string;
   setup: {
     overall: 'pass' | 'warn' | 'fail' | 'info';
@@ -772,6 +864,7 @@ export interface StartReport {
   };
   recommendedWorkflow: StartWorkflowRecommendation;
   firstTenMinutes: StartFirstTenMinutes;
+  missionControl: StartMissionControl;
   coordinationHints: SessionCoordinationHint[];
   evidence: {
     workplanVerdict: PreflightVerdict;

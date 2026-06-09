@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>projscan Mission Control README capture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f1ea;
+        --panel: #fffdf8;
+        --ink: #17202a;
+        --muted: #5d6673;
+        --line: #d9d1c2;
+        --terminal: #111418;
+        --terminal-line: #2b3139;
+        --terminal-muted: #8d98a8;
+        --green: #247a52;
+        --green-soft: #e6f4ec;
+        --blue: #2f5f90;
+        --blue-soft: #e4eef8;
+        --amber: #9b5a00;
+        --amber-soft: #fff2d8;
+        --red: #a5403a;
+        --red-soft: #fae7e4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.45;
+      }
+
+      .page {
+        width: min(1280px, calc(100vw - 80px));
+        margin: 0 auto;
+        padding: 42px 0 72px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(620px, 1.08fr);
+        gap: 28px;
+        align-items: stretch;
+      }
+
+      .intro {
+        padding: 8px 4px 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 620px;
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: var(--blue);
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 540px;
+        margin-bottom: 22px;
+        font-size: 58px;
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 560px;
+        margin-bottom: 28px;
+        color: var(--muted);
+        font-size: 21px;
+      }
+
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill {
+        min-height: 34px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 253, 248, 0.72);
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 38px;
+      }
+
+      .metric {
+        min-height: 116px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 27px;
+        line-height: 1;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .terminal {
+        overflow: hidden;
+        border: 1px solid #262d34;
+        border-radius: 8px;
+        background: var(--terminal);
+        color: #edf2f7;
+        box-shadow: 0 18px 45px rgba(23, 32, 42, 0.18);
+      }
+
+      .terminal-bar {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        height: 42px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--terminal-line);
+        color: var(--terminal-muted);
+        font-size: 13px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .dot.red {
+        background: #ef6a5b;
+      }
+
+      .dot.amber {
+        background: #f4bf4f;
+      }
+
+      .dot.green {
+        background: #63c554;
+      }
+
+      .terminal-title {
+        margin-left: 8px;
+        font-weight: 700;
+      }
+
+      .terminal-body {
+        padding: 26px;
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 15px;
+      }
+
+      .prompt {
+        color: #9ad8b1;
+      }
+
+      .cmd {
+        color: #ffffff;
+      }
+
+      .dim {
+        color: var(--terminal-muted);
+      }
+
+      .term-section {
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px solid var(--terminal-line);
+      }
+
+      .term-heading {
+        color: #ffd58a;
+        font-weight: 800;
+      }
+
+      .line {
+        display: block;
+        min-height: 22px;
+      }
+
+      .success {
+        color: #9ad8b1;
+      }
+
+      .notice {
+        color: #90c7ff;
+      }
+
+      .warn {
+        color: #ffd58a;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 30px;
+      }
+
+      .card {
+        min-height: 196px;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        margin-bottom: 16px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .label.green {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .label.blue {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .label.amber {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .card h2,
+      .card h3 {
+        margin-bottom: 10px;
+        font-size: 24px;
+        line-height: 1.16;
+        letter-spacing: 0;
+      }
+
+      .card p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .proof {
+        padding-top: 74px;
+      }
+
+      .proof-header {
+        display: grid;
+        grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 24px;
+      }
+
+      .proof-header h2 {
+        margin-bottom: 10px;
+        font-size: 44px;
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .proof-header p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .workflow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 22px;
+      }
+
+      .compact-terminal .terminal-body {
+        min-height: 390px;
+        padding: 22px;
+        font-size: 14px;
+      }
+
+      .signal-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .signal {
+        display: grid;
+        grid-template-columns: 124px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .signal strong {
+        display: block;
+        color: var(--ink);
+      }
+
+      .signal span:not(.tag) {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .tag {
+        width: 124px;
+        min-height: 30px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .tag.green {
+        background: var(--green);
+      }
+
+      .tag.blue {
+        background: var(--blue);
+      }
+
+      .tag.amber {
+        background: var(--amber);
+      }
+
+      .tag.red {
+        background: var(--red);
+      }
+
+      @media (max-width: 980px) {
+        .page {
+          width: min(100% - 32px, 760px);
+          padding-top: 28px;
+        }
+
+        .hero,
+        .proof-header,
+        .workflow,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .intro {
+          min-height: auto;
+        }
+
+        h1 {
+          font-size: 42px;
+        }
+
+        .metric-row {
+          grid-template-columns: 1fr;
+        }
+
+        .terminal-body {
+          overflow-x: auto;
+        }
+      }
+
+      body.proof-only .hero,
+      body.proof-only .grid {
+        display: none;
+      }
+
+      body.proof-only .proof {
+        padding-top: 0;
+      }
+
+      body.proof-only .proof-header {
+        margin-top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero" aria-label="projscan Mission Control">
+        <div class="intro">
+          <div>
+            <p class="eyebrow">Unreleased developer-life upgrade</p>
+            <h1>Plain-language repo work, routed to proof.</h1>
+            <p class="lead">
+              projscan now turns a developer's intent into the right local
+              command, the first files to trust, the ready actions, and the
+              proof commands that make a PR reviewable.
+            </p>
+            <div class="pills" aria-label="Product capabilities">
+              <span class="pill">Mission Control</span>
+              <span class="pill">Local-first</span>
+              <span class="pill">MCP-ready</span>
+              <span class="pill">No source upload</span>
+            </div>
+          </div>
+
+          <div class="metric-row" aria-label="Release candidate signals">
+            <div class="metric">
+              <strong>1 call</strong>
+              <span>intent to workflow</span>
+            </div>
+            <div class="metric">
+              <strong>45</strong>
+              <span>MCP tools preserved</span>
+            </div>
+            <div class="metric">
+              <strong>A</strong>
+              <span>dogfood health gate</span>
+            </div>
+          </div>
+        </div>
+
+        <section class="terminal" aria-label="Mission Control terminal output">
+          <div class="terminal-bar">
+            <span class="dot red"></span>
+            <span class="dot amber"></span>
+            <span class="dot green"></span>
+            <span class="terminal-title">projscan start --intent</span>
+          </div>
+          <div class="terminal-body">
+            <span class="line"
+              ><span class="prompt">$</span>
+              <span class="cmd"
+                >projscan start --intent "is it safe to commit this
+                change?"</span
+              ></span
+            >
+            <span class="line dim">ProjScan Mission Control</span>
+            <span class="line">Intent: is it safe to commit this change?</span>
+            <span class="line">Status: <span class="warn">needs_attention</span></span>
+            <span class="line"
+              >Route:
+              <span class="notice">Safety gate via projscan_preflight</span></span
+            >
+            <span class="line dim"
+              >confidence: high; matched: safe, commit</span
+            >
+
+            <div class="term-section">
+              <span class="line term-heading">Action Plan</span>
+              <span class="line"
+                >- Use projscan_preflight before broader workflow
+                commands</span
+              >
+              <span class="line"
+                >- Preserve the original goal across follow-up evidence</span
+              >
+              <span class="line"
+                >- Surface blockers with owner, file, or next command</span
+              >
+            </div>
+
+            <div class="term-section">
+              <span class="line term-heading">Ready Proof</span>
+              <span class="line success"
+                >- projscan preflight --mode before_commit --format json</span
+              >
+              <span class="line success"
+                >- projscan understand --view verify --format json</span
+              >
+              <span class="line success"
+                >- projscan session touched --format json</span
+              >
+            </div>
+
+            <div class="term-section">
+              <span class="line term-heading">Done When</span>
+              <span class="line"
+                >- Preflight returns proceed or documented manual review</span
+              >
+              <span class="line"
+                >- Every blocker has a concrete follow-up command</span
+              >
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="grid" aria-label="New developer workflows">
+        <article class="card">
+          <span class="label green">Goal routing</span>
+          <h2>Ask in human language.</h2>
+          <p>
+            Route privacy, merge readiness, refactor risk, local setup,
+            ownership, dependency, release, and handoff questions to the right
+            command with matched keywords and confidence.
+          </p>
+        </article>
+        <article class="card">
+          <span class="label blue">Repo context</span>
+          <h2>Start from cited evidence.</h2>
+          <p>
+            Repo maps now include read-first files, package contracts, runtime
+            flows, public exports, proof tiers, setup commands, and unknowns
+            that need human input.
+          </p>
+        </article>
+        <article class="card">
+          <span class="label amber">Review proof</span>
+          <h2>Make PRs easier to approve.</h2>
+          <p>
+            Mission Control carries the original intent into preflight,
+            verification, session memory, evidence packs, and reviewer-ready
+            next commands.
+          </p>
+        </article>
+      </section>
+
+      <section class="proof" id="proof" aria-label="Proof and dependency view">
+        <div class="proof-header">
+          <div>
+            <p class="eyebrow">Intent, graph, and dependency intelligence</p>
+            <h2>Fewer dead-end agent turns.</h2>
+          </div>
+          <p>
+            The new flow is built for a developer asking "what now?" after a
+            change, a failed run, a risky rename, or a dependency question.
+          </p>
+        </div>
+
+        <div class="workflow">
+          <section class="terminal compact-terminal" aria-label="Intent router">
+            <div class="terminal-bar">
+              <span class="dot red"></span>
+              <span class="dot amber"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">projscan route</span>
+            </div>
+            <div class="terminal-body">
+              <span class="line"
+                ><span class="prompt">$</span>
+                <span class="cmd"
+                  >projscan route "what breaks if I rename the auth token
+                  loader"</span
+                ></span
+              >
+              <span class="line dim">Best tools for the developer goal</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">1. projscan_impact</span>
+              <span class="line">confidence: high</span>
+              <span class="line">matched: breaks, rename</span>
+              <span class="line notice"
+                >Before renaming or deleting, see every caller that
+                breaks.</span
+              >
+              <span class="line success"
+                >projscan impact --symbol buildCodeGraph --format json</span
+              >
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">2. projscan_dataflow</span>
+              <span class="line">confidence: high</span>
+              <span class="line">matched: token</span>
+              <span class="line notice"
+                >Spot request-data reaching dangerous sinks.</span
+              >
+            </div>
+          </section>
+
+          <div class="signal-list" aria-label="Developer proof signals">
+            <div class="signal">
+              <span class="tag green">Verify</span>
+              <span>
+                <strong>Proof selection</strong>
+                Which tests should I run? now routes to
+                <code>understand --view verify</code> instead of generic
+                regression planning.
+              </span>
+            </div>
+            <div class="signal">
+              <span class="tag blue">Setup</span>
+              <span>
+                <strong>Local command discovery</strong>
+                npm scripts, lint, typecheck, Storybook, Cypress, Playwright,
+                Docker Compose, migrations, and seed/reset commands are called
+                out where agents need them.
+              </span>
+            </div>
+            <div class="signal">
+              <span class="tag amber">License</span>
+              <span>
+                <strong>Dependency intelligence</strong>
+                Dependency reports now summarize known licenses, copyleft risk,
+                installed package sizes, and package importer lookups.
+              </span>
+            </div>
+            <div class="signal">
+              <span class="tag red">Trust</span>
+              <span>
+                <strong>Release review guardrails</strong>
+                Stable-surface checks preserve public CLI and MCP contracts
+                while allowing additive intent support.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script>
+      if (window.location.hash === "#proof") {
+        document.body.classList.add("proof-only");
+      }
+      document.documentElement.dataset.ready = "true";
+    </script>
+  </body>
+</html>

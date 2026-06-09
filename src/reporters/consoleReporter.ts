@@ -460,6 +460,27 @@ export function reportDependencies(report: DependencyReport): void {
     }
   }
 
+  if (report.licenses) {
+    console.log(header('License Summary'));
+    const totalKnown = report.licenses.packages.length - report.licenses.unknown.length;
+    console.log(`  Known:        ${chalk.bold(String(totalKnown))}`);
+    console.log(`  Unknown:      ${chalk.bold(String(report.licenses.unknown.length))}`);
+    console.log(`  Copyleft:     ${chalk.bold(String(report.licenses.copyleft.length))}`);
+    for (const [license, count] of Object.entries(report.licenses.byLicense).slice(0, 8)) {
+      console.log(`  ${chalk.dim('•')} ${license}: ${count}`);
+    }
+  }
+
+  if (report.sizes && report.sizes.largest.length > 0) {
+    console.log(header('Installed Package Sizes'));
+    console.log(`  Total:        ${chalk.bold(report.sizes.formattedTotal)}`);
+    console.log(`  Missing:      ${chalk.bold(String(report.sizes.missing.length))}`);
+    for (const entry of report.sizes.largest.slice(0, 8)) {
+      const scope = entry.scope === 'production' ? 'prod' : 'dev';
+      console.log(`  ${chalk.dim('•')} ${entry.name} ${chalk.dim(entry.version)} ${entry.formatted} ${chalk.dim(`(${scope})`)}`);
+    }
+  }
+
   if (report.risks.length > 0) {
     console.log(header('Risks'));
     for (const risk of report.risks) {

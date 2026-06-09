@@ -53,6 +53,91 @@ describe('analyzeDependencies (single-package)', () => {
     expect(moment).toBeDefined();
     expect(moment!.severity).toBe('high');
   });
+
+  it('summarizes installed dependency licenses and flags copyleft packages', async () => {
+    await write(
+      'package.json',
+      JSON.stringify({
+        name: 'x',
+        dependencies: {
+          'gpl-lib': '^1.0.0',
+          'mit-lib': '^2.0.0',
+          'missing-lib': '^3.0.0',
+        },
+        devDependencies: {
+          'apache-tool': '^4.0.0',
+        },
+      }),
+    );
+    await write('node_modules/gpl-lib/package.json', JSON.stringify({ name: 'gpl-lib', version: '1.0.1', license: 'GPL-3.0-only' }));
+    await write('node_modules/mit-lib/package.json', JSON.stringify({ name: 'mit-lib', version: '2.0.1', license: 'MIT' }));
+    await write('node_modules/apache-tool/package.json', JSON.stringify({ name: 'apache-tool', version: '4.0.1', license: 'Apache-2.0' }));
+
+    const r = await analyzeDependencies(tmp);
+
+    expect(r!.licenses).toEqual(
+      expect.objectContaining({
+        byLicense: expect.objectContaining({
+          'Apache-2.0': 1,
+          'GPL-3.0-only': 1,
+          MIT: 1,
+          UNKNOWN: 1,
+        }),
+        unknown: ['missing-lib'],
+      }),
+    );
+    expect(r!.licenses!.copyleft).toEqual([
+      expect.objectContaining({ name: 'gpl-lib', license: 'GPL-3.0-only', scope: 'production' }),
+    ]);
+    expect(r!.risks.find((risk) => risk.name === 'gpl-lib')).toEqual(
+      expect.objectContaining({
+        severity: 'high',
+        reason: expect.stringContaining('GPL-3.0-only'),
+      }),
+    );
+  });
+
+  it('summarizes installed package sizes for bundle-bloat triage', async () => {
+    await write(
+      'package.json',
+      JSON.stringify({
+        name: 'x',
+        dependencies: {
+          'big-lib': '^1.0.0',
+          'tiny-lib': '^2.0.0',
+          'missing-lib': '^3.0.0',
+        },
+        devDependencies: {
+          'dev-tool': '^4.0.0',
+        },
+      }),
+    );
+    await write('node_modules/big-lib/package.json', JSON.stringify({ name: 'big-lib', version: '1.0.1', license: 'MIT' }));
+    await write('node_modules/big-lib/dist/big.js', 'x'.repeat(1_100_000));
+    await write('node_modules/tiny-lib/package.json', JSON.stringify({ name: 'tiny-lib', version: '2.0.1', license: 'MIT' }));
+    await write('node_modules/tiny-lib/index.js', 'tiny');
+    await write('node_modules/dev-tool/package.json', JSON.stringify({ name: 'dev-tool', version: '4.0.1', license: 'MIT' }));
+    await write('node_modules/dev-tool/index.js', 'dev');
+
+    const r = await analyzeDependencies(tmp);
+
+    expect(r!.sizes).toEqual(
+      expect.objectContaining({
+        totalBytes: expect.any(Number),
+        missing: ['missing-lib'],
+      }),
+    );
+    expect(r!.sizes!.largest[0]).toEqual(
+      expect.objectContaining({
+        name: 'big-lib',
+        scope: 'production',
+        installed: true,
+        bytes: expect.any(Number),
+      }),
+    );
+    expect(r!.sizes!.largest[0].bytes).toBeGreaterThan(1_000_000);
+    expect(r!.risks.find((risk) => risk.name === 'big-lib')).toBeUndefined();
+  });
 });
 
 describe('analyzeDependencies (workspace-aware)', () => {

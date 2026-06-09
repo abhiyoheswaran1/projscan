@@ -9,9 +9,9 @@
 
 **Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans and a local plugin layer for team-specific policy and reporting.
 
-[AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/GUIDE.md) · [Roadmap](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/ROADMAP.md)
+[AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/projscan-reporter-plugin.png" alt="projscan reporter plugin running in a macOS-style terminal window with a team health summary" width="700">
+<img src="docs/projscan-mission-control.png" alt="projscan Mission Control routing a developer intent into ready actions, done criteria, and proof commands" width="760">
 
 </div>
 
@@ -33,7 +33,25 @@ The local plugin platform lets teams add project-specific findings and render `d
 npx projscan
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
+
+## What's New in 4.1.0
+
+4.1.0 turns projscan into a stronger developer Mission Control layer: tell it the work you are trying to do, and it routes you to the right local proof.
+
+- **Mission Control for real developer goals.** `projscan start --intent "<goal>"` now maps plain-language work to inferred mode, route confidence, ready actions, alternatives, done criteria, proof commands, and a compact handoff prompt.
+- **Much broader intent coverage.** Privacy, repo orientation, local setup, change planning, public contracts, file impact, package importers, ownership, PR evidence, release readiness, coordination, and session handoff questions now route to specific commands instead of generic next steps.
+- **Proof-first verification.** "Which tests should I run?" and "what proves this works?" route to targeted verification proof, while failing/flaky/build questions still route to focused regression planning.
+- **Richer repo and dependency intelligence.** Setup discovery now finds npm scripts, lint/typecheck, e2e, Storybook, Docker Compose, migrations, seed/reset commands, license summaries, package sizes, copyleft risk, and package importer lookups.
+- **More reliable agent plumbing.** Project Memory recording and MCP close handling now await their async writes/teardown so session context is less likely to race with agent shutdown.
+
+<img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
+
+Regenerate the README screenshots with Playwright:
+
+```bash
+npm run docs:screenshots
+```
 
 Run `projscan doctor` for a focused health check:
 
@@ -41,7 +59,7 @@ Run `projscan doctor` for a focused health check:
 npx projscan doctor
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 ## Install
 
@@ -62,6 +80,286 @@ Run this path first inside a repository:
 ```bash
 projscan privacy-check          # Show exactly what can be read, written, or contacted
 projscan start                  # First-60-seconds workflow orientation
+projscan start --intent "what can projscan read?" # Routes to local privacy/trust boundary
+projscan start --intent "does projscan read .env values?" # Routes to .env content policy check
+projscan start --intent "is it safe to commit this change?" # Mission Control: inferred mode + ready actions + done criteria + proof
+projscan start --intent "is my branch ready to merge?" # Routes to before-merge preflight readiness
+projscan start --intent "rebase went wrong" # Routes to before-merge preflight recovery
+projscan start --intent "resolve merge conflicts" # Routes to before-merge preflight recovery
+projscan start --intent "what is blocking this PR?" # Routes to before-commit preflight blockers
+projscan start --intent "summarize this repo" # Routes to cited repo map + orientation summary
+projscan start --intent "what files should I read first?" # Routes to cited repo map + read-first files
+projscan start --intent "where do I start in this codebase?" # Routes to cited repo map + read-first files
+projscan start --intent "give me a tour of the repo" # Routes to cited repo map + entrypoints
+projscan start --intent "explain the architecture" # Routes to cited repo map + boundaries
+projscan start --intent "show me the main entrypoints" # Routes to cited repo map + entrypoints
+projscan start --intent "how do I run this project?" # Routes to cited repo map + entrypoints
+projscan start --intent "what command starts the dev server?" # Routes to cited repo map + entrypoints
+projscan start --intent "what npm scripts exist?" # Routes to package/config contract discovery
+projscan start --intent "which script runs e2e tests?" # Routes to package/config contract discovery
+projscan start --intent "what command runs lint?" # Routes to package/config contract discovery
+projscan start --intent "how do I run typecheck?" # Routes to package/config contract discovery
+projscan start --intent "how do I seed the database?" # Routes to package/config contract discovery
+projscan start --intent "what command runs migrations?" # Routes to package/config contract discovery
+projscan start --intent "where should I put this new feature?" # Routes to change-readiness map
+projscan start --intent "implement OAuth login" # Routes to change-readiness map
+projscan start --intent "add billing webhook support" # Routes to change-readiness map
+projscan start --intent "build a settings page" # Routes to change-readiness map
+projscan start --intent "where should I add a new endpoint?" # Routes to change-readiness map
+projscan start --intent "what files do I need to change for auth?" # Routes to change-readiness map
+projscan start --intent "what docs should I update for this change?" # Routes to change-readiness map
+projscan start --intent "where should I add this database migration?" # Routes to change-readiness map
+projscan start --intent "which migrations exist?" # Routes to focused code search
+projscan start --intent "show me generated files" # Routes to focused code search
+projscan start --intent "can I drop this column?" # Routes to impact target search
+projscan start --intent "what are the public contracts?" # Routes to public exports/config contracts
+projscan start --intent "how do I safely deprecate this API?" # Routes to public exports/config contracts
+projscan start --intent "what will this API change break?" # Routes to impact target search
+projscan start --intent "what env vars does this repo need?" # Routes to config contract discovery
+projscan start --intent "environment variables missing" # Routes to config contract discovery
+projscan start --intent "where is NEXT_PUBLIC_API_URL used?" # Routes to focused code search
+projscan start --intent "which env var controls auth?" # Routes to focused code search
+projscan start --intent "where is \"Invalid token\" thrown?" # Routes to focused code search
+projscan start --intent "find error message \"Payment failed\"" # Routes to focused code search
+projscan start --intent "where is eslint config?" # Routes to focused code search
+projscan start --intent "which config file defines aliases?" # Routes to focused code search
+projscan start --intent "where is tsconfig path aliases configured?" # Routes to focused code search
+projscan start --intent "where is Vitest config?" # Routes to focused code search
+projscan start --intent "find Babel config" # Routes to focused code search
+projscan start --intent "where is package manager configured?" # Routes to focused code search
+projscan start --intent "where is pnpm workspace file?" # Routes to focused code search
+projscan start --intent "what is risky in this repo?" # Routes to quality dimensions + top risks
+projscan start --intent "what files are risky to touch?" # Routes to hotspot files
+projscan start --intent "which files are too complex?" # Routes to hotspot files
+projscan start --intent "what file should I refactor first?" # Routes to hotspot files
+projscan start --intent "what tech debt should I pay down?" # Routes to hotspot files
+projscan start --intent "what code should I simplify?" # Routes to hotspot files
+projscan start --intent "find performance bottlenecks" # Routes to hotspot files
+projscan start --intent "where are the slow files?" # Routes to hotspot files
+projscan start --intent "find dead code" # Routes to doctor cleanup issues
+projscan start --intent "find dead code and unused exports I can delete" # Routes to doctor cleanup issues
+projscan start --intent "what can I safely delete?" # Routes to doctor cleanup discovery
+projscan start --intent "what can I remove safely?" # Routes to doctor cleanup discovery
+projscan start --intent "port 3000 already in use" # Routes to focused regression planning
+projscan start --intent "peer dependency conflict after npm install" # Routes to focused regression planning
+projscan start --intent "where is runAudit used?" # Routes to symbol impact/caller analysis
+projscan start --intent "what code handles billing?" # Routes to focused code search
+projscan start --intent "which file contains checkout logic?" # Routes to focused code search
+projscan start --intent "find the Stripe webhook handler" # Routes to focused code search
+projscan start --intent "find the handler for POST /api/users" # Routes to focused code search
+projscan start --intent "where is the /checkout route handled?" # Routes to focused code search
+projscan start --intent "where is /settings page rendered?" # Routes to focused code search
+projscan start --intent "which page renders /billing?" # Routes to focused code search
+projscan start --intent "where is route segment for dashboard?" # Routes to focused code search
+projscan start --intent "where is not-found page handled?" # Routes to focused code search
+projscan start --intent "which feature flags exist?" # Routes to focused code search
+projscan start --intent "what background jobs exist?" # Routes to focused code search
+projscan start --intent "find the email queue processor" # Routes to focused code search
+projscan start --intent "where are metrics emitted?" # Routes to focused code search
+projscan start --intent "where do we initialize Sentry?" # Routes to focused code search
+projscan start --intent "what logs should I check for checkout?" # Routes to focused code search
+projscan start --intent "find the dashboard for payments" # Routes to focused code search
+projscan start --intent "where is seed data defined?" # Routes to focused code search
+projscan start --intent "find fixtures for checkout" # Routes to focused code search
+projscan start --intent "which mocks are used for payments?" # Routes to focused code search
+projscan start --intent "where are Storybook stories for Button?" # Routes to focused code search
+projscan start --intent "where are permissions checked for checkout?" # Routes to focused code search
+projscan start --intent "which role can access admin?" # Routes to focused code search
+projscan start --intent "what routes require login?" # Routes to focused code search
+projscan start --intent "where is rate limiting configured?" # Routes to focused code search
+projscan start --intent "where is cache invalidated for products?" # Routes to focused code search
+projscan start --intent "find retry logic for payments" # Routes to focused code search
+projscan start --intent "what sets request timeout?" # Routes to focused code search
+projscan start --intent "find idempotency key handling" # Routes to focused code search
+projscan start --intent "where is webhook signature verified?" # Routes to focused code search
+projscan start --intent "where is input validation for signup?" # Routes to focused code search
+projscan start --intent "which schema validates checkout?" # Routes to focused code search
+projscan start --intent "where are request params parsed?" # Routes to focused code search
+projscan start --intent "where is database transaction started?" # Routes to focused code search
+projscan start --intent "where do we lock the order row?" # Routes to focused code search
+projscan start --intent "what validates email uniqueness?" # Routes to focused code search
+projscan start --intent "where is Prisma model for User?" # Routes to focused code search
+projscan start --intent "find Drizzle schema for invoices" # Routes to focused code search
+projscan start --intent "where is SQL query for invoices?" # Routes to focused code search
+projscan start --intent "which repository saves orders?" # Routes to focused code search
+projscan start --intent "find DAO for payments" # Routes to focused code search
+projscan start --intent "where is loading state for dashboard?" # Routes to focused code search
+projscan start --intent "where is error boundary for settings?" # Routes to focused code search
+projscan start --intent "find command palette actions" # Routes to focused code search
+projscan start --intent "where are i18n translations for checkout?" # Routes to focused code search
+projscan start --intent "where are design tokens defined?" # Routes to focused code search
+projscan start --intent "where is Tailwind theme configured?" # Routes to focused code search
+projscan start --intent "where is global CSS imported?" # Routes to focused code search
+projscan start --intent "which CSS module styles Button?" # Routes to focused code search
+projscan start --intent "where is dark mode configured?" # Routes to focused code search
+projscan start --intent "what breakpoints are defined?" # Routes to focused code search
+projscan start --intent "where is sidebar nav item for billing?" # Routes to focused code search
+projscan start --intent "which breadcrumb renders settings?" # Routes to focused code search
+projscan start --intent "where is page title set for checkout?" # Routes to focused code search
+projscan start --intent "where is Next.js layout for dashboard?" # Routes to focused code search
+projscan start --intent "where is auth state stored?" # Routes to focused code search
+projscan start --intent "find Redux slice for cart" # Routes to focused code search
+projscan start --intent "where is Zustand store for user settings?" # Routes to focused code search
+projscan start --intent "which context provider supplies theme?" # Routes to focused code search
+projscan start --intent "which hook fetches invoices?" # Routes to focused code search
+projscan start --intent "where is React Query mutation for checkout?" # Routes to focused code search
+projscan start --intent "where do we call Stripe?" # Routes to focused code search
+projscan start --intent "which code sends email through SendGrid?" # Routes to focused code search
+projscan start --intent "where is S3 upload implemented?" # Routes to focused code search
+projscan start --intent "find GitHub API client" # Routes to focused code search
+projscan start --intent "where is GraphQL query for invoices?" # Routes to focused code search
+projscan start --intent "where is websocket connection opened?" # Routes to focused code search
+projscan start --intent "where is OpenAPI spec defined?" # Routes to focused code search
+projscan start --intent "where is Swagger docs configured?" # Routes to focused code search
+projscan start --intent "where is tRPC router for billing?" # Routes to focused code search
+projscan start --intent "which GraphQL resolver handles invoices?" # Routes to focused code search
+projscan start --intent "which protobuf defines user service?" # Routes to focused code search
+projscan start --intent "where is gRPC client for payments?" # Routes to focused code search
+projscan start --intent "where is the Dockerfile?" # Routes to focused code search
+projscan start --intent "where is docker compose for local dev?" # Routes to focused code search
+projscan start --intent "where are Kubernetes manifests?" # Routes to focused code search
+projscan start --intent "find Helm chart for payments" # Routes to focused code search
+projscan start --intent "where is Terraform module for S3?" # Routes to focused code search
+projscan start --intent "which GitHub workflow deploys staging?" # Routes to focused code search
+projscan start --intent "where is Vercel config?" # Routes to focused code search
+projscan start --intent "where is password reset handled?" # Routes to focused code search
+projscan start --intent "where is team invite flow?" # Routes to focused code search
+projscan start --intent "where is onboarding flow implemented?" # Routes to focused code search
+projscan start --intent "find CSV export for users" # Routes to focused code search
+projscan start --intent "what creates audit log entries?" # Routes to focused code search
+projscan start --intent "where is refund handling for payments?" # Routes to focused code search
+projscan start --intent "where is subscription renewal handled?" # Routes to focused code search
+projscan start --intent "where is welcome email template?" # Routes to focused code search
+projscan start --intent "find password reset email copy" # Routes to focused code search
+projscan start --intent "where is push notification copy for invites?" # Routes to focused code search
+projscan start --intent "where is SMS verification template?" # Routes to focused code search
+projscan start --intent "which template sends receipt email?" # Routes to focused code search
+projscan start --intent "where is invoice PDF generated?" # Routes to focused code search
+projscan start --intent "find documentation for auth" # Routes to focused docs search
+projscan start --intent "what depends on src/core/start.ts?" # Routes to file impact/dependency analysis
+projscan start --intent "can I delete src/core/start.ts?" # Routes to file impact/dependency analysis
+projscan start --intent "revert src/core/start.ts safely" # Routes to file impact/dependency analysis
+projscan start --intent "how do I revert this change safely?" # Routes to impact target search
+projscan start --intent "what dependencies does this repo use?" # Routes to dependency inventory
+projscan start --intent "why is the bundle so large?" # Routes to dependency size inventory
+projscan start --intent "find package bloat" # Routes to dependency size inventory
+projscan start --intent "what licenses do our dependencies use?" # Routes to dependency license inventory
+projscan start --intent "who uses lodash?" # Routes to package importer graph query
+projscan start --intent "why do we depend on lodash?" # Routes to package importer graph query
+projscan start --intent "third party notices" # Routes to dependency license inventory
+projscan start --intent "open source compliance check" # Routes to dependency license inventory
+projscan start --intent "what workspaces are in this repo?" # Routes to monorepo workspace map
+projscan start --intent "which workspace owns auth?" # Routes to monorepo workspace map
+projscan start --intent "where should I put this in the monorepo?" # Routes to monorepo workspace map
+projscan start --intent "does lodash have a CVE?" # Routes to scoped npm audit
+projscan start --intent "what CVEs affect this repo?" # Routes to npm audit
+projscan start --intent "find vulnerable packages" # Routes to npm audit
+projscan start --intent "who owns auth?" # Routes to focused ownership search
+projscan start --intent "which team owns payments?" # Routes to focused ownership search
+projscan start --intent "who should I ask about auth?" # Routes to focused ownership search
+projscan start --intent "what should I read before changing src/core/start.ts?" # Routes to exact-file orientation
+projscan start --intent "explain src/core/start.ts" # Routes to per-file purpose/risk/ownership inspection
+projscan start --intent "who owns src/core/start.ts?" # Routes to file ownership/risk context
+projscan start --intent "who should review src/core/start.ts?" # Routes to file ownership/reviewer context
+projscan start --intent "who last touched src/core/start.ts?" # Routes to file ownership/history context
+projscan start --intent "why is src/core/start.ts risky?" # Routes to exact-file risk context
+projscan start --intent "who imports src/core/start.ts?" # Routes to a targeted semantic graph query
+projscan start --intent "where are the tests for src/core/start.ts?" # Routes to focused test-file search
+projscan start --intent "where are tests for auth?" # Routes to focused test-topic search
+projscan start --intent "which tests cover auth?" # Routes to focused existing-test search
+projscan start --intent "locate specs for checkout" # Routes to focused test-topic search
+projscan start --intent "which tests should I run for src/core/start.ts?" # Routes to verification proof planning
+projscan start --intent "what should I test before pushing?" # Routes to verification proof planning
+projscan start --intent "is src/core/start.ts covered by tests?" # Routes to file coverage/risk context
+projscan start --intent "what tests should I add for src/core/start.ts?" # Routes to file test-design context
+projscan start --intent "what changed in this PR?" # Routes to structural PR diff
+projscan start --intent "is this PR too large?" # Routes to structural PR diff
+projscan start --intent "what did I change since main?" # Routes to structural branch diff
+projscan start --intent "is my branch stale?" # Routes to structural branch diff
+projscan start --intent "compare my branch with main" # Routes to structural branch diff
+projscan start --intent "write a commit message for these changes" # Routes to structural diff evidence
+projscan start --intent "summarize my changes for a commit" # Routes to structural diff evidence
+projscan start --intent "how risky is this PR?" # Routes to structural PR review
+projscan start --intent "what are the risks in my PR?" # Routes to structural PR review
+projscan start --intent "what are the top risks before merge?" # Routes to before-merge preflight readiness
+projscan start --intent "am I ready to open a PR?" # Routes to PR-readiness evidence pack
+projscan start --intent "who should review this PR?" # Routes to owner-routing evidence pack
+projscan start --intent "who owns the changed files?" # Routes to changed-file owner routing
+projscan start --intent "write a PR comment for reviewers" # Routes to approval-ready evidence pack
+projscan start --intent "write a PR description" # Routes to approval-ready evidence pack
+projscan start --intent "what should my PR say?" # Routes to approval-ready evidence pack
+projscan start --intent "make a PR checklist" # Routes to approval-ready evidence pack
+projscan start --intent "what should I tell my team about this change?" # Routes to approval-ready evidence pack
+projscan start --intent "what should I fix first?" # Routes to bug-hunt prioritization
+projscan start --intent "what is the fastest safe fix?" # Routes to bug-hunt prioritization before generic safety
+projscan start --intent "find a quick win" # Routes to bug-hunt prioritization
+projscan start --intent "what can I do in five minutes?" # Routes to bug-hunt prioritization
+projscan start --intent "pick an easy task for me" # Routes to bug-hunt prioritization
+projscan start --intent "what should an intern work on?" # Routes to bug-hunt prioritization
+projscan start --intent "what is a low risk improvement?" # Routes to bug-hunt prioritization
+projscan start --intent "pick a small safe task" # Routes to bug-hunt prioritization
+projscan start --intent "what should I do next?" # Routes to an ordered before-edit workplan
+projscan start --intent "explain issue missing-test-framework" # Routes to deep issue context
+projscan start --intent "fix issue missing-test-framework" # Routes to a concrete fix suggestion
+projscan start --intent "is user input reaching SQL sinks?" # Routes to hardening dataflow analysis
+projscan start --intent "does this endpoint expose secrets?" # Routes to hardening dataflow analysis
+projscan start --intent "where is PII handled?" # Routes to hardening dataflow analysis
+projscan start --intent "GDPR compliance check" # Routes to hardening dataflow analysis
+projscan start --intent "where do we store access tokens?" # Routes to hardening dataflow analysis
+projscan start --intent "is this change secure?" # Routes to structural PR review
+projscan start --intent "check this PR for security issues" # Routes to structural PR review
+projscan start --intent "what are the scariest untested files?" # Routes to coverage × hotspot test targets
+projscan start --intent "which files have no tests?" # Routes to coverage × hotspot test targets
+projscan start --intent "what breaks if I bump chalk to 6?" # Routes to offline package upgrade impact
+projscan start --intent "what breaks if I update react?" # Routes to offline package upgrade impact
+projscan start --intent "can I remove lodash?" # Routes to offline package removal impact
+projscan start --intent "is lodash safe to remove?" # Routes to offline package removal impact
+projscan start --intent "CI is failing after this PR" # Routes to a focused regression plan
+projscan start --intent "CI is flaky" # Routes to a focused regression plan
+projscan start --intent "production is down" # Routes to a focused regression plan
+projscan start --intent "why is the login endpoint returning 500?" # Routes to a focused regression plan
+projscan start --intent "why did CI fail?" # Routes to a focused regression plan
+projscan start --intent "why is GitHub Actions failing?" # Routes to a focused regression plan
+projscan start --intent "which GitHub Actions job failed?" # Routes to a focused regression plan
+projscan start --intent "why is CI slow?" # Routes to a focused regression plan
+projscan start --intent "why did the build fail?" # Routes to a focused regression plan
+projscan start --intent "what is making builds slow?" # Routes to a focused regression plan
+projscan start --intent "lint is failing" # Routes to a focused regression plan
+projscan start --intent "typecheck is failing" # Routes to a focused regression plan
+projscan start --intent "npm install is failing" # Routes to a focused regression plan
+projscan start --intent "debug this stack trace" # Routes to a focused regression plan
+projscan start --intent "where is this stack trace from?" # Routes to a focused regression plan
+projscan start --intent "database connection refused locally" # Routes to a focused regression plan
+projscan start --intent "what command reproduces the flake?" # Routes to a focused regression plan
+projscan start --intent "quarantine flaky test" # Routes to a focused regression plan
+projscan start --intent "what tests should I run for my changes?" # Routes to verification proof planning
+projscan start --intent "how can I speed up tests?" # Routes to a focused regression plan
+projscan start --intent "what commands prove this works?" # Routes to focused proof commands
+projscan start --intent "what commands benchmark this repo?" # Routes to focused proof commands
+projscan start --intent "give me proof commands" # Routes to focused proof commands
+projscan start --intent "what commands should I run before pushing?" # Routes to focused pre-push proof
+projscan start --intent "what smoke checks should I run before commit?" # Routes to a smoke regression plan
+projscan start --intent "what full regression should I run before merge?" # Routes to a full regression plan
+projscan start --intent "what should I check before release?" # Routes to release readiness
+projscan start --intent "can I deploy this?" # Routes to release readiness
+projscan start --intent "what changed since last release?" # Routes to release readiness
+projscan start --intent "write a release note for this change" # Routes to release readiness and changelog evidence
+projscan start --intent "draft changelog entry" # Routes to release readiness and changelog evidence
+projscan start --intent "show coordination status for parallel agents" # Routes to one-call swarm readiness
+projscan start --intent "who else is working on this?" # Routes to one-call swarm readiness
+projscan start --intent "am I going to collide with another agent?" # Routes to one-call swarm readiness
+projscan start --intent "what worktrees are active?" # Routes to one-call swarm readiness
+projscan start --intent "what should merge first?" # Routes to merge-risk ordering
+projscan start --intent "show me overlapping changes" # Routes to collision detection
+projscan start --intent "show active claims" # Routes to advisory claim listing
+projscan start --intent "claim src/core/start.ts for me" # Routes to active-claim review + file claim action
+projscan start --intent "where did I leave off?" # Routes to touched-file session context
+projscan start --intent "what changed while I was away?" # Routes to touched-file session context
+projscan start --intent "what changed while I was offline?" # Routes to touched-file session context
+projscan start --intent "what changed while I was asleep?" # Routes to touched-file session context
+projscan start --intent "what did the last agent touch?" # Routes to remembered touched-file session context
+projscan start --intent "what did the last agent do?" # Routes to remembered touched-file session context
+projscan start --intent "give the next agent a handoff" # Routes to a compact agent brief
 projscan understand --view map   # Cited repo map, flows, contracts, change readiness, and verification proof
 projscan preflight --format json # Proceed/caution/block safety gate
 projscan evidence-pack --pr-comment # Reviewer-ready PR evidence
@@ -94,9 +392,9 @@ npm run test:trust-smoke
 
 The full command catalog is below. Most users should start with the five-command path above instead of scanning the catalog.
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
 
-For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/GUIDE.md)**.
+For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/GUIDE.md)**.
 
 ## Repo Understanding
 
@@ -117,7 +415,8 @@ The report includes file/symbol-backed `claims`, `readFirst` files, entrypoints,
 | Command | Description |
 |---------|-------------|
 | `projscan analyze` | Full analysis - languages, frameworks, dependencies, issues |
-| `projscan start` | First-60-seconds workflow orientation with setup diagnostics, top risks, and next commands |
+| `projscan route` | Map a plain-language goal to the best projscan tool with weighted confidence and matched keywords |
+| `projscan start` | First-60-seconds workflow orientation with setup diagnostics, Mission Control, top risks, and next commands. Add `--intent "<goal>"` to route a plain-language goal to route confidence, ready actions, done criteria, and proof commands |
 | `projscan first-run` | First-run setup diagnostics plus the shared `firstTenMinutes` command path |
 | `projscan init mcp` | Ready-to-paste MCP client configs for popular agent clients |
 | `projscan mcp doctor` | Verify MCP setup and print paste-ready client config with checks |
@@ -142,7 +441,7 @@ The report includes file/symbol-backed `claims`, `readFirst` files, entrypoints,
 | `projscan doctor` | Health check - missing tooling, architecture smells, security and supply-chain risks |
 | `projscan preflight` | Agent safety gate - `proceed`, `caution`, or `block` with health, change, plugin, and supply-chain evidence |
 | `projscan hotspots` | Rank files by risk - churn × complexity × issues × ownership |
-| `projscan semantic-graph` | Stable v3 graph contract - files, functions, packages, symbols, imports, exports, definitions, and calls |
+| `projscan semantic-graph` | Stable v3 graph contract, plus targeted `--query importers/imports/exports/...` lookups |
 | `projscan dataflow` | Focused direct, propagated, and bridge source-to-sink dataflow risks |
 | `projscan search <query>` | **BM25-ranked search** - content + symbols + path, with excerpts |
 | `projscan file <path>` | Drill into a file - purpose, risk, ownership, related issues |
@@ -151,7 +450,7 @@ The report includes file/symbol-backed `claims`, `readFirst` files, entrypoints,
 | `projscan diff` | Compare current health **and hotspot trends** against a baseline |
 | `projscan diagram` | ASCII architecture diagram of your project |
 | `projscan structure` | Directory tree with file counts |
-| `projscan dependencies` | Dependency analysis - counts, risks, recommendations |
+| `projscan dependencies` | Dependency analysis - counts, license summary, risks, recommendations |
 | `projscan outdated` | Declared-vs-installed drift check (offline) |
 | `projscan audit` | `npm audit`-powered vulnerability report - SARIF-ready for Code Scanning |
 | `projscan upgrade <pkg>` | Preview upgrade impact - local CHANGELOG + importer list, offline |
@@ -176,25 +475,25 @@ projscan --help
 <details>
 <summary><strong>projscan structure</strong> - Directory tree with file counts</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
 </details>
 
 <details>
 <summary><strong>projscan diagram</strong> - Architecture visualization</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
 </details>
 
 <details>
 <summary><strong>projscan dependencies</strong> - Dependency analysis</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
 </details>
 
 <details>
 <summary><strong>projscan badge</strong> - Health badge generation</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
 </details>
 
 ### Output Formats
@@ -216,7 +515,7 @@ Run `projscan help` for the generated command-by-command support matrix.
 
 projscan can load local plugins from `.projscan-plugins/` when `PROJSCAN_PLUGINS_PREVIEW=1` is set. The environment flag is kept for explicit local-code opt-in. Analyzer plugins emit normal projscan issues; reporter plugins render supported CLI commands with team-specific output.
 
-**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/plugin.schema.json) as the stable contract.
+**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/plugin.schema.json) as the stable contract.
 
 ```bash
 projscan plugin list
@@ -227,9 +526,9 @@ PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-radar --min-score 80
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
 
-Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
+Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
 
 ### Options
 
@@ -300,6 +599,8 @@ Go flows through the same pipeline as JS/TS and Python:
 ### Coupling and cycles (0.11)
 
 `projscan coupling` (CLI + MCP tool) reports per-file fan-in / fan-out / instability (Bob Martin's I = Ce / (Ca + Ce)) and detects circular imports via Tarjan SCC. Cross-package edges are flagged when running on a monorepo.
+
+Plain-language Mission Control intents such as `projscan start --intent "show circular dependencies"` route straight to `projscan coupling --cycles-only --format json`; broader boundary questions such as `projscan start --intent "what modules are tightly coupled"` route to the full coupling report.
 
 ### PR-aware structural diff (0.11)
 
@@ -394,7 +695,7 @@ If you read projscan's [Socket report](https://socket.dev/npm/package/projscan),
 ### Audit it yourself
 
 - **Source is open** at [github.com/abhiyoheswaran1/projscan](https://github.com/abhiyoheswaran1/projscan). The npm tarball matches the `dist/` produced by `npm run build` at the matching tag.
-- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/STABILITY.md).
+- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/STABILITY.md).
 - **Run it offline:** `npm install -g projscan` followed by anything except `audit` and `--mode semantic` works without network.
 - **Drop privilege further:** in CI, run projscan in a sandbox that disallows network egress; everything except `audit` will pass.
 
@@ -445,7 +746,7 @@ projscan ci --changed-only                     # Gate only on this PR's diff
 projscan ci --format sarif > projscan.sarif    # SARIF for Code Scanning
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
 
 ### GitHub Action (recommended)
 
@@ -522,7 +823,7 @@ Fields:
 - `hotspots.limit` / `hotspots.since` - defaults for the `hotspots` command
 - `monorepo.importPolicy` - cross-package import allow/deny rules in monorepos *(0.14+)*
 
-See [`docs/GUIDE.md` → Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
+See [`docs/GUIDE.md` -> Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
 
 ## Tracking Health Over Time
 
@@ -535,7 +836,7 @@ projscan diff                       # Compare against baseline
 projscan diff --format markdown     # Markdown diff for PRs
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
 
 ## Hotspots - Where to Fix First
 
@@ -624,7 +925,7 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 **This is the primary way to use projscan.** `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query your codebase with real structural accuracy - not regex, not grep.
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.0.0/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.1.0/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
 
 Two questions an agent asks; structural answers in milliseconds. *"What breaks if I rename `buildCodeGraph`?"* → 31 direct callers, 97 files reachable. *"Where should I fix first?"* → ranked hotspots with AST cyclomatic complexity, churn, and ownership signals.
 
@@ -751,13 +1052,20 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 
 ### What agents can ask
 
-- *"Who imports `src/auth/jwt.ts`?"* → `projscan_semantic_graph { query: { direction: "importers", file: "src/auth/jwt.ts" } }`
+- *"Who imports `src/auth/jwt.ts`?"* → `projscan_semantic_graph { query: { direction: "importers", file: "src/auth/jwt.ts" } }` or `projscan semantic-graph --query importers --file src/auth/jwt.ts --format json`
+- *"Which files import `chalk`?"* or *"Which files import package `chalk`?"* → `projscan_semantic_graph { query: { direction: "package_importers", symbol: "chalk" } }` or `projscan semantic-graph --query package_importers --symbol chalk --format json`
 - *"Give me the whole agent-safe graph contract."* → `projscan_semantic_graph`
 - *"Did this wrapper connect a source reader to a dangerous sink?"* → `projscan_dataflow`
-- *"Where is `runAudit` defined?"* → `projscan_search { query: "runAudit", scope: "symbols" }`
+- *"Explain issue `missing-test-framework`."* → `projscan_explain_issue { issue_id: "missing-test-framework" }`
+- *"Where is `runAudit` defined?"* → `projscan_semantic_graph { query: { direction: "symbol_defs", symbol: "runAudit" } }` or `projscan semantic-graph --query symbol_defs --symbol runAudit --format json`
 - *"Which files implement auth?"* → `projscan_search { query: "auth", scope: "content" }`
+- *"Who should I ask about auth?"* → `projscan_search { query: "auth" }`
+- *"Which tests cover auth?"* → `projscan_search { query: "tests for auth" }`
 - *"What are the scariest untested files?"* → `projscan_coverage`
+- *"Which files have no tests?"* → `projscan_coverage`
 - *"What breaks if I bump chalk to 6?"* → `projscan_upgrade { package: "chalk" }`
+- *"Show circular dependencies."* → `projscan_coupling { direction: "cycles_only" }` or `projscan coupling --cycles-only --format json`
+- *"What modules are tightly coupled?"* → `projscan_coupling` or `projscan coupling --format json`
 - *"Where should I refactor first?"* → `projscan_hotspots`
 - *"What should my agent do first in this repo?"* → `projscan_start { mode: "before_edit" }`
 - *"How do I understand the repo before editing?"* → `projscan_understand { view: "map" }`
@@ -827,7 +1135,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_apply_fix`** *(1.6)* - mechanically execute the safe fix templates. Default is dry-run; pass `confirm: true` to write. Atomic writes, per-apply rollback record at `.projscan-cache/rollbacks/<id>.json`. Reverse with `action: "rollback", rollback_id: ...`. Six templates supported at this release: `unused-dependency-*`, `missing-test-framework`, `missing-eslint`, `missing-prettier`, `missing-editorconfig`, `missing-readme`.
 - **`projscan_taint`** *(1.6)* - source-to-sink reachability over the per-function call graph. Built-in defaults cover common JS / Python sources (`process.env`, `req.body`, etc.) and sinks (`exec`, `eval`, `db.query`, etc.). Project-specific names go in `.projscanrc.json` `taint`. `projscan_review` automatically diffs taint flows between base and head and **blocks any PR that introduces a new flow**. In 3.0.2, review surfaces hardened `newDataflowRisks`, compact `graphEvidence`, and graph-readiness gates for safer handoff.
 
-Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.0.0/docs/PLUGIN-AUTHORING.md).
+Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.1.0/docs/PLUGIN-AUTHORING.md).
 
 ### Context-window budgeting
 

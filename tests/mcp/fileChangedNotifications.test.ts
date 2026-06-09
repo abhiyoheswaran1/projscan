@@ -2,15 +2,26 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+
+const watcherState = vi.hoisted(() => ({
+  deltaSettled: false,
+}));
+
 vi.mock('../../src/core/watcher.js', () => ({
   startWatcher: (_rootPath: string, options: { onChange: (event: { paths: string[]; graph: { scannedFiles: number } }) => void | Promise<void> }) => {
     const graph = { scannedFiles: 1 };
     let closed = false;
     let deltaTimer: NodeJS.Timeout | null = null;
+    let deltaPromise: Promise<void> | null = null;
     const ready = (async () => {
       await options.onChange({ paths: [], graph });
       deltaTimer = setTimeout(() => {
-        if (!closed) void options.onChange({ paths: ['src/a.ts'], graph });
+        if (!closed) {
+          watcherState.deltaSettled = false;
+          deltaPromise = Promise.resolve(options.onChange({ paths: ['src/a.ts'], graph })).then(() => {
+            watcherState.deltaSettled = true;
+          });
+        }
       }, 10);
     })();
     return {
@@ -19,7 +30,9 @@ vi.mock('../../src/core/watcher.js', () => ({
         if (deltaTimer) clearTimeout(deltaTimer);
       },
       get closed(): Promise<void> {
-        return ready.then(() => undefined);
+        return ready.then(async () => {
+          if (deltaPromise) await deltaPromise;
+        });
       },
       ready,
     };
@@ -91,7 +104,7 @@ describe('MCP notifications/file_changed (1.3+)', () => {
     });
     const result = init.result as { capabilities: Record<string, unknown> };
     expect(result.capabilities.experimental).toBeUndefined();
-    server.close();
+    await server.close();
   });
 
   it('advertises experimental.fileChanged when watch is on', async () => {
@@ -112,7 +125,7 @@ describe('MCP notifications/file_changed (1.3+)', () => {
     expect(result.capabilities.experimental?.fileChanged).toEqual({
       method: 'notifications/file_changed',
     });
-    server.close();
+    await server.close();
   });
 
   it('emits notifications/file_changed when the watcher reports a file change', async () => {
@@ -140,7 +153,26 @@ describe('MCP notifications/file_changed (1.3+)', () => {
     expect(typeof params.scannedFiles).toBe('number');
     expect(typeof params.timestampMs).toBe('number');
 
-    server.close();
+    await server.close();
+  });
+
+  it('awaits watcher quiet when closing after a file change notification', async () => {
+    const notifications: string[] = [];
+    const server = createMcpServer(tmp, {
+      notify: (payload) => {
+        notifications.push(payload);
+      },
+      watch: true,
+    });
+
+    await rpc(server, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+    await waitForFileChangedNotification(notifications, 'src/a.ts');
+
+    const closeResult = server.close() as unknown as Promise<void>;
+    expect(typeof closeResult.then).toBe('function');
+    await closeResult;
+
+    expect(watcherState.deltaSettled).toBe(true);
   });
 
   it('does NOT emit notifications/file_changed when watch is off', async () => {
@@ -160,6 +192,6 @@ describe('MCP notifications/file_changed (1.3+)', () => {
     const fileChanged = parseFileChangedNotifications(notifications);
 
     expect(fileChanged.length).toBe(0);
-    server.close();
+    await server.close();
   });
 });

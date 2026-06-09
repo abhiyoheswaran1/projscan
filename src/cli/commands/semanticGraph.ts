@@ -11,7 +11,16 @@ import {
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { buildCodeGraph } from '../../core/codeGraph.js';
 import { buildSemanticGraph } from '../../core/semanticGraph.js';
+import { runGraphQuery, type GraphQueryDirection } from '../../core/graphQuery.js';
 import type { SemanticGraphReport } from '../../types.js';
+
+const GRAPH_QUERY_DIRECTIONS = new Set<GraphQueryDirection>([
+  'imports',
+  'exports',
+  'importers',
+  'symbol_defs',
+  'package_importers',
+]);
 
 export function registerSemanticGraph(): void {
   program
@@ -19,7 +28,18 @@ export function registerSemanticGraph(): void {
     .description('Render the stable v3 semantic graph for agents and automation')
     .option('--max-nodes <count>', 'maximum graph nodes to return', parsePositiveInt)
     .option('--max-edges <count>', 'maximum graph edges to return', parsePositiveInt)
-    .action(async (cmdOpts) => {
+    .option('--query <direction>', 'targeted query: imports | exports | importers | symbol_defs | package_importers', parseGraphQueryDirection)
+    .option('--file <path>', 'repo-relative file path for imports / exports / importers queries')
+    .option('--symbol <name>', 'symbol or package name for symbol_defs / package_importers queries')
+    .option('--limit <count>', 'maximum targeted query entries to return', parsePositiveInt)
+    .action(async (cmdOpts: {
+      maxNodes?: number;
+      maxEdges?: number;
+      query?: GraphQueryDirection;
+      file?: string;
+      symbol?: string;
+      limit?: number;
+    }) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('semantic-graph');
@@ -29,6 +49,17 @@ export function registerSemanticGraph(): void {
         const config = await loadProjectConfig();
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
         const graph = await buildCodeGraph(rootPath, scan.files);
+        if (cmdOpts.query) {
+          const result = runGraphQuery(graph, {
+            direction: cmdOpts.query,
+            file: cmdOpts.file,
+            symbol: cmdOpts.symbol,
+            limit: cmdOpts.limit,
+          });
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+
         const report = buildSemanticGraph(graph, {
           maxNodes: cmdOpts.maxNodes,
           maxEdges: cmdOpts.maxEdges,
@@ -64,4 +95,9 @@ function parsePositiveInt(value: string): number {
     throw new Error('value must be a positive integer');
   }
   return parsed;
+}
+
+function parseGraphQueryDirection(value: string): GraphQueryDirection {
+  if (GRAPH_QUERY_DIRECTIONS.has(value as GraphQueryDirection)) return value as GraphQueryDirection;
+  throw new Error(`unknown query direction "${value}". Valid: ${[...GRAPH_QUERY_DIRECTIONS].join(', ')}`);
 }

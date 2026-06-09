@@ -95,9 +95,9 @@ export async function collectIssues(
   // 1.5.0: Project Memory. Record this run's issue ids so projscan can
   // surface "stable across N runs" suggestions on future invocations.
   // Best-effort: any disk failure here is swallowed and does not affect
-  // the returned issues. The user-visible output is unchanged at this
-  // layer; the memory is consumed by the projscan_memory tool / CLI.
-  void recordRunInMemory(rootPath, issues);
+  // the returned issues. Await it so callers do not race hidden memory writes
+  // during temp-root cleanup or MCP request shutdown.
+  await recordRunInMemory(rootPath, issues);
 
   return issues;
 }
@@ -134,10 +134,9 @@ function createPluginAnalyzerContext(rootPath: string, files: FileEntry[]): Plug
 }
 
 /**
- * 1.5.0 — fire-and-forget memory recording. Loads the on-disk memory,
- * folds in this run's rule ids (and any rule ids the user has
- * suppressed via .projscanrc disableRules), and persists. Errors are
- * swallowed; the analyzer pipeline never fails because of memory.
+ * 1.5.0 — best-effort memory recording. Loads the on-disk memory, folds in
+ * this run's rule ids, and persists. Errors are swallowed; the analyzer
+ * pipeline never fails because of memory.
  */
 async function recordRunInMemory(rootPath: string, issues: Issue[]): Promise<void> {
   try {

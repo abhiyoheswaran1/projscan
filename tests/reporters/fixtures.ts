@@ -71,6 +71,35 @@ export function makeDependencyReport(): DependencyReport {
     totalDevDependencies: 1,
     dependencies: { react: '^18.0.0', lodash: '^4.0.0' },
     devDependencies: { vitest: '^2.0.0' },
+    licenses: {
+      packages: [
+        { name: 'lodash', version: '^4.0.0', scope: 'production', license: 'MIT' },
+        { name: 'react', version: '^18.0.0', scope: 'production', license: 'MIT' },
+        { name: 'vitest', version: '^2.0.0', scope: 'development', license: 'MIT' },
+      ],
+      byLicense: { MIT: 3 },
+      unknown: [],
+      copyleft: [],
+      noticeCandidates: [
+        { name: 'lodash', version: '^4.0.0', scope: 'production', license: 'MIT' },
+        { name: 'react', version: '^18.0.0', scope: 'production', license: 'MIT' },
+        { name: 'vitest', version: '^2.0.0', scope: 'development', license: 'MIT' },
+      ],
+    },
+    sizes: {
+      packages: [
+        { name: 'lodash', version: '^4.0.0', scope: 'production', bytes: 1_250_000, formatted: '1.2 MB', installed: true },
+        { name: 'react', version: '^18.0.0', scope: 'production', bytes: 95_000, formatted: '92.8 KB', installed: true },
+        { name: 'vitest', version: '^2.0.0', scope: 'development', bytes: null, formatted: 'not installed', installed: false },
+      ],
+      largest: [
+        { name: 'lodash', version: '^4.0.0', scope: 'production', bytes: 1_250_000, formatted: '1.2 MB', installed: true },
+        { name: 'react', version: '^18.0.0', scope: 'production', bytes: 95_000, formatted: '92.8 KB', installed: true },
+      ],
+      totalBytes: 1_345_000,
+      formattedTotal: '1.3 MB',
+      missing: ['vitest'],
+    },
     risks: [{ name: 'lodash', reason: 'heavy package', severity: 'medium' }],
   };
 }

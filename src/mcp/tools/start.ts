@@ -25,6 +25,10 @@ export const startTool: McpTool = {
         enum: START_MODES,
         description: 'Workflow mode to orient around. Default: before_edit.',
       },
+      intent: {
+        type: 'string',
+        description: 'Plain-language goal to route into the next best action and proof commands.',
+      },
       max_tasks: {
         type: 'number',
         description: 'Maximum workplan tasks to inspect. Default: 5, max: 12.',
@@ -46,6 +50,7 @@ export const startTool: McpTool = {
   handler: async (args, rootPath) => ({
     start: await computeStartReport(rootPath, {
       mode: readMode(args.mode),
+      intent: typeof args.intent === 'string' ? args.intent : undefined,
       maxTasks: readNumber(args.max_tasks),
       maxRisks: readNumber(args.max_risks),
       includeHandoff: args.include_handoff === true,
@@ -53,9 +58,9 @@ export const startTool: McpTool = {
   }),
 };
 
-function readMode(value: unknown): WorkplanMode {
+function readMode(value: unknown): WorkplanMode | undefined {
   if (typeof value === 'string' && isWorkplanMode(value)) return value;
-  return 'before_edit';
+  return undefined;
 }
 
 function readNumber(value: unknown): number | undefined {

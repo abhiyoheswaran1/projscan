@@ -50,6 +50,7 @@ export function registerRoute(): void {
       result.matches.slice(0, 3).forEach((m, i) => {
         console.log('');
         console.log(`  ${i + 1}. ${chalk.bold(m.tool)} ${chalk.dim(`(${m.category})`)}`);
+        console.log(`     ${chalk.dim(`confidence: ${m.confidence}; matched: ${m.matchedKeywords.join(', ') || 'none'}`)}`);
         console.log(`     ${m.why}`);
         console.log(`     ${chalk.cyan(m.example)}`);
       });

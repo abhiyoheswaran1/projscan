@@ -60,7 +60,7 @@ function readPackageVersion(): string {
 export interface McpServerHandle {
   handleMessage(line: string): Promise<string | null>;
   /** Stop any active watchers (1.3+). Idempotent. */
-  close(): void;
+  close(): Promise<void>;
 }
 
 export interface McpServerOptions {
@@ -477,10 +477,11 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     }
   }
 
-  function close(): void {
-    if (watchHandle) {
-      watchHandle.close();
-      watchHandle = null;
+  async function close(): Promise<void> {
+    const handle = watchHandle;
+    watchHandle = null;
+    if (handle) {
+      handle.close();
     }
     // 1.8+ — cancel any tool-side watches (review-watch polling, etc.)
     // so their timers don't outlive the server.
@@ -492,6 +493,14 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       }
     }
     toolWatches.clear();
+    if (watchStartPromise) {
+      await watchStartPromise.catch(() => undefined);
+      watchStartPromise = null;
+    }
+    if (handle) {
+      await handle.closed.catch(() => undefined);
+    }
+    await persistSessionIfDirty().catch(() => undefined);
   }
 
   return { handleMessage, close };
@@ -581,5 +590,5 @@ export async function runMcpServer(
     process.stdin.on('end', resolve);
   });
 
-  server.close();
+  await server.close();
 }

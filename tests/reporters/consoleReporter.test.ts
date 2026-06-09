@@ -124,6 +124,11 @@ describe('consoleReporter', () => {
       const out = await capturePlain(() => reportDependencies(makeDependencyReport()));
       expect(out).toContain('react');
       expect(out.toLowerCase()).toContain('depend');
+      expect(out).toContain('License Summary');
+      expect(out).toContain('MIT');
+      expect(out).toContain('Installed Package Sizes');
+      expect(out).toContain('lodash');
+      expect(out).toContain('1.2 MB');
     });
   });
 

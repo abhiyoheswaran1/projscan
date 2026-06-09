@@ -133,6 +133,11 @@ describe('markdownReporter', () => {
       expect(out).toContain('# Dependency Report');
       expect(out).toContain('Production: **2** packages');
       expect(out).toContain('Development: **1** packages');
+      expect(out).toContain('## License Summary');
+      expect(out).toContain('MIT: 3');
+      expect(out).toContain('## Installed Package Sizes');
+      expect(out).toContain('`lodash`');
+      expect(out).toContain('1.2 MB');
       expect(out).toContain('## Risks');
       expect(out).toContain('**lodash**');
       expect(out).toContain('(medium)');
