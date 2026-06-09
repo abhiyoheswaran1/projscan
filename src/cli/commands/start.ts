@@ -33,6 +33,7 @@ export function registerStart(): void {
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
+    .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -85,6 +86,13 @@ export function registerStart(): void {
         }
         if (cmdOpts.runbook === true) {
           printRunbookOnly(report);
+          return;
+        }
+        if (cmdOpts.shortcuts === true) {
+          printShortcutsOnly(report, {
+            intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
+            mode,
+          });
           return;
         }
         if (cmdOpts.handoffPrompt === true) {
@@ -269,6 +277,58 @@ function printRunbookOnly(report: StartReport): void {
     process.exit(1);
   }
   console.log(runbook);
+}
+
+interface StartShortcutCommandOptions {
+  intent?: string;
+  mode?: WorkplanMode;
+}
+
+function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOptions): void {
+  const command = report.missionControl.executionPlan.cursor.command;
+  const toolCall = nextToolCall(report);
+  const shortcuts = [
+    shortcutCommand('--next-command', options),
+    shortcutCommand('--next-tool-call', options),
+    shortcutCommand('--proof-commands', options),
+    shortcutCommand('--checklist', options),
+    shortcutCommand('--runbook', options),
+    shortcutCommand('--handoff-prompt', options),
+    startBaseCommand(options),
+  ];
+
+  console.log(chalk.bold('Mission Shortcuts'));
+  if (command) {
+    console.log('Current command:');
+    console.log(command);
+    console.log('');
+  }
+  if (toolCall) {
+    console.log('Current MCP tool call:');
+    console.log(JSON.stringify(toolCall));
+    console.log('');
+  }
+  console.log('Copy from here:');
+  for (const shortcut of shortcuts) console.log(shortcut);
+}
+
+function shortcutCommand(flag: string, options: StartShortcutCommandOptions): string {
+  return ['projscan start', flag, ...startCommandOptionArgs(options)].join(' ');
+}
+
+function startBaseCommand(options: StartShortcutCommandOptions): string {
+  return ['projscan start', ...startCommandOptionArgs(options)].join(' ');
+}
+
+function startCommandOptionArgs(options: StartShortcutCommandOptions): string[] {
+  const args: string[] = [];
+  if (options.mode) args.push('--mode', shellQuote(options.mode));
+  if (options.intent) args.push('--intent', shellQuote(options.intent));
+  return args;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 function printHandoffPrompt(report: StartReport): void {

@@ -520,6 +520,72 @@ test('start JSON keeps the full report when runbook shortcut is requested', asyn
   expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
 });
 
+test('start prints a shortcut index for the current mission when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--shortcuts',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout).toContain('Mission Shortcuts');
+  expect(result.stdout).toContain('Current command:');
+  expect(result.stdout).toContain('projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('Current MCP tool call:');
+  expect(result.stdout).toContain('{"tool":"projscan_search","args":{"query":"auth token loader"}}');
+  expect(result.stdout).toContain("projscan start --next-command --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Run Cursor');
+  expect(result.stdout).not.toContain('Ready Proof');
+});
+
+test('start JSON keeps the full report when shortcuts index is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--shortcuts',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.resume.toolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+});
+
+test('start uses narrower shortcut output before the shortcut index', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--proof-commands',
+    '--shortcuts',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const proofCommands = result.stdout.trim().split('\n');
+  expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(proofCommands).not.toContain('Mission Shortcuts');
+  expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');

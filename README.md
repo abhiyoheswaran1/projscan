@@ -59,9 +59,10 @@ npm run docs:screenshots
 
 Projscan also returns a Markdown runbook and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan.
 
-Use the focused shortcuts when you do not want the full report:
+Use the index when you want the menu, or call one shortcut directly:
 
 ```bash
+projscan start --shortcuts --intent "<goal>"         # Show the shortcut menu
 projscan start --next-command --intent "<goal>"      # Current shell command
 projscan start --next-tool-call --intent "<goal>"   # Current MCP call as compact JSON
 projscan start --proof-commands --intent "<goal>"   # Remaining proof commands
@@ -647,6 +648,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--include-ignored` | Explicitly include files hidden by Git ignore rules |
 | `--scan-env-values` | Explicitly read `.env*` contents during secret checks |
 | `--offline` | Block projscan network-capable features for this run |
+| `--shortcuts` | Print the Mission Control shortcut command index (`start`) |
 | `--handoff-prompt` | Print only the concise Mission Control handoff prompt (`start`) |
 | `--next-command` | Print only the current Mission Control cursor command (`start`) |
 | `--next-tool-call` | Print only the current Mission Control cursor MCP tool call as JSON (`start`) |
