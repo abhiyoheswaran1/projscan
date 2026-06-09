@@ -715,6 +715,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate).toContain('Current worktree evidence');
   expect(reviewGate).toContain('## Proof Queue');
   expect(reviewGate).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(reviewGate).toContain('## Done When');
+  expect(reviewGate).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(reviewGate.endsWith('\n')).toBe(true);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
@@ -735,6 +737,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(handoff.reviewGate.proof.commands).toEqual(handoff.readyProof.commands);
   expect(handoff.reviewGate.proof.items).toEqual(handoff.readyProof.items);
   expect(handoff.reviewGate.proof.toolCalls).toEqual(handoff.readyProof.toolCalls);
+  expect(handoff.reviewGate.doneWhen).toEqual(handoff.doneWhen);
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
@@ -898,6 +901,9 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   expect(shortcut.stdout).toContain('## Proof Queue');
   expect(shortcut.stdout).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(report.missionControl.reviewGate.proof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
+  expect(shortcut.stdout).toContain('## Done When');
+  expect(shortcut.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(shortcut.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(shortcut.stdout).not.toContain('Start:');
   expect(shortcut.stdout).not.toContain('Run Cursor');

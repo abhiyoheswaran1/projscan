@@ -1014,6 +1014,7 @@ export interface StartMissionReviewGate {
   stopCondition: string;
   reviewPrompt: string;
   checklist: string[];
+  doneWhen: string[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
   proof: StartMissionReviewProof;

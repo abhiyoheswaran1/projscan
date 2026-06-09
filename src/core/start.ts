@@ -364,6 +364,7 @@ function buildMissionControl(input: {
   const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
   const reviewGate = buildMissionReviewGate({
     status,
+    doneWhen: successCriteria,
     proof: reviewProof,
     currentWorktree: input.riskSources.currentWorktree,
   });
@@ -416,6 +417,7 @@ function buildMissionControl(input: {
 
 function buildMissionReviewGate(input: {
   status: StartMissionControlStatus;
+  doneWhen: string[];
   proof: StartMissionReviewProof;
   currentWorktree: StartReport['evidence']['riskSources']['currentWorktree'];
 }): StartMissionReviewGate {
@@ -426,6 +428,7 @@ function buildMissionReviewGate(input: {
     'Stop and ask for approval before starting another slice, release, publish, or deploy.',
   ];
   const commands = ['git status --short', 'git diff --stat'];
+  const doneWhen = input.doneWhen.slice();
   const worktree = buildMissionReviewWorktree(input.currentWorktree);
   const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
   const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proof.summary}`;
@@ -436,6 +439,7 @@ function buildMissionReviewGate(input: {
     stopCondition,
     reviewPrompt,
     checklist,
+    doneWhen,
     commands,
     worktree,
     proof: input.proof,
@@ -444,6 +448,7 @@ function buildMissionReviewGate(input: {
       stopCondition,
       reviewPrompt,
       checklist,
+      doneWhen,
       commands,
       worktree,
       proof: input.proof,
@@ -502,6 +507,7 @@ function renderMissionReviewGateMarkdown(input: {
   stopCondition: string;
   reviewPrompt: string;
   checklist: string[];
+  doneWhen: string[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
   proof: StartMissionReviewProof;
@@ -514,6 +520,11 @@ function renderMissionReviewGateMarkdown(input: {
     '',
     '## Checklist',
     ...input.checklist.map((item) => `- [ ] ${item}`),
+    '',
+    '## Done When',
+    ...(input.doneWhen.length > 0
+      ? input.doneWhen.map((criterion) => `- [ ] ${criterion}`)
+      : ['- [ ] The current mission is complete and verified.']),
     '',
     ...renderMissionReviewProofLines(input.proof),
     '## Evidence Commands',

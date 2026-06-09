@@ -7080,9 +7080,13 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.reviewGate.proof.commands).not.toContain('projscan search "auth token loader" --format json');
   expect(report.missionControl.reviewGate.markdown).toContain('## Proof Queue');
   expect(report.missionControl.reviewGate.markdown).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
+  expect(report.missionControl.reviewGate.markdown).toContain('## Done When');
+  expect(report.missionControl.reviewGate.markdown).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
   expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
   expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
+  expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(report.missionControl.reviewGate.doneWhen);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',
