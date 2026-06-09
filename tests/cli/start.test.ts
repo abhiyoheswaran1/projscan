@@ -294,6 +294,44 @@ test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async
   expect(report.missionControl.handoff.readyProof.toolCalls?.map((call: { tool: string }) => call.tool)).not.toContain('projscan_search');
 });
 
+test('start prints only the concise handoff prompt when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--handoff-prompt',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const output = result.stdout.trim();
+  expect(output).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.');
+  expect(output).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(output).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(output.split('\n')).toHaveLength(1);
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Agent Runbook');
+  expect(result.stdout).not.toContain('Ready Proof');
+});
+
+test('start JSON keeps the full report when handoff prompt shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--handoff-prompt',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
+  expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');

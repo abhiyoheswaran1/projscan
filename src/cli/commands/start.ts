@@ -27,6 +27,7 @@ export function registerStart(): void {
     .option('--max-tasks <count>', 'maximum workplan tasks to inspect', parsePositiveInt)
     .option('--max-risks <count>', 'maximum start risks to return', parsePositiveInt)
     .option('--include-handoff', 'include a compact handoff payload')
+    .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -44,6 +45,10 @@ export function registerStart(): void {
 
         if (format === 'json') {
           console.log(JSON.stringify(report, null, 2));
+          return;
+        }
+        if (cmdOpts.handoffPrompt === true) {
+          console.log(report.missionControl.handoffPrompt);
           return;
         }
         printStart(report);
