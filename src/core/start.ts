@@ -372,7 +372,7 @@ function buildMissionControl(input: {
     successCriteria,
     proofSummary: READY_PROOF_SUMMARY,
     proofCommands,
-    handoff: missionHandoff(primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
+    handoff: missionHandoff(executionPlan.cursor, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
     handoffPrompt: missionHandoffPrompt(commandText, successCriteria, whyNow, unresolvedInputs, proofCommands),
@@ -402,12 +402,14 @@ function buildMissionRunbook(input: {
     title: `Runbook: ${input.primaryAction.label}`,
     status: input.status,
     currentPhase: input.executionPlan.currentPhase,
+    currentStep: input.executionPlan.cursor,
     readyCommandBlock,
     ...(blockedInputSummary ? { blockedInputSummary } : {}),
     markdown: renderMissionRunbookMarkdown({
       intent: input.intent,
       status: input.status,
       currentPhase: input.executionPlan.currentPhase,
+      currentStep: input.executionPlan.cursor,
       primaryAction: input.primaryAction,
       readyCommands,
       unresolvedInputs: input.unresolvedInputs,
@@ -421,6 +423,7 @@ function renderMissionRunbookMarkdown(input: {
   intent?: string;
   status: StartMissionControlStatus;
   currentPhase: StartExecutionPhaseId;
+  currentStep: StartExecutionCursor;
   primaryAction: PreflightSuggestedAction;
   readyCommands: string[];
   unresolvedInputs: StartUnresolvedInput[];
@@ -434,6 +437,8 @@ function renderMissionRunbookMarkdown(input: {
     `Status: ${input.status}`,
     `Current phase: ${input.currentPhase}`,
     `Next action: ${input.primaryAction.command ? `\`${input.primaryAction.command}\`` : input.primaryAction.label}`,
+    '',
+    ...renderRunbookCursorLines(input.currentStep),
     '',
     '## Ready Commands',
     ...(input.readyCommands.length > 0 ? input.readyCommands.map((command) => `- \`${command}\``) : ['- None yet. Resolve blocked inputs first.']),
@@ -452,6 +457,28 @@ function renderMissionRunbookMarkdown(input: {
     ...(input.successCriteria.length > 0 ? input.successCriteria.map((criterion) => `- ${criterion}`) : ['- The next action is complete and verified.']),
   ];
   return `${lines.join('\n')}\n`;
+}
+
+function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {
+  const lines = [
+    '## Current Cursor',
+    `- Step: ${cursor.stepId} in ${cursor.phaseId}`,
+  ];
+  if (cursor.command) {
+    lines.push(`- Command: \`${cursor.command}\``);
+  } else if (cursor.instruction) {
+    lines.push(`- Input: ${cursor.instruction}`);
+  } else {
+    lines.push(`- Label: ${cursor.label}`);
+  }
+  if (cursor.blockedBy && cursor.blockedBy.length > 0) {
+    lines.push(`- Blocked by: ${cursor.blockedBy.join(', ')}`);
+  }
+  if (cursor.unlocks && cursor.unlocks.length > 0) {
+    lines.push(`- Unlocks: ${cursor.unlocks.join(', ')}`);
+  }
+  lines.push(`- Why: ${cursor.reason}`);
+  return lines;
 }
 
 function buildMissionExecutionPlan(input: {
@@ -694,6 +721,7 @@ function pluralize(count: number, singular: string): string {
 }
 
 function missionHandoff(
+  currentStep: StartExecutionCursor,
   nextAction: PreflightSuggestedAction,
   readyActions: PreflightSuggestedAction[],
   needsInput: StartUnresolvedInput[],
@@ -701,6 +729,7 @@ function missionHandoff(
   proofCommands: string[],
 ): StartMissionControl['handoff'] {
   return {
+    currentStep,
     nextAction,
     readyActions,
     needsInput,

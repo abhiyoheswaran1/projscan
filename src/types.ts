@@ -821,6 +821,7 @@ export interface StartUnresolvedInput {
 }
 
 export interface StartMissionHandoff {
+  currentStep: StartExecutionCursor;
   nextAction: PreflightSuggestedAction;
   readyActions: PreflightSuggestedAction[];
   needsInput: StartUnresolvedInput[];
@@ -882,6 +883,7 @@ export interface StartMissionRunbook {
   title: string;
   status: StartMissionControlStatus;
   currentPhase: StartExecutionPhaseId;
+  currentStep: StartExecutionCursor;
   readyCommandBlock: string;
   blockedInputSummary?: string;
   markdown: string;

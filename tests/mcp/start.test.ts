@@ -184,11 +184,35 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           title: string;
           status: string;
           currentPhase: string;
+          currentStep: {
+            phaseId: string;
+            stepId: string;
+            kind: string;
+            status: string;
+            label: string;
+            command?: string;
+            instruction?: string;
+            blockedBy?: string[];
+            unlocks?: string[];
+            reason: string;
+          };
           readyCommandBlock: string;
           blockedInputSummary?: string;
           markdown: string;
         };
         handoff: {
+          currentStep: {
+            phaseId: string;
+            stepId: string;
+            kind: string;
+            status: string;
+            label: string;
+            command?: string;
+            instruction?: string;
+            blockedBy?: string[];
+            unlocks?: string[];
+            reason: string;
+          };
           nextAction: { tool?: string; args?: Record<string, unknown>; command?: string };
           readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
           needsInput: Array<{ name: string; placeholder: string }>;
@@ -246,6 +270,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       command: 'projscan search "auth token loader" --format json',
     }),
   );
+  expect(result.start.missionControl.handoff.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
@@ -306,11 +331,15 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
     expect.objectContaining({
       title: 'Runbook: Find exact target for impact analysis',
       currentPhase: 'next_action',
+      currentStep: result.start.missionControl.executionPlan.cursor,
       readyCommandBlock: 'projscan search "auth token loader" --format json',
       blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
     }),
   );
   expect(result.start.missionControl.runbook.readyCommandBlock).not.toContain('<');
+  expect(result.start.missionControl.runbook.markdown).toContain('## Current Cursor');
+  expect(result.start.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');
+  expect(result.start.missionControl.runbook.markdown).toContain('- Unlocks: input-1, input-2');
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
   expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.start.missionControl.runbook.markdown).toContain('## Blocked Inputs');

@@ -208,6 +208,10 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('Agent Runbook');
   expect(result.stdout).toContain('# Mission Runbook');
   expect(result.stdout).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(result.stdout).toContain('## Current Cursor');
+  expect(result.stdout).toContain('- Step: ready-1 in ready_now');
+  expect(result.stdout).toContain('- Command: `projscan search "auth token loader" --format json`');
+  expect(result.stdout).toContain('- Unlocks: input-1, input-2');
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('## Blocked Inputs');
