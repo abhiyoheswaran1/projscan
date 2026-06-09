@@ -989,6 +989,14 @@ export interface StartMissionRunbook {
   markdown: string;
 }
 
+export interface StartMissionTaskCard {
+  title: string;
+  status: StartMissionControlStatus;
+  currentPhase: StartExecutionPhaseId;
+  currentStep: StartExecutionCursor;
+  markdown: string;
+}
+
 export interface StartMissionControl {
   intent?: string;
   status: StartMissionControlStatus;
@@ -1008,6 +1016,7 @@ export interface StartMissionControl {
   handoff: StartMissionHandoff;
   executionPlan: StartExecutionPlan;
   runbook: StartMissionRunbook;
+  taskCard: StartMissionTaskCard;
   handoffPrompt: string;
 }
 

@@ -650,6 +650,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
   expect(result.start.missionControl.handoff.readyProof.toolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
   expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
+  expect(result.start.missionControl.taskCard.markdown).toContain('# Mission Task Card');
+  expect(result.start.missionControl.taskCard.markdown).toContain('After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
+  expect(result.start.missionControl.taskCard.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,
   );

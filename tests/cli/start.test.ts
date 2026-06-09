@@ -807,6 +807,29 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout.endsWith('\n')).toBe(true);
 });
 
+test('start JSON exposes the same task card used by the CLI shortcut', async () => {
+  const json = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+  const shortcut = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--task-card',
+    '--quiet',
+  ]);
+
+  expect(json.exitCode).toBe(0);
+  expect(shortcut.exitCode).toBe(0);
+  const report = JSON.parse(json.stdout);
+  expect(shortcut.stdout).toBe(report.missionControl.taskCard.markdown);
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',

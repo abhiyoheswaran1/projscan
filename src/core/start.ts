@@ -23,6 +23,8 @@ import type {
   StartMissionResumeChecklistItem,
   StartMissionResumeReference,
   StartMissionRunbook,
+  StartMissionTaskCard,
+  StartMissionToolCall,
   QualityScorecardRisk,
   RegressionPlanLevel,
   StartAdoptionGap,
@@ -366,6 +368,14 @@ function buildMissionControl(input: {
     resume,
     handoffPrompt,
   });
+  const taskCard = buildMissionTaskCard({
+    intent: input.intent,
+    status,
+    currentStep: executionPlan.cursor,
+    resume,
+    successCriteria,
+    handoffPrompt,
+  });
   return {
     ...(input.intent ? { intent: input.intent } : {}),
     status,
@@ -385,6 +395,7 @@ function buildMissionControl(input: {
     handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
+    taskCard,
     handoffPrompt,
   };
 }
@@ -479,6 +490,107 @@ function renderMissionRunbookMarkdown(input: {
     ...(input.successCriteria.length > 0 ? input.successCriteria.map((criterion) => `- ${criterion}`) : ['- The next action is complete and verified.']),
   ];
   return `${lines.join('\n')}\n`;
+}
+
+function buildMissionTaskCard(input: {
+  intent?: string;
+  status: StartMissionControlStatus;
+  currentStep: StartExecutionCursor;
+  resume: StartMissionResume;
+  successCriteria: string[];
+  handoffPrompt: string;
+}): StartMissionTaskCard {
+  return {
+    title: 'Mission Task Card',
+    status: input.status,
+    currentPhase: input.currentStep.phaseId,
+    currentStep: input.currentStep,
+    markdown: renderMissionTaskCardMarkdown(input),
+  };
+}
+
+function renderMissionTaskCardMarkdown(input: {
+  intent?: string;
+  status: StartMissionControlStatus;
+  currentStep: StartExecutionCursor;
+  resume: StartMissionResume;
+  successCriteria: string[];
+  handoffPrompt: string;
+}): string {
+  const lines = [
+    '# Mission Task Card',
+    '',
+    ...(input.intent ? [`Intent: ${input.intent}`] : []),
+    `Status: ${input.status}`,
+    `Current step: ${input.currentStep.stepId} in ${input.currentStep.phaseId}`,
+    '',
+    '## Do Next',
+    ...missionTaskCardActionLines(input.resume),
+    '',
+    '## Proof',
+    ...missionTaskCardProofLines(input.resume),
+    '',
+    '## Done When',
+    ...(input.successCriteria.length > 0
+      ? input.successCriteria.map((criterion) => `- [ ] ${criterion}`)
+      : ['- [ ] The next action is complete and verified.']),
+    '',
+    '## Handoff Prompt',
+    input.handoffPrompt,
+  ];
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function missionTaskCardActionLines(resume: StartMissionResume): string[] {
+  const checklist = resume.checklist ?? [];
+  const actionLines = checklist
+    .filter((item) => item.kind !== 'run_proof' && item.kind !== 'confirm_done')
+    .map(formatTaskCardChecklistItem);
+  return actionLines.length > 0 ? actionLines : ['- [ ] Continue from the current Mission Control cursor.'];
+}
+
+function missionTaskCardProofLines(resume: StartMissionResume): string[] {
+  const proofItems = resume.remainingProofItems ?? [];
+  const proofLines = proofItems.map(formatTaskCardProofItem);
+  if (proofLines.length > 0) return proofLines;
+  const commands = resume.remainingProofCommands ?? [];
+  return commands.length > 0
+    ? commands.map((command) => `- [ ] \`${command}\``)
+    : ['- [ ] No proof commands are ready yet.'];
+}
+
+function formatTaskCardChecklistItem(item: StartMissionResumeChecklistItem): string {
+  if (item.kind === 'resolve_input') {
+    const label = item.label ? ` (\`${item.label}\`)` : '';
+    const instruction = item.instruction ?? item.label;
+    return `- [ ] Resolve \`${item.stepId}\`${label}: ${instruction}`;
+  }
+  if (item.kind === 'run_follow_up' && item.command) {
+    const prefix = item.status === 'blocked' ? 'After inputs, run' : 'Then run';
+    return `- [ ] ${prefix} \`${item.command}\`${formatTaskCardChecklistAnnotation(item)}`;
+  }
+  if (item.command) {
+    return `- [ ] Run \`${item.command}\`${formatTaskCardChecklistAnnotation(item)}`;
+  }
+  return `- [ ] ${item.instruction ?? item.label}`;
+}
+
+function formatTaskCardChecklistAnnotation(item: StartMissionResumeChecklistItem): string {
+  if (!item.tool) return '';
+  return ` (MCP: ${formatTaskCardToolCall({ tool: item.tool, ...(typeof item.args !== 'undefined' ? { args: item.args } : {}) })})`;
+}
+
+function formatTaskCardProofItem(item: StartMissionProofItem): string {
+  const annotation = item.toolCall
+    ? ` (MCP: ${formatTaskCardToolCall(item.toolCall)})`
+    : ' (CLI only)';
+  return `- [ ] \`${item.command}\`${annotation}`;
+}
+
+function formatTaskCardToolCall(toolCall: StartMissionToolCall): string {
+  return typeof toolCall.args !== 'undefined'
+    ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
+    : toolCall.tool;
 }
 
 function missionResume(plan: StartExecutionPlan): StartMissionResume {

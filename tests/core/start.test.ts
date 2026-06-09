@@ -7032,6 +7032,32 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
 });
 
+test('start exposes a Mission Control task card for MCP and JSON clients', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what breaks if I rename the auth token loader',
+  });
+
+  expect(report.missionControl.taskCard).toEqual(
+    expect.objectContaining({
+      title: 'Mission Task Card',
+      status: report.missionControl.status,
+      currentPhase: report.missionControl.executionPlan.cursor.phaseId,
+      currentStep: report.missionControl.executionPlan.cursor,
+    }),
+  );
+  expect(report.missionControl.taskCard.markdown.startsWith('# Mission Task Card\n')).toBe(true);
+  expect(report.missionControl.taskCard.markdown).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(report.missionControl.taskCard.markdown).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain('- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain('## Proof');
+  expect(report.missionControl.taskCard.markdown).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain('## Done When');
+  expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
+  expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
+});
+
 test('start report exposes an unblocked execution plan for direct safety-gate intents', async () => {
   const root = await makeTempProject();
 

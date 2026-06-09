@@ -386,7 +386,7 @@ async function writeMissionBundle(
   );
   await fs.writeFile(
     path.join(targetDir, 'task-card.md'),
-    renderMissionTaskCard(report),
+    report.missionControl.taskCard.markdown,
     'utf-8',
   );
   await fs.writeFile(
@@ -562,7 +562,7 @@ function printRunbookOnly(report: StartReport): void {
 }
 
 function printTaskCardOnly(report: StartReport): void {
-  const taskCard = renderMissionTaskCard(report).trimEnd();
+  const taskCard = report.missionControl.taskCard.markdown.trimEnd();
   if (taskCard.length === 0) {
     console.error(chalk.red('No Mission Control task card is available.'));
     process.exit(1);
@@ -633,85 +633,6 @@ function printHandoffPrompt(report: StartReport): void {
 
   console.log(chalk.bold('Handoff Prompt'));
   console.log(chalk.dim(prompt));
-}
-
-function renderMissionTaskCard(report: StartReport): string {
-  const mission = report.missionControl;
-  const cursor = mission.executionPlan.cursor;
-  const lines = [
-    '# Mission Task Card',
-    '',
-    ...(mission.intent ? [`Intent: ${mission.intent}`] : []),
-    `Status: ${mission.status}`,
-    `Current step: ${cursor.stepId} in ${cursor.phaseId}`,
-    '',
-    '## Do Next',
-    ...missionTaskCardActionLines(report),
-    '',
-    '## Proof',
-    ...missionTaskCardProofLines(report),
-    '',
-    '## Done When',
-    ...(mission.successCriteria.length > 0
-      ? mission.successCriteria.map((criterion) => `- [ ] ${criterion}`)
-      : ['- [ ] The next action is complete and verified.']),
-    '',
-    '## Handoff Prompt',
-    mission.handoffPrompt,
-  ];
-  return `${lines.join('\n').trimEnd()}\n`;
-}
-
-function missionTaskCardActionLines(report: StartReport): string[] {
-  const checklist = report.missionControl.resume.checklist ?? [];
-  const actionLines = checklist
-    .filter((item) => item.kind !== 'run_proof' && item.kind !== 'confirm_done')
-    .map(formatTaskCardChecklistItem);
-  return actionLines.length > 0 ? actionLines : ['- [ ] Continue from the current Mission Control cursor.'];
-}
-
-function missionTaskCardProofLines(report: StartReport): string[] {
-  const proofItems = report.missionControl.handoff.readyProof.items ?? [];
-  const proofLines = proofItems.map(formatTaskCardProofItem);
-  if (proofLines.length > 0) return proofLines;
-  const commands = readyProofCommands(report);
-  return commands.length > 0
-    ? commands.map((command) => `- [ ] \`${command}\``)
-    : ['- [ ] No proof commands are ready yet.'];
-}
-
-function formatTaskCardChecklistItem(item: StartMissionResumeChecklistItem): string {
-  if (item.kind === 'resolve_input') {
-    const label = item.label ? ` (\`${item.label}\`)` : '';
-    const instruction = item.instruction ?? item.label;
-    return `- [ ] Resolve \`${item.stepId}\`${label}: ${instruction}`;
-  }
-  if (item.kind === 'run_follow_up' && item.command) {
-    const prefix = item.status === 'blocked' ? 'After inputs, run' : 'Then run';
-    return `- [ ] ${prefix} \`${item.command}\`${formatTaskCardChecklistAnnotation(item)}`;
-  }
-  if (item.command) {
-    return `- [ ] Run \`${item.command}\`${formatTaskCardChecklistAnnotation(item)}`;
-  }
-  return `- [ ] ${item.instruction ?? item.label}`;
-}
-
-function formatTaskCardChecklistAnnotation(item: StartMissionResumeChecklistItem): string {
-  if (!item.tool) return '';
-  return ` (MCP: ${formatTaskCardToolCall({ tool: item.tool, ...(typeof item.args !== 'undefined' ? { args: item.args } : {}) })})`;
-}
-
-function formatTaskCardProofItem(item: StartMissionProofItem): string {
-  const annotation = item.toolCall
-    ? ` (MCP: ${formatTaskCardToolCall(item.toolCall)})`
-    : ' (CLI only)';
-  return `- [ ] \`${item.command}\`${annotation}`;
-}
-
-function formatTaskCardToolCall(toolCall: StartMissionToolCall): string {
-  return typeof toolCall.args !== 'undefined'
-    ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
-    : toolCall.tool;
 }
 
 function printExecutionPlan(report: StartReport): void {
