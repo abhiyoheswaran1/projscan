@@ -199,7 +199,8 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
   const proofCommands = extractProofCommands(result.stdout);
   expect(proofCommands.some((command) => command.includes('<'))).toBe(false);
-  expect(proofCommands).toContain('projscan search "auth token loader" --format json');
+  expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
+  expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
   expect(result.stdout).toContain('Proof Queue');
   expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.stdout).toContain('- proof-4: projscan preflight --format json (MCP: projscan_preflight {})');

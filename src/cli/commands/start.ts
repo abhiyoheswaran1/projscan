@@ -173,7 +173,10 @@ function printMissionControl(report: StartReport): void {
   if (mission.proofCommands.length > 0) {
     console.log(chalk.bold('Ready Proof'));
     console.log(chalk.dim(mission.proofSummary));
-    for (const command of mission.proofCommands.slice(0, 3)) {
+    const readyProofCommands = mission.handoff.readyProof.commands.length > 0
+      ? mission.handoff.readyProof.commands
+      : mission.proofCommands;
+    for (const command of readyProofCommands.slice(0, 3)) {
       console.log(chalk.dim(`- ${command}`));
     }
     const proofItems = mission.handoff.readyProof.items ?? [];
