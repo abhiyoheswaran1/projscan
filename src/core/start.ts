@@ -957,10 +957,11 @@ function buildMissionExecutionPlan(input: {
     })),
   });
 
+  const cursor = executionCursor(phases);
   return {
     summary: executionPlanSummary(input.readyActions.length, input.unresolvedInputs.length, input.proofCommands.length),
-    currentPhase: currentExecutionPhase(phases),
-    cursor: executionCursor(phases),
+    currentPhase: cursor.phaseId,
+    cursor,
     phases,
   };
 }
@@ -1015,10 +1016,6 @@ function executionStatusForAction(action: PreflightSuggestedAction): StartExecut
     return 'blocked';
   }
   return 'pending';
-}
-
-function currentExecutionPhase(phases: StartExecutionPhase[]): StartExecutionPhaseId {
-  return phases.find((phase) => phase.status === 'ready' || phase.status === 'blocked')?.id ?? 'done_when';
 }
 
 function executionCursor(phases: StartExecutionPhase[]): StartExecutionCursor {

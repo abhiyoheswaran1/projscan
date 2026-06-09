@@ -638,7 +638,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.handoff.readyProof.commands.length} proof command(s).`,
   );
-  expect(result.start.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(result.start.missionControl.executionPlan.currentPhase).toBe('ready_now');
   expect(result.start.missionControl.executionPlan.cursor).toEqual(
     expect.objectContaining({
       phaseId: 'ready_now',
@@ -692,13 +692,14 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook).toEqual(
     expect.objectContaining({
       title: 'Runbook: Find exact target for impact analysis',
-      currentPhase: 'next_action',
+      currentPhase: 'ready_now',
       currentStep: result.start.missionControl.executionPlan.cursor,
       resume: result.start.missionControl.resume,
       readyCommandBlock: 'projscan search "auth token loader" --format json',
       blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
     }),
   );
+  expect(result.start.missionControl.runbook.currentPhase).toBe(result.start.missionControl.executionPlan.cursor.phaseId);
   expect(result.start.missionControl.runbook.readyCommandBlock).not.toContain('<');
   expect(result.start.missionControl.runbook.markdown).toContain('## Current Cursor');
   expect(result.start.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');

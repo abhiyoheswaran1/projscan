@@ -57,7 +57,7 @@ npm run docs:screenshots
 
 The next Mission Control slice makes `projscan start --intent "<goal>"` more directly actionable for agents. The JSON payload now includes `missionControl.executionPlan`: ordered phases for the next action, ready commands, blocked inputs, follow-up steps, proof commands, and done criteria.
 
-That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
+That means a coding agent no longer has to infer the workflow from prose. It can read the cursor-aligned current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
 
 The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, explicit `inputBindings` for placeholder substitution, downstream follow-up templates, an ordered `checklist`, `remainingProofCommands`, and MCP-native `remainingProofToolCalls` without traversing the full plan. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and only the proof commands that remain after the current resume action. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
 
@@ -86,7 +86,7 @@ Agent Runbook
 # Mission Runbook
 Intent: what breaks if I rename the auth token loader
 Status: needs_attention
-Current phase: next_action
+Current phase: ready_now
 
 ## Current Cursor
 - Step: ready-1 in ready_now

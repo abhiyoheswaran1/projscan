@@ -6628,7 +6628,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${report.missionControl.proofCommands.length} proof command(s).`,
   );
-  expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.currentPhase).toBe('ready_now');
   expect(report.missionControl.executionPlan.cursor).toEqual(
     expect.objectContaining({
       phaseId: 'ready_now',
@@ -6905,13 +6905,14 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
     expect.objectContaining({
       title: 'Runbook: Find exact target for impact analysis',
       status: report.missionControl.status,
-      currentPhase: 'next_action',
+      currentPhase: 'ready_now',
       currentStep: report.missionControl.executionPlan.cursor,
       resume: report.missionControl.resume,
       readyCommandBlock: 'projscan search "auth token loader" --format json',
       blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
     }),
   );
+  expect(report.missionControl.runbook.currentPhase).toBe(report.missionControl.executionPlan.cursor.phaseId);
   expect(report.missionControl.runbook.readyCommandBlock).not.toContain('<');
   expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
   expect(report.missionControl.runbook.markdown).toContain('Intent: what breaks if I rename the auth token loader');
@@ -6960,7 +6961,7 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
   expect(report.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, then gather ${report.missionControl.proofCommands.length} proof command(s).`,
   );
-  expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.currentPhase).toBe('ready_now');
   expect(report.missionControl.executionPlan.cursor).toEqual(
     expect.objectContaining({
       phaseId: 'ready_now',
@@ -6998,10 +6999,11 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
     expect.objectContaining({
       title: 'Runbook: Use projscan_preflight for is it safe to commit this change',
       status: report.missionControl.status,
-      currentPhase: 'next_action',
+      currentPhase: 'ready_now',
       readyCommandBlock: 'projscan preflight --mode before_commit --format json',
     }),
   );
+  expect(report.missionControl.runbook.currentPhase).toBe(report.missionControl.executionPlan.cursor.phaseId);
   expect(report.missionControl.runbook.blockedInputSummary).toBeUndefined();
   expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_commit --format json`');
   expect(report.missionControl.runbook.markdown).not.toContain('## Blocked Inputs');
