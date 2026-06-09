@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --handoff-json`, a console shortcut that prints only the structured Mission Control handoff object.
 - Added `projscan start --save-mission <dir>`, which writes a Mission Control handoff bundle with a quickstart README, next-step command and MCP-call files, copyable handoff/resume prompt files, Markdown, JSON, proof commands, and a manifest.
 - Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.
+- Added `projscan start --task-card` and `task-card.md` in saved mission bundles for paste-ready PR, issue, and handoff checklists.
 
 ### Changed
 

@@ -644,6 +644,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('next-tool-call.json');
   expect(result.stdout).toContain('handoff-prompt.txt');
   expect(result.stdout).toContain('resume-prompt.txt');
+  expect(result.stdout).toContain('task-card.md');
   expect(result.stdout).toContain('runbook.md');
   expect(result.stdout).toContain('handoff.json');
   expect(result.stdout).toContain('resume.json');
@@ -661,6 +662,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('MCP call: `projscan_search {"query":"auth token loader"}`');
   expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
   expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
+  expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
 
   const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
@@ -681,6 +683,13 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(resumePrompt).toBe(
     'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).\n',
   );
+
+  const taskCard = await fs.readFile(path.join(bundleDir, 'task-card.md'), 'utf-8');
+  expect(taskCard.startsWith('# Mission Task Card\n')).toBe(true);
+  expect(taskCard).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
+  expect(taskCard).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
+  expect(taskCard).toContain('## Handoff Prompt');
+  expect(taskCard.endsWith('\n')).toBe(true);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
   expect(runbook).toContain('# Mission Runbook');
@@ -726,6 +735,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'next-tool-call.json',
     'handoff-prompt.txt',
     'resume-prompt.txt',
+    'task-card.md',
     'runbook.md',
     'handoff.json',
     'resume.json',
@@ -758,11 +768,43 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'next-tool-call.json',
       'handoff-prompt.txt',
       'resume-prompt.txt',
+      'task-card.md',
       'manifest.json',
     ]),
   );
   const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
   expect(manifest.directory).toBe(await fs.realpath(bundleDir));
+});
+
+test('start prints only the mission task card when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--task-card',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout.startsWith('# Mission Task Card\n')).toBe(true);
+  expect(result.stdout).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(result.stdout).toContain('Status: needs_attention');
+  expect(result.stdout).toContain('Current step: ready-1 in ready_now');
+  expect(result.stdout).toContain('## Do Next');
+  expect(result.stdout).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
+  expect(result.stdout).toContain('(MCP: projscan_search {"query":"auth token loader"})');
+  expect(result.stdout).toContain('- [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
+  expect(result.stdout).toContain('## Proof');
+  expect(result.stdout).toContain('- [ ] `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain('- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})');
+  expect(result.stdout).toContain('## Done When');
+  expect(result.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.stdout).toContain('## Handoff Prompt');
+  expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout.endsWith('\n')).toBe(true);
 });
 
 test('start prints only the mission runbook when requested', async () => {
@@ -828,6 +870,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --resume-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --task-card --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");

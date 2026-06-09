@@ -71,11 +71,12 @@ projscan start --checklist --intent "<goal>"        # Ordered resume task card
 projscan start --resume-json --intent "<goal>"      # Structured resume object
 projscan start --handoff-json --intent "<goal>"     # Complete handoff object
 projscan start --save-mission .projscan/mission --intent "<goal>" # Write bundle + quickstart
+projscan start --task-card --intent "<goal>"        # Paste-ready Markdown task card
 projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -664,6 +665,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--resume-json` | Print only the Mission Control resume object as JSON (`start`) |
 | `--handoff-json` | Print only the Mission Control handoff object as JSON (`start`) |
 | `--save-mission <dir>` | Write the Mission Control bundle to a directory (`start`) |
+| `--task-card` | Print only the Mission Control Markdown task card (`start`) |
 | `--runbook` | Print only the Mission Control Markdown runbook (`start`) |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
