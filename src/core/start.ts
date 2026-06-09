@@ -347,6 +347,13 @@ function buildMissionControl(input: {
     proofCommands,
   });
   const resume = missionResume(executionPlan);
+  const whyNow =
+    routed
+      ? routedWhyNow(routed, actionPlan)
+      : input.fixFirst
+        ? `Top evidence points to "${input.fixFirst.title}" as the first useful move.`
+        : `The ${input.mode} workflow is the shortest path from orientation to verified action.`;
+  const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
   const runbook = buildMissionRunbook({
     intent: input.intent,
     status,
@@ -357,13 +364,8 @@ function buildMissionControl(input: {
     proofCommands,
     executionPlan,
     resume,
+    handoffPrompt,
   });
-  const whyNow =
-    routed
-      ? routedWhyNow(routed, actionPlan)
-      : input.fixFirst
-        ? `Top evidence points to "${input.fixFirst.title}" as the first useful move.`
-        : `The ${input.mode} workflow is the shortest path from orientation to verified action.`;
   return {
     ...(input.intent ? { intent: input.intent } : {}),
     status,
@@ -383,7 +385,7 @@ function buildMissionControl(input: {
     handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
-    handoffPrompt: missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands),
+    handoffPrompt,
   };
 }
 
@@ -397,6 +399,7 @@ function buildMissionRunbook(input: {
   proofCommands: string[];
   executionPlan: StartExecutionPlan;
   resume: StartMissionResume;
+  handoffPrompt: string;
 }): StartMissionRunbook {
   const readyCommands = uniqueStrings(
     input.readyActions
@@ -426,6 +429,7 @@ function buildMissionRunbook(input: {
       unresolvedInputs: input.unresolvedInputs,
       proofCommands: input.proofCommands,
       successCriteria: input.successCriteria,
+      handoffPrompt: input.handoffPrompt,
     }),
   };
 }
@@ -441,6 +445,7 @@ function renderMissionRunbookMarkdown(input: {
   unresolvedInputs: StartUnresolvedInput[];
   proofCommands: string[];
   successCriteria: string[];
+  handoffPrompt: string;
 }): string {
   const lines = [
     '# Mission Runbook',
@@ -453,6 +458,9 @@ function renderMissionRunbookMarkdown(input: {
     ...renderRunbookCursorLines(input.currentStep),
     '',
     ...renderRunbookResumeLines(input.resume),
+    '',
+    '## Handoff Prompt',
+    input.handoffPrompt,
     '',
     '## Ready Commands',
     ...(input.readyCommands.length > 0 ? input.readyCommands.map((command) => `- \`${command}\``) : ['- None yet. Resolve blocked inputs first.']),

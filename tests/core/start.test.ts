@@ -7019,6 +7019,14 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
+  expect(report.missionControl.runbook.markdown).toContain(report.missionControl.handoffPrompt);
+  expect(report.missionControl.runbook.markdown.indexOf('## Resume')).toBeLessThan(
+    report.missionControl.runbook.markdown.indexOf('## Handoff Prompt'),
+  );
+  expect(report.missionControl.runbook.markdown.indexOf('## Handoff Prompt')).toBeLessThan(
+    report.missionControl.runbook.markdown.indexOf('## Ready Commands'),
+  );
   expect(report.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
   expect(report.missionControl.runbook.markdown).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');

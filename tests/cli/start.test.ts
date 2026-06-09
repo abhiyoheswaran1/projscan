@@ -258,6 +258,10 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.stdout).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.stdout).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(result.stdout).toContain('## Handoff Prompt');
+  expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(result.stdout.indexOf('## Resume')).toBeLessThan(result.stdout.indexOf('## Handoff Prompt'));
+  expect(result.stdout.indexOf('## Handoff Prompt')).toBeLessThan(result.stdout.indexOf('## Ready Commands'));
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('## Blocked Inputs');

@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan start --intent "<goal>"` console output now renders `Proof Queue` under `Ready Proof`, showing MCP-callable proof steps and CLI-only proof steps without requiring `--include-handoff`.
 - `projscan start --intent "<goal>"` console output now renders a `Resume Checklist` task card with MCP-call annotations and CLI-only proof markers without requiring `--include-handoff`.
 - `projscan start --intent "<goal>"` console output now renders the concise `Handoff Prompt` without requiring JSON or `--include-handoff`.
+- Mission runbooks now render the concise handoff prompt as a dedicated `## Handoff Prompt` section.
 - Mission runbooks now render a `Proof queue` from remaining proof items, marking each step as MCP-callable or `CLI only`.
 - Mission runbook `Resume checklist` rows now render inline MCP call annotations for callable checklist items and `CLI only` for unmapped proof commands.
 - `projscan start --include-handoff` now prints an `Agent Runbook` section for the full Markdown handoff.
