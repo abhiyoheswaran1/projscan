@@ -7039,6 +7039,25 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     intent: 'what breaks if I rename the auth token loader',
   });
 
+  expect(report.missionControl.reviewGate).toEqual(
+    expect.objectContaining({
+      title: 'Mission Review Gate',
+      required: true,
+      status: report.missionControl.status,
+      stopCondition: expect.stringContaining('Stop after'),
+    }),
+  );
+  expect(report.missionControl.reviewGate.commands).toEqual(['git status --short', 'git diff --stat']);
+  expect(report.missionControl.reviewGate.checklist).toEqual(
+    expect.arrayContaining([
+      'Complete this task card and remaining proof.',
+      'Capture `git status --short`.',
+      'Capture `git diff --stat`.',
+      'Stop and ask for approval before starting another slice, release, publish, or deploy.',
+    ]),
+  );
+  expect(report.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
+  expect(report.missionControl.reviewGate.markdown).toContain('## Evidence Commands');
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',
@@ -7054,7 +7073,9 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.taskCard.markdown).toContain('## Proof');
   expect(report.missionControl.taskCard.markdown).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
   expect(report.missionControl.taskCard.markdown).toContain('## Done When');
+  expect(report.missionControl.taskCard.markdown).toContain('## Review Gate');
   expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
+  expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
   expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
 });
 

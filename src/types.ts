@@ -989,6 +989,17 @@ export interface StartMissionRunbook {
   markdown: string;
 }
 
+export interface StartMissionReviewGate {
+  title: string;
+  required: true;
+  status: StartMissionControlStatus;
+  stopCondition: string;
+  reviewPrompt: string;
+  checklist: string[];
+  commands: string[];
+  markdown: string;
+}
+
 export interface StartMissionTaskCard {
   title: string;
   status: StartMissionControlStatus;
@@ -1016,6 +1027,7 @@ export interface StartMissionControl {
   handoff: StartMissionHandoff;
   executionPlan: StartExecutionPlan;
   runbook: StartMissionRunbook;
+  reviewGate: StartMissionReviewGate;
   taskCard: StartMissionTaskCard;
   handoffPrompt: string;
 }

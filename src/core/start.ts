@@ -19,6 +19,7 @@ import type {
   StartMissionInputBinding,
   StartMissionProofItem,
   StartMissionProofToolCall,
+  StartMissionReviewGate,
   StartMissionResume,
   StartMissionResumeChecklistItem,
   StartMissionResumeReference,
@@ -356,6 +357,10 @@ function buildMissionControl(input: {
         ? `Top evidence points to "${input.fixFirst.title}" as the first useful move.`
         : `The ${input.mode} workflow is the shortest path from orientation to verified action.`;
   const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
+  const reviewGate = buildMissionReviewGate({
+    status,
+    proofSummary: READY_PROOF_SUMMARY,
+  });
   const runbook = buildMissionRunbook({
     intent: input.intent,
     status,
@@ -367,6 +372,7 @@ function buildMissionControl(input: {
     executionPlan,
     resume,
     handoffPrompt,
+    reviewGate,
   });
   const taskCard = buildMissionTaskCard({
     intent: input.intent,
@@ -375,6 +381,7 @@ function buildMissionControl(input: {
     resume,
     successCriteria,
     handoffPrompt,
+    reviewGate,
   });
   return {
     ...(input.intent ? { intent: input.intent } : {}),
@@ -395,9 +402,66 @@ function buildMissionControl(input: {
     handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
+    reviewGate,
     taskCard,
     handoffPrompt,
   };
+}
+
+function buildMissionReviewGate(input: {
+  status: StartMissionControlStatus;
+  proofSummary: string;
+}): StartMissionReviewGate {
+  const checklist = [
+    'Complete this task card and remaining proof.',
+    'Capture `git status --short`.',
+    'Capture `git diff --stat`.',
+    'Stop and ask for approval before starting another slice, release, publish, or deploy.',
+  ];
+  const commands = ['git status --short', 'git diff --stat'];
+  const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
+  const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proofSummary}`;
+  return {
+    title: 'Mission Review Gate',
+    required: true,
+    status: input.status,
+    stopCondition,
+    reviewPrompt,
+    checklist,
+    commands,
+    markdown: renderMissionReviewGateMarkdown({
+      status: input.status,
+      stopCondition,
+      reviewPrompt,
+      checklist,
+      commands,
+    }),
+  };
+}
+
+function renderMissionReviewGateMarkdown(input: {
+  status: StartMissionControlStatus;
+  stopCondition: string;
+  reviewPrompt: string;
+  checklist: string[];
+  commands: string[];
+}): string {
+  const lines = [
+    '# Mission Review Gate',
+    '',
+    `Status: ${input.status}`,
+    `Stop condition: ${input.stopCondition}`,
+    '',
+    '## Checklist',
+    ...input.checklist.map((item) => `- [ ] ${item}`),
+    '',
+    '## Evidence Commands',
+    ...input.commands.map((command) => `- \`${command}\``),
+    '',
+    '## Review Prompt',
+    input.reviewPrompt,
+  ];
+  return `${lines.join('\n').trimEnd()}\n`;
 }
 
 function buildMissionRunbook(input: {
@@ -411,6 +475,7 @@ function buildMissionRunbook(input: {
   executionPlan: StartExecutionPlan;
   resume: StartMissionResume;
   handoffPrompt: string;
+  reviewGate: StartMissionReviewGate;
 }): StartMissionRunbook {
   const readyCommands = uniqueStrings(
     input.readyActions
@@ -441,6 +506,7 @@ function buildMissionRunbook(input: {
       proofCommands: input.proofCommands,
       successCriteria: input.successCriteria,
       handoffPrompt: input.handoffPrompt,
+      reviewGate: input.reviewGate,
     }),
   };
 }
@@ -457,6 +523,7 @@ function renderMissionRunbookMarkdown(input: {
   proofCommands: string[];
   successCriteria: string[];
   handoffPrompt: string;
+  reviewGate: StartMissionReviewGate;
 }): string {
   const lines = [
     '# Mission Runbook',
@@ -472,6 +539,11 @@ function renderMissionRunbookMarkdown(input: {
     '',
     '## Handoff Prompt',
     input.handoffPrompt,
+    '',
+    '## Review Gate',
+    ...input.reviewGate.checklist.map((item) => `- [ ] ${item}`),
+    '',
+    input.reviewGate.reviewPrompt,
     '',
     '## Ready Commands',
     ...(input.readyCommands.length > 0 ? input.readyCommands.map((command) => `- \`${command}\``) : ['- None yet. Resolve blocked inputs first.']),
@@ -499,6 +571,7 @@ function buildMissionTaskCard(input: {
   resume: StartMissionResume;
   successCriteria: string[];
   handoffPrompt: string;
+  reviewGate: StartMissionReviewGate;
 }): StartMissionTaskCard {
   return {
     title: 'Mission Task Card',
@@ -516,6 +589,7 @@ function renderMissionTaskCardMarkdown(input: {
   resume: StartMissionResume;
   successCriteria: string[];
   handoffPrompt: string;
+  reviewGate: StartMissionReviewGate;
 }): string {
   const lines = [
     '# Mission Task Card',
@@ -534,6 +608,9 @@ function renderMissionTaskCardMarkdown(input: {
     ...(input.successCriteria.length > 0
       ? input.successCriteria.map((criterion) => `- [ ] ${criterion}`)
       : ['- [ ] The next action is complete and verified.']),
+    '',
+    '## Review Gate',
+    ...input.reviewGate.checklist.map((item) => `- [ ] ${item}`),
     '',
     '## Handoff Prompt',
     input.handoffPrompt,

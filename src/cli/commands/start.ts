@@ -40,6 +40,7 @@ export function registerStart(): void {
     .option('--save-mission <dir>', 'write the Mission Control bundle to this directory')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--task-card', 'print only the Mission Control Markdown task card')
+    .option('--review-gate', 'print only the Mission Control review gate')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -124,6 +125,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.taskCard === true) {
           printTaskCardOnly(report);
+          return;
+        }
+        if (cmdOpts.reviewGate === true) {
+          printReviewGateOnly(report);
           return;
         }
         if (cmdOpts.shortcuts === true) {
@@ -390,6 +395,11 @@ async function writeMissionBundle(
     'utf-8',
   );
   await fs.writeFile(
+    path.join(targetDir, 'review-gate.md'),
+    report.missionControl.reviewGate.markdown,
+    'utf-8',
+  );
+  await fs.writeFile(
     path.join(targetDir, 'runbook.md'),
     report.missionControl.runbook.markdown.trimEnd() + '\n',
     'utf-8',
@@ -450,6 +460,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'task-card.md',
       path: path.join(targetDir, 'task-card.md'),
       description: 'Paste-ready Markdown task card for PRs, issues, and handoffs.',
+    },
+    {
+      name: 'review-gate.md',
+      path: path.join(targetDir, 'review-gate.md'),
+      description: 'Stop-and-review gate for approving another slice, release, publish, or deploy.',
     },
     {
       name: 'runbook.md',
@@ -570,6 +585,15 @@ function printTaskCardOnly(report: StartReport): void {
   console.log(taskCard);
 }
 
+function printReviewGateOnly(report: StartReport): void {
+  const reviewGate = report.missionControl.reviewGate.markdown.trimEnd();
+  if (reviewGate.length === 0) {
+    console.error(chalk.red('No Mission Control review gate is available.'));
+    process.exit(1);
+  }
+  console.log(reviewGate);
+}
+
 interface StartShortcutCommandOptions {
   intent?: string;
   mode?: WorkplanMode;
@@ -588,6 +612,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--handoff-json', options),
     shortcutCommand('--save-mission .projscan/mission', options),
     shortcutCommand('--task-card', options),
+    shortcutCommand('--review-gate', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
     startBaseCommand(options),

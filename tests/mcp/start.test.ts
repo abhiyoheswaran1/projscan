@@ -349,6 +349,16 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           blockedInputSummary?: string;
           markdown: string;
         };
+        reviewGate: {
+          title: string;
+          required: true;
+          status: string;
+          stopCondition: string;
+          reviewPrompt: string;
+          checklist: string[];
+          commands: string[];
+          markdown: string;
+        };
         handoff: {
           currentStep: {
             phaseId: string;
@@ -653,6 +663,15 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.taskCard.markdown).toContain('# Mission Task Card');
   expect(result.start.missionControl.taskCard.markdown).toContain('After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
   expect(result.start.missionControl.taskCard.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
+  expect(result.start.missionControl.reviewGate).toEqual(
+    expect.objectContaining({
+      title: 'Mission Review Gate',
+      required: true,
+      commands: ['git status --short', 'git diff --stat'],
+    }),
+  );
+  expect(result.start.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
+  expect(result.start.missionControl.reviewGate.markdown).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,
   );

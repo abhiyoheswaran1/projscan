@@ -645,6 +645,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('handoff-prompt.txt');
   expect(result.stdout).toContain('resume-prompt.txt');
   expect(result.stdout).toContain('task-card.md');
+  expect(result.stdout).toContain('review-gate.md');
   expect(result.stdout).toContain('runbook.md');
   expect(result.stdout).toContain('handoff.json');
   expect(result.stdout).toContain('resume.json');
@@ -663,6 +664,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
   expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
   expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
+  expect(quickstart).toContain('- `review-gate.md`: Stop-and-review gate for approving another slice, release, publish, or deploy.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
 
   const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
@@ -688,12 +690,20 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(taskCard.startsWith('# Mission Task Card\n')).toBe(true);
   expect(taskCard).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
   expect(taskCard).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
+  expect(taskCard).toContain('## Review Gate');
   expect(taskCard).toContain('## Handoff Prompt');
   expect(taskCard.endsWith('\n')).toBe(true);
+
+  const reviewGate = await fs.readFile(path.join(bundleDir, 'review-gate.md'), 'utf-8');
+  expect(reviewGate.startsWith('# Mission Review Gate\n')).toBe(true);
+  expect(reviewGate).toContain('- [ ] Capture `git status --short`.');
+  expect(reviewGate).toContain('- `git diff --stat`');
+  expect(reviewGate.endsWith('\n')).toBe(true);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
   expect(runbook).toContain('# Mission Runbook');
   expect(runbook).toContain('## Current Cursor');
+  expect(runbook).toContain('## Review Gate');
 
   const handoff = JSON.parse(await fs.readFile(path.join(bundleDir, 'handoff.json'), 'utf-8'));
   expect(handoff.currentStep.stepId).toBe('ready-1');
@@ -736,6 +746,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'handoff-prompt.txt',
     'resume-prompt.txt',
     'task-card.md',
+    'review-gate.md',
     'runbook.md',
     'handoff.json',
     'resume.json',
@@ -769,6 +780,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'handoff-prompt.txt',
       'resume-prompt.txt',
       'task-card.md',
+      'review-gate.md',
       'manifest.json',
     ]),
   );
@@ -801,6 +813,8 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout).toContain('- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})');
   expect(result.stdout).toContain('## Done When');
   expect(result.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.stdout).toContain('## Review Gate');
+  expect(result.stdout).toContain('- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
   expect(result.stdout).not.toContain('Start:');
@@ -830,6 +844,34 @@ test('start JSON exposes the same task card used by the CLI shortcut', async () 
   expect(shortcut.stdout).toBe(report.missionControl.taskCard.markdown);
 });
 
+test('start review-gate shortcut prints the structured review gate markdown', async () => {
+  const json = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+  const shortcut = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--review-gate',
+    '--quiet',
+  ]);
+
+  expect(json.exitCode).toBe(0);
+  expect(shortcut.exitCode).toBe(0);
+  const report = JSON.parse(json.stdout);
+  expect(shortcut.stdout).toBe(report.missionControl.reviewGate.markdown);
+  expect(shortcut.stdout).toContain('# Mission Review Gate');
+  expect(shortcut.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
+  expect(shortcut.stdout).not.toContain('Start:');
+  expect(shortcut.stdout).not.toContain('Run Cursor');
+  expect(shortcut.stdout).not.toContain('Ready Proof');
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',
@@ -844,6 +886,7 @@ test('start prints only the mission runbook when requested', async () => {
   expect(result.stdout).toContain('## Current Cursor');
   expect(result.stdout).toContain('## Resume');
   expect(result.stdout).toContain('## Handoff Prompt');
+  expect(result.stdout).toContain('## Review Gate');
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('## Proof Commands');
   expect(result.stdout).toContain('Resume checklist:');
@@ -867,6 +910,7 @@ test('start JSON keeps the full report when runbook shortcut is requested', asyn
   const report = JSON.parse(result.stdout);
   expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
   expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
+  expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
 });
 
 test('start prints a shortcut index for the current mission when requested', async () => {
@@ -894,6 +938,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --task-card --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --review-gate --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");

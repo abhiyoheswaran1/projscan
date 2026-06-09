@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added optional `missionControl.resume.remainingProofCommands` so handoff prompts and agents can run proof that remains after the current resume command without duplicating work.
 - Added optional `missionControl.resume.remainingProofToolCalls` so MCP agents can run mapped remaining proof steps directly without reverse-engineering CLI commands.
 - Added `missionControl.taskCard`, exposing the paste-ready Mission Task Card Markdown to JSON and MCP clients.
+- Added `missionControl.reviewGate`, a structured stop-and-review boundary with approval checklist, evidence commands, and Markdown for JSON and MCP clients.
 - Added `projscan start --shortcuts`, a console index of copyable Mission Control shortcut commands for the current intent.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
@@ -36,6 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --save-mission <dir>`, which writes a Mission Control handoff bundle with a quickstart README, next-step command and MCP-call files, copyable handoff/resume prompt files, Markdown, JSON, proof commands, and a manifest.
 - Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.
 - Added `projscan start --task-card` and `task-card.md` in saved mission bundles for paste-ready PR, issue, and handoff checklists.
+- Added `projscan start --review-gate` and `review-gate.md` in saved mission bundles so agents can finish the current mission, report proof, and wait for approval before another slice, release, publish, or deploy.
 
 ### Changed
 
@@ -54,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Mission runbooks now render the concise handoff prompt as a dedicated `## Handoff Prompt` section.
 - Mission runbooks now render a `Proof queue` from remaining proof items, marking each step as MCP-callable or `CLI only`.
 - Mission runbook `Resume checklist` rows now render inline MCP call annotations for callable checklist items and `CLI only` for unmapped proof commands.
+- Mission task cards and runbooks now render a `Review Gate` section with approval and working-tree evidence steps.
 - `projscan start --include-handoff` now prints an `Agent Runbook` section for the full Markdown handoff.
 
 ## [4.1.0] - 2026-06-09 - "Mission Control"

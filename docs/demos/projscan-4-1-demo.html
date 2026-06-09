@@ -434,6 +434,7 @@
               <span class="pill">Local-first</span>
               <span class="pill">MCP-ready</span>
               <span class="pill">Copyable handoff</span>
+              <span class="pill">Review gate</span>
             </div>
           </div>
 
@@ -503,25 +504,16 @@
                 >projscan start --next-tool-call --intent "..."</span
               >
               <span class="line success"
-                >projscan start --ready-tool-calls --intent "..."</span
+                >projscan start --task-card --intent "..."</span
               >
               <span class="line success"
-                >projscan start --checklist --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --resume-json --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --handoff-json --intent "..."</span
+                >projscan start --review-gate --intent "..."</span
               >
               <span class="line success"
                 >projscan start --save-mission .projscan/mission --intent
                 "..."</span
               >
-              <span class="line dim">writes README.md, task card, prompts</span>
-              <span class="line success"
-                >projscan start --runbook --intent "..."</span
-              >
+              <span class="line dim">writes task card, review gate, prompts</span>
             </div>
 
             <div class="term-section">
@@ -532,9 +524,6 @@
               <span class="line success"
                 >- projscan understand --view verify --format json</span
               >
-              <span class="line success"
-                >- projscan session touched --format json</span
-              >
             </div>
 
             <div class="term-section">
@@ -543,8 +532,15 @@
                 >- Search returns an exact symbol or file path</span
               >
               <span class="line"
-                >- Impact is reviewed before code changes begin</span
+                >- Impact is reviewed before code edits</span
               >
+            </div>
+
+            <div class="term-section">
+              <span class="line term-heading">Review Gate</span>
+              <span class="line">capture: git status --short</span>
+              <span class="line">capture: git diff --stat</span>
+              <span class="line warn">stop before another slice or release</span>
             </div>
           </div>
         </section>
@@ -625,7 +621,7 @@
               >
               <span class="line success">- [ready] run_proof proof-2</span>
               <span class="line notice"
-                >Runbook output starts at # Mission Runbook.</span
+                >Review gate: capture status, diff, then wait.</span
               >
             </div>
           </section>
@@ -656,11 +652,11 @@
               </span>
             </div>
             <div class="signal">
-              <span class="tag red">Doc</span>
+              <span class="tag red">Gate</span>
               <span>
-                <strong>Runbook artifact</strong>
-                <code>--runbook</code> returns the Markdown handoff without the
-                full console report.
+                <strong>Review gate</strong>
+                <code>--review-gate</code> returns the stop checklist before
+                another slice, release, publish, or deploy.
               </span>
             </div>
           </div>

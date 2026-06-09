@@ -57,7 +57,7 @@ npm run docs:screenshots
 
 `projscan start --intent "<goal>"` gives agents an execution plan with ordered phases, ready commands, blocked inputs, follow-ups, proof, and done criteria. The cursor points to the next useful step and includes MCP `tool` / `args` when projscan can call it directly.
 
-Projscan also returns a Markdown runbook, a task card, and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan. MCP and JSON clients can read `missionControl.taskCard.markdown`, the same Markdown printed by `--task-card` and written to `task-card.md`.
+Projscan also returns a Markdown runbook, a task card, a review gate, and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan. MCP and JSON clients can read `missionControl.taskCard.markdown`, the same Markdown printed by `--task-card` and written to `task-card.md`. They can also read `missionControl.reviewGate.markdown` to know when to stop, report proof, and wait for approval before starting another slice, release, publish, or deploy.
 
 Use the index when you want the menu, or call one shortcut directly:
 
@@ -72,11 +72,12 @@ projscan start --resume-json --intent "<goal>"      # Structured resume object
 projscan start --handoff-json --intent "<goal>"     # Complete handoff object
 projscan start --save-mission .projscan/mission --intent "<goal>" # Write bundle + quickstart
 projscan start --task-card --intent "<goal>"        # Paste-ready Markdown task card
+projscan start --review-gate --intent "<goal>"      # Stop-and-review gate
 projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -161,6 +162,14 @@ Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader"
 
 ## Handoff Prompt
 Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file). Done when: An exact symbol or file path is selected from search results before impact analysis continues. Needs input: symbol=<symbol-from-search>, file=<file-from-search>. Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved. projscan preflight --mode before_edit --format json && projscan understand --view verify --format json.
+
+## Review Gate
+- [ ] Complete this task card and remaining proof.
+- [ ] Capture `git status --short`.
+- [ ] Capture `git diff --stat`.
+- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.
+
+Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy.
 
 ## Ready Commands
 - `projscan search "auth token loader" --format json`
@@ -666,6 +675,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--handoff-json` | Print only the Mission Control handoff object as JSON (`start`) |
 | `--save-mission <dir>` | Write the Mission Control bundle to a directory (`start`) |
 | `--task-card` | Print only the Mission Control Markdown task card (`start`) |
+| `--review-gate` | Print only the Mission Control stop-and-review gate (`start`) |
 | `--runbook` | Print only the Mission Control Markdown runbook (`start`) |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
