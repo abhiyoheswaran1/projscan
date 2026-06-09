@@ -228,6 +228,9 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
   expect(result.stdout).toContain('Remaining proof:');
   expect(result.stdout).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(result.stdout).toContain('MCP proof calls:');
+  expect(result.stdout).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
+  expect(result.stdout).toContain('- proof-3: projscan_understand {"view":"verify"}');
   expect(result.stdout).toContain('Then use:');
   expect(result.stdout).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.stdout).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');

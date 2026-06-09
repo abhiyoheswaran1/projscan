@@ -836,6 +836,11 @@ export interface StartMissionToolCall {
   args?: Record<string, unknown>;
 }
 
+export interface StartMissionProofToolCall extends StartMissionToolCall {
+  stepId: string;
+  command: string;
+}
+
 export interface StartMissionInputBinding {
   inputId: string;
   label: string;
@@ -893,6 +898,7 @@ export interface StartMissionResume {
   inputBindings?: StartMissionInputBinding[];
   checklist?: StartMissionResumeChecklistItem[];
   remainingProofCommands?: string[];
+  remainingProofToolCalls?: StartMissionProofToolCall[];
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }

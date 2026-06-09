@@ -47,6 +47,13 @@ type TestResumeChecklistItem = {
   followUpIds?: string[];
 };
 
+type TestResumeProofToolCall = {
+  stepId: string;
+  command: string;
+  tool: string;
+  args?: Record<string, unknown>;
+};
+
 test('lists projscan_start as an MCP tool', () => {
   const tool = getToolDefinitions().find((entry) => entry.name === 'projscan_start');
 
@@ -206,6 +213,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           inputBindings?: TestResumeInputBinding[];
           checklist?: TestResumeChecklistItem[];
           remainingProofCommands?: string[];
+          remainingProofToolCalls?: TestResumeProofToolCall[];
           unlocks?: Array<{
             id: string;
             phaseId: string;
@@ -308,6 +316,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             inputBindings?: TestResumeInputBinding[];
             checklist?: TestResumeChecklistItem[];
             remainingProofCommands?: string[];
+            remainingProofToolCalls?: TestResumeProofToolCall[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -377,6 +386,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             inputBindings?: TestResumeInputBinding[];
             checklist?: TestResumeChecklistItem[];
             remainingProofCommands?: string[];
+            remainingProofToolCalls?: TestResumeProofToolCall[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -564,6 +574,27 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
     'projscan understand --view verify --format json',
     'projscan preflight --format json',
   ]);
+  expect(result.start.missionControl.resume.remainingProofToolCalls).toEqual([
+    {
+      stepId: 'proof-2',
+      command: 'projscan preflight --mode before_edit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_edit' },
+    },
+    {
+      stepId: 'proof-3',
+      command: 'projscan understand --view verify --format json',
+      tool: 'projscan_understand',
+      args: { view: 'verify' },
+    },
+    {
+      stepId: 'proof-4',
+      command: 'projscan preflight --format json',
+      tool: 'projscan_preflight',
+      args: {},
+    },
+  ]);
+  expect(result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
   expect(result.start.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -600,6 +631,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.resume.inputBindings).toEqual(result.start.missionControl.resume.inputBindings);
   expect(result.start.missionControl.runbook.resume.checklist).toEqual(result.start.missionControl.resume.checklist);
   expect(result.start.missionControl.runbook.resume.remainingProofCommands).toEqual(result.start.missionControl.resume.remainingProofCommands);
+  expect(result.start.missionControl.runbook.resume.remainingProofToolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
@@ -685,6 +717,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('Remaining proof:');
   expect(result.start.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(result.start.missionControl.runbook.markdown).toContain('MCP proof calls:');
+  expect(result.start.missionControl.runbook.markdown).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
+  expect(result.start.missionControl.runbook.markdown).toContain('- proof-3: projscan_understand {"view":"verify"}');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');

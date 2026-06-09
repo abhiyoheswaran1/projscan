@@ -17,6 +17,7 @@ import type {
   StartExecutionStatus,
   StartExecutionStep,
   StartMissionInputBinding,
+  StartMissionProofToolCall,
   StartMissionResume,
   StartMissionResumeChecklistItem,
   StartMissionResumeReference,
@@ -479,6 +480,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const inputBindings = resumeInputBindings(plan, cursor);
   const checklist = resumeChecklist(plan, cursor, inputBindings, followUps);
   const remainingProofCommands = resumeRemainingProofCommands(checklist);
+  const remainingProofToolCalls = resumeRemainingProofToolCalls(checklist);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -500,6 +502,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     ...(inputBindings.length > 0 ? { inputBindings } : {}),
     ...(checklist.length > 0 ? { checklist } : {}),
     ...(remainingProofCommands.length > 0 ? { remainingProofCommands } : {}),
+    ...(remainingProofToolCalls.length > 0 ? { remainingProofToolCalls } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
@@ -509,6 +512,48 @@ function resumeRemainingProofCommands(checklist: StartMissionResumeChecklistItem
   return checklist
     .filter((item) => item.kind === 'run_proof' && typeof item.command === 'string')
     .map((item) => item.command as string);
+}
+
+function resumeRemainingProofToolCalls(checklist: StartMissionResumeChecklistItem[]): StartMissionProofToolCall[] {
+  return checklist.flatMap((item) => {
+    if (item.kind !== 'run_proof' || typeof item.command !== 'string') return [];
+    const toolCall = proofCommandToolCall(item.command);
+    return toolCall ? [{ stepId: item.stepId, command: item.command, ...toolCall }] : [];
+  });
+}
+
+function proofCommandToolCall(command: string): StartMissionResume['toolCall'] | undefined {
+  const preflightMatch = /^projscan preflight(?: --mode ([a-z_]+))? --format json$/.exec(command);
+  if (preflightMatch) {
+    return {
+      tool: 'projscan_preflight',
+      args: preflightMatch[1] ? { mode: preflightMatch[1] } : {},
+    };
+  }
+
+  const understandMatch = /^projscan understand --view ([a-z_]+)(?: --intent "((?:\\.|[^"\\])*)")? --format json$/.exec(command);
+  if (understandMatch) {
+    return {
+      tool: 'projscan_understand',
+      args: {
+        view: understandMatch[1],
+        ...(understandMatch[2] ? { intent: unescapeDoubleQuoted(understandMatch[2]) } : {}),
+      },
+    };
+  }
+
+  if (command === 'projscan session touched --format json') {
+    return {
+      tool: 'projscan_session',
+      args: { action: 'touched' },
+    };
+  }
+
+  return undefined;
+}
+
+function unescapeDoubleQuoted(value: string): string {
+  return value.replace(/\\(["\\])/g, '$1');
 }
 
 function resumeChecklist(
@@ -740,6 +785,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   if (resume.remainingProofCommands && resume.remainingProofCommands.length > 0) {
     lines.push('Remaining proof:', ...resume.remainingProofCommands.map((command) => `- \`${command}\``));
   }
+  if (resume.remainingProofToolCalls && resume.remainingProofToolCalls.length > 0) {
+    lines.push('MCP proof calls:', ...resume.remainingProofToolCalls.map((toolCall) => `- ${formatRunbookProofToolCall(toolCall)}`));
+  }
   if (resume.followUps && resume.followUps.length > 0) {
     lines.push('Then use:', ...resume.followUps.map((followUp) => `- ${formatRunbookFollowUp(followUp)}`));
   }
@@ -771,6 +819,10 @@ function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCal
   return typeof toolCall.args !== 'undefined'
     ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
     : toolCall.tool;
+}
+
+function formatRunbookProofToolCall(toolCall: StartMissionProofToolCall): string {
+  return `${toolCall.stepId}: ${formatRunbookToolCall(toolCall)}`;
 }
 
 function formatRunbookFollowUp(followUp: NonNullable<StartMissionResume['followUps']>[number]): string {

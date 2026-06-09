@@ -6846,6 +6846,27 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
     'projscan understand --view verify --format json',
     'projscan preflight --format json',
   ]);
+  expect(report.missionControl.resume.remainingProofToolCalls).toEqual([
+    {
+      stepId: 'proof-2',
+      command: 'projscan preflight --mode before_edit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_edit' },
+    },
+    {
+      stepId: 'proof-3',
+      command: 'projscan understand --view verify --format json',
+      tool: 'projscan_understand',
+      args: { view: 'verify' },
+    },
+    {
+      stepId: 'proof-4',
+      command: 'projscan preflight --format json',
+      tool: 'projscan_preflight',
+      args: {},
+    },
+  ]);
+  expect(report.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
   expect(report.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -6917,6 +6938,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('Remaining proof:');
   expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_edit --format json`');
   expect(report.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(report.missionControl.runbook.markdown).toContain('MCP proof calls:');
+  expect(report.missionControl.runbook.markdown).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
+  expect(report.missionControl.runbook.markdown).toContain('- proof-3: projscan_understand {"view":"verify"}');
   expect(report.missionControl.runbook.markdown).toContain('Then use:');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
