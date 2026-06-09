@@ -17,6 +17,7 @@ import type {
   StartExecutionStatus,
   StartExecutionStep,
   StartMissionInputBinding,
+  StartMissionProofItem,
   StartMissionProofToolCall,
   StartMissionResume,
   StartMissionResumeChecklistItem,
@@ -479,6 +480,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const followUps = resumeFollowUps(plan, cursor);
   const inputBindings = resumeInputBindings(plan, cursor);
   const checklist = resumeChecklist(plan, cursor, inputBindings, followUps);
+  const remainingProofItems = resumeRemainingProofItems(checklist);
   const remainingProofCommands = resumeRemainingProofCommands(checklist);
   const remainingProofToolCalls = resumeRemainingProofToolCalls(checklist);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
@@ -501,6 +503,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     ...(followUps.length > 0 ? { followUps } : {}),
     ...(inputBindings.length > 0 ? { inputBindings } : {}),
     ...(checklist.length > 0 ? { checklist } : {}),
+    ...(remainingProofItems.length > 0 ? { remainingProofItems } : {}),
     ...(remainingProofCommands.length > 0 ? { remainingProofCommands } : {}),
     ...(remainingProofToolCalls.length > 0 ? { remainingProofToolCalls } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
@@ -512,6 +515,20 @@ function resumeRemainingProofCommands(checklist: StartMissionResumeChecklistItem
   return checklist
     .filter((item) => item.kind === 'run_proof' && typeof item.command === 'string')
     .map((item) => item.command as string);
+}
+
+function resumeRemainingProofItems(checklist: StartMissionResumeChecklistItem[]): StartMissionProofItem[] {
+  return checklist.flatMap((item) => {
+    if (item.kind !== 'run_proof' || typeof item.command !== 'string') return [];
+    const toolCall = proofCommandToolCall(item.command);
+    return [{
+      stepId: item.stepId,
+      status: item.status,
+      label: item.label,
+      command: item.command,
+      ...(toolCall ? { toolCall } : {}),
+    }];
+  });
 }
 
 function resumeRemainingProofToolCalls(checklist: StartMissionResumeChecklistItem[]): StartMissionProofToolCall[] {
@@ -1102,6 +1119,7 @@ function missionHandoff(
 ): StartMissionControl['handoff'] {
   const readyProofCommands = resume.remainingProofCommands ?? proofCommands;
   const readyProofToolCalls = resume.remainingProofToolCalls;
+  const readyProofItems = resume.remainingProofItems;
   return {
     currentStep,
     resume,
@@ -1113,6 +1131,7 @@ function missionHandoff(
       summary: READY_PROOF_SUMMARY,
       commands: readyProofCommands,
       ...(readyProofToolCalls && readyProofToolCalls.length > 0 ? { toolCalls: readyProofToolCalls } : {}),
+      ...(readyProofItems && readyProofItems.length > 0 ? { items: readyProofItems } : {}),
     },
   };
 }

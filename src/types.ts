@@ -841,6 +841,14 @@ export interface StartMissionProofToolCall extends StartMissionToolCall {
   command: string;
 }
 
+export interface StartMissionProofItem {
+  stepId: string;
+  status: StartExecutionStatus;
+  label: string;
+  command: string;
+  toolCall?: StartMissionToolCall;
+}
+
 export interface StartMissionInputBinding {
   inputId: string;
   label: string;
@@ -897,6 +905,7 @@ export interface StartMissionResume {
   followUps?: StartMissionResumeFollowUp[];
   inputBindings?: StartMissionInputBinding[];
   checklist?: StartMissionResumeChecklistItem[];
+  remainingProofItems?: StartMissionProofItem[];
   remainingProofCommands?: string[];
   remainingProofToolCalls?: StartMissionProofToolCall[];
   unlocks?: StartMissionResumeReference[];
@@ -914,6 +923,7 @@ export interface StartMissionHandoff {
     summary: string;
     commands: string[];
     toolCalls?: StartMissionProofToolCall[];
+    items?: StartMissionProofItem[];
   };
 }
 

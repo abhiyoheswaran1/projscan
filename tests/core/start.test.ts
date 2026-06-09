@@ -154,6 +154,7 @@ test('start report routes a plain-language intent into mission control', async (
         summary: 'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
         commands: report.missionControl.resume.remainingProofCommands,
         toolCalls: report.missionControl.resume.remainingProofToolCalls,
+        items: report.missionControl.resume.remainingProofItems,
       },
     }),
   );
@@ -3027,6 +3028,9 @@ test('start report turns tech debt simplification into hotspots', async () => {
 
 test('start report turns handoff requests into an agent brief', async () => {
   const root = await makeTempProject();
+  const { session } = await loadSession(root);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(root, session);
 
   const report = await computeStartReport(root, {
     intent: 'give the next agent a handoff',
@@ -3057,6 +3061,30 @@ test('start report turns handoff requests into an agent brief', async () => {
     ]),
   );
   expect(report.missionControl.proofCommands).toContain('projscan agent-brief --intent next_agent --format json');
+  expect(report.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofToolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofItems?.map((item) => item.command)).toEqual(report.missionControl.resume.remainingProofCommands);
+  expect(report.missionControl.resume.remainingProofItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        stepId: 'proof-2',
+        status: 'ready',
+        command: 'projscan preflight --mode before_edit --format json',
+        toolCall: {
+          tool: 'projscan_preflight',
+          args: { mode: 'before_edit' },
+        },
+      }),
+      expect.objectContaining({
+        stepId: 'proof-6',
+        status: 'ready',
+        label: 'projscan handoff',
+        command: 'projscan handoff',
+      }),
+    ]),
+  );
+  expect(report.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
 });
 
 test('start report turns open-ended next-step questions into a workplan', async () => {

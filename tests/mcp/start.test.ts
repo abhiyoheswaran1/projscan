@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { getToolDefinitions, getToolHandler } from '../../src/mcp/tools.js';
 
 let tmp: string;
@@ -52,6 +53,14 @@ type TestResumeProofToolCall = {
   command: string;
   tool: string;
   args?: Record<string, unknown>;
+};
+
+type TestResumeProofItem = {
+  stepId: string;
+  status: string;
+  label: string;
+  command: string;
+  toolCall?: { tool: string; args?: Record<string, unknown> };
 };
 
 test('lists projscan_start as an MCP tool', () => {
@@ -730,6 +739,59 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
   expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.start.missionControl.runbook.markdown).toContain('## Blocked Inputs');
+});
+
+test('projscan_start exposes complete remaining proof items for handoff intents', async () => {
+  const handler = getToolHandler('projscan_start');
+  const { session } = await loadSession(tmp);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(tmp, session);
+
+  const result = (await handler?.({
+    intent: 'give the next agent a handoff',
+  }, tmp)) as {
+    start: {
+      missionControl: {
+        resume: {
+          remainingProofCommands?: string[];
+          remainingProofToolCalls?: TestResumeProofToolCall[];
+          remainingProofItems?: TestResumeProofItem[];
+        };
+        handoff: {
+          readyProof: {
+            commands: string[];
+            toolCalls?: TestResumeProofToolCall[];
+            items?: TestResumeProofItem[];
+          };
+        };
+      };
+    };
+  };
+
+  expect(result.start.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
+  expect(result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
+  expect(result.start.missionControl.resume.remainingProofItems?.map((item) => item.command)).toEqual(
+    result.start.missionControl.resume.remainingProofCommands,
+  );
+  expect(result.start.missionControl.resume.remainingProofItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        stepId: 'proof-2',
+        command: 'projscan preflight --mode before_edit --format json',
+        toolCall: {
+          tool: 'projscan_preflight',
+          args: { mode: 'before_edit' },
+        },
+      }),
+      expect.objectContaining({
+        stepId: 'proof-6',
+        command: 'projscan handoff',
+      }),
+    ]),
+  );
+  expect(result.start.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(result.start.missionControl.handoff.readyProof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
+  expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
 });
 
 test('projscan_start returns alternative routes for mixed intents', async () => {

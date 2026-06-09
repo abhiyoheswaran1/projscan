@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added optional `missionControl.resume.followUps` so resumed agents can see the placeholder follow-up templates unlocked by the current step without traversing the full execution plan.
 - Added optional `missionControl.resume.inputBindings` so resumed agents can map placeholders like `<symbol-from-search>` to unlocked input steps before calling follow-up templates.
 - Added optional `missionControl.resume.checklist`, an ordered resume task card with the current command, inputs, follow-ups, remaining proof commands, and done criteria.
+- Added optional `missionControl.resume.remainingProofItems`, a complete ordered proof queue with step ids, status, commands, and optional MCP tool calls.
 - Added optional `missionControl.resume.remainingProofCommands` so handoff prompts and agents can run proof that remains after the current resume command without duplicating work.
 - Added optional `missionControl.resume.remainingProofToolCalls` so MCP agents can run mapped remaining proof steps directly without reverse-engineering CLI commands.
 
@@ -30,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `missionControl.executionPlan.currentPhase` now matches the execution cursor phase so agents do not see `next_action` while the runnable cursor is in `ready_now`.
 - `missionControl.handoff.readyProof.commands` now uses the resume remaining-proof queue when available, avoiding duplicate proof of the current cursor command.
 - `missionControl.handoff.readyProof.toolCalls` now carries MCP-native remaining proof calls when available.
+- `missionControl.handoff.readyProof.items` now mirrors the complete remaining-proof item queue, including CLI-only proof steps.
 - `projscan start --include-handoff` now prints an `Agent Runbook` section while default console output stays compact.
 
 ## [4.1.0] - 2026-06-09 - "Mission Control"

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { spawnCli } from '../helpers/cli.js';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
@@ -266,6 +267,48 @@ test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async
   expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
   expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
   expect(report.missionControl.handoff.readyProof.toolCalls?.map((call: { tool: string }) => call.tool)).not.toContain('projscan_search');
+});
+
+test('start JSON exposes complete remaining proof items for handoff intents', async () => {
+  const { session } = await loadSession(tmp);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(tmp, session);
+
+  const result = await runCli([
+    'start',
+    '--intent',
+    'give the next agent a handoff',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofToolCalls.map((call: { command: string }) => call.command)).not.toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofItems.map((item: { command: string }) => item.command)).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
+  expect(report.missionControl.resume.remainingProofItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        stepId: 'proof-2',
+        command: 'projscan preflight --mode before_edit --format json',
+        toolCall: {
+          tool: 'projscan_preflight',
+          args: { mode: 'before_edit' },
+        },
+      }),
+      expect.objectContaining({
+        stepId: 'proof-6',
+        command: 'projscan handoff',
+      }),
+    ]),
+  );
+  expect(report.missionControl.resume.remainingProofItems.find((item: { command: string }) => item.command === 'projscan handoff').toolCall).toBeUndefined();
+  expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
+  expect(report.missionControl.handoff.readyProof.toolCalls.map((call: { command: string }) => call.command)).not.toContain('projscan handoff');
 });
 
 test('start console runs impact directly for file path intents', async () => {
