@@ -98,7 +98,10 @@ Run now:
 ```sh
 projscan search "auth token loader" --format json
 ```
-Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1, input-2.
+After running, resolve:
+- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.
+- input-2 (file): Replace <file-from-search> with a file path returned by the search step.
+Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).
 
 ## Ready Commands
 - `projscan search "auth token loader" --format json`

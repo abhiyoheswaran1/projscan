@@ -820,12 +820,24 @@ export interface StartUnresolvedInput {
   instruction: string;
 }
 
+export interface StartMissionResumeReference {
+  id: string;
+  phaseId: StartExecutionPhaseId;
+  kind: StartExecutionStepKind;
+  status: StartExecutionStatus;
+  label: string;
+  instruction?: string;
+  command?: string;
+}
+
 export interface StartMissionResume {
   currentStep: StartExecutionCursor;
   status: StartExecutionStatus;
   instruction: string;
   prompt: string;
   commandBlock?: string;
+  unlocks?: StartMissionResumeReference[];
+  blockedBy?: StartMissionResumeReference[];
 }
 
 export interface StartMissionHandoff {

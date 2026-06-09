@@ -17,6 +17,7 @@ import type {
   StartExecutionStatus,
   StartExecutionStep,
   StartMissionResume,
+  StartMissionResumeReference,
   StartMissionRunbook,
   QualityScorecardRisk,
   RegressionPlanLevel,
@@ -341,7 +342,7 @@ function buildMissionControl(input: {
     successCriteria,
     proofCommands,
   });
-  const resume = missionResume(executionPlan.cursor);
+  const resume = missionResume(executionPlan);
   const runbook = buildMissionRunbook({
     intent: input.intent,
     status,
@@ -469,31 +470,76 @@ function renderMissionRunbookMarkdown(input: {
   return `${lines.join('\n')}\n`;
 }
 
-function missionResume(cursor: StartExecutionCursor): StartMissionResume {
+function missionResume(plan: StartExecutionPlan): StartMissionResume {
+  const cursor = plan.cursor;
   const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
+  const unlocks = resolveResumeReferences(plan, cursor.unlocks);
+  const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
     ? `Run ${commandBlock}.`
     : cursor.instruction
       ? `Resolve ${cursor.label}: ${cursor.instruction}`
       : `Continue with ${cursor.label}.`;
   const prompt = commandBlock
-    ? `Resume at ${cursor.stepId} in ${cursor.phaseId}: run \`${commandBlock}\`.${resumeUnlocksSentence(cursor)}`
-    : `Resume at ${cursor.stepId} in ${cursor.phaseId}: ${instruction}${resumeBlockersSentence(cursor)}`;
+    ? `Resume at ${cursor.stepId} in ${cursor.phaseId}: run \`${commandBlock}\`.${resumeUnlocksSentence(unlocks, cursor.unlocks)}`
+    : `Resume at ${cursor.stepId} in ${cursor.phaseId}: ${instruction}${resumeBlockersSentence(blockedBy, cursor.blockedBy)}`;
   return {
     currentStep: cursor,
     status: cursor.status,
     instruction,
     prompt,
     ...(commandBlock ? { commandBlock } : {}),
+    ...(unlocks.length > 0 ? { unlocks } : {}),
+    ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
 }
 
-function resumeUnlocksSentence(cursor: StartExecutionCursor): string {
-  return cursor.unlocks && cursor.unlocks.length > 0 ? ` This can unlock ${cursor.unlocks.join(', ')}.` : '';
+function resolveResumeReferences(
+  plan: StartExecutionPlan,
+  ids: string[] | undefined,
+): StartMissionResumeReference[] {
+  if (!ids || ids.length === 0) return [];
+  const references: StartMissionResumeReference[] = [];
+  for (const id of ids) {
+    const found = findStepInPlan(plan, id);
+    if (!found) continue;
+    references.push({
+      id: found.step.id,
+      phaseId: found.phase.id,
+      kind: found.step.kind,
+      status: found.step.status,
+      label: found.step.label,
+      ...(found.step.instruction ? { instruction: found.step.instruction } : {}),
+      ...(found.step.command ? { command: found.step.command } : {}),
+    });
+  }
+  return references;
 }
 
-function resumeBlockersSentence(cursor: StartExecutionCursor): string {
-  return cursor.blockedBy && cursor.blockedBy.length > 0 ? ` Blocked by ${cursor.blockedBy.join(', ')}.` : '';
+function findStepInPlan(
+  plan: StartExecutionPlan,
+  id: string,
+): { phase: StartExecutionPhase; step: StartExecutionStep } | undefined {
+  for (const phase of plan.phases) {
+    for (const step of phase.steps) {
+      if (step.id === id) return { phase, step };
+    }
+  }
+  return undefined;
+}
+
+function resumeUnlocksSentence(unlocks: StartMissionResumeReference[], rawIds: string[] | undefined): string {
+  if (unlocks.length > 0) return ` This can unlock ${unlocks.map(formatResumeReferenceLabel).join(', ')}.`;
+  return rawIds && rawIds.length > 0 ? ` This can unlock ${rawIds.join(', ')}.` : '';
+}
+
+function resumeBlockersSentence(blockedBy: StartMissionResumeReference[], rawIds: string[] | undefined): string {
+  if (blockedBy.length > 0) return ` Blocked by ${blockedBy.map(formatResumeReferenceLabel).join(', ')}.`;
+  return rawIds && rawIds.length > 0 ? ` Blocked by ${rawIds.join(', ')}.` : '';
+}
+
+function formatResumeReferenceLabel(reference: StartMissionResumeReference): string {
+  return `${reference.id} (${reference.label})`;
 }
 
 function renderRunbookResumeLines(resume: StartMissionResume): string[] {
@@ -503,8 +549,19 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   } else {
     lines.push(`Do now: ${resume.instruction}`);
   }
+  if (resume.unlocks && resume.unlocks.length > 0) {
+    lines.push('After running, resolve:', ...resume.unlocks.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
+  }
+  if (resume.blockedBy && resume.blockedBy.length > 0) {
+    lines.push('Blocked by:', ...resume.blockedBy.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
+  }
   lines.push(`Prompt: ${resume.prompt}`);
   return lines;
+}
+
+function formatRunbookResumeReference(reference: StartMissionResumeReference): string {
+  const detail = reference.instruction ?? reference.command ?? reference.label;
+  return `${reference.id} (${reference.label}): ${detail}`;
 }
 
 function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {

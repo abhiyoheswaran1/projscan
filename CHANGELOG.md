@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `missionControl.executionPlan.cursor`, a direct pointer to the next ready command, blocked input, proof command, or done criterion so agents do not need to traverse the full phase graph.
 - Added the execution cursor to `missionControl.handoff.currentStep` and `missionControl.runbook.currentStep`, plus a `Current Cursor` section in Markdown runbooks.
 - Added `missionControl.resume`, copied into handoff and runbook payloads, with a runnable command block or instruction plus a compact resume prompt.
+- Added resolved `resume.unlocks` / `resume.blockedBy` references so resumed agents can see labels and instructions for the steps unlocked or blocking the current cursor.
 
 ### Changed
 

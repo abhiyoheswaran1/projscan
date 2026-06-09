@@ -215,7 +215,10 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('## Resume');
   expect(result.stdout).toContain('Run now:');
   expect(result.stdout).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
-  expect(result.stdout).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1, input-2.');
+  expect(result.stdout).toContain('After running, resolve:');
+  expect(result.stdout).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.stdout).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('## Blocked Inputs');
