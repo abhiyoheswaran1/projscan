@@ -6626,6 +6626,18 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
     `Run 1 ready step, resolve 2 input(s), then gather ${report.missionControl.proofCommands.length} proof command(s).`,
   );
   expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.cursor).toEqual(
+    expect.objectContaining({
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      kind: 'tool',
+      status: 'ready',
+      label: 'Find exact target for impact analysis',
+      command: 'projscan search "auth token loader" --format json',
+      unlocks: ['input-1', 'input-2'],
+      reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
+    }),
+  );
   expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
     'next_action:ready',
     'ready_now:ready',
@@ -6728,6 +6740,16 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
     `Run 1 ready step, then gather ${report.missionControl.proofCommands.length} proof command(s).`,
   );
   expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.cursor).toEqual(
+    expect.objectContaining({
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      kind: 'tool',
+      status: 'ready',
+      command: 'projscan preflight --mode before_commit --format json',
+      reason: 'Run this ready command next.',
+    }),
+  );
   expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
     'next_action:ready',
     'ready_now:ready',

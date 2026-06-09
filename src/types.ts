@@ -858,9 +858,23 @@ export interface StartExecutionPhase {
   steps: StartExecutionStep[];
 }
 
+export interface StartExecutionCursor {
+  phaseId: StartExecutionPhaseId;
+  stepId: string;
+  status: StartExecutionStatus;
+  kind: StartExecutionStepKind;
+  label: string;
+  command?: string;
+  instruction?: string;
+  blockedBy?: string[];
+  unlocks?: string[];
+  reason: string;
+}
+
 export interface StartExecutionPlan {
   summary: string;
   currentPhase: StartExecutionPhaseId;
+  cursor: StartExecutionCursor;
   phases: StartExecutionPhase[];
 }
 

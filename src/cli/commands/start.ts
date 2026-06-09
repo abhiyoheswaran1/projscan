@@ -194,6 +194,29 @@ function printExecutionPlan(report: StartReport): void {
       }
     }
   }
+  printExecutionCursor(report);
+}
+
+function printExecutionCursor(report: StartReport): void {
+  const plan = report.missionControl.executionPlan;
+  const cursor = plan.cursor;
+  const phaseTitle = plan.phases.find((phase) => phase.id === cursor.phaseId)?.title ?? cursor.phaseId;
+  console.log(chalk.bold('Run Cursor'));
+  console.log(`next: ${cursor.stepId} in ${phaseTitle}`);
+  if (cursor.command) {
+    console.log(`command: ${cursor.command}`);
+  } else if (cursor.instruction) {
+    console.log(`input: ${cursor.instruction}`);
+  } else {
+    console.log(`step: ${cursor.label}`);
+  }
+  if (cursor.blockedBy && cursor.blockedBy.length > 0) {
+    console.log(`blocked by: ${cursor.blockedBy.join(', ')}`);
+  }
+  if (cursor.unlocks && cursor.unlocks.length > 0) {
+    console.log(`unlocks: ${cursor.unlocks.join(', ')}`);
+  }
+  console.log(chalk.dim(cursor.reason));
 }
 
 function routeEvidence(route: StartReport['missionControl']['routedIntent']): string {

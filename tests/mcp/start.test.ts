@@ -150,6 +150,18 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
         executionPlan: {
           summary: string;
           currentPhase: string;
+          cursor: {
+            phaseId: string;
+            stepId: string;
+            kind: string;
+            status: string;
+            label: string;
+            command?: string;
+            instruction?: string;
+            blockedBy?: string[];
+            unlocks?: string[];
+            reason: string;
+          };
           phases: Array<{
             id: string;
             status: string;
@@ -241,6 +253,17 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.handoff.readyProof.commands.length} proof command(s).`,
   );
   expect(result.start.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(result.start.missionControl.executionPlan.cursor).toEqual(
+    expect.objectContaining({
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      kind: 'tool',
+      status: 'ready',
+      command: 'projscan search "auth token loader" --format json',
+      unlocks: ['input-1', 'input-2'],
+      reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
+    }),
+  );
   expect(result.start.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
     'next_action:ready',
     'ready_now:ready',

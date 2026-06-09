@@ -9,6 +9,7 @@ import type { GraphQueryDirection } from './graphQuery.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import type {
   AgentBriefIntent,
+  StartExecutionCursor,
   PreflightSuggestedAction,
   StartExecutionPhase,
   StartExecutionPhaseId,
@@ -559,6 +560,7 @@ function buildMissionExecutionPlan(input: {
   return {
     summary: executionPlanSummary(input.readyActions.length, input.unresolvedInputs.length, input.proofCommands.length),
     currentPhase: currentExecutionPhase(phases),
+    cursor: executionCursor(phases),
     phases,
   };
 }
@@ -617,6 +619,67 @@ function executionStatusForAction(action: PreflightSuggestedAction): StartExecut
 
 function currentExecutionPhase(phases: StartExecutionPhase[]): StartExecutionPhaseId {
   return phases.find((phase) => phase.status === 'ready' || phase.status === 'blocked')?.id ?? 'done_when';
+}
+
+function executionCursor(phases: StartExecutionPhase[]): StartExecutionCursor {
+  const selected =
+    findExecutionStep(phases, (phase, step) => phase.id === 'ready_now' && step.status === 'ready' && typeof step.command === 'string')
+    ?? findExecutionStep(phases, (phase, step) => phase.id === 'resolve_inputs' && step.status === 'blocked')
+    ?? findExecutionStep(phases, (phase, step) => phase.id === 'proof' && step.status === 'ready')
+    ?? findExecutionStep(phases, (phase) => phase.id === 'done_when')
+    ?? findExecutionStep(phases, (phase) => phase.id === 'next_action');
+  if (!selected) {
+    return {
+      phaseId: 'done_when',
+      stepId: 'criterion-1',
+      status: 'pending',
+      kind: 'criterion',
+      label: 'The next action is complete and verified.',
+      reason: 'Use this criterion to decide when the task is complete.',
+    };
+  }
+  return {
+    phaseId: selected.phase.id,
+    stepId: selected.step.id,
+    status: selected.step.status,
+    kind: selected.step.kind,
+    label: selected.step.label,
+    ...(selected.step.command ? { command: selected.step.command } : {}),
+    ...(selected.step.instruction ? { instruction: selected.step.instruction } : {}),
+    ...(selected.step.blockedBy && selected.step.blockedBy.length > 0 ? { blockedBy: selected.step.blockedBy } : {}),
+    ...(selected.step.unlocks && selected.step.unlocks.length > 0 ? { unlocks: selected.step.unlocks } : {}),
+    reason: executionCursorReason(selected.step),
+  };
+}
+
+function findExecutionStep(
+  phases: StartExecutionPhase[],
+  predicate: (phase: StartExecutionPhase, step: StartExecutionStep) => boolean,
+): { phase: StartExecutionPhase; step: StartExecutionStep } | undefined {
+  for (const phase of phases) {
+    for (const step of phase.steps) {
+      if (predicate(phase, step)) return { phase, step };
+    }
+  }
+  return undefined;
+}
+
+function executionCursorReason(step: StartExecutionStep): string {
+  if (step.status === 'ready' && step.kind === 'tool') {
+    return step.unlocks && step.unlocks.length > 0
+      ? 'Run this ready command next; it can unlock later inputs or follow-up steps.'
+      : 'Run this ready command next.';
+  }
+  if (step.status === 'blocked' && step.kind === 'input') {
+    return 'Resolve this blocked input before running dependent follow-up steps.';
+  }
+  if (step.status === 'ready' && step.kind === 'proof') {
+    return 'Run this proof command when action steps are complete.';
+  }
+  if (step.kind === 'criterion') {
+    return 'Use this criterion to decide when the task is complete.';
+  }
+  return 'Use this step as the current execution pointer.';
 }
 
 function executionPlanSummary(readyCount: number, inputCount: number, proofCount: number): string {
