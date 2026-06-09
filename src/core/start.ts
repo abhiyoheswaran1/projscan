@@ -478,6 +478,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const followUps = resumeFollowUps(plan, cursor);
   const inputBindings = resumeInputBindings(plan, cursor);
   const checklist = resumeChecklist(plan, cursor, inputBindings, followUps);
+  const remainingProofCommands = resumeRemainingProofCommands(checklist);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -498,9 +499,16 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     ...(followUps.length > 0 ? { followUps } : {}),
     ...(inputBindings.length > 0 ? { inputBindings } : {}),
     ...(checklist.length > 0 ? { checklist } : {}),
+    ...(remainingProofCommands.length > 0 ? { remainingProofCommands } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
+}
+
+function resumeRemainingProofCommands(checklist: StartMissionResumeChecklistItem[]): string[] {
+  return checklist
+    .filter((item) => item.kind === 'run_proof' && typeof item.command === 'string')
+    .map((item) => item.command as string);
 }
 
 function resumeChecklist(
@@ -728,6 +736,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   }
   if (resume.checklist && resume.checklist.length > 0) {
     lines.push('Resume checklist:', ...resume.checklist.map((item) => `- ${formatRunbookChecklistItem(item)}`));
+  }
+  if (resume.remainingProofCommands && resume.remainingProofCommands.length > 0) {
+    lines.push('Remaining proof:', ...resume.remainingProofCommands.map((command) => `- \`${command}\``));
   }
   if (resume.followUps && resume.followUps.length > 0) {
     lines.push('Then use:', ...resume.followUps.map((followUp) => `- ${formatRunbookFollowUp(followUp)}`));
@@ -1064,7 +1075,7 @@ function missionHandoffPrompt(
   const needsInput = unresolvedInputs.length > 0
     ? ` Needs input: ${unresolvedInputs.map((input) => `${input.name}=${input.placeholder}`).join(', ')}.`
     : '';
-  const proofCommandText = proofCommands.slice(0, 3).join(' && ');
+  const proofCommandText = (resume.remainingProofCommands ?? proofCommands).slice(0, 3).join(' && ');
   const readyProof = proofCommandText.length > 0
     ? ` Ready proof: ${READY_PROOF_SUMMARY} ${proofCommandText}.`
     : ` Ready proof: ${READY_PROOF_SUMMARY}.`;

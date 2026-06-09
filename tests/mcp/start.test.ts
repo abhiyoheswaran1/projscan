@@ -205,6 +205,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           }>;
           inputBindings?: TestResumeInputBinding[];
           checklist?: TestResumeChecklistItem[];
+          remainingProofCommands?: string[];
           unlocks?: Array<{
             id: string;
             phaseId: string;
@@ -306,6 +307,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             }>;
             inputBindings?: TestResumeInputBinding[];
             checklist?: TestResumeChecklistItem[];
+            remainingProofCommands?: string[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -374,6 +376,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             }>;
             inputBindings?: TestResumeInputBinding[];
             checklist?: TestResumeChecklistItem[];
+            remainingProofCommands?: string[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -555,6 +558,12 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
     }),
   );
+  expect(result.start.missionControl.proofCommands[0]).toBe('projscan search "auth token loader" --format json');
+  expect(result.start.missionControl.resume.remainingProofCommands).toEqual([
+    'projscan preflight --mode before_edit --format json',
+    'projscan understand --view verify --format json',
+    'projscan preflight --format json',
+  ]);
   expect(result.start.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -580,6 +589,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoffPrompt).toContain(result.start.missionControl.resume.prompt);
   expect(result.start.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(result.start.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  const handoffReadyProof = result.start.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
+  expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
+  expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');
   expect(result.start.missionControl.handoffPrompt).not.toContain('Next:');
   expect(result.start.missionControl.handoff.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
   expect(result.start.missionControl.handoff.resume).toEqual(result.start.missionControl.resume);
@@ -587,6 +599,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.resume.followUps).toEqual(result.start.missionControl.resume.followUps);
   expect(result.start.missionControl.runbook.resume.inputBindings).toEqual(result.start.missionControl.resume.inputBindings);
   expect(result.start.missionControl.runbook.resume.checklist).toEqual(result.start.missionControl.resume.checklist);
+  expect(result.start.missionControl.runbook.resume.remainingProofCommands).toEqual(result.start.missionControl.resume.remainingProofCommands);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
@@ -670,6 +683,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain('Remaining proof:');
+  expect(result.start.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');

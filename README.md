@@ -59,7 +59,7 @@ The next Mission Control slice makes `projscan start --intent "<goal>"` more dir
 
 That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
 
-The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, explicit `inputBindings` for placeholder substitution, downstream follow-up templates, and an ordered `checklist` with the remaining proof and done criteria without traversing the full plan. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and ready proof for copy/paste handoffs. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
+The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, explicit `inputBindings` for placeholder substitution, downstream follow-up templates, an ordered `checklist`, and `remainingProofCommands` without traversing the full plan. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and only the proof commands that remain after the current resume action. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
 
 Console output shows the same model for humans:
 
@@ -110,6 +110,9 @@ Resume checklist:
 - [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.
 - [ready] run_proof proof-2: projscan preflight --mode before_edit --format json
 - [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.
+Remaining proof:
+- `projscan preflight --mode before_edit --format json`
+- `projscan understand --view verify --format json`
 Then use:
 - follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json
 - follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json

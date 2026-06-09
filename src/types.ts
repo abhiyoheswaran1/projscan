@@ -892,6 +892,7 @@ export interface StartMissionResume {
   followUps?: StartMissionResumeFollowUp[];
   inputBindings?: StartMissionInputBinding[];
   checklist?: StartMissionResumeChecklistItem[];
+  remainingProofCommands?: string[];
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }

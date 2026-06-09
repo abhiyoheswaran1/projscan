@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added optional `missionControl.resume.followUps` so resumed agents can see the placeholder follow-up templates unlocked by the current step without traversing the full execution plan.
 - Added optional `missionControl.resume.inputBindings` so resumed agents can map placeholders like `<symbol-from-search>` to unlocked input steps before calling follow-up templates.
 - Added optional `missionControl.resume.checklist`, an ordered resume task card with the current command, inputs, follow-ups, remaining proof commands, and done criteria.
+- Added optional `missionControl.resume.remainingProofCommands` so handoff prompts and agents can run proof that remains after the current resume command without duplicating work.
 
 ### Changed
 

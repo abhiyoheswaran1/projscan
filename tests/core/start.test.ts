@@ -6840,6 +6840,12 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
     }),
   );
+  expect(report.missionControl.proofCommands[0]).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.resume.remainingProofCommands).toEqual([
+    'projscan preflight --mode before_edit --format json',
+    'projscan understand --view verify --format json',
+    'projscan preflight --format json',
+  ]);
   expect(report.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -6869,6 +6875,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
   expect(report.missionControl.handoffPrompt).toContain('input-1 (symbol), input-2 (file)');
   expect(report.missionControl.handoffPrompt.startsWith('Resume: ')).toBe(true);
+  const handoffReadyProof = report.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
+  expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
+  expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');
   expect(report.missionControl.handoff.currentStep).toEqual(report.missionControl.executionPlan.cursor);
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
   expect(report.missionControl.runbook).toEqual(
@@ -6905,6 +6914,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
   expect(report.missionControl.runbook.markdown).toContain('- [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.runbook.markdown).toContain('Remaining proof:');
+  expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_edit --format json`');
+  expect(report.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
   expect(report.missionControl.runbook.markdown).toContain('Then use:');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
