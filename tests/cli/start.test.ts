@@ -17,6 +17,11 @@ const expectedReviewReplyLines = [
   `- Request changes: ${expectedReviewDecisionReplies[1]}`,
   `- Review version candidate: ${expectedReviewDecisionReplies[2]}`,
 ];
+const expectedReviewPolicy = {
+  approvalRequired: true,
+  blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
+  summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+};
 
 let tmp: string;
 
@@ -689,6 +694,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('resume-prompt.txt');
   expect(result.stdout).toContain('task-card.md');
   expect(result.stdout).toContain('review-gate.md');
+  expect(result.stdout).toContain('review-policy.json');
   expect(result.stdout).toContain('review-replies.txt');
   expect(result.stdout).toContain('runbook.md');
   expect(result.stdout).toContain('handoff.json');
@@ -709,6 +715,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
   expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
   expect(quickstart).toContain('- `review-gate.md`: Stop-and-review gate for approving another slice, release, publish, or deploy.');
+  expect(quickstart).toContain('- `review-policy.json`: Machine-readable review approval boundary and blocked actions.');
   expect(quickstart).toContain('- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
   expect(quickstart).toContain('## Reviewer Replies');
@@ -779,6 +786,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   const reviewReplies = await fs.readFile(path.join(bundleDir, 'review-replies.txt'), 'utf-8');
   expect(reviewReplies).toBe([...expectedReviewReplyLines, ''].join('\n'));
 
+  const reviewPolicy = JSON.parse(await fs.readFile(path.join(bundleDir, 'review-policy.json'), 'utf-8'));
+  expect(reviewPolicy).toEqual(expectedReviewPolicy);
+
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
   expect(runbook).toContain('# Mission Runbook');
   expect(runbook).toContain('## Current Cursor');
@@ -806,6 +816,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(handoff.reviewGate.decisions.map((decision: { reply: string }) => decision.reply)).toEqual(
     expectedReviewDecisionReplies,
   );
+  expect(handoff.reviewGate.policy).toEqual(expectedReviewPolicy);
+  expect(reviewPolicy).toEqual(handoff.reviewGate.policy);
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
@@ -845,6 +857,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'resume-prompt.txt',
     'task-card.md',
     'review-gate.md',
+    'review-policy.json',
     'review-replies.txt',
     'runbook.md',
     'handoff.json',
@@ -880,6 +893,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'resume-prompt.txt',
       'task-card.md',
       'review-gate.md',
+      'review-policy.json',
       'review-replies.txt',
       'manifest.json',
     ]),
@@ -1015,6 +1029,22 @@ test('start prints only reviewer replies when requested', async () => {
   expect(result.stdout).not.toContain('# Mission Review Gate');
 });
 
+test('start prints only the review policy when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--review-policy',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout).toBe(`${JSON.stringify(expectedReviewPolicy)}\n`);
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('# Mission Review Gate');
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',
@@ -1088,6 +1118,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --task-card --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --review-gate --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --review-policy --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --review-replies --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");

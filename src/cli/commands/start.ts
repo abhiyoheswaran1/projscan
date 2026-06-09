@@ -41,6 +41,7 @@ export function registerStart(): void {
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--task-card', 'print only the Mission Control Markdown task card')
     .option('--review-gate', 'print only the Mission Control review gate')
+    .option('--review-policy', 'print only the Mission Control review policy as JSON')
     .option('--review-replies', 'print only the Mission Control reviewer reply choices')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
@@ -130,6 +131,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.reviewGate === true) {
           printReviewGateOnly(report);
+          return;
+        }
+        if (cmdOpts.reviewPolicy === true) {
+          printReviewPolicyOnly(report);
           return;
         }
         if (cmdOpts.reviewReplies === true) {
@@ -406,6 +411,11 @@ async function writeMissionBundle(
     'utf-8',
   );
   await fs.writeFile(
+    path.join(targetDir, 'review-policy.json'),
+    JSON.stringify(report.missionControl.reviewGate.policy, null, 2) + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
     path.join(targetDir, 'review-replies.txt'),
     missionReviewReplyLines(report).join('\n') + '\n',
     'utf-8',
@@ -476,6 +486,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'review-gate.md',
       path: path.join(targetDir, 'review-gate.md'),
       description: 'Stop-and-review gate for approving another slice, release, publish, or deploy.',
+    },
+    {
+      name: 'review-policy.json',
+      path: path.join(targetDir, 'review-policy.json'),
+      description: 'Machine-readable review approval boundary and blocked actions.',
     },
     {
       name: 'review-replies.txt',
@@ -615,6 +630,10 @@ function printReviewGateOnly(report: StartReport): void {
   console.log(reviewGate);
 }
 
+function printReviewPolicyOnly(report: StartReport): void {
+  console.log(JSON.stringify(report.missionControl.reviewGate.policy));
+}
+
 function printReviewRepliesOnly(report: StartReport): void {
   const replies = missionReviewReplyLines(report);
   if (replies.length === 0) {
@@ -643,6 +662,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--save-mission .projscan/mission', options),
     shortcutCommand('--task-card', options),
     shortcutCommand('--review-gate', options),
+    shortcutCommand('--review-policy', options),
     shortcutCommand('--review-replies', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
