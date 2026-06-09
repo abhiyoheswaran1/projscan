@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 - Added `projscan start --proof-commands`, a console shortcut that prints only ready Mission Control proof commands.
 - Added `projscan start --checklist`, a console shortcut that prints only the Mission Control resume checklist.
+- Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.
 
 ### Changed
 

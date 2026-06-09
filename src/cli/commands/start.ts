@@ -31,6 +31,7 @@ export function registerStart(): void {
     .option('--next-command', 'print only the current Mission Control cursor command')
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
+    .option('--runbook', 'print only the Mission Control Markdown runbook')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -70,6 +71,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.checklist === true) {
           printChecklistOnly(report);
+          return;
+        }
+        if (cmdOpts.runbook === true) {
+          printRunbookOnly(report);
           return;
         }
         if (cmdOpts.handoffPrompt === true) {
@@ -234,6 +239,15 @@ function printChecklistOnly(report: StartReport): void {
   for (const item of checklist) {
     console.log(`- ${formatConsoleChecklistItem(item)}`);
   }
+}
+
+function printRunbookOnly(report: StartReport): void {
+  const runbook = report.missionControl.runbook.markdown.trimEnd();
+  if (runbook.length === 0) {
+    console.error(chalk.red('No Mission Control runbook is available.'));
+    process.exit(1);
+  }
+  console.log(runbook);
 }
 
 function printHandoffPrompt(report: StartReport): void {

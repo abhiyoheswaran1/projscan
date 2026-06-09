@@ -443,6 +443,45 @@ test('start JSON keeps the full report when checklist shortcut is requested', as
   expect(report.missionControl.resume.checklist[0].command).toBe('projscan search "auth token loader" --format json');
 });
 
+test('start prints only the mission runbook when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--runbook',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout.startsWith('# Mission Runbook\n')).toBe(true);
+  expect(result.stdout).toContain('## Current Cursor');
+  expect(result.stdout).toContain('## Resume');
+  expect(result.stdout).toContain('## Handoff Prompt');
+  expect(result.stdout).toContain('## Ready Commands');
+  expect(result.stdout).toContain('## Proof Commands');
+  expect(result.stdout).toContain('Resume checklist:');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Agent Runbook');
+  expect(result.stdout).not.toContain('First 10 Minutes');
+});
+
+test('start JSON keeps the full report when runbook shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--runbook',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
+  expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');
