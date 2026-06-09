@@ -362,6 +362,13 @@ async function writeMissionBundle(
   };
 
   await fs.mkdir(targetDir, { recursive: true });
+  await fs.writeFile(path.join(targetDir, 'README.md'), missionBundleReadme(report, files), 'utf-8');
+  await fs.writeFile(path.join(targetDir, 'next-command.txt'), missionBundleNextCommand(report), 'utf-8');
+  await fs.writeFile(
+    path.join(targetDir, 'next-tool-call.json'),
+    JSON.stringify(nextToolCall(report) ?? null) + '\n',
+    'utf-8',
+  );
   await fs.writeFile(
     path.join(targetDir, 'runbook.md'),
     report.missionControl.runbook.markdown.trimEnd() + '\n',
@@ -395,6 +402,21 @@ async function writeMissionBundle(
 function missionBundleFiles(targetDir: string): MissionBundleFile[] {
   return [
     {
+      name: 'README.md',
+      path: path.join(targetDir, 'README.md'),
+      description: 'Quickstart for humans opening the bundle.',
+    },
+    {
+      name: 'next-command.txt',
+      path: path.join(targetDir, 'next-command.txt'),
+      description: 'Current shell command or resume instruction.',
+    },
+    {
+      name: 'next-tool-call.json',
+      path: path.join(targetDir, 'next-tool-call.json'),
+      description: 'Current MCP tool call, or null when no mapped call exists.',
+    },
+    {
       name: 'runbook.md',
       path: path.join(targetDir, 'runbook.md'),
       description: 'Human-readable Mission Control runbook.',
@@ -425,6 +447,44 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       description: 'Bundle index with mode, status, current step, and file paths.',
     },
   ];
+}
+
+function missionBundleReadme(report: StartReport, files: MissionBundleFile[]): string {
+  const mission = report.missionControl;
+  const cursor = mission.executionPlan.cursor;
+  const lines = [
+    '# Mission Bundle',
+    '',
+    ...(mission.intent ? [`Intent: ${mission.intent}`] : []),
+    `Mode: ${report.mode}`,
+    `Status: ${mission.status}`,
+    `Current step: ${cursor.stepId} in ${cursor.phaseId}`,
+    '',
+    '## Run Next',
+    '',
+  ];
+
+  if (cursor.command) {
+    lines.push('```sh', cursor.command, '```');
+  } else {
+    lines.push(mission.resume.instruction);
+  }
+
+  const toolCall = nextToolCall(report);
+  if (toolCall) {
+    lines.push('', `MCP call: \`${toolCall.tool} ${JSON.stringify(toolCall.args ?? {})}\``);
+  }
+
+  lines.push('', '## Files');
+  for (const file of files) {
+    lines.push(`- \`${file.name}\`: ${file.description}`);
+  }
+
+  return lines.join('\n').trimEnd() + '\n';
+}
+
+function missionBundleNextCommand(report: StartReport): string {
+  return `${report.missionControl.executionPlan.cursor.command ?? report.missionControl.resume.instruction}\n`;
 }
 
 function missionBundleCurrentStep(

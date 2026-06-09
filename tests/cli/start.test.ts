@@ -639,6 +639,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stderr).toBe('');
   expect(result.stdout).toContain('Wrote Mission Control bundle to');
+  expect(result.stdout).toContain('README.md');
+  expect(result.stdout).toContain('next-command.txt');
+  expect(result.stdout).toContain('next-tool-call.json');
   expect(result.stdout).toContain('runbook.md');
   expect(result.stdout).toContain('handoff.json');
   expect(result.stdout).toContain('resume.json');
@@ -647,6 +650,24 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('manifest.json');
 
   const bundleDir = path.join(tmp, 'artifacts', 'mission');
+  const quickstart = await fs.readFile(path.join(bundleDir, 'README.md'), 'utf-8');
+  expect(quickstart).toContain('# Mission Bundle');
+  expect(quickstart).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(quickstart).toContain('Status: needs_attention');
+  expect(quickstart).toContain('Current step: ready-1 in ready_now');
+  expect(quickstart).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
+  expect(quickstart).toContain('MCP call: `projscan_search {"query":"auth token loader"}`');
+  expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
+
+  const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
+  expect(nextCommand).toBe('projscan search "auth token loader" --format json\n');
+
+  const nextToolCall = JSON.parse(await fs.readFile(path.join(bundleDir, 'next-tool-call.json'), 'utf-8'));
+  expect(nextToolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
   expect(runbook).toContain('# Mission Runbook');
   expect(runbook).toContain('## Current Cursor');
@@ -686,6 +707,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   });
   expect(manifest.directory).toBe(await fs.realpath(bundleDir));
   expect(manifest.files.map((file: { name: string }) => file.name)).toEqual([
+    'README.md',
+    'next-command.txt',
+    'next-tool-call.json',
     'runbook.md',
     'handoff.json',
     'resume.json',
@@ -711,7 +735,9 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
   const payload = JSON.parse(result.stdout);
   const bundleDir = path.join(tmp, 'artifacts', 'json-mission');
   expect(payload.missionBundle.directory).toBe(await fs.realpath(bundleDir));
-  expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toContain('manifest.json');
+  expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toEqual(
+    expect.arrayContaining(['README.md', 'next-command.txt', 'next-tool-call.json', 'manifest.json']),
+  );
   const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
   expect(manifest.directory).toBe(await fs.realpath(bundleDir));
 });
