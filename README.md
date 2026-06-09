@@ -53,15 +53,24 @@ Regenerate the README screenshots with Playwright:
 npm run docs:screenshots
 ```
 
-## Unreleased: Mission Execution Plan + Runbook
+## Unreleased: Mission Execution Plan + Copyable Handoffs
 
-The next Mission Control slice makes `projscan start --intent "<goal>"` more directly actionable for agents. The JSON payload now includes `missionControl.executionPlan`: ordered phases for the next action, ready commands, blocked inputs, follow-up steps, proof commands, and done criteria.
+`projscan start --intent "<goal>"` gives agents an execution plan with ordered phases, ready commands, blocked inputs, follow-ups, proof, and done criteria. The cursor points to the next useful step and includes MCP `tool` / `args` when projscan can call it directly.
 
-That means a coding agent no longer has to infer the workflow from prose. It can read the cursor-aligned current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion, with `tool` and `args` when that cursor is MCP-callable.
+Projscan also returns a Markdown runbook and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan.
 
-The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, a dedicated `## Handoff Prompt`, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, explicit `inputBindings` for placeholder substitution, downstream follow-up templates, an ordered `checklist`, `remainingProofItems`, `remainingProofCommands`, and MCP-native `remainingProofToolCalls` without traversing the full plan. Checklist `run_proof` rows now carry `tool` and `args` when their proof command maps to an MCP tool, so the ordered task card is directly callable; the normal console `Resume Checklist` and Markdown runbook checklist render the same calls inline as `(MCP: ...)` and mark unmapped proof as `(CLI only)`. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and only the proof commands that remain after the current resume action; default console output renders it as `Handoff Prompt`, `projscan start --handoff-prompt --intent "<goal>"` prints only that copyable line, and full Markdown runbooks render it as `## Handoff Prompt`, so the next-agent handoff is copyable without JSON. `projscan start --next-command --intent "<goal>"` prints only the current runnable cursor command when a developer wants the next shell step without the full report. `missionControl.handoff.readyProof.items` is the complete remaining-proof queue with optional MCP calls per item; `commands` and `toolCalls` stay as command-only and MCP-callable views of the same queue, while `missionControl.proofCommands` preserves the full plan proof surface. Default console `Ready Proof` and `Proof Queue` output use the resume-aware remaining proof queue so the current cursor command is not repeated as proof. Runbooks render the same queue as `Proof queue`; both console and runbook views mark unmapped proof as `CLI only`. Use `projscan start --include-handoff --intent "<goal>"` to print the full Markdown handoff in the console as `Agent Runbook`.
+Use the focused shortcuts when you do not want the full report:
 
-`projscan start --proof-commands --intent "<goal>"` prints the remaining ready proof commands, one per line, when a developer just needs the verification commands without the full report. `projscan start --checklist --intent "<goal>"` prints only the ordered resume checklist when the developer wants the current command, blocked inputs, follow-ups, proof, and done criteria as one copyable task card. `projscan start --runbook --intent "<goal>"` prints only the Markdown mission runbook for piping into a file, issue, or next-agent prompt.
+```bash
+projscan start --next-command --intent "<goal>"      # Current shell command
+projscan start --next-tool-call --intent "<goal>"   # Current MCP call as compact JSON
+projscan start --proof-commands --intent "<goal>"   # Remaining proof commands
+projscan start --checklist --intent "<goal>"        # Ordered resume task card
+projscan start --runbook --intent "<goal>"          # Markdown mission runbook
+projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
+```
+
+Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
 Console output shows the same model for humans:
 
@@ -640,6 +649,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--offline` | Block projscan network-capable features for this run |
 | `--handoff-prompt` | Print only the concise Mission Control handoff prompt (`start`) |
 | `--next-command` | Print only the current Mission Control cursor command (`start`) |
+| `--next-tool-call` | Print only the current Mission Control cursor MCP tool call as JSON (`start`) |
 | `--proof-commands` | Print only ready Mission Control proof commands (`start`) |
 | `--checklist` | Print only the Mission Control resume checklist (`start`) |
 | `--runbook` | Print only the Mission Control Markdown runbook (`start`) |

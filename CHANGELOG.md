@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added optional `missionControl.resume.remainingProofToolCalls` so MCP agents can run mapped remaining proof steps directly without reverse-engineering CLI commands.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
+- Added `projscan start --next-tool-call`, a console shortcut that prints only the current Mission Control cursor MCP tool call as compact JSON.
 - Added `projscan start --proof-commands`, a console shortcut that prints only ready Mission Control proof commands.
 - Added `projscan start --checklist`, a console shortcut that prints only the Mission Control resume checklist.
 - Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.

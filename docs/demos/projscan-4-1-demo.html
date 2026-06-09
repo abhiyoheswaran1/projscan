@@ -422,18 +422,18 @@
       <section class="hero" aria-label="projscan Mission Control">
         <div class="intro">
           <div>
-            <p class="eyebrow">Unreleased developer-life upgrade</p>
-            <h1>Plain-language repo work, routed to proof.</h1>
+            <p class="eyebrow">Developer-life upgrade</p>
+            <h1>Tell projscan what you are doing.</h1>
             <p class="lead">
-              projscan now turns a developer's intent into the right local
-              command, the first files to trust, the ready actions, and the
-              proof commands that make a PR reviewable.
+              projscan routes a developer goal to the next safe command, the
+              MCP call an agent can run, and the proof that makes a handoff
+              reviewable.
             </p>
             <div class="pills" aria-label="Product capabilities">
               <span class="pill">Mission Control</span>
               <span class="pill">Local-first</span>
               <span class="pill">MCP-ready</span>
-              <span class="pill">No source upload</span>
+              <span class="pill">Copyable handoff</span>
             </div>
           </div>
 
@@ -443,12 +443,12 @@
               <span>intent to workflow</span>
             </div>
             <div class="metric">
-              <strong>45</strong>
-              <span>MCP tools preserved</span>
+              <strong>1 JSON</strong>
+              <span>next MCP call</span>
             </div>
             <div class="metric">
-              <strong>A</strong>
-              <span>dogfood health gate</span>
+              <strong>0</strong>
+              <span>source uploads</span>
             </div>
           </div>
         </div>
@@ -458,45 +458,59 @@
             <span class="dot red"></span>
             <span class="dot amber"></span>
             <span class="dot green"></span>
-            <span class="terminal-title">projscan start --intent</span>
+            <span class="terminal-title">projscan start shortcuts</span>
           </div>
           <div class="terminal-body">
             <span class="line"
               ><span class="prompt">$</span>
               <span class="cmd"
-                >projscan start --intent "is it safe to commit this
-                change?"</span
+                >projscan start --intent "what breaks if I rename the auth
+                token loader"</span
               ></span
             >
             <span class="line dim">ProjScan Mission Control</span>
-            <span class="line">Intent: is it safe to commit this change?</span>
+            <span class="line">Intent: what breaks if I rename the auth token loader</span>
             <span class="line">Status: <span class="warn">needs_attention</span></span>
             <span class="line"
               >Route:
-              <span class="notice">Safety gate via projscan_preflight</span></span
+              <span class="notice">Impact analysis via projscan_search</span></span
             >
             <span class="line dim"
-              >confidence: high; matched: safe, commit</span
+              >confidence: high; matched: breaks, rename</span
             >
 
             <div class="term-section">
-              <span class="line term-heading">Action Plan</span>
+              <span class="line term-heading">Run Cursor</span>
               <span class="line"
-                >- Use projscan_preflight before broader workflow
-                commands</span
+                >command: projscan search "auth token loader" --format
+                json</span
               >
               <span class="line"
-                >- Preserve the original goal across follow-up evidence</span
+                >MCP call: projscan_search {"query":"auth token loader"}</span
               >
-              <span class="line"
-                >- Surface blockers with owner, file, or next command</span
+              <span class="line">unlocks: symbol input, file input</span>
+            </div>
+
+            <div class="term-section">
+              <span class="line term-heading">Copyable Shortcuts</span>
+              <span class="line success"
+                >projscan start --next-command --intent "..."</span
+              >
+              <span class="line success"
+                >projscan start --next-tool-call --intent "..."</span
+              >
+              <span class="line success"
+                >projscan start --checklist --intent "..."</span
+              >
+              <span class="line success"
+                >projscan start --runbook --intent "..."</span
               >
             </div>
 
             <div class="term-section">
               <span class="line term-heading">Ready Proof</span>
               <span class="line success"
-                >- projscan preflight --mode before_commit --format json</span
+                >- projscan preflight --mode before_edit --format json</span
               >
               <span class="line success"
                 >- projscan understand --view verify --format json</span
@@ -509,10 +523,10 @@
             <div class="term-section">
               <span class="line term-heading">Done When</span>
               <span class="line"
-                >- Preflight returns proceed or documented manual review</span
+                >- Search returns an exact symbol or file path</span
               >
               <span class="line"
-                >- Every blocker has a concrete follow-up command</span
+                >- Impact is reviewed before code changes begin</span
               >
             </div>
           </div>
@@ -552,12 +566,13 @@
       <section class="proof" id="proof" aria-label="Proof and dependency view">
         <div class="proof-header">
           <div>
-            <p class="eyebrow">Intent, graph, and dependency intelligence</p>
-            <h2>Fewer dead-end agent turns.</h2>
+            <p class="eyebrow">Intent, graph, and handoff intelligence</p>
+            <h2>Copy the next move.</h2>
           </div>
           <p>
-            The new flow is built for a developer asking "what now?" after a
-            change, a failed run, a risky rename, or a dependency question.
+            Developers and agents can pull the next shell command, the MCP
+            call, the ordered checklist, or the Markdown runbook without
+            reading the full report.
           </p>
         </div>
 
@@ -567,34 +582,33 @@
               <span class="dot red"></span>
               <span class="dot amber"></span>
               <span class="dot green"></span>
-              <span class="terminal-title">projscan route</span>
+              <span class="terminal-title">projscan start --next-tool-call</span>
             </div>
             <div class="terminal-body">
               <span class="line"
                 ><span class="prompt">$</span>
                 <span class="cmd"
-                  >projscan route "what breaks if I rename the auth token
-                  loader"</span
+                  >projscan start --next-tool-call --intent "what breaks if I
+                  rename the auth token loader"</span
                 ></span
               >
-              <span class="line dim">Best tools for the developer goal</span>
+              <span class="line dim">Current cursor as MCP JSON</span>
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">1. projscan_impact</span>
-              <span class="line">confidence: high</span>
-              <span class="line">matched: breaks, rename</span>
-              <span class="line notice"
-                >Before renaming or deleting, see every caller that
-                breaks.</span
+              <span class="line term-heading">{"tool":"projscan_search",</span>
+              <span class="line success"
+                >&nbsp;"args":{"query":"auth token loader"}}</span
+              >
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Checklist handoff</span>
+              <span class="line success"
+                >- [ready] run_current ready-1</span
               >
               <span class="line success"
-                >projscan impact --symbol buildCodeGraph --format json</span
+                >- [blocked] resolve_input input-1</span
               >
-              <span class="line">&nbsp;</span>
-              <span class="line term-heading">2. projscan_dataflow</span>
-              <span class="line">confidence: high</span>
-              <span class="line">matched: token</span>
+              <span class="line success">- [ready] run_proof proof-2</span>
               <span class="line notice"
-                >Spot request-data reaching dangerous sinks.</span
+                >Runbook output starts at # Mission Runbook.</span
               >
             </div>
           </section>
@@ -603,35 +617,33 @@
             <div class="signal">
               <span class="tag green">Verify</span>
               <span>
-                <strong>Proof selection</strong>
-                Which tests should I run? now routes to
-                <code>understand --view verify</code> instead of generic
-                regression planning.
+                <strong>Proof commands</strong>
+                <code>--proof-commands</code> returns the remaining
+                verification commands, one per line.
               </span>
             </div>
             <div class="signal">
-              <span class="tag blue">Setup</span>
+              <span class="tag blue">MCP</span>
               <span>
-                <strong>Local command discovery</strong>
-                npm scripts, lint, typecheck, Storybook, Cypress, Playwright,
-                Docker Compose, migrations, and seed/reset commands are called
-                out where agents need them.
+                <strong>MCP call shortcut</strong>
+                <code>--next-tool-call</code> returns the cursor tool and args
+                as compact JSON.
               </span>
             </div>
             <div class="signal">
-              <span class="tag amber">License</span>
+              <span class="tag amber">List</span>
               <span>
-                <strong>Dependency intelligence</strong>
-                Dependency reports now summarize known licenses, copyleft risk,
-                installed package sizes, and package importer lookups.
+                <strong>Checklist shortcut</strong>
+                <code>--checklist</code> returns current, blocked, follow-up,
+                proof, and done rows.
               </span>
             </div>
             <div class="signal">
-              <span class="tag red">Trust</span>
+              <span class="tag red">Doc</span>
               <span>
-                <strong>Release review guardrails</strong>
-                Stable-surface checks preserve public CLI and MCP contracts
-                while allowing additive intent support.
+                <strong>Runbook artifact</strong>
+                <code>--runbook</code> returns the Markdown handoff without the
+                full console report.
               </span>
             </div>
           </div>

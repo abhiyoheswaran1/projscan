@@ -367,6 +367,44 @@ test('start JSON keeps the full report when next-command shortcut is requested',
   expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
 });
 
+test('start prints only the current cursor MCP tool call when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--next-tool-call',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toBe('{"tool":"projscan_search","args":{"query":"auth token loader"}}\n');
+  expect(result.stderr).toBe('');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Run Cursor');
+  expect(result.stdout).not.toContain('Handoff Prompt');
+});
+
+test('start JSON keeps the full report when next-tool-call shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--next-tool-call',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.resume.toolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(report.missionControl.executionPlan.cursor.tool).toBe('projscan_search');
+});
+
 test('start prints only ready proof commands when requested', async () => {
   const result = await runCli([
     'start',

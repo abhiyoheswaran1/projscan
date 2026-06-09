@@ -29,6 +29,7 @@ export function registerStart(): void {
     .option('--include-handoff', 'include a compact handoff payload')
     .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
     .option('--next-command', 'print only the current Mission Control cursor command')
+    .option('--next-tool-call', 'print only the current Mission Control cursor MCP tool call as JSON')
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
@@ -58,6 +59,15 @@ export function registerStart(): void {
             process.exit(1);
           }
           console.log(command);
+          return;
+        }
+        if (cmdOpts.nextToolCall === true) {
+          const toolCall = nextToolCall(report);
+          if (!toolCall) {
+            console.error(chalk.red('No MCP-callable Mission Control cursor tool call is available.'));
+            process.exit(1);
+          }
+          console.log(JSON.stringify(toolCall));
           return;
         }
         if (cmdOpts.proofCommands === true) {
@@ -221,6 +231,17 @@ function printMissionControl(report: StartReport): void {
       }
     }
   }
+}
+
+function nextToolCall(report: StartReport): StartMissionToolCall | undefined {
+  const resumeToolCall = report.missionControl.resume.toolCall;
+  if (resumeToolCall) return resumeToolCall;
+  const cursor = report.missionControl.executionPlan.cursor;
+  if (!cursor.tool) return undefined;
+  return {
+    tool: cursor.tool,
+    ...(typeof cursor.args !== 'undefined' ? { args: cursor.args } : {}),
+  };
 }
 
 function readyProofCommands(report: StartReport): string[] {
