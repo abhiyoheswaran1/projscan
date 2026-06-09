@@ -370,6 +370,16 @@ async function writeMissionBundle(
     'utf-8',
   );
   await fs.writeFile(
+    path.join(targetDir, 'handoff-prompt.txt'),
+    report.missionControl.handoffPrompt.trimEnd() + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'resume-prompt.txt'),
+    report.missionControl.resume.prompt.trimEnd() + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
     path.join(targetDir, 'runbook.md'),
     report.missionControl.runbook.markdown.trimEnd() + '\n',
     'utf-8',
@@ -415,6 +425,16 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'next-tool-call.json',
       path: path.join(targetDir, 'next-tool-call.json'),
       description: 'Current MCP tool call, or null when no mapped call exists.',
+    },
+    {
+      name: 'handoff-prompt.txt',
+      path: path.join(targetDir, 'handoff-prompt.txt'),
+      description: 'Copyable prompt for handing this mission to another agent.',
+    },
+    {
+      name: 'resume-prompt.txt',
+      path: path.join(targetDir, 'resume-prompt.txt'),
+      description: 'Focused prompt for resuming the current cursor.',
     },
     {
       name: 'runbook.md',

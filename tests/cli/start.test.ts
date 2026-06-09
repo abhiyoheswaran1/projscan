@@ -642,6 +642,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('README.md');
   expect(result.stdout).toContain('next-command.txt');
   expect(result.stdout).toContain('next-tool-call.json');
+  expect(result.stdout).toContain('handoff-prompt.txt');
+  expect(result.stdout).toContain('resume-prompt.txt');
   expect(result.stdout).toContain('runbook.md');
   expect(result.stdout).toContain('handoff.json');
   expect(result.stdout).toContain('resume.json');
@@ -657,6 +659,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('Current step: ready-1 in ready_now');
   expect(quickstart).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
   expect(quickstart).toContain('MCP call: `projscan_search {"query":"auth token loader"}`');
+  expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
+  expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
 
   const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
@@ -667,6 +671,16 @@ test('start writes a Mission Control bundle when requested', async () => {
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
   });
+
+  const handoffPrompt = await fs.readFile(path.join(bundleDir, 'handoff-prompt.txt'), 'utf-8');
+  expect(handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now');
+  expect(handoffPrompt).toContain('Ready proof: Ready-to-run proof commands');
+  expect(handoffPrompt.endsWith('\n')).toBe(true);
+
+  const resumePrompt = await fs.readFile(path.join(bundleDir, 'resume-prompt.txt'), 'utf-8');
+  expect(resumePrompt).toBe(
+    'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).\n',
+  );
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
   expect(runbook).toContain('# Mission Runbook');
@@ -710,6 +724,8 @@ test('start writes a Mission Control bundle when requested', async () => {
     'README.md',
     'next-command.txt',
     'next-tool-call.json',
+    'handoff-prompt.txt',
+    'resume-prompt.txt',
     'runbook.md',
     'handoff.json',
     'resume.json',
@@ -736,7 +752,14 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
   const bundleDir = path.join(tmp, 'artifacts', 'json-mission');
   expect(payload.missionBundle.directory).toBe(await fs.realpath(bundleDir));
   expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toEqual(
-    expect.arrayContaining(['README.md', 'next-command.txt', 'next-tool-call.json', 'manifest.json']),
+    expect.arrayContaining([
+      'README.md',
+      'next-command.txt',
+      'next-tool-call.json',
+      'handoff-prompt.txt',
+      'resume-prompt.txt',
+      'manifest.json',
+    ]),
   );
   const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
   expect(manifest.directory).toBe(await fs.realpath(bundleDir));
