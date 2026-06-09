@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `missionControl.reviewGate.proof`, carrying the remaining proof queue into stop-and-review handoffs.
 - Added `missionControl.reviewGate.doneWhen`, carrying mission success criteria into stop-and-review handoffs.
 - Added `missionControl.reviewGate.decisions`, a structured reviewer decision menu for approving another slice, requesting changes, or reviewing a version candidate without publishing.
+- Added copyable `reply` text to `missionControl.reviewGate.decisions` so reviewers can approve another slice, request changes, or request a version-candidate review without inventing permission wording.
 - Added `projscan start --shortcuts`, a console index of copyable Mission Control shortcut commands for the current intent.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.

@@ -1012,6 +1012,7 @@ export interface StartMissionReviewDecision {
   label: string;
   description: string;
   consequence: string;
+  reply: string;
 }
 
 export interface StartMissionReviewGate {

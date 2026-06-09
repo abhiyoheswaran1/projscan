@@ -467,18 +467,21 @@ function buildMissionReviewDecisions(): StartMissionReviewDecision[] {
       label: 'Approve next slice',
       description: 'The agent may start another bounded implementation slice.',
       consequence: 'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+      reply: 'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
     },
     {
       id: 'request_changes',
       label: 'Request changes',
       description: 'The agent must address review feedback before starting more scope.',
       consequence: 'The current mission stays open until feedback and proof are updated.',
+      reply: 'Changes requested: address the review feedback first, update proof, then stop for another review.',
     },
     {
       id: 'review_version_candidate',
       label: 'Review version candidate',
       description: 'The agent may prepare release notes, version rationale, and remaining gates for review.',
       consequence: 'Publishing still requires a separate explicit approval.',
+      reply: 'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
     },
   ];
 }
@@ -572,7 +575,7 @@ function renderMissionReviewGateMarkdown(input: {
 }
 
 function formatMissionReviewDecision(decision: StartMissionReviewDecision): string {
-  return `- [ ] ${decision.label}: ${decision.description} Consequence: ${decision.consequence}`;
+  return `- [ ] ${decision.label}: ${decision.description} Consequence: ${decision.consequence} Reply: "${decision.reply}"`;
 }
 
 function renderMissionReviewProofLines(proof: StartMissionReviewProof): string[] {

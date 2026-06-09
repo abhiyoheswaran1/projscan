@@ -6,6 +6,11 @@ import { loadSession, recordTouch, saveSession } from '../../src/core/session.js
 import { getToolDefinitions, getToolHandler } from '../../src/mcp/tools.js';
 
 let tmp: string;
+const expectedReviewDecisionReplies = [
+  'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  'Changes requested: address the review feedback first, update proof, then stop for another review.',
+  'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+];
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-mcp-start-'));
@@ -684,7 +689,13 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
     'request_changes',
     'review_version_candidate',
   ]);
+  expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
+    expectedReviewDecisionReplies,
+  );
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
+  expect(result.start.missionControl.reviewGate.markdown).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+  );
   expect(result.start.missionControl.handoff.reviewGate).toEqual(result.start.missionControl.reviewGate);
   expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(result.start.missionControl.reviewGate.worktree);
   expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(result.start.missionControl.reviewGate.proof);
@@ -790,6 +801,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('## Reviewer Decision');
   expect(result.start.missionControl.runbook.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
   );
   expect(result.start.missionControl.runbook.markdown).toContain(result.start.missionControl.handoffPrompt);
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');

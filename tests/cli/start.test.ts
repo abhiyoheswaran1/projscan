@@ -7,6 +7,11 @@ import { spawnCli } from '../helpers/cli.js';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
+const expectedReviewDecisionReplies = [
+  'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  'Changes requested: address the review feedback first, update proof, then stop for another review.',
+  'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+];
 
 let tmp: string;
 
@@ -719,6 +724,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(reviewGate).toContain('## Reviewer Decision');
   expect(reviewGate).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
+  expect(reviewGate).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+  );
   expect(reviewGate).toContain('Publishing still requires a separate explicit approval.');
   expect(reviewGate.endsWith('\n')).toBe(true);
 
@@ -746,6 +754,9 @@ test('start writes a Mission Control bundle when requested', async () => {
     'request_changes',
     'review_version_candidate',
   ]);
+  expect(handoff.reviewGate.decisions.map((decision: { reply: string }) => decision.reply)).toEqual(
+    expectedReviewDecisionReplies,
+  );
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
@@ -855,6 +866,9 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout).toContain('- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('## Reviewer Decision');
   expect(result.stdout).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
+  expect(result.stdout).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+  );
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
   expect(result.stdout).not.toContain('Start:');
@@ -916,6 +930,9 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(shortcut.stdout).toContain('## Reviewer Decision');
   expect(shortcut.stdout).toContain('- [ ] Request changes: The agent must address review feedback before starting more scope.');
+  expect(shortcut.stdout).toContain(
+    'Reply: "Changes requested: address the review feedback first, update proof, then stop for another review."',
+  );
   expect(report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
     'approve_next_slice',
     'request_changes',
@@ -944,6 +961,9 @@ test('start prints only the mission runbook when requested', async () => {
   expect(result.stdout).toContain('## Review Gate');
   expect(result.stdout).toContain('## Reviewer Decision');
   expect(result.stdout).toContain('- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.');
+  expect(result.stdout).toContain(
+    'Reply: "Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version."',
+  );
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('## Proof Commands');
   expect(result.stdout).toContain('Resume checklist:');

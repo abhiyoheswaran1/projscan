@@ -6,6 +6,11 @@ import { loadSession, recordTouch, saveSession } from '../../src/core/session.js
 import { computeStartReport } from '../../src/core/start.js';
 
 const tempRoots: string[] = [];
+const expectedReviewDecisionReplies = [
+  'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  'Changes requested: address the review feedback first, update proof, then stop for another review.',
+  'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+];
 
 afterEach(async () => {
   await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
@@ -7088,12 +7093,18 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     'request_changes',
     'review_version_candidate',
   ]);
+  expect(report.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
+    expectedReviewDecisionReplies,
+  );
   expect(report.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
   expect(report.missionControl.reviewGate.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
   );
   expect(report.missionControl.reviewGate.markdown).toContain(
     'Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+  );
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
   );
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
   expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
@@ -7120,11 +7131,17 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.taskCard.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
   );
+  expect(report.missionControl.taskCard.markdown).toContain(
+    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+  );
   expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
   expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
   expect(report.missionControl.runbook.markdown).toContain('## Reviewer Decision');
   expect(report.missionControl.runbook.markdown).toContain(
     '- [ ] Request changes: The agent must address review feedback before starting more scope.',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    'Reply: "Changes requested: address the review feedback first, update proof, then stop for another review."',
   );
   expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
 });
