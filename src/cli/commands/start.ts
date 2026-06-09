@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 
 import {
@@ -35,6 +37,7 @@ export function registerStart(): void {
     .option('--checklist', 'print only the Mission Control resume checklist')
     .option('--resume-json', 'print only the Mission Control resume object as compact JSON')
     .option('--handoff-json', 'print only the Mission Control handoff object as compact JSON')
+    .option('--save-mission <dir>', 'write the Mission Control bundle to this directory')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
@@ -42,9 +45,10 @@ export function registerStart(): void {
       maybeCompactBanner();
       const format = assertFormatSupported('start');
       const mode = parseMode(cmdOpts.mode);
+      const rootPath = getRootPath();
 
       try {
-        const report = await computeStartReport(getRootPath(), {
+        const report = await computeStartReport(rootPath, {
           mode,
           intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
           maxTasks: cmdOpts.maxTasks,
@@ -52,6 +56,15 @@ export function registerStart(): void {
           includeHandoff: cmdOpts.includeHandoff === true,
         });
 
+        if (typeof cmdOpts.saveMission === 'string' && cmdOpts.saveMission.length > 0) {
+          const missionBundle = await writeMissionBundle(rootPath, cmdOpts.saveMission, report);
+          if (format === 'json') {
+            console.log(JSON.stringify({ missionBundle }, null, 2));
+            return;
+          }
+          printMissionBundle(missionBundle);
+          return;
+        }
         if (format === 'json') {
           console.log(JSON.stringify(report, null, 2));
           return;
@@ -308,6 +321,131 @@ function readyProofCommands(report: StartReport): string[] {
     : mission.proofCommands;
 }
 
+interface MissionBundleFile {
+  name: string;
+  path: string;
+  description: string;
+}
+
+interface MissionBundleManifest {
+  schemaVersion: 1;
+  kind: 'projscan.mission-bundle';
+  directory: string;
+  intent?: string;
+  mode: StartReport['mode'];
+  status: StartReport['missionControl']['status'];
+  currentStep?: {
+    phaseId: string;
+    stepId: string;
+    command?: string;
+    toolCall?: StartMissionToolCall;
+  };
+  files: MissionBundleFile[];
+}
+
+async function writeMissionBundle(
+  rootPath: string,
+  bundleDir: string,
+  report: StartReport,
+): Promise<MissionBundleManifest> {
+  const targetDir = path.resolve(rootPath, bundleDir);
+  const files = missionBundleFiles(targetDir);
+  const manifest: MissionBundleManifest = {
+    schemaVersion: 1,
+    kind: 'projscan.mission-bundle',
+    directory: targetDir,
+    ...(report.missionControl.intent ? { intent: report.missionControl.intent } : {}),
+    mode: report.mode,
+    status: report.missionControl.status,
+    currentStep: missionBundleCurrentStep(report),
+    files,
+  };
+
+  await fs.mkdir(targetDir, { recursive: true });
+  await fs.writeFile(
+    path.join(targetDir, 'runbook.md'),
+    report.missionControl.runbook.markdown.trimEnd() + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'handoff.json'),
+    JSON.stringify(report.missionControl.handoff, null, 2) + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'resume.json'),
+    JSON.stringify(report.missionControl.resume, null, 2) + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'ready-tool-calls.json'),
+    JSON.stringify(readyToolCalls(report), null, 2) + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'proof-commands.txt'),
+    readyProofCommands(report).join('\n') + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(path.join(targetDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+
+  return manifest;
+}
+
+function missionBundleFiles(targetDir: string): MissionBundleFile[] {
+  return [
+    {
+      name: 'runbook.md',
+      path: path.join(targetDir, 'runbook.md'),
+      description: 'Human-readable Mission Control runbook.',
+    },
+    {
+      name: 'handoff.json',
+      path: path.join(targetDir, 'handoff.json'),
+      description: 'Structured Mission Control handoff object.',
+    },
+    {
+      name: 'resume.json',
+      path: path.join(targetDir, 'resume.json'),
+      description: 'Focused resume object for the current cursor.',
+    },
+    {
+      name: 'ready-tool-calls.json',
+      path: path.join(targetDir, 'ready-tool-calls.json'),
+      description: 'Current cursor MCP call followed by remaining MCP-callable proof.',
+    },
+    {
+      name: 'proof-commands.txt',
+      path: path.join(targetDir, 'proof-commands.txt'),
+      description: 'Remaining ready proof commands, one per line.',
+    },
+    {
+      name: 'manifest.json',
+      path: path.join(targetDir, 'manifest.json'),
+      description: 'Bundle index with mode, status, current step, and file paths.',
+    },
+  ];
+}
+
+function missionBundleCurrentStep(
+  report: StartReport,
+): MissionBundleManifest['currentStep'] {
+  const cursor = report.missionControl.executionPlan.cursor;
+  return {
+    phaseId: cursor.phaseId,
+    stepId: cursor.stepId,
+    ...(cursor.command ? { command: cursor.command } : {}),
+    ...(cursor.tool ? { toolCall: { tool: cursor.tool, ...(typeof cursor.args !== 'undefined' ? { args: cursor.args } : {}) } } : {}),
+  };
+}
+
+function printMissionBundle(manifest: MissionBundleManifest): void {
+  console.log(chalk.green(`Wrote Mission Control bundle to ${manifest.directory}`));
+  for (const file of manifest.files) {
+    console.log(`- ${file.name}`);
+  }
+}
+
 function printChecklistOnly(report: StartReport): void {
   const checklist = report.missionControl.resume.checklist ?? [];
   if (checklist.length === 0) {
@@ -344,6 +482,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--checklist', options),
     shortcutCommand('--resume-json', options),
     shortcutCommand('--handoff-json', options),
+    shortcutCommand('--save-mission .projscan/mission', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
     startBaseCommand(options),

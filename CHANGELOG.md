@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --checklist`, a console shortcut that prints only the Mission Control resume checklist.
 - Added `projscan start --resume-json`, a console shortcut that prints only the structured Mission Control resume object.
 - Added `projscan start --handoff-json`, a console shortcut that prints only the structured Mission Control handoff object.
+- Added `projscan start --save-mission <dir>`, which writes a Mission Control handoff bundle with Markdown, JSON, MCP calls, proof commands, and a manifest.
 - Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.
 
 ### Changed

@@ -626,6 +626,96 @@ test('start JSON keeps the full report when handoff-json shortcut is requested',
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
 });
 
+test('start writes a Mission Control bundle when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--save-mission',
+    'artifacts/mission',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout).toContain('Wrote Mission Control bundle to');
+  expect(result.stdout).toContain('runbook.md');
+  expect(result.stdout).toContain('handoff.json');
+  expect(result.stdout).toContain('resume.json');
+  expect(result.stdout).toContain('ready-tool-calls.json');
+  expect(result.stdout).toContain('proof-commands.txt');
+  expect(result.stdout).toContain('manifest.json');
+
+  const bundleDir = path.join(tmp, 'artifacts', 'mission');
+  const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
+  expect(runbook).toContain('# Mission Runbook');
+  expect(runbook).toContain('## Current Cursor');
+
+  const handoff = JSON.parse(await fs.readFile(path.join(bundleDir, 'handoff.json'), 'utf-8'));
+  expect(handoff.currentStep.stepId).toBe('ready-1');
+  expect(handoff.resume.currentStep.stepId).toBe('ready-1');
+
+  const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
+  expect(resume.currentStep.stepId).toBe('ready-1');
+
+  const readyToolCalls = JSON.parse(await fs.readFile(path.join(bundleDir, 'ready-tool-calls.json'), 'utf-8'));
+  expect(readyToolCalls[0]).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+
+  const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
+  expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
+
+  const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
+  expect(manifest).toMatchObject({
+    schemaVersion: 1,
+    kind: 'projscan.mission-bundle',
+    mode: 'before_edit',
+    status: 'needs_attention',
+    currentStep: {
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      command: 'projscan search "auth token loader" --format json',
+      toolCall: {
+        tool: 'projscan_search',
+        args: { query: 'auth token loader' },
+      },
+    },
+  });
+  expect(manifest.directory).toBe(await fs.realpath(bundleDir));
+  expect(manifest.files.map((file: { name: string }) => file.name)).toEqual([
+    'runbook.md',
+    'handoff.json',
+    'resume.json',
+    'ready-tool-calls.json',
+    'proof-commands.txt',
+    'manifest.json',
+  ]);
+});
+
+test('start reports the Mission Control bundle as JSON when save-mission uses JSON format', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--save-mission',
+    'artifacts/json-mission',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  const bundleDir = path.join(tmp, 'artifacts', 'json-mission');
+  expect(payload.missionBundle.directory).toBe(await fs.realpath(bundleDir));
+  expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toContain('manifest.json');
+  const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
+  expect(manifest.directory).toBe(await fs.realpath(bundleDir));
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',
@@ -688,6 +778,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --resume-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");
