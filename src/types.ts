@@ -913,6 +913,7 @@ export interface StartMissionHandoff {
   readyProof: {
     summary: string;
     commands: string[];
+    toolCalls?: StartMissionProofToolCall[];
   };
 }
 

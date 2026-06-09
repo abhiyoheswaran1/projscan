@@ -153,6 +153,7 @@ test('start report routes a plain-language intent into mission control', async (
       readyProof: {
         summary: 'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
         commands: report.missionControl.resume.remainingProofCommands,
+        toolCalls: report.missionControl.resume.remainingProofToolCalls,
       },
     }),
   );
@@ -6903,6 +6904,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
   expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
   expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
+  expect(report.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
   expect(report.missionControl.runbook).toEqual(
     expect.objectContaining({
       title: 'Runbook: Find exact target for impact analysis',

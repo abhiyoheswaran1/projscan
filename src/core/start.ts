@@ -1101,6 +1101,7 @@ function missionHandoff(
   proofCommands: string[],
 ): StartMissionControl['handoff'] {
   const readyProofCommands = resume.remainingProofCommands ?? proofCommands;
+  const readyProofToolCalls = resume.remainingProofToolCalls;
   return {
     currentStep,
     resume,
@@ -1111,6 +1112,7 @@ function missionHandoff(
     readyProof: {
       summary: READY_PROOF_SUMMARY,
       commands: readyProofCommands,
+      ...(readyProofToolCalls && readyProofToolCalls.length > 0 ? { toolCalls: readyProofToolCalls } : {}),
     },
   };
 }

@@ -264,6 +264,8 @@ test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async
   expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
   expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
+  expect(report.missionControl.handoff.readyProof.toolCalls?.map((call: { tool: string }) => call.tool)).not.toContain('projscan_search');
 });
 
 test('start console runs impact directly for file path intents', async () => {
