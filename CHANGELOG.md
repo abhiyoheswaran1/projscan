@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added saved mission bundle `proof-logs/summary.json`; saved `mission.sh` now records `not_run`, `running`, `passed`, or `failed` mission state for wrappers and agents.
 - Added saved mission bundle `status.sh`, an executable status gate for `proof-logs/summary.json` with CI-friendly exit codes.
 - Added saved mission bundle `review.sh`, an executable review surface that prints mission status, review gate text, run report evidence, review commands, and reviewer reply choices.
+- Added quick commands to saved mission bundle README files so developers can run `./mission.sh`, `./status.sh`, and `./review.sh` without scanning the manifest.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 - Added `projscan start --next-tool-call`, a console shortcut that prints only the current Mission Control cursor MCP tool call as compact JSON.

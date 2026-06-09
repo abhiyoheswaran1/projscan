@@ -721,6 +721,13 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('Intent: what breaks if I rename the auth token loader');
   expect(quickstart).toContain('Status: needs_attention');
   expect(quickstart).toContain('Current step: ready-1 in ready_now');
+  expect(quickstart).toContain('## Quick Commands');
+  expect(quickstart).toContain('```sh\n./mission.sh\n./status.sh\n./review.sh\n```');
+  expect(quickstart).toContain('- `./mission.sh` runs the current command and remaining proof.');
+  expect(quickstart).toContain('- `./status.sh` prints the latest mission state.');
+  expect(quickstart).toContain('- `./review.sh` prints the review packet for approval.');
+  expect(quickstart.indexOf('## Quick Commands')).toBeLessThan(quickstart.indexOf('## Run Next'));
+  expect(quickstart.indexOf('## Run Next')).toBeLessThan(quickstart.indexOf('## Reviewer Replies'));
   expect(quickstart).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
   expect(quickstart).toContain('MCP call: `projscan_search {"query":"auth token loader"}`');
   expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
