@@ -32,8 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `missionControl.handoff.readyProof.commands` now uses the resume remaining-proof queue when available, avoiding duplicate proof of the current cursor command.
 - `missionControl.handoff.readyProof.toolCalls` now carries MCP-native remaining proof calls when available.
 - `missionControl.handoff.readyProof.items` now mirrors the complete remaining-proof item queue, including CLI-only proof steps.
+- `projscan start --intent "<goal>"` console output now renders `Proof Queue` under `Ready Proof`, showing MCP-callable proof steps and CLI-only proof steps without requiring `--include-handoff`.
 - Mission runbooks now render a `Proof queue` from remaining proof items, marking each step as MCP-callable or `CLI only`.
-- `projscan start --include-handoff` now prints an `Agent Runbook` section while default console output stays compact.
+- `projscan start --include-handoff` now prints an `Agent Runbook` section for the full Markdown handoff.
 
 ## [4.1.0] - 2026-06-09 - "Mission Control"
 

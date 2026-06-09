@@ -9,7 +9,7 @@ import {
 } from '../_shared.js';
 import { computeStartReport } from '../../core/start.js';
 import { isWorkplanMode } from '../../core/workplan.js';
-import type { StartReport, StartRisk, WorkplanMode } from '../../types.js';
+import type { StartMissionProofItem, StartMissionToolCall, StartReport, StartRisk, WorkplanMode } from '../../types.js';
 
 export function registerStart(): void {
   program
@@ -168,6 +168,13 @@ function printMissionControl(report: StartReport): void {
     for (const command of mission.proofCommands.slice(0, 3)) {
       console.log(chalk.dim(`- ${command}`));
     }
+    const proofItems = mission.handoff.readyProof.items ?? [];
+    if (proofItems.length > 0) {
+      console.log(chalk.bold('Proof Queue'));
+      for (const item of proofItems) {
+        console.log(chalk.dim(`- ${formatConsoleProofItem(item)}`));
+      }
+    }
   }
 }
 
@@ -217,6 +224,17 @@ function printExecutionCursor(report: StartReport): void {
     console.log(`unlocks: ${cursor.unlocks.join(', ')}`);
   }
   console.log(chalk.dim(cursor.reason));
+}
+
+function formatConsoleProofItem(item: StartMissionProofItem): string {
+  const proofAction = item.toolCall ? `MCP: ${formatConsoleToolCall(item.toolCall)}` : 'CLI only';
+  return `${item.stepId}: ${item.command} (${proofAction})`;
+}
+
+function formatConsoleToolCall(toolCall: StartMissionToolCall): string {
+  return typeof toolCall.args !== 'undefined'
+    ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
+    : toolCall.tool;
 }
 
 function routeEvidence(route: StartReport['missionControl']['routedIntent']): string {

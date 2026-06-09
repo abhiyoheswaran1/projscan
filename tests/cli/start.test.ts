@@ -192,6 +192,9 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   const proofCommands = extractProofCommands(result.stdout);
   expect(proofCommands.some((command) => command.includes('<'))).toBe(false);
   expect(proofCommands).toContain('projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('Proof Queue');
+  expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain('- proof-4: projscan preflight --format json (MCP: projscan_preflight {})');
   expect(result.stdout).not.toContain('projscan impact --symbol buildCodeGraph --format json');
   expect(result.stdout).not.toContain('Agent Runbook');
 });
@@ -329,6 +332,26 @@ test('start console runbook renders a complete proof queue for handoff intents',
   expect(result.stdout).toContain('Proof queue:');
   expect(result.stdout).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.stdout).toContain('- proof-6: `projscan handoff` (CLI only)');
+});
+
+test('start console renders a proof queue for handoff intents without the runbook', async () => {
+  const { session } = await loadSession(tmp);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(tmp, session);
+
+  const result = await runCli([
+    'start',
+    '--intent',
+    'give the next agent a handoff',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Ready Proof');
+  expect(result.stdout).toContain('Proof Queue');
+  expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain('- proof-6: projscan handoff (CLI only)');
+  expect(result.stdout).not.toContain('Agent Runbook');
 });
 
 test('start console runs impact directly for file path intents', async () => {
