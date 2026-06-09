@@ -332,6 +332,41 @@ test('start JSON keeps the full report when handoff prompt shortcut is requested
   expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
 });
 
+test('start prints only the current cursor command when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--next-command',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toBe('projscan search "auth token loader" --format json\n');
+  expect(result.stderr).toBe('');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Run Cursor');
+  expect(result.stdout).not.toContain('Handoff Prompt');
+});
+
+test('start JSON keeps the full report when next-command shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--next-command',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');

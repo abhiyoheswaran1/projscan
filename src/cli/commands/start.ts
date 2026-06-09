@@ -28,6 +28,7 @@ export function registerStart(): void {
     .option('--max-risks <count>', 'maximum start risks to return', parsePositiveInt)
     .option('--include-handoff', 'include a compact handoff payload')
     .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
+    .option('--next-command', 'print only the current Mission Control cursor command')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -45,6 +46,15 @@ export function registerStart(): void {
 
         if (format === 'json') {
           console.log(JSON.stringify(report, null, 2));
+          return;
+        }
+        if (cmdOpts.nextCommand === true) {
+          const command = report.missionControl.executionPlan.cursor.command;
+          if (!command) {
+            console.error(chalk.red('No runnable Mission Control cursor command is available.'));
+            process.exit(1);
+          }
+          console.log(command);
           return;
         }
         if (cmdOpts.handoffPrompt === true) {

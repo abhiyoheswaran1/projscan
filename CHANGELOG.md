@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added optional `missionControl.resume.remainingProofCommands` so handoff prompts and agents can run proof that remains after the current resume command without duplicating work.
 - Added optional `missionControl.resume.remainingProofToolCalls` so MCP agents can run mapped remaining proof steps directly without reverse-engineering CLI commands.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
+- Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 
 ### Changed
 
