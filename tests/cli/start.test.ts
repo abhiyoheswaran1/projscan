@@ -707,6 +707,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('shortcuts.json');
   expect(result.stdout).toContain('mission.sh');
   expect(result.stdout).toContain('status.sh');
+  expect(result.stdout).toContain('review.sh');
   expect(result.stdout).toContain('proof-logs/README.md');
   expect(result.stdout).toContain('proof-logs/status.jsonl');
   expect(result.stdout).toContain('proof-logs/run-report.md');
@@ -733,6 +734,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
   expect(quickstart).toContain('- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.');
   expect(quickstart).toContain('- `status.sh`: Shell script that prints the latest mission run state from summary.json.');
+  expect(quickstart).toContain('- `review.sh`: Shell script that prints status, review evidence, run report, and reviewer replies.');
   expect(quickstart).toContain('- `proof-logs/README.md`: Proof-log index for output written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.');
@@ -953,6 +955,35 @@ test('start writes a Mission Control bundle when requested', async () => {
   const statusMode = (await fs.stat(path.join(bundleDir, 'status.sh'))).mode;
   expect(statusMode & 0o111).not.toBe(0);
 
+  const reviewScript = await fs.readFile(path.join(bundleDir, 'review.sh'), 'utf-8');
+  expect(reviewScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
+  expect(reviewScript).toContain("printf '%s\\n' 'Mission Review'");
+  expect(reviewScript).toContain('"${MISSION_DIR}/status.sh"');
+  expect(reviewScript).toContain('status_code=$?');
+  expect(reviewScript).toContain('review-gate.md');
+  expect(reviewScript).toContain('proof-logs/run-report.md');
+  expect(reviewScript).toContain('review-replies.txt');
+  expect(reviewScript).toContain("printf '%s\\n' '- git status --short'");
+  expect(reviewScript).toContain("printf '%s\\n' '- git diff --stat'");
+  expect(reviewScript).toContain('exit "$status_code"');
+
+  const reviewMode = (await fs.stat(path.join(bundleDir, 'review.sh'))).mode;
+  expect(reviewMode & 0o111).not.toBe(0);
+
+  const initialReview = await runScript(path.join(bundleDir, 'review.sh'), [], { cwd: bundleDir });
+  expect(initialReview.exitCode).toBe(2);
+  expect(initialReview.stdout).toContain('Mission Review');
+  expect(initialReview.stdout).toContain('Mission status: not_run');
+  expect(initialReview.stdout).toContain('Review gate: review-gate.md');
+  expect(initialReview.stdout).toContain('# Mission Review Gate');
+  expect(initialReview.stdout).toContain('Run report: proof-logs/run-report.md');
+  expect(initialReview.stdout).toContain('# Mission Run Report');
+  expect(initialReview.stdout).toContain('Evidence commands');
+  expect(initialReview.stdout).toContain('- git status --short');
+  expect(initialReview.stdout).toContain('- git diff --stat');
+  expect(initialReview.stdout).toContain('Reviewer replies:');
+  expect(initialReview.stdout).toContain('Approve next slice: Approved: start one more bounded implementation slice.');
+
   const proofLogReadme = await fs.readFile(path.join(bundleDir, 'proof-logs', 'README.md'), 'utf-8');
   expect(proofLogReadme).toContain('# Mission Proof Logs');
   expect(proofLogReadme).toContain('Read `summary.json` for the latest not_run, running, passed, or failed state.');
@@ -1055,6 +1086,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'shortcuts.json',
     'mission.sh',
     'status.sh',
+    'review.sh',
     'proof-logs/README.md',
     'proof-logs/status.jsonl',
     'proof-logs/run-report.md',
@@ -1095,6 +1127,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'shortcuts.json',
       'mission.sh',
       'status.sh',
+      'review.sh',
       'proof-logs/README.md',
       'proof-logs/status.jsonl',
       'proof-logs/run-report.md',

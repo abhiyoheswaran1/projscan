@@ -484,6 +484,9 @@ async function writeMissionBundle(
   const statusScriptPath = path.join(targetDir, 'status.sh');
   await fs.writeFile(statusScriptPath, buildMissionStatusScript(), 'utf-8');
   await fs.chmod(statusScriptPath, 0o755).catch(() => undefined);
+  const reviewScriptPath = path.join(targetDir, 'review.sh');
+  await fs.writeFile(reviewScriptPath, buildMissionReviewScript(report), 'utf-8');
+  await fs.chmod(reviewScriptPath, 0o755).catch(() => undefined);
   await fs.writeFile(
     path.join(targetDir, 'proof-commands.txt'),
     readyProofCommands(report).join('\n') + '\n',
@@ -580,6 +583,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'status.sh',
       path: path.join(targetDir, 'status.sh'),
       description: 'Shell script that prints the latest mission run state from summary.json.',
+    },
+    {
+      name: 'review.sh',
+      path: path.join(targetDir, 'review.sh'),
+      description: 'Shell script that prints status, review evidence, run report, and reviewer replies.',
     },
     {
       name: 'proof-logs/README.md',
@@ -768,6 +776,59 @@ function buildMissionStatusScript(): string {
     'if (summary.log) console.log(`Log: ${summary.log}`);',
     'process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;',
     'NODE',
+    '',
+  ].join('\n');
+}
+
+function buildMissionReviewScript(report: StartReport): string {
+  const evidenceCommands = report.missionControl.reviewGate.commands;
+  return [
+    '#!/usr/bin/env sh',
+    'set -eu',
+    '',
+    'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
+    'status_code=2',
+    '',
+    scriptPrint('Mission Review'),
+    scriptPrint(''),
+    'if [ -x "${MISSION_DIR}/status.sh" ]; then',
+    '  set +e',
+    '  "${MISSION_DIR}/status.sh"',
+    '  status_code=$?',
+    '  set -e',
+    'else',
+    `  ${scriptPrintError('Missing status.sh; run projscan start --save-mission again.')}`,
+    'fi',
+    '',
+    scriptPrint(''),
+    scriptPrint('Review gate: review-gate.md'),
+    'if [ -f "${MISSION_DIR}/review-gate.md" ]; then',
+    "  sed -n '1,220p' \"${MISSION_DIR}/review-gate.md\"",
+    'else',
+    `  ${scriptPrintError('Missing review-gate.md.')}`,
+    'fi',
+    '',
+    scriptPrint(''),
+    scriptPrint('Run report: proof-logs/run-report.md'),
+    'if [ -f "${MISSION_DIR}/proof-logs/run-report.md" ]; then',
+    "  sed -n '1,220p' \"${MISSION_DIR}/proof-logs/run-report.md\"",
+    'else',
+    `  ${scriptPrintError('Missing proof-logs/run-report.md. Run ./mission.sh to create proof output.')}`,
+    'fi',
+    '',
+    scriptPrint(''),
+    scriptPrint('Evidence commands'),
+    ...evidenceCommands.map((command) => scriptPrint(`- ${command}`)),
+    '',
+    scriptPrint(''),
+    scriptPrint('Reviewer replies:'),
+    'if [ -f "${MISSION_DIR}/review-replies.txt" ]; then',
+    '  cat "${MISSION_DIR}/review-replies.txt"',
+    'else',
+    `  ${scriptPrintError('Missing review-replies.txt.')}`,
+    'fi',
+    '',
+    'exit "$status_code"',
     '',
   ].join('\n');
 }
