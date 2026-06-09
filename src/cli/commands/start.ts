@@ -469,8 +469,10 @@ async function writeMissionBundle(
     JSON.stringify(buildShortcutIndex(report, shortcutOptions), null, 2) + '\n',
     'utf-8',
   );
+  await fs.mkdir(path.join(targetDir, 'proof-logs'), { recursive: true });
+  await fs.writeFile(path.join(targetDir, 'proof-logs', 'README.md'), missionProofLogsReadme(report), 'utf-8');
   const missionScriptPath = path.join(targetDir, 'mission.sh');
-  await fs.writeFile(missionScriptPath, buildMissionScript(report), 'utf-8');
+  await fs.writeFile(missionScriptPath, buildMissionScript(report, { proofLogs: true }), 'utf-8');
   await fs.chmod(missionScriptPath, 0o755).catch(() => undefined);
   await fs.writeFile(
     path.join(targetDir, 'proof-commands.txt'),
@@ -563,6 +565,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'mission.sh',
       path: path.join(targetDir, 'mission.sh'),
       description: 'Shell script that runs the current cursor command and remaining proof queue.',
+    },
+    {
+      name: 'proof-logs/README.md',
+      path: path.join(targetDir, 'proof-logs', 'README.md'),
+      description: 'Proof-log index for output written by mission.sh.',
     },
     {
       name: 'proof-commands.txt',
@@ -698,13 +705,18 @@ function printMissionScriptOnly(report: StartReport): void {
   console.log(buildMissionScript(report).trimEnd());
 }
 
-function buildMissionScript(report: StartReport): string {
+interface MissionScriptOptions {
+  proofLogs?: boolean;
+}
+
+function buildMissionScript(report: StartReport, options: MissionScriptOptions = {}): string {
   const mission = report.missionControl;
   const cursor = mission.executionPlan.cursor;
   const proofCommands = readyProofCommands(report);
   const unsafeCommand = [cursor.command, ...proofCommands]
     .filter((command): command is string => typeof command === 'string')
     .find(commandHasShellExpansionSyntax);
+  const proofLogs = options.proofLogs === true && !unsafeCommand && typeof cursor.command === 'string';
   const lines = [
     '#!/usr/bin/env sh',
     'set -eu',
@@ -725,14 +737,27 @@ function buildMissionScript(report: StartReport): string {
     return lines.join('\n') + '\n';
   }
 
+  if (proofLogs) {
+    lines.push(
+      'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
+      'PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"',
+      'mkdir -p "$PROOF_LOG_DIR"',
+      scriptPrintExpanded('Proof logs: ${PROOF_LOG_DIR}'),
+      scriptPrint(''),
+    );
+  }
+
   if (!cursor.command) {
     lines.push(scriptPrintError(`Blocked: ${cursor.instruction ?? cursor.label}`), 'exit 2');
     return lines.join('\n') + '\n';
   }
 
-  lines.push(scriptPrint('Run current command'), cursor.command);
+  lines.push(...scriptCommandBlock('Run current command', cursor.command, proofLogs ? `current-${cursor.stepId}.log` : undefined));
   if (proofCommands.length > 0) {
-    lines.push(scriptPrint(''), scriptPrint('Run remaining proof'), ...proofCommands);
+    lines.push(scriptPrint(''), scriptPrint('Run remaining proof'));
+    for (const [index, command] of proofCommands.entries()) {
+      lines.push(...scriptCommandBlock(`Proof ${index + 1}`, command, proofLogs ? `proof-${index + 1}.log` : undefined));
+    }
   }
   lines.push(
     scriptPrint(''),
@@ -743,8 +768,56 @@ function buildMissionScript(report: StartReport): string {
   return lines.join('\n') + '\n';
 }
 
+function missionProofLogsReadme(report: StartReport): string {
+  const entries = missionProofLogEntries(report);
+  const lines = [
+    '# Mission Proof Logs',
+    '',
+    'Run `./mission.sh` from this bundle to write command output here.',
+    '',
+    '## Expected Logs',
+    '',
+  ];
+  if (entries.length === 0) {
+    lines.push('No runnable proof logs are planned for this mission.');
+  } else {
+    for (const entry of entries) {
+      lines.push(`- \`${entry.name}\`: \`${entry.command}\``);
+    }
+  }
+  return lines.join('\n').trimEnd() + '\n';
+}
+
+function missionProofLogEntries(report: StartReport): Array<{ name: string; command: string }> {
+  const cursor = report.missionControl.executionPlan.cursor;
+  const proofCommands = readyProofCommands(report);
+  const unsafeCommand = [cursor.command, ...proofCommands]
+    .filter((command): command is string => typeof command === 'string')
+    .find(commandHasShellExpansionSyntax);
+  if (unsafeCommand || !cursor.command) return [];
+  return [
+    { name: `current-${cursor.stepId}.log`, command: cursor.command },
+    ...proofCommands.map((command, index) => ({ name: `proof-${index + 1}.log`, command })),
+  ];
+}
+
+function scriptCommandBlock(label: string, command: string, logName: string | undefined): string[] {
+  if (!logName) return [scriptPrint(label), command];
+  return [
+    scriptPrint(label),
+    scriptPrint(`Writing proof-logs/${logName}`),
+    '{',
+    `  ${command}`,
+    `} > "$PROOF_LOG_DIR/${logName}" 2>&1`,
+  ];
+}
+
 function scriptPrint(value: string): string {
   return `printf '%s\\n' ${shellQuote(value)}`;
+}
+
+function scriptPrintExpanded(value: string): string {
+  return `printf '%s\\n' "${value.replace(/(["\\])/g, '\\$1')}"`;
 }
 
 function scriptPrintError(value: string): string {

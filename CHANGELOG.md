@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --shortcuts-json` and saved `shortcuts.json` mission bundle files so agents can discover shortcut commands without parsing console text.
 - Added `projscan start --shortcuts`, a console index of copyable Mission Control shortcut commands for the current intent.
 - Added `projscan start --mission-script` and saved `mission.sh` mission bundle files for running the current cursor command and remaining proof queue from one shell script.
+- Added saved mission bundle `proof-logs/README.md`; saved `mission.sh` writes current-command and proof-command output under `proof-logs/`.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 - Added `projscan start --next-tool-call`, a console shortcut that prints only the current Mission Control cursor MCP tool call as compact JSON.

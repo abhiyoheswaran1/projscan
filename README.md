@@ -82,7 +82,7 @@ projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, `mission.sh`, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, `mission.sh`, `proof-logs/README.md`, proof commands, and a manifest. Running saved `mission.sh` writes current and proof command output under `proof-logs/`.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
