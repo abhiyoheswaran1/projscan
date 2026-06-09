@@ -6674,6 +6674,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       label: 'symbol',
       dependsOn: ['ready-1'],
       unlocks: ['follow-up-1'],
+      placeholder: '<symbol-from-search>',
       instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
@@ -6683,6 +6684,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       label: 'file',
       dependsOn: ['ready-1'],
       unlocks: ['follow-up-2'],
+      placeholder: '<file-from-search>',
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
@@ -6735,6 +6737,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       kind: 'input',
       status: 'blocked',
       label: 'symbol',
+      placeholder: '<symbol-from-search>',
       instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
@@ -6743,8 +6746,25 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       kind: 'input',
       status: 'blocked',
       label: 'file',
+      placeholder: '<file-from-search>',
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
+  ]);
+  expect(report.missionControl.resume.inputBindings).toEqual([
+    {
+      inputId: 'input-1',
+      label: 'symbol',
+      placeholder: '<symbol-from-search>',
+      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      followUpIds: ['follow-up-1'],
+    },
+    {
+      inputId: 'input-2',
+      label: 'file',
+      placeholder: '<file-from-search>',
+      instruction: 'Replace <file-from-search> with a file path returned by the search step.',
+      followUpIds: ['follow-up-2'],
+    },
   ]);
   expect(report.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
@@ -6803,6 +6823,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('After running, resolve:');
   expect(report.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('Template inputs:');
+  expect(report.missionControl.runbook.markdown).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('Then use:');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');

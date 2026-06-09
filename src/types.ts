@@ -828,11 +828,20 @@ export interface StartMissionResumeReference {
   label: string;
   instruction?: string;
   command?: string;
+  placeholder?: string;
 }
 
 export interface StartMissionToolCall {
   tool: string;
   args?: Record<string, unknown>;
+}
+
+export interface StartMissionInputBinding {
+  inputId: string;
+  label: string;
+  placeholder: string;
+  instruction: string;
+  followUpIds: string[];
 }
 
 export interface StartMissionResumeFollowUp {
@@ -856,6 +865,7 @@ export interface StartMissionResume {
   commandBlock?: string;
   toolCall?: StartMissionToolCall;
   followUps?: StartMissionResumeFollowUp[];
+  inputBindings?: StartMissionInputBinding[];
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }
@@ -888,6 +898,7 @@ export interface StartExecutionStep {
   tool?: string;
   args?: Record<string, unknown>;
   instruction?: string;
+  placeholder?: string;
   dependsOn?: string[];
   blockedBy?: string[];
   unlocks?: string[];
@@ -908,6 +919,7 @@ export interface StartExecutionCursor {
   label: string;
   command?: string;
   instruction?: string;
+  placeholder?: string;
   blockedBy?: string[];
   unlocks?: string[];
   reason: string;

@@ -16,6 +16,7 @@ import type {
   StartExecutionPlan,
   StartExecutionStatus,
   StartExecutionStep,
+  StartMissionInputBinding,
   StartMissionResume,
   StartMissionResumeReference,
   StartMissionRunbook,
@@ -474,6 +475,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
   const toolCall = resumeToolCall(plan, cursor);
   const followUps = resumeFollowUps(plan, cursor);
+  const inputBindings = resumeInputBindings(plan, cursor);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -492,9 +494,29 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     ...(commandBlock ? { commandBlock } : {}),
     ...(toolCall ? { toolCall } : {}),
     ...(followUps.length > 0 ? { followUps } : {}),
+    ...(inputBindings.length > 0 ? { inputBindings } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
+}
+
+function resumeInputBindings(plan: StartExecutionPlan, cursor: StartExecutionCursor): StartMissionInputBinding[] {
+  const ids = uniqueStrings([
+    ...(cursor.kind === 'input' ? [cursor.stepId] : []),
+    ...(cursor.unlocks ?? []),
+  ]);
+  return ids.flatMap((id) => {
+    const found = findStepInPlan(plan, id);
+    if (!found || found.step.kind !== 'input' || !found.step.placeholder || !found.step.instruction) return [];
+    const followUpIds = (found.step.unlocks ?? []).filter((unlockedId) => findStepInPlan(plan, unlockedId)?.phase.id === 'follow_up');
+    return [{
+      inputId: found.step.id,
+      label: found.step.label,
+      placeholder: found.step.placeholder,
+      instruction: found.step.instruction,
+      followUpIds,
+    }];
+  });
 }
 
 function resumeFollowUps(plan: StartExecutionPlan, cursor: StartExecutionCursor): NonNullable<StartMissionResume['followUps']> {
@@ -552,6 +574,7 @@ function resolveResumeReferences(
       label: found.step.label,
       ...(found.step.instruction ? { instruction: found.step.instruction } : {}),
       ...(found.step.command ? { command: found.step.command } : {}),
+      ...(found.step.placeholder ? { placeholder: found.step.placeholder } : {}),
     });
   }
   return references;
@@ -596,6 +619,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   if (resume.unlocks && resume.unlocks.length > 0) {
     lines.push('After running, resolve:', ...resume.unlocks.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
   }
+  if (resume.inputBindings && resume.inputBindings.length > 0) {
+    lines.push('Template inputs:', ...resume.inputBindings.map((binding) => `- ${formatRunbookInputBinding(binding)}`));
+  }
   if (resume.followUps && resume.followUps.length > 0) {
     lines.push('Then use:', ...resume.followUps.map((followUp) => `- ${formatRunbookFollowUp(followUp)}`));
   }
@@ -609,6 +635,10 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
 function formatRunbookResumeReference(reference: StartMissionResumeReference): string {
   const detail = reference.instruction ?? reference.command ?? reference.label;
   return `${reference.id} (${reference.label}): ${detail}`;
+}
+
+function formatRunbookInputBinding(binding: StartMissionInputBinding): string {
+  return `${binding.placeholder} -> ${binding.inputId} (${binding.label}): ${binding.instruction}`;
 }
 
 function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCall']>): string {
@@ -695,6 +725,7 @@ function buildMissionExecutionPlan(input: {
           label: item.name,
           ...(readyStepIds[0] ? { dependsOn: [readyStepIds[0]] } : {}),
           ...(followUps.length > 0 ? { unlocks: followUps } : {}),
+          placeholder: item.placeholder,
           instruction: item.instruction,
         };
       }),
@@ -837,6 +868,7 @@ function executionCursor(phases: StartExecutionPhase[]): StartExecutionCursor {
     label: selected.step.label,
     ...(selected.step.command ? { command: selected.step.command } : {}),
     ...(selected.step.instruction ? { instruction: selected.step.instruction } : {}),
+    ...(selected.step.placeholder ? { placeholder: selected.step.placeholder } : {}),
     ...(selected.step.blockedBy && selected.step.blockedBy.length > 0 ? { blockedBy: selected.step.blockedBy } : {}),
     ...(selected.step.unlocks && selected.step.unlocks.length > 0 ? { unlocks: selected.step.unlocks } : {}),
     reason: executionCursorReason(selected.step),
