@@ -7116,8 +7116,16 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.taskCard.markdown).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
   expect(report.missionControl.taskCard.markdown).toContain('## Done When');
   expect(report.missionControl.taskCard.markdown).toContain('## Review Gate');
+  expect(report.missionControl.taskCard.markdown).toContain('## Reviewer Decision');
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
   expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
   expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
+  expect(report.missionControl.runbook.markdown).toContain('## Reviewer Decision');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ ] Request changes: The agent must address review feedback before starting more scope.',
+  );
   expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
 });
 

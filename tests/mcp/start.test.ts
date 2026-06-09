@@ -787,6 +787,10 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('## Handoff Prompt');
+  expect(result.start.missionControl.runbook.markdown).toContain('## Reviewer Decision');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain(result.start.missionControl.handoffPrompt);
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
   expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');

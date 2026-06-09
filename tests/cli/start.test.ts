@@ -853,6 +853,8 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(result.stdout).toContain('## Review Gate');
   expect(result.stdout).toContain('- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.');
+  expect(result.stdout).toContain('## Reviewer Decision');
+  expect(result.stdout).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
   expect(result.stdout).not.toContain('Start:');
@@ -940,6 +942,8 @@ test('start prints only the mission runbook when requested', async () => {
   expect(result.stdout).toContain('## Resume');
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('## Review Gate');
+  expect(result.stdout).toContain('## Reviewer Decision');
+  expect(result.stdout).toContain('- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.');
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('## Proof Commands');
   expect(result.stdout).toContain('Resume checklist:');
@@ -964,6 +968,7 @@ test('start JSON keeps the full report when runbook shortcut is requested', asyn
   expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
   expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
   expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
+  expect(report.missionControl.runbook.markdown).toContain('## Reviewer Decision');
 });
 
 test('start prints a shortcut index for the current mission when requested', async () => {
