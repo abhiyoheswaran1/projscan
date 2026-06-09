@@ -526,6 +526,11 @@ function missionBundleReadme(report: StartReport, files: MissionBundleFile[]): s
     lines.push('', `MCP call: \`${toolCall.tool} ${JSON.stringify(toolCall.args ?? {})}\``);
   }
 
+  const reviewReplyLines = missionReviewReplyLines(report);
+  if (reviewReplyLines.length > 0) {
+    lines.push('', '## Reviewer Replies', '', ...reviewReplyLines);
+  }
+
   lines.push('', '## Files');
   for (const file of files) {
     lines.push(`- \`${file.name}\`: ${file.description}`);
@@ -667,8 +672,22 @@ function printReviewGate(report: StartReport): void {
   console.log(gate.stopCondition);
   for (const command of gate.commands) console.log(`- ${command}`);
   console.log(gate.worktree.summary);
+  printReviewReplies(report);
   const stopLine = gate.checklist.find((item) => item.startsWith('Stop and ask'));
   if (stopLine) console.log(chalk.dim(stopLine));
+}
+
+function missionReviewReplyLines(report: StartReport): string[] {
+  return report.missionControl.reviewGate.decisions.map(
+    (decision) => `- ${decision.label}: ${decision.reply}`,
+  );
+}
+
+function printReviewReplies(report: StartReport): void {
+  const replies = missionReviewReplyLines(report);
+  if (replies.length === 0) return;
+  console.log(chalk.bold('Reviewer Replies'));
+  for (const reply of replies) console.log(reply);
 }
 
 function printExecutionPlan(report: StartReport): void {

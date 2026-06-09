@@ -191,6 +191,17 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('- git status --short');
   expect(result.stdout).toContain('- git diff --stat');
   expect(result.stdout).toContain('Current worktree evidence');
+  expect(result.stdout).toContain('Reviewer Replies');
+  expect(result.stdout).toContain(
+    '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
+  expect(result.stdout).toContain(
+    '- Request changes: Changes requested: address the review feedback first, update proof, then stop for another review.',
+  );
+  expect(result.stdout).toContain(
+    '- Review version candidate: Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+  );
+  expect(result.stdout.indexOf('Reviewer Replies')).toBeLessThan(result.stdout.indexOf('Action Plan'));
   expect(result.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
@@ -684,6 +695,17 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
   expect(quickstart).toContain('- `review-gate.md`: Stop-and-review gate for approving another slice, release, publish, or deploy.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
+  expect(quickstart).toContain('## Reviewer Replies');
+  expect(quickstart).toContain(
+    '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
+  expect(quickstart).toContain(
+    '- Request changes: Changes requested: address the review feedback first, update proof, then stop for another review.',
+  );
+  expect(quickstart).toContain(
+    '- Review version candidate: Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+  );
+  expect(quickstart.indexOf('## Reviewer Replies')).toBeLessThan(quickstart.indexOf('## Files'));
 
   const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
   expect(nextCommand).toBe('projscan search "auth token loader" --format json\n');
