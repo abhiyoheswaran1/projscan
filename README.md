@@ -63,6 +63,7 @@ Use the index when you want the menu, or call one shortcut directly:
 
 ```bash
 projscan start --shortcuts --intent "<goal>"         # Show the shortcut menu
+projscan start --shortcuts-json --intent "<goal>"    # Shortcut menu as JSON
 projscan start --next-command --intent "<goal>"      # Current shell command
 projscan start --next-tool-call --intent "<goal>"   # Current MCP call as compact JSON
 projscan start --ready-tool-calls --intent "<goal>" # Current + proof MCP calls
@@ -80,7 +81,7 @@ projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, proof commands, and a manifest.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -668,6 +669,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--scan-env-values` | Explicitly read `.env*` contents during secret checks |
 | `--offline` | Block projscan network-capable features for this run |
 | `--shortcuts` | Print the Mission Control shortcut command index (`start`) |
+| `--shortcuts-json` | Print the Mission Control shortcut command index as JSON (`start`) |
 | `--handoff-prompt` | Print only the concise Mission Control handoff prompt (`start`) |
 | `--next-command` | Print only the current Mission Control cursor command (`start`) |
 | `--next-tool-call` | Print only the current Mission Control cursor MCP tool call as JSON (`start`) |

@@ -45,6 +45,7 @@ export function registerStart(): void {
     .option('--review-policy', 'print only the Mission Control review policy as JSON')
     .option('--review-replies', 'print only the Mission Control reviewer reply choices')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
+    .option('--shortcuts-json', 'print the Mission Control shortcut command index as JSON')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -148,6 +149,13 @@ export function registerStart(): void {
         }
         if (cmdOpts.shortcuts === true) {
           printShortcutsOnly(report, {
+            intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
+            mode,
+          });
+          return;
+        }
+        if (cmdOpts.shortcutsJson === true) {
+          printShortcutsJsonOnly(report, {
             intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
             mode,
           });
@@ -376,6 +384,7 @@ async function writeMissionBundle(
 ): Promise<MissionBundleManifest> {
   const targetDir = path.resolve(rootPath, bundleDir);
   const files = missionBundleFiles(targetDir);
+  const shortcutOptions = missionShortcutOptions(report);
   const manifest: MissionBundleManifest = {
     schemaVersion: 1,
     kind: 'projscan.mission-bundle',
@@ -448,6 +457,11 @@ async function writeMissionBundle(
   await fs.writeFile(
     path.join(targetDir, 'ready-tool-calls.json'),
     JSON.stringify(readyToolCalls(report), null, 2) + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
+    path.join(targetDir, 'shortcuts.json'),
+    JSON.stringify(buildShortcutIndex(report, shortcutOptions), null, 2) + '\n',
     'utf-8',
   );
   await fs.writeFile(
@@ -531,6 +545,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'ready-tool-calls.json',
       path: path.join(targetDir, 'ready-tool-calls.json'),
       description: 'Current cursor MCP call followed by remaining MCP-callable proof.',
+    },
+    {
+      name: 'shortcuts.json',
+      path: path.join(targetDir, 'shortcuts.json'),
+      description: 'Machine-readable Mission Control shortcut command index.',
     },
     {
       name: 'proof-commands.txt',
@@ -667,41 +686,101 @@ interface StartShortcutCommandOptions {
   mode?: WorkplanMode;
 }
 
+interface StartShortcutEntry {
+  id: string;
+  label: string;
+  command: string;
+  description: string;
+}
+
+interface StartShortcutIndex {
+  schemaVersion: 1;
+  kind: 'projscan.start-shortcuts';
+  currentCommand?: string;
+  currentToolCall?: StartMissionToolCall;
+  baseCommand: string;
+  shortcuts: StartShortcutEntry[];
+}
+
 function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOptions): void {
-  const command = report.missionControl.executionPlan.cursor.command;
-  const toolCall = nextToolCall(report);
-  const shortcuts = [
-    shortcutCommand('--next-command', options),
-    shortcutCommand('--next-tool-call', options),
-    shortcutCommand('--ready-tool-calls', options),
-    shortcutCommand('--proof-commands', options),
-    shortcutCommand('--checklist', options),
-    shortcutCommand('--resume-json', options),
-    shortcutCommand('--handoff-json', options),
-    shortcutCommand('--save-mission .projscan/mission', options),
-    shortcutCommand('--task-card', options),
-    shortcutCommand('--review-gate', options),
-    shortcutCommand('--review-gate-json', options),
-    shortcutCommand('--review-policy', options),
-    shortcutCommand('--review-replies', options),
-    shortcutCommand('--runbook', options),
-    shortcutCommand('--handoff-prompt', options),
-    startBaseCommand(options),
-  ];
+  const shortcutIndex = buildShortcutIndex(report, options);
 
   console.log(chalk.bold('Mission Shortcuts'));
-  if (command) {
+  if (shortcutIndex.currentCommand) {
     console.log('Current command:');
-    console.log(command);
+    console.log(shortcutIndex.currentCommand);
     console.log('');
   }
-  if (toolCall) {
+  if (shortcutIndex.currentToolCall) {
     console.log('Current MCP tool call:');
-    console.log(JSON.stringify(toolCall));
+    console.log(JSON.stringify(shortcutIndex.currentToolCall));
     console.log('');
   }
   console.log('Copy from here:');
-  for (const shortcut of shortcuts) console.log(shortcut);
+  for (const shortcut of shortcutIndex.shortcuts) console.log(shortcut.command);
+}
+
+function printShortcutsJsonOnly(report: StartReport, options: StartShortcutCommandOptions): void {
+  console.log(JSON.stringify(buildShortcutIndex(report, options)));
+}
+
+function buildShortcutIndex(report: StartReport, options: StartShortcutCommandOptions): StartShortcutIndex {
+  const command = report.missionControl.executionPlan.cursor.command;
+  const toolCall = nextToolCall(report);
+  const entries: StartShortcutEntry[] = [
+    shortcutEntry('next-command', 'Current shell command', '--next-command', 'Print only the current Mission Control cursor command.', options),
+    shortcutEntry('next-tool-call', 'Current MCP tool call', '--next-tool-call', 'Print only the current Mission Control cursor MCP tool call as compact JSON.', options),
+    shortcutEntry('ready-tool-calls', 'Ready MCP calls', '--ready-tool-calls', 'Print the current cursor and remaining MCP-callable proof queue as compact JSON.', options),
+    shortcutEntry('proof-commands', 'Ready proof commands', '--proof-commands', 'Print only ready Mission Control proof commands.', options),
+    shortcutEntry('checklist', 'Resume checklist', '--checklist', 'Print only the Mission Control resume checklist.', options),
+    shortcutEntry('resume-json', 'Resume JSON', '--resume-json', 'Print only the structured Mission Control resume object.', options),
+    shortcutEntry('handoff-json', 'Handoff JSON', '--handoff-json', 'Print only the structured Mission Control handoff object.', options),
+    shortcutEntry('save-mission', 'Save mission bundle', '--save-mission .projscan/mission', 'Write the Mission Control bundle to .projscan/mission.', options),
+    shortcutEntry('task-card', 'Task card', '--task-card', 'Print only the Mission Control Markdown task card.', options),
+    shortcutEntry('review-gate', 'Review gate Markdown', '--review-gate', 'Print only the Mission Control stop-and-review gate.', options),
+    shortcutEntry('review-gate-json', 'Review gate JSON', '--review-gate-json', 'Print only the Mission Control review gate as JSON.', options),
+    shortcutEntry('review-policy', 'Review policy JSON', '--review-policy', 'Print only the Mission Control review policy as JSON.', options),
+    shortcutEntry('review-replies', 'Reviewer replies', '--review-replies', 'Print only copyable Mission Control reviewer replies.', options),
+    shortcutEntry('runbook', 'Mission runbook', '--runbook', 'Print only the Mission Control Markdown runbook.', options),
+    shortcutEntry('handoff-prompt', 'Handoff prompt', '--handoff-prompt', 'Print only the concise Mission Control handoff prompt.', options),
+    {
+      id: 'start',
+      label: 'Full start report',
+      command: startBaseCommand(options),
+      description: 'Print the full Mission Control start report.',
+    },
+  ];
+
+  return {
+    schemaVersion: 1,
+    kind: 'projscan.start-shortcuts',
+    ...(command ? { currentCommand: command } : {}),
+    ...(toolCall ? { currentToolCall: toolCall } : {}),
+    baseCommand: startBaseCommand(options),
+    shortcuts: entries,
+  };
+}
+
+function shortcutEntry(
+  id: string,
+  label: string,
+  flag: string,
+  description: string,
+  options: StartShortcutCommandOptions,
+): StartShortcutEntry {
+  return {
+    id,
+    label,
+    command: shortcutCommand(flag, options),
+    description,
+  };
+}
+
+function missionShortcutOptions(report: StartReport): StartShortcutCommandOptions {
+  return {
+    ...(report.modeSource === 'explicit' ? { mode: report.mode } : {}),
+    ...(report.missionControl.intent ? { intent: report.missionControl.intent } : {}),
+  };
 }
 
 function shortcutCommand(flag: string, options: StartShortcutCommandOptions): string {

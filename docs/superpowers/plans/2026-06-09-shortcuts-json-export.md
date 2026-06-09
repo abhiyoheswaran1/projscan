@@ -297,13 +297,21 @@ function printShortcutsJsonOnly(report: StartReport, options: StartShortcutComma
 
 - [ ] **Step 6: Write `shortcuts.json` in saved bundles**
 
-In `writeMissionBundle()`, define:
+In `writeMissionBundle()`, define shortcut options with a helper so saved bundles preserve intent-inferred starts:
 
 ```ts
-const shortcutOptions: StartShortcutCommandOptions = {
-  ...(report.missionControl.intent ? { intent: report.missionControl.intent } : {}),
-  mode: report.mode,
-};
+const shortcutOptions = missionShortcutOptions(report);
+```
+
+Add the helper near `buildShortcutIndex()`:
+
+```ts
+function missionShortcutOptions(report: StartReport): StartShortcutCommandOptions {
+  return {
+    ...(report.modeSource === 'explicit' ? { mode: report.mode } : {}),
+    ...(report.missionControl.intent ? { intent: report.missionControl.intent } : {}),
+  };
+}
 ```
 
 Then write:

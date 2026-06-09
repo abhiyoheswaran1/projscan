@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --review-gate-json` and saved `review-gate.json` mission bundle files so agents can read the full review packet without parsing full handoff JSON.
 - Added `missionControl.reviewGate.policy`, a machine-readable approval boundary listing actions blocked until review: another slice, release, publish, deploy, push, merge, and version bump.
 - Added `projscan start --review-policy` and saved `review-policy.json` mission bundle files so agents can read the review approval boundary without parsing full handoff JSON.
+- Added `projscan start --shortcuts-json` and saved `shortcuts.json` mission bundle files so agents can discover shortcut commands without parsing console text.
 - Added `projscan start --shortcuts`, a console index of copyable Mission Control shortcut commands for the current intent.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.

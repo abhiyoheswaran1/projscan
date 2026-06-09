@@ -701,6 +701,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('handoff.json');
   expect(result.stdout).toContain('resume.json');
   expect(result.stdout).toContain('ready-tool-calls.json');
+  expect(result.stdout).toContain('shortcuts.json');
   expect(result.stdout).toContain('proof-commands.txt');
   expect(result.stdout).toContain('manifest.json');
 
@@ -720,6 +721,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `review-policy.json`: Machine-readable review approval boundary and blocked actions.');
   expect(quickstart).toContain('- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
+  expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
   expect(quickstart).toContain('## Reviewer Replies');
   expect(quickstart).toContain(
     '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
@@ -833,6 +835,40 @@ test('start writes a Mission Control bundle when requested', async () => {
     args: { query: 'auth token loader' },
   });
 
+  const shortcuts = JSON.parse(await fs.readFile(path.join(bundleDir, 'shortcuts.json'), 'utf-8'));
+  expect(shortcuts).toMatchObject({
+    schemaVersion: 1,
+    kind: 'projscan.start-shortcuts',
+    currentCommand: 'projscan search "auth token loader" --format json',
+    currentToolCall: {
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
+    },
+    baseCommand: "projscan start --intent 'what breaks if I rename the auth token loader'",
+  });
+  expect(shortcuts.shortcuts.map((entry: { id: string }) => entry.id)).toEqual([
+    'next-command',
+    'next-tool-call',
+    'ready-tool-calls',
+    'proof-commands',
+    'checklist',
+    'resume-json',
+    'handoff-json',
+    'save-mission',
+    'task-card',
+    'review-gate',
+    'review-gate-json',
+    'review-policy',
+    'review-replies',
+    'runbook',
+    'handoff-prompt',
+    'start',
+  ]);
+  expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json')).toBeUndefined();
+  expect(shortcuts.shortcuts.map((entry: { command: string }) => entry.command)).toContain(
+    "projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'",
+  );
+
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
   expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
@@ -869,6 +905,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'handoff.json',
     'resume.json',
     'ready-tool-calls.json',
+    'shortcuts.json',
     'proof-commands.txt',
     'manifest.json',
   ]);
@@ -902,6 +939,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'review-gate.json',
       'review-policy.json',
       'review-replies.txt',
+      'shortcuts.json',
       'manifest.json',
     ]),
   );
@@ -1165,6 +1203,79 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).not.toContain('Mission Control');
   expect(result.stdout).not.toContain('Run Cursor');
   expect(result.stdout).not.toContain('Ready Proof');
+});
+
+test('start prints a shortcut index as compact JSON when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--shortcuts-json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout).not.toContain('Mission Shortcuts');
+  expect(result.stdout).not.toContain('Start:');
+  const shortcuts = JSON.parse(result.stdout);
+  expect(result.stdout).toBe(`${JSON.stringify(shortcuts)}\n`);
+  expect(shortcuts.schemaVersion).toBe(1);
+  expect(shortcuts.kind).toBe('projscan.start-shortcuts');
+  expect(shortcuts.currentCommand).toBe('projscan search "auth token loader" --format json');
+  expect(shortcuts.currentToolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(shortcuts.baseCommand).toBe("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(shortcuts.shortcuts.map((entry: { id: string }) => entry.id)).toEqual([
+    'next-command',
+    'next-tool-call',
+    'ready-tool-calls',
+    'proof-commands',
+    'checklist',
+    'resume-json',
+    'handoff-json',
+    'save-mission',
+    'task-card',
+    'review-gate',
+    'review-gate-json',
+    'review-policy',
+    'review-replies',
+    'runbook',
+    'handoff-prompt',
+    'start',
+  ]);
+  expect(shortcuts.shortcuts[0]).toEqual({
+    id: 'next-command',
+    label: 'Current shell command',
+    command: "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
+    description: 'Print only the current Mission Control cursor command.',
+  });
+  expect(shortcuts.shortcuts.at(-1)).toEqual({
+    id: 'start',
+    label: 'Full start report',
+    command: "projscan start --intent 'what breaks if I rename the auth token loader'",
+    description: 'Print the full Mission Control start report.',
+  });
+});
+
+test('start JSON keeps the full report when shortcuts-json index is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--shortcuts-json',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
+  expect(report.kind).not.toBe('projscan.start-shortcuts');
 });
 
 test('start JSON keeps the full report when shortcuts index is requested', async () => {

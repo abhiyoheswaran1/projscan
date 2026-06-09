@@ -12,7 +12,7 @@ Add a machine-readable shortcut index:
 
 - `projscan start --shortcuts-json --intent "<goal>"` prints only a compact JSON shortcut index.
 - Saved mission bundles include `shortcuts.json`.
-- The text `--shortcuts` output, saved `shortcuts.json`, and bundle README use the same shortcut list.
+- The text `--shortcuts` output, saved `shortcuts.json`, and bundle README use the same shortcut list. Saved bundle commands preserve the intent-first command shape and include `--mode` only when the start mode was explicit.
 
 ## Approaches
 
@@ -98,6 +98,8 @@ shortcuts.json
 ```
 
 with pretty JSON and a trailing newline.
+
+Saved bundle commands should use the mission intent and include `--mode` only when `report.modeSource` is `explicit`. This avoids turning an intent-inferred start into a different explicit-mode command.
 
 ## Tests
 
