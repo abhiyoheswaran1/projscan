@@ -1083,6 +1083,23 @@ test('start writes a Mission Control bundle when requested', async () => {
     },
   });
   expect(manifest.directory).toBe(await fs.realpath(bundleDir));
+  expect(manifest.quickCommands).toEqual([
+    {
+      id: 'run',
+      command: './mission.sh',
+      description: 'Run the current command and remaining proof.',
+    },
+    {
+      id: 'status',
+      command: './status.sh',
+      description: 'Print the latest mission state and next action.',
+    },
+    {
+      id: 'review',
+      command: './review.sh',
+      description: 'Print the review packet for approval.',
+    },
+  ]);
   expect(manifest.files.map((file: { name: string }) => file.name)).toEqual([
     'README.md',
     'next-command.txt',
@@ -1127,6 +1144,16 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
   const payload = JSON.parse(result.stdout);
   const bundleDir = path.join(tmp, 'artifacts', 'json-mission');
   expect(payload.missionBundle.directory).toBe(await fs.realpath(bundleDir));
+  expect(payload.missionBundle.quickCommands.map((entry: { id: string }) => entry.id)).toEqual([
+    'run',
+    'status',
+    'review',
+  ]);
+  expect(payload.missionBundle.quickCommands.map((entry: { command: string }) => entry.command)).toEqual([
+    './mission.sh',
+    './status.sh',
+    './review.sh',
+  ]);
   expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toEqual(
     expect.arrayContaining([
       'README.md',

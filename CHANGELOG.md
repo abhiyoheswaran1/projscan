@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added saved mission bundle `review.sh`, an executable review surface that prints mission status, review gate text, run report evidence, review commands, and reviewer reply choices.
 - Added quick commands to saved mission bundle README files so developers can run `./mission.sh`, `./status.sh`, and `./review.sh` without scanning the manifest.
 - Added next-action guidance to saved mission bundle `status.sh` output so not-run, running, failed, and passed states point to the next command.
+- Added `quickCommands` to saved mission bundle manifests so agents can read the `./mission.sh`, `./status.sh`, and `./review.sh` workflow without parsing README Markdown.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 - Added `projscan start --next-tool-call`, a console shortcut that prints only the current Mission Control cursor MCP tool call as compact JSON.

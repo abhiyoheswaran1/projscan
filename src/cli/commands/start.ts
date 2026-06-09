@@ -366,6 +366,12 @@ interface MissionBundleFile {
   description: string;
 }
 
+interface MissionBundleQuickCommand {
+  id: 'run' | 'status' | 'review';
+  command: './mission.sh' | './status.sh' | './review.sh';
+  description: string;
+}
+
 interface MissionBundleManifest {
   schemaVersion: 1;
   kind: 'projscan.mission-bundle';
@@ -379,6 +385,7 @@ interface MissionBundleManifest {
     command?: string;
     toolCall?: StartMissionToolCall;
   };
+  quickCommands: MissionBundleQuickCommand[];
   files: MissionBundleFile[];
 }
 
@@ -398,6 +405,7 @@ async function writeMissionBundle(
     mode: report.mode,
     status: report.missionControl.status,
     currentStep: missionBundleCurrentStep(report),
+    quickCommands: missionBundleQuickCommands(),
     files,
   };
 
@@ -495,6 +503,26 @@ async function writeMissionBundle(
   await fs.writeFile(path.join(targetDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
 
   return manifest;
+}
+
+function missionBundleQuickCommands(): MissionBundleQuickCommand[] {
+  return [
+    {
+      id: 'run',
+      command: './mission.sh',
+      description: 'Run the current command and remaining proof.',
+    },
+    {
+      id: 'status',
+      command: './status.sh',
+      description: 'Print the latest mission state and next action.',
+    },
+    {
+      id: 'review',
+      command: './review.sh',
+      description: 'Print the review packet for approval.',
+    },
+  ];
 }
 
 function missionBundleFiles(targetDir: string): MissionBundleFile[] {
