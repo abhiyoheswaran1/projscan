@@ -646,6 +646,12 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoffPrompt).toContain(result.start.missionControl.resume.prompt);
   expect(result.start.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(result.start.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.start.missionControl.handoffPrompt).toContain(
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+  );
+  expect(result.start.missionControl.handoffPrompt).toContain(
+    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
   const handoffReadyProof = result.start.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
   expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
   expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');

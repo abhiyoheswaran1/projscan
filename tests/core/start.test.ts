@@ -136,6 +136,19 @@ test('start report routes a plain-language intent into mission control', async (
   expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.handoffPrompt).toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Request changes => Changes requested: address the review feedback first, update proof, then stop for another review.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Review version candidate => Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+  );
+  expect(report.missionControl.resume.prompt).not.toContain('Review gate:');
   expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.handoffPrompt).not.toContain('Next:');
   expect(report.missionControl.handoffPrompt).not.toContain('..');
@@ -6966,6 +6979,12 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
   expect(report.missionControl.handoffPrompt).toContain('input-1 (symbol), input-2 (file)');
   expect(report.missionControl.handoffPrompt.startsWith('Resume: ')).toBe(true);
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
   const handoffReadyProof = report.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
   expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
   expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');

@@ -309,6 +309,12 @@ test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async
   expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.handoffPrompt).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
   expect(report.missionControl.handoffPrompt).not.toContain('Next:');
   expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
@@ -331,9 +337,12 @@ test('start prints only the concise handoff prompt when requested', async () => 
   expect(output).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.');
   expect(output).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(output).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(output).toContain('Review gate: Stop after the current Mission Control checklist and proof are complete.');
+  expect(output).toContain(
+    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  );
   expect(output.split('\n')).toHaveLength(1);
   expect(result.stdout).not.toContain('Start:');
-  expect(result.stdout).not.toContain('Mission Control');
   expect(result.stdout).not.toContain('Agent Runbook');
   expect(result.stdout).not.toContain('Ready Proof');
 });
@@ -719,6 +728,10 @@ test('start writes a Mission Control bundle when requested', async () => {
   const handoffPrompt = await fs.readFile(path.join(bundleDir, 'handoff-prompt.txt'), 'utf-8');
   expect(handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now');
   expect(handoffPrompt).toContain('Ready proof: Ready-to-run proof commands');
+  expect(handoffPrompt).toContain('Review gate: Stop after the current Mission Control checklist and proof are complete.');
+  expect(handoffPrompt).toContain(
+    'Review version candidate => Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+  );
   expect(handoffPrompt.endsWith('\n')).toBe(true);
 
   const resumePrompt = await fs.readFile(path.join(bundleDir, 'resume-prompt.txt'), 'utf-8');

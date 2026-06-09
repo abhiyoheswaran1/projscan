@@ -362,13 +362,13 @@ function buildMissionControl(input: {
       : input.fixFirst
         ? `Top evidence points to "${input.fixFirst.title}" as the first useful move.`
         : `The ${input.mode} workflow is the shortest path from orientation to verified action.`;
-  const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
   const reviewGate = buildMissionReviewGate({
     status,
     doneWhen: successCriteria,
     proof: reviewProof,
     currentWorktree: input.riskSources.currentWorktree,
   });
+  const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands, reviewGate);
   const runbook = buildMissionRunbook({
     intent: input.intent,
     status,
@@ -1523,6 +1523,7 @@ function missionHandoffPrompt(
   whyNow: string,
   unresolvedInputs: StartUnresolvedInput[],
   proofCommands: string[],
+  reviewGate: StartMissionReviewGate,
 ): string {
   const needsInput = unresolvedInputs.length > 0
     ? ` Needs input: ${unresolvedInputs.map((input) => `${input.name}=${input.placeholder}`).join(', ')}.`
@@ -1531,7 +1532,14 @@ function missionHandoffPrompt(
   const readyProof = proofCommandText.length > 0
     ? ` Ready proof: ${READY_PROOF_SUMMARY} ${proofCommandText}.`
     : ` Ready proof: ${READY_PROOF_SUMMARY}.`;
-  return `Resume: ${trimTrailingPunctuation(resume.prompt)}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow}${readyProof}`;
+  return `Resume: ${trimTrailingPunctuation(resume.prompt)}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow}${readyProof}${handoffReviewGatePrompt(reviewGate)}`;
+}
+
+function handoffReviewGatePrompt(reviewGate: StartMissionReviewGate): string {
+  const decisions = reviewGate.decisions
+    .map((decision) => `${decision.label} => ${decision.reply}`)
+    .join('; ');
+  return ` Review gate: ${trimTrailingPunctuation(reviewGate.stopCondition)}. Reviewer replies: ${decisions}`;
 }
 
 function trimTrailingPunctuation(value: string): string {
