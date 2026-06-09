@@ -41,6 +41,7 @@ export function registerStart(): void {
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--task-card', 'print only the Mission Control Markdown task card')
     .option('--review-gate', 'print only the Mission Control review gate')
+    .option('--review-replies', 'print only the Mission Control reviewer reply choices')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -129,6 +130,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.reviewGate === true) {
           printReviewGateOnly(report);
+          return;
+        }
+        if (cmdOpts.reviewReplies === true) {
+          printReviewRepliesOnly(report);
           return;
         }
         if (cmdOpts.shortcuts === true) {
@@ -401,6 +406,11 @@ async function writeMissionBundle(
     'utf-8',
   );
   await fs.writeFile(
+    path.join(targetDir, 'review-replies.txt'),
+    missionReviewReplyLines(report).join('\n') + '\n',
+    'utf-8',
+  );
+  await fs.writeFile(
     path.join(targetDir, 'runbook.md'),
     report.missionControl.runbook.markdown.trimEnd() + '\n',
     'utf-8',
@@ -466,6 +476,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'review-gate.md',
       path: path.join(targetDir, 'review-gate.md'),
       description: 'Stop-and-review gate for approving another slice, release, publish, or deploy.',
+    },
+    {
+      name: 'review-replies.txt',
+      path: path.join(targetDir, 'review-replies.txt'),
+      description: 'Copy-only reviewer reply choices for approving or redirecting the stopped mission.',
     },
     {
       name: 'runbook.md',
@@ -600,6 +615,15 @@ function printReviewGateOnly(report: StartReport): void {
   console.log(reviewGate);
 }
 
+function printReviewRepliesOnly(report: StartReport): void {
+  const replies = missionReviewReplyLines(report);
+  if (replies.length === 0) {
+    console.error(chalk.red('No Mission Control reviewer replies are available.'));
+    process.exit(1);
+  }
+  console.log(replies.join('\n'));
+}
+
 interface StartShortcutCommandOptions {
   intent?: string;
   mode?: WorkplanMode;
@@ -619,6 +643,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--save-mission .projscan/mission', options),
     shortcutCommand('--task-card', options),
     shortcutCommand('--review-gate', options),
+    shortcutCommand('--review-replies', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
     startBaseCommand(options),

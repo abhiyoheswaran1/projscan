@@ -57,7 +57,7 @@ npm run docs:screenshots
 
 `projscan start --intent "<goal>"` gives agents an execution plan with ordered phases, ready commands, blocked inputs, follow-ups, proof, and done criteria. The cursor points to the next useful step and includes MCP `tool` / `args` when projscan can call it directly.
 
-Projscan also returns a Markdown runbook, a task card, a review gate, and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan. MCP and JSON clients can read `missionControl.taskCard.markdown`, the same Markdown printed by `--task-card` and written to `task-card.md`. They can also read `missionControl.reviewGate.markdown` to know when to stop, report proof, and wait for approval before starting another slice, release, publish, or deploy. `missionControl.reviewGate.worktree` adds the current worktree evidence summary and visible changed files, so review handoffs keep the state projscan computed for the start report. `missionControl.reviewGate.proof` carries the remaining proof queue with commands, MCP calls, and structured proof items for review-only handoffs. `missionControl.reviewGate.doneWhen` mirrors the mission success criteria, so review-only handoffs show the approval target beside proof and worktree evidence. `missionControl.reviewGate.decisions` gives the reviewer the allowed next choices and copyable reply text: approve another slice, request changes, or review a version candidate without publishing; the same menu appears in default console output, saved bundle README files, task cards, handoff prompts, and runbook Markdown. The complete handoff object carries the same gate at `missionControl.handoff.reviewGate`, so `--handoff-json` and saved `handoff.json` include the stop boundary.
+Projscan also returns a Markdown runbook, a task card, a review gate, and a resume object. A resumed agent gets the current command, the MCP tool call, placeholder bindings, follow-up templates, the ordered checklist, and the remaining proof queue without walking the full plan. MCP and JSON clients can read `missionControl.taskCard.markdown`, the same Markdown printed by `--task-card` and written to `task-card.md`. They can also read `missionControl.reviewGate.markdown` to know when to stop, report proof, and wait for approval before starting another slice, release, publish, or deploy. `missionControl.reviewGate.worktree` adds the current worktree evidence summary and visible changed files, so review handoffs keep the state projscan computed for the start report. `missionControl.reviewGate.proof` carries the remaining proof queue with commands, MCP calls, and structured proof items for review-only handoffs. `missionControl.reviewGate.doneWhen` mirrors the mission success criteria, so review-only handoffs show the approval target beside proof and worktree evidence. `missionControl.reviewGate.decisions` gives the reviewer the allowed next choices and copyable reply text: approve another slice, request changes, or review a version candidate without publishing; the same menu appears in default console output, saved bundle README files, task cards, handoff prompts, and runbook Markdown. `--review-replies` and saved `review-replies.txt` print only those reply lines when a reviewer wants the smallest approval surface. The complete handoff object carries the same gate at `missionControl.handoff.reviewGate`, so `--handoff-json` and saved `handoff.json` include the stop boundary.
 
 Use the index when you want the menu, or call one shortcut directly:
 
@@ -73,11 +73,12 @@ projscan start --handoff-json --intent "<goal>"     # Complete handoff object
 projscan start --save-mission .projscan/mission --intent "<goal>" # Write bundle + quickstart
 projscan start --task-card --intent "<goal>"        # Paste-ready Markdown task card
 projscan start --review-gate --intent "<goal>"      # Stop-and-review gate
+projscan start --review-replies --intent "<goal>"   # Copy-only reviewer replies
 projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, proof commands, and a manifest.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -676,6 +677,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--save-mission <dir>` | Write the Mission Control bundle to a directory (`start`) |
 | `--task-card` | Print only the Mission Control Markdown task card (`start`) |
 | `--review-gate` | Print only the Mission Control stop-and-review gate (`start`) |
+| `--review-replies` | Print only copyable Mission Control reviewer replies (`start`) |
 | `--runbook` | Print only the Mission Control Markdown runbook (`start`) |
 | `--changed-only` | Scope to files changed vs base ref (ci/analyze/doctor) |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
