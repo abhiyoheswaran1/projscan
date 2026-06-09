@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added step dependency metadata (`dependsOn`, `blockedBy`, `unlocks`) to Mission Control execution-plan steps so agents can tell which ready command or input unlocks each blocked follow-up.
 - Added `missionControl.executionPlan.cursor`, a direct pointer to the next ready command, blocked input, proof command, or done criterion so agents do not need to traverse the full phase graph.
 - Added the execution cursor to `missionControl.handoff.currentStep` and `missionControl.runbook.currentStep`, plus a `Current Cursor` section in Markdown runbooks.
+- Added `missionControl.resume`, copied into handoff and runbook payloads, with a runnable command block or instruction plus a compact resume prompt.
 
 ### Changed
 

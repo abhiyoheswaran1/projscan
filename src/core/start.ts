@@ -16,6 +16,7 @@ import type {
   StartExecutionPlan,
   StartExecutionStatus,
   StartExecutionStep,
+  StartMissionResume,
   StartMissionRunbook,
   QualityScorecardRisk,
   RegressionPlanLevel,
@@ -340,6 +341,7 @@ function buildMissionControl(input: {
     successCriteria,
     proofCommands,
   });
+  const resume = missionResume(executionPlan.cursor);
   const runbook = buildMissionRunbook({
     intent: input.intent,
     status,
@@ -349,6 +351,7 @@ function buildMissionControl(input: {
     successCriteria,
     proofCommands,
     executionPlan,
+    resume,
   });
   const whyNow =
     routed
@@ -372,7 +375,8 @@ function buildMissionControl(input: {
     successCriteria,
     proofSummary: READY_PROOF_SUMMARY,
     proofCommands,
-    handoff: missionHandoff(executionPlan.cursor, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
+    resume,
+    handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
     handoffPrompt: missionHandoffPrompt(commandText, successCriteria, whyNow, unresolvedInputs, proofCommands),
@@ -388,6 +392,7 @@ function buildMissionRunbook(input: {
   successCriteria: string[];
   proofCommands: string[];
   executionPlan: StartExecutionPlan;
+  resume: StartMissionResume;
 }): StartMissionRunbook {
   const readyCommands = uniqueStrings(
     input.readyActions
@@ -403,6 +408,7 @@ function buildMissionRunbook(input: {
     status: input.status,
     currentPhase: input.executionPlan.currentPhase,
     currentStep: input.executionPlan.cursor,
+    resume: input.resume,
     readyCommandBlock,
     ...(blockedInputSummary ? { blockedInputSummary } : {}),
     markdown: renderMissionRunbookMarkdown({
@@ -410,6 +416,7 @@ function buildMissionRunbook(input: {
       status: input.status,
       currentPhase: input.executionPlan.currentPhase,
       currentStep: input.executionPlan.cursor,
+      resume: input.resume,
       primaryAction: input.primaryAction,
       readyCommands,
       unresolvedInputs: input.unresolvedInputs,
@@ -424,6 +431,7 @@ function renderMissionRunbookMarkdown(input: {
   status: StartMissionControlStatus;
   currentPhase: StartExecutionPhaseId;
   currentStep: StartExecutionCursor;
+  resume: StartMissionResume;
   primaryAction: PreflightSuggestedAction;
   readyCommands: string[];
   unresolvedInputs: StartUnresolvedInput[];
@@ -439,6 +447,8 @@ function renderMissionRunbookMarkdown(input: {
     `Next action: ${input.primaryAction.command ? `\`${input.primaryAction.command}\`` : input.primaryAction.label}`,
     '',
     ...renderRunbookCursorLines(input.currentStep),
+    '',
+    ...renderRunbookResumeLines(input.resume),
     '',
     '## Ready Commands',
     ...(input.readyCommands.length > 0 ? input.readyCommands.map((command) => `- \`${command}\``) : ['- None yet. Resolve blocked inputs first.']),
@@ -457,6 +467,44 @@ function renderMissionRunbookMarkdown(input: {
     ...(input.successCriteria.length > 0 ? input.successCriteria.map((criterion) => `- ${criterion}`) : ['- The next action is complete and verified.']),
   ];
   return `${lines.join('\n')}\n`;
+}
+
+function missionResume(cursor: StartExecutionCursor): StartMissionResume {
+  const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
+  const instruction = commandBlock
+    ? `Run ${commandBlock}.`
+    : cursor.instruction
+      ? `Resolve ${cursor.label}: ${cursor.instruction}`
+      : `Continue with ${cursor.label}.`;
+  const prompt = commandBlock
+    ? `Resume at ${cursor.stepId} in ${cursor.phaseId}: run \`${commandBlock}\`.${resumeUnlocksSentence(cursor)}`
+    : `Resume at ${cursor.stepId} in ${cursor.phaseId}: ${instruction}${resumeBlockersSentence(cursor)}`;
+  return {
+    currentStep: cursor,
+    status: cursor.status,
+    instruction,
+    prompt,
+    ...(commandBlock ? { commandBlock } : {}),
+  };
+}
+
+function resumeUnlocksSentence(cursor: StartExecutionCursor): string {
+  return cursor.unlocks && cursor.unlocks.length > 0 ? ` This can unlock ${cursor.unlocks.join(', ')}.` : '';
+}
+
+function resumeBlockersSentence(cursor: StartExecutionCursor): string {
+  return cursor.blockedBy && cursor.blockedBy.length > 0 ? ` Blocked by ${cursor.blockedBy.join(', ')}.` : '';
+}
+
+function renderRunbookResumeLines(resume: StartMissionResume): string[] {
+  const lines = ['## Resume'];
+  if (resume.commandBlock) {
+    lines.push('Run now:', '```sh', resume.commandBlock, '```');
+  } else {
+    lines.push(`Do now: ${resume.instruction}`);
+  }
+  lines.push(`Prompt: ${resume.prompt}`);
+  return lines;
 }
 
 function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {
@@ -722,6 +770,7 @@ function pluralize(count: number, singular: string): string {
 
 function missionHandoff(
   currentStep: StartExecutionCursor,
+  resume: StartMissionResume,
   nextAction: PreflightSuggestedAction,
   readyActions: PreflightSuggestedAction[],
   needsInput: StartUnresolvedInput[],
@@ -730,6 +779,7 @@ function missionHandoff(
 ): StartMissionControl['handoff'] {
   return {
     currentStep,
+    resume,
     nextAction,
     readyActions,
     needsInput,

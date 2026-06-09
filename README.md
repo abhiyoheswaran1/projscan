@@ -59,7 +59,7 @@ The next Mission Control slice makes `projscan start --intent "<goal>"` more dir
 
 That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
 
-The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.handoff.currentStep` and `missionControl.runbook.currentStep` carry the same cursor object, so a resumed agent can start from the handoff artifact alone. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
+The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block or a direct input instruction without traversing the full plan. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
 
 Console output shows the same model for humans:
 
@@ -92,6 +92,13 @@ Current phase: next_action
 - Step: ready-1 in ready_now
 - Command: `projscan search "auth token loader" --format json`
 - Unlocks: input-1, input-2
+
+## Resume
+Run now:
+```sh
+projscan search "auth token loader" --format json
+```
+Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1, input-2.
 
 ## Ready Commands
 - `projscan search "auth token loader" --format json`

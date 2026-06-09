@@ -820,8 +820,17 @@ export interface StartUnresolvedInput {
   instruction: string;
 }
 
+export interface StartMissionResume {
+  currentStep: StartExecutionCursor;
+  status: StartExecutionStatus;
+  instruction: string;
+  prompt: string;
+  commandBlock?: string;
+}
+
 export interface StartMissionHandoff {
   currentStep: StartExecutionCursor;
+  resume: StartMissionResume;
   nextAction: PreflightSuggestedAction;
   readyActions: PreflightSuggestedAction[];
   needsInput: StartUnresolvedInput[];
@@ -884,6 +893,7 @@ export interface StartMissionRunbook {
   status: StartMissionControlStatus;
   currentPhase: StartExecutionPhaseId;
   currentStep: StartExecutionCursor;
+  resume: StartMissionResume;
   readyCommandBlock: string;
   blockedInputSummary?: string;
   markdown: string;
@@ -904,6 +914,7 @@ export interface StartMissionControl {
   successCriteria: string[];
   proofSummary: string;
   proofCommands: string[];
+  resume: StartMissionResume;
   handoff: StartMissionHandoff;
   executionPlan: StartExecutionPlan;
   runbook: StartMissionRunbook;
