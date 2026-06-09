@@ -19,6 +19,7 @@ import type {
   StartMissionInputBinding,
   StartMissionProofItem,
   StartMissionProofToolCall,
+  StartMissionReviewDecision,
   StartMissionReviewGate,
   StartMissionReviewProof,
   StartMissionReviewWorktree,
@@ -429,6 +430,7 @@ function buildMissionReviewGate(input: {
   ];
   const commands = ['git status --short', 'git diff --stat'];
   const doneWhen = input.doneWhen.slice();
+  const decisions = buildMissionReviewDecisions();
   const worktree = buildMissionReviewWorktree(input.currentWorktree);
   const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
   const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proof.summary}`;
@@ -440,6 +442,7 @@ function buildMissionReviewGate(input: {
     reviewPrompt,
     checklist,
     doneWhen,
+    decisions,
     commands,
     worktree,
     proof: input.proof,
@@ -449,11 +452,35 @@ function buildMissionReviewGate(input: {
       reviewPrompt,
       checklist,
       doneWhen,
+      decisions,
       commands,
       worktree,
       proof: input.proof,
     }),
   };
+}
+
+function buildMissionReviewDecisions(): StartMissionReviewDecision[] {
+  return [
+    {
+      id: 'approve_next_slice',
+      label: 'Approve next slice',
+      description: 'The agent may start another bounded implementation slice.',
+      consequence: 'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+    },
+    {
+      id: 'request_changes',
+      label: 'Request changes',
+      description: 'The agent must address review feedback before starting more scope.',
+      consequence: 'The current mission stays open until feedback and proof are updated.',
+    },
+    {
+      id: 'review_version_candidate',
+      label: 'Review version candidate',
+      description: 'The agent may prepare release notes, version rationale, and remaining gates for review.',
+      consequence: 'Publishing still requires a separate explicit approval.',
+    },
+  ];
 }
 
 function buildMissionReviewProof(
@@ -508,6 +535,7 @@ function renderMissionReviewGateMarkdown(input: {
   reviewPrompt: string;
   checklist: string[];
   doneWhen: string[];
+  decisions: StartMissionReviewDecision[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
   proof: StartMissionReviewProof;
@@ -526,6 +554,9 @@ function renderMissionReviewGateMarkdown(input: {
       ? input.doneWhen.map((criterion) => `- [ ] ${criterion}`)
       : ['- [ ] The current mission is complete and verified.']),
     '',
+    '## Reviewer Decision',
+    ...input.decisions.map(formatMissionReviewDecision),
+    '',
     ...renderMissionReviewProofLines(input.proof),
     '## Evidence Commands',
     ...input.commands.map((command) => `- \`${command}\``),
@@ -538,6 +569,10 @@ function renderMissionReviewGateMarkdown(input: {
     input.reviewPrompt,
   ];
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function formatMissionReviewDecision(decision: StartMissionReviewDecision): string {
+  return `- [ ] ${decision.label}: ${decision.description} Consequence: ${decision.consequence}`;
 }
 
 function renderMissionReviewProofLines(proof: StartMissionReviewProof): string[] {

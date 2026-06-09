@@ -7083,10 +7083,23 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(report.missionControl.reviewGate.markdown).toContain('## Done When');
   expect(report.missionControl.reviewGate.markdown).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.reviewGate.decisions.map((decision) => decision.id)).toEqual([
+    'approve_next_slice',
+    'request_changes',
+    'review_version_candidate',
+  ]);
+  expect(report.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    'Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+  );
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
   expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
   expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
   expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(report.missionControl.reviewGate.doneWhen);
+  expect(report.missionControl.handoff.reviewGate.decisions).toEqual(report.missionControl.reviewGate.decisions);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',

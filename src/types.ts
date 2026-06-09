@@ -1007,6 +1007,13 @@ export interface StartMissionReviewProof {
   items?: StartMissionProofItem[];
 }
 
+export interface StartMissionReviewDecision {
+  id: 'approve_next_slice' | 'request_changes' | 'review_version_candidate';
+  label: string;
+  description: string;
+  consequence: string;
+}
+
 export interface StartMissionReviewGate {
   title: string;
   required: true;
@@ -1015,6 +1022,7 @@ export interface StartMissionReviewGate {
   reviewPrompt: string;
   checklist: string[];
   doneWhen: string[];
+  decisions: StartMissionReviewDecision[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
   proof: StartMissionReviewProof;

@@ -679,10 +679,19 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Proof Queue');
   expect(result.start.missionControl.reviewGate.doneWhen).toEqual(result.start.missionControl.successCriteria);
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Done When');
+  expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.id)).toEqual([
+    'approve_next_slice',
+    'request_changes',
+    'review_version_candidate',
+  ]);
+  expect(result.start.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
   expect(result.start.missionControl.handoff.reviewGate).toEqual(result.start.missionControl.reviewGate);
   expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(result.start.missionControl.reviewGate.worktree);
   expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(result.start.missionControl.reviewGate.proof);
   expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(result.start.missionControl.reviewGate.doneWhen);
+  expect(result.start.missionControl.handoff.reviewGate.decisions).toEqual(
+    result.start.missionControl.reviewGate.decisions,
+  );
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,
   );

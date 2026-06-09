@@ -717,6 +717,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(reviewGate).toContain('## Done When');
   expect(reviewGate).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(reviewGate).toContain('## Reviewer Decision');
+  expect(reviewGate).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
+  expect(reviewGate).toContain('Publishing still requires a separate explicit approval.');
   expect(reviewGate.endsWith('\n')).toBe(true);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
@@ -738,6 +741,11 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(handoff.reviewGate.proof.items).toEqual(handoff.readyProof.items);
   expect(handoff.reviewGate.proof.toolCalls).toEqual(handoff.readyProof.toolCalls);
   expect(handoff.reviewGate.doneWhen).toEqual(handoff.doneWhen);
+  expect(handoff.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
+    'approve_next_slice',
+    'request_changes',
+    'review_version_candidate',
+  ]);
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
@@ -904,6 +912,13 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   expect(shortcut.stdout).toContain('## Done When');
   expect(shortcut.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
+  expect(shortcut.stdout).toContain('## Reviewer Decision');
+  expect(shortcut.stdout).toContain('- [ ] Request changes: The agent must address review feedback before starting more scope.');
+  expect(report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
+    'approve_next_slice',
+    'request_changes',
+    'review_version_candidate',
+  ]);
   expect(shortcut.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(shortcut.stdout).not.toContain('Start:');
   expect(shortcut.stdout).not.toContain('Run Cursor');
