@@ -957,6 +957,10 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(statusScript).toContain('Failed step:');
   expect(statusScript).toContain('Exit code:');
   expect(statusScript).toContain('Log:');
+  expect(statusScript).toContain('Next action:');
+  expect(statusScript).toContain('run ./mission.sh to generate proof.');
+  expect(statusScript).toContain('run ./review.sh and choose a reviewer reply.');
+  expect(statusScript).toContain('inspect the failed log, fix the issue, then rerun ./mission.sh.');
   expect(statusScript).toContain('process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;');
 
   const statusMode = (await fs.stat(path.join(bundleDir, 'status.sh'))).mode;
@@ -981,6 +985,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(initialReview.exitCode).toBe(2);
   expect(initialReview.stdout).toContain('Mission Review');
   expect(initialReview.stdout).toContain('Mission status: not_run');
+  expect(initialReview.stdout).toContain('Next action: run ./mission.sh to generate proof.');
   expect(initialReview.stdout).toContain('Review gate: review-gate.md');
   expect(initialReview.stdout).toContain('# Mission Review Gate');
   expect(initialReview.stdout).toContain('Run report: proof-logs/run-report.md');
@@ -1019,6 +1024,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(initialStatus.stdout).toContain('Mission status: not_run');
   expect(initialStatus.stdout).toContain('Report: proof-logs/run-report.md');
   expect(initialStatus.stdout).toContain('Status rows: proof-logs/status.jsonl');
+  expect(initialStatus.stdout).toContain('Next action: run ./mission.sh to generate proof.');
 
   await fs.writeFile(
     path.join(bundleDir, 'proof-logs', 'summary.json'),
@@ -1034,6 +1040,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(passedStatus.exitCode).toBe(0);
   expect(passedStatus.stdout).toContain('Mission status: passed');
   expect(passedStatus.stdout).toContain('Total commands: 3');
+  expect(passedStatus.stdout).toContain('Next action: run ./review.sh and choose a reviewer reply.');
 
   await fs.writeFile(
     path.join(bundleDir, 'proof-logs', 'summary.json'),
@@ -1053,6 +1060,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(failedStatus.stdout).toContain('Failed step: proof-1');
   expect(failedStatus.stdout).toContain('Exit code: 7');
   expect(failedStatus.stdout).toContain('Log: proof-logs/proof-1.log');
+  expect(failedStatus.stdout).toContain('Next action: inspect the failed log, fix the issue, then rerun ./mission.sh.');
 
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
