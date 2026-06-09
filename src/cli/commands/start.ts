@@ -471,6 +471,7 @@ async function writeMissionBundle(
   );
   await fs.mkdir(path.join(targetDir, 'proof-logs'), { recursive: true });
   await fs.writeFile(path.join(targetDir, 'proof-logs', 'README.md'), missionProofLogsReadme(report), 'utf-8');
+  await fs.writeFile(path.join(targetDir, 'proof-logs', 'status.jsonl'), '', 'utf-8');
   const missionScriptPath = path.join(targetDir, 'mission.sh');
   await fs.writeFile(missionScriptPath, buildMissionScript(report, { proofLogs: true }), 'utf-8');
   await fs.chmod(missionScriptPath, 0o755).catch(() => undefined);
@@ -570,6 +571,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'proof-logs/README.md',
       path: path.join(targetDir, 'proof-logs', 'README.md'),
       description: 'Proof-log index for output written by mission.sh.',
+    },
+    {
+      name: 'proof-logs/status.jsonl',
+      path: path.join(targetDir, 'proof-logs', 'status.jsonl'),
+      description: 'Runtime status rows written by mission.sh.',
     },
     {
       name: 'proof-commands.txt',
@@ -741,7 +747,9 @@ function buildMissionScript(report: StartReport, options: MissionScriptOptions =
     lines.push(
       'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
       'PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"',
+      'PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"',
       'mkdir -p "$PROOF_LOG_DIR"',
+      ': > "$PROOF_STATUS_FILE"',
       scriptPrintExpanded('Proof logs: ${PROOF_LOG_DIR}'),
       scriptPrint(''),
     );
@@ -752,11 +760,19 @@ function buildMissionScript(report: StartReport, options: MissionScriptOptions =
     return lines.join('\n') + '\n';
   }
 
-  lines.push(...scriptCommandBlock('Run current command', cursor.command, proofLogs ? `current-${cursor.stepId}.log` : undefined));
+  lines.push(...scriptCommandBlock(
+    'Run current command',
+    cursor.command,
+    proofLogs ? { id: `current-${cursor.stepId}`, logName: `current-${cursor.stepId}.log` } : undefined,
+  ));
   if (proofCommands.length > 0) {
     lines.push(scriptPrint(''), scriptPrint('Run remaining proof'));
     for (const [index, command] of proofCommands.entries()) {
-      lines.push(...scriptCommandBlock(`Proof ${index + 1}`, command, proofLogs ? `proof-${index + 1}.log` : undefined));
+      lines.push(...scriptCommandBlock(
+        `Proof ${index + 1}`,
+        command,
+        proofLogs ? { id: `proof-${index + 1}`, logName: `proof-${index + 1}.log` } : undefined,
+      ));
     }
   }
   lines.push(
@@ -774,6 +790,7 @@ function missionProofLogsReadme(report: StartReport): string {
     '# Mission Proof Logs',
     '',
     'Run `./mission.sh` from this bundle to write command output here.',
+    'Read `status.jsonl` for command exit codes after `mission.sh` runs.',
     '',
     '## Expected Logs',
     '',
@@ -801,14 +818,27 @@ function missionProofLogEntries(report: StartReport): Array<{ name: string; comm
   ];
 }
 
-function scriptCommandBlock(label: string, command: string, logName: string | undefined): string[] {
-  if (!logName) return [scriptPrint(label), command];
+interface MissionScriptLogTarget {
+  id: string;
+  logName: string;
+}
+
+function scriptCommandBlock(label: string, command: string, logTarget: MissionScriptLogTarget | undefined): string[] {
+  if (!logTarget) return [scriptPrint(label), command];
   return [
     scriptPrint(label),
-    scriptPrint(`Writing proof-logs/${logName}`),
+    scriptPrint(`Writing proof-logs/${logTarget.logName}`),
+    'set +e',
     '{',
     `  ${command}`,
-    `} > "$PROOF_LOG_DIR/${logName}" 2>&1`,
+    `} > "$PROOF_LOG_DIR/${logTarget.logName}" 2>&1`,
+    'status=$?',
+    'set -e',
+    scriptAppendStatusJsonl(logTarget.id, label, logTarget.logName, command),
+    'if [ "$status" -ne 0 ]; then',
+    `  ${scriptPrintError(`Command failed. See proof-logs/${logTarget.logName}.`)}`,
+    '  exit "$status"',
+    'fi',
   ];
 }
 
@@ -818,6 +848,16 @@ function scriptPrint(value: string): string {
 
 function scriptPrintExpanded(value: string): string {
   return `printf '%s\\n' "${value.replace(/(["\\])/g, '\\$1')}"`;
+}
+
+function scriptAppendStatusJsonl(id: string, label: string, logName: string, command: string): string {
+  const prefix = JSON.stringify({
+    id,
+    label,
+    log: logName,
+    command,
+  }).replace(/}$/, ',"exitCode":');
+  return `printf '%s%s%s\\n' ${shellQuote(prefix)} "$status" '}' >> "$PROOF_STATUS_FILE"`;
 }
 
 function scriptPrintError(value: string): string {
