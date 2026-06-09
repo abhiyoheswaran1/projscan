@@ -520,7 +520,7 @@ function resumeRemainingProofCommands(checklist: StartMissionResumeChecklistItem
 function resumeRemainingProofItems(checklist: StartMissionResumeChecklistItem[]): StartMissionProofItem[] {
   return checklist.flatMap((item) => {
     if (item.kind !== 'run_proof' || typeof item.command !== 'string') return [];
-    const toolCall = proofCommandToolCall(item.command);
+    const toolCall = proofChecklistToolCall(item);
     return [{
       stepId: item.stepId,
       status: item.status,
@@ -534,9 +534,19 @@ function resumeRemainingProofItems(checklist: StartMissionResumeChecklistItem[])
 function resumeRemainingProofToolCalls(checklist: StartMissionResumeChecklistItem[]): StartMissionProofToolCall[] {
   return checklist.flatMap((item) => {
     if (item.kind !== 'run_proof' || typeof item.command !== 'string') return [];
-    const toolCall = proofCommandToolCall(item.command);
+    const toolCall = proofChecklistToolCall(item);
     return toolCall ? [{ stepId: item.stepId, command: item.command, ...toolCall }] : [];
   });
+}
+
+function proofChecklistToolCall(item: StartMissionResumeChecklistItem): StartMissionResume['toolCall'] | undefined {
+  if (item.tool) {
+    return {
+      tool: item.tool,
+      ...(typeof item.args !== 'undefined' ? { args: item.args } : {}),
+    };
+  }
+  return typeof item.command === 'string' ? proofCommandToolCall(item.command) : undefined;
 }
 
 function proofCommandToolCall(command: string): StartMissionResume['toolCall'] | undefined {
@@ -960,13 +970,20 @@ function buildMissionExecutionPlan(input: {
       id: 'proof',
       title: 'Proof',
       status: 'ready',
-      steps: input.proofCommands.map((command, index): StartExecutionStep => ({
-        id: `proof-${index + 1}`,
-        kind: 'proof',
-        status: 'ready',
-        label: command,
-        command,
-      })),
+      steps: input.proofCommands.map((command, index): StartExecutionStep => {
+        const toolCall = proofCommandToolCall(command);
+        return {
+          id: `proof-${index + 1}`,
+          kind: 'proof',
+          status: 'ready',
+          label: command,
+          command,
+          ...(toolCall ? {
+            tool: toolCall.tool,
+            ...(typeof toolCall.args !== 'undefined' ? { args: toolCall.args } : {}),
+          } : {}),
+        };
+      }),
     });
   }
 

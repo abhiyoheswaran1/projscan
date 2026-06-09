@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `projscan start --intent "<goal>"` console output now includes an `Execution Plan` section so humans can scan the same phase model agents receive over MCP.
 - `projscan start --intent "<goal>"` console output now includes a `Run Cursor` section with the single current step, its command or input instruction, and any blockers or unlocks.
 - `missionControl.executionPlan.currentPhase` now matches the execution cursor phase so agents do not see `next_action` while the runnable cursor is in `ready_now`.
+- `missionControl.executionPlan` proof steps and `missionControl.resume.checklist` `run_proof` rows now include MCP `tool` / `args` metadata when a proof command is MCP-callable.
 - `missionControl.handoff.readyProof.commands` now uses the resume remaining-proof queue when available, avoiding duplicate proof of the current cursor command.
 - `missionControl.handoff.readyProof.toolCalls` now carries MCP-native remaining proof calls when available.
 - `missionControl.handoff.readyProof.items` now mirrors the complete remaining-proof item queue, including CLI-only proof steps.

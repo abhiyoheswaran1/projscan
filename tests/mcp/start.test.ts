@@ -567,6 +567,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       kind: 'run_proof',
       stepId: 'proof-2',
       command: 'projscan preflight --mode before_edit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_edit' },
     }),
   );
   expect(resumeChecklist).toContainEqual(
@@ -753,6 +755,7 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
     start: {
       missionControl: {
         resume: {
+          checklist?: TestResumeChecklistItem[];
           remainingProofCommands?: string[];
           remainingProofToolCalls?: TestResumeProofToolCall[];
           remainingProofItems?: TestResumeProofItem[];
@@ -793,6 +796,25 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
     ]),
   );
   expect(result.start.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(result.start.missionControl.resume.checklist).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'resume-proof-2',
+        kind: 'run_proof',
+        command: 'projscan preflight --mode before_edit --format json',
+        tool: 'projscan_preflight',
+        args: { mode: 'before_edit' },
+      }),
+      expect.objectContaining({
+        id: 'resume-proof-6',
+        kind: 'run_proof',
+        command: 'projscan handoff',
+      }),
+    ]),
+  );
+  const handoffChecklistProof = result.start.missionControl.resume.checklist?.find((item) => item.id === 'resume-proof-6');
+  expect(handoffChecklistProof).not.toHaveProperty('tool');
+  expect(handoffChecklistProof).not.toHaveProperty('args');
   expect(result.start.missionControl.handoff.readyProof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
   expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
   expect(result.start.missionControl.runbook.markdown).toContain('Proof queue:');

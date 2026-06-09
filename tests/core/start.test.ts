@@ -3084,6 +3084,25 @@ test('start report turns handoff requests into an agent brief', async () => {
     ]),
   );
   expect(report.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(report.missionControl.resume.checklist).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'resume-proof-2',
+        kind: 'run_proof',
+        command: 'projscan preflight --mode before_edit --format json',
+        tool: 'projscan_preflight',
+        args: { mode: 'before_edit' },
+      }),
+      expect.objectContaining({
+        id: 'resume-proof-6',
+        kind: 'run_proof',
+        command: 'projscan handoff',
+      }),
+    ]),
+  );
+  const handoffChecklistProof = report.missionControl.resume.checklist?.find((item) => item.id === 'resume-proof-6');
+  expect(handoffChecklistProof).not.toHaveProperty('tool');
+  expect(handoffChecklistProof).not.toHaveProperty('args');
   expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
   expect(report.missionControl.runbook.markdown).toContain('Proof queue:');
   expect(report.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
@@ -6738,15 +6757,24 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       command: 'projscan impact <file-from-search> --format json',
     }),
   ]);
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps.map((step) => step.command)).toEqual(
-    report.missionControl.proofCommands,
-  );
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps[0]).toEqual(
+  const proofSteps = report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps ?? [];
+  expect(proofSteps.map((step) => step.command)).toEqual(report.missionControl.proofCommands);
+  expect(proofSteps[0]).toEqual(
     expect.objectContaining({
       id: 'proof-1',
       kind: 'proof',
       status: 'ready',
       command: 'projscan search "auth token loader" --format json',
+    }),
+  );
+  expect(proofSteps[1]).toEqual(
+    expect.objectContaining({
+      id: 'proof-2',
+      kind: 'proof',
+      status: 'ready',
+      command: 'projscan preflight --mode before_edit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_edit' },
     }),
   );
   expect(report.missionControl.resume).toEqual(
@@ -6860,6 +6888,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       stepId: 'proof-2',
       status: 'ready',
       command: 'projscan preflight --mode before_edit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_edit' },
     }),
   );
   expect(resumeChecklist).toContainEqual(
