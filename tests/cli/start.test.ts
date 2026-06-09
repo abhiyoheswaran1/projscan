@@ -405,6 +405,44 @@ test('start JSON keeps the full report when proof-commands shortcut is requested
   expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
 });
 
+test('start prints only the resume checklist when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--checklist',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const checklistRows = result.stdout.trim().split('\n');
+  expect(checklistRows[0]).toBe('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
+  expect(checklistRows).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(checklistRows).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
+  expect(checklistRows).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Resume Checklist');
+  expect(result.stdout).not.toContain('Handoff Prompt');
+});
+
+test('start JSON keeps the full report when checklist shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--checklist',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.resume.checklist).toEqual(report.missionControl.handoff.resume.checklist);
+  expect(report.missionControl.resume.checklist[0].command).toBe('projscan search "auth token loader" --format json');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');

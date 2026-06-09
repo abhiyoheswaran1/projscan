@@ -30,6 +30,7 @@ export function registerStart(): void {
     .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
     .option('--next-command', 'print only the current Mission Control cursor command')
     .option('--proof-commands', 'print only ready Mission Control proof commands')
+    .option('--checklist', 'print only the Mission Control resume checklist')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -65,6 +66,10 @@ export function registerStart(): void {
             process.exit(1);
           }
           console.log(commands.join('\n'));
+          return;
+        }
+        if (cmdOpts.checklist === true) {
+          printChecklistOnly(report);
           return;
         }
         if (cmdOpts.handoffPrompt === true) {
@@ -218,6 +223,17 @@ function readyProofCommands(report: StartReport): string[] {
   return mission.handoff.readyProof.commands.length > 0
     ? mission.handoff.readyProof.commands
     : mission.proofCommands;
+}
+
+function printChecklistOnly(report: StartReport): void {
+  const checklist = report.missionControl.resume.checklist ?? [];
+  if (checklist.length === 0) {
+    console.error(chalk.red('No Mission Control resume checklist is available.'));
+    process.exit(1);
+  }
+  for (const item of checklist) {
+    console.log(`- ${formatConsoleChecklistItem(item)}`);
+  }
 }
 
 function printHandoffPrompt(report: StartReport): void {
