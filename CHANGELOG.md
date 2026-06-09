@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --mission-script` and saved `mission.sh` mission bundle files for running the current cursor command and remaining proof queue from one shell script.
 - Added saved mission bundle `proof-logs/status.jsonl`; saved `mission.sh` writes current-command and proof-command logs plus exit-code rows under `proof-logs/`.
 - Added saved mission bundle `proof-logs/run-report.md`; saved `mission.sh` now refreshes a Markdown pass/fail proof report with log links and review gate commands.
+- Added saved mission bundle `proof-logs/summary.json`; saved `mission.sh` now records `not_run`, `running`, `passed`, or `failed` mission state for wrappers and agents.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.
 - Added `projscan start --next-tool-call`, a console shortcut that prints only the current Mission Control cursor MCP tool call as compact JSON.

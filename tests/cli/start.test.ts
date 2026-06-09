@@ -706,6 +706,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('proof-logs/README.md');
   expect(result.stdout).toContain('proof-logs/status.jsonl');
   expect(result.stdout).toContain('proof-logs/run-report.md');
+  expect(result.stdout).toContain('proof-logs/summary.json');
   expect(result.stdout).toContain('proof-commands.txt');
   expect(result.stdout).toContain('manifest.json');
 
@@ -730,6 +731,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `proof-logs/README.md`: Proof-log index for output written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.');
+  expect(quickstart).toContain('- `proof-logs/summary.json`: Machine-readable mission run state refreshed by mission.sh.');
   expect(quickstart).toContain('## Reviewer Replies');
   expect(quickstart).toContain(
     '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
@@ -890,11 +892,19 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"');
   expect(missionScript).toContain('PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"');
   expect(missionScript).toContain('PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"');
+  expect(missionScript).toContain('PROOF_SUMMARY_FILE="${PROOF_LOG_DIR}/summary.json"');
   expect(missionScript).toContain('mkdir -p "$PROOF_LOG_DIR"');
   expect(missionScript).toContain(': > "$PROOF_STATUS_FILE"');
   expect(missionScript).toContain(': > "$PROOF_REPORT_FILE"');
   expect(missionScript).toContain("printf '%s\\n' '# Mission Run Report'");
   expect(missionScript).toContain("printf '%s\\n' '| Step | Label | Exit | Log |'");
+  expect(missionScript).toContain('"status":"running"');
+  expect(missionScript).toContain('"status":"passed"');
+  expect(missionScript).toContain('"status":"failed"');
+  expect(missionScript).toContain('"totalCommands":');
+  expect(missionScript).toContain('"failedStep":');
+  expect(missionScript).toContain('"exitCode":');
+  expect(missionScript).toContain('> "$PROOF_SUMMARY_FILE"');
   expect(missionScript).toContain("printf '%s\\n' 'Run current command'");
   expect(missionScript).toContain('projscan search "auth token loader" --format json');
   expect(missionScript).toContain('> "$PROOF_LOG_DIR/current-ready-1.log" 2>&1');
@@ -906,8 +916,11 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain(
     'printf \'| %s | %s | %s | %s |\\n\' \'current-ready-1\' \'Run current command\' "$status" \'proof-logs/current-ready-1.log\'',
   );
+  expect(missionScript).toContain("printf '%s\\n' '## Result'");
+  expect(missionScript).toContain("printf '%s\\n' 'All current and proof commands exited 0.'");
   expect(missionScript).toContain("printf '%s\\n' 'Mission stopped before completion.'");
   expect(missionScript).toContain('printf \'%s\\n\' "Run report: ${PROOF_REPORT_FILE}"');
+  expect(missionScript).toContain('Summary: ${PROOF_SUMMARY_FILE}');
   expect(missionScript).toContain('exit "$status"');
   expect(missionScript).toContain("printf '%s\\n' 'Run remaining proof'");
   expect(missionScript).toContain('projscan preflight --mode before_edit --format json');
@@ -922,6 +935,7 @@ test('start writes a Mission Control bundle when requested', async () => {
 
   const proofLogReadme = await fs.readFile(path.join(bundleDir, 'proof-logs', 'README.md'), 'utf-8');
   expect(proofLogReadme).toContain('# Mission Proof Logs');
+  expect(proofLogReadme).toContain('Read `summary.json` for the latest not_run, running, passed, or failed state.');
   expect(proofLogReadme).toContain('Read `status.jsonl` for command exit codes after `mission.sh` runs.');
   expect(proofLogReadme).toContain('- `current-ready-1.log`: `projscan search "auth token loader" --format json`');
   expect(proofLogReadme).toContain('- `proof-1.log`: `projscan preflight --mode before_edit --format json`');
@@ -933,6 +947,14 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(proofRunReport).toContain('# Mission Run Report');
   expect(proofRunReport).toContain('Run `./mission.sh` to refresh this report with command exit codes and log links.');
   expect(proofRunReport).toContain('Review `status.jsonl` for machine-readable status rows.');
+
+  const proofSummary = JSON.parse(await fs.readFile(path.join(bundleDir, 'proof-logs', 'summary.json'), 'utf-8'));
+  expect(proofSummary).toEqual({
+    schemaVersion: 1,
+    status: 'not_run',
+    report: 'proof-logs/run-report.md',
+    statusRows: 'proof-logs/status.jsonl',
+  });
 
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
@@ -975,6 +997,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'proof-logs/README.md',
     'proof-logs/status.jsonl',
     'proof-logs/run-report.md',
+    'proof-logs/summary.json',
     'proof-commands.txt',
     'manifest.json',
   ]);
@@ -1013,6 +1036,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'proof-logs/README.md',
       'proof-logs/status.jsonl',
       'proof-logs/run-report.md',
+      'proof-logs/summary.json',
       'manifest.json',
     ]),
   );
@@ -1249,7 +1273,10 @@ test('start prints a mission shell script when requested', async () => {
   expect(result.stdout).not.toContain('PROOF_LOG_DIR');
   expect(result.stdout).not.toContain('PROOF_STATUS_FILE');
   expect(result.stdout).not.toContain('PROOF_REPORT_FILE');
+  expect(result.stdout).not.toContain('PROOF_SUMMARY_FILE');
   expect(result.stdout).not.toContain('run-report.md');
+  expect(result.stdout).not.toContain('summary.json');
+  expect(result.stdout).not.toContain('Summary:');
   expect(result.stdout).not.toContain('Mission Run Report');
   expect(result.stdout).not.toContain('> "$PROOF_LOG_DIR/');
   expect(result.stdout).not.toContain('status=$?');
