@@ -185,6 +185,7 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
   expect(result.stdout).toContain('- git status --short');
   expect(result.stdout).toContain('- git diff --stat');
+  expect(result.stdout).toContain('Current worktree evidence');
   expect(result.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
@@ -710,6 +711,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate.startsWith('# Mission Review Gate\n')).toBe(true);
   expect(reviewGate).toContain('- [ ] Capture `git status --short`.');
   expect(reviewGate).toContain('- `git diff --stat`');
+  expect(reviewGate).toContain('## Worktree Evidence');
+  expect(reviewGate).toContain('Current worktree evidence');
   expect(reviewGate.endsWith('\n')).toBe(true);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
@@ -726,6 +729,7 @@ test('start writes a Mission Control bundle when requested', async () => {
       commands: ['git status --short', 'git diff --stat'],
     }),
   );
+  expect(handoff.reviewGate.worktree.summary).toContain('Current worktree evidence');
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
@@ -884,6 +888,8 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   const report = JSON.parse(json.stdout);
   expect(shortcut.stdout).toBe(report.missionControl.reviewGate.markdown);
   expect(shortcut.stdout).toContain('# Mission Review Gate');
+  expect(shortcut.stdout).toContain('## Worktree Evidence');
+  expect(shortcut.stdout).toContain(report.missionControl.reviewGate.worktree.summary);
   expect(shortcut.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(shortcut.stdout).not.toContain('Start:');
   expect(shortcut.stdout).not.toContain('Run Cursor');

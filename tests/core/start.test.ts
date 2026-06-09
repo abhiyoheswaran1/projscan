@@ -7058,7 +7058,21 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   );
   expect(report.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
   expect(report.missionControl.reviewGate.markdown).toContain('## Evidence Commands');
+  expect(report.missionControl.reviewGate.worktree).toEqual(
+    expect.objectContaining({
+      available: false,
+      clean: false,
+      changedFileCount: 0,
+      files: [],
+      baseRef: null,
+      summary: 'Current worktree evidence is unavailable: not a git repository.',
+      reason: 'not a git repository',
+    }),
+  );
+  expect(report.missionControl.reviewGate.markdown).toContain('## Worktree Evidence');
+  expect(report.missionControl.reviewGate.markdown).toContain('Current worktree evidence is unavailable: not a git repository.');
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
+  expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',

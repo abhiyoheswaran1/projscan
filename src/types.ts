@@ -990,6 +990,16 @@ export interface StartMissionRunbook {
   markdown: string;
 }
 
+export interface StartMissionReviewWorktree {
+  available: boolean;
+  clean: boolean;
+  changedFileCount: number;
+  files: string[];
+  baseRef: string | null;
+  summary: string;
+  reason?: string;
+}
+
 export interface StartMissionReviewGate {
   title: string;
   required: true;
@@ -998,6 +1008,7 @@ export interface StartMissionReviewGate {
   reviewPrompt: string;
   checklist: string[];
   commands: string[];
+  worktree: StartMissionReviewWorktree;
   markdown: string;
 }
 

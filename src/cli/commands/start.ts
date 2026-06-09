@@ -666,6 +666,7 @@ function printReviewGate(report: StartReport): void {
   console.log(chalk.bold('Review Gate'));
   console.log(gate.stopCondition);
   for (const command of gate.commands) console.log(`- ${command}`);
+  console.log(gate.worktree.summary);
   const stopLine = gate.checklist.find((item) => item.startsWith('Stop and ask'));
   if (stopLine) console.log(chalk.dim(stopLine));
 }

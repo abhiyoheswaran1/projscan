@@ -20,6 +20,7 @@ import type {
   StartMissionProofItem,
   StartMissionProofToolCall,
   StartMissionReviewGate,
+  StartMissionReviewWorktree,
   StartMissionResume,
   StartMissionResumeChecklistItem,
   StartMissionResumeReference,
@@ -103,6 +104,7 @@ export async function computeStartReport(
     fixFirst,
     adoptionGaps,
     coordinationHints,
+    riskSources,
   });
   const nextActions = dedupeActions([
     missionControl.primaryAction,
@@ -329,6 +331,7 @@ function buildMissionControl(input: {
   fixFirst?: StartReport['fixFirst'];
   adoptionGaps: StartAdoptionGap[];
   coordinationHints: SessionCoordinationHint[];
+  riskSources: StartReport['evidence']['riskSources'];
 }): StartMissionControl {
   const routeCandidates = routesForIntent(input.intent);
   const routed = routeCandidates[0];
@@ -360,6 +363,7 @@ function buildMissionControl(input: {
   const reviewGate = buildMissionReviewGate({
     status,
     proofSummary: READY_PROOF_SUMMARY,
+    currentWorktree: input.riskSources.currentWorktree,
   });
   const runbook = buildMissionRunbook({
     intent: input.intent,
@@ -411,6 +415,7 @@ function buildMissionControl(input: {
 function buildMissionReviewGate(input: {
   status: StartMissionControlStatus;
   proofSummary: string;
+  currentWorktree: StartReport['evidence']['riskSources']['currentWorktree'];
 }): StartMissionReviewGate {
   const checklist = [
     'Complete this task card and remaining proof.',
@@ -419,6 +424,7 @@ function buildMissionReviewGate(input: {
     'Stop and ask for approval before starting another slice, release, publish, or deploy.',
   ];
   const commands = ['git status --short', 'git diff --stat'];
+  const worktree = buildMissionReviewWorktree(input.currentWorktree);
   const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
   const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proofSummary}`;
   return {
@@ -429,13 +435,46 @@ function buildMissionReviewGate(input: {
     reviewPrompt,
     checklist,
     commands,
+    worktree,
     markdown: renderMissionReviewGateMarkdown({
       status: input.status,
       stopCondition,
       reviewPrompt,
       checklist,
       commands,
+      worktree,
     }),
+  };
+}
+
+function buildMissionReviewWorktree(
+  currentWorktree: StartReport['evidence']['riskSources']['currentWorktree'],
+): StartMissionReviewWorktree {
+  if (!currentWorktree.available) {
+    const reason = currentWorktree.reason ?? 'unknown';
+    return {
+      available: false,
+      clean: false,
+      changedFileCount: 0,
+      files: [],
+      baseRef: currentWorktree.baseRef,
+      summary: `Current worktree evidence is unavailable: ${reason}.`,
+      reason,
+    };
+  }
+
+  const changedFileCount = currentWorktree.count;
+  const baseRef = currentWorktree.baseRef;
+  return {
+    available: true,
+    clean: changedFileCount === 0,
+    changedFileCount,
+    files: currentWorktree.files,
+    baseRef,
+    summary:
+      changedFileCount === 0
+        ? 'Current worktree evidence sees no changed files.'
+        : `Current worktree evidence sees ${changedFileCount} changed file(s)${baseRef ? ` against ${baseRef}` : ''}.`,
   };
 }
 
@@ -445,6 +484,7 @@ function renderMissionReviewGateMarkdown(input: {
   reviewPrompt: string;
   checklist: string[];
   commands: string[];
+  worktree: StartMissionReviewWorktree;
 }): string {
   const lines = [
     '# Mission Review Gate',
@@ -457,6 +497,10 @@ function renderMissionReviewGateMarkdown(input: {
     '',
     '## Evidence Commands',
     ...input.commands.map((command) => `- \`${command}\``),
+    '',
+    '## Worktree Evidence',
+    input.worktree.summary,
+    ...input.worktree.files.slice(0, 8).map((file) => `- \`${file}\``),
     '',
     '## Review Prompt',
     input.reviewPrompt,
