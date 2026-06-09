@@ -128,8 +128,11 @@ test('start report routes a plain-language intent into mission control', async (
   expect(report.missionControl.proofCommands).not.toContain('projscan impact --symbol buildCodeGraph --format json');
   expect(report.missionControl.handoffPrompt).toContain('Needs input: symbol=<symbol-from-search>, file=<file-from-search>.');
   expect(report.missionControl.handoffPrompt).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.handoffPrompt).toContain('projscan search "auth token loader" --format json');
   expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
+  expect(report.missionControl.handoffPrompt).not.toContain('Next:');
   expect(report.missionControl.handoffPrompt).not.toContain('..');
   expect(report.missionControl.handoff).toEqual(
     expect.objectContaining({
@@ -6739,6 +6742,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
+  expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
+  expect(report.missionControl.handoffPrompt).toContain('input-1 (symbol), input-2 (file)');
+  expect(report.missionControl.handoffPrompt.startsWith('Resume: ')).toBe(true);
   expect(report.missionControl.handoff.currentStep).toEqual(report.missionControl.executionPlan.cursor);
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
   expect(report.missionControl.runbook).toEqual(

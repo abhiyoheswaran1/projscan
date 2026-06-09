@@ -227,6 +227,26 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
 });
 
+test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
+  expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.handoffPrompt).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(report.missionControl.handoffPrompt).not.toContain('Next:');
+  expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
+});
+
 test('start console runs impact directly for file path intents', async () => {
   const result = await runCli(['start', '--intent', 'what breaks if I change src/core/start.ts', '--quiet']);
 

@@ -360,7 +360,6 @@ function buildMissionControl(input: {
       : input.fixFirst
         ? `Top evidence points to "${input.fixFirst.title}" as the first useful move.`
         : `The ${input.mode} workflow is the shortest path from orientation to verified action.`;
-  const commandText = primaryAction.command ?? primaryAction.tool ?? 'projscan start --format json';
   return {
     ...(input.intent ? { intent: input.intent } : {}),
     status,
@@ -380,7 +379,7 @@ function buildMissionControl(input: {
     handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
     runbook,
-    handoffPrompt: missionHandoffPrompt(commandText, successCriteria, whyNow, unresolvedInputs, proofCommands),
+    handoffPrompt: missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands),
   };
 }
 
@@ -849,7 +848,7 @@ function missionHandoff(
 }
 
 function missionHandoffPrompt(
-  commandText: string,
+  resume: StartMissionResume,
   successCriteria: string[],
   whyNow: string,
   unresolvedInputs: StartUnresolvedInput[],
@@ -858,7 +857,11 @@ function missionHandoffPrompt(
   const needsInput = unresolvedInputs.length > 0
     ? ` Needs input: ${unresolvedInputs.map((input) => `${input.name}=${input.placeholder}`).join(', ')}.`
     : '';
-  return `Next: ${commandText}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow} Ready proof: ${READY_PROOF_SUMMARY} ${proofCommands.slice(0, 3).join(' && ')}.`;
+  const proofCommandText = proofCommands.slice(0, 3).join(' && ');
+  const readyProof = proofCommandText.length > 0
+    ? ` Ready proof: ${READY_PROOF_SUMMARY} ${proofCommandText}.`
+    : ` Ready proof: ${READY_PROOF_SUMMARY}.`;
+  return `Resume: ${trimTrailingPunctuation(resume.prompt)}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow}${readyProof}`;
 }
 
 function trimTrailingPunctuation(value: string): string {

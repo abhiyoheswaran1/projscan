@@ -401,6 +401,10 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
+  expect(result.start.missionControl.handoffPrompt).toContain(result.start.missionControl.resume.prompt);
+  expect(result.start.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(result.start.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.start.missionControl.handoffPrompt).not.toContain('Next:');
   expect(result.start.missionControl.handoff.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
   expect(result.start.missionControl.handoff.resume).toEqual(result.start.missionControl.resume);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
