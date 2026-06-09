@@ -189,6 +189,9 @@ function printExecutionPlan(report: StartReport): void {
       } else {
         console.log(`  - ${step.label}`);
       }
+      if (step.blockedBy && step.blockedBy.length > 0) {
+        console.log(`    blocked by: ${step.blockedBy.join(', ')}`);
+      }
     }
   }
 }

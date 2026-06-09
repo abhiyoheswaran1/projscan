@@ -462,6 +462,10 @@ function buildMissionExecutionPlan(input: {
   proofCommands: string[];
 }): StartExecutionPlan {
   const phases: StartExecutionPhase[] = [];
+  const readyStepIds = input.readyActions.map((_, index) => `ready-${index + 1}`);
+  const inputStepIdsByPlaceholder = new Map(
+    input.unresolvedInputs.map((item, index) => [item.placeholder, `input-${index + 1}`]),
+  );
   const nextActionStep = actionToExecutionStep('next-action-1', input.primaryAction);
   phases.push({
     id: 'next_action',
@@ -475,7 +479,12 @@ function buildMissionExecutionPlan(input: {
       id: 'ready_now',
       title: 'Ready Commands',
       status: 'ready',
-      steps: input.readyActions.map((action, index) => actionToExecutionStep(`ready-${index + 1}`, action)),
+      steps: input.readyActions.map((action, index) => {
+        const step = actionToExecutionStep(`ready-${index + 1}`, action);
+        const unlockedInputs = Array.from(inputStepIdsByPlaceholder.values());
+        if (index === 0 && unlockedInputs.length > 0) step.unlocks = unlockedInputs;
+        return step;
+      }),
     });
   }
 
@@ -484,13 +493,19 @@ function buildMissionExecutionPlan(input: {
       id: 'resolve_inputs',
       title: 'Resolve Inputs',
       status: 'blocked',
-      steps: input.unresolvedInputs.map((item, index): StartExecutionStep => ({
-        id: `input-${index + 1}`,
-        kind: 'input',
-        status: 'blocked',
-        label: item.name,
-        instruction: item.instruction,
-      })),
+      steps: input.unresolvedInputs.map((item, index): StartExecutionStep => {
+        const id = `input-${index + 1}`;
+        const followUps = followUpIdsForPlaceholder(input.actionPlan, item.placeholder);
+        return {
+          id,
+          kind: 'input',
+          status: 'blocked',
+          label: item.name,
+          ...(readyStepIds[0] ? { dependsOn: [readyStepIds[0]] } : {}),
+          ...(followUps.length > 0 ? { unlocks: followUps } : {}),
+          instruction: item.instruction,
+        };
+      }),
     });
   }
 
@@ -500,7 +515,17 @@ function buildMissionExecutionPlan(input: {
       id: 'follow_up',
       title: 'Follow Up',
       status: 'pending',
-      steps: pendingActions.map((action, index) => actionToExecutionStep(`follow-up-${index + 1}`, action)),
+      steps: pendingActions.map((action, index) => {
+        const step = actionToExecutionStep(`follow-up-${index + 1}`, action);
+        const blockedBy = placeholdersInAction(action)
+          .map((placeholder) => inputStepIdsByPlaceholder.get(placeholder))
+          .filter((id): id is string => typeof id === 'string');
+        if (blockedBy.length > 0) {
+          step.blockedBy = blockedBy;
+          step.dependsOn = uniqueStrings([readyStepIds[0] ?? '', ...blockedBy].filter(Boolean));
+        }
+        return step;
+      }),
     });
   }
 
@@ -549,6 +574,37 @@ function actionToExecutionStep(id: string, action: PreflightSuggestedAction): St
   if (typeof action.tool === 'string') step.tool = action.tool;
   if (action.args) step.args = action.args;
   return step;
+}
+
+function followUpIdsForPlaceholder(actionPlan: PreflightSuggestedAction[], placeholder: string): string[] {
+  return actionPlan
+    .filter((action) => !isReadyAction(action))
+    .map((action, index) => ({ action, id: `follow-up-${index + 1}` }))
+    .filter(({ action }) => placeholdersInAction(action).includes(placeholder))
+    .map(({ id }) => id);
+}
+
+function placeholdersInAction(action: PreflightSuggestedAction): string[] {
+  const placeholders = new Set<string>();
+  if (typeof action.command === 'string') {
+    for (const match of action.command.matchAll(/<[^<>]+>/g)) placeholders.add(match[0]);
+  }
+  collectPlaceholdersFromValue(action.args, placeholders);
+  return Array.from(placeholders);
+}
+
+function collectPlaceholdersFromValue(value: unknown, placeholders: Set<string>): void {
+  if (typeof value === 'string') {
+    if (isPlaceholder(value)) placeholders.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPlaceholdersFromValue(item, placeholders);
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectPlaceholdersFromValue(item, placeholders);
+  }
 }
 
 function executionStatusForAction(action: PreflightSuggestedAction): StartExecutionStatus {

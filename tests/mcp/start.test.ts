@@ -162,6 +162,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
               tool?: string;
               args?: Record<string, unknown>;
               instruction?: string;
+              dependsOn?: string[];
+              blockedBy?: string[];
+              unlocks?: string[];
             }>;
           }>;
         };
@@ -261,6 +264,19 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       status: 'blocked',
       label: 'symbol',
       instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+    }),
+  );
+  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')?.steps[0]).toEqual(
+    expect.objectContaining({
+      id: 'ready-1',
+      unlocks: ['input-1', 'input-2'],
+    }),
+  );
+  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')?.steps[0]).toEqual(
+    expect.objectContaining({
+      id: 'follow-up-1',
+      dependsOn: ['ready-1', 'input-1'],
+      blockedBy: ['input-1'],
     }),
   );
   expect(result.start.missionControl.runbook).toEqual(

@@ -846,6 +846,9 @@ export interface StartExecutionStep {
   tool?: string;
   args?: Record<string, unknown>;
   instruction?: string;
+  dependsOn?: string[];
+  blockedBy?: string[];
+  unlocks?: string[];
 }
 
 export interface StartExecutionPhase {

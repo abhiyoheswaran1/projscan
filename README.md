@@ -57,7 +57,7 @@ npm run docs:screenshots
 
 The next Mission Control slice makes `projscan start --intent "<goal>"` more directly actionable for agents. The JSON payload now includes `missionControl.executionPlan`: ordered phases for the next action, ready commands, blocked inputs, follow-up steps, proof commands, and done criteria.
 
-That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist.
+That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input.
 
 The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, ready commands, blocked inputs, proof commands, and done criteria. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
 
@@ -72,6 +72,7 @@ Run 1 ready step, resolve 2 input(s), then gather 4 proof command(s).
   - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.
 - [pending] Follow Up
   - If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json
+    blocked by: input-1
 ```
 
 Runbook handoff example:

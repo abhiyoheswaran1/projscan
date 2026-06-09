@@ -6645,12 +6645,20 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       args: { query: 'auth token loader' },
     }),
   );
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')?.steps[0]).toEqual(
+    expect.objectContaining({
+      id: 'ready-1',
+      unlocks: ['input-1', 'input-2'],
+    }),
+  );
   expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')?.steps).toEqual([
     expect.objectContaining({
       id: 'input-1',
       kind: 'input',
       status: 'blocked',
       label: 'symbol',
+      dependsOn: ['ready-1'],
+      unlocks: ['follow-up-1'],
       instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
@@ -6658,6 +6666,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       kind: 'input',
       status: 'blocked',
       label: 'file',
+      dependsOn: ['ready-1'],
+      unlocks: ['follow-up-2'],
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
@@ -6666,12 +6676,16 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       id: 'follow-up-1',
       kind: 'tool',
       status: 'blocked',
+      dependsOn: ['ready-1', 'input-1'],
+      blockedBy: ['input-1'],
       command: 'projscan impact --symbol <symbol-from-search> --format json',
     }),
     expect.objectContaining({
       id: 'follow-up-2',
       kind: 'tool',
       status: 'blocked',
+      dependsOn: ['ready-1', 'input-2'],
+      blockedBy: ['input-2'],
       command: 'projscan impact <file-from-search> --format json',
     }),
   ]);
