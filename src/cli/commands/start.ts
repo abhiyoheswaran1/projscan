@@ -29,6 +29,7 @@ export function registerStart(): void {
     .option('--include-handoff', 'include a compact handoff payload')
     .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
     .option('--next-command', 'print only the current Mission Control cursor command')
+    .option('--proof-commands', 'print only ready Mission Control proof commands')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -55,6 +56,15 @@ export function registerStart(): void {
             process.exit(1);
           }
           console.log(command);
+          return;
+        }
+        if (cmdOpts.proofCommands === true) {
+          const commands = readyProofCommands(report);
+          if (commands.length === 0) {
+            console.error(chalk.red('No ready Mission Control proof commands are available.'));
+            process.exit(1);
+          }
+          console.log(commands.join('\n'));
           return;
         }
         if (cmdOpts.handoffPrompt === true) {
@@ -189,10 +199,8 @@ function printMissionControl(report: StartReport): void {
   if (mission.proofCommands.length > 0) {
     console.log(chalk.bold('Ready Proof'));
     console.log(chalk.dim(mission.proofSummary));
-    const readyProofCommands = mission.handoff.readyProof.commands.length > 0
-      ? mission.handoff.readyProof.commands
-      : mission.proofCommands;
-    for (const command of readyProofCommands.slice(0, 3)) {
+    const proofCommands = readyProofCommands(report);
+    for (const command of proofCommands.slice(0, 3)) {
       console.log(chalk.dim(`- ${command}`));
     }
     const proofItems = mission.handoff.readyProof.items ?? [];
@@ -203,6 +211,13 @@ function printMissionControl(report: StartReport): void {
       }
     }
   }
+}
+
+function readyProofCommands(report: StartReport): string[] {
+  const mission = report.missionControl;
+  return mission.handoff.readyProof.commands.length > 0
+    ? mission.handoff.readyProof.commands
+    : mission.proofCommands;
 }
 
 function printHandoffPrompt(report: StartReport): void {

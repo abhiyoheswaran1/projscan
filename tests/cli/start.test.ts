@@ -367,6 +367,44 @@ test('start JSON keeps the full report when next-command shortcut is requested',
   expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
 });
 
+test('start prints only ready proof commands when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--proof-commands',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const proofCommands = result.stdout.trim().split('\n');
+  expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(proofCommands).toContain('projscan understand --view verify --format json');
+  expect(proofCommands).toContain('projscan preflight --format json');
+  expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Ready Proof');
+  expect(result.stdout).not.toContain('Proof Queue');
+});
+
+test('start JSON keeps the full report when proof-commands shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--proof-commands',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
+  expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
+});
+
 test('start JSON exposes complete remaining proof items for handoff intents', async () => {
   const { session } = await loadSession(tmp);
   recordTouch(session, 'src/index.ts', 'explicit');
