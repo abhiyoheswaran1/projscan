@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added saved mission bundle `proof-logs/status.jsonl`; saved `mission.sh` writes current-command and proof-command logs plus exit-code rows under `proof-logs/`.
 - Added saved mission bundle `proof-logs/run-report.md`; saved `mission.sh` now refreshes a Markdown pass/fail proof report with log links and review gate commands.
 - Added saved mission bundle `proof-logs/summary.json`; saved `mission.sh` now records `not_run`, `running`, `passed`, or `failed` mission state for wrappers and agents.
+- Added `nextAction` to saved mission bundle `proof-logs/summary.json` so agents can read the next command without parsing `status.sh` output.
 - Added saved mission bundle `status.sh`, an executable status gate for `proof-logs/summary.json` with CI-friendly exit codes.
 - Added saved mission bundle `review.sh`, an executable review surface that prints mission status, review gate text, run report evidence, review commands, and reviewer reply choices.
 - Added quick commands to saved mission bundle README files so developers can run `./mission.sh`, `./status.sh`, and `./review.sh` without scanning the manifest.

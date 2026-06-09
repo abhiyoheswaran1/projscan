@@ -915,6 +915,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('"status":"running"');
   expect(missionScript).toContain('"status":"passed"');
   expect(missionScript).toContain('"status":"failed"');
+  expect(missionScript).toContain('"nextAction":"wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl."');
+  expect(missionScript).toContain('"nextAction":"run ./review.sh and choose a reviewer reply."');
+  expect(missionScript).toContain('"nextAction":"inspect the failed log, fix the issue, then rerun ./mission.sh."');
   expect(missionScript).toContain('"totalCommands":');
   expect(missionScript).toContain('"failedStep":');
   expect(missionScript).toContain('"exitCode":');
@@ -1015,6 +1018,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(proofSummary).toEqual({
     schemaVersion: 1,
     status: 'not_run',
+    nextAction: 'run ./mission.sh to generate proof.',
     report: 'proof-logs/run-report.md',
     statusRows: 'proof-logs/status.jsonl',
   });
@@ -1034,13 +1038,14 @@ test('start writes a Mission Control bundle when requested', async () => {
       report: 'proof-logs/run-report.md',
       statusRows: 'proof-logs/status.jsonl',
       totalCommands: 3,
+      nextAction: 'open review mode now.',
     }) + '\n',
   );
   const passedStatus = await runScript(path.join(bundleDir, 'status.sh'), [], { cwd: bundleDir });
   expect(passedStatus.exitCode).toBe(0);
   expect(passedStatus.stdout).toContain('Mission status: passed');
   expect(passedStatus.stdout).toContain('Total commands: 3');
-  expect(passedStatus.stdout).toContain('Next action: run ./review.sh and choose a reviewer reply.');
+  expect(passedStatus.stdout).toContain('Next action: open review mode now.');
 
   await fs.writeFile(
     path.join(bundleDir, 'proof-logs', 'summary.json'),

@@ -814,13 +814,8 @@ function buildMissionStatusScript(): string {
     'if (summary.failedStep) console.log(`Failed step: ${summary.failedStep}`);',
     'if (summary.exitCode !== undefined) console.log(`Exit code: ${summary.exitCode}`);',
     'if (summary.log) console.log(`Log: ${summary.log}`);',
-    'const nextActions = {',
-    '  not_run: "run ./mission.sh to generate proof.",',
-    '  running: "wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl.",',
-    '  failed: "inspect the failed log, fix the issue, then rerun ./mission.sh.",',
-    '  passed: "run ./review.sh and choose a reviewer reply.",',
-    '};',
-    'const nextAction = nextActions[status] ?? "inspect proof-logs/summary.json.";',
+    `const nextActions = ${JSON.stringify(missionRunNextActions)};`,
+    'const nextAction = typeof summary.nextAction === "string" ? summary.nextAction : nextActions[status] ?? "inspect proof-logs/summary.json.";',
     'console.log(`Next action: ${nextAction}`);',
     'process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;',
     'NODE',
@@ -1006,6 +1001,7 @@ function missionInitialRunSummary(): Record<string, unknown> {
   return {
     schemaVersion: 1,
     status: 'not_run',
+    nextAction: missionRunNextActions.not_run,
     report: 'proof-logs/run-report.md',
     statusRows: 'proof-logs/status.jsonl',
   };
@@ -1104,6 +1100,13 @@ function scriptAppendReportFailure(id: string, logName: string): string[] {
 
 type MissionRunSummaryStatus = 'running' | 'passed' | 'failed';
 
+const missionRunNextActions = {
+  not_run: 'run ./mission.sh to generate proof.',
+  running: 'wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl.',
+  failed: 'inspect the failed log, fix the issue, then rerun ./mission.sh.',
+  passed: 'run ./review.sh and choose a reviewer reply.',
+} as const;
+
 interface MissionRunSummaryOptions {
   totalCommands?: number;
   failedStep?: string;
@@ -1114,6 +1117,7 @@ function scriptWriteSummaryJson(status: MissionRunSummaryStatus, options: Missio
   const base = {
     schemaVersion: 1,
     status,
+    nextAction: missionRunNextActions[status],
     report: 'proof-logs/run-report.md',
     statusRows: 'proof-logs/status.jsonl',
     ...(typeof options.totalCommands === 'number' ? { totalCommands: options.totalCommands } : {}),
