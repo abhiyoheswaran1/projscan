@@ -18,6 +18,7 @@ import type {
   StartExecutionStep,
   StartMissionInputBinding,
   StartMissionResume,
+  StartMissionResumeChecklistItem,
   StartMissionResumeReference,
   StartMissionRunbook,
   QualityScorecardRisk,
@@ -476,6 +477,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const toolCall = resumeToolCall(plan, cursor);
   const followUps = resumeFollowUps(plan, cursor);
   const inputBindings = resumeInputBindings(plan, cursor);
+  const checklist = resumeChecklist(plan, cursor, inputBindings, followUps);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -495,9 +497,103 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     ...(toolCall ? { toolCall } : {}),
     ...(followUps.length > 0 ? { followUps } : {}),
     ...(inputBindings.length > 0 ? { inputBindings } : {}),
+    ...(checklist.length > 0 ? { checklist } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
+}
+
+function resumeChecklist(
+  plan: StartExecutionPlan,
+  cursor: StartExecutionCursor,
+  inputBindings: StartMissionInputBinding[],
+  followUps: NonNullable<StartMissionResume['followUps']>,
+): StartMissionResumeChecklistItem[] {
+  const current = findStepInPlan(plan, cursor.stepId);
+  const currentItem = current
+    ? resumeChecklistItemFromStep(current.phase, current.step, currentChecklistKind(current.step), cursor.stepId)
+    : undefined;
+  const includedStepIds = new Set(currentItem ? [currentItem.stepId] : []);
+  const inputItems = inputBindings.flatMap((binding) => {
+    if (includedStepIds.has(binding.inputId)) return [];
+    const found = findStepInPlan(plan, binding.inputId);
+    if (!found) return [];
+    includedStepIds.add(found.step.id);
+    return [{
+      id: `resume-${found.step.id}`,
+      kind: 'resolve_input',
+      phaseId: found.phase.id,
+      stepId: found.step.id,
+      status: found.step.status,
+      label: binding.label,
+      placeholder: binding.placeholder,
+      instruction: binding.instruction,
+      followUpIds: binding.followUpIds,
+      ...(found.step.dependsOn && found.step.dependsOn.length > 0 ? { dependsOn: found.step.dependsOn } : {}),
+      ...(found.step.unlocks && found.step.unlocks.length > 0 ? { unlocks: found.step.unlocks } : {}),
+    } satisfies StartMissionResumeChecklistItem];
+  });
+  const followUpItems = followUps.flatMap((followUp) => {
+    if (includedStepIds.has(followUp.id)) return [];
+    includedStepIds.add(followUp.id);
+    return [{
+      id: `resume-${followUp.id}`,
+      kind: 'run_follow_up',
+      phaseId: followUp.phaseId,
+      stepId: followUp.id,
+      status: followUp.status,
+      label: followUp.label,
+      ...(followUp.command ? { command: followUp.command } : {}),
+      ...(followUp.tool ? { tool: followUp.tool } : {}),
+      ...(followUp.args ? { args: followUp.args } : {}),
+      ...(followUp.blockedBy && followUp.blockedBy.length > 0 ? { blockedBy: followUp.blockedBy } : {}),
+      ...(followUp.dependsOn && followUp.dependsOn.length > 0 ? { dependsOn: followUp.dependsOn } : {}),
+    } satisfies StartMissionResumeChecklistItem];
+  });
+  const currentCommand = current?.step.command;
+  const proofItems = stepsForPhase(plan, 'proof')
+    .filter(({ step }) => step.command && step.command !== currentCommand)
+    .map(({ phase, step }) => resumeChecklistItemFromStep(phase, step, 'run_proof', step.id));
+  const doneItems = stepsForPhase(plan, 'done_when')
+    .map(({ phase, step }) => resumeChecklistItemFromStep(phase, step, 'confirm_done', step.id));
+  return [
+    ...(currentItem ? [currentItem] : []),
+    ...inputItems,
+    ...followUpItems,
+    ...proofItems,
+    ...doneItems,
+  ];
+}
+
+function resumeChecklistItemFromStep(
+  phase: StartExecutionPhase,
+  step: StartExecutionStep,
+  kind: StartMissionResumeChecklistItem['kind'],
+  stepId: string,
+): StartMissionResumeChecklistItem {
+  return {
+    id: `resume-${stepId}`,
+    kind,
+    phaseId: phase.id,
+    stepId,
+    status: step.status,
+    label: step.label,
+    ...(step.command ? { command: step.command } : {}),
+    ...(step.tool ? { tool: step.tool } : {}),
+    ...(step.args ? { args: step.args } : {}),
+    ...(step.placeholder ? { placeholder: step.placeholder } : {}),
+    ...(step.instruction ? { instruction: step.instruction } : {}),
+    ...(step.blockedBy && step.blockedBy.length > 0 ? { blockedBy: step.blockedBy } : {}),
+    ...(step.dependsOn && step.dependsOn.length > 0 ? { dependsOn: step.dependsOn } : {}),
+    ...(step.unlocks && step.unlocks.length > 0 ? { unlocks: step.unlocks } : {}),
+  };
+}
+
+function currentChecklistKind(step: StartExecutionStep): StartMissionResumeChecklistItem['kind'] {
+  if (step.kind === 'input') return 'resolve_input';
+  if (step.kind === 'proof') return 'run_proof';
+  if (step.kind === 'criterion') return 'confirm_done';
+  return 'run_current';
 }
 
 function resumeInputBindings(plan: StartExecutionPlan, cursor: StartExecutionCursor): StartMissionInputBinding[] {
@@ -592,6 +688,14 @@ function findStepInPlan(
   return undefined;
 }
 
+function stepsForPhase(
+  plan: StartExecutionPlan,
+  phaseId: StartExecutionPhaseId,
+): Array<{ phase: StartExecutionPhase; step: StartExecutionStep }> {
+  const phase = plan.phases.find((item) => item.id === phaseId);
+  return phase ? phase.steps.map((step) => ({ phase, step })) : [];
+}
+
 function resumeUnlocksSentence(unlocks: StartMissionResumeReference[], rawIds: string[] | undefined): string {
   if (unlocks.length > 0) return ` This can unlock ${unlocks.map(formatResumeReferenceLabel).join(', ')}.`;
   return rawIds && rawIds.length > 0 ? ` This can unlock ${rawIds.join(', ')}.` : '';
@@ -622,6 +726,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   if (resume.inputBindings && resume.inputBindings.length > 0) {
     lines.push('Template inputs:', ...resume.inputBindings.map((binding) => `- ${formatRunbookInputBinding(binding)}`));
   }
+  if (resume.checklist && resume.checklist.length > 0) {
+    lines.push('Resume checklist:', ...resume.checklist.map((item) => `- ${formatRunbookChecklistItem(item)}`));
+  }
   if (resume.followUps && resume.followUps.length > 0) {
     lines.push('Then use:', ...resume.followUps.map((followUp) => `- ${formatRunbookFollowUp(followUp)}`));
   }
@@ -639,6 +746,14 @@ function formatRunbookResumeReference(reference: StartMissionResumeReference): s
 
 function formatRunbookInputBinding(binding: StartMissionInputBinding): string {
   return `${binding.placeholder} -> ${binding.inputId} (${binding.label}): ${binding.instruction}`;
+}
+
+function formatRunbookChecklistItem(item: StartMissionResumeChecklistItem): string {
+  const action = item.command
+    ?? (item.placeholder && item.instruction ? `${item.placeholder} -> ${item.instruction}` : undefined)
+    ?? item.instruction
+    ?? item.label;
+  return `[${item.status}] ${item.kind} ${item.stepId}: ${action}`;
 }
 
 function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCall']>): string {

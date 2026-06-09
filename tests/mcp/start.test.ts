@@ -29,6 +29,24 @@ type TestResumeInputBinding = {
   followUpIds: string[];
 };
 
+type TestResumeChecklistItem = {
+  id: string;
+  kind: string;
+  phaseId: string;
+  stepId: string;
+  status: string;
+  label: string;
+  command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  placeholder?: string;
+  instruction?: string;
+  blockedBy?: string[];
+  dependsOn?: string[];
+  unlocks?: string[];
+  followUpIds?: string[];
+};
+
 test('lists projscan_start as an MCP tool', () => {
   const tool = getToolDefinitions().find((entry) => entry.name === 'projscan_start');
 
@@ -186,6 +204,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             dependsOn?: string[];
           }>;
           inputBindings?: TestResumeInputBinding[];
+          checklist?: TestResumeChecklistItem[];
           unlocks?: Array<{
             id: string;
             phaseId: string;
@@ -286,6 +305,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
               dependsOn?: string[];
             }>;
             inputBindings?: TestResumeInputBinding[];
+            checklist?: TestResumeChecklistItem[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -353,6 +373,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
               dependsOn?: string[];
             }>;
             inputBindings?: TestResumeInputBinding[];
+            checklist?: TestResumeChecklistItem[];
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -474,6 +495,66 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       followUpIds: ['follow-up-2'],
     },
   ]);
+  const resumeChecklist = result.start.missionControl.resume.checklist ?? [];
+  expect(resumeChecklist.slice(0, 5).map((item) => item.kind)).toEqual([
+    'run_current',
+    'resolve_input',
+    'resolve_input',
+    'run_follow_up',
+    'run_follow_up',
+  ]);
+  expect(resumeChecklist[0]).toEqual(
+    expect.objectContaining({
+      id: 'resume-ready-1',
+      kind: 'run_current',
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      status: 'ready',
+      command: 'projscan search "auth token loader" --format json',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-input-1',
+      kind: 'resolve_input',
+      stepId: 'input-1',
+      placeholder: '<symbol-from-search>',
+      followUpIds: ['follow-up-1'],
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-follow-up-1',
+      kind: 'run_follow_up',
+      stepId: 'follow-up-1',
+      command: 'projscan impact --symbol <symbol-from-search> --format json',
+      blockedBy: ['input-1'],
+    }),
+  );
+  expect(resumeChecklist).not.toContainEqual(
+    expect.objectContaining({
+      kind: 'run_proof',
+      command: 'projscan search "auth token loader" --format json',
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-proof-2',
+      kind: 'run_proof',
+      stepId: 'proof-2',
+      command: 'projscan preflight --mode before_edit --format json',
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-criterion-1',
+      kind: 'confirm_done',
+      stepId: 'criterion-1',
+      label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
+    }),
+  );
   expect(result.start.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -505,6 +586,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.resume.toolCall).toEqual(result.start.missionControl.resume.toolCall);
   expect(result.start.missionControl.runbook.resume.followUps).toEqual(result.start.missionControl.resume.followUps);
   expect(result.start.missionControl.runbook.resume.inputBindings).toEqual(result.start.missionControl.resume.inputBindings);
+  expect(result.start.missionControl.runbook.resume.checklist).toEqual(result.start.missionControl.resume.checklist);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
@@ -584,6 +666,10 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('Template inputs:');
   expect(result.start.missionControl.runbook.markdown).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.start.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain('Resume checklist:');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');

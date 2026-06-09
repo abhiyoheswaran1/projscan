@@ -222,6 +222,10 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('Template inputs:');
   expect(result.stdout).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.stdout).toContain('Resume checklist:');
+  expect(result.stdout).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
   expect(result.stdout).toContain('Then use:');
   expect(result.stdout).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(result.stdout).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');

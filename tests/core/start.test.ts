@@ -6766,6 +6766,80 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       followUpIds: ['follow-up-2'],
     },
   ]);
+  const resumeChecklist = report.missionControl.resume.checklist ?? [];
+  expect(resumeChecklist.slice(0, 5).map((item) => item.kind)).toEqual([
+    'run_current',
+    'resolve_input',
+    'resolve_input',
+    'run_follow_up',
+    'run_follow_up',
+  ]);
+  expect(resumeChecklist[0]).toEqual(
+    expect.objectContaining({
+      id: 'resume-ready-1',
+      kind: 'run_current',
+      phaseId: 'ready_now',
+      stepId: 'ready-1',
+      status: 'ready',
+      label: 'Find exact target for impact analysis',
+      command: 'projscan search "auth token loader" --format json',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
+      unlocks: ['input-1', 'input-2'],
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-input-1',
+      kind: 'resolve_input',
+      phaseId: 'resolve_inputs',
+      stepId: 'input-1',
+      status: 'blocked',
+      label: 'symbol',
+      placeholder: '<symbol-from-search>',
+      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      followUpIds: ['follow-up-1'],
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-follow-up-1',
+      kind: 'run_follow_up',
+      phaseId: 'follow_up',
+      stepId: 'follow-up-1',
+      status: 'blocked',
+      command: 'projscan impact --symbol <symbol-from-search> --format json',
+      tool: 'projscan_impact',
+      args: { symbol: '<symbol-from-search>' },
+      blockedBy: ['input-1'],
+    }),
+  );
+  expect(resumeChecklist).not.toContainEqual(
+    expect.objectContaining({
+      kind: 'run_proof',
+      command: 'projscan search "auth token loader" --format json',
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-proof-2',
+      kind: 'run_proof',
+      phaseId: 'proof',
+      stepId: 'proof-2',
+      status: 'ready',
+      command: 'projscan preflight --mode before_edit --format json',
+    }),
+  );
+  expect(resumeChecklist).toContainEqual(
+    expect.objectContaining({
+      id: 'resume-criterion-1',
+      kind: 'confirm_done',
+      phaseId: 'done_when',
+      stepId: 'criterion-1',
+      status: 'pending',
+      label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
+    }),
+  );
   expect(report.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -6826,6 +6900,11 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('Template inputs:');
   expect(report.missionControl.runbook.markdown).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('Resume checklist:');
+  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
+  expect(report.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
+  expect(report.missionControl.runbook.markdown).toContain('- [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.runbook.markdown).toContain('Then use:');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');

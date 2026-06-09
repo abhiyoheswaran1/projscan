@@ -844,6 +844,31 @@ export interface StartMissionInputBinding {
   followUpIds: string[];
 }
 
+export type StartMissionResumeChecklistItemKind =
+  | 'run_current'
+  | 'resolve_input'
+  | 'run_follow_up'
+  | 'run_proof'
+  | 'confirm_done';
+
+export interface StartMissionResumeChecklistItem {
+  id: string;
+  kind: StartMissionResumeChecklistItemKind;
+  phaseId: StartExecutionPhaseId;
+  stepId: string;
+  status: StartExecutionStatus;
+  label: string;
+  command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  placeholder?: string;
+  instruction?: string;
+  blockedBy?: string[];
+  dependsOn?: string[];
+  unlocks?: string[];
+  followUpIds?: string[];
+}
+
 export interface StartMissionResumeFollowUp {
   id: string;
   phaseId: StartExecutionPhaseId;
@@ -866,6 +891,7 @@ export interface StartMissionResume {
   toolCall?: StartMissionToolCall;
   followUps?: StartMissionResumeFollowUp[];
   inputBindings?: StartMissionInputBinding[];
+  checklist?: StartMissionResumeChecklistItem[];
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }
