@@ -799,6 +799,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   if (resume.checklist && resume.checklist.length > 0) {
     lines.push('Resume checklist:', ...resume.checklist.map((item) => `- ${formatRunbookChecklistItem(item)}`));
   }
+  if (resume.remainingProofItems && resume.remainingProofItems.length > 0) {
+    lines.push('Proof queue:', ...resume.remainingProofItems.map((item) => `- ${formatRunbookProofItem(item)}`));
+  }
   if (resume.remainingProofCommands && resume.remainingProofCommands.length > 0) {
     lines.push('Remaining proof:', ...resume.remainingProofCommands.map((command) => `- \`${command}\``));
   }
@@ -840,6 +843,11 @@ function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCal
 
 function formatRunbookProofToolCall(toolCall: StartMissionProofToolCall): string {
   return `${toolCall.stepId}: ${formatRunbookToolCall(toolCall)}`;
+}
+
+function formatRunbookProofItem(item: StartMissionProofItem): string {
+  const proofAction = item.toolCall ? `MCP: ${formatRunbookToolCall(item.toolCall)}` : 'CLI only';
+  return `${item.stepId}: \`${item.command}\` (${proofAction})`;
 }
 
 function formatRunbookFollowUp(followUp: NonNullable<StartMissionResume['followUps']>[number]): string {

@@ -764,6 +764,9 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
             items?: TestResumeProofItem[];
           };
         };
+        runbook: {
+          markdown: string;
+        };
       };
     };
   };
@@ -792,6 +795,9 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
   expect(result.start.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
   expect(result.start.missionControl.handoff.readyProof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
   expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
+  expect(result.start.missionControl.runbook.markdown).toContain('Proof queue:');
+  expect(result.start.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.start.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
 });
 
 test('projscan_start returns alternative routes for mixed intents', async () => {

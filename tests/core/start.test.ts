@@ -3085,6 +3085,9 @@ test('start report turns handoff requests into an agent brief', async () => {
   );
   expect(report.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
   expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
+  expect(report.missionControl.runbook.markdown).toContain('Proof queue:');
+  expect(report.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(report.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
 });
 
 test('start report turns open-ended next-step questions into a workplan', async () => {

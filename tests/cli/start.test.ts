@@ -311,6 +311,26 @@ test('start JSON exposes complete remaining proof items for handoff intents', as
   expect(report.missionControl.handoff.readyProof.toolCalls.map((call: { command: string }) => call.command)).not.toContain('projscan handoff');
 });
 
+test('start console runbook renders a complete proof queue for handoff intents', async () => {
+  const { session } = await loadSession(tmp);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(tmp, session);
+
+  const result = await runCli([
+    'start',
+    '--intent',
+    'give the next agent a handoff',
+    '--include-handoff',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Agent Runbook');
+  expect(result.stdout).toContain('Proof queue:');
+  expect(result.stdout).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain('- proof-6: `projscan handoff` (CLI only)');
+});
+
 test('start console runs impact directly for file path intents', async () => {
   const result = await runCli(['start', '--intent', 'what breaks if I change src/core/start.ts', '--quiet']);
 
