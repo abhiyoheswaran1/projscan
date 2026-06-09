@@ -861,6 +861,15 @@ export interface StartExecutionPlan {
   phases: StartExecutionPhase[];
 }
 
+export interface StartMissionRunbook {
+  title: string;
+  status: StartMissionControlStatus;
+  currentPhase: StartExecutionPhaseId;
+  readyCommandBlock: string;
+  blockedInputSummary?: string;
+  markdown: string;
+}
+
 export interface StartMissionControl {
   intent?: string;
   status: StartMissionControlStatus;
@@ -878,6 +887,7 @@ export interface StartMissionControl {
   proofCommands: string[];
   handoff: StartMissionHandoff;
   executionPlan: StartExecutionPlan;
+  runbook: StartMissionRunbook;
   handoffPrompt: string;
 }
 

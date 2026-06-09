@@ -15,6 +15,7 @@ import type {
   StartExecutionPlan,
   StartExecutionStatus,
   StartExecutionStep,
+  StartMissionRunbook,
   QualityScorecardRisk,
   RegressionPlanLevel,
   StartAdoptionGap,
@@ -338,6 +339,16 @@ function buildMissionControl(input: {
     successCriteria,
     proofCommands,
   });
+  const runbook = buildMissionRunbook({
+    intent: input.intent,
+    status,
+    primaryAction,
+    readyActions,
+    unresolvedInputs,
+    successCriteria,
+    proofCommands,
+    executionPlan,
+  });
   const whyNow =
     routed
       ? routedWhyNow(routed, actionPlan)
@@ -362,8 +373,84 @@ function buildMissionControl(input: {
     proofCommands,
     handoff: missionHandoff(primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
     executionPlan,
+    runbook,
     handoffPrompt: missionHandoffPrompt(commandText, successCriteria, whyNow, unresolvedInputs, proofCommands),
   };
+}
+
+function buildMissionRunbook(input: {
+  intent?: string;
+  status: StartMissionControlStatus;
+  primaryAction: PreflightSuggestedAction;
+  readyActions: PreflightSuggestedAction[];
+  unresolvedInputs: StartUnresolvedInput[];
+  successCriteria: string[];
+  proofCommands: string[];
+  executionPlan: StartExecutionPlan;
+}): StartMissionRunbook {
+  const readyCommands = uniqueStrings(
+    input.readyActions
+      .map((action) => action.command ?? '')
+      .filter(isRunnableCommand),
+  );
+  const readyCommandBlock = readyCommands.join('\n');
+  const blockedInputSummary = input.unresolvedInputs.length > 0
+    ? `Needs input: ${input.unresolvedInputs.map((item) => `${item.name}=${item.placeholder}`).join(', ')}.`
+    : undefined;
+  return {
+    title: `Runbook: ${input.primaryAction.label}`,
+    status: input.status,
+    currentPhase: input.executionPlan.currentPhase,
+    readyCommandBlock,
+    ...(blockedInputSummary ? { blockedInputSummary } : {}),
+    markdown: renderMissionRunbookMarkdown({
+      intent: input.intent,
+      status: input.status,
+      currentPhase: input.executionPlan.currentPhase,
+      primaryAction: input.primaryAction,
+      readyCommands,
+      unresolvedInputs: input.unresolvedInputs,
+      proofCommands: input.proofCommands,
+      successCriteria: input.successCriteria,
+    }),
+  };
+}
+
+function renderMissionRunbookMarkdown(input: {
+  intent?: string;
+  status: StartMissionControlStatus;
+  currentPhase: StartExecutionPhaseId;
+  primaryAction: PreflightSuggestedAction;
+  readyCommands: string[];
+  unresolvedInputs: StartUnresolvedInput[];
+  proofCommands: string[];
+  successCriteria: string[];
+}): string {
+  const lines = [
+    '# Mission Runbook',
+    '',
+    ...(input.intent ? [`Intent: ${input.intent}`] : []),
+    `Status: ${input.status}`,
+    `Current phase: ${input.currentPhase}`,
+    `Next action: ${input.primaryAction.command ? `\`${input.primaryAction.command}\`` : input.primaryAction.label}`,
+    '',
+    '## Ready Commands',
+    ...(input.readyCommands.length > 0 ? input.readyCommands.map((command) => `- \`${command}\``) : ['- None yet. Resolve blocked inputs first.']),
+    '',
+    ...(input.unresolvedInputs.length > 0
+      ? [
+          '## Blocked Inputs',
+          ...input.unresolvedInputs.map((item) => `- ${item.name}: ${item.instruction}`),
+          '',
+        ]
+      : []),
+    '## Proof Commands',
+    ...(input.proofCommands.length > 0 ? input.proofCommands.map((command) => `- \`${command}\``) : ['- No proof commands available yet.']),
+    '',
+    '## Done When',
+    ...(input.successCriteria.length > 0 ? input.successCriteria.map((criterion) => `- ${criterion}`) : ['- The next action is complete and verified.']),
+  ];
+  return `${lines.join('\n')}\n`;
 }
 
 function buildMissionExecutionPlan(input: {

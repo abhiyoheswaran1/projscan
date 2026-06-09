@@ -165,6 +165,14 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             }>;
           }>;
         };
+        runbook: {
+          title: string;
+          status: string;
+          currentPhase: string;
+          readyCommandBlock: string;
+          blockedInputSummary?: string;
+          markdown: string;
+        };
         handoff: {
           nextAction: { tool?: string; args?: Record<string, unknown>; command?: string };
           readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
@@ -255,6 +263,18 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
   );
+  expect(result.start.missionControl.runbook).toEqual(
+    expect.objectContaining({
+      title: 'Runbook: Find exact target for impact analysis',
+      currentPhase: 'next_action',
+      readyCommandBlock: 'projscan search "auth token loader" --format json',
+      blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
+    }),
+  );
+  expect(result.start.missionControl.runbook.readyCommandBlock).not.toContain('<');
+  expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
+  expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
+  expect(result.start.missionControl.runbook.markdown).toContain('## Blocked Inputs');
 });
 
 test('projscan_start returns alternative routes for mixed intents', async () => {

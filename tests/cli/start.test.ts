@@ -187,6 +187,28 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(proofCommands.some((command) => command.includes('<'))).toBe(false);
   expect(proofCommands).toContain('projscan search "auth token loader" --format json');
   expect(result.stdout).not.toContain('projscan impact --symbol buildCodeGraph --format json');
+  expect(result.stdout).not.toContain('Agent Runbook');
+});
+
+test('start console renders a compact agent runbook when handoff is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--include-handoff',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Agent Runbook');
+  expect(result.stdout).toContain('# Mission Runbook');
+  expect(result.stdout).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(result.stdout).toContain('## Ready Commands');
+  expect(result.stdout).toContain('- `projscan search "auth token loader" --format json`');
+  expect(result.stdout).toContain('## Blocked Inputs');
+  expect(result.stdout).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('## Done When');
+  expect(result.stdout).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
 });
 
 test('start console runs impact directly for file path intents', async () => {

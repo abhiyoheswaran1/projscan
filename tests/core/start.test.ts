@@ -6686,6 +6686,21 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       command: 'projscan search "auth token loader" --format json',
     }),
   );
+  expect(report.missionControl.runbook).toEqual(
+    expect.objectContaining({
+      title: 'Runbook: Find exact target for impact analysis',
+      status: report.missionControl.status,
+      currentPhase: 'next_action',
+      readyCommandBlock: 'projscan search "auth token loader" --format json',
+      blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
+    }),
+  );
+  expect(report.missionControl.runbook.readyCommandBlock).not.toContain('<');
+  expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
+  expect(report.missionControl.runbook.markdown).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(report.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
+  expect(report.missionControl.runbook.markdown).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
 });
 
 test('start report exposes an unblocked execution plan for direct safety-gate intents', async () => {
@@ -6722,6 +6737,17 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       label: 'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
     }),
   );
+  expect(report.missionControl.runbook).toEqual(
+    expect.objectContaining({
+      title: 'Runbook: Use projscan_preflight for is it safe to commit this change',
+      status: report.missionControl.status,
+      currentPhase: 'next_action',
+      readyCommandBlock: 'projscan preflight --mode before_commit --format json',
+    }),
+  );
+  expect(report.missionControl.runbook.blockedInputSummary).toBeUndefined();
+  expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_commit --format json`');
+  expect(report.missionControl.runbook.markdown).not.toContain('## Blocked Inputs');
 });
 
 async function makeTempProject(): Promise<string> {

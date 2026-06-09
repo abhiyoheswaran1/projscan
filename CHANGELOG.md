@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Added `missionControl.executionPlan` to `projscan start` / MCP `projscan_start`: a phased, machine-readable plan with ready commands, blocked inputs, follow-up steps, proof commands, and done criteria derived from Mission Control.
+- Added `missionControl.runbook`, a compact Markdown handoff with ready commands, blocked inputs, proof commands, and done criteria for agents or humans continuing the task.
 
 ### Changed
 
 - `projscan start --intent "<goal>"` console output now includes an `Execution Plan` section so humans can scan the same phase model agents receive over MCP.
+- `projscan start --include-handoff` now prints an `Agent Runbook` section while default console output stays compact.
 
 ## [4.1.0] - 2026-06-09 - "Mission Control"
 

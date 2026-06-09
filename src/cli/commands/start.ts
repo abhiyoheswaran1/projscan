@@ -72,6 +72,10 @@ function printStart(report: StartReport): void {
   console.log(`Workflow: ${report.recommendedWorkflow.name}`);
   console.log('');
   printMissionControl(report);
+  if (report.handoff) {
+    console.log('');
+    printAgentRunbook(report);
+  }
   console.log('');
   console.log(chalk.bold('First 10 Minutes'));
   for (const step of report.firstTenMinutes.commands) {
@@ -103,6 +107,11 @@ function printStart(report: StartReport): void {
       console.log(`- [${gap.status}] ${gap.title}: ${gap.summary}${gap.command ? ` (${gap.command})` : ''}`);
     }
   }
+}
+
+function printAgentRunbook(report: StartReport): void {
+  console.log(chalk.bold('Agent Runbook'));
+  console.log(report.missionControl.runbook.markdown.trimEnd());
 }
 
 function modeSourceLabel(source: StartReport['modeSource']): string {
