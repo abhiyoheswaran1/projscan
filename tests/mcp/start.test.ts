@@ -635,8 +635,10 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
+  expect(result.start.missionControl.handoff.readyProof.commands).toEqual(result.start.missionControl.resume.remainingProofCommands);
+  expect(result.start.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
   expect(result.start.missionControl.executionPlan.summary).toBe(
-    `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.handoff.readyProof.commands.length} proof command(s).`,
+    `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,
   );
   expect(result.start.missionControl.executionPlan.currentPhase).toBe('ready_now');
   expect(result.start.missionControl.executionPlan.cursor).toEqual(
