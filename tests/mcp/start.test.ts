@@ -147,6 +147,24 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
         unresolvedInputs: Array<{ name: string; placeholder: string; sourceAction: string; instruction: string }>;
         actionPlan: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
         readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
+        executionPlan: {
+          summary: string;
+          currentPhase: string;
+          phases: Array<{
+            id: string;
+            status: string;
+            steps: Array<{
+              id: string;
+              kind: string;
+              status: string;
+              label: string;
+              command?: string;
+              tool?: string;
+              args?: Record<string, unknown>;
+              instruction?: string;
+            }>;
+          }>;
+        };
         handoff: {
           nextAction: { tool?: string; args?: Record<string, unknown>; command?: string };
           readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
@@ -208,6 +226,35 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
+  expect(result.start.missionControl.executionPlan.summary).toBe(
+    `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.handoff.readyProof.commands.length} proof command(s).`,
+  );
+  expect(result.start.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(result.start.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
+    'next_action:ready',
+    'ready_now:ready',
+    'resolve_inputs:blocked',
+    'follow_up:pending',
+    'proof:ready',
+    'done_when:pending',
+  ]);
+  expect(result.start.missionControl.executionPlan.phases[0]?.steps[0]).toEqual(
+    expect.objectContaining({
+      kind: 'tool',
+      status: 'ready',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
+      command: 'projscan search "auth token loader" --format json',
+    }),
+  );
+  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')?.steps[0]).toEqual(
+    expect.objectContaining({
+      kind: 'input',
+      status: 'blocked',
+      label: 'symbol',
+      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+    }),
+  );
 });
 
 test('projscan_start returns alternative routes for mixed intents', async () => {

@@ -6615,6 +6615,115 @@ test('start report separates current worktree context from remembered session co
   expect(report.coordinationHints.find((hint) => hint.id === 'remembered-session-context')?.message).toContain('1 touched file(s)');
 });
 
+test('start report exposes a phased execution plan for fuzzy routed intents', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what breaks if I rename the auth token loader',
+  });
+
+  expect(report.missionControl.executionPlan.summary).toBe(
+    `Run 1 ready step, resolve 2 input(s), then gather ${report.missionControl.proofCommands.length} proof command(s).`,
+  );
+  expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
+    'next_action:ready',
+    'ready_now:ready',
+    'resolve_inputs:blocked',
+    'follow_up:pending',
+    'proof:ready',
+    'done_when:pending',
+  ]);
+  expect(report.missionControl.executionPlan.phases[0]?.steps[0]).toEqual(
+    expect.objectContaining({
+      id: 'next-action-1',
+      kind: 'tool',
+      status: 'ready',
+      label: 'Find exact target for impact analysis',
+      command: 'projscan search "auth token loader" --format json',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
+    }),
+  );
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')?.steps).toEqual([
+    expect.objectContaining({
+      id: 'input-1',
+      kind: 'input',
+      status: 'blocked',
+      label: 'symbol',
+      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+    }),
+    expect.objectContaining({
+      id: 'input-2',
+      kind: 'input',
+      status: 'blocked',
+      label: 'file',
+      instruction: 'Replace <file-from-search> with a file path returned by the search step.',
+    }),
+  ]);
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')?.steps).toEqual([
+    expect.objectContaining({
+      id: 'follow-up-1',
+      kind: 'tool',
+      status: 'blocked',
+      command: 'projscan impact --symbol <symbol-from-search> --format json',
+    }),
+    expect.objectContaining({
+      id: 'follow-up-2',
+      kind: 'tool',
+      status: 'blocked',
+      command: 'projscan impact <file-from-search> --format json',
+    }),
+  ]);
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps.map((step) => step.command)).toEqual(
+    report.missionControl.proofCommands,
+  );
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps[0]).toEqual(
+    expect.objectContaining({
+      id: 'proof-1',
+      kind: 'proof',
+      status: 'ready',
+      command: 'projscan search "auth token loader" --format json',
+    }),
+  );
+});
+
+test('start report exposes an unblocked execution plan for direct safety-gate intents', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'is it safe to commit this change',
+  });
+
+  expect(report.missionControl.executionPlan.summary).toBe(
+    `Run 1 ready step, then gather ${report.missionControl.proofCommands.length} proof command(s).`,
+  );
+  expect(report.missionControl.executionPlan.currentPhase).toBe('next_action');
+  expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
+    'next_action:ready',
+    'ready_now:ready',
+    'proof:ready',
+    'done_when:pending',
+  ]);
+  expect(report.missionControl.executionPlan.phases.some((phase) => phase.id === 'resolve_inputs')).toBe(false);
+  expect(report.missionControl.executionPlan.phases[0]?.steps[0]).toEqual(
+    expect.objectContaining({
+      kind: 'tool',
+      status: 'ready',
+      command: 'projscan preflight --mode before_commit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_commit' },
+    }),
+  );
+  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'done_when')?.steps[0]).toEqual(
+    expect.objectContaining({
+      kind: 'criterion',
+      status: 'pending',
+      label: 'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
+    }),
+  );
+});
+
 async function makeTempProject(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-start-'));
   tempRoots.push(root);

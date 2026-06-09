@@ -159,6 +159,16 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Action Plan');
+  expect(result.stdout).toContain('Execution Plan');
+  expect(result.stdout).toContain('- [ready] Next Action');
+  expect(result.stdout).toContain('  - Find exact target for impact analysis: projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('- [blocked] Resolve Inputs');
+  expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('- [pending] Follow Up');
+  expect(result.stdout).toContain('  - If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json');
+  expect(result.stdout).toContain('- [ready] Proof');
+  expect(result.stdout).toContain('  - projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('- [pending] Done When');
   expect(result.stdout).toContain('Proceed carefully: Find exact target for impact analysis');
   expect(result.stdout).toContain('- Find exact target for impact analysis: projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('- If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json');

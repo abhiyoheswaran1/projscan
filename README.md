@@ -53,6 +53,25 @@ Regenerate the README screenshots with Playwright:
 npm run docs:screenshots
 ```
 
+## Unreleased: Mission Execution Plan
+
+The next Mission Control slice makes `projscan start --intent "<goal>"` more directly actionable for agents. The JSON payload now includes `missionControl.executionPlan`: ordered phases for the next action, ready commands, blocked inputs, follow-up steps, proof commands, and done criteria.
+
+That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist.
+
+Console output shows the same model for humans:
+
+```text
+Execution Plan
+Run 1 ready step, resolve 2 input(s), then gather 4 proof command(s).
+- [ready] Next Action
+  - Find exact target for impact analysis: projscan search "auth token loader" --format json
+- [blocked] Resolve Inputs
+  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.
+- [pending] Follow Up
+  - If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json
+```
+
 Run `projscan doctor` for a focused health check:
 
 ```bash
@@ -416,7 +435,7 @@ The report includes file/symbol-backed `claims`, `readFirst` files, entrypoints,
 |---------|-------------|
 | `projscan analyze` | Full analysis - languages, frameworks, dependencies, issues |
 | `projscan route` | Map a plain-language goal to the best projscan tool with weighted confidence and matched keywords |
-| `projscan start` | First-60-seconds workflow orientation with setup diagnostics, Mission Control, top risks, and next commands. Add `--intent "<goal>"` to route a plain-language goal to route confidence, ready actions, done criteria, and proof commands |
+| `projscan start` | First-60-seconds workflow orientation with setup diagnostics, Mission Control, top risks, and next commands. Add `--intent "<goal>"` to route a plain-language goal to route confidence, phased execution plan, ready actions, done criteria, and proof commands |
 | `projscan first-run` | First-run setup diagnostics plus the shared `firstTenMinutes` command path |
 | `projscan init mcp` | Ready-to-paste MCP client configs for popular agent clients |
 | `projscan mcp doctor` | Verify MCP setup and print paste-ready client config with checks |

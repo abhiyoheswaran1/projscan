@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `missionControl.executionPlan` to `projscan start` / MCP `projscan_start`: a phased, machine-readable plan with ready commands, blocked inputs, follow-up steps, proof commands, and done criteria derived from Mission Control.
+
+### Changed
+
+- `projscan start --intent "<goal>"` console output now includes an `Execution Plan` section so humans can scan the same phase model agents receive over MCP.
+
 ## [4.1.0] - 2026-06-09 - "Mission Control"
 
 ### Added

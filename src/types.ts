@@ -831,6 +831,36 @@ export interface StartMissionHandoff {
   };
 }
 
+export type StartExecutionPhaseId = 'next_action' | 'ready_now' | 'resolve_inputs' | 'follow_up' | 'proof' | 'done_when';
+
+export type StartExecutionStatus = 'ready' | 'blocked' | 'pending';
+
+export type StartExecutionStepKind = 'tool' | 'input' | 'proof' | 'criterion' | 'handoff';
+
+export interface StartExecutionStep {
+  id: string;
+  kind: StartExecutionStepKind;
+  status: StartExecutionStatus;
+  label: string;
+  command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  instruction?: string;
+}
+
+export interface StartExecutionPhase {
+  id: StartExecutionPhaseId;
+  title: string;
+  status: StartExecutionStatus;
+  steps: StartExecutionStep[];
+}
+
+export interface StartExecutionPlan {
+  summary: string;
+  currentPhase: StartExecutionPhaseId;
+  phases: StartExecutionPhase[];
+}
+
 export interface StartMissionControl {
   intent?: string;
   status: StartMissionControlStatus;
@@ -847,6 +877,7 @@ export interface StartMissionControl {
   proofSummary: string;
   proofCommands: string[];
   handoff: StartMissionHandoff;
+  executionPlan: StartExecutionPlan;
   handoffPrompt: string;
 }
 

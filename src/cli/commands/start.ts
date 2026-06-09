@@ -122,6 +122,7 @@ function printMissionControl(report: StartReport): void {
   }
   if (mission.primaryAction.command) console.log(chalk.cyan(mission.primaryAction.command));
   console.log(chalk.dim(mission.whyNow));
+  printExecutionPlan(report);
   if (mission.actionPlan.length > 0) {
     console.log(chalk.bold('Action Plan'));
     for (const action of mission.actionPlan.slice(0, 4)) {
@@ -157,6 +158,28 @@ function printMissionControl(report: StartReport): void {
     console.log(chalk.dim(mission.proofSummary));
     for (const command of mission.proofCommands.slice(0, 3)) {
       console.log(chalk.dim(`- ${command}`));
+    }
+  }
+}
+
+function printExecutionPlan(report: StartReport): void {
+  const plan = report.missionControl.executionPlan;
+  console.log(chalk.bold('Execution Plan'));
+  console.log(chalk.dim(plan.summary));
+  for (const phase of plan.phases.slice(0, 6)) {
+    console.log(`- [${phase.status}] ${phase.title}`);
+    for (const step of phase.steps.slice(0, 4)) {
+      if (step.kind === 'input' && step.instruction) {
+        console.log(`  - ${step.label}: ${step.instruction}`);
+      } else if (step.kind === 'criterion') {
+        console.log(`  - ${step.label}`);
+      } else if (step.command && step.kind === 'proof') {
+        console.log(`  - ${step.command}`);
+      } else if (step.command) {
+        console.log(`  - ${step.label}: ${step.command}`);
+      } else {
+        console.log(`  - ${step.label}`);
+      }
     }
   }
 }

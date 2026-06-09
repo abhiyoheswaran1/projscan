@@ -10,6 +10,11 @@ import { getChangedFiles } from '../utils/changedFiles.js';
 import type {
   AgentBriefIntent,
   PreflightSuggestedAction,
+  StartExecutionPhase,
+  StartExecutionPhaseId,
+  StartExecutionPlan,
+  StartExecutionStatus,
+  StartExecutionStep,
   QualityScorecardRisk,
   RegressionPlanLevel,
   StartAdoptionGap,
@@ -325,6 +330,14 @@ function buildMissionControl(input: {
   const proofCommands = missionProofCommands(input.mode, input.workplan, guardrails, actionPlan);
   const successCriteria = missionSuccessCriteria(input.mode, routed, actionPlan, input.workplan);
   const unresolvedInputs = missionUnresolvedInputs(actionPlan);
+  const executionPlan = buildMissionExecutionPlan({
+    primaryAction,
+    actionPlan,
+    readyActions,
+    unresolvedInputs,
+    successCriteria,
+    proofCommands,
+  });
   const whyNow =
     routed
       ? routedWhyNow(routed, actionPlan)
@@ -348,8 +361,130 @@ function buildMissionControl(input: {
     proofSummary: READY_PROOF_SUMMARY,
     proofCommands,
     handoff: missionHandoff(primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
+    executionPlan,
     handoffPrompt: missionHandoffPrompt(commandText, successCriteria, whyNow, unresolvedInputs, proofCommands),
   };
+}
+
+function buildMissionExecutionPlan(input: {
+  primaryAction: PreflightSuggestedAction;
+  actionPlan: PreflightSuggestedAction[];
+  readyActions: PreflightSuggestedAction[];
+  unresolvedInputs: StartUnresolvedInput[];
+  successCriteria: string[];
+  proofCommands: string[];
+}): StartExecutionPlan {
+  const phases: StartExecutionPhase[] = [];
+  const nextActionStep = actionToExecutionStep('next-action-1', input.primaryAction);
+  phases.push({
+    id: 'next_action',
+    title: 'Next Action',
+    status: nextActionStep.status,
+    steps: [nextActionStep],
+  });
+
+  if (input.readyActions.length > 0) {
+    phases.push({
+      id: 'ready_now',
+      title: 'Ready Commands',
+      status: 'ready',
+      steps: input.readyActions.map((action, index) => actionToExecutionStep(`ready-${index + 1}`, action)),
+    });
+  }
+
+  if (input.unresolvedInputs.length > 0) {
+    phases.push({
+      id: 'resolve_inputs',
+      title: 'Resolve Inputs',
+      status: 'blocked',
+      steps: input.unresolvedInputs.map((item, index): StartExecutionStep => ({
+        id: `input-${index + 1}`,
+        kind: 'input',
+        status: 'blocked',
+        label: item.name,
+        instruction: item.instruction,
+      })),
+    });
+  }
+
+  const pendingActions = input.actionPlan.filter((action) => !isReadyAction(action));
+  if (pendingActions.length > 0) {
+    phases.push({
+      id: 'follow_up',
+      title: 'Follow Up',
+      status: 'pending',
+      steps: pendingActions.map((action, index) => actionToExecutionStep(`follow-up-${index + 1}`, action)),
+    });
+  }
+
+  if (input.proofCommands.length > 0) {
+    phases.push({
+      id: 'proof',
+      title: 'Proof',
+      status: 'ready',
+      steps: input.proofCommands.map((command, index): StartExecutionStep => ({
+        id: `proof-${index + 1}`,
+        kind: 'proof',
+        status: 'ready',
+        label: command,
+        command,
+      })),
+    });
+  }
+
+  phases.push({
+    id: 'done_when',
+    title: 'Done When',
+    status: 'pending',
+    steps: input.successCriteria.map((criterion, index): StartExecutionStep => ({
+      id: `criterion-${index + 1}`,
+      kind: 'criterion',
+      status: 'pending',
+      label: criterion,
+    })),
+  });
+
+  return {
+    summary: executionPlanSummary(input.readyActions.length, input.unresolvedInputs.length, input.proofCommands.length),
+    currentPhase: currentExecutionPhase(phases),
+    phases,
+  };
+}
+
+function actionToExecutionStep(id: string, action: PreflightSuggestedAction): StartExecutionStep {
+  const step: StartExecutionStep = {
+    id,
+    kind: 'tool',
+    status: executionStatusForAction(action),
+    label: action.label,
+  };
+  if (typeof action.command === 'string') step.command = action.command;
+  if (typeof action.tool === 'string') step.tool = action.tool;
+  if (action.args) step.args = action.args;
+  return step;
+}
+
+function executionStatusForAction(action: PreflightSuggestedAction): StartExecutionStatus {
+  if (isReadyAction(action)) return 'ready';
+  if ((typeof action.command === 'string' && !isRunnableCommand(action.command)) || !argsAreReady(action.args)) {
+    return 'blocked';
+  }
+  return 'pending';
+}
+
+function currentExecutionPhase(phases: StartExecutionPhase[]): StartExecutionPhaseId {
+  return phases.find((phase) => phase.status === 'ready' || phase.status === 'blocked')?.id ?? 'done_when';
+}
+
+function executionPlanSummary(readyCount: number, inputCount: number, proofCount: number): string {
+  const pieces = [`Run ${readyCount} ready ${pluralize(readyCount, 'step')}`];
+  if (inputCount > 0) pieces.push(`resolve ${inputCount} input(s)`);
+  if (proofCount > 0) pieces.push(`then gather ${proofCount} proof command(s)`);
+  return `${pieces.join(', ')}.`;
+}
+
+function pluralize(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
 }
 
 function missionHandoff(
