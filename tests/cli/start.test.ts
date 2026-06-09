@@ -1,12 +1,15 @@
 import fs from 'node:fs/promises';
+import { execFile } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { spawnCli } from '../helpers/cli.js';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
+const execFileAsync = promisify(execFile);
 const expectedReviewDecisionReplies = [
   'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
   'Changes requested: address the review feedback first, update proof, then stop for another review.',
@@ -703,6 +706,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('ready-tool-calls.json');
   expect(result.stdout).toContain('shortcuts.json');
   expect(result.stdout).toContain('mission.sh');
+  expect(result.stdout).toContain('status.sh');
   expect(result.stdout).toContain('proof-logs/README.md');
   expect(result.stdout).toContain('proof-logs/status.jsonl');
   expect(result.stdout).toContain('proof-logs/run-report.md');
@@ -728,6 +732,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
   expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
   expect(quickstart).toContain('- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.');
+  expect(quickstart).toContain('- `status.sh`: Shell script that prints the latest mission run state from summary.json.');
   expect(quickstart).toContain('- `proof-logs/README.md`: Proof-log index for output written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.');
   expect(quickstart).toContain('- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.');
@@ -933,6 +938,21 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).not.toContain('Mission Control\nStatus:');
   expect(missionScript).not.toContain('Run Cursor');
 
+  const statusScript = await fs.readFile(path.join(bundleDir, 'status.sh'), 'utf-8');
+  expect(statusScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
+  expect(statusScript).toContain('SUMMARY_FILE="${MISSION_DIR}/proof-logs/summary.json"');
+  expect(statusScript).toContain('Node.js is required to read proof-logs/summary.json.');
+  expect(statusScript).toContain('Mission status:');
+  expect(statusScript).toContain('Report:');
+  expect(statusScript).toContain('Status rows:');
+  expect(statusScript).toContain('Failed step:');
+  expect(statusScript).toContain('Exit code:');
+  expect(statusScript).toContain('Log:');
+  expect(statusScript).toContain('process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;');
+
+  const statusMode = (await fs.stat(path.join(bundleDir, 'status.sh'))).mode;
+  expect(statusMode & 0o111).not.toBe(0);
+
   const proofLogReadme = await fs.readFile(path.join(bundleDir, 'proof-logs', 'README.md'), 'utf-8');
   expect(proofLogReadme).toContain('# Mission Proof Logs');
   expect(proofLogReadme).toContain('Read `summary.json` for the latest not_run, running, passed, or failed state.');
@@ -955,6 +975,46 @@ test('start writes a Mission Control bundle when requested', async () => {
     report: 'proof-logs/run-report.md',
     statusRows: 'proof-logs/status.jsonl',
   });
+
+  const initialStatus = await runScript(path.join(bundleDir, 'status.sh'), [], { cwd: bundleDir });
+  expect(initialStatus.exitCode).toBe(2);
+  expect(initialStatus.stdout).toContain('Mission status: not_run');
+  expect(initialStatus.stdout).toContain('Report: proof-logs/run-report.md');
+  expect(initialStatus.stdout).toContain('Status rows: proof-logs/status.jsonl');
+
+  await fs.writeFile(
+    path.join(bundleDir, 'proof-logs', 'summary.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      status: 'passed',
+      report: 'proof-logs/run-report.md',
+      statusRows: 'proof-logs/status.jsonl',
+      totalCommands: 3,
+    }) + '\n',
+  );
+  const passedStatus = await runScript(path.join(bundleDir, 'status.sh'), [], { cwd: bundleDir });
+  expect(passedStatus.exitCode).toBe(0);
+  expect(passedStatus.stdout).toContain('Mission status: passed');
+  expect(passedStatus.stdout).toContain('Total commands: 3');
+
+  await fs.writeFile(
+    path.join(bundleDir, 'proof-logs', 'summary.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      status: 'failed',
+      report: 'proof-logs/run-report.md',
+      statusRows: 'proof-logs/status.jsonl',
+      failedStep: 'proof-1',
+      exitCode: 7,
+      log: 'proof-logs/proof-1.log',
+    }) + '\n',
+  );
+  const failedStatus = await runScript(path.join(bundleDir, 'status.sh'), [], { cwd: bundleDir });
+  expect(failedStatus.exitCode).toBe(1);
+  expect(failedStatus.stdout).toContain('Mission status: failed');
+  expect(failedStatus.stdout).toContain('Failed step: proof-1');
+  expect(failedStatus.stdout).toContain('Exit code: 7');
+  expect(failedStatus.stdout).toContain('Log: proof-logs/proof-1.log');
 
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
@@ -994,6 +1054,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'ready-tool-calls.json',
     'shortcuts.json',
     'mission.sh',
+    'status.sh',
     'proof-logs/README.md',
     'proof-logs/status.jsonl',
     'proof-logs/run-report.md',
@@ -1033,6 +1094,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'review-replies.txt',
       'shortcuts.json',
       'mission.sh',
+      'status.sh',
       'proof-logs/README.md',
       'proof-logs/status.jsonl',
       'proof-logs/run-report.md',
@@ -1633,6 +1695,23 @@ test('start rejects unsupported formats through the shared matrix', async () => 
 
 async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
+}
+
+async function runScript(scriptPath: string, args: string[] = [], options: { cwd?: string } = {}): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  try {
+    const result = await execFileAsync(scriptPath, args, {
+      cwd: options.cwd,
+      env: process.env,
+    });
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string; code?: number };
+    return {
+      stdout: e.stdout ?? '',
+      stderr: e.stderr ?? '',
+      exitCode: typeof e.code === 'number' ? e.code : 1,
+    };
+  }
 }
 
 function extractNextCommands(stdout: string): string[] {

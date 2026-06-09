@@ -481,6 +481,9 @@ async function writeMissionBundle(
   const missionScriptPath = path.join(targetDir, 'mission.sh');
   await fs.writeFile(missionScriptPath, buildMissionScript(report, { proofLogs: true }), 'utf-8');
   await fs.chmod(missionScriptPath, 0o755).catch(() => undefined);
+  const statusScriptPath = path.join(targetDir, 'status.sh');
+  await fs.writeFile(statusScriptPath, buildMissionStatusScript(), 'utf-8');
+  await fs.chmod(statusScriptPath, 0o755).catch(() => undefined);
   await fs.writeFile(
     path.join(targetDir, 'proof-commands.txt'),
     readyProofCommands(report).join('\n') + '\n',
@@ -572,6 +575,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'mission.sh',
       path: path.join(targetDir, 'mission.sh'),
       description: 'Shell script that runs the current cursor command and remaining proof queue.',
+    },
+    {
+      name: 'status.sh',
+      path: path.join(targetDir, 'status.sh'),
+      description: 'Shell script that prints the latest mission run state from summary.json.',
     },
     {
       name: 'proof-logs/README.md',
@@ -725,6 +733,43 @@ function printReviewRepliesOnly(report: StartReport): void {
 
 function printMissionScriptOnly(report: StartReport): void {
   console.log(buildMissionScript(report).trimEnd());
+}
+
+function buildMissionStatusScript(): string {
+  return [
+    '#!/usr/bin/env sh',
+    'set -eu',
+    '',
+    'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
+    'SUMMARY_FILE="${MISSION_DIR}/proof-logs/summary.json"',
+    '',
+    'if ! command -v node >/dev/null 2>&1; then',
+    `  ${scriptPrintError('Node.js is required to read proof-logs/summary.json.')}`,
+    '  exit 2',
+    'fi',
+    '',
+    'node - "$SUMMARY_FILE" <<\'NODE\'',
+    'const fs = require("node:fs");',
+    'const summaryPath = process.argv[2];',
+    'let summary;',
+    'try {',
+    '  summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));',
+    '} catch (error) {',
+    '  console.error(`Unable to read ${summaryPath}: ${error.message}`);',
+    '  process.exit(2);',
+    '}',
+    'const status = typeof summary.status === "string" ? summary.status : "unknown";',
+    'console.log(`Mission status: ${status}`);',
+    'if (summary.report) console.log(`Report: ${summary.report}`);',
+    'if (summary.statusRows) console.log(`Status rows: ${summary.statusRows}`);',
+    'if (summary.totalCommands !== undefined) console.log(`Total commands: ${summary.totalCommands}`);',
+    'if (summary.failedStep) console.log(`Failed step: ${summary.failedStep}`);',
+    'if (summary.exitCode !== undefined) console.log(`Exit code: ${summary.exitCode}`);',
+    'if (summary.log) console.log(`Log: ${summary.log}`);',
+    'process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;',
+    'NODE',
+    '',
+  ].join('\n');
 }
 
 interface MissionScriptOptions {
