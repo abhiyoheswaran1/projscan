@@ -165,6 +165,18 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           prompt: string;
           commandBlock?: string;
           toolCall?: { tool: string; args?: Record<string, unknown> };
+          followUps?: Array<{
+            id: string;
+            phaseId: string;
+            kind: string;
+            status: string;
+            label: string;
+            command?: string;
+            tool?: string;
+            args?: Record<string, unknown>;
+            blockedBy?: string[];
+            dependsOn?: string[];
+          }>;
           unlocks?: Array<{
             id: string;
             phaseId: string;
@@ -251,6 +263,18 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             prompt: string;
             commandBlock?: string;
             toolCall?: { tool: string; args?: Record<string, unknown> };
+            followUps?: Array<{
+              id: string;
+              phaseId: string;
+              kind: string;
+              status: string;
+              label: string;
+              command?: string;
+              tool?: string;
+              args?: Record<string, unknown>;
+              blockedBy?: string[];
+              dependsOn?: string[];
+            }>;
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -305,6 +329,18 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
             prompt: string;
             commandBlock?: string;
             toolCall?: { tool: string; args?: Record<string, unknown> };
+            followUps?: Array<{
+              id: string;
+              phaseId: string;
+              kind: string;
+              status: string;
+              label: string;
+              command?: string;
+              tool?: string;
+              args?: Record<string, unknown>;
+              blockedBy?: string[];
+              dependsOn?: string[];
+            }>;
             unlocks?: Array<{
               id: string;
               phaseId: string;
@@ -408,6 +444,28 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
+  expect(result.start.missionControl.resume.followUps).toEqual([
+    expect.objectContaining({
+      id: 'follow-up-1',
+      phaseId: 'follow_up',
+      label: 'If search returns an exported symbol',
+      command: 'projscan impact --symbol <symbol-from-search> --format json',
+      tool: 'projscan_impact',
+      args: { symbol: '<symbol-from-search>' },
+      blockedBy: ['input-1'],
+      dependsOn: ['ready-1', 'input-1'],
+    }),
+    expect.objectContaining({
+      id: 'follow-up-2',
+      phaseId: 'follow_up',
+      label: 'If search returns a file path',
+      command: 'projscan impact <file-from-search> --format json',
+      tool: 'projscan_impact',
+      args: { file: '<file-from-search>' },
+      blockedBy: ['input-2'],
+      dependsOn: ['ready-1', 'input-2'],
+    }),
+  ]);
   expect(result.start.missionControl.handoffPrompt).toContain(result.start.missionControl.resume.prompt);
   expect(result.start.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(result.start.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
@@ -415,6 +473,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoff.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
   expect(result.start.missionControl.handoff.resume).toEqual(result.start.missionControl.resume);
   expect(result.start.missionControl.runbook.resume.toolCall).toEqual(result.start.missionControl.resume.toolCall);
+  expect(result.start.missionControl.runbook.resume.followUps).toEqual(result.start.missionControl.resume.followUps);
   expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
   expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
   expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
@@ -490,6 +549,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.start.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.start.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
   expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.start.missionControl.runbook.markdown).toContain('## Blocked Inputs');

@@ -6746,6 +6746,32 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
+  expect(report.missionControl.resume.followUps).toEqual([
+    expect.objectContaining({
+      id: 'follow-up-1',
+      phaseId: 'follow_up',
+      kind: 'tool',
+      status: 'blocked',
+      label: 'If search returns an exported symbol',
+      command: 'projscan impact --symbol <symbol-from-search> --format json',
+      tool: 'projscan_impact',
+      args: { symbol: '<symbol-from-search>' },
+      blockedBy: ['input-1'],
+      dependsOn: ['ready-1', 'input-1'],
+    }),
+    expect.objectContaining({
+      id: 'follow-up-2',
+      phaseId: 'follow_up',
+      kind: 'tool',
+      status: 'blocked',
+      label: 'If search returns a file path',
+      command: 'projscan impact <file-from-search> --format json',
+      tool: 'projscan_impact',
+      args: { file: '<file-from-search>' },
+      blockedBy: ['input-2'],
+      dependsOn: ['ready-1', 'input-2'],
+    }),
+  ]);
   expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
   expect(report.missionControl.handoffPrompt).toContain('input-1 (symbol), input-2 (file)');
   expect(report.missionControl.handoffPrompt.startsWith('Resume: ')).toBe(true);
@@ -6777,6 +6803,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('After running, resolve:');
   expect(report.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('Then use:');
+  expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
+  expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
   expect(report.missionControl.runbook.markdown).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(report.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
   expect(report.missionControl.runbook.markdown).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');

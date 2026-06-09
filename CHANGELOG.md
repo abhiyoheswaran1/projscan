@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added resolved `resume.unlocks` / `resume.blockedBy` references so resumed agents can see labels and instructions for the steps unlocked or blocking the current cursor.
 - Added a resume-aware `missionControl.handoffPrompt` so the smallest copyable handoff starts from the current cursor and includes labeled unlocks, blockers, done criteria, and ready proof.
 - Added optional `missionControl.resume.toolCall` so MCP agents can call the current cursor step directly without reverse-engineering CLI commands.
+- Added optional `missionControl.resume.followUps` so resumed agents can see the placeholder follow-up templates unlocked by the current step without traversing the full execution plan.
 
 ### Changed
 

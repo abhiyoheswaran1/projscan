@@ -835,6 +835,19 @@ export interface StartMissionToolCall {
   args?: Record<string, unknown>;
 }
 
+export interface StartMissionResumeFollowUp {
+  id: string;
+  phaseId: StartExecutionPhaseId;
+  kind: StartExecutionStepKind;
+  status: StartExecutionStatus;
+  label: string;
+  command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
+  blockedBy?: string[];
+  dependsOn?: string[];
+}
+
 export interface StartMissionResume {
   currentStep: StartExecutionCursor;
   status: StartExecutionStatus;
@@ -842,6 +855,7 @@ export interface StartMissionResume {
   prompt: string;
   commandBlock?: string;
   toolCall?: StartMissionToolCall;
+  followUps?: StartMissionResumeFollowUp[];
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }

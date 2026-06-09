@@ -473,6 +473,7 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const cursor = plan.cursor;
   const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
   const toolCall = resumeToolCall(plan, cursor);
+  const followUps = resumeFollowUps(plan, cursor);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -490,9 +491,39 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     prompt,
     ...(commandBlock ? { commandBlock } : {}),
     ...(toolCall ? { toolCall } : {}),
+    ...(followUps.length > 0 ? { followUps } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
   };
+}
+
+function resumeFollowUps(plan: StartExecutionPlan, cursor: StartExecutionCursor): NonNullable<StartMissionResume['followUps']> {
+  const followUpIds = new Set<string>();
+  for (const id of cursor.unlocks ?? []) {
+    const found = findStepInPlan(plan, id);
+    if (!found) continue;
+    if (found.phase.id === 'follow_up') followUpIds.add(found.step.id);
+    for (const unlockedId of found.step.unlocks ?? []) {
+      const unlocked = findStepInPlan(plan, unlockedId);
+      if (unlocked?.phase.id === 'follow_up') followUpIds.add(unlocked.step.id);
+    }
+  }
+  return Array.from(followUpIds).flatMap((id) => {
+    const found = findStepInPlan(plan, id);
+    if (!found) return [];
+    return [{
+      id: found.step.id,
+      phaseId: found.phase.id,
+      kind: found.step.kind,
+      status: found.step.status,
+      label: found.step.label,
+      ...(found.step.command ? { command: found.step.command } : {}),
+      ...(found.step.tool ? { tool: found.step.tool } : {}),
+      ...(found.step.args ? { args: found.step.args } : {}),
+      ...(found.step.blockedBy && found.step.blockedBy.length > 0 ? { blockedBy: found.step.blockedBy } : {}),
+      ...(found.step.dependsOn && found.step.dependsOn.length > 0 ? { dependsOn: found.step.dependsOn } : {}),
+    }];
+  });
 }
 
 function resumeToolCall(plan: StartExecutionPlan, cursor: StartExecutionCursor): StartMissionResume['toolCall'] | undefined {
@@ -565,6 +596,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   if (resume.unlocks && resume.unlocks.length > 0) {
     lines.push('After running, resolve:', ...resume.unlocks.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
   }
+  if (resume.followUps && resume.followUps.length > 0) {
+    lines.push('Then use:', ...resume.followUps.map((followUp) => `- ${formatRunbookFollowUp(followUp)}`));
+  }
   if (resume.blockedBy && resume.blockedBy.length > 0) {
     lines.push('Blocked by:', ...resume.blockedBy.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
   }
@@ -581,6 +615,12 @@ function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCal
   return typeof toolCall.args !== 'undefined'
     ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
     : toolCall.tool;
+}
+
+function formatRunbookFollowUp(followUp: NonNullable<StartMissionResume['followUps']>[number]): string {
+  const action = followUp.command
+    ?? (followUp.tool ? formatRunbookToolCall({ tool: followUp.tool, ...(typeof followUp.args !== 'undefined' ? { args: followUp.args } : {}) }) : followUp.label);
+  return `${followUp.id} (${followUp.label}): ${action}`;
 }
 
 function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {
