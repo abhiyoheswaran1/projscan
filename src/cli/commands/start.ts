@@ -140,6 +140,7 @@ function printMissionControl(report: StartReport): void {
   console.log(chalk.dim(mission.whyNow));
   printExecutionPlan(report);
   printResumeChecklist(report);
+  printHandoffPrompt(report);
   if (mission.actionPlan.length > 0) {
     console.log(chalk.bold('Action Plan'));
     for (const action of mission.actionPlan.slice(0, 4)) {
@@ -187,6 +188,14 @@ function printMissionControl(report: StartReport): void {
       }
     }
   }
+}
+
+function printHandoffPrompt(report: StartReport): void {
+  const prompt = report.missionControl.handoffPrompt;
+  if (prompt.length === 0) return;
+
+  console.log(chalk.bold('Handoff Prompt'));
+  console.log(chalk.dim(prompt));
 }
 
 function printExecutionPlan(report: StartReport): void {

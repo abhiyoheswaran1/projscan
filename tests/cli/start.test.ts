@@ -175,6 +175,11 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
   expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain('Handoff Prompt');
+  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(result.stdout.indexOf('Handoff Prompt'));
+  expect(result.stdout.indexOf('Handoff Prompt')).toBeLessThan(result.stdout.indexOf('Action Plan'));
+  expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(result.stdout).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- [pending] Follow Up');
