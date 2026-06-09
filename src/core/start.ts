@@ -842,7 +842,15 @@ function formatRunbookChecklistItem(item: StartMissionResumeChecklistItem): stri
     ?? (item.placeholder && item.instruction ? `${item.placeholder} -> ${item.instruction}` : undefined)
     ?? item.instruction
     ?? item.label;
-  return `[${item.status}] ${item.kind} ${item.stepId}: ${action}`;
+  return `[${item.status}] ${item.kind} ${item.stepId}: ${action}${formatRunbookChecklistAnnotation(item)}`;
+}
+
+function formatRunbookChecklistAnnotation(item: StartMissionResumeChecklistItem): string {
+  if (item.tool) {
+    return ` (MCP: ${formatRunbookToolCall({ tool: item.tool, ...(typeof item.args !== 'undefined' ? { args: item.args } : {}) })})`;
+  }
+  if (item.kind === 'run_proof' && item.command) return ' (CLI only)';
+  return '';
 }
 
 function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCall']>): string {

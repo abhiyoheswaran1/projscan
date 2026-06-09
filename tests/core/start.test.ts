@@ -3105,6 +3105,7 @@ test('start report turns handoff requests into an agent brief', async () => {
   expect(handoffChecklistProof).not.toHaveProperty('args');
   expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
   expect(report.missionControl.runbook.markdown).toContain('Proof queue:');
+  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
   expect(report.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(report.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
 });
@@ -7002,8 +7003,11 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('Resume checklist:');
   expect(report.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
+  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
   expect(report.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
   expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
+  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(report.missionControl.runbook.markdown).toContain('- [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.runbook.markdown).toContain('Remaining proof:');
   expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_edit --format json`');

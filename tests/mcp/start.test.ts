@@ -732,8 +732,11 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
   expect(result.start.missionControl.runbook.markdown).toContain('Resume checklist:');
   expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
   expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
   expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.start.missionControl.runbook.markdown).toContain('Remaining proof:');
   expect(result.start.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
   expect(result.start.missionControl.runbook.markdown).toContain('MCP proof calls:');
@@ -821,6 +824,7 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
   expect(result.start.missionControl.handoff.readyProof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
   expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
   expect(result.start.missionControl.runbook.markdown).toContain('Proof queue:');
+  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
   expect(result.start.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.start.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
 });
