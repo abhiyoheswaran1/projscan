@@ -681,7 +681,13 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       commands: ['git status --short', 'git diff --stat'],
     }),
   );
+  expect(result.start.missionControl.reviewGate.policy).toEqual({
+    approvalRequired: true,
+    blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
+    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+  });
   expect(result.start.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
+  expect(result.start.missionControl.reviewGate.markdown).toContain('## Review Policy');
   expect(result.start.missionControl.reviewGate.markdown).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.start.missionControl.reviewGate.worktree.summary).toContain('Current worktree evidence');
   expect(result.start.missionControl.reviewGate.proof.commands).toEqual(result.start.missionControl.resume.remainingProofCommands);
@@ -708,6 +714,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(result.start.missionControl.reviewGate.doneWhen);
   expect(result.start.missionControl.handoff.reviewGate.decisions).toEqual(
     result.start.missionControl.reviewGate.decisions,
+  );
+  expect(result.start.missionControl.handoff.reviewGate.policy).toEqual(
+    result.start.missionControl.reviewGate.policy,
   );
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,

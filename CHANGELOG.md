@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added reviewer replies to the default `projscan start` review-gate output and saved mission bundle `README.md` files, so first-open review surfaces show the copyable approval text.
 - Added the Mission Review Gate stop condition and reviewer reply choices to `missionControl.handoffPrompt`, `--handoff-prompt`, and saved `handoff-prompt.txt` so copy-only handoffs keep the no-release boundary.
 - Added `projscan start --review-replies` and saved `review-replies.txt` mission bundle files so reviewers can copy approval or change-request replies without opening Markdown or JSON.
+- Added `missionControl.reviewGate.policy`, a machine-readable approval boundary listing actions blocked until review: another slice, release, publish, deploy, push, merge, and version bump.
 - Added `projscan start --shortcuts`, a console index of copyable Mission Control shortcut commands for the current intent.
 - Added `projscan start --handoff-prompt`, a console shortcut that prints only the concise Mission Control handoff prompt for piping or copy/paste.
 - Added `projscan start --next-command`, a console shortcut that prints only the current runnable Mission Control cursor command.

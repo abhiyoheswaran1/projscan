@@ -21,6 +21,7 @@ import type {
   StartMissionProofToolCall,
   StartMissionReviewDecision,
   StartMissionReviewGate,
+  StartMissionReviewPolicy,
   StartMissionReviewProof,
   StartMissionReviewWorktree,
   StartMissionResume,
@@ -430,6 +431,7 @@ function buildMissionReviewGate(input: {
   ];
   const commands = ['git status --short', 'git diff --stat'];
   const doneWhen = input.doneWhen.slice();
+  const policy = buildMissionReviewPolicy();
   const decisions = buildMissionReviewDecisions();
   const worktree = buildMissionReviewWorktree(input.currentWorktree);
   const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
@@ -442,6 +444,7 @@ function buildMissionReviewGate(input: {
     reviewPrompt,
     checklist,
     doneWhen,
+    policy,
     decisions,
     commands,
     worktree,
@@ -452,11 +455,20 @@ function buildMissionReviewGate(input: {
       reviewPrompt,
       checklist,
       doneWhen,
+      policy,
       decisions,
       commands,
       worktree,
       proof: input.proof,
     }),
+  };
+}
+
+function buildMissionReviewPolicy(): StartMissionReviewPolicy {
+  return {
+    approvalRequired: true,
+    blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
+    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
   };
 }
 
@@ -538,6 +550,7 @@ function renderMissionReviewGateMarkdown(input: {
   reviewPrompt: string;
   checklist: string[];
   doneWhen: string[];
+  policy: StartMissionReviewPolicy;
   decisions: StartMissionReviewDecision[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
@@ -551,6 +564,12 @@ function renderMissionReviewGateMarkdown(input: {
     '',
     '## Checklist',
     ...input.checklist.map((item) => `- [ ] ${item}`),
+    '',
+    '## Review Policy',
+    `Approval required: ${input.policy.approvalRequired ? 'yes' : 'no'}`,
+    input.policy.summary,
+    'Blocked until approval:',
+    ...input.policy.blockedActions.map(formatMissionReviewBlockedAction),
     '',
     '## Done When',
     ...(input.doneWhen.length > 0
@@ -576,6 +595,19 @@ function renderMissionReviewGateMarkdown(input: {
 
 function formatMissionReviewDecision(decision: StartMissionReviewDecision): string {
   return `- [ ] ${decision.label}: ${decision.description} Consequence: ${decision.consequence} Reply: "${decision.reply}"`;
+}
+
+function formatMissionReviewBlockedAction(action: StartMissionReviewPolicy['blockedActions'][number]): string {
+  const labels: Record<StartMissionReviewPolicy['blockedActions'][number], string> = {
+    next_slice: 'Start another implementation slice',
+    release: 'Release',
+    publish: 'Publish',
+    deploy: 'Deploy',
+    push: 'Push',
+    merge: 'Merge',
+    version_bump: 'Version bump',
+  };
+  return `- ${labels[action]} (\`${action}\`)`;
 }
 
 function renderMissionReviewProofLines(proof: StartMissionReviewProof): string[] {

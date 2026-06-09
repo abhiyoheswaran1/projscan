@@ -769,6 +769,10 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate).toContain(
     'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
   );
+  expect(reviewGate).toContain('## Review Policy');
+  expect(reviewGate).toContain('Approval required: yes');
+  expect(reviewGate).toContain('- Push (`push`)');
+  expect(reviewGate).toContain('- Version bump (`version_bump`)');
   expect(reviewGate).toContain('Publishing still requires a separate explicit approval.');
   expect(reviewGate.endsWith('\n')).toBe(true);
 
@@ -976,6 +980,10 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   expect(shortcut.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(shortcut.stdout).toContain('## Reviewer Decision');
+  expect(shortcut.stdout).toContain('## Review Policy');
+  expect(shortcut.stdout).toContain('Approval required: yes');
+  expect(shortcut.stdout).toContain('- Push (`push`)');
+  expect(shortcut.stdout).toContain('- Version bump (`version_bump`)');
   expect(shortcut.stdout).toContain('- [ ] Request changes: The agent must address review feedback before starting more scope.');
   expect(shortcut.stdout).toContain(
     'Reply: "Changes requested: address the review feedback first, update proof, then stop for another review."',

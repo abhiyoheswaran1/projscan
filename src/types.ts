@@ -1007,6 +1007,21 @@ export interface StartMissionReviewProof {
   items?: StartMissionProofItem[];
 }
 
+export type StartMissionReviewBlockedAction =
+  | 'next_slice'
+  | 'release'
+  | 'publish'
+  | 'deploy'
+  | 'push'
+  | 'merge'
+  | 'version_bump';
+
+export interface StartMissionReviewPolicy {
+  approvalRequired: true;
+  blockedActions: StartMissionReviewBlockedAction[];
+  summary: string;
+}
+
 export interface StartMissionReviewDecision {
   id: 'approve_next_slice' | 'request_changes' | 'review_version_candidate';
   label: string;
@@ -1023,6 +1038,7 @@ export interface StartMissionReviewGate {
   reviewPrompt: string;
   checklist: string[];
   doneWhen: string[];
+  policy: StartMissionReviewPolicy;
   decisions: StartMissionReviewDecision[];
   commands: string[];
   worktree: StartMissionReviewWorktree;

@@ -7072,6 +7072,11 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     }),
   );
   expect(report.missionControl.reviewGate.commands).toEqual(['git status --short', 'git diff --stat']);
+  expect(report.missionControl.reviewGate.policy).toEqual({
+    approvalRequired: true,
+    blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
+    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+  });
   expect(report.missionControl.reviewGate.checklist).toEqual(
     expect.arrayContaining([
       'Complete this task card and remaining proof.',
@@ -7116,6 +7121,9 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     expectedReviewDecisionReplies,
   );
   expect(report.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
+  expect(report.missionControl.reviewGate.markdown).toContain('## Review Policy');
+  expect(report.missionControl.reviewGate.markdown).toContain('- Start another implementation slice (`next_slice`)');
+  expect(report.missionControl.reviewGate.markdown).toContain('- Version bump (`version_bump`)');
   expect(report.missionControl.reviewGate.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
   );
@@ -7130,6 +7138,7 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
   expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(report.missionControl.reviewGate.doneWhen);
   expect(report.missionControl.handoff.reviewGate.decisions).toEqual(report.missionControl.reviewGate.decisions);
+  expect(report.missionControl.handoff.reviewGate.policy).toEqual(report.missionControl.reviewGate.policy);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',
