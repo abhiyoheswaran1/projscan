@@ -44,6 +44,7 @@ export function registerStart(): void {
     .option('--review-gate-json', 'print only the Mission Control review gate as JSON')
     .option('--review-policy', 'print only the Mission Control review policy as JSON')
     .option('--review-replies', 'print only the Mission Control reviewer reply choices')
+    .option('--mission-script', 'print the Mission Control shell script')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .option('--shortcuts-json', 'print the Mission Control shortcut command index as JSON')
     .action(async (cmdOpts) => {
@@ -145,6 +146,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.reviewReplies === true) {
           printReviewRepliesOnly(report);
+          return;
+        }
+        if (cmdOpts.missionScript === true) {
+          printMissionScriptOnly(report);
           return;
         }
         if (cmdOpts.shortcuts === true) {
@@ -464,6 +469,9 @@ async function writeMissionBundle(
     JSON.stringify(buildShortcutIndex(report, shortcutOptions), null, 2) + '\n',
     'utf-8',
   );
+  const missionScriptPath = path.join(targetDir, 'mission.sh');
+  await fs.writeFile(missionScriptPath, buildMissionScript(report), 'utf-8');
+  await fs.chmod(missionScriptPath, 0o755).catch(() => undefined);
   await fs.writeFile(
     path.join(targetDir, 'proof-commands.txt'),
     readyProofCommands(report).join('\n') + '\n',
@@ -550,6 +558,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'shortcuts.json',
       path: path.join(targetDir, 'shortcuts.json'),
       description: 'Machine-readable Mission Control shortcut command index.',
+    },
+    {
+      name: 'mission.sh',
+      path: path.join(targetDir, 'mission.sh'),
+      description: 'Shell script that runs the current cursor command and remaining proof queue.',
     },
     {
       name: 'proof-commands.txt',
@@ -681,6 +694,67 @@ function printReviewRepliesOnly(report: StartReport): void {
   console.log(replies.join('\n'));
 }
 
+function printMissionScriptOnly(report: StartReport): void {
+  console.log(buildMissionScript(report).trimEnd());
+}
+
+function buildMissionScript(report: StartReport): string {
+  const mission = report.missionControl;
+  const cursor = mission.executionPlan.cursor;
+  const proofCommands = readyProofCommands(report);
+  const unsafeCommand = [cursor.command, ...proofCommands]
+    .filter((command): command is string => typeof command === 'string')
+    .find(commandHasShellExpansionSyntax);
+  const lines = [
+    '#!/usr/bin/env sh',
+    'set -eu',
+    '',
+    scriptPrint('projscan Mission Control'),
+    ...(mission.intent && !unsafeCommand ? [scriptPrint(`Intent: ${mission.intent}`)] : []),
+    scriptPrint(`Mode: ${report.mode}`),
+    scriptPrint(`Status: ${mission.status}`),
+    scriptPrint(`Current step: ${cursor.stepId} in ${cursor.phaseId}`),
+    scriptPrint(''),
+  ];
+
+  if (unsafeCommand) {
+    lines.push(
+      scriptPrintError('Blocked: mission command contains shell expansion syntax; inspect --next-command before running it.'),
+      'exit 2',
+    );
+    return lines.join('\n') + '\n';
+  }
+
+  if (!cursor.command) {
+    lines.push(scriptPrintError(`Blocked: ${cursor.instruction ?? cursor.label}`), 'exit 2');
+    return lines.join('\n') + '\n';
+  }
+
+  lines.push(scriptPrint('Run current command'), cursor.command);
+  if (proofCommands.length > 0) {
+    lines.push(scriptPrint(''), scriptPrint('Run remaining proof'), ...proofCommands);
+  }
+  lines.push(
+    scriptPrint(''),
+    scriptPrint('Review gate'),
+    scriptPrint(mission.reviewGate.stopCondition),
+    ...mission.reviewGate.commands.map((command) => scriptPrint(`Capture: ${command}`)),
+  );
+  return lines.join('\n') + '\n';
+}
+
+function scriptPrint(value: string): string {
+  return `printf '%s\\n' ${shellQuote(value)}`;
+}
+
+function scriptPrintError(value: string): string {
+  return `${scriptPrint(value)} >&2`;
+}
+
+function commandHasShellExpansionSyntax(command: string): boolean {
+  return /[$`]/.test(command);
+}
+
 interface StartShortcutCommandOptions {
   intent?: string;
   mode?: WorkplanMode;
@@ -735,6 +809,7 @@ function buildShortcutIndex(report: StartReport, options: StartShortcutCommandOp
     shortcutEntry('checklist', 'Resume checklist', '--checklist', 'Print only the Mission Control resume checklist.', options),
     shortcutEntry('resume-json', 'Resume JSON', '--resume-json', 'Print only the structured Mission Control resume object.', options),
     shortcutEntry('handoff-json', 'Handoff JSON', '--handoff-json', 'Print only the structured Mission Control handoff object.', options),
+    shortcutEntry('mission-script', 'Mission script', '--mission-script', 'Print the Mission Control shell script.', options),
     shortcutEntry('save-mission', 'Save mission bundle', '--save-mission .projscan/mission', 'Write the Mission Control bundle to .projscan/mission.', options),
     shortcutEntry('task-card', 'Task card', '--task-card', 'Print only the Mission Control Markdown task card.', options),
     shortcutEntry('review-gate', 'Review gate Markdown', '--review-gate', 'Print only the Mission Control stop-and-review gate.', options),

@@ -702,6 +702,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(result.stdout).toContain('resume.json');
   expect(result.stdout).toContain('ready-tool-calls.json');
   expect(result.stdout).toContain('shortcuts.json');
+  expect(result.stdout).toContain('mission.sh');
   expect(result.stdout).toContain('proof-commands.txt');
   expect(result.stdout).toContain('manifest.json');
 
@@ -722,6 +723,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.');
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
   expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
+  expect(quickstart).toContain('- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.');
   expect(quickstart).toContain('## Reviewer Replies');
   expect(quickstart).toContain(
     '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
@@ -854,6 +856,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'checklist',
     'resume-json',
     'handoff-json',
+    'mission-script',
     'save-mission',
     'task-card',
     'review-gate',
@@ -866,8 +869,25 @@ test('start writes a Mission Control bundle when requested', async () => {
   ]);
   expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json')).toBeUndefined();
   expect(shortcuts.shortcuts.map((entry: { command: string }) => entry.command)).toContain(
+    "projscan start --mission-script --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(shortcuts.shortcuts.map((entry: { command: string }) => entry.command)).toContain(
     "projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'",
   );
+
+  const missionScript = await fs.readFile(path.join(bundleDir, 'mission.sh'), 'utf-8');
+  expect(missionScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
+  expect(missionScript).toContain("printf '%s\\n' 'projscan Mission Control'");
+  expect(missionScript).toContain("printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'");
+  expect(missionScript).toContain("printf '%s\\n' 'Current step: ready-1 in ready_now'");
+  expect(missionScript).toContain("printf '%s\\n' 'Run current command'");
+  expect(missionScript).toContain('projscan search "auth token loader" --format json');
+  expect(missionScript).toContain("printf '%s\\n' 'Run remaining proof'");
+  expect(missionScript).toContain('projscan preflight --mode before_edit --format json');
+  expect(missionScript).toContain("printf '%s\\n' 'Review gate'");
+  expect(missionScript).toContain("printf '%s\\n' 'Capture: git status --short'");
+  expect(missionScript).not.toContain('Mission Control\nStatus:');
+  expect(missionScript).not.toContain('Run Cursor');
 
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
@@ -906,6 +926,7 @@ test('start writes a Mission Control bundle when requested', async () => {
     'resume.json',
     'ready-tool-calls.json',
     'shortcuts.json',
+    'mission.sh',
     'proof-commands.txt',
     'manifest.json',
   ]);
@@ -940,6 +961,7 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
       'review-policy.json',
       'review-replies.txt',
       'shortcuts.json',
+      'mission.sh',
       'manifest.json',
     ]),
   );
@@ -1148,6 +1170,91 @@ test('start prints only the mission runbook when requested', async () => {
   expect(result.stdout).not.toContain('First 10 Minutes');
 });
 
+test('start prints a mission shell script when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--mission-script',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
+  expect(result.stdout).toContain("printf '%s\\n' 'projscan Mission Control'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Mode: before_edit'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Status: needs_attention'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Current step: ready-1 in ready_now'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Run current command'");
+  expect(result.stdout).toContain('projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain("printf '%s\\n' 'Run remaining proof'");
+  expect(result.stdout).toContain('projscan preflight --mode before_edit --format json');
+  expect(result.stdout).toContain("printf '%s\\n' 'Review gate'");
+  expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
+  expect(result.stdout).toContain("printf '%s\\n' 'Capture: git status --short'");
+  expect(result.stdout).toContain("printf '%s\\n' 'Capture: git diff --stat'");
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Run Cursor');
+  expect(result.stdout).not.toContain('Ready Proof');
+});
+
+test('start mission script refuses commands with shell expansion syntax', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename auth $(echo boom) loader',
+    '--mission-script',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
+  expect(result.stdout).toContain(
+    "printf '%s\\n' 'Blocked: mission command contains shell expansion syntax; inspect --next-command before running it.' >&2",
+  );
+  expect(result.stdout).toContain('exit 2');
+  expect(result.stdout).not.toContain('$(echo boom)');
+  expect(result.stdout).not.toContain('Run current command');
+});
+
+test('start JSON keeps the full report when mission-script is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--mission-script',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
+  expect(report.missionScript).toBeUndefined();
+});
+
+test('start uses narrower shortcut output before the mission script', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--proof-commands',
+    '--mission-script',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const proofCommands = result.stdout.trim().split('\n');
+  expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(proofCommands).not.toContain('#!/usr/bin/env sh');
+  expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
+});
+
 test('start JSON keeps the full report when runbook shortcut is requested', async () => {
   const result = await runCli([
     'start',
@@ -1236,6 +1343,7 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
     'checklist',
     'resume-json',
     'handoff-json',
+    'mission-script',
     'save-mission',
     'task-card',
     'review-gate',
@@ -1251,6 +1359,12 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
     label: 'Current shell command',
     command: "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
     description: 'Print only the current Mission Control cursor command.',
+  });
+  expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'mission-script')).toEqual({
+    id: 'mission-script',
+    label: 'Mission script',
+    command: "projscan start --mission-script --intent 'what breaks if I rename the auth token loader'",
+    description: 'Print the Mission Control shell script.',
   });
   expect(shortcuts.shortcuts.at(-1)).toEqual({
     id: 'start',

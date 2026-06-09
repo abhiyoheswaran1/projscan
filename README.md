@@ -71,6 +71,7 @@ projscan start --proof-commands --intent "<goal>"   # Remaining proof commands
 projscan start --checklist --intent "<goal>"        # Ordered resume task card
 projscan start --resume-json --intent "<goal>"      # Structured resume object
 projscan start --handoff-json --intent "<goal>"     # Complete handoff object
+projscan start --mission-script --intent "<goal>"   # Shell script: current step + proof
 projscan start --save-mission .projscan/mission --intent "<goal>" # Write bundle + quickstart
 projscan start --task-card --intent "<goal>"        # Paste-ready Markdown task card
 projscan start --review-gate --intent "<goal>"      # Stop-and-review gate
@@ -81,7 +82,7 @@ projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 ```
 
-Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, proof commands, and a manifest.
+Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, `mission.sh`, proof commands, and a manifest.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -678,6 +679,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--checklist` | Print only the Mission Control resume checklist (`start`) |
 | `--resume-json` | Print only the Mission Control resume object as JSON (`start`) |
 | `--handoff-json` | Print only the Mission Control handoff object as JSON (`start`) |
+| `--mission-script` | Print the Mission Control shell script (`start`) |
 | `--save-mission <dir>` | Write the Mission Control bundle to a directory (`start`) |
 | `--task-card` | Print only the Mission Control Markdown task card (`start`) |
 | `--review-gate` | Print only the Mission Control stop-and-review gate (`start`) |
