@@ -472,6 +472,7 @@ async function writeMissionBundle(
   await fs.mkdir(path.join(targetDir, 'proof-logs'), { recursive: true });
   await fs.writeFile(path.join(targetDir, 'proof-logs', 'README.md'), missionProofLogsReadme(report), 'utf-8');
   await fs.writeFile(path.join(targetDir, 'proof-logs', 'status.jsonl'), '', 'utf-8');
+  await fs.writeFile(path.join(targetDir, 'proof-logs', 'run-report.md'), missionInitialRunReport(), 'utf-8');
   const missionScriptPath = path.join(targetDir, 'mission.sh');
   await fs.writeFile(missionScriptPath, buildMissionScript(report, { proofLogs: true }), 'utf-8');
   await fs.chmod(missionScriptPath, 0o755).catch(() => undefined);
@@ -576,6 +577,11 @@ function missionBundleFiles(targetDir: string): MissionBundleFile[] {
       name: 'proof-logs/status.jsonl',
       path: path.join(targetDir, 'proof-logs', 'status.jsonl'),
       description: 'Runtime status rows written by mission.sh.',
+    },
+    {
+      name: 'proof-logs/run-report.md',
+      path: path.join(targetDir, 'proof-logs', 'run-report.md'),
+      description: 'Human-readable run report refreshed by mission.sh.',
     },
     {
       name: 'proof-commands.txt',
@@ -748,9 +754,13 @@ function buildMissionScript(report: StartReport, options: MissionScriptOptions =
       'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
       'PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"',
       'PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"',
+      'PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"',
       'mkdir -p "$PROOF_LOG_DIR"',
       ': > "$PROOF_STATUS_FILE"',
+      ': > "$PROOF_REPORT_FILE"',
+      ...scriptInitRunReport(report),
       scriptPrintExpanded('Proof logs: ${PROOF_LOG_DIR}'),
+      scriptPrintExpanded('Run report: ${PROOF_REPORT_FILE}'),
       scriptPrint(''),
     );
   }
@@ -775,6 +785,9 @@ function buildMissionScript(report: StartReport, options: MissionScriptOptions =
       ));
     }
   }
+  if (proofLogs) {
+    lines.push(...scriptAppendRunReportReviewGate(mission.reviewGate.stopCondition, mission.reviewGate.commands));
+  }
   lines.push(
     scriptPrint(''),
     scriptPrint('Review gate'),
@@ -790,6 +803,7 @@ function missionProofLogsReadme(report: StartReport): string {
     '# Mission Proof Logs',
     '',
     'Run `./mission.sh` from this bundle to write command output here.',
+    'Read `run-report.md` first for pass/fail proof after `mission.sh` runs.',
     'Read `status.jsonl` for command exit codes after `mission.sh` runs.',
     '',
     '## Expected Logs',
@@ -803,6 +817,16 @@ function missionProofLogsReadme(report: StartReport): string {
     }
   }
   return lines.join('\n').trimEnd() + '\n';
+}
+
+function missionInitialRunReport(): string {
+  return [
+    '# Mission Run Report',
+    '',
+    'Run `./mission.sh` to refresh this report with command exit codes and log links.',
+    'Review `status.jsonl` for machine-readable status rows.',
+    '',
+  ].join('\n');
 }
 
 function missionProofLogEntries(report: StartReport): Array<{ name: string; command: string }> {
@@ -835,8 +859,11 @@ function scriptCommandBlock(label: string, command: string, logTarget: MissionSc
     'status=$?',
     'set -e',
     scriptAppendStatusJsonl(logTarget.id, label, logTarget.logName, command),
+    scriptAppendReportRow(logTarget.id, label, logTarget.logName),
     'if [ "$status" -ne 0 ]; then',
     `  ${scriptPrintError(`Command failed. See proof-logs/${logTarget.logName}.`)}`,
+    ...scriptAppendReportFailure(logTarget.id, logTarget.logName),
+    `  ${scriptPrintExpanded('Run report: ${PROOF_REPORT_FILE}')}`,
     '  exit "$status"',
     'fi',
   ];
@@ -858,6 +885,49 @@ function scriptAppendStatusJsonl(id: string, label: string, logName: string, com
     command,
   }).replace(/}$/, ',"exitCode":');
   return `printf '%s%s%s\\n' ${shellQuote(prefix)} "$status" '}' >> "$PROOF_STATUS_FILE"`;
+}
+
+function scriptInitRunReport(report: StartReport): string[] {
+  const mission = report.missionControl;
+  return [
+    '{',
+    `  ${scriptPrint('# Mission Run Report')}`,
+    `  ${scriptPrint('')}`,
+    ...(mission.intent ? [`  ${scriptPrint(`Intent: ${mission.intent}`)}`] : []),
+    `  ${scriptPrint(`Mode: ${report.mode}`)}`,
+    `  ${scriptPrint(`Status: ${mission.status}`)}`,
+    `  ${scriptPrint(`Current step: ${mission.executionPlan.cursor.stepId} in ${mission.executionPlan.cursor.phaseId}`)}`,
+    `  ${scriptPrint('')}`,
+    `  ${scriptPrint('| Step | Label | Exit | Log |')}`,
+    `  ${scriptPrint('| --- | --- | ---: | --- |')}`,
+    '} >> "$PROOF_REPORT_FILE"',
+  ];
+}
+
+function scriptAppendReportRow(id: string, label: string, logName: string): string {
+  return `printf '| %s | %s | %s | %s |\\n' ${shellQuote(id)} ${shellQuote(label)} "$status" ${shellQuote(`proof-logs/${logName}`)} >> "$PROOF_REPORT_FILE"`;
+}
+
+function scriptAppendReportFailure(id: string, logName: string): string[] {
+  return [
+    '  {',
+    `    ${scriptPrint('')}`,
+    `    ${scriptPrint('Mission stopped before completion.')}`,
+    `    ${scriptPrint(`Failed step: ${id}`)}`,
+    `    ${scriptPrint(`Log: proof-logs/${logName}`)}`,
+    '  } >> "$PROOF_REPORT_FILE"',
+  ];
+}
+
+function scriptAppendRunReportReviewGate(stopCondition: string, commands: string[]): string[] {
+  return [
+    '{',
+    `  ${scriptPrint('')}`,
+    `  ${scriptPrint('## Review Gate')}`,
+    `  ${scriptPrint(stopCondition)}`,
+    ...commands.map((command) => `  ${scriptPrint(`- ${command}`)}`),
+    '} >> "$PROOF_REPORT_FILE"',
+  ];
 }
 
 function scriptPrintError(value: string): string {
