@@ -1000,6 +1000,13 @@ export interface StartMissionReviewWorktree {
   reason?: string;
 }
 
+export interface StartMissionReviewProof {
+  summary: string;
+  commands: string[];
+  toolCalls?: StartMissionProofToolCall[];
+  items?: StartMissionProofItem[];
+}
+
 export interface StartMissionReviewGate {
   title: string;
   required: true;
@@ -1009,6 +1016,7 @@ export interface StartMissionReviewGate {
   checklist: string[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
+  proof: StartMissionReviewProof;
   markdown: string;
 }
 

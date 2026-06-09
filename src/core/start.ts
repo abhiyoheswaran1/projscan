@@ -20,6 +20,7 @@ import type {
   StartMissionProofItem,
   StartMissionProofToolCall,
   StartMissionReviewGate,
+  StartMissionReviewProof,
   StartMissionReviewWorktree,
   StartMissionResume,
   StartMissionResumeChecklistItem,
@@ -353,6 +354,7 @@ function buildMissionControl(input: {
     proofCommands,
   });
   const resume = missionResume(executionPlan);
+  const reviewProof = buildMissionReviewProof(resume, proofCommands);
   const whyNow =
     routed
       ? routedWhyNow(routed, actionPlan)
@@ -362,7 +364,7 @@ function buildMissionControl(input: {
   const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
   const reviewGate = buildMissionReviewGate({
     status,
-    proofSummary: READY_PROOF_SUMMARY,
+    proof: reviewProof,
     currentWorktree: input.riskSources.currentWorktree,
   });
   const runbook = buildMissionRunbook({
@@ -414,7 +416,7 @@ function buildMissionControl(input: {
 
 function buildMissionReviewGate(input: {
   status: StartMissionControlStatus;
-  proofSummary: string;
+  proof: StartMissionReviewProof;
   currentWorktree: StartReport['evidence']['riskSources']['currentWorktree'];
 }): StartMissionReviewGate {
   const checklist = [
@@ -426,7 +428,7 @@ function buildMissionReviewGate(input: {
   const commands = ['git status --short', 'git diff --stat'];
   const worktree = buildMissionReviewWorktree(input.currentWorktree);
   const stopCondition = 'Stop after the current Mission Control checklist and proof are complete.';
-  const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proofSummary}`;
+  const reviewPrompt = `Review the completed mission, proof output, and working-tree summary before approving another slice, release, publish, or deploy. ${input.proof.summary}`;
   return {
     title: 'Mission Review Gate',
     required: true,
@@ -436,6 +438,7 @@ function buildMissionReviewGate(input: {
     checklist,
     commands,
     worktree,
+    proof: input.proof,
     markdown: renderMissionReviewGateMarkdown({
       status: input.status,
       stopCondition,
@@ -443,7 +446,23 @@ function buildMissionReviewGate(input: {
       checklist,
       commands,
       worktree,
+      proof: input.proof,
     }),
+  };
+}
+
+function buildMissionReviewProof(
+  resume: StartMissionResume,
+  proofCommands: string[],
+): StartMissionReviewProof {
+  const commands = resume.remainingProofCommands ?? proofCommands;
+  const toolCalls = resume.remainingProofToolCalls ?? [];
+  const items = resume.remainingProofItems ?? [];
+  return {
+    summary: READY_PROOF_SUMMARY,
+    commands,
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+    ...(items.length > 0 ? { items } : {}),
   };
 }
 
@@ -485,6 +504,7 @@ function renderMissionReviewGateMarkdown(input: {
   checklist: string[];
   commands: string[];
   worktree: StartMissionReviewWorktree;
+  proof: StartMissionReviewProof;
 }): string {
   const lines = [
     '# Mission Review Gate',
@@ -495,6 +515,7 @@ function renderMissionReviewGateMarkdown(input: {
     '## Checklist',
     ...input.checklist.map((item) => `- [ ] ${item}`),
     '',
+    ...renderMissionReviewProofLines(input.proof),
     '## Evidence Commands',
     ...input.commands.map((command) => `- \`${command}\``),
     '',
@@ -506,6 +527,30 @@ function renderMissionReviewGateMarkdown(input: {
     input.reviewPrompt,
   ];
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function renderMissionReviewProofLines(proof: StartMissionReviewProof): string[] {
+  const lines = ['## Proof Queue', proof.summary];
+  if (proof.items && proof.items.length > 0) {
+    return [...lines, ...proof.items.map(formatMissionReviewProofItem), ''];
+  }
+  if (proof.commands.length > 0) {
+    return [...lines, ...proof.commands.map((command) => `- \`${command}\``), ''];
+  }
+  return [...lines, 'No proof commands are ready yet.', ''];
+}
+
+function formatMissionReviewProofItem(item: StartMissionProofItem): string {
+  const annotation = item.toolCall
+    ? ` (MCP: ${formatMissionReviewToolCall(item.toolCall)})`
+    : ' (CLI only)';
+  return `- \`${item.command}\`${annotation}`;
+}
+
+function formatMissionReviewToolCall(toolCall: StartMissionToolCall): string {
+  return typeof toolCall.args !== 'undefined'
+    ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
+    : toolCall.tool;
 }
 
 function buildMissionRunbook(input: {

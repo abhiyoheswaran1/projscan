@@ -7071,8 +7071,18 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   );
   expect(report.missionControl.reviewGate.markdown).toContain('## Worktree Evidence');
   expect(report.missionControl.reviewGate.markdown).toContain('Current worktree evidence is unavailable: not a git repository.');
+  expect(report.missionControl.reviewGate.proof).toEqual({
+    summary: report.missionControl.proofSummary,
+    commands: report.missionControl.resume.remainingProofCommands,
+    toolCalls: report.missionControl.resume.remainingProofToolCalls,
+    items: report.missionControl.resume.remainingProofItems,
+  });
+  expect(report.missionControl.reviewGate.proof.commands).not.toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.reviewGate.markdown).toContain('## Proof Queue');
+  expect(report.missionControl.reviewGate.markdown).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
   expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
+  expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',
