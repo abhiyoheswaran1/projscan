@@ -177,9 +177,15 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.stdout).toContain('Handoff Prompt');
   expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(result.stdout.indexOf('Handoff Prompt'));
-  expect(result.stdout.indexOf('Handoff Prompt')).toBeLessThan(result.stdout.indexOf('Action Plan'));
+  expect(result.stdout.indexOf('Handoff Prompt')).toBeLessThan(result.stdout.indexOf('Review Gate'));
+  expect(result.stdout.indexOf('Review Gate')).toBeLessThan(result.stdout.indexOf('Action Plan'));
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
   expect(result.stdout).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(result.stdout).toContain('Review Gate');
+  expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
+  expect(result.stdout).toContain('- git status --short');
+  expect(result.stdout).toContain('- git diff --stat');
+  expect(result.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- [pending] Follow Up');
@@ -604,8 +610,14 @@ test('start prints only the handoff object as compact JSON when requested', asyn
   });
   expect(handoff.readyProof.commands).toEqual(handoff.resume.remainingProofCommands);
   expect(handoff.readyProof.toolCalls).toEqual(handoff.resume.remainingProofToolCalls);
+  expect(handoff.reviewGate).toEqual(
+    expect.objectContaining({
+      title: 'Mission Review Gate',
+      commands: ['git status --short', 'git diff --stat'],
+    }),
+  );
   expect(result.stdout).not.toContain('Start:');
-  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('\nMission Control\n');
   expect(result.stdout).not.toContain('Handoff Prompt');
 });
 
@@ -708,6 +720,12 @@ test('start writes a Mission Control bundle when requested', async () => {
   const handoff = JSON.parse(await fs.readFile(path.join(bundleDir, 'handoff.json'), 'utf-8'));
   expect(handoff.currentStep.stepId).toBe('ready-1');
   expect(handoff.resume.currentStep.stepId).toBe('ready-1');
+  expect(handoff.reviewGate).toEqual(
+    expect.objectContaining({
+      title: 'Mission Review Gate',
+      commands: ['git status --short', 'git diff --stat'],
+    }),
+  );
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');

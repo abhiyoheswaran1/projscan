@@ -237,6 +237,7 @@ function printMissionControl(report: StartReport): void {
   printExecutionPlan(report);
   printResumeChecklist(report);
   printHandoffPrompt(report);
+  printReviewGate(report);
   if (mission.actionPlan.length > 0) {
     console.log(chalk.bold('Action Plan'));
     for (const action of mission.actionPlan.slice(0, 4)) {
@@ -658,6 +659,15 @@ function printHandoffPrompt(report: StartReport): void {
 
   console.log(chalk.bold('Handoff Prompt'));
   console.log(chalk.dim(prompt));
+}
+
+function printReviewGate(report: StartReport): void {
+  const gate = report.missionControl.reviewGate;
+  console.log(chalk.bold('Review Gate'));
+  console.log(gate.stopCondition);
+  for (const command of gate.commands) console.log(`- ${command}`);
+  const stopLine = gate.checklist.find((item) => item.startsWith('Stop and ask'));
+  if (stopLine) console.log(chalk.dim(stopLine));
 }
 
 function printExecutionPlan(report: StartReport): void {

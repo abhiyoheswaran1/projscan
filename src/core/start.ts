@@ -399,7 +399,7 @@ function buildMissionControl(input: {
     proofSummary: READY_PROOF_SUMMARY,
     proofCommands,
     resume,
-    handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands),
+    handoff: missionHandoff(executionPlan.cursor, resume, primaryAction, readyActions, unresolvedInputs, successCriteria, proofCommands, reviewGate),
     executionPlan,
     runbook,
     reviewGate,
@@ -1351,6 +1351,7 @@ function missionHandoff(
   needsInput: StartUnresolvedInput[],
   doneWhen: string[],
   proofCommands: string[],
+  reviewGate: StartMissionReviewGate,
 ): StartMissionControl['handoff'] {
   const readyProofCommands = resume.remainingProofCommands ?? proofCommands;
   const readyProofToolCalls = resume.remainingProofToolCalls;
@@ -1358,6 +1359,7 @@ function missionHandoff(
   return {
     currentStep,
     resume,
+    reviewGate,
     nextAction,
     readyActions,
     needsInput,

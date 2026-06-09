@@ -672,6 +672,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   );
   expect(result.start.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
   expect(result.start.missionControl.reviewGate.markdown).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
+  expect(result.start.missionControl.handoff.reviewGate).toEqual(result.start.missionControl.reviewGate);
   expect(result.start.missionControl.executionPlan.summary).toBe(
     `Run 1 ready step, resolve 2 input(s), then gather ${result.start.missionControl.proofCommands.length} proof command(s).`,
   );

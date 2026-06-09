@@ -7058,6 +7058,7 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   );
   expect(report.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
   expect(report.missionControl.reviewGate.markdown).toContain('## Evidence Commands');
+  expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',

@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added `projscan start --runbook`, a console shortcut that prints only the Mission Control Markdown runbook.
 - Added `projscan start --task-card` and `task-card.md` in saved mission bundles for paste-ready PR, issue, and handoff checklists.
 - Added `projscan start --review-gate` and `review-gate.md` in saved mission bundles so agents can finish the current mission, report proof, and wait for approval before another slice, release, publish, or deploy.
+- Added the same review gate to `missionControl.handoff.reviewGate`, `--handoff-json`, saved `handoff.json`, and default console output.
 
 ### Changed
 

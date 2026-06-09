@@ -915,6 +915,7 @@ export interface StartMissionResume {
 export interface StartMissionHandoff {
   currentStep: StartExecutionCursor;
   resume: StartMissionResume;
+  reviewGate: StartMissionReviewGate;
   nextAction: PreflightSuggestedAction;
   readyActions: PreflightSuggestedAction[];
   needsInput: StartUnresolvedInput[];
