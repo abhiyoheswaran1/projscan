@@ -168,6 +168,13 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('command: projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('unlocks: input-1, input-2');
+  expect(result.stdout).toContain('Resume Checklist');
+  expect(result.stdout.indexOf('Run Cursor')).toBeLessThan(result.stdout.indexOf('Resume Checklist'));
+  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(result.stdout.indexOf('Action Plan'));
+  expect(result.stdout).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
+  expect(result.stdout).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
+  expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- [pending] Follow Up');
@@ -354,6 +361,8 @@ test('start console renders a proof queue for handoff intents without the runboo
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Ready Proof');
+  expect(result.stdout).toContain('Resume Checklist');
+  expect(result.stdout).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
   expect(result.stdout).toContain('Proof Queue');
   expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
   expect(result.stdout).toContain('- proof-6: projscan handoff (CLI only)');

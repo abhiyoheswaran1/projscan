@@ -9,7 +9,14 @@ import {
 } from '../_shared.js';
 import { computeStartReport } from '../../core/start.js';
 import { isWorkplanMode } from '../../core/workplan.js';
-import type { StartMissionProofItem, StartMissionToolCall, StartReport, StartRisk, WorkplanMode } from '../../types.js';
+import type {
+  StartMissionProofItem,
+  StartMissionResumeChecklistItem,
+  StartMissionToolCall,
+  StartReport,
+  StartRisk,
+  WorkplanMode,
+} from '../../types.js';
 
 export function registerStart(): void {
   program
@@ -132,6 +139,7 @@ function printMissionControl(report: StartReport): void {
   if (mission.primaryAction.command) console.log(chalk.cyan(mission.primaryAction.command));
   console.log(chalk.dim(mission.whyNow));
   printExecutionPlan(report);
+  printResumeChecklist(report);
   if (mission.actionPlan.length > 0) {
     console.log(chalk.bold('Action Plan'));
     for (const action of mission.actionPlan.slice(0, 4)) {
@@ -227,6 +235,32 @@ function printExecutionCursor(report: StartReport): void {
     console.log(`unlocks: ${cursor.unlocks.join(', ')}`);
   }
   console.log(chalk.dim(cursor.reason));
+}
+
+function printResumeChecklist(report: StartReport): void {
+  const checklist = report.missionControl.resume.checklist ?? [];
+  if (checklist.length === 0) return;
+
+  console.log(chalk.bold('Resume Checklist'));
+  for (const item of checklist) {
+    console.log(chalk.dim(`- ${formatConsoleChecklistItem(item)}`));
+  }
+}
+
+function formatConsoleChecklistItem(item: StartMissionResumeChecklistItem): string {
+  const action = item.command
+    ?? (item.placeholder && item.instruction ? `${item.placeholder} -> ${item.instruction}` : undefined)
+    ?? item.instruction
+    ?? item.label;
+  return `[${item.status}] ${item.kind} ${item.stepId}: ${action}${formatConsoleChecklistAnnotation(item)}`;
+}
+
+function formatConsoleChecklistAnnotation(item: StartMissionResumeChecklistItem): string {
+  if (item.tool) {
+    return ` (MCP: ${formatConsoleToolCall({ tool: item.tool, ...(typeof item.args !== 'undefined' ? { args: item.args } : {}) })})`;
+  }
+  if (item.kind === 'run_proof' && item.command) return ' (CLI only)';
+  return '';
 }
 
 function formatConsoleProofItem(item: StartMissionProofItem): string {
