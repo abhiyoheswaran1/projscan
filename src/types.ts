@@ -962,6 +962,8 @@ export interface StartExecutionCursor {
   kind: StartExecutionStepKind;
   label: string;
   command?: string;
+  tool?: string;
+  args?: Record<string, unknown>;
   instruction?: string;
   placeholder?: string;
   blockedBy?: string[];

@@ -217,6 +217,9 @@ function printExecutionCursor(report: StartReport): void {
   } else {
     console.log(`step: ${cursor.label}`);
   }
+  if (cursor.tool) {
+    console.log(`MCP call: ${formatConsoleToolCall({ tool: cursor.tool, ...(typeof cursor.args !== 'undefined' ? { args: cursor.args } : {}) })}`);
+  }
   if (cursor.blockedBy && cursor.blockedBy.length > 0) {
     console.log(`blocked by: ${cursor.blockedBy.join(', ')}`);
   }

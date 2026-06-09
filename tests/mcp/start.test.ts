@@ -661,6 +661,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       kind: 'tool',
       status: 'ready',
       command: 'projscan search "auth token loader" --format json',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
       unlocks: ['input-1', 'input-2'],
       reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
     }),
@@ -718,6 +720,7 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.readyCommandBlock).not.toContain('<');
   expect(result.start.missionControl.runbook.markdown).toContain('## Current Cursor');
   expect(result.start.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');
+  expect(result.start.missionControl.runbook.markdown).toContain('- MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.start.missionControl.runbook.markdown).toContain('- Unlocks: input-1, input-2');
   expect(result.start.missionControl.runbook.markdown).toContain('## Resume');
   expect(result.start.missionControl.runbook.markdown).toContain('```sh\nprojscan search "auth token loader" --format json\n```');

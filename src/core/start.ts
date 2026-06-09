@@ -878,6 +878,9 @@ function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {
   } else {
     lines.push(`- Label: ${cursor.label}`);
   }
+  if (cursor.tool) {
+    lines.push(`- MCP call: ${formatRunbookToolCall({ tool: cursor.tool, ...(typeof cursor.args !== 'undefined' ? { args: cursor.args } : {}) })}`);
+  }
   if (cursor.blockedBy && cursor.blockedBy.length > 0) {
     lines.push(`- Blocked by: ${cursor.blockedBy.join(', ')}`);
   }
@@ -1084,6 +1087,8 @@ function executionCursor(phases: StartExecutionPhase[]): StartExecutionCursor {
     kind: selected.step.kind,
     label: selected.step.label,
     ...(selected.step.command ? { command: selected.step.command } : {}),
+    ...(selected.step.tool ? { tool: selected.step.tool } : {}),
+    ...(typeof selected.step.args !== 'undefined' ? { args: selected.step.args } : {}),
     ...(selected.step.instruction ? { instruction: selected.step.instruction } : {}),
     ...(selected.step.placeholder ? { placeholder: selected.step.placeholder } : {}),
     ...(selected.step.blockedBy && selected.step.blockedBy.length > 0 ? { blockedBy: selected.step.blockedBy } : {}),

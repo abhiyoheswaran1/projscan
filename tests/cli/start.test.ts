@@ -166,6 +166,7 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain('Run Cursor');
   expect(result.stdout).toContain('next: ready-1 in Ready Commands');
   expect(result.stdout).toContain('command: projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('unlocks: input-1, input-2');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
   expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
@@ -216,6 +217,7 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('## Current Cursor');
   expect(result.stdout).toContain('- Step: ready-1 in ready_now');
   expect(result.stdout).toContain('- Command: `projscan search "auth token loader" --format json`');
+  expect(result.stdout).toContain('- MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('- Unlocks: input-1, input-2');
   expect(result.stdout).toContain('## Resume');
   expect(result.stdout).toContain('Run now:');

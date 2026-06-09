@@ -57,7 +57,7 @@ npm run docs:screenshots
 
 The next Mission Control slice makes `projscan start --intent "<goal>"` more directly actionable for agents. The JSON payload now includes `missionControl.executionPlan`: ordered phases for the next action, ready commands, blocked inputs, follow-up steps, proof commands, and done criteria.
 
-That means a coding agent no longer has to infer the workflow from prose. It can read the cursor-aligned current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
+That means a coding agent no longer has to infer the workflow from prose. It can read the cursor-aligned current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion, with `tool` and `args` when that cursor is MCP-callable.
 
 The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, explicit `inputBindings` for placeholder substitution, downstream follow-up templates, an ordered `checklist`, `remainingProofItems`, `remainingProofCommands`, and MCP-native `remainingProofToolCalls` without traversing the full plan. Checklist `run_proof` rows now carry `tool` and `args` when their proof command maps to an MCP tool, so the ordered task card is directly callable. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and only the proof commands that remain after the current resume action. `missionControl.handoff.readyProof.items` is the complete remaining-proof queue with optional MCP calls per item; `commands` and `toolCalls` stay as command-only and MCP-callable views of the same queue, while `missionControl.proofCommands` preserves the full plan proof surface. Default console output renders the same ordered queue as `Proof Queue` under `Ready Proof`, and runbooks render it as `Proof queue`; both mark unmapped proof as `CLI only`. Use `projscan start --include-handoff --intent "<goal>"` to print the full Markdown handoff in the console as `Agent Runbook`.
 
@@ -76,6 +76,7 @@ Run 1 ready step, resolve 2 input(s), then gather 4 proof command(s).
 Run Cursor
 next: ready-1 in Ready Commands
 command: projscan search "auth token loader" --format json
+MCP call: projscan_search {"query":"auth token loader"}
 unlocks: input-1, input-2
 Ready Proof
 Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.
@@ -99,6 +100,7 @@ Current phase: ready_now
 ## Current Cursor
 - Step: ready-1 in ready_now
 - Command: `projscan search "auth token loader" --format json`
+- MCP call: projscan_search {"query":"auth token loader"}
 - Unlocks: input-1, input-2
 
 ## Resume

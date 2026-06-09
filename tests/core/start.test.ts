@@ -6688,6 +6688,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       status: 'ready',
       label: 'Find exact target for impact analysis',
       command: 'projscan search "auth token loader" --format json',
+      tool: 'projscan_search',
+      args: { query: 'auth token loader' },
       unlocks: ['input-1', 'input-2'],
       reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
     }),
@@ -6985,6 +6987,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
   expect(report.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');
   expect(report.missionControl.runbook.markdown).toContain('- Command: `projscan search "auth token loader" --format json`');
+  expect(report.missionControl.runbook.markdown).toContain('- MCP call: projscan_search {"query":"auth token loader"}');
   expect(report.missionControl.runbook.markdown).toContain('- Unlocks: input-1, input-2');
   expect(report.missionControl.runbook.markdown).toContain('- Why: Run this ready command next; it can unlock later inputs or follow-up steps.');
   expect(report.missionControl.runbook.markdown).toContain('## Resume');
@@ -7035,6 +7038,8 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       kind: 'tool',
       status: 'ready',
       command: 'projscan preflight --mode before_commit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_commit' },
       reason: 'Run this ready command next.',
     }),
   );
