@@ -472,6 +472,7 @@ function renderMissionRunbookMarkdown(input: {
 function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const cursor = plan.cursor;
   const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
+  const toolCall = resumeToolCall(plan, cursor);
   const unlocks = resolveResumeReferences(plan, cursor.unlocks);
   const blockedBy = resolveResumeReferences(plan, cursor.blockedBy);
   const instruction = commandBlock
@@ -488,8 +489,18 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
     instruction,
     prompt,
     ...(commandBlock ? { commandBlock } : {}),
+    ...(toolCall ? { toolCall } : {}),
     ...(unlocks.length > 0 ? { unlocks } : {}),
     ...(blockedBy.length > 0 ? { blockedBy } : {}),
+  };
+}
+
+function resumeToolCall(plan: StartExecutionPlan, cursor: StartExecutionCursor): StartMissionResume['toolCall'] | undefined {
+  const found = findStepInPlan(plan, cursor.stepId);
+  if (!found?.step.tool || !argsAreReady(found.step.args)) return undefined;
+  return {
+    tool: found.step.tool,
+    ...(typeof found.step.args !== 'undefined' ? { args: found.step.args } : {}),
   };
 }
 
@@ -548,6 +559,9 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
   } else {
     lines.push(`Do now: ${resume.instruction}`);
   }
+  if (resume.toolCall) {
+    lines.push(`MCP call: ${formatRunbookToolCall(resume.toolCall)}`);
+  }
   if (resume.unlocks && resume.unlocks.length > 0) {
     lines.push('After running, resolve:', ...resume.unlocks.map((reference) => `- ${formatRunbookResumeReference(reference)}`));
   }
@@ -561,6 +575,12 @@ function renderRunbookResumeLines(resume: StartMissionResume): string[] {
 function formatRunbookResumeReference(reference: StartMissionResumeReference): string {
   const detail = reference.instruction ?? reference.command ?? reference.label;
   return `${reference.id} (${reference.label}): ${detail}`;
+}
+
+function formatRunbookToolCall(toolCall: NonNullable<StartMissionResume['toolCall']>): string {
+  return typeof toolCall.args !== 'undefined'
+    ? `${toolCall.tool} ${JSON.stringify(toolCall.args)}`
+    : toolCall.tool;
 }
 
 function renderRunbookCursorLines(cursor: StartExecutionCursor): string[] {

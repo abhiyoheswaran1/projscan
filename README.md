@@ -59,7 +59,7 @@ The next Mission Control slice makes `projscan start --intent "<goal>"` more dir
 
 That means a coding agent no longer has to infer the workflow from prose. It can read the current phase, run only ready steps, ask for missing inputs when placeholders remain, and carry forward a compact proof checklist. Execution-plan steps also expose `dependsOn`, `blockedBy`, and `unlocks` when a follow-up is waiting on a prior command or input. The plan includes `cursor`, a direct pointer to the single next command, input, proof command, or done criterion.
 
-The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block or a direct input instruction without traversing the full plan. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and ready proof for copy/paste handoffs. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
+The same response also includes `missionControl.runbook`: a compact Markdown handoff with intent, status, current phase, the current cursor, resume instructions, ready commands, blocked inputs, proof commands, and done criteria. `missionControl.resume` is copied into `missionControl.handoff.resume` and `missionControl.runbook.resume`, so a resumed agent gets a runnable command block, an optional MCP-native `toolCall`, or a direct input instruction without traversing the full plan. The concise `missionControl.handoffPrompt` now starts from that same resume prompt and carries labeled unlocks, blockers, done criteria, and ready proof for copy/paste handoffs. Use `projscan start --include-handoff --intent "<goal>"` to print it in the console as `Agent Runbook`.
 
 Console output shows the same model for humans:
 
@@ -98,6 +98,7 @@ Run now:
 ```sh
 projscan search "auth token loader" --format json
 ```
+MCP call: projscan_search {"query":"auth token loader"}
 After running, resolve:
 - input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.
 - input-2 (file): Replace <file-from-search> with a file path returned by the search step.

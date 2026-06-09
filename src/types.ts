@@ -830,12 +830,18 @@ export interface StartMissionResumeReference {
   command?: string;
 }
 
+export interface StartMissionToolCall {
+  tool: string;
+  args?: Record<string, unknown>;
+}
+
 export interface StartMissionResume {
   currentStep: StartExecutionCursor;
   status: StartExecutionStatus;
   instruction: string;
   prompt: string;
   commandBlock?: string;
+  toolCall?: StartMissionToolCall;
   unlocks?: StartMissionResumeReference[];
   blockedBy?: StartMissionResumeReference[];
 }

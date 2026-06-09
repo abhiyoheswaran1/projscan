@@ -215,6 +215,7 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('## Resume');
   expect(result.stdout).toContain('Run now:');
   expect(result.stdout).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
+  expect(result.stdout).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('After running, resolve:');
   expect(result.stdout).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(result.stdout).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');

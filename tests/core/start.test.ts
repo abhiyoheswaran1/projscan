@@ -6720,6 +6720,10 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       currentStep: report.missionControl.executionPlan.cursor,
       status: 'ready',
       commandBlock: 'projscan search "auth token loader" --format json',
+      toolCall: {
+        tool: 'projscan_search',
+        args: { query: 'auth token loader' },
+      },
       instruction: 'Run projscan search "auth token loader" --format json.',
       prompt: 'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
     }),
@@ -6769,6 +6773,7 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('## Resume');
   expect(report.missionControl.runbook.markdown).toContain('Run now:');
   expect(report.missionControl.runbook.markdown).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
+  expect(report.missionControl.runbook.markdown).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(report.missionControl.runbook.markdown).toContain('After running, resolve:');
   expect(report.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
   expect(report.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
