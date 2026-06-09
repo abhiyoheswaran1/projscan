@@ -33,6 +33,7 @@ export function registerStart(): void {
     .option('--ready-tool-calls', 'print all currently ready Mission Control MCP tool calls as compact JSON')
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
+    .option('--resume-json', 'print only the Mission Control resume object as compact JSON')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
@@ -92,6 +93,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.checklist === true) {
           printChecklistOnly(report);
+          return;
+        }
+        if (cmdOpts.resumeJson === true) {
+          console.log(JSON.stringify(report.missionControl.resume));
           return;
         }
         if (cmdOpts.runbook === true) {
@@ -332,6 +337,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--ready-tool-calls', options),
     shortcutCommand('--proof-commands', options),
     shortcutCommand('--checklist', options),
+    shortcutCommand('--resume-json', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
     startBaseCommand(options),

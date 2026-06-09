@@ -530,6 +530,60 @@ test('start JSON keeps the full report when checklist shortcut is requested', as
   expect(report.missionControl.resume.checklist[0].command).toBe('projscan search "auth token loader" --format json');
 });
 
+test('start prints only the resume object as compact JSON when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--resume-json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  const resume = JSON.parse(result.stdout);
+  expect(resume.currentStep.stepId).toBe('ready-1');
+  expect(resume.toolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(resume.inputBindings).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        placeholder: '<symbol-from-search>',
+        inputId: 'input-1',
+      }),
+    ]),
+  );
+  expect(resume.checklist[0].kind).toBe('run_current');
+  expect(resume.remainingProofToolCalls).toContainEqual({
+    stepId: 'proof-2',
+    command: 'projscan preflight --mode before_edit --format json',
+    tool: 'projscan_preflight',
+    args: { mode: 'before_edit' },
+  });
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Resume Checklist');
+});
+
+test('start JSON keeps the full report when resume-json shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--resume-json',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.resume.currentStep.stepId).toBe('ready-1');
+  expect(report.missionControl.runbook.resume).toEqual(report.missionControl.resume);
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',
@@ -590,6 +644,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --resume-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");
