@@ -584,6 +584,48 @@ test('start JSON keeps the full report when resume-json shortcut is requested', 
   expect(report.missionControl.runbook.resume).toEqual(report.missionControl.resume);
 });
 
+test('start prints only the handoff object as compact JSON when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--handoff-json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  const handoff = JSON.parse(result.stdout);
+  expect(handoff.currentStep.stepId).toBe('ready-1');
+  expect(handoff.resume.currentStep.stepId).toBe('ready-1');
+  expect(handoff.resume.toolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(handoff.readyProof.commands).toEqual(handoff.resume.remainingProofCommands);
+  expect(handoff.readyProof.toolCalls).toEqual(handoff.resume.remainingProofToolCalls);
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+  expect(result.stdout).not.toContain('Handoff Prompt');
+});
+
+test('start JSON keeps the full report when handoff-json shortcut is requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--handoff-json',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.handoff.currentStep.stepId).toBe('ready-1');
+  expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
+});
+
 test('start prints only the mission runbook when requested', async () => {
   const result = await runCli([
     'start',
@@ -645,6 +687,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --resume-json --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");

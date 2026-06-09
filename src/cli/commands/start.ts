@@ -34,6 +34,7 @@ export function registerStart(): void {
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
     .option('--resume-json', 'print only the Mission Control resume object as compact JSON')
+    .option('--handoff-json', 'print only the Mission Control handoff object as compact JSON')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
     .option('--shortcuts', 'print the Mission Control shortcut command index')
     .action(async (cmdOpts) => {
@@ -97,6 +98,10 @@ export function registerStart(): void {
         }
         if (cmdOpts.resumeJson === true) {
           console.log(JSON.stringify(report.missionControl.resume));
+          return;
+        }
+        if (cmdOpts.handoffJson === true) {
+          console.log(JSON.stringify(report.missionControl.handoff));
           return;
         }
         if (cmdOpts.runbook === true) {
@@ -338,6 +343,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
     shortcutCommand('--proof-commands', options),
     shortcutCommand('--checklist', options),
     shortcutCommand('--resume-json', options),
+    shortcutCommand('--handoff-json', options),
     shortcutCommand('--runbook', options),
     shortcutCommand('--handoff-prompt', options),
     startBaseCommand(options),
