@@ -30,6 +30,7 @@ export function registerStart(): void {
     .option('--handoff-prompt', 'print only the concise Mission Control handoff prompt')
     .option('--next-command', 'print only the current Mission Control cursor command')
     .option('--next-tool-call', 'print only the current Mission Control cursor MCP tool call as JSON')
+    .option('--ready-tool-calls', 'print all currently ready Mission Control MCP tool calls as compact JSON')
     .option('--proof-commands', 'print only ready Mission Control proof commands')
     .option('--checklist', 'print only the Mission Control resume checklist')
     .option('--runbook', 'print only the Mission Control Markdown runbook')
@@ -69,6 +70,15 @@ export function registerStart(): void {
             process.exit(1);
           }
           console.log(JSON.stringify(toolCall));
+          return;
+        }
+        if (cmdOpts.readyToolCalls === true) {
+          const toolCalls = readyToolCalls(report);
+          if (toolCalls.length === 0) {
+            console.error(chalk.red('No ready Mission Control MCP tool calls are available.'));
+            process.exit(1);
+          }
+          console.log(JSON.stringify(toolCalls));
           return;
         }
         if (cmdOpts.proofCommands === true) {
@@ -252,6 +262,35 @@ function nextToolCall(report: StartReport): StartMissionToolCall | undefined {
   };
 }
 
+function readyToolCalls(report: StartReport): StartMissionToolCall[] {
+  const calls: StartMissionToolCall[] = [];
+  const current = nextToolCall(report);
+  if (current) calls.push(compactToolCall(current));
+  for (const proofCall of report.missionControl.handoff.readyProof.toolCalls ?? []) {
+    calls.push(compactToolCall(proofCall));
+  }
+  return dedupeToolCalls(calls);
+}
+
+function compactToolCall(toolCall: StartMissionToolCall): StartMissionToolCall {
+  return {
+    tool: toolCall.tool,
+    ...(typeof toolCall.args !== 'undefined' ? { args: toolCall.args } : {}),
+  };
+}
+
+function dedupeToolCalls(toolCalls: StartMissionToolCall[]): StartMissionToolCall[] {
+  const seen = new Set<string>();
+  const out: StartMissionToolCall[] = [];
+  for (const toolCall of toolCalls) {
+    const key = JSON.stringify(toolCall);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(toolCall);
+  }
+  return out;
+}
+
 function readyProofCommands(report: StartReport): string[] {
   const mission = report.missionControl;
   return mission.handoff.readyProof.commands.length > 0
@@ -290,6 +329,7 @@ function printShortcutsOnly(report: StartReport, options: StartShortcutCommandOp
   const shortcuts = [
     shortcutCommand('--next-command', options),
     shortcutCommand('--next-tool-call', options),
+    shortcutCommand('--ready-tool-calls', options),
     shortcutCommand('--proof-commands', options),
     shortcutCommand('--checklist', options),
     shortcutCommand('--runbook', options),

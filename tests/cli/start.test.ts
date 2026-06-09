@@ -405,6 +405,55 @@ test('start JSON keeps the full report when next-tool-call shortcut is requested
   expect(report.missionControl.executionPlan.cursor.tool).toBe('projscan_search');
 });
 
+test('start prints every ready MCP tool call when requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--ready-tool-calls',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  const calls = JSON.parse(result.stdout);
+  expect(calls[0]).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(calls).toContainEqual({
+    tool: 'projscan_preflight',
+    args: { mode: 'before_edit' },
+  });
+  expect(calls).toContainEqual({
+    tool: 'projscan_understand',
+    args: { view: 'verify' },
+  });
+  expect(calls.some((call: Record<string, unknown>) => 'stepId' in call || 'command' in call)).toBe(false);
+  expect(result.stdout).not.toContain('Start:');
+  expect(result.stdout).not.toContain('Mission Control');
+});
+
+test('start JSON keeps the full report when ready tool calls are requested', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--ready-tool-calls',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.resume.toolCall).toEqual({
+    tool: 'projscan_search',
+    args: { query: 'auth token loader' },
+  });
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
+});
+
 test('start prints only ready proof commands when requested', async () => {
   const result = await runCli([
     'start',
@@ -538,6 +587,7 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain('{"tool":"projscan_search","args":{"query":"auth token loader"}}');
   expect(result.stdout).toContain("projscan start --next-command --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain("projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
   expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");

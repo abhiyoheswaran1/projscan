@@ -65,6 +65,7 @@ Use the index when you want the menu, or call one shortcut directly:
 projscan start --shortcuts --intent "<goal>"         # Show the shortcut menu
 projscan start --next-command --intent "<goal>"      # Current shell command
 projscan start --next-tool-call --intent "<goal>"   # Current MCP call as compact JSON
+projscan start --ready-tool-calls --intent "<goal>" # Current + proof MCP calls
 projscan start --proof-commands --intent "<goal>"   # Remaining proof commands
 projscan start --checklist --intent "<goal>"        # Ordered resume task card
 projscan start --runbook --intent "<goal>"          # Markdown mission runbook
@@ -652,6 +653,7 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--handoff-prompt` | Print only the concise Mission Control handoff prompt (`start`) |
 | `--next-command` | Print only the current Mission Control cursor command (`start`) |
 | `--next-tool-call` | Print only the current Mission Control cursor MCP tool call as JSON (`start`) |
+| `--ready-tool-calls` | Print the current cursor and remaining MCP-callable proof queue as JSON (`start`) |
 | `--proof-commands` | Print only ready Mission Control proof commands (`start`) |
 | `--checklist` | Print only the Mission Control resume checklist (`start`) |
 | `--runbook` | Print only the Mission Control Markdown runbook (`start`) |
