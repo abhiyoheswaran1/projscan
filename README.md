@@ -33,23 +33,29 @@ The local plugin platform lets teams add project-specific findings and render `d
 npx projscan
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/projscan-reporter-plugin.gif" alt="projscan doctor rendered through a local reporter plugin in a macOS-style terminal window" width="700">
+<img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.3.0
+## What's New in 4.3.1
 
-4.3.0 closes the Mission Control loop. Agents can save a mission, run proof, resume from the saved proof state, and report whether the work is ready for a version review without uploading source.
+4.3.1 polishes the Mission Control loop. Agents can save a mission, run proof, resume from the saved proof state, report whether the work is ready for version review, and share the workflow with reproducible terminal demos.
 
 - **Mission outcome resume.** `projscan start --mission <dir>` reads a saved Mission Control bundle, includes the latest proof status from `proof-logs/summary.json`, and adds a resume prompt that starts from real pass/fail evidence.
 - **Proof-to-review summary.** The start report now includes `missionControl.outcome`: what changed, what remains, failed command details, reviewer decisions, reruns, and a version-candidate recommendation.
-- **Local adoption proof.** `projscan mission-proof --mission <dir> --format json` summarizes one or more mission bundles, then compares them with an optional manual baseline to estimate reruns avoided, failed gates caught, and developer time saved.
+- **Local adoption proof.** `projscan mission-proof --mission <dir> --format markdown` prints a paste-ready proof report. Use `--format json` for scripts. Both formats can compare one or more mission bundles with an optional manual baseline to estimate reruns avoided, failed gates caught, and developer time saved.
+- **Mission Proof triage.** `--latest`, `--all`, `--list`, `--needs-attention`, `--mission-status`, `--summary`, `--require-passed`, and `--write` turn saved mission bundles into local release-review artifacts.
+- **Reproducible demo media.** `npm run docs:demos` renders checked-in VHS demos for Mission Control and Mission Proof; `npm run docs:assets` refreshes screenshots and GIFs together.
 - **Clear public language count.** projscan now describes language support as 11 AST adapters covering 12 named languages, matching README, website prompt, and MCP Registry copy.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 
-Regenerate the README screenshots with Playwright:
+<img src="docs/projscan-mission-proof.gif" alt="projscan saving a Mission Control bundle, reporting local mission proof, and resuming from saved proof state" width="760">
+
+Regenerate the README media with Playwright and VHS:
 
 ```bash
+npm run docs:assets
 npm run docs:screenshots
+npm run docs:demos
 ```
 
 ## Mission Execution Plan + Copyable Handoffs
@@ -80,7 +86,18 @@ projscan start --review-replies --intent "<goal>"   # Copy-only reviewer replies
 projscan start --runbook --intent "<goal>"          # Markdown mission runbook
 projscan start --handoff-prompt --intent "<goal>"   # One-line handoff prompt
 projscan start --mission .projscan/mission          # Resume from saved proof state
-projscan mission-proof --mission .projscan/mission --format json # Local proof summary
+projscan mission-proof --mission .projscan/mission --format markdown # Paste-ready proof report
+projscan mission-proof --list --format json         # List saved mission bundles
+projscan mission-proof --list --needs-attention --format json # List bundles that are not passed
+projscan mission-proof --latest --format markdown   # Report the newest saved mission bundle
+projscan mission-proof --all --format markdown      # Roll up local saved mission bundles
+projscan mission-proof --all --require-passed       # Fail if any selected bundle is not passed
+projscan mission-proof --all --summary              # One-line proof status for CI logs
+projscan mission-proof --mission .projscan/mission --format json     # Local proof summary for scripts
+projscan mission-proof --init-baseline manual-runs.json # Create baseline template
+projscan mission-proof --add-baseline-run manual-runs.json --id manual-1 --status passed --minutes-spent 25 # Record manual run
+projscan mission-proof --check-baseline manual-runs.json # Validate baseline file
+projscan mission-proof --mission .projscan/mission --write reports/mission-proof.md # Save a proof artifact
 ```
 
 Saved mission bundles include `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the Markdown runbook, structured handoff/resume JSON, `ready-tool-calls.json`, `shortcuts.json`, `mission.sh`, `status.sh`, `review.sh`, `proof-logs/README.md`, `proof-logs/status.jsonl`, `proof-logs/run-report.md`, `proof-logs/summary.json`, proof commands, and a manifest. The saved bundle README starts with quick commands for `./mission.sh`, `./status.sh`, and `./review.sh`; `manifest.json` exposes the same quick commands under `quickCommands` for agents and JSON clients. Running saved `mission.sh` writes current and proof command output under `proof-logs/`, appends exit codes to `status.jsonl`, refreshes `run-report.md` for review, and writes the latest run state plus next action to `summary.json` for agents. Run `./status.sh` from the bundle to print the latest mission state and next action; it exits `0` for passed, `1` for failed, and `2` for not-run or running states. Run `./review.sh` from the bundle to print the status, review gate, run report, evidence command checklist, and reviewer replies in one terminal view.
@@ -94,10 +111,27 @@ projscan start --mission .projscan/mission
 `projscan start` reads `proof-logs/summary.json`, `proof-logs/status.jsonl`, and local review decision files. The report tells the next agent what changed, what remains, which command failed if proof did not pass, and whether the bundle is ready for a version-candidate review. For a local measurement report, run:
 
 ```bash
+projscan mission-proof --mission .projscan/mission --format markdown
+projscan mission-proof --list --format json
+projscan mission-proof --list --needs-attention --format json
+projscan mission-proof --list --mission-status failed --format json
+projscan mission-proof --latest --format markdown
+projscan mission-proof --all --format markdown
+projscan mission-proof --all --require-passed
+projscan mission-proof --all --summary --require-passed
+projscan mission-proof --all --write reports/mission-proof.md
+projscan mission-proof --mission .projscan/mission --write reports/mission-proof.md
+projscan mission-proof --init-baseline manual-runs.json
+projscan mission-proof --init-baseline manual-runs.json --format json
+projscan mission-proof --add-baseline-run manual-runs.json --id manual-1 --status passed --minutes-spent 25 --reruns 1 --failed-gates 0 --reviewer-approvals 1
+projscan mission-proof --add-baseline-run manual-runs.json --id manual-2 --status failed --format json
+projscan mission-proof --check-baseline manual-runs.json
+projscan mission-proof --check-baseline manual-runs.json --format json
 projscan mission-proof --mission .projscan/mission --baseline manual-runs.json --format json
+projscan mission-proof --mission .projscan/mission --baseline manual-runs.json --format json --write reports/mission-proof.json
 ```
 
-The baseline file is optional. When present, it can list manual runs with minutes spent, reruns, failed gates, and reviewer approvals; projscan compares that local baseline with Mission Control proof without uploading source.
+The Markdown report is ready for PR notes, release review, and handoff docs. Add `--list` to show saved mission bundles, status, update time, totals, and copyable resume/proof commands before choosing a target. Add `--needs-attention` or `--mission-status failed` to focus that list. Add `--latest` to select the saved mission bundle with the newest `proof-logs/summary.json`. Add `--all` to discover `.projscan/mission` plus direct child bundles under `.projscan/missions/`. Add `--summary` when terminal logs need one status line. Add `--require-passed` when a local script or CI job should exit nonzero unless every selected bundle passed. Add `--write reports/mission-proof.md` to save the report as a local artifact; `.md` and `.markdown` paths write Markdown by default. Use JSON when agents or scripts need the same proof data, and add `--write reports/mission-proof.json` when CI should archive it. Run `--init-baseline manual-runs.json` to create the local baseline template, then use `--add-baseline-run` to record measured manual runs without editing JSON. Add `--format json` to baseline init, append, or check commands when a wrapper needs the written path, run count, added run, or totals. If `--baseline` or `--check-baseline` points at a missing or malformed file, projscan prints the exact template command or expected JSON shape. Baseline run IDs must be non-empty and unique. Baseline run statuses must be `passed`, `failed`, `running`, `not_run`, or `unknown`; metric fields must be non-negative numbers. The baseline file is optional. When present, it can list manual runs with minutes spent, reruns, failed gates, and reviewer approvals; projscan compares that local baseline with Mission Control proof without uploading source.
 
 Default console output shows the same sections inline: `Run Cursor`, `Resume Checklist`, `Handoff Prompt`, `Ready Proof`, and `Proof Queue`. The proof views use the resume-aware remaining queue, so projscan does not repeat the current cursor command as proof.
 
@@ -204,7 +238,7 @@ Run `projscan doctor` for a focused health check:
 npx projscan doctor
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 ## Install
 
@@ -537,9 +571,9 @@ npm run test:trust-smoke
 
 The full command catalog is below. Most users should start with the five-command path above instead of scanning the catalog.
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
 
-For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/GUIDE.md)**.
+For a comprehensive walkthrough, see the **[Full Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/GUIDE.md)**.
 
 ## Repo Understanding
 
@@ -621,25 +655,25 @@ projscan --help
 <details>
 <summary><strong>projscan structure</strong> - Directory tree with file counts</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20structure.gif" alt="npx projscan structure" width="700">
 </details>
 
 <details>
 <summary><strong>projscan diagram</strong> - Architecture visualization</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20diagram.gif" alt="npx projscan diagram" width="700">
 </details>
 
 <details>
 <summary><strong>projscan dependencies</strong> - Dependency analysis</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20dependencies.gif" alt="npx projscan dependencies" width="700">
 </details>
 
 <details>
 <summary><strong>projscan badge</strong> - Health badge generation</summary>
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20badge.gif" alt="npx projscan badge" width="700">
 </details>
 
 ### Output Formats
@@ -650,6 +684,8 @@ Commands accept `--format` for different output targets. Supported formats are c
 projscan analyze --format json       # Machine-readable JSON
 projscan analyze --format html       # Self-contained HTML report
 projscan doctor --format markdown    # Markdown for docs/PRs
+projscan mission-proof --format markdown # Mission proof report for handoffs
+projscan mission-proof --write reports/mission-proof.md # Save Markdown proof
 projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
 ```
 
@@ -661,7 +697,7 @@ Run `projscan help` for the generated command-by-command support matrix.
 
 projscan can load local plugins from `.projscan-plugins/` when `PROJSCAN_PLUGINS_PREVIEW=1` is set. The environment flag is kept for explicit local-code opt-in. Analyzer plugins emit normal projscan issues; reporter plugins render supported CLI commands with team-specific output.
 
-**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/plugin.schema.json) as the stable contract.
+**2.0 upgrade notes:** migrating from 1.x or authoring plugins? Start with the [2.0 Migration Guide](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/2.0-MIGRATION.md), then use [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/PLUGIN-AUTHORING.md), the [Plugin Gallery](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/PLUGIN-GALLERY.md), and the [manifest schema](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/plugin.schema.json) as the stable contract.
 
 ```bash
 projscan plugin list
@@ -672,9 +708,9 @@ PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 PROJSCAN_PLUGINS_PREVIEW=1 projscan ci --reporter team-radar --min-score 80
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/projscan-reporter-plugin.gif" alt="projscan local reporter plugin rendering a team health report" width="700">
 
-Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
+Reporter plugins are intentionally CLI-only. MCP tools keep returning structured JSON-compatible payloads so agents can reason over stable data, while humans can get a polished local report for their team. Custom presentation, team-branded summaries, and white-label reports belong in reporter plugins rather than new core HTML theming flags. See [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/PLUGIN-AUTHORING.md) for manifest shape, `render(context)`, validation, and the trust model.
 
 ### Options
 
@@ -698,7 +734,20 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--mission-script` | Print the Mission Control shell script (`start`) |
 | `--save-mission <dir>` | Write the Mission Control bundle to a directory (`start`) |
 | `--mission <dir>` | Read a saved Mission Control bundle and include proof outcome in `start`; repeatable mission selector for `mission-proof` |
+| `--list` | List saved Mission Control bundles with status and update time (`mission-proof`) |
+| `--needs-attention` | Filter `mission-proof --list` to bundles that are not passed |
+| `--mission-status <status>` | Filter `mission-proof --list` by `passed`, `failed`, `running`, `not_run`, or `unknown` |
+| `--latest` | Select the saved Mission Control bundle with the newest `proof-logs/summary.json` (`mission-proof`) |
+| `--all` | Discover `.projscan/mission` and direct child bundles under `.projscan/missions/` (`mission-proof`) |
 | `--baseline <path>` | Compare `mission-proof` with a local manual-run baseline JSON file |
+| `--init-baseline <file>` | Write a local manual-run baseline JSON template (`mission-proof`) |
+| `--add-baseline-run <file>` | Append one measured manual run to a local baseline JSON file (`mission-proof`) |
+| `--check-baseline <file>` | Validate a local manual-run baseline JSON file (`mission-proof`) |
+| `--id <id>` / `--status <status>` | Identify a run added with `--add-baseline-run` (`mission-proof`) |
+| `--minutes-spent`, `--reruns`, `--failed-gates`, `--reviewer-approvals` | Numeric fields for `--add-baseline-run` (`mission-proof`) |
+| `--write <file>` | Write a Markdown or JSON artifact (`mission-proof`, `handoff`) |
+| `--require-passed` | Exit nonzero unless every selected mission bundle passed proof (`mission-proof`) |
+| `--summary` | Print one compact Mission Proof status line (`mission-proof`) |
 | `--task-card` | Print only the Mission Control Markdown task card (`start`) |
 | `--review-gate` | Print only the Mission Control stop-and-review gate (`start`) |
 | `--review-gate-json` | Print only the Mission Control review gate as JSON (`start`) |
@@ -861,7 +910,7 @@ If you read projscan's [Socket report](https://socket.dev/npm/package/projscan),
 ### Audit it yourself
 
 - **Source is open** at [github.com/abhiyoheswaran1/projscan](https://github.com/abhiyoheswaran1/projscan). The npm tarball matches the `dist/` produced by `npm run build` at the matching tag.
-- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/STABILITY.md).
+- **Public API surface is locked** by `scripts/check-stability.mjs`, which runs in CI on every PR and fails on any rename or removal of an MCP tool, CLI command, or exit code. See [`docs/STABILITY.md`](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/STABILITY.md).
 - **Run it offline:** `npm install -g projscan` followed by anything except `audit` and `--mode semantic` works without network.
 - **Drop privilege further:** in CI, run projscan in a sandbox that disallows network egress; everything except `audit` will pass.
 
@@ -912,7 +961,7 @@ projscan ci --changed-only                     # Gate only on this PR's diff
 projscan ci --format sarif > projscan.sarif    # SARIF for Code Scanning
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci --min-score 70" width="700">
 
 ### GitHub Action (recommended)
 
@@ -989,7 +1038,7 @@ Fields:
 - `hotspots.limit` / `hotspots.since` - defaults for the `hotspots` command
 - `monorepo.importPolicy` - cross-package import allow/deny rules in monorepos *(0.14+)*
 
-See [`docs/GUIDE.md` -> Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
+See [`docs/GUIDE.md` -> Configuration](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/GUIDE.md#configuration-projscanrc) for the full reference (field types, validation behavior, embedding config in `package.json`, monorepo `importPolicy` semantics).
 
 ## Tracking Health Over Time
 
@@ -1002,7 +1051,7 @@ projscan diff                       # Compare against baseline
 projscan diff --format markdown     # Markdown diff for PRs
 ```
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20diff%20--save-baseline.gif" alt="npx projscan diff --save-baseline" width="700">
 
 ## Hotspots - Where to Fix First
 
@@ -1091,7 +1140,7 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 **This is the primary way to use projscan.** `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query your codebase with real structural accuracy - not regex, not grep.
 
-<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.0/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
+<img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
 
 Two questions an agent asks; structural answers in milliseconds. *"What breaks if I rename `buildCodeGraph`?"* → 31 direct callers, 97 files reachable. *"Where should I fix first?"* → ranked hotspots with AST cyclomatic complexity, churn, and ownership signals.
 
@@ -1301,7 +1350,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_apply_fix`** *(1.6)* - mechanically execute the safe fix templates. Default is dry-run; pass `confirm: true` to write. Atomic writes, per-apply rollback record at `.projscan-cache/rollbacks/<id>.json`. Reverse with `action: "rollback", rollback_id: ...`. Six templates supported at this release: `unused-dependency-*`, `missing-test-framework`, `missing-eslint`, `missing-prettier`, `missing-editorconfig`, `missing-readme`.
 - **`projscan_taint`** *(1.6)* - source-to-sink reachability over the per-function call graph. Built-in defaults cover common JS / Python sources (`process.env`, `req.body`, etc.) and sinks (`exec`, `eval`, `db.query`, etc.). Project-specific names go in `.projscanrc.json` `taint`. `projscan_review` automatically diffs taint flows between base and head and **blocks any PR that introduces a new flow**. In 3.0.2, review surfaces hardened `newDataflowRisks`, compact `graphEvidence`, and graph-readiness gates for safer handoff.
 
-Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.0/docs/PLUGIN-AUTHORING.md).
+Analyzer plugins can optionally read graph/dataflow context through `check(rootPath, files, context)` while staying on manifest schema v1. The packaged `graph-context` example shows `context.getSemanticGraph()` and `context.getDataflow()` in a real analyzer. For analyzer and reporter plugin authoring, manifest validation, `--reporter <name>`, and the trust model, see [Plugin Authoring](https://github.com/abhiyoheswaran1/projscan/blob/v4.3.1/docs/PLUGIN-AUTHORING.md).
 
 ### Context-window budgeting
 

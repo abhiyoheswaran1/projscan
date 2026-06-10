@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.3.1] - 2026-06-10 - "Mission Proof Polish"
+
+### Added
+
+- Added paste-ready Markdown Mission Proof reports, saved report output, local baseline helpers, newest/all-bundle selection, attention filters, and one-line proof summaries for release and CI handoffs.
+- Added reproducible VHS terminal demos for Mission Control and Mission Proof, plus `npm run docs:demos` and `npm run docs:assets` so release media can be regenerated from checked-in scripts.
+
+### Fixed
+
+- Fixed Markdown `mission-proof --list` output so it includes totals and copyable resume/proof commands.
+- Updated README, guide, website prompt, and npm package contents so the 4.3.1 release carries the new proof workflow media.
+
 ## [4.3.0] - 2026-06-10 - "Mission Outcome Loop"
 
 ### Added

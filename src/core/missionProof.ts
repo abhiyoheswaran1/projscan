@@ -1,9 +1,7 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import { loadMissionOutcome } from './missionOutcome.js';
+import { loadMissionProofBaseline } from './missionProofBaseline.js';
 import type {
   MissionOutcome,
-  MissionProofBaselineRun,
   MissionProofReport,
   MissionProofTotals,
   MissionRunStatus,
@@ -15,10 +13,6 @@ export interface ComputeMissionProofOptions {
   baselineFile?: string;
 }
 
-interface BaselineInput {
-  runs?: MissionProofBaselineRun[];
-}
-
 export async function computeMissionProofReport(
   rootPath: string,
   options: ComputeMissionProofOptions = {},
@@ -27,7 +21,7 @@ export async function computeMissionProofReport(
   const outcomes = await Promise.all(missions.map((mission) => loadMissionOutcome(rootPath, mission)));
   const missionTotals = totalsFromOutcomes(outcomes);
   const baseline = options.baselineFile
-    ? await loadBaseline(rootPath, options.baselineFile)
+    ? await loadMissionProofBaseline(rootPath, options.baselineFile)
     : undefined;
   const comparison = baseline ? {
     completionRateDelta: round(missionTotals.proofCompletionRate - baseline.totals.proofCompletionRate),
@@ -75,42 +69,6 @@ function totalsFromOutcomes(outcomes: MissionOutcome[]): MissionProofTotals {
 
 function countStatus(outcomes: MissionOutcome[], status: MissionRunStatus): number {
   return outcomes.filter((outcome) => outcome.status === status).length;
-}
-
-async function loadBaseline(
-  rootPath: string,
-  baselineFile: string,
-): Promise<NonNullable<MissionProofReport['baseline']>> {
-  const resolved = path.resolve(rootPath, baselineFile);
-  const input = JSON.parse(await fs.readFile(resolved, 'utf8')) as BaselineInput;
-  const runs = Array.isArray(input.runs) ? input.runs : [];
-  const totals = totalsFromBaselineRuns(runs);
-  return {
-    path: path.relative(rootPath, resolved) || resolved,
-    runs,
-    totals,
-  };
-}
-
-function totalsFromBaselineRuns(runs: MissionProofBaselineRun[]): MissionProofTotals & { minutesSpent: number } {
-  const passed = runs.filter((run) => run.status === 'passed').length;
-  return {
-    missions: runs.length,
-    passed,
-    failed: runs.filter((run) => run.status === 'failed').length,
-    running: runs.filter((run) => run.status === 'running').length,
-    notRun: runs.filter((run) => run.status === 'not_run').length,
-    unavailable: runs.filter((run) => run.status === 'unknown').length,
-    proofCompletionRate: runs.length > 0 ? round(passed / runs.length) : 0,
-    reruns: sum(runs.map((run) => run.reruns)),
-    failedGates: sum(runs.map((run) => run.failedGates)),
-    reviewerApprovals: sum(runs.map((run) => run.reviewerApprovals)),
-    minutesSpent: sum(runs.map((run) => run.minutesSpent)),
-  };
-}
-
-function sum(values: Array<number | undefined>): number {
-  return values.reduce<number>((total, value) => total + (typeof value === 'number' && Number.isFinite(value) ? value : 0), 0);
 }
 
 function buildRiskAvoided(

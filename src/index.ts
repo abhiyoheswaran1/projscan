@@ -70,6 +70,13 @@ export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { computeStartReport } from './core/start.js';
 export { loadMissionOutcome } from './core/missionOutcome.js';
 export { computeMissionProofReport } from './core/missionProof.js';
+export {
+  loadMissionProofBaseline,
+  missionProofBaselineTemplate,
+  validateMissionProofBaselineRuns,
+} from './core/missionProofBaseline.js';
+export { renderMissionProofMarkdown } from './core/missionProofMarkdown.js';
+export { renderMissionProofSummary } from './core/missionProofSummary.js';
 export { computeDogfoodReport } from './core/dogfood.js';
 export { computeTrialReport } from './core/trial.js';
 export { addFeedbackResponse, createFeedbackTemplate, readFeedbackFile, summarizeFeedback, summarizeFeedbackFile } from './core/feedback.js';
