@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-06-10 - "Mission Control Handoffs"
+
 ### Added
 
 - Added `missionControl.executionPlan` to `projscan start` / MCP `projscan_start`: a phased, machine-readable plan with ready commands, blocked inputs, follow-up steps, proof commands, and done criteria derived from Mission Control.

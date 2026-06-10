@@ -16,7 +16,7 @@ const captures = [
     name: 'Mission Control hero',
     url: pathToFileURL(demoPath).href,
     output: path.join(repoRoot, 'docs', 'projscan-mission-control.png'),
-    viewport: '1440,960',
+    viewport: '1440,1120',
   },
   {
     name: 'Intent and proof workflow',
