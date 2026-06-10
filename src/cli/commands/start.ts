@@ -26,6 +26,7 @@ export function registerStart(): void {
     .description('Orient an engineer or agent with the next best workflow for this repo')
     .option('--mode <mode>', 'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening')
     .option('--intent <text>', 'plain-language goal to route into the next best action')
+    .option('--mission <dir>', 'read an existing Mission Control bundle and include proof outcome')
     .option('--max-tasks <count>', 'maximum workplan tasks to inspect', parsePositiveInt)
     .option('--max-risks <count>', 'maximum start risks to return', parsePositiveInt)
     .option('--include-handoff', 'include a compact handoff payload')
@@ -58,6 +59,7 @@ export function registerStart(): void {
         const report = await computeStartReport(rootPath, {
           mode,
           intent: typeof cmdOpts.intent === 'string' ? cmdOpts.intent : undefined,
+          missionDir: typeof cmdOpts.mission === 'string' ? cmdOpts.mission : undefined,
           maxTasks: cmdOpts.maxTasks,
           maxRisks: cmdOpts.maxRisks,
           includeHandoff: cmdOpts.includeHandoff === true,
@@ -265,6 +267,7 @@ function printMissionControl(report: StartReport): void {
   printExecutionPlan(report);
   printResumeChecklist(report);
   printHandoffPrompt(report);
+  printMissionOutcome(report);
   printReviewGate(report);
   if (mission.actionPlan.length > 0) {
     console.log(chalk.bold('Action Plan'));
@@ -311,6 +314,18 @@ function printMissionControl(report: StartReport): void {
       }
     }
   }
+}
+
+function printMissionOutcome(report: StartReport): void {
+  const outcome = report.missionControl.outcome;
+  if (!outcome) return;
+  console.log(chalk.bold('Mission Outcome'));
+  console.log(`Status: ${outcome.status}`);
+  if (!outcome.available && outcome.reason) console.log(`Reason: ${outcome.reason}`);
+  for (const item of outcome.whatChanged) console.log(`- Changed: ${item}`);
+  for (const item of outcome.whatRemains) console.log(`- Remains: ${item}`);
+  console.log(`Version candidate: ${outcome.versionCandidate.recommendation}`);
+  console.log(chalk.dim(outcome.versionCandidate.summary));
 }
 
 function nextToolCall(report: StartReport): StartMissionToolCall | undefined {

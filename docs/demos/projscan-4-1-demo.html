@@ -422,34 +422,34 @@
       <section class="hero" aria-label="projscan Mission Control">
         <div class="intro">
           <div>
-            <p class="eyebrow">Developer-life upgrade</p>
-            <h1>Tell projscan what you are doing.</h1>
+            <p class="eyebrow">Mission Outcome Loop</p>
+            <h1>Resume from real proof.</h1>
             <p class="lead">
-              projscan routes a developer goal to the next safe command, the
-              MCP call an agent can run, and the proof that makes a handoff
-              reviewable.
+              projscan routes a developer goal, saves the mission, reads the
+              proof state, and tells the next agent what changed, what remains,
+              and whether the work is ready for version review.
             </p>
             <div class="pills" aria-label="Product capabilities">
               <span class="pill">Mission Control</span>
               <span class="pill">Local-first</span>
               <span class="pill">MCP-ready</span>
-              <span class="pill">Copyable handoff</span>
-              <span class="pill">Review gate</span>
+              <span class="pill">Outcome resume</span>
+              <span class="pill">Proof report</span>
             </div>
           </div>
 
           <div class="metric-row" aria-label="Release candidate signals">
             <div class="metric">
-              <strong>1 call</strong>
-              <span>intent to workflow</span>
+              <strong>1 bundle</strong>
+              <span>mission plus proof</span>
             </div>
             <div class="metric">
-              <strong>1 JSON</strong>
-              <span>next MCP call</span>
+              <strong>45</strong>
+              <span>MCP tools</span>
             </div>
             <div class="metric">
-              <strong>0</strong>
-              <span>source uploads</span>
+              <strong>11 / 12</strong>
+              <span>AST adapters / languages</span>
             </div>
           </div>
         </div>
@@ -459,83 +459,68 @@
             <span class="dot red"></span>
             <span class="dot amber"></span>
             <span class="dot green"></span>
-            <span class="terminal-title">projscan start shortcuts</span>
+            <span class="terminal-title">projscan start --mission</span>
           </div>
           <div class="terminal-body">
             <span class="line"
               ><span class="prompt">$</span>
               <span class="cmd"
-                >projscan start --intent "what breaks if I rename the auth
-                token loader"</span
+                >projscan start --mission .projscan/mission</span
               ></span
             >
             <span class="line dim">ProjScan Mission Control</span>
-            <span class="line">Intent: what breaks if I rename the auth token loader</span>
-            <span class="line">Status: <span class="warn">needs_attention</span></span>
+            <span class="line">Mission: .projscan/mission</span>
+            <span class="line">Status: <span class="success">passed</span></span>
             <span class="line"
-              >Route:
-              <span class="notice">Impact analysis via projscan_search</span></span
+              >Outcome:
+              <span class="notice">proof passed after 3 commands</span></span
             >
             <span class="line dim"
-              >confidence: high; matched: breaks, rename</span
+              >read proof-logs/summary.json and status.jsonl</span
             >
 
             <div class="term-section">
-              <span class="line term-heading">Run Cursor</span>
+              <span class="line term-heading">What Changed</span>
               <span class="line"
-                >command: projscan search "auth token loader" --format
-                json</span
+                >- Mission proof passed after 3 command(s).</span
               >
               <span class="line"
-                >MCP call: projscan_search {"query":"auth token loader"}</span
+                >- 1 reviewer decision recorded.</span
               >
-              <span class="line">unlocks: symbol input, file input</span>
+              <span class="line">- 0 failed gates remain.</span>
             </div>
 
             <div class="term-section">
-              <span class="line term-heading">Copyable Shortcuts</span>
+              <span class="line term-heading">What Remains</span>
               <span class="line success"
-                >projscan start --shortcuts --intent "..."</span
+                >Run ./review.sh and choose a reviewer reply.</span
               >
               <span class="line success"
-                >projscan start --next-command --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --next-tool-call --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --task-card --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --mission-script --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --review-gate --intent "..."</span
-              >
-              <span class="line success"
-                >projscan start --save-mission .projscan/mission --intent
-                "..."</span
-              >
-              <span class="line dim">writes task card, review gate, mission.sh</span>
-            </div>
-
-            <div class="term-section">
-              <span class="line term-heading">Ready Proof</span>
-              <span class="line success"
-                >- projscan preflight --mode before_edit --format json</span
-              >
-              <span class="line success"
-                >- projscan understand --view verify --format json</span
+                >Version candidate: review_candidate</span
               >
             </div>
 
             <div class="term-section">
-              <span class="line term-heading">Done When</span>
-              <span class="line"
-                >- Search returns an exact symbol or file path</span
+              <span class="line term-heading">Outcome Commands</span>
+              <span class="line success"
+                >projscan start --mission .projscan/mission</span
               >
-              <span class="line"
-                >- Impact is reviewed before code edits</span
+              <span class="line success"
+                >projscan mission-proof --mission .projscan/mission</span
+              >
+              <span class="line success"
+                >projscan mission-proof --baseline manual-runs.json</span
+              >
+              <span class="line dim">all source stays local</span>
+            </div>
+
+            <div class="term-section">
+              <span class="line term-heading">Proof Evidence</span>
+              <span class="line success"
+                >proof-logs/summary.json: passed</span
+              >
+              <span class="line success"
+                >proof-logs/status.jsonl: 3 rows</span
               >
             </div>
 
@@ -543,8 +528,8 @@
               <span class="line term-heading">Review Gate</span>
               <span class="line">capture: git status --short</span>
               <span class="line">capture: git diff --stat</span>
-              <span class="line success">reply: Approved, one bounded slice</span>
-              <span class="line warn">stop before another slice or release</span>
+              <span class="line success">reply: review version candidate</span>
+              <span class="line warn">do not publish until approved</span>
             </div>
           </div>
         </section>
@@ -553,7 +538,7 @@
       <section class="grid" aria-label="New developer workflows">
         <article class="card">
           <span class="label green">Goal routing</span>
-          <h2>Ask in human language.</h2>
+          <h2>Ask in plain language.</h2>
           <p>
             Route privacy, merge readiness, refactor risk, local setup,
             ownership, dependency, release, and handoff questions to the right
@@ -561,21 +546,21 @@
           </p>
         </article>
         <article class="card">
-          <span class="label blue">Repo context</span>
-          <h2>Start from cited evidence.</h2>
+          <span class="label blue">Outcome resume</span>
+          <h2>Start from saved proof.</h2>
           <p>
-            Repo maps now include read-first files, package contracts, runtime
-            flows, public exports, proof tiers, setup commands, and unknowns
-            that need human input.
+            <code>projscan start --mission</code> reads the bundle proof state
+            and gives the next agent a focused "what changed / what remains"
+            handoff.
           </p>
         </article>
         <article class="card">
-          <span class="label amber">Review proof</span>
-          <h2>Make PRs easier to approve.</h2>
+          <span class="label amber">Proof report</span>
+          <h2>Measure the saved work.</h2>
           <p>
-            Mission Control carries the original intent into preflight,
-            verification, session memory, evidence packs, and reviewer-ready
-            next commands.
+            <code>projscan mission-proof</code> reports proof completion,
+            reviewer approvals, reruns, failed gates, time saved, and local
+            risk avoided.
           </p>
         </article>
       </section>
@@ -583,13 +568,13 @@
       <section class="proof" id="proof" aria-label="Proof and dependency view">
         <div class="proof-header">
           <div>
-            <p class="eyebrow">Intent, graph, and handoff intelligence</p>
-            <h2>Copy the next move.</h2>
+            <p class="eyebrow">Proof, review, and adoption evidence</p>
+            <h2>Close the loop.</h2>
           </div>
           <p>
-            Developers and agents can list the shortcut menu, pull the next
-            shell command, fetch the MCP call, or copy the checklist and
-            Markdown runbook without reading the full report.
+            Developers and agents can resume from a saved mission bundle,
+            summarize pass/fail evidence, and compare local proof against a
+            manual baseline without sending source code anywhere.
           </p>
         </div>
 
@@ -599,33 +584,32 @@
               <span class="dot red"></span>
               <span class="dot amber"></span>
               <span class="dot green"></span>
-              <span class="terminal-title">projscan start --next-tool-call</span>
+              <span class="terminal-title">projscan mission-proof</span>
             </div>
             <div class="terminal-body">
               <span class="line"
                 ><span class="prompt">$</span>
                 <span class="cmd"
-                  >projscan start --next-tool-call --intent "what breaks if I
-                  rename the auth token loader"</span
+                  >projscan mission-proof --mission .projscan/mission --format
+                  json</span
                 ></span
               >
-              <span class="line dim">Current cursor as MCP JSON</span>
+              <span class="line dim">Local proof summary</span>
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">{"tool":"projscan_search",</span>
+              <span class="line term-heading">{"passed":1,"failed":0,</span>
               <span class="line success"
-                >&nbsp;"args":{"query":"auth token loader"}}</span
+                >&nbsp;"reruns":0,"reviewerApprovals":1}</span
               >
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">Checklist handoff</span>
+              <span class="line term-heading">Risk avoided</span>
               <span class="line success"
-                >- [ready] run_current ready-1</span
+                >- proof gate passed before release</span
               >
               <span class="line success"
-                >- [blocked] resolve_input input-1</span
+                >- version review is safe to request</span
               >
-              <span class="line success">- [ready] run_proof proof-2</span>
               <span class="line notice"
-                >Review gate: capture status, diff, then wait.</span
+                >Next: projscan start --mission .projscan/mission</span
               >
             </div>
           </section>
@@ -634,33 +618,33 @@
             <div class="signal">
               <span class="tag green">Verify</span>
               <span>
-                <strong>Proof commands</strong>
-                <code>--proof-commands</code> returns the remaining
-                verification commands, one per line.
+                <strong>Outcome resume</strong>
+                <code>--mission</code> reads <code>summary.json</code>, status
+                rows, and reviewer decisions.
               </span>
             </div>
             <div class="signal">
               <span class="tag blue">MCP</span>
               <span>
-                <strong>MCP call shortcut</strong>
-                <code>--next-tool-call</code> returns the cursor tool and args
-                as compact JSON.
+                <strong>MCP start input</strong>
+                <code>mission_dir</code> carries the same proof outcome to
+                agent clients.
               </span>
             </div>
             <div class="signal">
               <span class="tag amber">List</span>
               <span>
-                <strong>Checklist shortcut</strong>
-                <code>--checklist</code> returns current, blocked, follow-up,
-                proof, and done rows.
+                <strong>Proof summary</strong>
+                <code>mission-proof</code> reports completion, reruns, failed
+                gates, and approvals.
               </span>
             </div>
             <div class="signal">
               <span class="tag red">Gate</span>
               <span>
-                <strong>Review gate</strong>
-                <code>--review-gate</code> returns the stop checklist before
-                another slice, release, publish, or deploy.
+                <strong>Version review</strong>
+                Outcome data says whether to request review or keep fixing
+                failed proof.
               </span>
             </div>
           </div>

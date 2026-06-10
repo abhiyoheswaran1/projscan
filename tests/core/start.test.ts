@@ -66,6 +66,57 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   expect(report.handoff?.next.length).toBeGreaterThan(0);
 });
 
+test('start report can resume from a saved mission outcome', async () => {
+  const root = await makeTempProject();
+  const missionDir = path.join(root, '.projscan', 'mission');
+  await fs.mkdir(path.join(missionDir, 'proof-logs'), { recursive: true });
+  await fs.writeFile(
+    path.join(missionDir, 'manifest.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      kind: 'projscan.mission-bundle',
+      mode: 'before_edit',
+      status: 'ready',
+      currentStep: { phaseId: 'ready_now', stepId: 'ready-1', command: 'projscan search "auth" --format json' },
+    }) + '\n',
+  );
+  await fs.writeFile(
+    path.join(missionDir, 'proof-logs', 'summary.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      status: 'passed',
+      totalCommands: 2,
+      nextAction: 'run ./review.sh and choose a reviewer reply.',
+      report: 'proof-logs/run-report.md',
+      statusRows: 'proof-logs/status.jsonl',
+    }) + '\n',
+  );
+  await fs.writeFile(
+    path.join(missionDir, 'proof-logs', 'status.jsonl'),
+    [
+      JSON.stringify({ id: 'current-ready-1', label: 'Run current command', log: 'current-ready-1.log', command: 'projscan search "auth" --format json', exitCode: 0 }),
+      JSON.stringify({ id: 'proof-1', label: 'Proof 1', log: 'proof-1.log', command: 'projscan preflight --mode before_edit --format json', exitCode: 0 }),
+    ].join('\n') + '\n',
+  );
+
+  const report = await computeStartReport(root, {
+    intent: 'give the next agent a handoff',
+    missionDir: '.projscan/mission',
+  });
+
+  expect(report.missionControl.outcome).toEqual(
+    expect.objectContaining({
+      available: true,
+      status: 'passed',
+      whatChanged: expect.arrayContaining(['Mission proof passed after 2 command(s).']),
+      whatRemains: expect.arrayContaining(['Run ./review.sh and choose a reviewer reply.']),
+      versionCandidate: expect.objectContaining({ recommendation: 'review_candidate' }),
+    }),
+  );
+  expect(report.missionControl.resume.prompt).toContain('Mission proof passed');
+  expect(report.missionControl.handoffPrompt).toContain('Mission proof passed');
+});
+
 test('start report routes a plain-language intent into mission control', async () => {
   const root = await makeTempProject();
 

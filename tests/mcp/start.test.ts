@@ -76,6 +76,7 @@ test('lists projscan_start as an MCP tool', () => {
     expect.objectContaining({
       mode: expect.objectContaining({ enum: expect.arrayContaining(['before_edit', 'bug_hunt', 'release']) }),
       intent: expect.objectContaining({ type: 'string' }),
+      mission_dir: expect.objectContaining({ type: 'string' }),
       include_handoff: expect.objectContaining({ type: 'boolean' }),
       max_tokens: expect.objectContaining({ type: 'number' }),
     }),

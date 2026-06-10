@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-06-10 - "Mission Outcome Loop"
+
+### Added
+
+- Added `projscan start --mission <dir>` and MCP `projscan_start` `mission_dir` input so agents can resume from a saved Mission Control bundle and include proof outcome in the start report.
+- Added `missionControl.outcome` with proof status, command counts, reruns, failed command details, review decisions, remaining work, and a version-candidate recommendation.
+- Added `projscan mission-proof` to summarize local Mission Control proof across one or more bundles and compare it with an optional manual baseline JSON file.
+
+### Changed
+
+- Start handoff prompts now include saved proof evidence when a mission bundle is supplied, so the next agent starts from the latest pass/fail state instead of rereading the full mission.
+- Clarified public language support copy as 11 AST adapters covering 12 named languages, keeping README, website prompt, and MCP Registry wording aligned.
+
 ## [4.2.0] - 2026-06-10 - "Mission Control Handoffs"
 
 ### Added

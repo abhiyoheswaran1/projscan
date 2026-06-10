@@ -29,6 +29,10 @@ export const startTool: McpTool = {
         type: 'string',
         description: 'Plain-language goal to route into the next best action and proof commands.',
       },
+      mission_dir: {
+        type: 'string',
+        description: 'Optional saved Mission Control bundle directory. When set, start includes proof outcome from proof-logs/summary.json.',
+      },
       max_tasks: {
         type: 'number',
         description: 'Maximum workplan tasks to inspect. Default: 5, max: 12.',
@@ -51,6 +55,7 @@ export const startTool: McpTool = {
     start: await computeStartReport(rootPath, {
       mode: readMode(args.mode),
       intent: typeof args.intent === 'string' ? args.intent : undefined,
+      missionDir: typeof args.mission_dir === 'string' ? args.mission_dir : undefined,
       maxTasks: readNumber(args.max_tasks),
       maxRisks: readNumber(args.max_risks),
       includeHandoff: args.include_handoff === true,

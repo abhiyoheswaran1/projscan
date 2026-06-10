@@ -58,6 +58,7 @@ import { registerTelemetry } from './commands/telemetry.js';
 import { registerPrivacyCheck } from './commands/privacyCheck.js';
 import { registerHelp } from './commands/help.js';
 import { registerUnderstand } from './commands/understand.js';
+import { registerMissionProof } from './commands/missionProof.js';
 
 registerAnalyze();
 registerDoctor();
@@ -114,6 +115,7 @@ registerTrial();
 registerTelemetry();
 registerPrivacyCheck();
 registerUnderstand();
+registerMissionProof();
 registerRecipes();
 registerFirstRun();
 registerHelp();

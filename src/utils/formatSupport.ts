@@ -49,6 +49,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   'init team': ['console', 'json'],
   'install-hook': ['console'],
   mcp: ['console'],
+  'mission-proof': ['console', 'json'],
   'mcp doctor': ['console', 'json'],
   memory: ['console', 'json'],
   'memory stable': ['console', 'json'],

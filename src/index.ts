@@ -68,6 +68,8 @@ export { computeRegressionPlan } from './core/regressionPlan.js';
 export { computeAgentBrief } from './core/agentBrief.js';
 export { computeQualityScorecard } from './core/qualityScorecard.js';
 export { computeStartReport } from './core/start.js';
+export { loadMissionOutcome } from './core/missionOutcome.js';
+export { computeMissionProofReport } from './core/missionProof.js';
 export { computeDogfoodReport } from './core/dogfood.js';
 export { computeTrialReport } from './core/trial.js';
 export { addFeedbackResponse, createFeedbackTemplate, readFeedbackFile, summarizeFeedback, summarizeFeedbackFile } from './core/feedback.js';
@@ -224,6 +226,13 @@ export type {
   StartReport,
   StartRisk,
   StartWorkflowRecommendation,
+  MissionOutcome,
+  MissionProofBaselineRun,
+  MissionProofReport,
+  MissionProofStatusRow,
+  MissionProofTotals,
+  MissionReviewDecisionRecord,
+  MissionRunStatus,
   DogfoodFeedbackInput,
   DogfoodFeedbackResponse,
   FeedbackSummaryReport,

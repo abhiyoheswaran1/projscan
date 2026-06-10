@@ -5,6 +5,7 @@ import { buildFirstTenMinutes } from './onboarding.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildWorkplanHandoff, computeWorkplan, isWorkplanMode } from './workplan.js';
 import { routeIntent, type RouteMatch } from './intentRouter.js';
+import { loadMissionOutcome } from './missionOutcome.js';
 import type { GraphQueryDirection } from './graphQuery.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import type {
@@ -17,6 +18,7 @@ import type {
   StartExecutionStatus,
   StartExecutionStep,
   StartMissionInputBinding,
+  MissionOutcome,
   StartMissionProofItem,
   StartMissionProofToolCall,
   StartMissionReviewDecision,
@@ -52,6 +54,7 @@ import type {
 export interface ComputeStartOptions {
   mode?: WorkplanMode;
   intent?: string;
+  missionDir?: string;
   maxTasks?: number;
   maxRisks?: number;
   includeHandoff?: boolean;
@@ -77,11 +80,12 @@ export async function computeStartReport(
   const mode = modeResolution.mode;
   const maxTasks = normalizeLimit(options.maxTasks, DEFAULT_MAX_TASKS, 12);
   const maxRisks = normalizeLimit(options.maxRisks, DEFAULT_MAX_RISKS, 12);
-  const [setup, workplan, quality, riskSources] = await Promise.all([
+  const [setup, workplan, quality, riskSources, missionOutcome] = await Promise.all([
     computeFirstRunDiagnostics(rootPath),
     computeWorkplan(rootPath, { mode, maxTasks }),
     computeQualityScorecard(rootPath, { maxRisks }),
     buildStartRiskSources(rootPath),
+    options.missionDir ? loadMissionOutcome(rootPath, options.missionDir) : Promise.resolve(undefined),
   ]);
   const workflow = chooseWorkflow(mode, getWorkflowRecipes().recipes);
   const topRisks = combineRisks(workplan, quality.topRisks, maxRisks);
@@ -108,6 +112,7 @@ export async function computeStartReport(
     adoptionGaps,
     coordinationHints,
     riskSources,
+    missionOutcome,
   });
   const nextActions = dedupeActions([
     missionControl.primaryAction,
@@ -335,6 +340,7 @@ function buildMissionControl(input: {
   adoptionGaps: StartAdoptionGap[];
   coordinationHints: SessionCoordinationHint[];
   riskSources: StartReport['evidence']['riskSources'];
+  missionOutcome?: MissionOutcome;
 }): StartMissionControl {
   const routeCandidates = routesForIntent(input.intent);
   const routed = routeCandidates[0];
@@ -355,7 +361,7 @@ function buildMissionControl(input: {
     successCriteria,
     proofCommands,
   });
-  const resume = missionResume(executionPlan);
+  const resume = missionResume(executionPlan, input.missionOutcome);
   const reviewProof = buildMissionReviewProof(resume, proofCommands);
   const whyNow =
     routed
@@ -413,6 +419,7 @@ function buildMissionControl(input: {
     runbook,
     reviewGate,
     taskCard,
+    ...(input.missionOutcome ? { outcome: input.missionOutcome } : {}),
     handoffPrompt,
   };
 }
@@ -846,7 +853,7 @@ function formatTaskCardToolCall(toolCall: StartMissionToolCall): string {
     : toolCall.tool;
 }
 
-function missionResume(plan: StartExecutionPlan): StartMissionResume {
+function missionResume(plan: StartExecutionPlan, outcome?: MissionOutcome): StartMissionResume {
   const cursor = plan.cursor;
   const commandBlock = cursor.command && isRunnableCommand(cursor.command) ? cursor.command : undefined;
   const toolCall = resumeToolCall(plan, cursor);
@@ -866,11 +873,12 @@ function missionResume(plan: StartExecutionPlan): StartMissionResume {
   const prompt = commandBlock
     ? `Resume at ${cursor.stepId} in ${cursor.phaseId}: run \`${commandBlock}\`.${resumeUnlocksSentence(unlocks, cursor.unlocks)}`
     : `Resume at ${cursor.stepId} in ${cursor.phaseId}: ${instruction}${resumeBlockersSentence(blockedBy, cursor.blockedBy)}`;
+  const finalPrompt = outcome?.available ? `${outcome.resumePrompt} ${prompt}` : prompt;
   return {
     currentStep: cursor,
     status: cursor.status,
     instruction,
-    prompt,
+    prompt: finalPrompt,
     ...(commandBlock ? { commandBlock } : {}),
     ...(toolCall ? { toolCall } : {}),
     ...(followUps.length > 0 ? { followUps } : {}),
