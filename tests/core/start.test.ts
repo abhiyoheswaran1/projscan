@@ -7056,6 +7056,21 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
 });
 
+test('start report escapes shell expansion syntax in routed freeform commands', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what breaks if I rename $(touch /tmp/projscan-quote-pwn) auth `token` loader',
+  });
+
+  const command = report.missionControl.executionPlan.cursor.command;
+  expect(command).toBe('projscan search "\\$(touch /tmp/projscan-quote-pwn) auth \\`token\\` loader" --format json');
+  expect(command).not.toContain('"$(touch /tmp/projscan-quote-pwn)');
+  expect(command).not.toContain('`token`');
+  expect(report.missionControl.proofCommands[0]).toBe(command);
+  expect(report.missionControl.resume.commandBlock).toBe(command);
+});
+
 test('start exposes a Mission Control task card for MCP and JSON clients', async () => {
   const root = await makeTempProject();
 

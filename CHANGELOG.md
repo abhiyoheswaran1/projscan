@@ -83,6 +83,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Mission task cards and runbooks now render a `Review Gate` section with approval and working-tree evidence steps.
 - `projscan start --include-handoff` now prints an `Agent Runbook` section for the full Markdown handoff.
 
+### Fixed
+
+- Escaped `$` and backtick characters in generated `projscan start` shell commands so copied commands and saved `mission.sh` bundles treat freeform intent text as literal arguments.
+
 ## [4.1.0] - 2026-06-09 - "Mission Control"
 
 ### Added

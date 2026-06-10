@@ -670,7 +670,7 @@ function missionBundleReadme(report: StartReport, files: MissionBundleFile[]): s
     '```',
     '',
     '- `./mission.sh` runs the current command and remaining proof.',
-    '- `./status.sh` prints the latest mission state.',
+    '- `./status.sh` prints the latest mission state and next action.',
     '- `./review.sh` prints the review packet for approval.',
     '',
     '## Run Next',
@@ -1160,7 +1160,17 @@ function scriptPrintError(value: string): string {
 }
 
 function commandHasShellExpansionSyntax(command: string): boolean {
-  return /[$`]/.test(command);
+  let backslashCount = 0;
+  for (const char of command) {
+    if (char === '\\') {
+      backslashCount += 1;
+      continue;
+    }
+    const escaped = backslashCount % 2 === 1;
+    if ((char === '$' || char === '`') && !escaped) return true;
+    backslashCount = 0;
+  }
+  return false;
 }
 
 interface StartShortcutCommandOptions {

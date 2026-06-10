@@ -724,7 +724,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart).toContain('## Quick Commands');
   expect(quickstart).toContain('```sh\n./mission.sh\n./status.sh\n./review.sh\n```');
   expect(quickstart).toContain('- `./mission.sh` runs the current command and remaining proof.');
-  expect(quickstart).toContain('- `./status.sh` prints the latest mission state.');
+  expect(quickstart).toContain('- `./status.sh` prints the latest mission state and next action.');
   expect(quickstart).toContain('- `./review.sh` prints the review packet for approval.');
   expect(quickstart.indexOf('## Quick Commands')).toBeLessThan(quickstart.indexOf('## Run Next'));
   expect(quickstart.indexOf('## Run Next')).toBeLessThan(quickstart.indexOf('## Reviewer Replies'));
@@ -1427,7 +1427,7 @@ test('start prints a mission shell script when requested', async () => {
   expect(result.stdout).not.toContain('Ready Proof');
 });
 
-test('start mission script refuses commands with shell expansion syntax', async () => {
+test('start mission script escapes shell expansion syntax in freeform intent text', async () => {
   const result = await runCli([
     'start',
     '--intent',
@@ -1439,12 +1439,10 @@ test('start mission script refuses commands with shell expansion syntax', async 
   expect(result.exitCode).toBe(0);
   expect(result.stderr).toBe('');
   expect(result.stdout.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
-  expect(result.stdout).toContain(
-    "printf '%s\\n' 'Blocked: mission command contains shell expansion syntax; inspect --next-command before running it.' >&2",
-  );
-  expect(result.stdout).toContain('exit 2');
-  expect(result.stdout).not.toContain('$(echo boom)');
-  expect(result.stdout).not.toContain('Run current command');
+  expect(result.stdout).toContain('projscan search "auth \\$(echo boom) loader" --format json');
+  expect(result.stdout).toContain('Run current command');
+  expect(result.stdout).not.toContain('Blocked: mission command contains shell expansion syntax');
+  expect(result.stdout).not.toContain('projscan search "auth $(echo boom) loader" --format json');
 });
 
 test('start JSON keeps the full report when mission-script is requested', async () => {

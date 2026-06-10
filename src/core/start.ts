@@ -953,7 +953,7 @@ function proofCommandToolCall(command: string): StartMissionResume['toolCall'] |
 }
 
 function unescapeDoubleQuoted(value: string): string {
-  return value.replace(/\\(["\\])/g, '$1');
+  return value.replace(/\\(["\\$`])/g, '$1');
 }
 
 function resumeChecklist(
@@ -3101,7 +3101,11 @@ function normalizePackageName(target: string): string {
 }
 
 function escapeDoubleQuoted(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`');
 }
 
 function quoteShellArg(value: string): string {
