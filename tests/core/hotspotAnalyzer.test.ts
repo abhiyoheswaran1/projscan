@@ -5,12 +5,38 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { analyzeHotspots, computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
-import type { CodeGraph } from '../../src/core/codeGraph.js';
+import { buildCodeGraph, type CodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import type { FileEntry, Issue } from '../../src/types.js';
 
 const execFileAsync = promisify(execFile);
 
 describe('computeRiskScore', () => {
+  it('keeps hotspot scoring and reasons isolated from the analyzer orchestrator', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    const scoringFunctions = new Set([
+      'computeRiskScore',
+      'buildReasons',
+      'pushChurnReason',
+      'pushSizeReason',
+      'pushAuthorsReason',
+      'pushIssuesReason',
+      'pushRecencyReason',
+      'pushBusFactorReason',
+      'pushCoverageReason',
+    ]);
+    expect(analyzer.functions?.some((fn) => scoringFunctions.has(fn.name))).toBe(false);
+
+    const scoring = await inspectRepoSourceFile('src/core/hotspotScoring.ts');
+    const computeRiskScore = scoring.functions?.find((fn) => fn.name === 'computeRiskScore');
+    const buildReasons = scoring.functions?.find((fn) => fn.name === 'buildReasons');
+
+    expect(computeRiskScore).toBeDefined();
+    expect(computeRiskScore!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+    expect(buildReasons).toBeDefined();
+    expect(buildReasons!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,
@@ -294,4 +320,19 @@ function graphWithComplexity(relativePath: string, cyclomaticComplexity: number)
     symbolDefs: new Map(),
     scannedFiles: 1,
   };
+}
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
 }

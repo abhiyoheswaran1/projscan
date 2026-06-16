@@ -1137,3 +1137,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move contract-change detection into `src/core/reviewContractChanges.ts`, keep `computeReview` calling a single `buildContractChanges` boundary, and split export/entrypoint helpers so moved functions stay below risky-function thresholds.
 - Consequences: `src/core/review.ts` drops from CC 125 to CC 97 in the review pass and no longer appears as the top changed-file risk. The review schema, package scoping, export-change wording, and entrypoint-change wording stay unchanged.
 - Verification: `npm run test -- tests/core/review.test.ts -t "public contract change detection"` failed before extraction, then `npm run test -- tests/core/review.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.
+
+## 2026-06-16: Extract hotspot scoring
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` was the highest changed-file risk after the review extractions and still mixed git/file orchestration with risk-score math and reason-string formatting.
+- Decision: Move hotspot scoring, reason construction, author ranking, and author formatting into `src/core/hotspotScoring.ts`; keep `computeRiskScore` re-exported from `hotspotAnalyzer.ts` for compatibility.
+- Consequences: `src/core/hotspotAnalyzer.ts` drops to CC 29 in the review pass. The first extraction left `computeRiskScore` at CC 11 in the new module, so the maintainability test forced a split of recency and coverage penalty helpers before the slice passed.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts -t "scoring and reasons"` failed before extraction and then on scorer complexity, then `npm run test -- tests/core/hotspotAnalyzer.test.ts tests/core/hotspotCoverage.test.ts tests/core/hotspotIssueLinking.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.
