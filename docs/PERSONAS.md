@@ -2412,3 +2412,51 @@ Reviewer edge case: a helper in the same route file that accepts a
 Kept change: one qualified Next source string, one source-to-sink fixture with a
 helper lookalike, focused docs, this persona note, and existing dataflow
 verification.
+
+## Fifty-Ninth Slice Decision
+
+Selected persona: Maintainer Preparing Review.
+
+Reason: hotspot evidence ranked `src/core/frameworkSources.ts` as a high-risk
+changed file after the Next URL dataflow slice. The concrete maintainability
+risk was not an individual risky function anymore; it was the shared framework
+matcher absorbing another cohesive framework-specific source family.
+
+Smallest fix: extract only the Next route source matcher into
+`src/core/frameworkNextRouteSources.ts`. Keep `frameworkSources.ts` as the
+public entry point for `FRAMEWORK_REQUEST_SOURCES` and
+`frameworkRequestSourceForFunction`, and add a structure regression so the
+matcher does not drift back into the shared file.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts
+npm run test -- tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkNextRouteSources.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Next Source Matcher Extraction
+
+Delete-list after this slice:
+
+- Do not change framework source names, dataflow risk fields, CLI/MCP output
+  schemas, or default sink behavior.
+- Do not split every framework matcher yet; this slice only pays down the
+  cohesive Next route matcher exposed by current hotspot evidence.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: Next route body-reader and URL fixtures should behave the
+same after extraction, including helper lookalike suppression.
+
+Kept change: one focused Next matcher module, one maintainability regression,
+existing dataflow coverage, this persona note, and no public schema change.

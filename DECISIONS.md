@@ -1249,3 +1249,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add `request.url` as a qualified Next route request source only for exported HTTP method handlers in `app/**/route.*` files.
 - Consequences: `projscan_dataflow` and review dataflow can flag Next route URL strings reaching default database sinks while helper functions in the same route file that read a shaped `{ url }` object stay quiet. Public output shape stays unchanged; this only adds a source string when the narrow pattern exists.
 - Verification: `npm run test -- tests/core/dataflow.test.ts -t "Next route request.url"` failed before the source was added, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-16: Extract Next route framework source matcher
+
+- Status: accepted
+- Context: Hotspot evidence ranked `src/core/frameworkSources.ts` as a high-complexity changed file after adding the Next route URL source. The Next route matcher is cohesive and does not share framework import or handler-call logic with Hono, Express, Fastify, or Koa.
+- Decision: Move Next route source maps, route-file gating, HTTP method checks, and member-call/reference matching into `src/core/frameworkNextRouteSources.ts`, while keeping `frameworkSources.ts` as the shared public entry point.
+- Consequences: `src/core/frameworkSources.ts` drops from CC 69 to CC 55 and from 428 to 369 lines. The extracted module is 74 lines with max function CC 6. Dataflow source names and public schemas stay unchanged.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Next route source matching"` failed before the extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
