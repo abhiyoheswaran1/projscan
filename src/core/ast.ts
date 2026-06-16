@@ -286,97 +286,157 @@ function collectFunctions(
   if (!node || typeof node !== 'object') return;
 
   if (isFunctionNode(node)) {
-    const name = nameForFunctionNode(node, parentClassName, bindingName);
-    const line = (node as NodeWithLoc).loc?.start.line ?? 0;
-    const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const {
-      cc,
-      callSites,
-      memberCallSites,
-      directCallSites,
-      memberAliases,
-      memberReferences,
-      references,
-    } = analyzeBabelBody(node);
-    const parameters = functionParamNames(node);
-    out.push({
-      name,
-      line,
-      endLine,
-      cyclomaticComplexity: cc,
-      callSites,
-      memberCallSites,
-      directCallSites,
-      memberAliases,
-      memberReferences,
-      parameters,
-      ...(contextualCallSite ? { contextualCallSite } : {}),
-      references,
-    });
-
-    // Recurse into nested functions so they emit their own entries. The body
-    // walker (`countCcInBody`) skips nested functions for CC, but we still need
-    // to descend the whole tree to find all functions.
-    descendForNestedFunctions(node, parentClassName, out);
+    collectFunctionInfo(node, parentClassName, bindingName, out, contextualCallSite);
     return;
   }
 
-  // Track context so nested functions get a useful name.
-  if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
-    const className = (node as { id?: { name?: string } }).id?.name ?? null;
-    const body = (node as { body?: Node }).body;
-    if (body) collectFunctions(body, className, null, out, null);
-    return;
-  }
+  if (collectClassFunctions(node, out)) return;
+  if (collectVariableInitializerFunctions(node, parentClassName, out, contextualCallSite)) return;
+  if (collectAssignedFunctions(node, parentClassName, out, contextualCallSite)) return;
+  if (collectDefaultExportFunctions(node, parentClassName, out)) return;
+  if (collectCallArgumentFunctions(node, parentClassName, out)) return;
 
-  if (node.type === 'VariableDeclarator') {
-    const id = (node as { id?: { type: string; name?: string } }).id;
-    const init = (node as { init?: Node | null }).init;
-    const name = id && id.type === 'Identifier' ? (id.name ?? null) : null;
-    if (init) collectFunctions(init, parentClassName, name, out, contextualCallSite);
-    return;
-  }
+  collectChildFunctions(node, parentClassName, out, contextualCallSite);
+}
 
-  if (node.type === 'AssignmentExpression') {
-    const left = (node as { left?: { type: string; name?: string } }).left;
-    const right = (node as { right?: Node }).right;
-    const name = left && left.type === 'Identifier' ? (left.name ?? null) : null;
-    if (right) collectFunctions(right, parentClassName, name, out, contextualCallSite);
-    return;
-  }
+function collectFunctionInfo(
+  node: Node,
+  parentClassName: string | null,
+  bindingName: string | null,
+  out: FunctionInfo[],
+  contextualCallSite: string | null,
+): void {
+  const name = nameForFunctionNode(node, parentClassName, bindingName);
+  const line = (node as NodeWithLoc).loc?.start.line ?? 0;
+  const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
+  const {
+    cc,
+    callSites,
+    memberCallSites,
+    directCallSites,
+    memberAliases,
+    memberReferences,
+    references,
+  } = analyzeBabelBody(node);
+  const parameters = functionParamNames(node);
+  out.push({
+    name,
+    line,
+    endLine,
+    cyclomaticComplexity: cc,
+    callSites,
+    memberCallSites,
+    directCallSites,
+    memberAliases,
+    memberReferences,
+    parameters,
+    ...(contextualCallSite ? { contextualCallSite } : {}),
+    references,
+  });
 
-  if (node.type === 'ExportDefaultDeclaration') {
-    const decl = (node as { declaration?: Node }).declaration;
-    if (decl) collectFunctions(decl, parentClassName, 'default', out, null);
-    return;
-  }
+  // Recurse into nested functions so they emit their own entries. The body
+  // walker skips nested functions for CC, but we still need to find them.
+  descendForNestedFunctions(node, parentClassName, out);
+}
 
+function collectClassFunctions(node: Node, out: FunctionInfo[]): boolean {
+  if (node.type !== 'ClassDeclaration' && node.type !== 'ClassExpression') return false;
+  const className = (node as { id?: { name?: string } }).id?.name ?? null;
+  const body = (node as { body?: Node }).body;
+  if (body) collectFunctions(body, className, null, out, null);
+  return true;
+}
+
+function collectVariableInitializerFunctions(
+  node: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+  contextualCallSite: string | null,
+): boolean {
+  if (node.type !== 'VariableDeclarator') return false;
+  const id = (node as { id?: { type: string; name?: string } }).id;
+  const init = (node as { init?: Node | null }).init;
+  const name = id && id.type === 'Identifier' ? (id.name ?? null) : null;
+  if (init) collectFunctions(init, parentClassName, name, out, contextualCallSite);
+  return true;
+}
+
+function collectAssignedFunctions(
+  node: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+  contextualCallSite: string | null,
+): boolean {
+  if (node.type !== 'AssignmentExpression') return false;
+  const left = (node as { left?: { type: string; name?: string } }).left;
+  const right = (node as { right?: Node }).right;
+  const name = left && left.type === 'Identifier' ? (left.name ?? null) : null;
+  if (right) collectFunctions(right, parentClassName, name, out, contextualCallSite);
+  return true;
+}
+
+function collectDefaultExportFunctions(
+  node: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+): boolean {
+  if (node.type !== 'ExportDefaultDeclaration') return false;
+  const decl = (node as { declaration?: Node }).declaration;
+  if (decl) collectFunctions(decl, parentClassName, 'default', out, null);
+  return true;
+}
+
+function collectCallArgumentFunctions(
+  node: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+): boolean {
   const callContext = callExpressionContext(node);
-  if (callContext) {
-    const args = (node as { arguments?: unknown[] }).arguments ?? [];
-    for (const arg of args) {
-      if (arg && typeof arg === 'object' && 'type' in arg) {
-        collectFunctions(arg as Node, parentClassName, null, out, callContext);
-      }
-    }
-    return;
-  }
+  if (!callContext) return false;
+  const args = (node as { arguments?: unknown[] }).arguments ?? [];
+  for (const arg of args) collectAstChild(arg, parentClassName, out, callContext);
+  return true;
+}
 
-  for (const key of Object.keys(node)) {
-    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments')
-      continue;
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (!child) continue;
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) {
-          collectFunctions(item as Node, parentClassName, null, out, contextualCallSite);
-        }
-      }
-    } else if (typeof child === 'object' && 'type' in child) {
-      collectFunctions(child as Node, parentClassName, null, out, contextualCallSite);
-    }
+function collectChildFunctions(
+  node: Node,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+  contextualCallSite: string | null,
+): void {
+  for (const child of childAstNodes(node)) {
+    collectFunctions(child, parentClassName, null, out, contextualCallSite);
   }
+}
+
+const NON_CHILD_KEYS = new Set(['loc', 'range', 'leadingComments', 'trailingComments']);
+
+function childAstNodes(node: Node): Node[] {
+  const children: Node[] = [];
+  for (const key of Object.keys(node)) {
+    if (NON_CHILD_KEYS.has(key)) continue;
+    children.push(...astNodesFromValue((node as unknown as Record<string, unknown>)[key]));
+  }
+  return children;
+}
+
+function astNodesFromValue(value: unknown): Node[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(isAstNode);
+  return isAstNode(value) ? [value] : [];
+}
+
+function collectAstChild(
+  value: unknown,
+  parentClassName: string | null,
+  out: FunctionInfo[],
+  contextualCallSite: string | null,
+): void {
+  if (isAstNode(value)) collectFunctions(value, parentClassName, null, out, contextualCallSite);
+}
+
+function isAstNode(value: unknown): value is Node {
+  return Boolean(value && typeof value === 'object' && 'type' in value);
 }
 
 function callExpressionContext(node: Node): string | null {

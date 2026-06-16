@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Split JavaScript function collection into private traversal helpers
+
+- Status: accepted
+- Context: `src/core/ast.ts` is the top hotspot, and `collectFunctions` carried traversal, naming context, callback context, and `FunctionInfo` assembly in one high-complexity function.
+- Decision: Keep `parseSource` and `FunctionInfo` behavior unchanged, but move function emission, class/default export handling, assignment/binding traversal, call-argument context, and generic child traversal into private helpers.
+- Consequences: AST function discovery stays schema-compatible while future changes to callback context or member evidence can be reviewed in smaller helpers.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.test.ts tests/core/dataflow.test.ts`.
+
 ## 2026-06-16: Treat Hono validated request data as a gated source
 
 - Status: accepted
