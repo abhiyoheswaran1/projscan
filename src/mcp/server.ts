@@ -6,6 +6,15 @@ import { getToolDefinitions, getToolHandler } from './tools.js';
 import { getPromptDefinitions, getPrompt } from './prompts.js';
 import { getResourceDefinitions, readResource } from './resources.js';
 import { applyToolBudgetAndCost, formatToolContent } from './serverPayload.js';
+import {
+  dispatchMcpRequest,
+  fail,
+  JSONRPC_ERROR,
+  ok,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+  type McpDispatchHandlers,
+} from './serverDispatch.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
 import {
@@ -19,32 +28,6 @@ import { extractTouchedPaths } from './sessionTouchScanner.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
-
-interface JsonRpcRequest {
-  jsonrpc: '2.0';
-  id?: string | number | null;
-  method: string;
-  params?: unknown;
-}
-
-interface JsonRpcResponse {
-  jsonrpc: '2.0';
-  id: string | number | null;
-  result?: unknown;
-  error?: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
-}
-
-const JSONRPC_ERROR = {
-  ParseError: -32700,
-  InvalidRequest: -32600,
-  MethodNotFound: -32601,
-  InvalidParams: -32602,
-  InternalError: -32603,
-} as const;
 
 function readPackageVersion(): string {
   try {
@@ -80,7 +63,6 @@ export interface McpServerOptions {
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readPackageVersion();
-  let initialized = false;
   let watchHandle: WatchHandle | null = null;
   let watchStartPromise: Promise<void> | null = null;
   const watchEnabled = options.watch === true && options.notify !== undefined;
@@ -126,52 +108,11 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     sessionDirty = false;
   }
 
-  async function dispatch(request: JsonRpcRequest): Promise<JsonRpcResponse | null> {
-    const id = request.id ?? null;
-    const isNotification = request.id === undefined || request.id === null;
-
-    try {
-      switch (request.method) {
-        case 'initialize':
-          return await handleInitialize(id, request.params);
-        case 'notifications/initialized':
-        case 'initialized':
-          return null;
-        case 'ping':
-          return ok(id, {});
-        case 'shutdown':
-          return ok(id, null);
-        case 'tools/list':
-          return ok(id, { tools: getToolDefinitions() });
-        case 'tools/call':
-          return await handleToolsCall(id, request.params);
-        case 'prompts/list':
-          return ok(id, { prompts: getPromptDefinitions() });
-        case 'prompts/get':
-          return await handlePromptsGet(id, request.params);
-        case 'resources/list':
-          return ok(id, { resources: getResourceDefinitions() });
-        case 'resources/read':
-          return await handleResourcesRead(id, request.params);
-        default:
-          if (isNotification) return null;
-          return fail(id, JSONRPC_ERROR.MethodNotFound, `Method not found: ${request.method}`);
-      }
-    } catch (err) {
-      if (isNotification) return null;
-      const message = err instanceof Error ? err.message : String(err);
-      return fail(id, JSONRPC_ERROR.InternalError, message);
-    } finally {
-      void initialized;
-    }
-  }
-
   async function handleInitialize(
     id: string | number | null,
     rawParams: unknown,
   ): Promise<JsonRpcResponse> {
     const params = (rawParams ?? {}) as { protocolVersion?: string };
-    initialized = true;
     const requested = params.protocolVersion;
     const negotiated =
       requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSION;
@@ -259,6 +200,16 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       return fail(id, JSONRPC_ERROR.InvalidParams, message);
     }
   }
+
+  const dispatchHandlers: McpDispatchHandlers = {
+    initialize: handleInitialize,
+    toolsList: (id) => ok(id, { tools: getToolDefinitions() }),
+    toolsCall: handleToolsCall,
+    promptsList: (id) => ok(id, { prompts: getPromptDefinitions() }),
+    promptsGet: handlePromptsGet,
+    resourcesList: (id) => ok(id, { resources: getResourceDefinitions() }),
+    resourcesRead: handleResourcesRead,
+  };
 
   /**
    * 1.8+ — build the per-call tool context. Tools that opt in (e.g.,
@@ -382,7 +333,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       );
     }
 
-    const response = await dispatch(request);
+    const response = await dispatchMcpRequest(request, dispatchHandlers);
     if (!response) return null;
     return JSON.stringify(response);
   }
@@ -455,23 +406,6 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   }
 
   return { handleMessage, close };
-}
-
-function ok(id: string | number | null, result: unknown): JsonRpcResponse {
-  return { jsonrpc: '2.0', id, result };
-}
-
-function fail(
-  id: string | number | null,
-  code: number,
-  message: string,
-  data?: unknown,
-): JsonRpcResponse {
-  return {
-    jsonrpc: '2.0',
-    id,
-    error: { code, message, data },
-  };
 }
 
 export interface RunMcpServerOptions {

@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import { createMcpServer } from '../../src/mcp/server.js';
 import { getToolDefinitions } from '../../src/mcp/tools.js';
+import type { FileEntry } from '../../src/types.js';
 
 async function send(
   server: ReturnType<typeof createMcpServer>,
@@ -25,6 +28,33 @@ async function makeFixtureRoot(): Promise<string> {
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
 }
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
+describe('MCP server maintainability', () => {
+  it('keeps JSON-RPC dispatch routing out of server orchestration', async () => {
+    const server = await inspectRepoSourceFile('src/mcp/server.ts');
+    expect(server.functions?.some((fn) => fn.name === 'dispatch')).toBe(false);
+
+    const dispatchModule = await inspectRepoSourceFile('src/mcp/serverDispatch.ts');
+    const dispatch = dispatchModule.functions?.find((fn) => fn.name === 'dispatchMcpRequest');
+    expect(dispatch).toBeDefined();
+    expect(dispatch!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+});
 
 describe('MCP server', () => {
   it('responds to initialize with protocol + server info', async () => {
