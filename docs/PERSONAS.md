@@ -3934,3 +3934,48 @@ coverage should still use LOC fallback.
 Kept change: one focused line-helper module, one maintainability regression,
 existing hotspot behavior coverage, this persona note, and no public schema
 change.
+
+## Ninety-First Slice Decision
+
+Selected persona: Maintainer-Focused Refactorer.
+
+Reason: Hotspot analysis still mixed ranking assembly with best-effort Project
+Memory side effects. Moving observation and accepted-hotspot tagging into a
+dedicated helper keeps the analyzer focused on report construction while
+preserving the fail-open memory behavior.
+
+Smallest fix: move `markAcceptedHotspots` into `hotspotMemory.ts`, keep the
+same dynamic memory import and catch-all best-effort behavior, and add a
+maintainability regression preventing memory tagging from returning to
+`hotspotAnalyzer.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/hotspotAnalyzer.test.ts -t "memory tagging"
+npm run test -- tests/core/hotspotAnalyzer.test.ts tests/core/hotspotIssueLinking.test.ts tests/core/hotspotCoverage.test.ts tests/core/memory.test.ts tests/types/public-hotspot-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json
+npm exec projscan -- file src/core/hotspotMemory.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Hotspot Memory Extraction
+
+Delete-list after this slice:
+
+- Do not change hotspot ranking, memory persistence format, accepted-hotspot
+  thresholds, reason strings, scoring inputs, issue linking, coverage handling,
+  graph complexity preference, or public hotspot report fields.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: memory failures must remain best-effort and must not break
+hotspot analysis; accepted hotspots should still be back-tagged on the returned
+top-K entries when memory says they crossed the acceptance threshold.
+
+Kept change: one focused memory helper, one maintainability regression,
+existing hotspot and memory behavior coverage, this persona note, and no public
+schema change.

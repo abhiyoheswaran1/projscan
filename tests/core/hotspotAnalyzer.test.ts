@@ -54,6 +54,19 @@ describe('computeRiskScore', () => {
     expect(lineCountOrEstimate!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps hotspot memory tagging isolated from the analyzer orchestrator', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    expect(analyzer.functions?.some((fn) => fn.name === 'markAcceptedHotspots')).toBe(false);
+
+    const memoryModule = await inspectRepoSourceFile('src/core/hotspotMemory.ts');
+    const markAcceptedHotspots = memoryModule.functions?.find(
+      (fn) => fn.name === 'markAcceptedHotspots',
+    );
+
+    expect(markAcceptedHotspots).toBeDefined();
+    expect(markAcceptedHotspots!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,

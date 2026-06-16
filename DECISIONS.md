@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract hotspot memory tagging
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` still owned best-effort Project Memory hotspot observation and accepted-hotspot tagging inline.
+- Decision: Move memory observation and accepted-hotspot tagging into `src/core/hotspotMemory.ts`.
+- Consequences: Hotspot ranking and report shape stay unchanged, while memory side effects are isolated from the analyzer's scoring/orchestration path.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts -t "memory tagging"` plus focused hotspot and memory tests.
+
 ## 2026-06-16: Extract hotspot line counting helpers
 
 - Status: accepted

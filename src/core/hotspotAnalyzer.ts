@@ -3,6 +3,7 @@ import type { CodeGraph } from './codeGraph.js';
 import { collectGitChurn, countCommits, isGitRepository } from './hotspotGit.js';
 import { indexIssuesByFile } from './hotspotIssues.js';
 import { countLines, lineCountOrEstimate } from './hotspotLines.js';
+import { markAcceptedHotspots } from './hotspotMemory.js';
 import { buildReasons, computeRiskScore, rankAuthors } from './hotspotScoring.js';
 
 export { computeRiskScore } from './hotspotScoring.js';
@@ -231,27 +232,4 @@ function summarizeHotspotAuthors(
 
 function numberOrNull(value: number | null | undefined): number | null {
   return typeof value === 'number' ? value : null;
-}
-
-async function markAcceptedHotspots(rootPath: string, top: FileHotspot[]): Promise<void> {
-  try {
-    const { loadMemory, saveMemory, recordHotspots, findAcceptedHotspots } =
-      await import('./memory.js');
-    const memory = await loadMemory(rootPath);
-    recordHotspots(
-      memory,
-      top.map((h) => ({
-        file: h.relativePath,
-        cc: h.cyclomaticComplexity,
-        churn: h.churn,
-      })),
-    );
-    const accepted = new Set(findAcceptedHotspots(memory).map((o) => o.file));
-    for (const h of top) {
-      if (accepted.has(h.relativePath)) h.accepted = true;
-    }
-    await saveMemory(rootPath, memory);
-  } catch {
-    // best-effort
-  }
 }
