@@ -119,6 +119,7 @@ export async function detectPythonProject(
       hasLockfile = true;
       if (name === 'poetry.lock') locked.unshift(...parsePoetryLock(content, name));
       if (name === 'Pipfile.lock') locked.unshift(...parsePipfileLock(content, name));
+      if (name === 'pdm.lock') locked.unshift(...parsePdmLock(content, name));
       if (name === 'uv.lock') locked.unshift(...parseUvLock(content, name));
       break;
     }
@@ -366,6 +367,10 @@ export function parsePoetryLock(content: string, sourceFile: string): PythonLock
 }
 
 export function parseUvLock(content: string, sourceFile: string): PythonLockedDep[] {
+  return parseTomlPackageLock(content, sourceFile);
+}
+
+export function parsePdmLock(content: string, sourceFile: string): PythonLockedDep[] {
   return parseTomlPackageLock(content, sourceFile);
 }
 

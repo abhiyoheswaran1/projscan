@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {
   detectPythonProject,
+  parsePdmLock,
   parsePipfileLock,
   parsePoetryLock,
   parsePyproject,
@@ -141,6 +142,26 @@ describe('parseUvLock', () => {
     expect(parseUvLock(lock, 'uv.lock')).toEqual([
       { name: 'requests', version: '2.31.0', source: 'uv.lock', line: 4 },
       { name: 'Django', version: '4.2.1', source: 'uv.lock', line: 8 },
+    ]);
+  });
+});
+
+describe('parsePdmLock', () => {
+  it('reads package versions from pdm.lock package blocks', () => {
+    const lock = [
+      '[metadata]',
+      'lock_version = "4.5.0"',
+      '[[package]]',
+      'name = "requests"',
+      'version = "2.31.0"',
+      '[[package]]',
+      'name = "Django"',
+      'version = "4.2.1"',
+    ].join('\n');
+
+    expect(parsePdmLock(lock, 'pdm.lock')).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'pdm.lock', line: 5 },
+      { name: 'Django', version: '4.2.1', source: 'pdm.lock', line: 8 },
     ]);
   });
 });
@@ -285,6 +306,23 @@ describe('detectPythonProject', () => {
     expect(info?.hasLockfile).toBe(true);
     expect(info?.locked).toEqual([
       { name: 'requests', version: '2.31.0', source: 'uv.lock', line: 3 },
+    ]);
+  });
+
+  it('uses pdm.lock package versions as lockfile evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pdm.lock'),
+      ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests>=2\n');
+    const info = await detectPythonProject(tmp, [
+      fileEntry('a.py'),
+      fileEntry('requirements.txt'),
+      fileEntry('pdm.lock'),
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'pdm.lock', line: 3 },
     ]);
   });
 

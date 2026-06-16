@@ -41,7 +41,7 @@ npx projscan
 
 - **Current release train.** `projscan release-train` now defaults 4.4.x and newer projects to the current 4.5.x through 4.9.x product lines instead of stale shipped 3.x/4.0 work.
 - **Shareable evidence controls.** `analyze`, `doctor`, and `ci` accept `--report-policy`, `--report-scope`, and `--redact-paths`; `.projscanrc` can define reusable `reportPolicies` presets.
-- **Python upgrade previews.** `projscan upgrade requests` and MCP `projscan_upgrade` now read Python manifests, Poetry/Pipfile/uv lockfiles, pinned requirements, and importers offline.
+- **Python upgrade previews.** `projscan upgrade requests` and MCP `projscan_upgrade` now read Python manifests, Poetry/Pipfile/uv/PDM lockfiles, pinned requirements, and importers offline.
 - **Framework dataflow precision.** Express, Fastify, and Koa request sources are framework-gated and fixture-backed, including Express/Koa header-accessor patterns without flagging response-body writes.
 - **Adoption proof recipes.** New docs cover agent orchestration, package ownership, policy plugins, swarm coordination, and scoped evidence workflows teams can copy into real reviews.
 - **Readiness cleanup.** The release packet documents the broad bug pass, review-risk sign-off, rollback plan, and verification evidence for the train.
@@ -822,12 +822,12 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 
 - **AST-accurate import graph.** `from pkg.mod import x`, relative imports, `__init__.py` packages, `__all__`. Parsed via tree-sitter-python (wasm, offline).
 - **Python-aware analyzers.** Missing pytest / ruff / black config. Deprecated packages (nose, simplejson, pycrypto). Unused `pyproject.toml` / `requirements.txt` deps. Missing lockfile.
-- **Python upgrade preview.** `projscan upgrade requests` reads `pyproject.toml`, `setup.cfg`, `setup.py`, root `requirements*.txt`, Poetry/Pipfile/uv lockfiles, and pinned root requirements, then reports declared scope, current-version source, drift, and importers offline.
+- **Python upgrade preview.** `projscan upgrade requests` reads `pyproject.toml`, `setup.cfg`, `setup.py`, root `requirements*.txt`, Poetry/Pipfile/uv/PDM lockfiles, and pinned root requirements, then reports declared scope, current-version source, drift, and importers offline.
 - **Code search.** BM25 and semantic modes work on `.py` files out of the box.
 - **Hotspots + dead code.** Same scoring as JS/TS, with `__init__.py` and pytest test-file conventions understood.
 - **MCP tools work unchanged.** `projscan_semantic_graph`, `projscan_search`, `projscan_doctor`, `projscan_hotspots`, etc. all accept Python projects. Agents can ask "which files import `pkg.core`?" and get an answer in milliseconds.
 
-`projscan_upgrade` supports Node and Python offline previews. Python current-version evidence comes from Poetry, Pipfile, uv lockfiles, or pinned root requirements when present. Registry lookup remains npm-only behind `--check-registry`.
+`projscan_upgrade` supports Node and Python offline previews. Python current-version evidence comes from Poetry, Pipfile, uv, PDM lockfiles, or pinned root requirements when present. Registry lookup remains npm-only behind `--check-registry`.
 
 ### Go (0.11)
 

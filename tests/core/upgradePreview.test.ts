@@ -220,6 +220,26 @@ describe('previewUpgrade', () => {
     expect(preview.installedLine).toBe(3);
     expect(preview.importers).toEqual(['app/client.py']);
   });
+
+  it('uses pdm.lock as Python current-version evidence', async () => {
+    const pdmLock = ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n');
+    const files = [
+      await writeFile(tmp, 'requirements.txt', 'requests==2.30.0\n'),
+      await writeFile(tmp, 'pdm.lock', pdmLock),
+      await writeFile(tmp, 'app/client.py', 'import requests\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.installed).toBe('2.31.0');
+    expect(preview.latest).toBe('2.31.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('pdm.lock');
+    expect(preview.installedLine).toBe(3);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
 });
 
 describe('isValidPackageName (path-traversal guard)', () => {
