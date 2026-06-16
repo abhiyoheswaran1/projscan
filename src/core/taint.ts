@@ -213,6 +213,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     file: string;
     callees: string[]; // bare names from the function's callSites
     references: string[]; // member-expression read idents (1.6+)
+    memberReferences: string[]; // qualified member-expression reads, e.g. process.env.MY_CMD
     sourceHit: string | null;
     sinkHit: string | null;
     hasSource: boolean;
@@ -257,7 +258,15 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
         file,
         gf,
       );
-      const hasSource = sourceHit !== null;
+      const hasSource =
+        sourceHit !== null &&
+        !isDefaultChildProcessEnvPassthrough(
+          sourceHit,
+          sinkHit,
+          memberReferences,
+          customSources,
+          customSinks,
+        );
       const hasSink = sinkHit !== null;
       const node: FnNode = {
         id: `${file}::${fn.name}@${fn.line}`,
@@ -266,6 +275,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
         file,
         callees,
         references,
+        memberReferences,
         sourceHit,
         sinkHit,
         hasSource,
@@ -514,6 +524,22 @@ function bareName(qualified: string): string {
   const dot = qualified.lastIndexOf('.');
   if (dot < 0) return qualified;
   return qualified.slice(dot + 1);
+}
+
+function isDefaultChildProcessEnvPassthrough(
+  sourceHit: string,
+  sinkHit: string | null,
+  memberReferences: string[],
+  customSources: Set<string>,
+  customSinks: Set<string>,
+): boolean {
+  if (sourceHit !== 'env') return false;
+  if (!sinkHit || !JAVASCRIPT_CHILD_PROCESS_SINKS.has(sinkHit)) return false;
+  if (customSources.has(sourceHit) || customSinks.has(sinkHit)) return false;
+  return (
+    memberReferences.includes('process.env') &&
+    !memberReferences.some((reference) => reference.startsWith('process.env.'))
+  );
 }
 
 function pickSourceHit(

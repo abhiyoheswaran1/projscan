@@ -676,6 +676,44 @@ export function helper(request: { ip: string }) {
     expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Fastify raw request URL and headers as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'fastify-raw.ts'),
+      `import Fastify from 'fastify';
+
+const app = Fastify();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/raw-url', async (request) => {
+  const url = request.raw.url;
+  return db.query(String(url));
+});
+
+app.get('/raw-headers', async (request) => {
+  const host = request.raw.headers.host;
+  return db.query(String(host));
+});
+
+export function helper(request: { raw: { url?: string, headers: { host?: string } } }) {
+  return cache.query(String(request.raw.url));
+}
+`,
+    );
+
+    const graph = await buildFixtureGraph();
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const fastifyRisks = report.risks.filter((risk) => risk.files.includes('src/fastify-raw.ts'));
+
+    expect(fastifyRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'fastify.request.raw.url', sink: 'query' }),
+        expect.objectContaining({ source: 'fastify.request.raw.headers', sink: 'query' }),
+      ]),
+    );
+    expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Koa request fields as framework sources without flagging lookalike helpers', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'koa.ts'),
@@ -948,6 +986,23 @@ export function runShell() {
         (risk) => risk.sourceFn === 'runShell' && risk.source === 'env' && risk.sink === 'exec',
       ),
     ).toBe(true);
+  });
+
+  it('does not treat child-process env passthrough as an env command flow', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'git.ts'),
+      `import { spawn } from 'node:child_process';
+
+export function log(rootPath: string) {
+  spawn('git', ['log', '--oneline'], { cwd: rootPath, env: process.env });
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks.find((risk) => risk.source === 'env' && risk.sink === 'spawn')).toBeUndefined();
   });
 
   it('excludes test-file risks by default with an explicit opt-in', async () => {

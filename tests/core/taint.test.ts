@@ -45,6 +45,23 @@ export function run() {
     expect(flow!.path).toEqual(['run']);
   });
 
+  it('does not treat child-process env passthrough as an env command flow', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'git.ts'),
+      `import { spawn } from 'node:child_process';
+
+export function log(rootPath: string) {
+  spawn('git', ['log', '--oneline'], { cwd: rootPath, env: process.env });
+}
+`,
+    );
+    const graph = await buildGraph();
+
+    const report = computeTaint(graph, { sources: [], sinks: [] });
+
+    expect(report.flows.find((flow) => flow.source === 'env' && flow.sink === 'spawn')).toBeUndefined();
+  });
+
   it('detects multi-hop flow (source → middleware → sink)', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'b.ts'),

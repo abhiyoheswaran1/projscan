@@ -38,6 +38,11 @@ const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['ip', 'fastify.request.ip'],
 ]);
 
+const FASTIFY_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
+  ['raw.headers', 'fastify.request.raw.headers'],
+  ['raw.url', 'fastify.request.raw.url'],
+]);
+
 const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['request.body', 'koa.ctx.request.body'],
   ['request.query', 'koa.ctx.request.query'],
@@ -109,6 +114,7 @@ export const FRAMEWORK_REQUEST_SOURCES = [
   ...EXPRESS_REQUEST_SOURCE_BY_REFERENCE.values(),
   ...EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
   ...FASTIFY_REQUEST_SOURCE_BY_REFERENCE.values(),
+  ...FASTIFY_REQUEST_SOURCE_BY_MEMBER.values(),
   ...KOA_REQUEST_SOURCE_BY_MEMBER.values(),
   ...KOA_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
 ];
@@ -149,7 +155,14 @@ export function frameworkRequestSourceForFunction(
       contextualCallSite,
       imports,
     ) ??
-    fastifyRequestSource(parameters, references, enabledSources, contextualCallSite, imports) ??
+    fastifyRequestSource(
+      parameters,
+      references,
+      memberReferences,
+      enabledSources,
+      contextualCallSite,
+      imports,
+    ) ??
     koaRequestSource(
       parameters,
       memberReferences,
@@ -243,16 +256,39 @@ function expressMemberCallSource(
 function fastifyRequestSource(
   parameters: string[],
   references: string[],
+  memberReferences: string[],
   enabledSources: Set<string>,
   contextualCallSite: string | undefined,
   imports: Array<{ source: string }>,
 ): string | null {
   if (!isFastifyFile(imports)) return null;
   if (!isFastifyHandlerCall(contextualCallSite)) return null;
-  if (!parameters.some((parameter) => FASTIFY_REQUEST_PARAM_NAMES.has(parameter))) return null;
+  const requestParams = parameters.filter((parameter) => FASTIFY_REQUEST_PARAM_NAMES.has(parameter));
+  if (requestParams.length === 0) return null;
+  return (
+    fastifyMemberReferenceSource(requestParams, memberReferences, enabledSources) ??
+    fastifyReferenceSource(references, enabledSources)
+  );
+}
+
+function fastifyReferenceSource(references: string[], enabledSources: Set<string>): string | null {
   const refs = new Set(references);
   for (const [reference, source] of FASTIFY_REQUEST_SOURCE_BY_REFERENCE) {
     if (enabledSources.has(source) && refs.has(reference)) return source;
+  }
+  return null;
+}
+
+function fastifyMemberReferenceSource(
+  requestParams: string[],
+  memberReferences: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const members = new Set(memberReferences);
+  for (const parameter of requestParams) {
+    for (const [member, source] of FASTIFY_REQUEST_SOURCE_BY_MEMBER) {
+      if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
+    }
   }
   return null;
 }

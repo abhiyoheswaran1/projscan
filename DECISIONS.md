@@ -913,3 +913,19 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move risky-function detection into `src/core/reviewRiskyFunctions.ts` and keep `computeReview` as the orchestration boundary.
 - Consequences: `review.ts` drops from 1400 lines / CC 208 to 1285 lines / CC 183, the focused matcher module is 131 lines / CC 27, and added high-CC plus duplicate anonymous-function regression behavior remains covered.
 - Verification: `npm run test -- tests/core/review.test.ts -t "risky-function matching isolated"` failed before the extraction, then `npm run test -- tests/core/review.test.ts -t "risky-function matching isolated"`, `npm run test -- tests/core/review.test.ts -t "flags new high-CC function"`, `npm run test -- tests/core/review.test.ts -t "multiple anonymous arrows"`, `npm run test -- tests/core/review.test.ts`, `npm exec projscan -- file src/core/review.ts --format json`, and `npm exec projscan -- file src/core/reviewRiskyFunctions.ts --format json` passed after the extraction.
+
+## 2026-06-16: Detect Fastify raw request URL and headers
+
+- Status: accepted
+- Context: Fastify request body/query/params/headers/cookies/IP sources were framework-gated, but handlers that read the underlying Node request through `request.raw.url` or `request.raw.headers` either collapsed into a generic header source or were missed.
+- Decision: Add receiver-sensitive Fastify member-reference sources for `request.raw.url` and `request.raw.headers`, checked before the existing bare-reference fallback.
+- Consequences: Dataflow reports Fastify raw URL/header evidence with explicit source labels while helper functions with the same `request.raw` shape remain quiet.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Fastify raw request"` failed before the change, then `npm run test -- tests/core/dataflow.test.ts -t "Fastify raw request"`, `npm run test -- tests/core/dataflow.test.ts -t "qualified Fastify"`, `npm run test -- tests/core/dataflow.test.ts -t "Fastify request IP"`, and `npm run test -- tests/core/dataflow.test.ts` passed after the change.
+
+## 2026-06-16: Suppress child-process env passthrough taint false positives
+
+- Status: accepted
+- Context: The Fastify dataflow verification rebuilt the CLI and surfaced an `env` to `spawn` risk in `src/core/explainIssue.ts`, where `process.env` is passed as the child-process environment option for a fixed `git` command rather than used as the command or arguments.
+- Decision: Suppress default `env` source matches only when the same function pairs an exact `process.env` member reference with a default child-process sink and no specific `process.env.X` reads or custom source/sink overrides are present.
+- Consequences: `spawn('git', args, { env: process.env })` no longer reports as an env-command flow, while direct and multi-hop `process.env.X` command flows remain covered.
+- Verification: `npm run test -- tests/core/taint.test.ts -t "env passthrough"` and `npm run test -- tests/core/dataflow.test.ts -t "env passthrough"` failed before the change, then those tests plus `npm run test -- tests/core/taint.test.ts -t "same-function flow"`, `npm run test -- tests/core/taint.test.ts -t "multi-hop flow"`, `npm run test -- tests/core/dataflow.test.ts -t "RegExp.exec"`, and `npm run test -- tests/core/taint.test.ts tests/core/dataflow.test.ts` passed after the change.

@@ -80,7 +80,7 @@ Success signals: teams copy the adoption examples into real reviews, scoped/reda
 - Adoption examples cover agent orchestration, package ownership, custom policy plugins, swarm coordination, and scoped evidence exports.
 - `analyze`, `doctor`, and `ci` can scope and redact shareable evidence with direct flags or named `reportPolicies` presets.
 - `projscan upgrade` and MCP `projscan_upgrade` support offline Python previews from manifests, Poetry/Pipfile/uv/PDM/Conda lockfiles, pinned requirements/constraints, and Python importers.
-- Dataflow detects narrow Fastify and Koa request-source patterns while suppressing lookalike helpers and Koa response-body writes.
+- Dataflow detects narrow Fastify and Koa request-source patterns, including Fastify raw URL/header evidence, while suppressing lookalike helpers and Koa response-body writes.
 - Start next-action assembly and taint function identity were tightened during release readiness cleanup.
 
 ### Recently Completed — 4.4.0 (2026)
