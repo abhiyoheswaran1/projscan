@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract changed-file enrichment from review orchestration
+
+- Status: accepted
+- Context: `src/core/review.ts` is a high-churn, high-complexity hotspot. `computeReview` still mixed repository orchestration with changed-file enrichment for added, removed, and modified files.
+- Decision: Move changed-file enrichment into private helper functions that index hotspot risk and append added/removed/modified review file records while preserving existing sorting and output fields.
+- Consequences: Review output remains schema-compatible, but future changes to changed-file metadata can be reviewed in focused helpers instead of the main review orchestration path.
+- Verification: `npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts`.
+
 ## 2026-06-16: Surface report controls in Markdown artifacts
 
 - Status: accepted
