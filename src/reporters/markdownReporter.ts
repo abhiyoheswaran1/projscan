@@ -3,7 +3,6 @@ import type {
   FileExplanation,
   ArchitectureLayer,
   DirectoryNode,
-  WorkspaceInfo,
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
@@ -24,6 +23,7 @@ export { reportCoverageMarkdown } from './markdownCoverageReporter.js';
 export { reportCouplingMarkdown } from './markdownCouplingReporter.js';
 export { reportOutdatedMarkdown } from './markdownOutdatedReporter.js';
 export { reportHotspotsMarkdown } from './markdownHotspotReporter.js';
+export { reportWorkspacesMarkdown } from './markdownWorkspaceReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -166,25 +166,4 @@ function buildTreeLines(nodes: DirectoryNode[], indent: string, lines: string[])
       buildTreeLines(node.children, indent + childIndent, lines);
     }
   }
-}
-
-export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
-  const lines: string[] = ['# Workspaces', ''];
-  lines.push(
-    `_kind: **${info.kind}**${info.source ? ` · source: ${info.source}` : ''} · ${info.packages.length} package(s)_`,
-    '',
-  );
-  if (info.packages.length === 0) {
-    lines.push('No packages detected.');
-    console.log(lines.join('\n'));
-    return;
-  }
-  lines.push('| Package | Path | Version | Root |');
-  lines.push('| --- | --- | --- | :-: |');
-  for (const p of info.packages) {
-    lines.push(
-      `| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`,
-    );
-  }
-  console.log(lines.join('\n'));
 }

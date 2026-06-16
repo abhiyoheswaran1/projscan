@@ -94,6 +94,16 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps workspace rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportWorkspacesMarkdown')).toBe(false);
+
+    const workspaceReporter = await inspectRepoSourceFile('src/reporters/markdownWorkspaceReporter.ts');
+    const renderer = workspaceReporter.functions?.find((fn) => fn.name === 'reportWorkspacesMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {
