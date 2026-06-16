@@ -1265,3 +1265,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Treat root Python manifests, root requirements/constraints, and known root Python lockfiles as project evidence alongside `.py` files.
 - Consequences: `projscan upgrade` can preview a package declared in `pyproject.toml` before any Python source exists, returning Python ecosystem metadata and no importers. The path remains offline and local-only; unsupported/nested manifests are still deferred.
 - Verification: `npm run test -- tests/core/upgradePreview.test.ts -t "pyproject even before Python files"` failed before manifest evidence was accepted, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-16: Carry clear swarm hints into agent briefs
+
+- Status: accepted
+- Context: `projscan coordinate` already exposes local-only validation workflow evidence, but `coordinationHints` returned no hint when multiple worktrees were clear. That meant `agent-brief` omitted the coordination follow-up exactly when the next agent should preserve the clear state before continuing parallel work.
+- Decision: Return one advisory `coordinationHints` message for clear multi-worktree coordination, telling agents to rerun `projscan coordinate` before parallel edits continue. Single-worktree and unavailable coordination remain quiet.
+- Consequences: `agent-brief` and other consumers of `coordinationHints` carry a local validation cue without mixing remembered session context into current worktree evidence. Existing conflicted/caution hints remain unchanged.
+- Verification: `npm run test -- tests/core/coordination.test.ts -t "multiple worktrees are clear"` failed before the hint was added, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

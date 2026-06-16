@@ -200,7 +200,7 @@ describe('coordinationSignature', () => {
 });
 
 describe('coordinationHints', () => {
-  it('returns no hints when coordination is unavailable or clear', () => {
+  it('returns no hints when coordination is unavailable', () => {
     expect(
       coordinationHints(
         summarizeCoordination({
@@ -210,7 +210,9 @@ describe('coordinationHints', () => {
         }),
       ),
     ).toEqual([]);
+  });
 
+  it('returns a validation hint when multiple worktrees are clear', () => {
     const clear = summarizeCoordination({
       collisionReport: collisionReport({
         worktrees: [
@@ -221,7 +223,9 @@ describe('coordinationHints', () => {
       claims: [],
       mergeRisk: mergeRisk({}),
     });
-    expect(coordinationHints(clear)).toEqual([]);
+    expect(coordinationHints(clear)).toEqual([
+      'Swarm readiness: clear across 2 worktrees - rerun `projscan coordinate` before parallel edits continue.',
+    ]);
   });
 
   it('summarizes collisions, contention, and merge order when conflicted', () => {

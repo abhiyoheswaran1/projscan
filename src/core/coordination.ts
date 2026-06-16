@@ -111,11 +111,19 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
 /**
  * Compact, agent-facing hints derived from a coordination summary — for
  * surfacing inside other reports (e.g. agent briefs). Empty when coordination
- * is unavailable or the swarm is clear, so it adds nothing in the common
- * single-worktree case.
+ * is unavailable or only one worktree is involved, so it adds nothing in the
+ * common single-worktree case.
  */
 export function coordinationHints(summary: CoordinationSummary): string[] {
-  if (!summary.available || summary.readiness === 'clear') return [];
+  if (!summary.available) return [];
+  if (summary.readiness === 'clear') {
+    return summary.worktreeCount > 1
+      ? [
+          `Swarm readiness: clear across ${summary.worktreeCount} worktrees - ` +
+            'rerun `projscan coordinate` before parallel edits continue.',
+        ]
+      : [];
+  }
   const hints: string[] = [
     `Swarm readiness: ${summary.readiness} — run \`projscan coordinate\` for details.`,
   ];

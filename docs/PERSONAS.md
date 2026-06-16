@@ -2504,3 +2504,48 @@ should preview declared Python packages with an empty importer list.
 
 Kept change: one project-detection gate, one upgrade-preview regression,
 focused docs, this persona note, and existing Python upgrade verification.
+
+## Sixty-First Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: the coordination workflow is useful only if the next agent sees the
+same local validation step where it already looks for handoff context. A clear
+multi-worktree state is still actionable because agents should preserve it by
+rerunning `projscan coordinate` before starting more parallel edits.
+
+Smallest fix: make `coordinationHints` return one advisory clear-state hint
+when multiple worktrees are present and coordination is otherwise clear. Keep
+single-worktree/unavailable coordination quiet and leave conflicted/caution
+hints unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/coordination.test.ts -t "multiple worktrees are clear"
+npm run test -- tests/core/coordination.test.ts tests/core/agentBrief.test.ts tests/core/start.test.ts -t "coordination|agent brief returns compact|coordination hints"
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- agent-brief --format json
+npm exec projscan -- coordinate --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Clear Swarm Agent Brief Hint
+
+Delete-list after this slice:
+
+- Do not make session memory look like current Git/worktree evidence.
+- Do not add daemon, cloud, telemetry, or background watcher behavior.
+- Do not change coordination schemas, output fields, package metadata, release
+  actions, or version numbers.
+
+Reviewer edge case: clear single-worktree coordination stays quiet, while clear
+multi-worktree coordination gets one reminder to rerun `projscan coordinate`.
+
+Kept change: one coordination hint branch, one coordination regression, focused
+docs, this persona note, and existing coordination/agent-brief coverage.
