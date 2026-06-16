@@ -873,3 +873,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace the decision-point switch with table-driven node/operator sets and split member-alias extraction into context and property helpers.
 - Consequences: `src/core/ast.ts` aggregate cyclomatic complexity drops from 212 to 205, `isDecisionPoint` leaves the top-risk function list, and destructured member-alias behavior is pinned for default values and computed-property skips.
 - Verification: `npm run test -- tests/core/ast.functions.test.ts -t "switch cases logical operators"`, `npm run test -- tests/core/ast.references.test.ts -t "defaulted destructured member aliases"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts`, `npm run test -- tests/core/dataflow.test.ts`, `npm exec projscan -- file src/core/ast.ts --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Redact absolute path prefixes in report evidence text
+
+- Status: accepted
+- Context: Scoped/redacted report exports replaced exact repo-relative paths embedded in issue text, but absolute text references such as `/Users/alice/repo/src/private/a.ts` could leave the machine path prefix visible after suffix redaction.
+- Decision: Redact the full path-like token ending in a scoped file path, supporting both POSIX and Windows separators, while keeping stable `redacted-path-N` labels.
+- Consequences: Issue titles, descriptions, and suggested actions no longer leak local checkout prefixes when they contain absolute paths to scoped files.
+- Verification: `npm run test -- tests/core/reportScope.test.ts -t "absolute path prefixes"`, `npm run test -- tests/core/reportScope.test.ts`, `npm run test -- tests/cli/formatHandling.test.ts`, `npm exec projscan -- doctor --report-scope src --redact-paths --format json`, `npm exec projscan -- analyze --report-scope src --redact-paths --format sarif`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

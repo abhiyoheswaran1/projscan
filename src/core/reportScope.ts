@@ -210,9 +210,15 @@ function redactIssue(
 function redactText(text: string, replacements: ReadonlyArray<readonly [string, string]>): string {
   let out = text;
   for (const [filePath, label] of replacements) {
-    out = out.replace(new RegExp(escapeRegExp(filePath), 'g'), label);
+    out = out.replace(pathReferenceRegExp(filePath), label);
   }
   return out;
+}
+
+function pathReferenceRegExp(filePath: string): RegExp {
+  const normalized = filePath.replace(/\\/g, '/');
+  const pathPattern = normalized.split('/').map(escapeRegExp).join(String.raw`[\\/]`);
+  return new RegExp(String.raw`(?:\S+[\\/])*` + pathPattern, 'g');
 }
 
 function escapeRegExp(value: string): string {

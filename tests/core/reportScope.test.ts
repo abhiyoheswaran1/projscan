@@ -186,4 +186,28 @@ describe('reportScope', () => {
     ]);
     expect(serialized).not.toContain('src/private');
   });
+
+  it('redacts absolute path prefixes embedded in issue text', () => {
+    const scoped = applyReportControlsToIssues(
+      [
+        {
+          ...issue('absolute', ['src/private/a.ts']),
+          title: 'Finding in /Users/alice/work/repo/src/private/a.ts',
+          description:
+            'See /tmp/review-copy/src/private/a.ts and C:\\Users\\Alice\\repo\\src\\private\\a.ts before sharing.',
+        },
+      ],
+      { scopes: ['src/private'], redactPaths: true },
+    );
+    const serialized = JSON.stringify(scoped);
+
+    expect(scoped[0].title).toBe('Finding in redacted-path-1');
+    expect(scoped[0].description).toBe(
+      'See redacted-path-1 and redacted-path-1 before sharing.',
+    );
+    expect(serialized).not.toContain('/Users/alice');
+    expect(serialized).not.toContain('/tmp/review-copy');
+    expect(serialized).not.toContain('C:\\Users\\Alice');
+    expect(serialized).not.toContain('src/private');
+  });
 });
