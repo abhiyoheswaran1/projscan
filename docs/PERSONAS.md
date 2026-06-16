@@ -3315,3 +3315,51 @@ scope strings plus `redactPaths: true`; invalid presets should still be dropped.
 Kept change: one focused report-policy config module, one maintainability
 regression, existing config and report-scope coverage, this persona note, and
 no public schema change.
+
+## Seventy-Eighth Slice Decision
+
+Selected persona: Platform/Release Owner.
+
+Reason: monorepo import-policy config controls cross-package boundary checks,
+which are important for teams using projscan in multi-package repos. Keeping
+allow/deny normalization separate from the general config loader makes those
+boundary rules easier to review.
+
+Smallest fix: move monorepo import-policy normalization into
+`configMonorepo.ts` and import `applyMonorepo` from `config.ts`. Preserve
+`from`, `allow`, and `deny` filtering exactly.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "monorepo import policy normalization"
+npm run test -- tests/utils/config.test.ts tests/analyzers/crossPackageImportCheck.test.ts tests/types/public-config-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configMonorepo.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/analyzers/crossPackageImportCheck.test.ts tests/types/public-config-types.test.ts
+git diff --check
+```
+
+## Review Guardrails: Monorepo Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, `monorepo.importPolicy` shape,
+  `from` requirements, `allow`/`deny` filtering, invalid rule dropping, or
+  cross-package import violation behavior.
+- Do not add dependencies, change package metadata, perform release actions,
+  change version numbers, or read secret values.
+
+Reviewer edge case: rules without a non-empty string `from` should still be
+dropped; `allow` and `deny` should still keep only string entries; a rule should
+only be retained when it has an `allow` or `deny` list.
+
+Kept change: one focused monorepo config module, one maintainability
+regression, existing cross-package import-policy coverage, this persona note,
+and no public schema change.

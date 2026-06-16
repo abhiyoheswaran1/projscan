@@ -127,6 +127,26 @@ describe('loadConfig', () => {
     expect(reportPoliciesSource).not.toContain("from './config.js'");
   });
 
+  it('keeps monorepo import policy normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyMonorepo');
+    expect(configSource).not.toContain('function parseImportPolicyRules');
+
+    const monorepoSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configMonorepo.ts'),
+      'utf8',
+    );
+    expect(monorepoSource).not.toContain("from './config.js'");
+  });
+
+  it('keeps monorepo import policy rule parsing split into small helpers', () => {
+    const monorepoSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configMonorepo.ts'),
+      'utf8',
+    );
+    expect(monorepoSource).not.toContain('for (const entry of raw)');
+  });
+
   it('drops invalid severity overrides', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),

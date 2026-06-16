@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract monorepo import-policy config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned monorepo import-policy rule parsing, keeping cross-package allow/deny normalization mixed with unrelated config branches.
+- Decision: Move monorepo import-policy normalization into `src/utils/configMonorepo.ts` and import `applyMonorepo` from the main config normalizer.
+- Consequences: `monorepo.importPolicy` schema and allow/deny behavior stay unchanged, while cross-package boundary config review can focus on one helper module.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "monorepo import policy normalization"` and focused config/cross-package verification.
+
 ## 2026-06-16: Extract report policy config normalization
 
 - Status: accepted

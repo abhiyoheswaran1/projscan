@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Issue, IssueSeverity } from '../types/common.js';
-import type { ImportPolicyRule, LoadedConfig, ProjscanConfig } from '../types/config.js';
+import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
+import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
 
 const CONFIG_CANDIDATES = ['.projscanrc.json', '.projscanrc'];
@@ -144,35 +145,6 @@ function applySeverityOverrides(obj: Record<string, unknown>, out: ProjscanConfi
     }
   }
   if (Object.keys(overrides).length) out.severityOverrides = overrides;
-}
-
-function applyMonorepo(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!obj.monorepo || typeof obj.monorepo !== 'object') return;
-  const m = obj.monorepo as Record<string, unknown>;
-  const monorepo: NonNullable<ProjscanConfig['monorepo']> = {};
-  if (Array.isArray(m.importPolicy)) {
-    const rules = parseImportPolicyRules(m.importPolicy);
-    if (rules.length > 0) monorepo.importPolicy = rules;
-  }
-  if (Object.keys(monorepo).length) out.monorepo = monorepo;
-}
-
-function parseImportPolicyRules(raw: unknown[]): ImportPolicyRule[] {
-  const rules: ImportPolicyRule[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== 'object') continue;
-    const e = entry as Record<string, unknown>;
-    if (typeof e.from !== 'string' || !e.from) continue;
-    const rule: ImportPolicyRule = { from: e.from };
-    if (Array.isArray(e.allow)) {
-      rule.allow = e.allow.filter((v): v is string => typeof v === 'string');
-    }
-    if (Array.isArray(e.deny)) {
-      rule.deny = e.deny.filter((v): v is string => typeof v === 'string');
-    }
-    if (rule.allow || rule.deny) rules.push(rule);
-  }
-  return rules;
 }
 
 /**
