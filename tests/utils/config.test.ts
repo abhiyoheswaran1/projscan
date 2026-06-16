@@ -89,6 +89,17 @@ describe('loadConfig', () => {
     expect(result.config.hotspots?.since).toBe('3 months ago');
   });
 
+  it('keeps hotspot option normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyHotspots');
+
+    const hotspotsSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configHotspots.ts'),
+      'utf8',
+    );
+    expect(hotspotsSource).not.toContain("from './config.js'");
+  });
+
   it('normalizes report policy presets', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),

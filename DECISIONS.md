@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract hotspot config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned hotspot `limit` and `since` config parsing, keeping risk-ranking options mixed with unrelated config branches.
+- Decision: Move hotspot option normalization into `src/utils/configHotspots.ts` and import `applyHotspots` from the main config normalizer.
+- Consequences: `hotspots.limit` clamping and `hotspots.since` trimming stay unchanged, while hotspot tuning review can focus on one helper module.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "hotspot option normalization"` and focused config/hotspot verification.
+
 ## 2026-06-16: Extract taint config normalization
 
 - Status: accepted

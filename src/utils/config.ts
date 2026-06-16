@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Issue, IssueSeverity } from '../types/common.js';
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
+import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
 import { applyScan } from './configScan.js';
@@ -87,19 +88,6 @@ function applyBaseRef(obj: Record<string, unknown>, out: ProjscanConfig): void {
   if (typeof obj.baseRef === 'string' && obj.baseRef.trim()) {
     out.baseRef = obj.baseRef.trim();
   }
-}
-
-function applyHotspots(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!obj.hotspots || typeof obj.hotspots !== 'object') return;
-  const h = obj.hotspots as Record<string, unknown>;
-  const hotspots: NonNullable<ProjscanConfig['hotspots']> = {};
-  if (typeof h.limit === 'number' && Number.isFinite(h.limit)) {
-    hotspots.limit = Math.max(1, Math.min(100, Math.floor(h.limit)));
-  }
-  if (typeof h.since === 'string' && h.since.trim()) {
-    hotspots.since = h.since.trim();
-  }
-  if (Object.keys(hotspots).length) out.hotspots = hotspots;
 }
 
 function applyIgnore(obj: Record<string, unknown>, out: ProjscanConfig): void {

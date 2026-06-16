@@ -3457,3 +3457,50 @@ defaults in CLI, MCP, review, and dataflow paths.
 
 Kept change: one focused taint config module, one maintainability regression,
 existing config/taint coverage, this persona note, and no public schema change.
+
+## Eighty-First Slice Decision
+
+Selected persona: OSS Maintainer.
+
+Reason: hotspot config affects how maintainers rank risky files by churn and
+complexity. Isolating `limit` and `since` normalization keeps that review path
+small without changing the public config schema or analyzer behavior.
+
+Smallest fix: move hotspot option normalization into `configHotspots.ts` and
+import `applyHotspots` from `config.ts`. Preserve `limit` clamping to 1..100,
+integer flooring, and trimmed non-empty `since` handling.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "hotspot option normalization"
+npm run test -- tests/utils/config.test.ts tests/core/hotspotAnalyzer.test.ts tests/types/public-config-types.test.ts tests/types/public-hotspot-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configHotspots.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/core/hotspotAnalyzer.test.ts tests/types/public-config-types.test.ts tests/types/public-hotspot-types.test.ts
+git diff --check
+```
+
+## Review Guardrails: Hotspot Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, `hotspots.limit`, or
+  `hotspots.since` behavior.
+- Do not change hotspot ranking, churn collection, coverage joining, reporter
+  output, or default CLI limit/since values.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: fractional and out-of-range limits should still be floored
+and clamped to 1..100, and blank `since` strings should still be ignored.
+
+Kept change: one focused hotspot config module, one maintainability regression,
+existing config/hotspot coverage, this persona note, and no public schema
+change.
