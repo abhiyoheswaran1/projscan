@@ -126,6 +126,30 @@ describe('computeReview', () => {
     expect(decide!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps package manifest diffing isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const manifestFunctions = new Set([
+      'readManifests',
+      'readOneManifest',
+      'readEntrypoints',
+      'diffManifests',
+      'diffOneManifest',
+    ]);
+    expect(review.functions?.some((fn) => manifestFunctions.has(fn.name))).toBe(false);
+
+    const manifestModule = await inspectRepoSourceFile('src/core/reviewManifests.ts');
+    const readManifests = manifestModule.functions?.find((fn) => fn.name === 'readManifests');
+    const diffManifests = manifestModule.functions?.find((fn) => fn.name === 'diffManifests');
+    const diffOneManifest = manifestModule.functions?.find((fn) => fn.name === 'diffOneManifest');
+
+    expect(readManifests).toBeDefined();
+    expect(readManifests!.cyclomaticComplexity).toBeLessThanOrEqual(7);
+    expect(diffManifests).toBeDefined();
+    expect(diffManifests!.cyclomaticComplexity).toBeLessThanOrEqual(7);
+    expect(diffOneManifest).toBeDefined();
+    expect(diffOneManifest!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

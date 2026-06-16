@@ -14,13 +14,15 @@ import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
 import { isReviewBlockingDataflowRisk, isReviewBlockingFlow } from './reviewDataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
-import {
-  buildPublicExportFileSet,
-  readEntrypointFiles,
-  type ReviewPublicSurfaceManifest,
-} from './reviewPublicSurface.js';
+import { buildPublicExportFileSet } from './reviewPublicSurface.js';
 import { findRiskyFunctions } from './reviewRiskyFunctions.js';
 import { decideVerdict } from './reviewVerdict.js';
+import {
+  diffManifests,
+  readManifests,
+  scopeDependencyChanges,
+  type ManifestSnapshot,
+} from './reviewManifests.js';
 import { loadConfig } from '../utils/config.js';
 import type { GraphEvidenceSummary } from '../types/graph.js';
 import type { PrDiffReport } from '../types/prDiff.js';
@@ -28,7 +30,6 @@ import type { ReviewContractChange } from '../types/reviewContract.js';
 import type {
   ReviewCycle,
   ReviewDataflowRisk,
-  ReviewDependencyChange,
   ReviewFile,
   ReviewReport,
   ReviewTaintFlow,
@@ -379,14 +380,6 @@ async function scopePrDiffToPackage(
     prDiff.filesAdded.length + prDiff.filesRemoved.length + prDiff.filesModified.length;
 }
 
-function scopeDependencyChanges(
-  changes: ReviewDependencyChange[],
-  packageName: string | undefined,
-): ReviewDependencyChange[] {
-  if (!packageName) return changes;
-  return changes.filter((change) => change.workspace === packageName);
-}
-
 function applyIntent(report: ReviewReport, rawIntent?: string): void {
   const intent = parseIntent(rawIntent);
   if (intent) {
@@ -622,112 +615,6 @@ function classifyNewCycles(
   return out;
 }
 
-// ── manifest diffing ──────────────────────────────────────
-
-interface ManifestSnapshot extends ReviewPublicSurfaceManifest {
-  workspace: string;
-  manifestFile: string;
-  dependencies: Record<string, string>;
-  devDependencies: Record<string, string>;
-  entrypoints: Record<string, string>;
-}
-
-async function readManifests(rootPath: string): Promise<Map<string, ManifestSnapshot>> {
-  // Use detectWorkspaces to enumerate; if no workspaces just read the root.
-  const { detectWorkspaces } = await import('./monorepo.js');
-  const ws = await detectWorkspaces(rootPath);
-  const out = new Map<string, ManifestSnapshot>();
-  const all = ws.kind === 'none' ? [] : ws.packages;
-  if (all.length === 0) {
-    const root = await readOneManifest(rootPath, 'package.json', '');
-    if (root) out.set('package.json', root);
-    return out;
-  }
-  for (const p of all) {
-    const manifestRel = p.relativePath ? `${p.relativePath}/package.json` : 'package.json';
-    const dir = path.join(rootPath, p.relativePath);
-    const m = await readOneManifest(dir, manifestRel, p.name);
-    if (m) out.set(manifestRel, m);
-  }
-  return out;
-}
-
-async function readOneManifest(
-  dir: string,
-  manifestFile: string,
-  workspaceName: string,
-): Promise<ManifestSnapshot | null> {
-  const p = path.join(dir, 'package.json');
-  let raw: string;
-  try {
-    raw = await fs.readFile(p, 'utf-8');
-  } catch {
-    return null;
-  }
-  let parsed: {
-    dependencies?: Record<string, string>;
-    devDependencies?: Record<string, string>;
-    main?: unknown;
-    module?: unknown;
-    types?: unknown;
-    exports?: unknown;
-    bin?: unknown;
-  };
-  try {
-    parsed = JSON.parse(raw) as typeof parsed;
-  } catch {
-    return null;
-  }
-  const entrypoints = readEntrypoints(parsed);
-  return {
-    workspace: workspaceName,
-    manifestFile,
-    dependencies: parsed.dependencies ?? {},
-    devDependencies: parsed.devDependencies ?? {},
-    entrypoints,
-    entrypointFiles: readEntrypointFiles(parsed),
-  };
-}
-
-function readEntrypoints(parsed: {
-  main?: unknown;
-  module?: unknown;
-  types?: unknown;
-  exports?: unknown;
-  bin?: unknown;
-}): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const field of ['main', 'module', 'types', 'exports', 'bin'] as const) {
-    const value = parsed[field];
-    if (value === undefined) continue;
-    out[field] = entrypointValue(value);
-  }
-  return out;
-}
-
-function entrypointValue(value: unknown): string {
-  return typeof value === 'string' ? value : JSON.stringify(value);
-}
-
-function diffManifests(
-  base: Map<string, ManifestSnapshot>,
-  head: Map<string, ManifestSnapshot>,
-): ReviewDependencyChange[] {
-  const out: ReviewDependencyChange[] = [];
-  const allManifests = new Set<string>([...base.keys(), ...head.keys()]);
-  for (const manifestFile of allManifests) {
-    const b = base.get(manifestFile);
-    const h = head.get(manifestFile);
-    if (!b && !h) continue;
-    const change = diffOneManifest(b, h, manifestFile);
-    if (change.added.length || change.removed.length || change.bumped.length) {
-      out.push(change);
-    }
-  }
-  out.sort((a, b) => a.manifestFile.localeCompare(b.manifestFile));
-  return out;
-}
-
 function buildContractChanges(
   prDiff: PrDiffReport,
   baseGraph: CodeGraph,
@@ -844,45 +731,6 @@ function entrypointContractChanges(
   return out.sort((a, b) =>
     `${a.file}:${a.symbol ?? ''}`.localeCompare(`${b.file}:${b.symbol ?? ''}`),
   );
-}
-
-function diffOneManifest(
-  base: ManifestSnapshot | undefined,
-  head: ManifestSnapshot | undefined,
-  manifestFile: string,
-): ReviewDependencyChange {
-  const workspace = head?.workspace ?? base?.workspace ?? '';
-  const baseDeps = base?.dependencies ?? {};
-  const baseDev = base?.devDependencies ?? {};
-  const headDeps = head?.dependencies ?? {};
-  const headDev = head?.devDependencies ?? {};
-
-  const added: ReviewDependencyChange['added'] = [];
-  const removed: ReviewDependencyChange['removed'] = [];
-  const bumped: ReviewDependencyChange['bumped'] = [];
-
-  for (const [name, version] of Object.entries(headDeps)) {
-    if (!(name in baseDeps)) added.push({ name, version, kind: 'dep' });
-    else if (baseDeps[name] !== version)
-      bumped.push({ name, from: baseDeps[name], to: version, kind: 'dep' });
-  }
-  for (const [name, version] of Object.entries(baseDeps)) {
-    if (!(name in headDeps)) removed.push({ name, version, kind: 'dep' });
-  }
-  for (const [name, version] of Object.entries(headDev)) {
-    if (!(name in baseDev)) added.push({ name, version, kind: 'dev' });
-    else if (baseDev[name] !== version)
-      bumped.push({ name, from: baseDev[name], to: version, kind: 'dev' });
-  }
-  for (const [name, version] of Object.entries(baseDev)) {
-    if (!(name in headDev)) removed.push({ name, version, kind: 'dev' });
-  }
-
-  added.sort((a, b) => a.name.localeCompare(b.name));
-  removed.sort((a, b) => a.name.localeCompare(b.name));
-  bumped.sort((a, b) => a.name.localeCompare(b.name));
-
-  return { workspace, manifestFile, added, removed, bumped };
 }
 
 // ── git helpers (mirror prDiff.ts; kept private to keep coupling low) ──
