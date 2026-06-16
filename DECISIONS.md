@@ -849,3 +849,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move `reportAnalysisMarkdown` into `src/reporters/markdownAnalysisReporter.ts` and keep a compatibility re-export from `src/reporters/markdownReporter.ts`.
 - Consequences: Existing CLI and reporter imports keep working, markdown analysis output has focused coverage for project table fields, optional framework/dependency rows, sorted language rows, issue severity icons, omitted empty sections, and compatibility re-export behavior. `markdownReporter.ts` drops from 420 to 373 lines and CC 85 to 77; the new analysis module is 47 lines and CC 9.
 - Verification: `npm run test -- tests/reporters/markdownAnalysisReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownAnalysisReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Surface agent brief coordination hints in console
+
+- Status: accepted
+- Context: `agent-brief --format json` exposed `context.coordinationHints`, but the human console view only showed focus items and guardrails. Next-agent handoffs could miss session-memory and worktree coordination prompts unless users requested JSON.
+- Decision: Render a dedicated `Coordination` section in the console output when coordination hints are present, preserving the existing JSON schema.
+- Consequences: Console agent briefs now show hint labels, commands, and messages for remembered session context, current worktree checks, and swarm coordination without adding noise when no hints exist.
+- Verification: `npm run test -- tests/cli/agentBriefQualityScorecard.test.ts -t "coordination hints"`, `npm run test -- tests/core/agentBrief.test.ts tests/cli/agentBriefQualityScorecard.test.ts`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

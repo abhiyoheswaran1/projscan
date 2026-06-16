@@ -60,6 +60,7 @@ function printAgentBrief(report: AgentBriefReport): void {
   for (const item of report.focus) {
     printFocusItem(item);
   }
+  printCoordinationHints(report);
   console.log('');
   console.log(chalk.bold('Guardrails'));
   for (const guardrail of report.guardrails) {
@@ -72,6 +73,16 @@ function printFocusItem(item: AgentBriefItem): void {
   console.log(`- ${chalk.bold(`[${item.priority}] ${item.title}`)}${files}`);
   console.log(`  ${item.why}`);
   console.log(`  run: ${item.commands.join(' && ')}`);
+}
+
+function printCoordinationHints(report: AgentBriefReport): void {
+  if (report.context.coordinationHints.length === 0) return;
+  console.log('');
+  console.log(chalk.bold('Coordination'));
+  for (const hint of report.context.coordinationHints) {
+    console.log(`- ${hint.label}: ${hint.command}`);
+    console.log(`  ${hint.message}`);
+  }
 }
 
 function parseIntent(value: unknown): AgentBriefIntent {

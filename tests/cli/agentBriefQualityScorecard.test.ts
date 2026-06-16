@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { spawnCli } from '../helpers/cli.js';
+import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
@@ -40,6 +41,20 @@ test('agent-brief renders JSON', async () => {
   const report = JSON.parse(result.stdout);
   expect(report.intent).toBe('release');
   expect(report.focus.length).toBeGreaterThan(0);
+});
+
+test('agent-brief console surfaces coordination hints separately', async () => {
+  const { session } = await loadSession(tmp);
+  recordTouch(session, 'src/index.ts', 'explicit');
+  await saveSession(tmp, session);
+
+  const result = await runCli(['agent-brief', '--intent', 'next_agent', '--max-items', '2', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Coordination');
+  expect(result.stdout).toContain('Review remembered session touches');
+  expect(result.stdout).toContain('remembered session context');
+  expect(result.stdout).toContain('projscan session touched --format json');
 });
 
 test('quality-scorecard renders JSON', async () => {
