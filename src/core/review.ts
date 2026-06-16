@@ -8,29 +8,24 @@ import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
-import { computeTaint } from './taint.js';
-import { computeDataflow } from './dataflow.js';
 import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
-import { isReviewBlockingDataflowRisk, isReviewBlockingFlow } from './reviewDataflow.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { findRiskyFunctions } from './reviewRiskyFunctions.js';
 import { decideVerdict } from './reviewVerdict.js';
 import { buildContractChanges } from './reviewContractChanges.js';
 import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.js';
 import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
+import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
 import {
   diffManifests,
   readManifests,
   scopeDependencyChanges,
   type ManifestSnapshot,
 } from './reviewManifests.js';
-import { loadConfig } from '../utils/config.js';
 import type { PrDiffReport } from '../types/prDiff.js';
 import type {
   ReviewCycle,
-  ReviewDataflowRisk,
   ReviewReport,
-  ReviewTaintFlow,
   ReviewTier,
 } from '../types/review.js';
 
@@ -306,118 +301,6 @@ function applyIntent(report: ReviewReport, rawIntent?: string): void {
     };
     appendIntentToSummary(report.summary, analysis);
   }
-}
-
-async function computeNewTaintFlows(
-  rootPath: string,
-  baseGraph: CodeGraph,
-  headGraph: CodeGraph,
-  touchedFiles: Set<string>,
-): Promise<ReviewTaintFlow[]> {
-  const { config } = await loadConfig(rootPath);
-  const sources = config.taint?.sources ?? [];
-  const sinks = config.taint?.sinks ?? [];
-  const baseReport = computeTaint(baseGraph, { sources, sinks });
-  const headReport = computeTaint(headGraph, { sources, sinks });
-  const filterContext = { customSources: new Set(sources), customSinks: new Set(sinks) };
-  if (!headReport.available) return [];
-  const baseFlowKeys = new Set(
-    baseReport.available ? baseReport.flows.map(reviewTaintFlowKey) : [],
-  );
-  const out: ReviewTaintFlow[] = [];
-  for (const flow of headReport.flows) {
-    const key = reviewTaintFlowKey(flow);
-    if (baseFlowKeys.has(key)) continue;
-    // Restrict to flows the PR actually had a hand in: at least one file
-    // along the path must be in the change set. A genuinely-introduced flow
-    // necessarily touches a modified file (the new source-fn, sink-fn, or
-    // intermediate hop), so this is a strict refinement — never drops a
-    // real flow. Without it, a base-graph parse failure would surface every
-    // pre-existing head flow as "new" and avalanche the verdict to block.
-    if (!flow.files.some((f) => touchedFiles.has(f))) continue;
-    if (!isReviewBlockingFlow(flow, filterContext)) continue;
-    out.push({
-      sourceFn: flow.sourceFn,
-      sinkFn: flow.sinkFn,
-      source: flow.source,
-      sink: flow.sink,
-      pathLength: flow.path.length,
-      files: flow.files,
-    });
-  }
-  out.sort((a, b) => {
-    if (a.pathLength !== b.pathLength) return a.pathLength - b.pathLength;
-    return a.sourceFn.localeCompare(b.sourceFn);
-  });
-  return out;
-}
-
-function reviewTaintFlowKey(flow: {
-  sourceFn: string;
-  sinkFn: string;
-  source: string;
-  sink: string;
-}): string {
-  return `${flow.sourceFn}:${flow.sinkFn}:${flow.source}:${flow.sink}`;
-}
-
-async function computeNewDataflowRisks(
-  rootPath: string,
-  baseGraph: CodeGraph,
-  headGraph: CodeGraph,
-  touchedFiles: Set<string>,
-): Promise<ReviewDataflowRisk[]> {
-  const { config } = await loadConfig(rootPath);
-  const sources = config.taint?.sources ?? [];
-  const sinks = config.taint?.sinks ?? [];
-  const baseReport = computeDataflow(baseGraph, { sources, sinks });
-  const headReport = computeDataflow(headGraph, { sources, sinks });
-  const filterContext = { customSources: new Set(sources), customSinks: new Set(sinks) };
-  if (!headReport.available) return [];
-  const baseRiskKeys = new Set(
-    baseReport.available ? baseReport.risks.map(reviewDataflowRiskKey) : [],
-  );
-  const out: ReviewDataflowRisk[] = [];
-  for (const risk of headReport.risks) {
-    // Legacy taint flows already have their own stable review field. Keep
-    // this additive review list focused on deeper 3.0 dataflow findings.
-    if (risk.kind !== 'bridge') continue;
-    const key = reviewDataflowRiskKey(risk);
-    if (baseRiskKeys.has(key)) continue;
-    if (!risk.files.some((f) => touchedFiles.has(f))) continue;
-    if (!isReviewBlockingDataflowRisk(risk, filterContext)) continue;
-    out.push({
-      kind: risk.kind,
-      sourceFn: risk.sourceFn,
-      sinkFn: risk.sinkFn,
-      bridgeFn: risk.bridgeFn,
-      source: risk.source,
-      sink: risk.sink,
-      pathLength: risk.pathLength,
-      files: risk.files,
-      severity: risk.severity,
-      confidence: risk.confidence,
-    });
-  }
-  out.sort((a, b) => {
-    if (a.pathLength !== b.pathLength) return a.pathLength - b.pathLength;
-    return `${a.bridgeFn ?? ''}:${a.sourceFn}:${a.sinkFn}`.localeCompare(
-      `${b.bridgeFn ?? ''}:${b.sourceFn}:${b.sinkFn}`,
-    );
-  });
-  return out;
-}
-
-function reviewDataflowRiskKey(risk: {
-  kind: string;
-  bridgeFn?: string;
-  sourceFn: string;
-  sinkFn: string;
-  source: string;
-  sink: string;
-  files?: string[];
-}): string {
-  return `${risk.kind}:${risk.bridgeFn ?? ''}:${risk.sourceFn}:${risk.sinkFn}:${risk.source}:${risk.sink}:${risk.files?.join('|') ?? ''}`;
 }
 
 // ── cycle classification ──────────────────────────────────

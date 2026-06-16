@@ -223,6 +223,30 @@ describe('computeReview', () => {
     expect(scopeGraphToFiles!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps taint and dataflow diffing isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const flowFunctions = new Set([
+      'computeNewTaintFlows',
+      'reviewTaintFlowKey',
+      'computeNewDataflowRisks',
+      'reviewDataflowRiskKey',
+    ]);
+    expect(review.functions?.some((fn) => flowFunctions.has(fn.name))).toBe(false);
+
+    const flowModule = await inspectRepoSourceFile('src/core/reviewFlowDiffs.ts');
+    const computeNewTaintFlows = flowModule.functions?.find(
+      (fn) => fn.name === 'computeNewTaintFlows',
+    );
+    const computeNewDataflowRisks = flowModule.functions?.find(
+      (fn) => fn.name === 'computeNewDataflowRisks',
+    );
+
+    expect(computeNewTaintFlows).toBeDefined();
+    expect(computeNewTaintFlows!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+    expect(computeNewDataflowRisks).toBeDefined();
+    expect(computeNewDataflowRisks!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
