@@ -233,6 +233,38 @@ export async function PATCH(request: Request) {
     );
   });
 
+  it('treats Next route request.url as a framework request source without flagging helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'lookup'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'lookup', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function GET(request: Request) {
+  const href = request.url;
+  return db.query(href);
+}
+
+export function helper(request: { url: string }) {
+  return db.query(request.url);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceFn: 'GET', source: 'request.url', sink: 'query' }),
+      ]),
+    );
+    expect(
+      report.risks.find(
+        (risk) => risk.sourceFn === 'helper' && risk.source === 'request.url',
+      ),
+    ).toBeUndefined();
+  });
+
   it('treats Hono route context request JSON as a framework request source', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'hono.ts'),

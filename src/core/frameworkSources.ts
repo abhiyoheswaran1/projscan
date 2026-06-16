@@ -5,6 +5,8 @@ const NEXT_ROUTE_SOURCE_BY_CALLEE = new Map<string, string>([
   ['arrayBuffer', 'request.arrayBuffer'],
 ]);
 
+const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([['url', 'request.url']]);
+
 const HONO_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['json', 'hono.req.json'],
   ['parseBody', 'hono.req.parseBody'],
@@ -115,6 +117,7 @@ const KOA_HANDLER_METHODS = new Set([
 
 export const FRAMEWORK_REQUEST_SOURCES = [
   ...NEXT_ROUTE_SOURCE_BY_CALLEE.values(),
+  ...NEXT_ROUTE_SOURCE_BY_REFERENCE.values(),
   ...HONO_REQUEST_SOURCE_BY_MEMBER.values(),
   ...EXPRESS_REQUEST_SOURCE_BY_REFERENCE.values(),
   ...EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
@@ -139,6 +142,7 @@ export function frameworkRequestSourceForFunction(
     file,
     functionName,
     memberCallSites,
+    memberReferences,
     parameters,
     enabledSources,
   );
@@ -183,16 +187,44 @@ function nextRouteRequestSource(
   file: string,
   functionName: string,
   memberCallSites: string[],
+  memberReferences: string[],
   parameters: string[],
   enabledSources: Set<string>,
 ): string | null {
   if (!isNextRouteHandler(file, functionName)) return null;
-  if (parameters.length === 0 || memberCallSites.length === 0) return null;
+  if (parameters.length === 0 || (memberCallSites.length === 0 && memberReferences.length === 0)) {
+    return null;
+  }
 
-  const members = new Set(memberCallSites);
+  return (
+    nextRouteCallSource(parameters, memberCallSites, enabledSources) ??
+    nextRouteReferenceSource(parameters, memberReferences, enabledSources)
+  );
+}
+
+function nextRouteCallSource(
+  parameters: string[],
+  memberCallSites: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const calls = new Set(memberCallSites);
   for (const parameter of parameters) {
     for (const [callee, source] of NEXT_ROUTE_SOURCE_BY_CALLEE) {
-      if (enabledSources.has(source) && members.has(parameter + '.' + callee)) return source;
+      if (enabledSources.has(source) && calls.has(parameter + '.' + callee)) return source;
+    }
+  }
+  return null;
+}
+
+function nextRouteReferenceSource(
+  parameters: string[],
+  memberReferences: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const references = new Set(memberReferences);
+  for (const parameter of parameters) {
+    for (const [reference, source] of NEXT_ROUTE_SOURCE_BY_REFERENCE) {
+      if (enabledSources.has(source) && references.has(parameter + '.' + reference)) return source;
     }
   }
   return null;

@@ -1241,3 +1241,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Parse `[dependency-groups]` arrays from `pyproject.toml` as dev-scope declared dependency evidence and ignore `{ include-group = "..." }` references as group composition, not package requirements.
 - Consequences: `projscan upgrade` can preview Python packages declared in dependency groups and report `declaredScope: "dev"` without adding PyPI/network lookup or changing output shape.
 - Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "PEP 735 dependency groups"` failed before the parser change, then passed. `npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- file src/core/languages/pythonManifests.ts --format json`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed; only the expected manual release sign-off gate remained.
+
+## 2026-06-16: Add Next route URL dataflow source
+
+- Status: accepted
+- Context: Next route handlers use the Web `Request`/`NextRequest` request object, whose URL can carry user-controlled query/path input, but framework dataflow only recognized route body-reader calls.
+- Decision: Add `request.url` as a qualified Next route request source only for exported HTTP method handlers in `app/**/route.*` files.
+- Consequences: `projscan_dataflow` and review dataflow can flag Next route URL strings reaching default database sinks while helper functions in the same route file that read a shaped `{ url }` object stay quiet. Public output shape stays unchanged; this only adds a source string when the narrow pattern exists.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Next route request.url"` failed before the source was added, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

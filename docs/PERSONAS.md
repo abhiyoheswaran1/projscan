@@ -2367,3 +2367,48 @@ composition entries remain group references, not declared packages.
 
 Kept change: one pyproject parser helper path, parser and preview regressions,
 focused docs, this persona note, and existing Python upgrade verification.
+
+## Fifty-Eighth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: Next route handlers receive a Web `Request` or `NextRequest`, and the
+request URL is often used for query-driven data access. A useful signal needs
+the same precision as earlier framework sources: route-file gating, exported
+HTTP method gating, and qualified member evidence.
+
+Smallest fix: add `request.url` as a Next route source backed by
+`memberReferences`. Keep non-HTTP helper functions in the same `route.ts` file
+quiet, and keep output schemas unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/dataflow.test.ts -t "Next route request.url"
+npm run test -- tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Next Route URL Source
+
+Delete-list after this slice:
+
+- Do not treat arbitrary `.url` reads or helper `request.url` reads as request
+  input outside exported Next route HTTP handlers.
+- Do not broaden route-file matching beyond existing `app/**/route.*` and
+  `src/app/**/route.*` conventions.
+- Do not change sink defaults, custom source/sink override behavior, output
+  schemas, dependencies, package metadata, release actions, or version numbers.
+
+Reviewer edge case: a helper in the same route file that accepts a
+`{ url: string }` object should stay quiet.
+
+Kept change: one qualified Next source string, one source-to-sink fixture with a
+helper lookalike, focused docs, this persona note, and existing dataflow
+verification.
