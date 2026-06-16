@@ -2,8 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
 import { parsePythonLockfile, readPythonLockfile } from './pythonLockfiles.js';
+import { splitPep508 } from './pythonPep508.js';
 import { hasPythonProjectEvidence } from './pythonProjectEvidence.js';
 import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
+import { readRootRequirementEvidence } from './pythonRequirements.js';
 
 export {
   parseCondaLock,
@@ -12,6 +14,8 @@ export {
   parsePoetryLock,
   parseUvLock,
 } from './pythonLockfiles.js';
+export { splitPep508 } from './pythonPep508.js';
+export { parseRequirements } from './pythonRequirements.js';
 export type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
 
 /**
@@ -19,9 +23,6 @@ export type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './py
  * parser - regex-based extraction is good enough for the 80% case where
  * projects use standard layouts. More sophisticated parsing is deferred.
  */
-
-const REQUIREMENTS_FILE_RE = /^requirements(-.*)?\.txt$/i;
-const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 
 export async function detectPythonProject(
   rootPath: string,
@@ -54,40 +55,10 @@ export async function detectPythonProject(
     declared.push(...parseSetupPyInstallRequires(setupPyContent));
   }
 
-  // Read requirements*.txt at repo root.
-  const reqFiles = files
-    .filter(
-      (f) =>
-        (!f.directory || f.directory === '.') &&
-        REQUIREMENTS_FILE_RE.test(path.basename(f.relativePath)),
-    )
-    .map((f) => f.relativePath);
-
-  for (const rel of reqFiles) {
-    const content = await tryRead(path.join(rootPath, rel));
-    if (content === null) continue;
-    manifestFiles.push(rel);
-    const isDev = /requirements(-test|-dev|-lint)\.txt$/i.test(rel);
-    const deps = parseRequirements(content, rel, isDev ? 'dev' : 'main');
-    declared.push(...deps);
-    locked.push(...deps.flatMap(requirementPinToLockedDep));
-  }
-
-  // Read constraints*.txt at repo root as lock/current-version evidence only.
-  const constraintFiles = files
-    .filter(
-      (f) =>
-        (!f.directory || f.directory === '.') &&
-        CONSTRAINTS_FILE_RE.test(path.basename(f.relativePath)),
-    )
-    .map((f) => f.relativePath);
-
-  for (const rel of constraintFiles) {
-    const content = await tryRead(path.join(rootPath, rel));
-    if (content === null) continue;
-    const deps = parseRequirements(content, rel, 'main');
-    locked.push(...deps.flatMap(requirementPinToLockedDep));
-  }
+  const requirementEvidence = await readRootRequirementEvidence(rootPath, files);
+  manifestFiles.push(...requirementEvidence.manifestFiles);
+  declared.push(...requirementEvidence.declared);
+  locked.push(...requirementEvidence.locked);
 
   // Infer package roots from __init__.py placement if none declared.
   if (roots.length === 0) {
@@ -387,52 +358,6 @@ function parseSetupCfg(content: string): PythonDeclaredDep[] {
     out.push({ name, versionSpec, source: 'setup.cfg', line: baseLine + i + 1, scope: 'main' });
   }
   return out;
-}
-
-// ── requirements.txt ──────────────────────────────────────────
-
-export function parseRequirements(
-  content: string,
-  sourceFile: string,
-  scope: 'main' | 'dev',
-): PythonDeclaredDep[] {
-  const out: PythonDeclaredDep[] = [];
-  const lines = content.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    const stripped = raw.replace(/\s+#.*$/, '').trim();
-    if (!stripped || stripped.startsWith('#')) continue;
-    if (stripped.startsWith('-')) continue; // -r, -e, -c, etc.
-    const { name, versionSpec } = splitPep508(stripped);
-    if (!name) continue;
-    out.push({ name, versionSpec, source: sourceFile, line: i + 1, scope });
-  }
-  return out;
-}
-
-function exactVersionFromSpec(version: string): string | null {
-  return /^={2,3}\s*([^\s,;]+)/.exec(version)?.[1] ?? null;
-}
-
-function requirementPinToLockedDep(dep: PythonDeclaredDep): PythonLockedDep[] {
-  const version = exactVersionFromSpec(dep.versionSpec);
-  if (!version) return [];
-  return [{ name: dep.name, version, source: dep.source, line: dep.line }];
-}
-
-// ── PEP 508 splitter ──────────────────────────────────────────
-
-export function splitPep508(spec: string): { name: string; versionSpec: string } {
-  // Strip environment markers: `foo; python_version < "3.10"`.
-  const semi = spec.indexOf(';');
-  let core = semi >= 0 ? spec.slice(0, semi) : spec;
-  // Strip extras: `foo[extra1,extra2]`.
-  core = core.replace(/\[[^\]]*\]/, '');
-  core = core.trim();
-  // Name is up to the first version-spec character or whitespace.
-  const m = /^([A-Za-z_][\w.-]*)(.*)$/.exec(core);
-  if (!m) return { name: '', versionSpec: '' };
-  return { name: m[1].toLowerCase(), versionSpec: m[2].trim() };
 }
 
 // ── __init__.py-walk fallback ─────────────────────────────────

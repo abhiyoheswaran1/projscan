@@ -2596,3 +2596,50 @@ as Python project evidence, while nested manifests remain out of scope.
 Kept change: one focused project-evidence module, one maintainability
 regression, existing Python behavior coverage, this persona note, and no public
 schema change.
+
+## Sixty-Third Slice Decision
+
+Selected persona: OSS Maintainer Reviewing Hotspots.
+
+Reason: root requirements and constraints handling is a stable public behavior,
+but it made the Python manifest detector do file selection, file reads,
+dependency parsing, and lock-evidence conversion inline. A reviewer should be
+able to inspect that behavior without reading the whole manifest parser.
+
+Smallest fix: move root requirements/constraints evidence into a focused module
+and move the shared PEP 508 splitter into a tiny parser module. Keep
+`pythonManifests.ts` compatibility re-exports so existing imports keep working.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "root requirements evidence"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonRequirements.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify npm run typecheck
+git diff --check
+```
+
+## Review Guardrails: Python Requirements Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change requirements/constraints parsing semantics, lockfile parsing,
+  Python project detection rules, or upgrade preview output fields.
+- Do not add PyPI/network lookup, install Python tooling, or add dependencies.
+- Do not change package metadata, release actions, or version numbers.
+
+Reviewer edge case: root pinned constraints continue to provide current-version
+evidence without declaring dependencies, and `parseRequirements` /
+`splitPep508` remain importable from `pythonManifests.ts`.
+
+Kept change: one focused requirements evidence module, one tiny PEP 508 splitter
+module, compatibility re-exports, one maintainability regression, this persona
+note, and existing Python behavior coverage.

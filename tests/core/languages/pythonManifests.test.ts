@@ -96,6 +96,30 @@ describe('python manifest maintainability', () => {
     expect(hasPythonProjectEvidence).toBeDefined();
     expect(hasPythonProjectEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps root requirements evidence reading out of the manifest detector', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('REQUIREMENTS_FILE_RE');
+    expect(manifestSource).not.toContain('CONSTRAINTS_FILE_RE');
+    expect(manifestSource).not.toContain('function parseRequirements');
+    expect(manifestSource).not.toContain('function requirementPinToLockedDep');
+
+    const requirementSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonRequirements.ts'),
+      'utf8',
+    );
+    expect(requirementSource).not.toContain("from './pythonManifests.js'");
+
+    const manifestInspection = await inspectRepoSourceFile('src/core/languages/pythonManifests.ts');
+    const detectPythonProject = manifestInspection.functions?.find(
+      (fn) => fn.name === 'detectPythonProject',
+    );
+    expect(detectPythonProject).toBeDefined();
+    expect(detectPythonProject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
+  });
 });
 
 describe('splitPep508', () => {

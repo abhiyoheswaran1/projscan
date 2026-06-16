@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Python requirements evidence reader
+
+- Status: accepted
+- Context: `detectPythonProject` still mixed root `requirements*.txt` and `constraints*.txt` filtering, file reads, dependency parsing, and pinned-version lock evidence into the main manifest detector.
+- Decision: Move root requirements/constraints evidence reading into `src/core/languages/pythonRequirements.ts`, move the shared PEP 508 splitter into `pythonPep508.ts`, and keep compatibility re-exports from `pythonManifests.ts`.
+- Consequences: Python dependency parsing behavior, public imports, and upgrade output stay unchanged, while `detectPythonProject` becomes a smaller orchestration function.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "root requirements evidence"` and the focused Python manifest/upgrade verification matrix.
+
 ## 2026-06-16: Extract Python project evidence gate
 
 - Status: accepted
