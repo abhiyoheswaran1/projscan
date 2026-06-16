@@ -212,6 +212,18 @@ describe('loadConfig', () => {
 });
 
 describe('applyConfigToIssues', () => {
+  it('keeps issue rule application out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyConfigToIssues');
+    expect(configSource).not.toContain('function isRuleDisabled');
+
+    const issueRulesSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configIssueRules.ts'),
+      'utf8',
+    );
+    expect(issueRulesSource).not.toContain("from './config.js'");
+  });
+
   it('drops issues matching disableRules exactly', () => {
     const issues = [issue('missing-prettier'), issue('missing-readme')];
     const out = applyConfigToIssues(issues, { disableRules: ['missing-prettier'] });

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract config issue-rule application
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned `applyConfigToIssues` and disable-rule matching, mixing issue filtering/remapping policy with config file loading and normalization.
+- Decision: Move issue-rule application into `src/utils/configIssueRules.ts` and re-export `applyConfigToIssues` from `src/utils/config.ts` for compatibility.
+- Consequences: Existing imports from `config.ts` stay valid, exact and wildcard disable-rule behavior stays unchanged, and issue severity remapping remains exact-id based.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "issue rule application"` and focused config/issue-trust verification.
+
 ## 2026-06-16: Extract severity override config normalization
 
 - Status: accepted

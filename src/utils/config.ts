@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Issue } from '../types/common.js';
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
 import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
@@ -8,6 +7,8 @@ import { applyReportPolicies } from './configReportPolicies.js';
 import { applyScan } from './configScan.js';
 import { applySeverityOverrides } from './configSeverity.js';
 import { applyTaint } from './configTaint.js';
+
+export { applyConfigToIssues } from './configIssueRules.js';
 
 const CONFIG_CANDIDATES = ['.projscanrc.json', '.projscanrc'];
 const PKG_KEY = 'projscan';
@@ -99,30 +100,4 @@ function applyDisableRules(obj: Record<string, unknown>, out: ProjscanConfig): v
   out.disableRules = obj.disableRules.filter(
     (v): v is string => typeof v === 'string' && v.length > 0,
   );
-}
-
-/**
- * Apply config rules to a list of issues:
- * - drop issues whose id matches any disableRules entry (exact match or prefix with trailing "*")
- * - remap severities via severityOverrides (exact id match wins)
- */
-export function applyConfigToIssues(issues: Issue[], config: ProjscanConfig): Issue[] {
-  const disabled = config.disableRules ?? [];
-  const overrides = config.severityOverrides ?? {};
-
-  return issues
-    .filter((issue) => !isRuleDisabled(issue.id, disabled))
-    .map((issue) =>
-      overrides[issue.id] && overrides[issue.id] !== issue.severity
-        ? { ...issue, severity: overrides[issue.id] }
-        : issue,
-    );
-}
-
-function isRuleDisabled(id: string, disabled: string[]): boolean {
-  for (const rule of disabled) {
-    if (rule === id) return true;
-    if (rule.endsWith('*') && id.startsWith(rule.slice(0, -1))) return true;
-  }
-  return false;
 }

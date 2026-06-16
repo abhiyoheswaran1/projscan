@@ -3554,3 +3554,53 @@ matches should still remap issue severity later in `applyConfigToIssues`.
 Kept change: one focused severity config module, one maintainability
 regression, existing config/issue-trust coverage, this persona note, and no
 public schema change.
+
+## Eighty-Third Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: agents often import `applyConfigToIssues` through the config utility
+while using issue lists as handoff evidence. Moving the rule-application logic
+behind the same public export keeps the contract stable and narrows future
+review of disable-rule and severity-remap behavior.
+
+Smallest fix: move `applyConfigToIssues` and its wildcard matcher into
+`configIssueRules.ts`, then re-export `applyConfigToIssues` from `config.ts`.
+Preserve exact id matches, trailing-`*` prefix disables, and exact-id severity
+overrides.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "issue rule application"
+npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configIssueRules.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+git diff --check
+```
+
+## Review Guardrails: Config Issue-Rule Extraction
+
+Delete-list after this slice:
+
+- Do not change the public `applyConfigToIssues` import path from
+  `src/utils/config.ts`.
+- Do not change exact disable-rule matching, trailing-wildcard prefix matching,
+  exact-id severity override matching, issue IDs, or issue output shape.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: `large-*` should still suppress `large-utils-dir`, an
+exact disabled id should still suppress only that issue, and severity overrides
+should still clone only remapped issues.
+
+Kept change: one focused issue-rule module, one maintainability regression,
+existing config/issue-trust coverage, this persona note, and no public API
+break.
