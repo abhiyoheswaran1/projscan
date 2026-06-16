@@ -64,6 +64,16 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps coupling rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportCouplingMarkdown')).toBe(false);
+
+    const couplingReporter = await inspectRepoSourceFile('src/reporters/markdownCouplingReporter.ts');
+    const renderer = couplingReporter.functions?.find((fn) => fn.name === 'reportCouplingMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {

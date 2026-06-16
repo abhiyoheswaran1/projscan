@@ -1,5 +1,4 @@
 import type {
-  CouplingReport,
   Issue,
   FileExplanation,
   ArchitectureLayer,
@@ -24,6 +23,7 @@ export { reportAuditMarkdown } from './markdownAuditReporter.js';
 export { reportAnalysisMarkdown } from './markdownAnalysisReporter.js';
 export { reportPrDiffMarkdown } from './markdownPrDiffReporter.js';
 export { reportCoverageMarkdown } from './markdownCoverageReporter.js';
+export { reportCouplingMarkdown } from './markdownCouplingReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -198,48 +198,6 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
     lines.push(
       `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${cc} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
     );
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportCouplingMarkdown(report: CouplingReport): void {
-  const lines: string[] = ['# Coupling + Cycles', ''];
-  const xpkg = report.totalCrossPackageEdges;
-  lines.push(
-    `_${report.totalFiles} file(s) in graph · ${report.totalCycles} cycle(s)${xpkg > 0 ? ` · ${xpkg} cross-package edge(s)` : ''}_`,
-    '',
-  );
-
-  if (report.cycles.length > 0) {
-    lines.push('## Import cycles', '');
-    for (const c of report.cycles) {
-      lines.push(`- **${c.size}-file cycle:** ${c.files.map((f) => `\`${f}\``).join(' → ')} → …`);
-    }
-    lines.push('');
-  }
-
-  if (report.crossPackageEdges.length > 0) {
-    lines.push('## Cross-package edges', '');
-    lines.push('| From package | From file | To package | To file |');
-    lines.push('| --- | --- | --- | --- |');
-    for (const e of report.crossPackageEdges) {
-      lines.push(
-        `| \`${e.from.package}\` | \`${e.from.file}\` | \`${e.to.package}\` | \`${e.to.file}\` |`,
-      );
-    }
-    lines.push('');
-  }
-
-  if (report.files.length > 0) {
-    lines.push('## Files', '');
-    lines.push('| File | Fan-in | Fan-out | Instability |');
-    lines.push('| --- | ---: | ---: | ---: |');
-    for (const f of report.files) {
-      lines.push(
-        `| \`${f.relativePath}\` | ${f.fanIn} | ${f.fanOut} | ${f.instability.toFixed(2)} |`,
-      );
-    }
   }
 
   console.log(lines.join('\n'));
