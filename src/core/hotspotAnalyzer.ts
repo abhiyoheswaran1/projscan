@@ -47,6 +47,26 @@ export interface HotspotOptions {
   graph?: CodeGraph;
 }
 
+export interface BuildFileHotspotInput {
+  file: FileEntry;
+  churn: number;
+  distinctAuthors: number;
+  authorCommits?: Map<string, number>;
+  lastTimestampMs?: number | null;
+  lineCount?: number;
+  issueIds?: string[];
+  nowMs: number;
+  coverage?: number | null;
+  complexity?: number | null;
+}
+
+interface AuthorHotspotSummary {
+  topAuthors: AuthorShare[];
+  primaryAuthor: string | null;
+  primaryAuthorShare: number;
+  busFactorOne: boolean;
+}
+
 export async function analyzeHotspots(
   rootPath: string,
   files: FileEntry[],
@@ -94,70 +114,23 @@ export async function analyzeHotspots(
   const now = Date.now();
   const hotspots: FileHotspot[] = candidates.map((file) => {
     const churnEntry = churnMap.get(file.relativePath);
-    const churn = churnEntry?.churn ?? 0;
-    const authors = churnEntry?.authors.size ?? 0;
-    const lastTs = churnEntry?.lastTimestampMs ?? null;
-    const daysSinceLastChange =
-      lastTs === null ? null : Math.max(0, Math.floor((now - lastTs) / (1000 * 60 * 60 * 24)));
-
-    const lines = lineCounts.get(file.relativePath) ?? estimateLines(file.sizeBytes);
-    const issueIds = issueIndex.get(file.relativePath) ?? [];
-
-    const topAuthors = rankAuthors(churnEntry?.authorCommits);
-    const primaryAuthor = topAuthors[0]?.author ?? null;
-    const primaryAuthorShare = topAuthors[0]?.share ?? 0;
-    const busFactorOne = churn >= 3 && primaryAuthorShare >= 0.8;
-
-    const coverage = options.coverage?.get(file.relativePath);
-    const coverageValue = typeof coverage === 'number' ? coverage : null;
 
     // Prefer AST cyclomatic complexity when the graph parsed this file.
     // Files in the graph but with parseOk:false fall back to LOC too - a
     // failed parse means we can't trust the (zero) CC value.
     const graphEntry = options.graph?.files.get(file.relativePath);
-    const cc = graphEntry?.parseOk ? graphEntry.cyclomaticComplexity : null;
-
-    const riskScore = computeRiskScore({
-      churn,
-      lines,
-      complexity: cc,
-      authors,
-      daysSinceLastChange,
-      issueCount: issueIds.length,
-      busFactorOne,
-      coverage: coverageValue,
+    return buildFileHotspot({
+      file,
+      churn: churnEntry?.churn ?? 0,
+      distinctAuthors: churnEntry?.authors.size ?? 0,
+      authorCommits: churnEntry?.authorCommits,
+      lastTimestampMs: churnEntry?.lastTimestampMs ?? null,
+      lineCount: lineCounts.get(file.relativePath),
+      issueIds: issueIndex.get(file.relativePath) ?? [],
+      nowMs: now,
+      coverage: options.coverage?.get(file.relativePath),
+      complexity: graphEntry?.parseOk ? graphEntry.cyclomaticComplexity : null,
     });
-
-    const reasons = buildReasons({
-      churn,
-      lines,
-      complexity: cc,
-      authors,
-      daysSinceLastChange,
-      issueCount: issueIds.length,
-      busFactorOne,
-      primaryAuthor,
-      coverage: coverageValue,
-    });
-
-    return {
-      relativePath: file.relativePath,
-      churn,
-      distinctAuthors: authors,
-      daysSinceLastChange,
-      lineCount: lines,
-      cyclomaticComplexity: cc,
-      sizeBytes: file.sizeBytes,
-      issueCount: issueIds.length,
-      issueIds,
-      riskScore,
-      reasons,
-      primaryAuthor,
-      primaryAuthorShare,
-      busFactorOne,
-      topAuthors,
-      coverage: coverageValue,
-    };
   });
 
   hotspots.sort((a, b) => b.riskScore - a.riskScore);
@@ -179,6 +152,86 @@ export async function analyzeHotspots(
     hotspots: top,
     totalFilesRanked: ranked.length,
   };
+}
+
+export function buildFileHotspot(i: BuildFileHotspotInput): FileHotspot {
+  const daysSinceLastChange = daysSinceLastChangeFrom(i.nowMs, i.lastTimestampMs);
+  const lines = lineCountOrEstimate(i.lineCount, i.file.sizeBytes);
+  const issueIds = i.issueIds ?? [];
+  const authorSummary = summarizeHotspotAuthors(i.churn, i.authorCommits);
+  const coverageValue = numberOrNull(i.coverage);
+  const cc = numberOrNull(i.complexity);
+
+  const riskScore = computeRiskScore({
+    churn: i.churn,
+    lines,
+    complexity: cc,
+    authors: i.distinctAuthors,
+    daysSinceLastChange,
+    issueCount: issueIds.length,
+    busFactorOne: authorSummary.busFactorOne,
+    coverage: coverageValue,
+  });
+
+  const reasons = buildReasons({
+    churn: i.churn,
+    lines,
+    complexity: cc,
+    authors: i.distinctAuthors,
+    daysSinceLastChange,
+    issueCount: issueIds.length,
+    busFactorOne: authorSummary.busFactorOne,
+    primaryAuthor: authorSummary.primaryAuthor,
+    coverage: coverageValue,
+  });
+
+  return {
+    relativePath: i.file.relativePath,
+    churn: i.churn,
+    distinctAuthors: i.distinctAuthors,
+    daysSinceLastChange,
+    lineCount: lines,
+    cyclomaticComplexity: cc,
+    sizeBytes: i.file.sizeBytes,
+    issueCount: issueIds.length,
+    issueIds,
+    riskScore,
+    reasons,
+    primaryAuthor: authorSummary.primaryAuthor,
+    primaryAuthorShare: authorSummary.primaryAuthorShare,
+    busFactorOne: authorSummary.busFactorOne,
+    topAuthors: authorSummary.topAuthors,
+    coverage: coverageValue,
+  };
+}
+
+function daysSinceLastChangeFrom(nowMs: number, lastTimestampMs: number | null | undefined) {
+  const lastTs = lastTimestampMs ?? null;
+  if (lastTs === null) return null;
+  return Math.max(0, Math.floor((nowMs - lastTs) / (1000 * 60 * 60 * 24)));
+}
+
+function lineCountOrEstimate(lineCount: number | undefined, sizeBytes: number): number {
+  return lineCount ?? estimateLines(sizeBytes);
+}
+
+function summarizeHotspotAuthors(
+  churn: number,
+  authorCommits: Map<string, number> | undefined,
+): AuthorHotspotSummary {
+  const topAuthors = rankAuthors(authorCommits);
+  const primaryAuthor = topAuthors[0]?.author ?? null;
+  const primaryAuthorShare = topAuthors[0]?.share ?? 0;
+  return {
+    topAuthors,
+    primaryAuthor,
+    primaryAuthorShare,
+    busFactorOne: churn >= 3 && primaryAuthorShare >= 0.8,
+  };
+}
+
+function numberOrNull(value: number | null | undefined): number | null {
+  return typeof value === 'number' ? value : null;
 }
 
 async function markAcceptedHotspots(rootPath: string, top: FileHotspot[]): Promise<void> {

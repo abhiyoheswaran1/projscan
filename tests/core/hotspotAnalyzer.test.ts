@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
+import { buildFileHotspot, computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
+import type { FileEntry } from '../../src/types.js';
+
+const fileEntry: FileEntry = {
+  relativePath: 'src/hot.ts',
+  absolutePath: '/repo/src/hot.ts',
+  extension: '.ts',
+  sizeBytes: 4000,
+  directory: 'src',
+};
 
 describe('computeRiskScore', () => {
   it('returns 0 for untouched files with no issues', () => {
@@ -164,5 +173,77 @@ describe('computeRiskScore', () => {
       issueCount: 0,
     });
     expect(withFallback).toBe(withoutComplexityField);
+  });
+});
+
+describe('buildFileHotspot', () => {
+  const nowMs = Date.UTC(2026, 5, 16);
+
+  it('combines churn, author concentration, issues, coverage, and complexity evidence', () => {
+    const hotspot = buildFileHotspot({
+      file: fileEntry,
+      churn: 5,
+      distinctAuthors: 2,
+      authorCommits: new Map([
+        ['owner@example.com', 4],
+        ['peer@example.com', 1],
+      ]),
+      lastTimestampMs: nowMs - 2 * 24 * 60 * 60 * 1000,
+      lineCount: 120,
+      issueIds: ['issue-1'],
+      nowMs,
+      coverage: 35.2,
+      complexity: 31,
+    });
+
+    expect(hotspot).toMatchObject({
+      relativePath: 'src/hot.ts',
+      churn: 5,
+      distinctAuthors: 2,
+      daysSinceLastChange: 2,
+      lineCount: 120,
+      cyclomaticComplexity: 31,
+      issueCount: 1,
+      issueIds: ['issue-1'],
+      primaryAuthor: 'owner@example.com',
+      primaryAuthorShare: 0.8,
+      busFactorOne: true,
+      coverage: 35.2,
+    });
+    expect(hotspot.topAuthors).toEqual([
+      { author: 'owner@example.com', commits: 4, share: 0.8 },
+      { author: 'peer@example.com', commits: 1, share: 0.2 },
+    ]);
+    expect(hotspot.reasons).toEqual(
+      expect.arrayContaining([
+        '5 commits',
+        'high complexity (CC 31)',
+        '2 contributors',
+        '1 open issue',
+        'changed this week',
+        'bus factor 1 (owner)',
+        'low coverage (35%)',
+      ]),
+    );
+    expect(hotspot.riskScore).toBeGreaterThan(0);
+  });
+
+  it('falls back to estimated line count and null complexity for unparsed files', () => {
+    const hotspot = buildFileHotspot({
+      file: fileEntry,
+      churn: 1,
+      distinctAuthors: 0,
+      lastTimestampMs: null,
+      nowMs,
+    });
+
+    expect(hotspot.lineCount).toBe(100);
+    expect(hotspot.cyclomaticComplexity).toBeNull();
+    expect(hotspot.coverage).toBeNull();
+    expect(hotspot.primaryAuthor).toBeNull();
+    expect(hotspot.primaryAuthorShare).toBe(0);
+    expect(hotspot.busFactorOne).toBe(false);
+    expect(hotspot.issueIds).toEqual([]);
+    expect(hotspot.riskScore).toBeGreaterThan(0);
   });
 });

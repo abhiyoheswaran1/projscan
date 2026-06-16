@@ -384,28 +384,45 @@ export function parsePoetryLock(content: string, sourceFile: string): PythonLock
 }
 
 export function parsePipfileLock(content: string, sourceFile: string): PythonLockedDep[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return [];
-  }
+  const parsed = parseJsonObject(content);
   if (!parsed || typeof parsed !== 'object') return [];
 
   const out: PythonLockedDep[] = [];
   for (const sectionName of ['default', 'develop']) {
     const section = (parsed as Record<string, unknown>)[sectionName];
-    if (!section || typeof section !== 'object') continue;
-    for (const [name, value] of Object.entries(section as Record<string, unknown>)) {
-      if (!value || typeof value !== 'object') continue;
-      const version = (value as Record<string, unknown>).version;
-      if (typeof version !== 'string') continue;
-      const exact = /^={2,3}\s*([^\s,;]+)/.exec(version);
-      if (!exact) continue;
-      out.push({ name, version: exact[1], source: sourceFile, line: 0 });
-    }
+    out.push(...parsePipfileLockSection(section, sourceFile));
   }
   return out;
+}
+
+function parseJsonObject(content: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function parsePipfileLockSection(section: unknown, sourceFile: string): PythonLockedDep[] {
+  if (!section || typeof section !== 'object') return [];
+  const out: PythonLockedDep[] = [];
+  for (const [name, value] of Object.entries(section as Record<string, unknown>)) {
+    const version = exactPipfileLockVersion(value);
+    if (version) out.push({ name, version, source: sourceFile, line: 0 });
+  }
+  return out;
+}
+
+function exactPipfileLockVersion(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null;
+  const version = (value as Record<string, unknown>).version;
+  if (typeof version !== 'string') return null;
+  return exactVersionFromSpec(version);
+}
+
+function exactVersionFromSpec(version: string): string | null {
+  return /^={2,3}\s*([^\s,;]+)/.exec(version)?.[1] ?? null;
 }
 
 function requirementPinToLockedDep(dep: PythonDeclaredDep): PythonLockedDep[] {

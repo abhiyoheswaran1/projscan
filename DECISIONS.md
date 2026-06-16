@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Isolate per-file hotspot assembly behind a tested helper
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` remains a high-churn, high-complexity roadmap maintainability target. The dense per-file mapping inside `analyzeHotspots` combined churn, author, issue, coverage, complexity, reason, and score assembly in one block, making reviewer checks harder than necessary.
+- Decision: Extract the per-file hotspot object assembly into `buildFileHotspot` and cover it directly with deterministic unit tests while preserving the existing scoring, reason text, ranking, and report schema.
+- Consequences: Hotspot behavior remains unchanged, but future changes to author concentration, coverage penalties, or complexity fallback can be tested without constructing a git-backed repository fixture.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts`.
+
 ## 2026-06-16: Use Pipfile.lock as Python upgrade current-version evidence
 
 - Status: accepted
