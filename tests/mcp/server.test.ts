@@ -83,6 +83,30 @@ describe('MCP server maintainability', () => {
     expect(buildProgressEmitter!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps session recording out of server orchestration', async () => {
+    const server = await inspectRepoSourceFile('src/mcp/server.ts');
+    const sessionFunctions = new Set([
+      'ensureSession',
+      'persistSessionIfDirty',
+      'recordSessionTouches',
+    ]);
+    expect(server.functions?.some((fn) => sessionFunctions.has(fn.name))).toBe(false);
+
+    const sessionModule = await inspectRepoSourceFile('src/mcp/serverSession.ts');
+    const createRecorder = sessionModule.functions?.find(
+      (fn) => fn.name === 'createServerSessionRecorder',
+    );
+    const recordToolCall = sessionModule.functions?.find((fn) => fn.name === 'recordToolCall');
+    const recordFileWatch = sessionModule.functions?.find((fn) => fn.name === 'recordFileWatch');
+
+    expect(createRecorder).toBeDefined();
+    expect(createRecorder!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(recordToolCall).toBeDefined();
+    expect(recordToolCall!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+    expect(recordFileWatch).toBeDefined();
+    expect(recordFileWatch!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const source = await fs.readFile(path.join(process.cwd(), 'tests/mcp/server.test.ts'), 'utf-8');
     const serverSuite = source.slice(source.indexOf("\ndescribe('MCP server'"));

@@ -17,15 +17,8 @@ import {
 } from './serverDispatch.js';
 import { withProgress } from './progress.js';
 import { buildProgressEmitter, createToolContext } from './serverContext.js';
+import { createServerSessionRecorder } from './serverSession.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
-import {
-  loadSession,
-  recordTouch,
-  recordEvent,
-  saveSession,
-  type Session,
-} from '../core/session.js';
-import { extractTouchedPaths } from './sessionTouchScanner.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
@@ -76,38 +69,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   // projscan_review_watch). Each entry is a cancel callback; the server
   // calls them on close() so polling timers don't leak.
   const toolWatches = new Map<string, () => void>();
-
-  let session: Session | null = null;
-  let sessionDirty = false;
-  // 1.7+ — gate concurrent ensureSession() callers behind a single
-  // in-flight load. Without this, two MCP requests arriving back-to-back
-  // could each call loadSession(), each get their own deserialized object,
-  // and each save back — last-write-wins would silently drop touches and
-  // events from the earlier request.
-  let sessionLoadPromise: Promise<Session> | null = null;
-
-  async function ensureSession(): Promise<Session> {
-    if (session) return session;
-    if (sessionLoadPromise) return sessionLoadPromise;
-    sessionLoadPromise = (async () => {
-      const { session: loaded } = await loadSession(rootPath);
-      session = loaded;
-      sessionLoadPromise = null;
-      return loaded;
-    })();
-    try {
-      return await sessionLoadPromise;
-    } catch (err) {
-      sessionLoadPromise = null;
-      throw err;
-    }
-  }
-
-  async function persistSessionIfDirty(): Promise<void> {
-    if (!session || !sessionDirty) return;
-    await saveSession(rootPath, session);
-    sessionDirty = false;
-  }
+  const sessionRecorder = createServerSessionRecorder(rootPath);
 
   async function handleInitialize(
     id: string | number | null,
@@ -160,7 +122,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       const { payload, estimatedTokens } = applyToolBudgetAndCost(result, args);
       // Record AFTER budgeting so the cost we log is the cost the
       // agent actually pays, not the pre-truncation payload size.
-      await recordSessionTouches(name, result, estimatedTokens);
+      await sessionRecorder.recordToolCall(name, result, estimatedTokens);
       const content = formatToolContent(payload, args.stream === true);
       return ok(id, { content, isError: false });
     } catch (err) {
@@ -212,40 +174,6 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     resourcesRead: handleResourcesRead,
   };
 
-  /**
-   * 1.4 — record session touches from any file paths the tool surfaced,
-   * plus an event for the call itself. Skipped when the call IS for
-   * `projscan_session` or the cost-summary tool itself (don't pollute
-   * the read with the read).
-   * Best-effort: failures here never break the tool call.
-   *
-   * 1.7+ — when `estimatedTokens` is provided, attaches it to the event
-   * so `projscan_cost_summary` can aggregate per-tool costs. The session
-   * event log is bounded (MAX_EVENTS = 500), so the cost view reflects
-   * recent activity rather than the full lifetime of the session.
-   */
-  async function recordSessionTouches(
-    name: string,
-    result: unknown,
-    estimatedTokens?: number,
-  ): Promise<void> {
-    if (name === 'projscan_session' || name === 'projscan_cost_summary') return;
-    try {
-      const sess = await ensureSession();
-      const data: Record<string, unknown> = {};
-      if (typeof estimatedTokens === 'number' && Number.isFinite(estimatedTokens)) {
-        data.estimatedTokens = estimatedTokens;
-      }
-      recordEvent(sess, `tool-call:${name}`, Object.keys(data).length > 0 ? data : undefined);
-      sessionDirty = true;
-      const paths = extractTouchedPaths(result);
-      for (const p of paths) recordTouch(sess, p, 'tool-result');
-      await persistSessionIfDirty();
-    } catch {
-      // Session is best-effort.
-    }
-  }
-
   async function handleMessage(line: string): Promise<string | null> {
     const trimmed = line.trim();
     if (!trimmed) return null;
@@ -295,15 +223,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
         // 1.4 — also record fs-watch touches in the session so an
         // agent's later `projscan_session touched` query reflects what
         // changed on disk during the session.
-        try {
-          const sess = await ensureSession();
-          for (const p of paths) recordTouch(sess, p, 'fs-watch');
-          recordEvent(sess, 'fs-watch:batch', { count: paths.length });
-          sessionDirty = true;
-          await persistSessionIfDirty();
-        } catch {
-          // Best-effort.
-        }
+        await sessionRecorder.recordFileWatch(paths);
       },
     });
     try {
@@ -337,7 +257,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     if (handle) {
       await handle.closed.catch(() => undefined);
     }
-    await persistSessionIfDirty().catch(() => undefined);
+    await sessionRecorder.flush().catch(() => undefined);
   }
 
   return { handleMessage, close };

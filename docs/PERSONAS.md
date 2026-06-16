@@ -2232,3 +2232,53 @@ object should remain quiet even when the file imports Fastify.
 Kept change: two qualified Fastify source strings, one source-to-sink fixture
 with a helper lookalike, focused docs, this persona note, and existing dataflow
 verification.
+
+## Fifty-Fifth Slice Decision
+
+Selected persona: Maintainer Preparing Review.
+
+Reason: the review pass still ranks `src/mcp/server.ts` as a high-risk changed
+file. Session recording is a cohesive state machine with its own concurrency,
+dirty-write, tool-touch, and fs-watch behavior, so moving it behind a small
+recorder boundary reduces server orchestration risk without changing MCP
+contracts.
+
+Smallest fix: extract session recording into `src/mcp/serverSession.ts` and
+have `createMcpServer` call `recordToolCall`, `recordFileWatch`, and `flush`.
+Keep dispatch, progress, watch, notification, and tool payload behavior
+unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "session recording out of server orchestration"
+npm run test -- tests/mcp/server.test.ts tests/mcp/sessionIntegration.test.ts tests/mcp/memoryIntegration.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/crossCutting.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverSession.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: MCP Server Session Recorder Extraction
+
+Delete-list after this slice:
+
+- Do not change JSON-RPC dispatch, initialize capabilities, MCP schemas, tool
+  payload shape, progress notifications, or file-change notifications.
+- Do not change session skip behavior for `projscan_session` and
+  `projscan_cost_summary`.
+- Do not make session recording mandatory; it remains best-effort.
+- Do not add dependencies, network calls, telemetry, release actions, version
+  bumps, or package metadata changes.
+
+Reviewer edge case: concurrent first session loads still share one in-flight
+load promise, so adjacent tool calls do not overwrite each other's touches.
+
+Kept change: one focused session recorder module, one maintainability
+regression, existing MCP session/progress/watch behavior tests, this persona
+note, and no public schema changes.
