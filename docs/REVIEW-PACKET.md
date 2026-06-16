@@ -101,10 +101,12 @@ Python lockfile parsing:
   `tests/mcp/pythonUpgradeFallback.test.ts`, reporter tests, and public type
   tests.
 
-Express/Koa/Fastify dataflow:
+Hono/Express/Koa/Fastify dataflow:
 
 - Trust boundary: request sources are not broad name matches. They require
   framework imports and handler call context.
+- Hono uses gated `memberCallSites`, so `c.req.valid(...)` can be detected
+  without treating helper `c.req.valid(...)` calls as request input.
 - Express uses gated `memberCallSites`, so `req.get(...)` and
   `request.header(...)` can be detected without treating helper `req.get(...)`
   calls as request input.

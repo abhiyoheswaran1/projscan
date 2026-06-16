@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Treat Hono validated request data as a gated source
+
+- Status: accepted
+- Context: Hono route handlers already detected `c.req.json()`, `c.req.query()`, `c.req.param()`, and `c.req.header()`, but projects that use validator middleware commonly read user-controlled input through `c.req.valid(...)`. Treating every `valid` call as a source would create helper false positives.
+- Decision: Add `hono.req.valid` as a framework request source only when a Hono import, Hono handler call context, and Hono context parameter are present.
+- Consequences: `projscan dataflow` can report validated Hono request data flowing into database sinks, while same-file helper functions with `c.req.valid(...)` remain quiet unless they are passed as Hono handlers.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Hono validated request data"`.
+
 ## 2026-06-16: Use conda-lock files as Python upgrade current-version evidence
 
 - Status: accepted

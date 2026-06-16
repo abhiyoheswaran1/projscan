@@ -12,6 +12,7 @@ const HONO_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['query', 'hono.req.query'],
   ['param', 'hono.req.param'],
   ['header', 'hono.req.header'],
+  ['valid', 'hono.req.valid'],
 ]);
 
 const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([

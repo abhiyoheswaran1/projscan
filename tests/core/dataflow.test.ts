@@ -280,6 +280,39 @@ export async function helper(c: { req: { json(): Promise<{ sql: string }> } }) {
     expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Hono validated request data as a framework request source without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hono-valid.ts'),
+      `import { Hono } from 'hono';
+
+declare const db: { query(sql: string): unknown };
+declare const cache: { query(key: string): unknown };
+const app = new Hono();
+
+app.post('/search', (c) => {
+  const body = c.req.valid('json') as { sql: string };
+  return db.query(body.sql);
+});
+
+export function helper(c: { req: { valid(kind: string): { key: string } } }) {
+  const body = c.req.valid('json');
+  return cache.query(body.key);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const honoRisks = report.risks.filter((risk) => risk.files.includes('src/hono-valid.ts'));
+
+    expect(honoRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'hono.req.valid', sink: 'query' }),
+      ]),
+    );
+    expect(honoRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat ordinary req-shaped helpers as Express request sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'helpers.ts'),
