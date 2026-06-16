@@ -36,11 +36,14 @@ export interface PythonProjectInfo {
   manifestFiles: string[];
   /** Declared dependencies across all manifests. */
   declared: PythonDeclaredDep[];
-  /** Resolved/current versions from supported local lockfiles or pinned requirements. */
+  /** Resolved/current versions from supported local lockfiles, pinned requirements, or constraints. */
   locked: PythonLockedDep[];
-  /** Lockfiles present (any of poetry.lock, Pipfile.lock, pdm.lock, uv.lock, conda-lock.yml, requirements.txt with pins). */
+  /** Lockfiles present (poetry/Pipfile/PDM/uv/Conda locks, pinned requirements, or pinned constraints). */
   hasLockfile: boolean;
 }
+
+const REQUIREMENTS_FILE_RE = /^requirements(-.*)?\.txt$/i;
+const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 
 const LOCKFILES = [
   'poetry.lock',
@@ -88,7 +91,7 @@ export async function detectPythonProject(
     .filter(
       (f) =>
         (!f.directory || f.directory === '.') &&
-        /^requirements(-.*)?\.txt$/i.test(path.basename(f.relativePath)),
+        REQUIREMENTS_FILE_RE.test(path.basename(f.relativePath)),
     )
     .map((f) => f.relativePath);
 
@@ -99,6 +102,22 @@ export async function detectPythonProject(
     const isDev = /requirements(-test|-dev|-lint)\.txt$/i.test(rel);
     const deps = parseRequirements(content, rel, isDev ? 'dev' : 'main');
     declared.push(...deps);
+    locked.push(...deps.flatMap(requirementPinToLockedDep));
+  }
+
+  // Read constraints*.txt at repo root as lock/current-version evidence only.
+  const constraintFiles = files
+    .filter(
+      (f) =>
+        (!f.directory || f.directory === '.') &&
+        CONSTRAINTS_FILE_RE.test(path.basename(f.relativePath)),
+    )
+    .map((f) => f.relativePath);
+
+  for (const rel of constraintFiles) {
+    const content = await tryRead(path.join(rootPath, rel));
+    if (content === null) continue;
+    const deps = parseRequirements(content, rel, 'main');
     locked.push(...deps.flatMap(requirementPinToLockedDep));
   }
 

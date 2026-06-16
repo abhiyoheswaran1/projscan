@@ -889,3 +889,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Print a compact `Evidence` section in the coordinate console renderer for both available and unavailable reports.
 - Consequences: Human users see the same local-only proof path, worktree count, current worktree, signal sources, and validation workflow without switching to JSON, while the JSON schema stays unchanged.
 - Verification: `npm run test -- tests/cli/coordinate.test.ts`, `npm run test -- tests/core/coordination.test.ts tests/core/collisionDetector.test.ts`, `npm exec projscan -- coordinate --quiet`, `npm exec projscan -- coordinate --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Use pinned Python constraints as upgrade evidence
+
+- Status: accepted
+- Context: Python upgrade previews already used local lockfiles and pinned root `requirements*.txt`, but pip-tools style repos often keep current-version pins in root `constraints*.txt` while declarations live in `pyproject.toml` or requirements inputs.
+- Decision: Parse root `constraints*.txt` as lock/current-version evidence only, using the existing exact-pin conversion and not adding constraints entries to declared direct dependencies.
+- Consequences: Offline Python previews and dependency-risk checks can use pinned constraints as reproducibility evidence without treating constraint-only packages as declared dependencies.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "constraints.txt pins"`, `npm run test -- tests/core/upgradePreview.test.ts -t "pinned constraints"`, `npm run test -- tests/core/languages/pythonManifests.test.ts`, `npm run test -- tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts`, `npm run test -- tests/analyzers/pythonDependencyRiskCheck.test.ts`, `npm run typecheck:public-types`, `npm exec projscan -- hotspots --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

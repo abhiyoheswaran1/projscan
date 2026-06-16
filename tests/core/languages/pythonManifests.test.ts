@@ -381,6 +381,17 @@ describe('detectPythonProject', () => {
     ]);
   });
 
+  it('uses constraints.txt pins as lockfile evidence without declaring dependencies', async () => {
+    await fs.writeFile(path.join(tmp, 'constraints.txt'), 'requests==2.31.0\nflask>=3\n');
+    const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('constraints.txt')]);
+
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.declared).toEqual([]);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'constraints.txt', line: 1 },
+    ]);
+  });
+
   it('no lockfile when requirements are unpinned', async () => {
     await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests\nflask>=2\n');
     const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('requirements.txt')]);

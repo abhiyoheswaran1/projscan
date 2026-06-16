@@ -105,7 +105,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
       id: 'dep-risk-no-python-lockfile',
       title: 'No Python lockfile detected',
       description:
-        'No lockfile (poetry.lock / Pipfile.lock / pdm.lock / uv.lock / conda-lock.yml) or pinned requirements.txt found. Builds may resolve different versions over time.',
+        'No lockfile (poetry.lock / Pipfile.lock / pdm.lock / uv.lock / conda-lock.yml), pinned requirements.txt, or pinned constraints.txt found. Builds may resolve different versions over time.',
       severity,
       category: 'dependencies',
       fixAvailable: false,

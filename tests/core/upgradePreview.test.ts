@@ -182,6 +182,29 @@ describe('previewUpgrade', () => {
     expect(preview.installedLine).toBe(1);
   });
 
+  it('uses pinned constraints as Python current-version evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      ['[project]', 'name = "py-app"', 'dependencies = ["fastapi>=0.109.0"]'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'constraints.txt'), 'fastapi==0.110.0\n');
+    const files = [
+      await writeFile(tmp, 'constraints.txt', 'fastapi==0.110.0\n'),
+      await writeFile(tmp, 'app/main.py', 'from fastapi import FastAPI\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'fastapi', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.109.0');
+    expect(preview.installed).toBe('0.110.0');
+    expect(preview.latest).toBe('0.110.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('constraints.txt');
+    expect(preview.installedLine).toBe(1);
+  });
+
   it('uses Pipfile.lock as Python current-version evidence', async () => {
     const pipfileLock = JSON.stringify({ default: { requests: { version: '==2.31.0' } } });
     const files = [

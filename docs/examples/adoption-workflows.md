@@ -50,7 +50,7 @@ projscan agent-brief --intent "handoff package ownership for fastapi" --format j
 For Node packages, `upgrade` reads local `package.json`, `node_modules`, local
 CHANGELOG files, and importer evidence. For Python packages, it reads
 `pyproject.toml`, `setup.cfg`, `setup.py`, root `requirements*.txt` files,
-Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements, then
+Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements/constraints, then
 returns declared scope, current-version source, drift, and Python importers.
 
 Decision loop:

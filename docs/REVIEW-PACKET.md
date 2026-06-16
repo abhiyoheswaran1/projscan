@@ -48,7 +48,7 @@ This train contains five product slices plus maintainability cleanup:
 4. Python upgrade intelligence
    - `projscan upgrade` and MCP `projscan_upgrade` now support offline Python
      previews from `pyproject.toml`, `setup.cfg`, `setup.py`, root
-     `requirements*.txt`, Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements.
+     `requirements*.txt`, Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements/constraints.
    - Optional public fields identify declared/current version evidence source
      and line.
    - Python previews remain PyPI-free; npm registry lookup remains opt-in via

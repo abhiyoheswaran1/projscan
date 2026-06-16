@@ -114,6 +114,16 @@ describe('pythonDependencyRiskCheck', () => {
     expect(issues.find((i) => i.id === 'dep-risk-no-python-lockfile')).toBeUndefined();
   });
 
+  it('accepts pinned constraints.txt as lockfile evidence', async () => {
+    const files = [
+      await writeFile(tmp, 'pkg/mod.py', 'x = 1'),
+      await writeFile(tmp, 'pyproject.toml', '[project]\ndependencies = ["requests>=2"]\n'),
+      await writeFile(tmp, 'constraints.txt', 'requests==2.31.0\n'),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'dep-risk-no-python-lockfile')).toBeUndefined();
+  });
+
   it('returns empty list when no declared deps and no .py files imports only', async () => {
     // Edge case: Python files present but no manifest. detectPythonProject
     // still returns info (with empty declared), so only the no-lockfile rule
