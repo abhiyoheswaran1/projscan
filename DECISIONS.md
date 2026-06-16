@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract MCP server lifecycle
+
+- Status: accepted
+- Context: `src/mcp/server.ts` still owned file-watcher startup, file-change notification emission, tool-watch cancellation, watcher close waiting, and session flush inside the server orchestration closure.
+- Decision: Move watcher lifecycle and close handling into `src/mcp/serverLifecycle.ts`.
+- Consequences: JSON-RPC dispatch and tool handling stay unchanged, while lifecycle shutdown, watcher notification, and session-flush behavior are easier to audit in isolation.
+- Verification: `npm run test -- tests/mcp/server.test.ts -t "watcher lifecycle"` plus focused MCP watcher/session tests.
+
 ## 2026-06-16: Extract hotspot memory tagging
 
 - Status: accepted

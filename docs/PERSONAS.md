@@ -3979,3 +3979,50 @@ top-K entries when memory says they crossed the acceptance threshold.
 Kept change: one focused memory helper, one maintainability regression,
 existing hotspot and memory behavior coverage, this persona note, and no public
 schema change.
+
+## Ninety-Second Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: MCP server lifecycle code controls long-running watchers, file-change
+notifications, registered tool-side watches, and final session flushes. Keeping
+that shutdown path out of request orchestration makes the server easier to
+audit for leaked timers and late notifications without changing protocol
+responses.
+
+Smallest fix: move watcher startup, file-change notification emission,
+fs-watch session recording, registered watch cancellation, watcher close
+waiting, and session flush into `serverLifecycle.ts`; keep JSON-RPC parsing,
+dispatch, and tool handlers in `server.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "watcher lifecycle"
+npm run test -- tests/mcp/server.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/crossCutting.test.ts tests/mcp/sessionIntegration.test.ts tests/mcp/reviewWatch.test.ts tests/mcp/coordinateWatch.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverLifecycle.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: MCP Server Lifecycle Extraction
+
+Delete-list after this slice:
+
+- Do not change MCP method names, response envelopes, advertised capabilities,
+  file-change notification payloads, watcher startup timing, registered
+  tool-watch cancellation, session recording semantics, or transport behavior.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: watch mode should still advertise `experimental.fileChanged`
+only when watch is enabled with a notify channel, initial watcher scans should
+still not emit file-change notifications, close should still await watcher quiet
+and flush the session, and tool-side watches should still be cancelled on close.
+
+Kept change: one focused lifecycle helper, one maintainability regression,
+existing MCP watcher/session coverage, this persona note, and no public MCP
+schema change.

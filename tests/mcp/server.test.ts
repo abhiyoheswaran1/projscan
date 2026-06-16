@@ -118,6 +118,26 @@ describe('MCP server maintainability', () => {
     expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
 
+  it('keeps watcher lifecycle out of server orchestration', async () => {
+    const server = await inspectRepoSourceFile('src/mcp/server.ts');
+    const lifecycleFunctions = new Set(['startFileWatcher', 'close']);
+    expect(server.functions?.some((fn) => lifecycleFunctions.has(fn.name))).toBe(false);
+
+    const lifecycleModule = await inspectRepoSourceFile('src/mcp/serverLifecycle.ts');
+    const createLifecycle = lifecycleModule.functions?.find(
+      (fn) => fn.name === 'createMcpServerLifecycle',
+    );
+    const startFileWatcher = lifecycleModule.functions?.find((fn) => fn.name === 'startFileWatcher');
+    const close = lifecycleModule.functions?.find((fn) => fn.name === 'close');
+
+    expect(createLifecycle).toBeDefined();
+    expect(createLifecycle!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(startFileWatcher).toBeDefined();
+    expect(startFileWatcher!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(close).toBeDefined();
+    expect(close!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const testsRoot = path.join(process.cwd(), 'tests/mcp');
     const sessionRecordingTools = ['projscan_structure', 'projscan_file', 'projscan_search'];

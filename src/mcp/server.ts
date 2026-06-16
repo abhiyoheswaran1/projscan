@@ -17,8 +17,8 @@ import {
 import { parseJsonRpcMessage } from './serverMessage.js';
 import { withProgress } from './progress.js';
 import { buildProgressEmitter, createToolContext } from './serverContext.js';
+import { createMcpServerLifecycle } from './serverLifecycle.js';
 import { createServerSessionRecorder } from './serverSession.js';
-import { startWatcher, type WatchHandle } from '../core/watcher.js';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'];
 const PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
@@ -57,8 +57,6 @@ export interface McpServerOptions {
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readPackageVersion();
-  let watchHandle: WatchHandle | null = null;
-  let watchStartPromise: Promise<void> | null = null;
   const watchEnabled = options.watch === true && options.notify !== undefined;
 
   // 1.4 — durable cross-invocation session. Lazily loaded on first
@@ -70,6 +68,13 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   // calls them on close() so polling timers don't leak.
   const toolWatches = new Map<string, () => void>();
   const sessionRecorder = createServerSessionRecorder(rootPath);
+  const lifecycle = createMcpServerLifecycle({
+    rootPath,
+    notify: options.notify,
+    watchEnabled,
+    toolWatches,
+    sessionRecorder,
+  });
 
   async function handleInitialize(
     id: string | number | null,
@@ -79,12 +84,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     const requested = params.protocolVersion;
     const negotiated =
       requested && SUPPORTED_PROTOCOL_VERSIONS.includes(requested) ? requested : PROTOCOL_VERSION;
-    if (watchEnabled && !watchStartPromise) {
-      watchStartPromise = startFileWatcher();
-    }
-    if (watchStartPromise) {
-      await watchStartPromise;
-    }
+    await lifecycle.ensureFileWatcherStarted();
     return ok(id, {
       protocolVersion: negotiated,
       serverInfo: { name: 'projscan', version: serverVersion },
@@ -184,66 +184,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     return JSON.stringify(response);
   }
 
-  async function startFileWatcher(): Promise<void> {
-    if (!options.notify) return;
-    const notify = options.notify;
-    watchHandle = startWatcher(rootPath, {
-      onChange: async ({ paths, graph }) => {
-        // The watcher fires once on startup with `paths: []` (the initial
-        // graph build). Skip it — clients only care about deltas.
-        if (paths.length === 0) return;
-        const payload = JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'notifications/file_changed',
-          params: {
-            paths,
-            scannedFiles: graph.scannedFiles,
-            timestampMs: Date.now(),
-          },
-        });
-        notify(payload);
-
-        // 1.4 — also record fs-watch touches in the session so an
-        // agent's later `projscan_session touched` query reflects what
-        // changed on disk during the session.
-        await sessionRecorder.recordFileWatch(paths);
-      },
-    });
-    try {
-      await watchHandle.ready;
-    } catch {
-      // Initial scan failure shouldn't take the server down; the agent can
-      // still call tools, they just won't get push notifications.
-    }
-  }
-
-  async function close(): Promise<void> {
-    const handle = watchHandle;
-    watchHandle = null;
-    if (handle) {
-      handle.close();
-    }
-    // 1.8+ — cancel any tool-side watches (review-watch polling, etc.)
-    // so their timers don't outlive the server.
-    for (const cancel of toolWatches.values()) {
-      try {
-        cancel();
-      } catch {
-        // best-effort
-      }
-    }
-    toolWatches.clear();
-    if (watchStartPromise) {
-      await watchStartPromise.catch(() => undefined);
-      watchStartPromise = null;
-    }
-    if (handle) {
-      await handle.closed.catch(() => undefined);
-    }
-    await sessionRecorder.flush().catch(() => undefined);
-  }
-
-  return { handleMessage, close };
+  return { handleMessage, close: lifecycle.close };
 }
 
 export interface RunMcpServerOptions {
