@@ -54,6 +54,16 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps coverage rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportCoverageMarkdown')).toBe(false);
+
+    const coverageReporter = await inspectRepoSourceFile('src/reporters/markdownCoverageReporter.ts');
+    const renderer = coverageReporter.functions?.find((fn) => fn.name === 'reportCoverageMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {

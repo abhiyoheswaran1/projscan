@@ -1,5 +1,4 @@
 import type {
-  CoverageJoinedReport,
   CouplingReport,
   Issue,
   FileExplanation,
@@ -24,6 +23,7 @@ export { reportUpgradeMarkdown } from './markdownUpgradeReporter.js';
 export { reportAuditMarkdown } from './markdownAuditReporter.js';
 export { reportAnalysisMarkdown } from './markdownAnalysisReporter.js';
 export { reportPrDiffMarkdown } from './markdownPrDiffReporter.js';
+export { reportCoverageMarkdown } from './markdownCoverageReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -291,40 +291,6 @@ export function reportOutdatedMarkdown(report: OutdatedReport): void {
   for (const p of drifting) {
     lines.push(
       `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '-'} | ${p.drift} |`,
-    );
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportCoverageMarkdown(report: CoverageJoinedReport): void {
-  const lines: string[] = [];
-  lines.push('# Coverage × Hotspots');
-  lines.push('');
-  if (!report.available) {
-    lines.push(`_${report.reason ?? 'unavailable'}_`);
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  if (report.coverageSourceFile) {
-    lines.push(`_Source: \`${report.coverageSourceFile}\` (${report.coverageSource})_`);
-    lines.push('');
-  }
-
-  if (report.entries.length === 0) {
-    lines.push('_No hotspots intersected with coverage data._');
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  lines.push('| Priority | Coverage | Risk | Churn | File | Reasons |');
-  lines.push('| ---: | ---: | ---: | ---: | --- | --- |');
-  for (const e of report.entries) {
-    const cov = e.coverage === null ? '-' : `${e.coverage.toFixed(0)}%`;
-    const reasons = e.reasons.length > 0 ? e.reasons.join(', ') : '-';
-    lines.push(
-      `| ${e.priority.toFixed(1)} | ${cov} | ${e.riskScore.toFixed(1)} | ${e.churn} | \`${e.relativePath}\` | ${reasons} |`,
     );
   }
 
