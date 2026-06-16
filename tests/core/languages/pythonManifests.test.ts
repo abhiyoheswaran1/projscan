@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {
   detectPythonProject,
+  parsePipfileLock,
   parsePoetryLock,
   parsePyproject,
   parseRequirements,
@@ -95,6 +96,31 @@ describe('parsePoetryLock', () => {
       { name: 'requests', version: '2.31.0', source: 'poetry.lock', line: 3 },
       { name: 'Django', version: '4.2.1', source: 'poetry.lock', line: 8 },
     ]);
+  });
+});
+
+describe('parsePipfileLock', () => {
+  it('reads exact package versions from default and develop sections', () => {
+    const lock = JSON.stringify({
+      default: {
+        requests: { version: '==2.31.0' },
+        flask: { version: '==3.0.0' },
+      },
+      develop: {
+        pytest: { version: '==8.2.0' },
+        loose: { version: '>=1.0' },
+      },
+    });
+
+    expect(parsePipfileLock(lock, 'Pipfile.lock')).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'Pipfile.lock', line: 0 },
+      { name: 'flask', version: '3.0.0', source: 'Pipfile.lock', line: 0 },
+      { name: 'pytest', version: '8.2.0', source: 'Pipfile.lock', line: 0 },
+    ]);
+  });
+
+  it('returns no locked dependencies for malformed Pipfile.lock JSON', () => {
+    expect(parsePipfileLock('{not json', 'Pipfile.lock')).toEqual([]);
   });
 });
 
@@ -204,6 +230,23 @@ describe('detectPythonProject', () => {
     expect(info?.hasLockfile).toBe(true);
     expect(info?.locked).toEqual([
       { name: 'requests', version: '2.31.0', source: 'poetry.lock', line: 3 },
+    ]);
+  });
+
+  it('uses Pipfile.lock exact versions as lockfile evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'Pipfile.lock'),
+      JSON.stringify({ default: { requests: { version: '==2.31.0' } } }),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests>=2\n');
+    const info = await detectPythonProject(tmp, [
+      fileEntry('a.py'),
+      fileEntry('requirements.txt'),
+      fileEntry('Pipfile.lock'),
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'Pipfile.lock', line: 0 },
     ]);
   });
 

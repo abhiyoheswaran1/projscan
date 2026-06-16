@@ -181,6 +181,25 @@ describe('previewUpgrade', () => {
     expect(preview.installedSource).toBe('requirements.txt');
     expect(preview.installedLine).toBe(1);
   });
+
+  it('uses Pipfile.lock as Python current-version evidence', async () => {
+    const pipfileLock = JSON.stringify({ default: { requests: { version: '==2.31.0' } } });
+    const files = [
+      await writeFile(tmp, 'requirements.txt', 'requests==2.30.0\n'),
+      await writeFile(tmp, 'Pipfile.lock', pipfileLock),
+      await writeFile(tmp, 'app/client.py', 'import requests\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.installed).toBe('2.31.0');
+    expect(preview.latest).toBe('2.31.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('Pipfile.lock');
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
 });
 
 describe('isValidPackageName (path-traversal guard)', () => {

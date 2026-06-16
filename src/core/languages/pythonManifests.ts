@@ -118,6 +118,7 @@ export async function detectPythonProject(
     if (content !== null) {
       hasLockfile = true;
       if (name === 'poetry.lock') locked.unshift(...parsePoetryLock(content, name));
+      if (name === 'Pipfile.lock') locked.unshift(...parsePipfileLock(content, name));
       break;
     }
   }
@@ -378,6 +379,31 @@ export function parsePoetryLock(content: string, sourceFile: string): PythonLock
         bodyStart + versionMatch.index + versionMatch[0].indexOf('version'),
       ),
     });
+  }
+  return out;
+}
+
+export function parsePipfileLock(content: string, sourceFile: string): PythonLockedDep[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return [];
+  }
+  if (!parsed || typeof parsed !== 'object') return [];
+
+  const out: PythonLockedDep[] = [];
+  for (const sectionName of ['default', 'develop']) {
+    const section = (parsed as Record<string, unknown>)[sectionName];
+    if (!section || typeof section !== 'object') continue;
+    for (const [name, value] of Object.entries(section as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue;
+      const version = (value as Record<string, unknown>).version;
+      if (typeof version !== 'string') continue;
+      const exact = /^={2,3}\s*([^\s,;]+)/.exec(version);
+      if (!exact) continue;
+      out.push({ name, version: exact[1], source: sourceFile, line: 0 });
+    }
   }
   return out;
 }

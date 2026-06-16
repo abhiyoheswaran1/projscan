@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Use Pipfile.lock as Python upgrade current-version evidence
+
+- Status: accepted
+- Context: Python upgrade previews could detect that `Pipfile.lock` existed, but did not parse exact resolved versions from it. That made previews less useful for Pipenv projects even though the local lockfile already contains offline current-version evidence.
+- Decision: Parse exact `==` / `===` versions from `Pipfile.lock` `default` and `develop` sections and feed them into the existing Python upgrade preview current-version fields.
+- Consequences: `projscan upgrade <python-package>` can report `installed`, `latest`, `drift`, and `installedSource: "Pipfile.lock"` for Pipenv projects without contacting PyPI or changing npm registry behavior.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts`, `npm run lint`, and `npm run typecheck`.
+
 ## 2026-06-16: Carry scoped export controls into empty and SARIF evidence
 
 - Status: accepted
