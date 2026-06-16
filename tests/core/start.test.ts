@@ -478,8 +478,8 @@ test('start report keeps no-release autonomous roadmap intents out of release wo
       'continue autonomous no-release roadmap validation implementation; do not release publish tag push merge deploy or bump version',
   });
 
-  expect(report.mode).not.toBe('release');
-  expect(report.recommendedWorkflow.id).not.toBe('release_approval');
+  expect(report.mode).toBe('before_edit');
+  expect(report.recommendedWorkflow.id).toBe('before_edit');
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({
       tool: 'projscan_workplan',
@@ -487,8 +487,8 @@ test('start report keeps no-release autonomous roadmap intents out of release wo
     }),
   );
   expect(report.missionControl.primaryAction.tool).toBe('projscan_workplan');
-  expect(report.missionControl.primaryAction.command).not.toBe(
-    'projscan release-train --format json',
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan workplan --mode before_edit --format json',
   );
   expect(report.missionControl.reviewGate.policy.blockedActions).toEqual([
     'release',

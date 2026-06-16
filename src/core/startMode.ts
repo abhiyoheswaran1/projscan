@@ -82,6 +82,7 @@ export function preflightModeFromIntent(
 ): 'before_edit' | 'before_commit' | 'before_merge' {
   const text = intent.toLowerCase();
   if (
+    !hasProhibitedWorkflowModeAction(intent) &&
     /\b(?:merge|merged|merging|release|rebase|rebasing|conflict|conflicts|resolve|resolving)\b/.test(
       text,
     )
@@ -174,6 +175,20 @@ function fallbackPreflightMode({ intent, routes }: ModeResolverContext): Workpla
 function hasPreflightModeHint(intent: string): boolean {
   return /\b(?:safe|safety|gate|preflight|commit|committing|committed|merge|merged|merging|rebase|rebasing|conflict|conflicts|resolve|resolving|edit|proceed|block|blocked|blocker|blockers|blocking|allowed)\b/i.test(
     intent,
+  );
+}
+
+function hasProhibitedWorkflowModeAction(intent: string): boolean {
+  return (
+    /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|version[-\s]+bump|bump)\b/i.test(
+      intent,
+    ) ||
+    /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|bump(?:ing)?(?:\s+the)?\s+version|version\s+bump)\b/i.test(
+      intent,
+    ) ||
+    /\bwithout\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|bump(?:ing)?(?:\s+the)?\s+version|version\s+bump)\b/i.test(
+      intent,
+    )
   );
 }
 
