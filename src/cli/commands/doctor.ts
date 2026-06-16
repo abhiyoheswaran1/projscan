@@ -15,7 +15,11 @@ import {
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
-import { applyReportControlsToIssues, resolveReportControls } from '../../core/reportScope.js';
+import {
+  applyReportControlsToIssues,
+  reportControlsMetadata,
+  resolveReportControls,
+} from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { reportHealth } from '../../reporters/consoleReporter.js';
 import { reportHealthJson } from '../../reporters/jsonReporter.js';
@@ -75,6 +79,7 @@ export function registerDoctor(): void {
           );
         }
         issues = applyReportControlsToIssues(issues, reportControls);
+        const reportControlsInfo = reportControlsMetadata(reportControls);
 
         if (spinner) spinner.stop();
 
@@ -84,13 +89,13 @@ export function registerDoctor(): void {
 
         switch (format) {
           case 'json':
-            reportHealthJson(issues);
+            reportHealthJson(issues, reportControlsInfo);
             break;
           case 'markdown':
             reportHealthMarkdown(issues);
             break;
           case 'sarif':
-            reportHealthSarif(issues, pkg.version);
+            reportHealthSarif(issues, pkg.version, reportControlsInfo);
             break;
           case 'html':
             reportHealthHtml(issues);

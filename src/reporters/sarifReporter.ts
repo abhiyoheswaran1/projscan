@@ -1,4 +1,5 @@
 import type { Issue, IssueLocation, IssueSeverity } from '../types.js';
+import type { ReportControlsMetadata } from '../core/reportScope.js';
 
 const TOOL_INFO = {
   name: 'projscan',
@@ -46,6 +47,7 @@ export interface SarifRun {
     };
   };
   results: SarifResult[];
+  properties?: Record<string, unknown>;
 }
 
 export interface SarifLog {
@@ -59,7 +61,11 @@ export interface SarifLog {
  * requires every result to have at least one location, so issues without
  * explicit `locations` are anchored to the repository root (".").
  */
-export function issuesToSarif(issues: Issue[], version: string): SarifLog {
+export function issuesToSarif(
+  issues: Issue[],
+  version: string,
+  reportControls?: ReportControlsMetadata,
+): SarifLog {
   const rules = buildRules(issues);
   const results = issues.map((issue) => toResult(issue));
 
@@ -78,6 +84,7 @@ export function issuesToSarif(issues: Issue[], version: string): SarifLog {
           },
         },
         results,
+        ...(reportControls ? { properties: { reportControls } } : {}),
       },
     ],
   };
@@ -142,14 +149,26 @@ function toPosix(p: string): string {
   return p.replace(/\\/g, '/');
 }
 
-export function reportAnalysisSarif(issues: Issue[], version: string): void {
-  console.log(JSON.stringify(issuesToSarif(issues, version), null, 2));
+export function reportAnalysisSarif(
+  issues: Issue[],
+  version: string,
+  reportControls?: ReportControlsMetadata,
+): void {
+  console.log(JSON.stringify(issuesToSarif(issues, version, reportControls), null, 2));
 }
 
-export function reportHealthSarif(issues: Issue[], version: string): void {
-  console.log(JSON.stringify(issuesToSarif(issues, version), null, 2));
+export function reportHealthSarif(
+  issues: Issue[],
+  version: string,
+  reportControls?: ReportControlsMetadata,
+): void {
+  console.log(JSON.stringify(issuesToSarif(issues, version, reportControls), null, 2));
 }
 
-export function reportCiSarif(issues: Issue[], version: string): void {
-  console.log(JSON.stringify(issuesToSarif(issues, version), null, 2));
+export function reportCiSarif(
+  issues: Issue[],
+  version: string,
+  reportControls?: ReportControlsMetadata,
+): void {
+  console.log(JSON.stringify(issuesToSarif(issues, version, reportControls), null, 2));
 }

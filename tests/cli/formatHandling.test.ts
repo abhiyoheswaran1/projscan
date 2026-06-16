@@ -74,6 +74,60 @@ describe('CLI format handling', () => {
     expect(result.stdout).not.toContain('ProjScan Project Report');
   });
 
+  it('applies scoped and redacted report controls to analyze SARIF output', async () => {
+    await fs.mkdir(path.join(tmp, 'src', 'private'), { recursive: true });
+    await fs.mkdir(path.join(tmp, 'src', 'public'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'src', 'private', 'a.ts'),
+      `import { b } from './b.js';\nexport const a = b;\n`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'private', 'b.ts'),
+      `import { a } from './a.js';\nexport const b = a;\n`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'public', 'c.ts'),
+      `import { d } from './d.js';\nexport const c = d;\n`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'public', 'd.ts'),
+      `import { c } from './c.js';\nexport const d = c;\n`,
+    );
+
+    const result = await runCli([
+      'analyze',
+      '--report-scope',
+      'src/private',
+      '--redact-paths',
+      '--format',
+      'sarif',
+      '--quiet',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const sarif = JSON.parse(result.stdout);
+    expect(sarif.runs[0].properties.reportControls).toEqual({
+      active: true,
+      scopeCount: 1,
+      redactPaths: true,
+      pathLabelFormat: 'redacted-path-N',
+    });
+    const uris = sarif.runs[0].results.flatMap((result: { locations: Array<unknown> }) =>
+      result.locations.map(
+        (location) =>
+          (
+            location as {
+              physicalLocation: { artifactLocation: { uri: string } };
+            }
+          ).physicalLocation.artifactLocation.uri,
+      ),
+    );
+    expect(uris.length).toBeGreaterThan(0);
+    expect(uris.every((uri: string) => uri.startsWith('redacted-path-'))).toBe(true);
+    expect(result.stdout).not.toContain('src/private');
+    expect(result.stdout).not.toContain('src/public');
+  });
+
   it('rejects unsupported command formats instead of falling back to console output', async () => {
     const result = await runCli(['structure', '--format', 'sarif', '--quiet']);
 

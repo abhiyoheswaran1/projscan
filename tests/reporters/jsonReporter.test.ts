@@ -85,6 +85,27 @@ describe('jsonReporter', () => {
       expect(parsed.health.warnings).toBe(0);
       expect(parsed.health.info).toBe(0);
     });
+
+    it('can include path-safe report controls metadata', async () => {
+      const parsed = (await captureJson(() =>
+        reportHealthJson([], {
+          active: true,
+          scopeCount: 1,
+          redactPaths: true,
+          pathLabelFormat: 'redacted-path-N',
+        }),
+      )) as {
+        schemaVersion: number;
+        reportControls: Record<string, unknown>;
+      };
+      expect(parsed.schemaVersion).toBe(2);
+      expect(parsed.reportControls).toEqual({
+        active: true,
+        scopeCount: 1,
+        redactPaths: true,
+        pathLabelFormat: 'redacted-path-N',
+      });
+    });
   });
 
   describe('reportCiJson', () => {

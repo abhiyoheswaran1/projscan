@@ -19,7 +19,11 @@ import { detectFrameworks } from '../../core/frameworkDetector.js';
 import { analyzeDependencies } from '../../core/dependencyAnalyzer.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
-import { applyReportControlsToAnalysis, resolveReportControls } from '../../core/reportScope.js';
+import {
+  applyReportControlsToAnalysis,
+  reportControlsMetadata,
+  resolveReportControls,
+} from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { reportAnalysis } from '../../reporters/consoleReporter.js';
 import { reportAnalysisJson } from '../../reporters/jsonReporter.js';
@@ -103,18 +107,19 @@ export function registerAnalyze(): void {
           },
           reportControls,
         );
+        const reportControlsInfo = reportControlsMetadata(reportControls);
 
         if (await renderPluginReporterIfRequested('analyze', cmdOpts.reporter, report)) return;
 
         switch (format) {
           case 'json':
-            reportAnalysisJson(report);
+            reportAnalysisJson(report, reportControlsInfo);
             break;
           case 'markdown':
             reportAnalysisMarkdown(report);
             break;
           case 'sarif':
-            reportAnalysisSarif(issues, pkg.version);
+            reportAnalysisSarif(report.issues, pkg.version, reportControlsInfo);
             break;
           case 'html':
             reportAnalysisHtml(report);

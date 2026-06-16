@@ -13,7 +13,11 @@ import {
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
-import { applyReportControlsToIssues, resolveReportControls } from '../../core/reportScope.js';
+import {
+  applyReportControlsToIssues,
+  reportControlsMetadata,
+  resolveReportControls,
+} from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { calculateScore } from '../../utils/scoreCalculator.js';
 import { reportCi } from '../../reporters/consoleReporter.js';
@@ -57,6 +61,7 @@ export function registerCi(): void {
           );
         }
         issues = applyReportControlsToIssues(issues, reportControls);
+        const reportControlsInfo = reportControlsMetadata(reportControls);
 
         const rawThreshold = cmdOpts.minScore ?? config.minScore ?? 70;
         const threshold = Math.max(
@@ -86,13 +91,13 @@ export function registerCi(): void {
 
         switch (format) {
           case 'json':
-            reportCiJson(issues, threshold);
+            reportCiJson(issues, threshold, reportControlsInfo);
             break;
           case 'markdown':
             reportCiMarkdown(issues, threshold);
             break;
           case 'sarif':
-            reportCiSarif(issues, pkg.version);
+            reportCiSarif(issues, pkg.version, reportControlsInfo);
             break;
           default:
             reportCi(issues, threshold);

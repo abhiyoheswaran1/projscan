@@ -26,6 +26,22 @@ describe('issuesToSarif', () => {
     expect(sarif.runs[0].results).toEqual([]);
   });
 
+  it('carries path-safe report controls metadata on the run', () => {
+    const sarif = issuesToSarif([], '0.3.0', {
+      active: true,
+      scopeCount: 1,
+      redactPaths: true,
+      pathLabelFormat: 'redacted-path-N',
+    });
+
+    expect(sarif.runs[0].properties?.reportControls).toEqual({
+      active: true,
+      scopeCount: 1,
+      redactPaths: true,
+      pathLabelFormat: 'redacted-path-N',
+    });
+  });
+
   it('creates one rule per unique issue id', () => {
     const issues = [issue({ id: 'a' }), issue({ id: 'a' }), issue({ id: 'b' })];
     const sarif = issuesToSarif(issues, '0.3.0');

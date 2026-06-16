@@ -161,4 +161,29 @@ describe('reportScope', () => {
     expect(serialized).not.toContain('src/private/secret.ts');
     expect(serialized).not.toContain('src/public/index.ts');
   });
+
+  it('redacts file paths embedded in issue text with the same stable labels', () => {
+    const scoped = applyReportControlsToIssues(
+      [
+        {
+          ...issue('cycle', ['src/private/a.ts', 'src/private/b.ts']),
+          title: 'Cycle in src/private/a.ts',
+          description: 'Circular import among src/private/a.ts and src/private/b.ts',
+          suggestedAction: { summary: 'Break src/private/a.ts cycle' },
+        },
+      ],
+      { scopes: ['src/private'], redactPaths: true },
+    );
+    const serialized = JSON.stringify(scoped);
+
+    expect(scoped[0].title).toBe('Cycle in redacted-path-1');
+    expect(scoped[0].description).toContain('redacted-path-1');
+    expect(scoped[0].description).toContain('redacted-path-2');
+    expect(scoped[0].suggestedAction?.summary).toBe('Break redacted-path-1 cycle');
+    expect(scoped[0].locations?.map((location) => location.file)).toEqual([
+      'redacted-path-1',
+      'redacted-path-2',
+    ]);
+    expect(serialized).not.toContain('src/private');
+  });
 });

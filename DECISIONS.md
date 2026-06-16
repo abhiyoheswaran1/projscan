@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Carry scoped export controls into empty and SARIF evidence
+
+- Status: accepted
+- Context: Scoped/redacted report controls filtered JSON analysis evidence, but `analyze --format sarif` rendered the original issue list instead of the scoped/redacted one. Empty scoped artifacts also lacked an explicit signal that report controls had been applied, and issue message text could still contain raw file paths even when locations were redacted.
+- Decision: Add path-safe `reportControls` metadata to JSON and SARIF exports when report controls are active, render analyze SARIF from the scoped/redacted issue list, and redact scoped issue paths inside title, description, and suggested-action text with the same stable labels used for locations.
+- Consequences: Partner/security/review artifacts can prove scope and redaction were active without exposing raw file paths, including zero-result SARIF/doctor outputs. Existing report fields stay additive and direct paths are not included in metadata.
+- Verification: `npm run test -- tests/core/reportScope.test.ts tests/reporters/sarifReporter.test.ts tests/reporters/jsonReporter.test.ts`, `npm run test -- tests/cli/formatHandling.test.ts -t "scoped and redacted report controls"`, `npm run lint`, `npm run typecheck`, and `npm run build`.
+
 ## 2026-06-16: Preserve object-argument route context for Fastify dataflow
 
 - Status: accepted

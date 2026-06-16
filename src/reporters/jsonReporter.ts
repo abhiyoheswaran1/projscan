@@ -19,6 +19,7 @@ import type {
   UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
+import type { ReportControlsMetadata } from '../core/reportScope.js';
 import type { ReviewReport } from '../types/review.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
@@ -28,16 +29,23 @@ function emitJson(payload: Record<string, unknown>): void {
   console.log(JSON.stringify({ schemaVersion: CLI_JSON_SCHEMA_VERSION, ...payload }, null, 2));
 }
 
-export function reportAnalysisJson(report: AnalysisReport): void {
-  emitJson(report as unknown as Record<string, unknown>);
+export function reportAnalysisJson(
+  report: AnalysisReport,
+  reportControls?: ReportControlsMetadata,
+): void {
+  emitJson({
+    ...(report as unknown as Record<string, unknown>),
+    ...(reportControls ? { reportControls } : {}),
+  });
 }
 
-export function reportHealthJson(issues: Issue[]): void {
+export function reportHealthJson(issues: Issue[], reportControls?: ReportControlsMetadata): void {
   const { score, grade, errors, warnings, infos } = calculateScore(issues);
   console.log(
     JSON.stringify(
       {
         schemaVersion: CLI_JSON_SCHEMA_VERSION,
+        ...(reportControls ? { reportControls } : {}),
         health: {
           score,
           grade,
@@ -54,12 +62,17 @@ export function reportHealthJson(issues: Issue[]): void {
   );
 }
 
-export function reportCiJson(issues: Issue[], threshold: number): void {
+export function reportCiJson(
+  issues: Issue[],
+  threshold: number,
+  reportControls?: ReportControlsMetadata,
+): void {
   const { score, grade, errors, warnings, infos } = calculateScore(issues);
   console.log(
     JSON.stringify(
       {
         schemaVersion: CLI_JSON_SCHEMA_VERSION,
+        ...(reportControls ? { reportControls } : {}),
         ci: {
           score,
           grade,

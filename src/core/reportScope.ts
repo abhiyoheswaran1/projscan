@@ -6,6 +6,13 @@ export interface ReportControlOptions {
   redactPaths?: boolean;
 }
 
+export interface ReportControlsMetadata {
+  active: true;
+  scopeCount: number;
+  redactPaths: boolean;
+  pathLabelFormat?: 'redacted-path-N';
+}
+
 interface ResolveReportControlsInput {
   reportPolicies?: Record<string, ReportPolicyPreset>;
   reportPolicy?: unknown;
@@ -60,6 +67,20 @@ export function applyReportControlsToIssues(
   );
 }
 
+export function reportControlsMetadata(
+  options: ReportControlOptions = {},
+): ReportControlsMetadata | undefined {
+  const scopes = normalizeScopes(options.scopes);
+  const redactPaths = options.redactPaths === true;
+  if (scopes.length === 0 && !redactPaths) return undefined;
+  return {
+    active: true,
+    scopeCount: scopes.length,
+    redactPaths,
+    ...(redactPaths ? { pathLabelFormat: 'redacted-path-N' } : {}),
+  };
+}
+
 export function applyReportControlsToAnalysis(
   report: AnalysisReport,
   options: ReportControlOptions = {},
@@ -99,12 +120,7 @@ function applyReportControlsToIssuesWithRedactor(
   for (const issue of issues) {
     const scopedLocations = filterLocationsByScope(issue.locations, scopes);
     if (scopes.length > 0 && scopedLocations.length === 0) continue;
-    out.push({
-      ...issue,
-      ...(scopedLocations.length > 0 || issue.locations
-        ? { locations: redactLocations(scopedLocations, redactor) }
-        : {}),
-    });
+    out.push(redactIssue(issue, scopedLocations, redactor));
   }
   return out;
 }
@@ -162,6 +178,45 @@ function redactLocations(
 ): IssueLocation[] {
   if (!redactor) return locations.map((loc) => ({ ...loc }));
   return locations.map((loc) => ({ ...loc, file: redactor(loc.file) }));
+}
+
+function redactIssue(
+  issue: Issue,
+  scopedLocations: IssueLocation[],
+  redactor: PathRedactor | null,
+): Issue {
+  const redactedLocations = redactLocations(scopedLocations, redactor);
+  const redactedIssue: Issue = {
+    ...issue,
+    ...(scopedLocations.length > 0 || issue.locations ? { locations: redactedLocations } : {}),
+  };
+  if (!redactor) return redactedIssue;
+
+  const textLocations = issue.locations ?? scopedLocations;
+  const replacements = textLocations
+    .filter((loc) => loc.file)
+    .map((loc) => [loc.file, redactor(loc.file)] as const);
+  redactedIssue.title = redactText(redactedIssue.title, replacements);
+  redactedIssue.description = redactText(redactedIssue.description, replacements);
+  if (redactedIssue.suggestedAction) {
+    redactedIssue.suggestedAction = {
+      ...redactedIssue.suggestedAction,
+      summary: redactText(redactedIssue.suggestedAction.summary, replacements),
+    };
+  }
+  return redactedIssue;
+}
+
+function redactText(text: string, replacements: ReadonlyArray<readonly [string, string]>): string {
+  let out = text;
+  for (const [filePath, label] of replacements) {
+    out = out.replace(new RegExp(escapeRegExp(filePath), 'g'), label);
+  }
+  return out;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function redactFileEntry(file: FileEntry, redactor: PathRedactor | null): FileEntry {
