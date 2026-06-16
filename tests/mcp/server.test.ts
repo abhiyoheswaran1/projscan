@@ -29,6 +29,17 @@ async function makeFixtureRoot(): Promise<string> {
   return root;
 }
 
+async function withFixtureServer<T>(
+  fn: (server: ReturnType<typeof createMcpServer>, root: string) => Promise<T>,
+): Promise<T> {
+  const root = await makeFixtureRoot();
+  try {
+    return await fn(createMcpServer(root), root);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+}
+
 async function inspectRepoSourceFile(rel: string) {
   const root = process.cwd();
   const abs = path.join(root, rel);
@@ -53,6 +64,38 @@ describe('MCP server maintainability', () => {
     const dispatch = dispatchModule.functions?.find((fn) => fn.name === 'dispatchMcpRequest');
     expect(dispatch).toBeDefined();
     expect(dispatch!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps tool context and progress emitters out of server orchestration', async () => {
+    const server = await inspectRepoSourceFile('src/mcp/server.ts');
+    const contextFunctions = new Set(['buildToolContext', 'buildProgressEmitter']);
+    expect(server.functions?.some((fn) => contextFunctions.has(fn.name))).toBe(false);
+
+    const contextModule = await inspectRepoSourceFile('src/mcp/serverContext.ts');
+    const createToolContext = contextModule.functions?.find((fn) => fn.name === 'createToolContext');
+    const buildProgressEmitter = contextModule.functions?.find(
+      (fn) => fn.name === 'buildProgressEmitter',
+    );
+
+    expect(createToolContext).toBeDefined();
+    expect(createToolContext!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(buildProgressEmitter).toBeDefined();
+    expect(buildProgressEmitter!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
+  it('keeps session-recording tool tests off the real repository root', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'tests/mcp/server.test.ts'), 'utf-8');
+    const serverSuite = source.slice(source.indexOf("\ndescribe('MCP server'"));
+    const repoRootToolTests = serverSuite
+      .split(/\n  it\(/)
+      .filter(
+        (block) =>
+          block.includes('createMcpServer(process.cwd())') &&
+          (block.includes("name: 'projscan_structure'") ||
+            block.includes("name: 'projscan_file'")),
+      );
+
+    expect(repoRootToolTests).toEqual([]);
   });
 });
 
@@ -137,46 +180,48 @@ describe('MCP server', () => {
   });
 
   it('tools/call returns content with text JSON payload', async () => {
-    const server = createMcpServer(process.cwd());
-    const response = (await send(server, {
-      jsonrpc: '2.0',
-      id: 5,
-      method: 'tools/call',
-      params: { name: 'projscan_structure', arguments: {} },
-    })) as {
-      result: {
-        content: Array<{ type: string; text: string }>;
-        isError: boolean;
+    await withFixtureServer(async (server) => {
+      const response = (await send(server, {
+        jsonrpc: '2.0',
+        id: 5,
+        method: 'tools/call',
+        params: { name: 'projscan_structure', arguments: {} },
+      })) as {
+        result: {
+          content: Array<{ type: string; text: string }>;
+          isError: boolean;
+        };
       };
-    };
 
-    expect(response.result.isError).toBe(false);
-    expect(response.result.content[0].type).toBe('text');
-    const payload = JSON.parse(response.result.content[0].text);
-    expect(payload).toHaveProperty('structure');
-    expect(payload).toHaveProperty('totalFiles');
+      expect(response.result.isError).toBe(false);
+      expect(response.result.content[0].type).toBe('text');
+      const payload = JSON.parse(response.result.content[0].text);
+      expect(payload).toHaveProperty('structure');
+      expect(payload).toHaveProperty('totalFiles');
+    });
   });
 
   it('projscan_file refuses to read paths outside the root', async () => {
-    const server = createMcpServer(process.cwd());
-    const response = (await send(server, {
-      jsonrpc: '2.0',
-      id: 6,
-      method: 'tools/call',
-      params: {
-        name: 'projscan_file',
-        arguments: { file: '../../../etc/passwd' },
-      },
-    })) as {
-      result: { content: Array<{ text: string }>; isError: boolean };
-    };
+    await withFixtureServer(async (server) => {
+      const response = (await send(server, {
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'tools/call',
+        params: {
+          name: 'projscan_file',
+          arguments: { file: '../../../etc/passwd' },
+        },
+      })) as {
+        result: { content: Array<{ text: string }>; isError: boolean };
+      };
 
-    // projscan_file reports the rejection in its payload rather than throwing,
-    // but the security guarantee is the same: it never reads out-of-root
-    // content. Assert the refusal is signalled and no passwd content leaks.
-    const text = response.result.content[0].text;
-    expect(text).toMatch(/outside the project root|not found|ENOENT/i);
-    expect(text).not.toMatch(/root:.*:0:0:|\/bin\/(ba)?sh/);
+      // projscan_file reports the rejection in its payload rather than throwing,
+      // but the security guarantee is the same: it never reads out-of-root
+      // content. Assert the refusal is signalled and no passwd content leaks.
+      const text = response.result.content[0].text;
+      expect(text).toMatch(/outside the project root|not found|ENOENT/i);
+      expect(text).not.toMatch(/root:.*:0:0:|\/bin\/(ba)?sh/);
+    });
   });
 
   it('error responses short-circuit budget + cost sidecars', async () => {
@@ -186,23 +231,24 @@ describe('MCP server', () => {
     // content — otherwise an agent inspecting `result.content[0].text`
     // would see a JSON envelope instead of the error message. A missing
     // required arg makes projscan_file throw, exercising that path.
-    const server = createMcpServer(process.cwd());
-    const response = (await send(server, {
-      jsonrpc: '2.0',
-      id: 99,
-      method: 'tools/call',
-      params: {
-        name: 'projscan_file',
-        arguments: { max_tokens: 5 },
-      },
-    })) as {
-      result: { content: Array<{ text: string }>; isError: boolean };
-    };
-    expect(response.result.isError).toBe(true);
-    const text = response.result.content[0].text;
-    expect(text).toMatch(/^Error:/);
-    expect(text).not.toContain('_cost');
-    expect(text).not.toContain('_budget');
+    await withFixtureServer(async (server) => {
+      const response = (await send(server, {
+        jsonrpc: '2.0',
+        id: 99,
+        method: 'tools/call',
+        params: {
+          name: 'projscan_file',
+          arguments: { max_tokens: 5 },
+        },
+      })) as {
+        result: { content: Array<{ text: string }>; isError: boolean };
+      };
+      expect(response.result.isError).toBe(true);
+      const text = response.result.content[0].text;
+      expect(text).toMatch(/^Error:/);
+      expect(text).not.toContain('_cost');
+      expect(text).not.toContain('_budget');
+    });
   });
 
   it('returns method-not-found for unknown tools without crashing the dispatcher', async () => {
@@ -353,26 +399,27 @@ describe('MCP server', () => {
   });
 
   it('projscan_file tool returns hotspot + issues + exports in one payload', async () => {
-    const server = createMcpServer(process.cwd());
-    const response = (await send(server, {
-      jsonrpc: '2.0',
-      id: 16,
-      method: 'tools/call',
-      params: { name: 'projscan_file', arguments: { file: 'src/types.ts' } },
-    })) as {
-      result: {
-        isError: boolean;
-        content: Array<{ text: string }>;
+    await withFixtureServer(async (server) => {
+      const response = (await send(server, {
+        jsonrpc: '2.0',
+        id: 16,
+        method: 'tools/call',
+        params: { name: 'projscan_file', arguments: { file: 'src/index.ts' } },
+      })) as {
+        result: {
+          isError: boolean;
+          content: Array<{ text: string }>;
+        };
       };
-    };
-    expect(response.result.isError).toBe(false);
-    const payload = JSON.parse(response.result.content[0].text) as {
-      exists: boolean;
-      relativePath: string;
-      exports: unknown[];
-    };
-    expect(payload.exists).toBe(true);
-    expect(payload.relativePath).toBe('src/types.ts');
-    expect(Array.isArray(payload.exports)).toBe(true);
+      expect(response.result.isError).toBe(false);
+      const payload = JSON.parse(response.result.content[0].text) as {
+        exists: boolean;
+        relativePath: string;
+        exports: unknown[];
+      };
+      expect(payload.exists).toBe(true);
+      expect(payload.relativePath).toBe('src/index.ts');
+      expect(Array.isArray(payload.exports)).toBe(true);
+    });
   }, 20000);
 });

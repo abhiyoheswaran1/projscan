@@ -15,7 +15,8 @@ import {
   type JsonRpcResponse,
   type McpDispatchHandlers,
 } from './serverDispatch.js';
-import { withProgress, type ProgressEmitter } from './progress.js';
+import { withProgress } from './progress.js';
+import { buildProgressEmitter, createToolContext } from './serverContext.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
 import {
   loadSession,
@@ -153,8 +154,8 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
 
     try {
       const args = params.arguments ?? {};
-      const emit = buildProgressEmitter(params._meta?.progressToken);
-      const ctx = buildToolContext();
+      const emit = buildProgressEmitter(options.notify, params._meta?.progressToken);
+      const ctx = createToolContext(options.notify, toolWatches);
       const result = await withProgress(emit, () => handler(args, rootPath, ctx));
       const { payload, estimatedTokens } = applyToolBudgetAndCost(result, args);
       // Record AFTER budgeting so the cost we log is the cost the
@@ -210,72 +211,6 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     resourcesList: (id) => ok(id, { resources: getResourceDefinitions() }),
     resourcesRead: handleResourcesRead,
   };
-
-  /**
-   * 1.8+ — build the per-call tool context. Tools that opt in (e.g.,
-   * projscan_review_watch) use this to access the notify channel and
-   * register polling watches with the server. Tools that don't opt in
-   * ignore the third arg and continue to operate on (args, rootPath).
-   *
-   * Watches registered here are tracked in `toolWatches` and cancelled
-   * on close() so timers can't leak past server shutdown.
-   */
-  function buildToolContext(): import('./tools/_shared.js').McpToolContext {
-    return {
-      notify: options.notify
-        ? (method, params) => {
-            try {
-              const payload = JSON.stringify({ jsonrpc: '2.0', method, params });
-              options.notify!(payload);
-              return true;
-            } catch {
-              return false;
-            }
-          }
-        : undefined,
-      registerWatch: (cancel) => {
-        const id = `watch-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-        toolWatches.set(id, cancel);
-        return id;
-      },
-      unregisterWatch: (watchId) => {
-        const cancel = toolWatches.get(watchId);
-        if (!cancel) return false;
-        try {
-          cancel();
-        } catch {
-          // best-effort
-        }
-        toolWatches.delete(watchId);
-        return true;
-      },
-    };
-  }
-
-  /**
-   * Build a progress emitter that forwards progress events to the
-   * client over the notify channel — IFF the client supplied a
-   * progressToken AND the transport gave us a notify channel.
-   */
-  function buildProgressEmitter(
-    progressToken: string | number | undefined,
-  ): ProgressEmitter | undefined {
-    if (progressToken === undefined || !options.notify) return undefined;
-    const notify = options.notify;
-    return (progress, total, message) => {
-      const payload = JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'notifications/progress',
-        params: {
-          progressToken,
-          progress,
-          ...(total !== undefined ? { total } : {}),
-          ...(message !== undefined ? { message } : {}),
-        },
-      });
-      notify(payload);
-    };
-  }
 
   /**
    * 1.4 — record session touches from any file paths the tool surfaced,
