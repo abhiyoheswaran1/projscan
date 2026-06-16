@@ -60,6 +60,20 @@ describe('per-function CC (JS/TS)', () => {
     expect(visitor!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps program signal traversal out of the AST orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'collectProgramSignals')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'collectCallExpressionImport')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'isDecisionPoint')).toBe(false);
+
+    const signalSource = readFileSync(join(process.cwd(), 'src/core/astProgramSignals.ts'), 'utf8');
+    const signalFns = fns(signalSource, 'src/core/astProgramSignals.ts');
+    const collector = signalFns.find((fn) => fn.name === 'collectProgramSignals');
+    expect(collector).toBeDefined();
+    expect(collector!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
