@@ -934,7 +934,8 @@ Supported on `analyze`, `audit`, `ci`, `doctor`, and `outdated`. Each issue is e
 For shareable evidence artifacts, `analyze`, `doctor`, and `ci` accept
 `--report-policy <name>`, `--report-scope <paths>`, and `--redact-paths`. Scope
 is comma-separated and repo-relative. Redaction replaces file paths with stable
-labels while preserving correlation across issues and files in the same report.
+labels while preserving correlation across issues and files in the same report,
+including file-like path tokens in issue text that has no location anchor.
 JSON/SARIF include path-safe `reportControls` metadata, and Markdown/HTML print
 path-safe controls banners. Direct `--report-scope` and `--redact-paths` flags
 override the selected preset for a single run.

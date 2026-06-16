@@ -196,24 +196,45 @@ function redactIssue(
   const replacements = textLocations
     .filter((loc) => loc.file)
     .map((loc) => [loc.file, redactor(loc.file)] as const);
-  redactedIssue.title = redactText(redactedIssue.title, replacements);
-  redactedIssue.description = redactText(redactedIssue.description, replacements);
+  redactedIssue.title = redactText(redactedIssue.title, replacements, redactor);
+  redactedIssue.description = redactText(redactedIssue.description, replacements, redactor);
   if (redactedIssue.suggestedAction) {
     redactedIssue.suggestedAction = {
       ...redactedIssue.suggestedAction,
-      summary: redactText(redactedIssue.suggestedAction.summary, replacements),
+      summary: redactText(redactedIssue.suggestedAction.summary, replacements, redactor),
     };
   }
   return redactedIssue;
 }
 
-function redactText(text: string, replacements: ReadonlyArray<readonly [string, string]>): string {
+function redactText(
+  text: string,
+  replacements: ReadonlyArray<readonly [string, string]>,
+  redactor: PathRedactor | null,
+): string {
   let out = text;
   const ordered = [...replacements].sort((a, b) => b[0].length - a[0].length);
   for (const [filePath, label] of ordered) {
     out = out.replace(pathReferenceRegExp(filePath), label);
   }
+  if (redactor) out = redactUnmappedPathTokens(out, redactor);
   return out;
+}
+
+const TEXT_PATH_TOKEN_PATTERN =
+  /(?:[A-Za-z]:[\\/]|\/|\.{1,2}[\\/])?(?:[A-Za-z0-9._@-]+[\\/])+[A-Za-z0-9._@-]+\.(?:ts|tsx|js|jsx|mjs|cjs|mts|cts|py|go|java|rb|rs|php|cs|json|ya?ml|toml|md)(?=$|[\s'"()[\]{}<>.,;:!?#])/gi;
+
+function redactUnmappedPathTokens(text: string, redactor: PathRedactor): string {
+  return text.replace(TEXT_PATH_TOKEN_PATTERN, (match, ...args) => {
+    const offset = args[args.length - 2] as number;
+    if (hasUrlSchemeBefore(text, offset)) return match;
+    return redactor(match);
+  });
+}
+
+function hasUrlSchemeBefore(text: string, offset: number): boolean {
+  const prefix = text.slice(Math.max(0, offset - 8), offset).toLowerCase();
+  return prefix.endsWith('://');
 }
 
 function pathReferenceRegExp(filePath: string): RegExp {

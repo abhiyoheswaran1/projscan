@@ -229,4 +229,29 @@ describe('reportScope', () => {
       'Both redacted-path-1 and redacted-path-2 need review.',
     );
   });
+
+  it('redacts path-like text in unlocated issues', () => {
+    const scoped = applyReportControlsToIssues(
+      [
+        {
+          ...issue('unlocated-path', []),
+          locations: undefined,
+          title: 'Review src/private/secret.ts before sharing',
+          description: 'The partner note mentions src/private/secret.ts without a location.',
+          suggestedAction: { summary: 'Remove src/private/secret.ts from exported evidence' },
+        },
+      ],
+      { redactPaths: true },
+    );
+    const serialized = JSON.stringify(scoped);
+
+    expect(scoped[0].title).toBe('Review redacted-path-1 before sharing');
+    expect(scoped[0].description).toBe(
+      'The partner note mentions redacted-path-1 without a location.',
+    );
+    expect(scoped[0].suggestedAction?.summary).toBe(
+      'Remove redacted-path-1 from exported evidence',
+    );
+    expect(serialized).not.toContain('src/private/secret.ts');
+  });
 });
