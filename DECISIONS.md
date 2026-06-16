@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract hotspot line counting helpers
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` still owned file line counting and size-to-line fallback helpers inline, even though scoring, git churn, and issue matching were already isolated.
+- Decision: Move line counting and LOC fallback helpers into `src/core/hotspotLines.ts`.
+- Consequences: Hotspot analysis behavior remains unchanged, while the analyzer orchestration focuses on candidate selection, churn/issue joins, and hotspot assembly.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts -t "line counting"` plus focused hotspot tests.
+
 ## 2026-06-16: Extract review head snapshot assembly
 
 - Status: accepted

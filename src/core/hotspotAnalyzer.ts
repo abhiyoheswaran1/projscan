@@ -1,8 +1,8 @@
-import fs from 'node:fs/promises';
 import type { AuthorShare, FileEntry, FileHotspot, HotspotReport, Issue } from '../types.js';
 import type { CodeGraph } from './codeGraph.js';
 import { collectGitChurn, countCommits, isGitRepository } from './hotspotGit.js';
 import { indexIssuesByFile } from './hotspotIssues.js';
+import { countLines, lineCountOrEstimate } from './hotspotLines.js';
 import { buildReasons, computeRiskScore, rankAuthors } from './hotspotScoring.js';
 
 export { computeRiskScore } from './hotspotScoring.js';
@@ -214,10 +214,6 @@ function daysSinceLastChangeFrom(nowMs: number, lastTimestampMs: number | null |
   return Math.max(0, Math.floor((nowMs - lastTs) / (1000 * 60 * 60 * 24)));
 }
 
-function lineCountOrEstimate(lineCount: number | undefined, sizeBytes: number): number {
-  return lineCount ?? estimateLines(sizeBytes);
-}
-
 function summarizeHotspotAuthors(
   churn: number,
   authorCommits: Map<string, number> | undefined,
@@ -258,24 +254,4 @@ async function markAcceptedHotspots(rootPath: string, top: FileHotspot[]): Promi
   } catch {
     // best-effort
   }
-}
-
-// ── Line Counting ─────────────────────────────────────────
-
-async function countLines(absolutePath: string): Promise<number | null> {
-  try {
-    const content = await fs.readFile(absolutePath, 'utf-8');
-    if (!content) return 0;
-    let lines = 1;
-    for (let i = 0; i < content.length; i++) {
-      if (content.charCodeAt(i) === 10) lines++;
-    }
-    return lines;
-  } catch {
-    return null;
-  }
-}
-
-function estimateLines(sizeBytes: number): number {
-  return Math.max(1, Math.round(sizeBytes / 40));
 }

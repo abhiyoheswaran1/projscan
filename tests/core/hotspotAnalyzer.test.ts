@@ -37,6 +37,23 @@ describe('computeRiskScore', () => {
     expect(buildReasons!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps line counting and LOC fallback isolated from the analyzer orchestrator', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    const lineFunctions = new Set(['countLines', 'lineCountOrEstimate', 'estimateLines']);
+    expect(analyzer.functions?.some((fn) => lineFunctions.has(fn.name))).toBe(false);
+
+    const lineModule = await inspectRepoSourceFile('src/core/hotspotLines.ts');
+    const countLines = lineModule.functions?.find((fn) => fn.name === 'countLines');
+    const lineCountOrEstimate = lineModule.functions?.find(
+      (fn) => fn.name === 'lineCountOrEstimate',
+    );
+
+    expect(countLines).toBeDefined();
+    expect(countLines!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(lineCountOrEstimate).toBeDefined();
+    expect(lineCountOrEstimate!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,

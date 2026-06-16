@@ -3888,3 +3888,49 @@ hotspot analysis so AST-derived complexity remains available.
 Kept change: one focused head-snapshot helper, one maintainability regression,
 existing review behavior coverage, this persona note, and no public schema
 change.
+
+## Ninetieth Slice Decision
+
+Selected persona: Maintainer-Focused Refactorer.
+
+Reason: `hotspotAnalyzer.ts` is a high-risk hotspot and already delegates
+scoring, git churn, and issue matching. Line counting and LOC fallback were the
+remaining low-level helpers inside the analyzer, so extracting them reduces
+local complexity without changing hotspot ranking, memory writes, or public
+report shape.
+
+Smallest fix: move `countLines`, `lineCountOrEstimate`, and the private
+`estimateLines` helper into `hotspotLines.ts`, keep analyzer candidate ordering
+and top-K behavior unchanged, and add a maintainability regression to keep line
+counting out of the analyzer.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/hotspotAnalyzer.test.ts -t "line counting"
+npm run test -- tests/core/hotspotAnalyzer.test.ts tests/core/hotspotIssueLinking.test.ts tests/core/hotspotCoverage.test.ts tests/types/public-hotspot-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json
+npm exec projscan -- file src/core/hotspotLines.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Hotspot Line Helper Extraction
+
+Delete-list after this slice:
+
+- Do not change hotspot scoring, reason strings, churn collection, issue
+  linking, coverage handling, graph complexity preference, memory acceptance
+  tagging, candidate caps, or public hotspot report fields.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: empty files should still count as zero lines, unreadable
+files should still fall back to size estimates, and files outside parser graph
+coverage should still use LOC fallback.
+
+Kept change: one focused line-helper module, one maintainability regression,
+existing hotspot behavior coverage, this persona note, and no public schema
+change.
