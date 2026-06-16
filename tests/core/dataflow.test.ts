@@ -484,6 +484,36 @@ export function helper(req: { get(name: string): string }) {
     expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Express request IP as a framework source without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'express-ip.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/by-ip', (req) => {
+  const ip = req.ip;
+  return db.query(String(ip));
+});
+
+export function helper(req: { ip: string }) {
+  return cache.query(req.ip);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const expressRisks = report.risks.filter((risk) => risk.files.includes('src/express-ip.ts'));
+
+    expect(expressRisks).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: 'express.req.ip', sink: 'query' })]),
+    );
+    expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Fastify request fields as framework sources without flagging lookalike helpers', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'fastify.ts'),
@@ -612,6 +642,38 @@ app.route({
         }),
       ]),
     );
+  });
+
+  it('treats Fastify request IP as a framework source without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'fastify-ip.ts'),
+      `import Fastify from 'fastify';
+
+const app = Fastify();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/by-ip', async (request) => {
+  const ip = request.ip;
+  return db.query(String(ip));
+});
+
+export function helper(request: { ip: string }) {
+  return cache.query(request.ip);
+}
+`,
+    );
+
+    const graph = await buildFixtureGraph();
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const fastifyRisks = report.risks.filter((risk) => risk.files.includes('src/fastify-ip.ts'));
+
+    expect(fastifyRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'fastify.request.ip', sink: 'query' }),
+      ]),
+    );
+    expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
   it('treats Koa request fields as framework sources without flagging lookalike helpers', async () => {

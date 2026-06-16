@@ -21,6 +21,7 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['params', 'express.req.params'],
   ['headers', 'express.req.headers'],
   ['cookies', 'express.req.cookies'],
+  ['ip', 'express.req.ip'],
 ]);
 
 const EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
@@ -34,6 +35,7 @@ const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['params', 'fastify.request.params'],
   ['headers', 'fastify.request.headers'],
   ['cookies', 'fastify.request.cookies'],
+  ['ip', 'fastify.request.ip'],
 ]);
 
 const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([

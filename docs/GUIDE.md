@@ -435,8 +435,9 @@ and a sink wrapper is surfaced even when legacy taint reachability cannot see a
 downstream call path from source to sink. By default, dataflow suppresses test-file paths,
 broad readFile/writeFile-style noise, and JavaScript RegExp.exec false positives.
 Framework request-source detection covers narrow tested patterns for Next.js, Hono,
-Express, Fastify, and Koa handlers, including Hono validator output and Express/Koa
-header accessors, while keeping lookalike helpers quiet.
+Express, Fastify, and Koa handlers, including Hono validator output,
+Express/Fastify request IP metadata, and Express/Koa header accessors, while
+keeping lookalike helpers quiet.
 
 For release hardening, `npm run check:graph-corpus` compares bundled fixture metrics against `docs/graph-corpus-baseline.json`. The gate fails only when graph coverage drops below the baseline or dataflow risks rise above it.
 

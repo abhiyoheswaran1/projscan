@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Treat Express and Fastify request IP metadata as gated sources
+
+- Status: accepted
+- Context: Express and Fastify route handlers detected request body, query, params, headers, cookies, and selected accessors, but common request IP metadata (`req.ip` / `request.ip`) stayed invisible. Treating every `ip` member read as a source would create helper false positives.
+- Decision: Add `express.req.ip` and `fastify.request.ip` as framework request sources only when framework imports, handler call context, and request parameters are present.
+- Consequences: `projscan dataflow` can report request IP metadata flowing into database sinks, while same-file helper functions reading `.ip` remain quiet unless they are passed as framework handlers.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "request IP"`.
+
 ## 2026-06-16: Split JavaScript function naming into private helpers
 
 - Status: accepted

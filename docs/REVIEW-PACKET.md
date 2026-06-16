@@ -109,13 +109,15 @@ Hono/Express/Koa/Fastify dataflow:
 - Hono uses gated `memberCallSites`, so `c.req.valid(...)` can be detected
   without treating helper `c.req.valid(...)` calls as request input.
 - Express uses gated `memberCallSites`, so `req.get(...)` and
-  `request.header(...)` can be detected without treating helper `req.get(...)`
-  calls as request input.
+  `request.header(...)` can be detected, and gated request references cover
+  `req.ip`, without treating helper `req.get(...)` or `.ip` calls as request
+  input.
 - Koa uses qualified `memberReferences` and gated `memberCallSites`, so
   `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.get(...)`, and
   `ctx.request.get(...)` can be detected without treating `ctx.body` response
   writes or helper `ctx.get(...)` calls as request input.
-- Fastify remains parameter/reference gated and keeps lookalike helpers quiet.
+- Fastify remains parameter/reference gated, including `request.ip`, and keeps
+  lookalike helpers quiet.
 - Cache version is bumped to invalidate stale graph entries that lack
   `memberReferences`.
 - Tests: `tests/core/ast.references.test.ts` and `tests/core/dataflow.test.ts`.
