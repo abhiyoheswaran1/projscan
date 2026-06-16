@@ -3798,3 +3798,49 @@ a fixture root so durable session evidence stays reviewable.
 
 Kept change: one fixture-root test cleanup, one expanded maintainability guard,
 this persona note, and no product runtime behavior change.
+
+## Eighty-Eighth Slice Decision
+
+Selected persona: Platform Reviewer.
+
+Reason: `computeReview` is a high-churn review hotspot and still owned the
+clean identical-ref fast-path response shape inline. Extracting that report
+assembly makes the review orchestrator easier to audit without changing
+verdicts, diffing, intent analysis, package scoping, or graph/dataflow checks.
+
+Smallest fix: move the no-change review response into
+`reviewNoChanges.ts`, keep intent annotation in `review.ts`, and add a
+maintainability regression that prevents the fast-path summary shape from
+moving back into the orchestrator.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "no-change report assembly|no changes between identical refs|dirty worktree"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewNoChanges.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review No-Change Extraction
+
+Delete-list after this slice:
+
+- Do not change review verdict rules, package scoping, manifest diffing,
+  contract-change detection, taint/dataflow comparison, graph evidence,
+  worktree cleanup, git timeout behavior, or intent annotation.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: identical base/head with a clean worktree should still
+return `available: true`, `verdict: ok`, an empty diff, and the existing
+no-structural-changes summary; identical base/head with dirty files should
+still take the full review path.
+
+Kept change: one focused no-change report helper, one maintainability
+regression, existing review behavior coverage, this persona note, and no public
+schema change.

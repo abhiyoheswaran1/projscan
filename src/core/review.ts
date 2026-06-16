@@ -17,6 +17,7 @@ import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.
 import { classifyNewCycles, scopeCyclesToFiles } from './reviewCycles.js';
 import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
 import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
+import { buildNoChangeReviewReport } from './reviewNoChanges.js';
 import {
   diffManifests,
   readManifests,
@@ -82,29 +83,7 @@ export async function computeReview(
     );
   }
   if (headSha && headSha === baseSha && (await isWorktreeClean(rootPath))) {
-    const report: ReviewReport = {
-      available: true,
-      base: { ref: baseRef, resolvedSha: baseSha },
-      head: { ref: headRef, resolvedSha: headSha },
-      prDiff: {
-        available: true,
-        base: { ref: baseRef, resolvedSha: baseSha },
-        head: { ref: headRef, resolvedSha: headSha },
-        filesAdded: [],
-        filesRemoved: [],
-        filesModified: [],
-        totalFilesChanged: 0,
-      },
-      changedFiles: [],
-      newCycles: [],
-      riskyFunctions: [],
-      dependencyChanges: [],
-      contractChanges: [],
-      newTaintFlows: [],
-      newDataflowRisks: [],
-      verdict: 'ok',
-      summary: ['No structural changes detected between base and head.'],
-    };
+    const report = buildNoChangeReviewReport({ baseRef, baseSha, headRef, headSha });
     applyIntent(report, options.intent);
     return report;
   }

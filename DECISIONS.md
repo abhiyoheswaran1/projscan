@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract review no-change report assembly
+
+- Status: accepted
+- Context: `computeReview` still constructed the identical-ref clean-worktree response inline, mixing fast-path report shape with review orchestration.
+- Decision: Move the no-change report shape into `src/core/reviewNoChanges.ts` and keep intent annotation in `review.ts`.
+- Consequences: The clean identical-ref review response remains unchanged, while `computeReview` focuses on repo checks, graph/diff orchestration, and intent application.
+- Verification: `npm run test -- tests/core/review.test.ts -t "no-change report assembly|no changes between identical refs|dirty worktree"` plus focused review tests.
+
 ## 2026-06-16: Extract MCP JSON-RPC message parsing
 
 - Status: accepted

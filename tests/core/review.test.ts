@@ -279,6 +279,19 @@ describe('computeReview', () => {
     expect(scopeCyclesToFiles!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps no-change report assembly isolated from the review orchestrator', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).not.toContain('No structural changes detected between base and head.');
+
+    const noChangesModule = await inspectRepoSourceFile('src/core/reviewNoChanges.ts');
+    const buildNoChangeReport = noChangesModule.functions?.find(
+      (fn) => fn.name === 'buildNoChangeReviewReport',
+    );
+
+    expect(buildNoChangeReport).toBeDefined();
+    expect(buildNoChangeReport!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
