@@ -6,7 +6,7 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 
 - Status: accepted
 - Context: `src/core/hotspotAnalyzer.ts` remains a high-churn, high-complexity roadmap maintainability target. The dense per-file mapping inside `analyzeHotspots` combined churn, author, issue, coverage, complexity, reason, and score assembly in one block, making reviewer checks harder than necessary.
-- Decision: Extract the per-file hotspot object assembly into `buildFileHotspot` and cover it directly with deterministic unit tests while preserving the existing scoring, reason text, ranking, and report schema.
+- Decision: Extract the per-file hotspot object assembly into an internal helper and cover the emitted hotspot fields through deterministic analyzer tests while preserving the existing scoring, reason text, ranking, and report schema.
 - Consequences: Hotspot behavior remains unchanged, but future changes to author concentration, coverage penalties, or complexity fallback can be tested without constructing a git-backed repository fixture.
 - Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts`.
 

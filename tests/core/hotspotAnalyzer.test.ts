@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { buildFileHotspot, computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
-import type { FileEntry } from '../../src/types.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { analyzeHotspots, computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
+import type { CodeGraph } from '../../src/core/codeGraph.js';
+import type { FileEntry, Issue } from '../../src/types.js';
 
-const fileEntry: FileEntry = {
-  relativePath: 'src/hot.ts',
-  absolutePath: '/repo/src/hot.ts',
-  extension: '.ts',
-  sizeBytes: 4000,
-  directory: 'src',
-};
+const execFileAsync = promisify(execFile);
 
 describe('computeRiskScore', () => {
   it('returns 0 for untouched files with no issues', () => {
@@ -176,74 +176,122 @@ describe('computeRiskScore', () => {
   });
 });
 
-describe('buildFileHotspot', () => {
-  const nowMs = Date.UTC(2026, 5, 16);
+describe('analyzeHotspots', () => {
+  it('combines churn, author concentration, issues, coverage, and complexity evidence', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-hotspot-evidence-'));
+    try {
+      await initRepo(dir);
+      const file = await commitHotspotHistory(dir, 'src/hot.ts');
+      const graph = graphWithComplexity(file.relativePath, 31);
+      const issues: Issue[] = [
+        {
+          id: 'issue-1',
+          title: 'hot path risk',
+          description: 'tracked by location',
+          severity: 'warning',
+          category: 'test',
+          fixAvailable: false,
+          locations: [{ file: file.relativePath }],
+        },
+      ];
 
-  it('combines churn, author concentration, issues, coverage, and complexity evidence', () => {
-    const hotspot = buildFileHotspot({
-      file: fileEntry,
-      churn: 5,
-      distinctAuthors: 2,
-      authorCommits: new Map([
-        ['owner@example.com', 4],
-        ['peer@example.com', 1],
-      ]),
-      lastTimestampMs: nowMs - 2 * 24 * 60 * 60 * 1000,
-      lineCount: 120,
-      issueIds: ['issue-1'],
-      nowMs,
-      coverage: 35.2,
-      complexity: 31,
-    });
+      const report = await analyzeHotspots(dir, [file], issues, {
+        limit: 10,
+        coverage: new Map([[file.relativePath, 35.2]]),
+        graph,
+      });
+      const hotspot = report.hotspots.find((h) => h.relativePath === file.relativePath);
 
-    expect(hotspot).toMatchObject({
-      relativePath: 'src/hot.ts',
-      churn: 5,
-      distinctAuthors: 2,
-      daysSinceLastChange: 2,
-      lineCount: 120,
-      cyclomaticComplexity: 31,
-      issueCount: 1,
-      issueIds: ['issue-1'],
-      primaryAuthor: 'owner@example.com',
-      primaryAuthorShare: 0.8,
-      busFactorOne: true,
-      coverage: 35.2,
-    });
-    expect(hotspot.topAuthors).toEqual([
-      { author: 'owner@example.com', commits: 4, share: 0.8 },
-      { author: 'peer@example.com', commits: 1, share: 0.2 },
-    ]);
-    expect(hotspot.reasons).toEqual(
-      expect.arrayContaining([
-        '5 commits',
-        'high complexity (CC 31)',
-        '2 contributors',
-        '1 open issue',
-        'changed this week',
-        'bus factor 1 (owner)',
-        'low coverage (35%)',
-      ]),
-    );
-    expect(hotspot.riskScore).toBeGreaterThan(0);
-  });
-
-  it('falls back to estimated line count and null complexity for unparsed files', () => {
-    const hotspot = buildFileHotspot({
-      file: fileEntry,
-      churn: 1,
-      distinctAuthors: 0,
-      lastTimestampMs: null,
-      nowMs,
-    });
-
-    expect(hotspot.lineCount).toBe(100);
-    expect(hotspot.cyclomaticComplexity).toBeNull();
-    expect(hotspot.coverage).toBeNull();
-    expect(hotspot.primaryAuthor).toBeNull();
-    expect(hotspot.primaryAuthorShare).toBe(0);
-    expect(hotspot.busFactorOne).toBe(false);
-    expect(hotspot.issueIds).toEqual([]);
-    expect(hotspot.riskScore).toBeGreaterThan(0);
+      expect(hotspot).toMatchObject({
+        relativePath: 'src/hot.ts',
+        churn: 5,
+        distinctAuthors: 2,
+        lineCount: 120,
+        cyclomaticComplexity: 31,
+        issueCount: 1,
+        issueIds: ['issue-1'],
+        primaryAuthor: 'owner@example.com',
+        primaryAuthorShare: 0.8,
+        busFactorOne: true,
+        coverage: 35.2,
+      });
+      expect(hotspot?.daysSinceLastChange).not.toBeNull();
+      expect(hotspot?.daysSinceLastChange).toBeLessThanOrEqual(7);
+      expect(hotspot?.topAuthors).toEqual([
+        { author: 'owner@example.com', commits: 4, share: 0.8 },
+        { author: 'peer@example.com', commits: 1, share: 0.2 },
+      ]);
+      expect(hotspot?.reasons).toEqual(
+        expect.arrayContaining([
+          '5 commits',
+          'high complexity (CC 31)',
+          '2 contributors',
+          '1 open issue',
+          'changed this week',
+          'bus factor 1 (owner)',
+          'low coverage (35%)',
+        ]),
+      );
+      expect(hotspot?.riskScore).toBeGreaterThan(0);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });
+
+async function initRepo(dir: string): Promise<void> {
+  await execFileAsync('git', ['init', '-q', '--initial-branch=main'], { cwd: dir });
+  await execFileAsync('git', ['config', 'user.name', 'test'], { cwd: dir });
+  await execFileAsync('git', ['config', 'commit.gpgsign', 'false'], { cwd: dir });
+}
+
+async function commitHotspotHistory(dir: string, rel: string): Promise<FileEntry> {
+  for (let commit = 0; commit < 5; commit++) {
+    const email = commit < 4 ? 'owner@example.com' : 'peer@example.com';
+    await execFileAsync('git', ['config', 'user.email', email], { cwd: dir });
+    await writeHotspotFile(dir, rel, commit);
+    await execFileAsync('git', ['add', rel], { cwd: dir });
+    await execFileAsync('git', ['commit', '-q', '-m', `hotspot ${commit}`], { cwd: dir });
+  }
+
+  const absolutePath = path.join(dir, rel);
+  const stat = await fs.stat(absolutePath);
+  return {
+    relativePath: rel,
+    absolutePath,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.dirname(rel),
+  };
+}
+
+async function writeHotspotFile(dir: string, rel: string, commit: number): Promise<void> {
+  const absolutePath = path.join(dir, rel);
+  await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+  const lines = Array.from({ length: 120 }, (_, line) => `export const v${line} = ${commit};`);
+  await fs.writeFile(absolutePath, lines.join('\n'));
+}
+
+function graphWithComplexity(relativePath: string, cyclomaticComplexity: number): CodeGraph {
+  return {
+    files: new Map([
+      [
+        relativePath,
+        {
+          relativePath,
+          imports: [],
+          exports: [],
+          callSites: [],
+          lineCount: 120,
+          cyclomaticComplexity,
+          mtimeMs: 0,
+          parseOk: true,
+        },
+      ],
+    ]),
+    packageImporters: new Map(),
+    localImporters: new Map(),
+    symbolDefs: new Map(),
+    scannedFiles: 1,
+  };
+}

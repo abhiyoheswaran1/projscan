@@ -47,7 +47,7 @@ export interface HotspotOptions {
   graph?: CodeGraph;
 }
 
-export interface BuildFileHotspotInput {
+interface BuildFileHotspotInput {
   file: FileEntry;
   churn: number;
   distinctAuthors: number;
@@ -154,7 +154,7 @@ export async function analyzeHotspots(
   };
 }
 
-export function buildFileHotspot(i: BuildFileHotspotInput): FileHotspot {
+function buildFileHotspot(i: BuildFileHotspotInput): FileHotspot {
   const daysSinceLastChange = daysSinceLastChangeFrom(i.nowMs, i.lastTimestampMs);
   const lines = lineCountOrEstimate(i.lineCount, i.file.sizeBytes);
   const issueIds = i.issueIds ?? [];
