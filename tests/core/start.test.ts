@@ -3,6 +3,8 @@ import path from 'node:path';
 import { expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { computeStartReport } from '../../src/core/start.js';
+import { routesForIntent } from '../../src/core/startMode.js';
+import { actionPlanFromRoute } from '../../src/core/startRouteActions.js';
 import { makeTempProject } from '../helpers/startProject.js';
 import {
   expectedReviewDecisionIds,
@@ -11,6 +13,14 @@ import {
   expectedReviewPromptReplies,
   expectedReviewReplyQuotes,
 } from '../helpers/startReviewGate.js';
+
+function primaryActionForIntent(intent: string) {
+  const route = routesForIntent(intent)[0];
+  if (!route) throw new Error(`Expected a route for intent: ${intent}`);
+  const action = actionPlanFromRoute('before_edit', intent, route)[0];
+  if (!action) throw new Error(`Expected an action for intent: ${intent}`);
+  return { action, route };
+}
 
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
   const root = await makeTempProject();
@@ -4678,1439 +4688,680 @@ test('start report turns code-location questions into focused search', async () 
   );
   expect(report.missionControl.proofCommands).toContain('projscan search "billing" --format json');
 
-  const postHandler = await computeStartReport(root, {
-    intent: 'find the handler for POST /api/users',
-  });
-  expect(postHandler.mode).toBe('before_edit');
-  expect(postHandler.modeSource).toBe('default');
-  expect(postHandler.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['find', 'handler', 'api']),
-    }),
-  );
-  expect(postHandler.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+  const cases: Array<{
+    intent: string;
+    command: string;
+    tool?: string;
+    args: Record<string, unknown>;
+    route?: {
+      category?: string;
+      confidence?: 'high' | 'medium' | 'low';
+      matchedKeywords?: string[];
+    };
+  }> = [
+    {
+      intent: 'find the handler for POST /api/users',
       command: 'projscan search "POST /api/users" --format json',
-      tool: 'projscan_search',
       args: { query: 'POST /api/users' },
-    }),
-  );
-
-  const checkoutRoute = await computeStartReport(root, {
-    intent: 'where is the /checkout route handled',
-  });
-  expect(checkoutRoute.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['find', 'handler', 'api'],
+      },
+    },
+    {
+      intent: 'where is the /checkout route handled',
       command: 'projscan search "/checkout" --format json',
-      tool: 'projscan_search',
       args: { query: '/checkout' },
-    }),
-  );
-
-  const settingsPage = await computeStartReport(root, {
-    intent: 'where is /settings page rendered',
-  });
-  expect(settingsPage.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is /settings page rendered',
       command: 'projscan search "/settings page" --format json',
-      tool: 'projscan_search',
       args: { query: '/settings page' },
-    }),
-  );
-
-  const billingPage = await computeStartReport(root, {
-    intent: 'which page renders /billing',
-  });
-  expect(billingPage.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which page renders /billing',
       command: 'projscan search "/billing page" --format json',
-      tool: 'projscan_search',
       args: { query: '/billing page' },
-    }),
-  );
-
-  const routeSegment = await computeStartReport(root, {
-    intent: 'where is route segment for dashboard',
-  });
-  expect(routeSegment.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is route segment for dashboard',
       command: 'projscan search "dashboard route segment" --format json',
-      tool: 'projscan_search',
       args: { query: 'dashboard route segment' },
-    }),
-  );
-
-  const notFoundPage = await computeStartReport(root, {
-    intent: 'where is not-found page handled',
-  });
-  expect(notFoundPage.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is not-found page handled',
       command: 'projscan search "not-found page" --format json',
-      tool: 'projscan_search',
       args: { query: 'not-found page' },
-    }),
-  );
-
-  const runtime404 = await computeStartReport(root, {
-    intent: 'why is /settings returning 404',
-  });
-  expect(runtime404.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'why is /settings returning 404',
       command: 'projscan regression-plan --level focused --format json',
       tool: 'projscan_regression_plan',
       args: { level: 'focused' },
-    }),
-  );
-
-  const flags = await computeStartReport(root, {
-    intent: 'which feature flags exist',
-  });
-  expect(flags.mode).toBe('before_edit');
-  expect(flags.modeSource).toBe('default');
-  expect(flags.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['feature', 'flags']),
-    }),
-  );
-  expect(flags.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which feature flags exist',
       command: 'projscan search "feature flags" --format json',
-      tool: 'projscan_search',
       args: { query: 'feature flags' },
-    }),
-  );
-
-  const migrations = await computeStartReport(root, {
-    intent: 'which migrations exist',
-  });
-  expect(migrations.mode).toBe('before_edit');
-  expect(migrations.modeSource).toBe('default');
-  expect(migrations.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['migrations', 'exist']),
-    }),
-  );
-  expect(migrations.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['feature', 'flags'] },
+    },
+    {
+      intent: 'which migrations exist',
       command: 'projscan search "migrations" --format json',
-      tool: 'projscan_search',
       args: { query: 'migrations' },
-    }),
-  );
-
-  const generatedFiles = await computeStartReport(root, {
-    intent: 'show me generated files',
-  });
-  expect(generatedFiles.mode).toBe('before_edit');
-  expect(generatedFiles.modeSource).toBe('default');
-  expect(generatedFiles.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['generated', 'files']),
-    }),
-  );
-  expect(generatedFiles.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['migrations', 'exist'] },
+    },
+    {
+      intent: 'show me generated files',
       command: 'projscan search "generated files" --format json',
-      tool: 'projscan_search',
       args: { query: 'generated files' },
-    }),
-  );
-
-  const eslintConfig = await computeStartReport(root, {
-    intent: 'where is eslint config',
-  });
-  expect(eslintConfig.mode).toBe('before_edit');
-  expect(eslintConfig.modeSource).toBe('default');
-  expect(eslintConfig.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'config']),
-    }),
-  );
-  expect(eslintConfig.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['generated', 'files'] },
+    },
+    {
+      intent: 'where is eslint config',
       command: 'projscan search "eslint config" --format json',
-      tool: 'projscan_search',
       args: { query: 'eslint config' },
-    }),
-  );
-
-  const aliases = await computeStartReport(root, {
-    intent: 'which config file defines aliases',
-  });
-  expect(aliases.mode).toBe('before_edit');
-  expect(aliases.modeSource).toBe('default');
-  expect(aliases.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['config', 'file', 'defines', 'aliases']),
-    }),
-  );
-  expect(aliases.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['where', 'config'] },
+    },
+    {
+      intent: 'which config file defines aliases',
       command: 'projscan search "aliases config" --format json',
-      tool: 'projscan_search',
       args: { query: 'aliases config' },
-    }),
-  );
-
-  const tsconfigAliases = await computeStartReport(root, {
-    intent: 'where is tsconfig path aliases configured',
-  });
-  expect(tsconfigAliases.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['config', 'file', 'defines', 'aliases'],
+      },
+    },
+    {
+      intent: 'where is tsconfig path aliases configured',
       command: 'projscan search "tsconfig path aliases" --format json',
-      tool: 'projscan_search',
       args: { query: 'tsconfig path aliases' },
-    }),
-  );
-
-  const vitestConfig = await computeStartReport(root, {
-    intent: 'where is Vitest config',
-  });
-  expect(vitestConfig.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Vitest config',
       command: 'projscan search "Vitest config" --format json',
-      tool: 'projscan_search',
       args: { query: 'Vitest config' },
-    }),
-  );
-
-  const babelConfig = await computeStartReport(root, {
-    intent: 'find Babel config',
-  });
-  expect(babelConfig.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find Babel config',
       command: 'projscan search "Babel config" --format json',
-      tool: 'projscan_search',
       args: { query: 'Babel config' },
-    }),
-  );
-
-  const packageManager = await computeStartReport(root, {
-    intent: 'where is package manager configured',
-  });
-  expect(packageManager.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is package manager configured',
       command: 'projscan search "package manager" --format json',
-      tool: 'projscan_search',
       args: { query: 'package manager' },
-    }),
-  );
-
-  const pnpmWorkspace = await computeStartReport(root, {
-    intent: 'where is pnpm workspace file',
-  });
-  expect(pnpmWorkspace.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is pnpm workspace file',
       command: 'projscan search "pnpm workspace" --format json',
-      tool: 'projscan_search',
       args: { query: 'pnpm workspace' },
-    }),
-  );
-
-  const failingVitest = await computeStartReport(root, {
-    intent: 'why is vitest failing',
-  });
-  expect(failingVitest.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'why is vitest failing',
       command: 'projscan regression-plan --level focused --format json',
       tool: 'projscan_regression_plan',
       args: { level: 'focused' },
-    }),
-  );
-
-  const envUsage = await computeStartReport(root, {
-    intent: 'where is NEXT_PUBLIC_API_URL used',
-  });
-  expect(envUsage.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'used']),
-    }),
-  );
-  expect(envUsage.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is NEXT_PUBLIC_API_URL used',
       command: 'projscan search "NEXT_PUBLIC_API_URL" --format json',
-      tool: 'projscan_search',
       args: { query: 'NEXT_PUBLIC_API_URL' },
-    }),
-  );
-
-  const controlEnv = await computeStartReport(root, {
-    intent: 'which env var controls auth',
-  });
-  expect(controlEnv.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['env', 'var', 'controls']),
-    }),
-  );
-  expect(controlEnv.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['where', 'used'] },
+    },
+    {
+      intent: 'which env var controls auth',
       command: 'projscan search "auth env var" --format json',
-      tool: 'projscan_search',
       args: { query: 'auth env var' },
-    }),
-  );
-
-  const thrownString = await computeStartReport(root, {
-    intent: 'where is "Invalid token" thrown',
-  });
-  expect(thrownString.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'thrown']),
-    }),
-  );
-  expect(thrownString.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['env', 'var', 'controls'],
+      },
+    },
+    {
+      intent: 'where is "Invalid token" thrown',
       command: 'projscan search "Invalid token" --format json',
-      tool: 'projscan_search',
       args: { query: 'Invalid token' },
-    }),
-  );
-
-  const errorMessage = await computeStartReport(root, {
-    intent: 'find error message "Payment failed"',
-  });
-  expect(errorMessage.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['find', 'error', 'message']),
-    }),
-  );
-  expect(errorMessage.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: { category: 'Search', confidence: 'high', matchedKeywords: ['where', 'thrown'] },
+    },
+    {
+      intent: 'find error message "Payment failed"',
       command: 'projscan search "Payment failed" --format json',
-      tool: 'projscan_search',
       args: { query: 'Payment failed' },
-    }),
-  );
-
-  const loggedString = await computeStartReport(root, {
-    intent: 'where do we log "could not connect"',
-  });
-  expect(loggedString.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['find', 'error', 'message'],
+      },
+    },
+    {
+      intent: 'where do we log "could not connect"',
       command: 'projscan search "could not connect" --format json',
-      tool: 'projscan_search',
       args: { query: 'could not connect' },
-    }),
-  );
-
-  const backgroundJobs = await computeStartReport(root, {
-    intent: 'what background jobs exist',
-  });
-  expect(backgroundJobs.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['background', 'jobs', 'exist']),
-    }),
-  );
-  expect(backgroundJobs.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what background jobs exist',
       command: 'projscan search "background jobs" --format json',
-      tool: 'projscan_search',
       args: { query: 'background jobs' },
-    }),
-  );
-
-  const queueProcessor = await computeStartReport(root, {
-    intent: 'find the email queue processor',
-  });
-  expect(queueProcessor.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['background', 'jobs', 'exist'],
+      },
+    },
+    {
+      intent: 'find the email queue processor',
       command: 'projscan search "email queue processor" --format json',
-      tool: 'projscan_search',
       args: { query: 'email queue processor' },
-    }),
-  );
-
-  const scheduledTasks = await computeStartReport(root, {
-    intent: 'where are scheduled tasks defined',
-  });
-  expect(scheduledTasks.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are scheduled tasks defined',
       command: 'projscan search "scheduled tasks" --format json',
-      tool: 'projscan_search',
       args: { query: 'scheduled tasks' },
-    }),
-  );
-
-  const metrics = await computeStartReport(root, {
-    intent: 'where are metrics emitted',
-  });
-  expect(metrics.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'metrics', 'emitted']),
-    }),
-  );
-  expect(metrics.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are metrics emitted',
       command: 'projscan search "metrics" --format json',
-      tool: 'projscan_search',
       args: { query: 'metrics' },
-    }),
-  );
-
-  const sentry = await computeStartReport(root, {
-    intent: 'where do we initialize Sentry',
-  });
-  expect(sentry.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['where', 'metrics', 'emitted'],
+      },
+    },
+    {
+      intent: 'where do we initialize Sentry',
       command: 'projscan search "Sentry" --format json',
-      tool: 'projscan_search',
       args: { query: 'Sentry' },
-    }),
-  );
-
-  const checkoutLogs = await computeStartReport(root, {
-    intent: 'what logs should I check for checkout',
-  });
-  expect(checkoutLogs.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what logs should I check for checkout',
       command: 'projscan search "checkout logs" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout logs' },
-    }),
-  );
-
-  const dashboard = await computeStartReport(root, {
-    intent: 'find the dashboard for payments',
-  });
-  expect(dashboard.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find the dashboard for payments',
       command: 'projscan search "payments dashboard" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments dashboard' },
-    }),
-  );
-
-  const seedData = await computeStartReport(root, {
-    intent: 'where is seed data defined',
-  });
-  expect(seedData.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'seed', 'data', 'defined']),
-    }),
-  );
-  expect(seedData.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is seed data defined',
       command: 'projscan search "seed data" --format json',
-      tool: 'projscan_search',
       args: { query: 'seed data' },
-    }),
-  );
-
-  const fixtures = await computeStartReport(root, {
-    intent: 'find fixtures for checkout',
-  });
-  expect(fixtures.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['where', 'seed', 'data', 'defined'],
+      },
+    },
+    {
+      intent: 'find fixtures for checkout',
       command: 'projscan search "checkout fixtures" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout fixtures' },
-    }),
-  );
-
-  const mocks = await computeStartReport(root, {
-    intent: 'which mocks are used for payments',
-  });
-  expect(mocks.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which mocks are used for payments',
       command: 'projscan search "payments mocks" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments mocks' },
-    }),
-  );
-
-  const stories = await computeStartReport(root, {
-    intent: 'where are Storybook stories for Button',
-  });
-  expect(stories.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are Storybook stories for Button',
       command: 'projscan search "Button Storybook stories" --format json',
-      tool: 'projscan_search',
       args: { query: 'Button Storybook stories' },
-    }),
-  );
-
-  const story = await computeStartReport(root, {
-    intent: 'which story renders checkout',
-  });
-  expect(story.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which story renders checkout',
       command: 'projscan search "checkout story" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout story' },
-    }),
-  );
-
-  const permissions = await computeStartReport(root, {
-    intent: 'where are permissions checked for checkout',
-  });
-  expect(permissions.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Search',
-      tool: 'projscan_search',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['where', 'permissions', 'checked']),
-    }),
-  );
-  expect(permissions.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are permissions checked for checkout',
       command: 'projscan search "checkout permissions" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout permissions' },
-    }),
-  );
-
-  const role = await computeStartReport(root, {
-    intent: 'which role can access admin',
-  });
-  expect(role.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+      route: {
+        category: 'Search',
+        confidence: 'high',
+        matchedKeywords: ['where', 'permissions', 'checked'],
+      },
+    },
+    {
+      intent: 'which role can access admin',
       command: 'projscan search "admin role access" --format json',
-      tool: 'projscan_search',
       args: { query: 'admin role access' },
-    }),
-  );
-
-  const rbac = await computeStartReport(root, {
-    intent: 'where is RBAC defined',
-  });
-  expect(rbac.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is RBAC defined',
       command: 'projscan search "RBAC" --format json',
-      tool: 'projscan_search',
       args: { query: 'RBAC' },
-    }),
-  );
-
-  const loginRoutes = await computeStartReport(root, {
-    intent: 'what routes require login',
-  });
-  expect(loginRoutes.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what routes require login',
       command: 'projscan search "login routes" --format json',
-      tool: 'projscan_search',
       args: { query: 'login routes' },
-    }),
-  );
-
-  const rateLimiting = await computeStartReport(root, {
-    intent: 'where is rate limiting configured',
-  });
-  expect(rateLimiting.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is rate limiting configured',
       command: 'projscan search "rate limiting" --format json',
-      tool: 'projscan_search',
       args: { query: 'rate limiting' },
-    }),
-  );
-
-  const checkoutLimits = await computeStartReport(root, {
-    intent: 'what rate limits protect checkout',
-  });
-  expect(checkoutLimits.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what rate limits protect checkout',
       command: 'projscan search "checkout rate limits" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout rate limits' },
-    }),
-  );
-
-  const cacheInvalidation = await computeStartReport(root, {
-    intent: 'where is cache invalidated for products',
-  });
-  expect(cacheInvalidation.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is cache invalidated for products',
       command: 'projscan search "products cache invalidation" --format json',
-      tool: 'projscan_search',
       args: { query: 'products cache invalidation' },
-    }),
-  );
-
-  const retryLookup = await computeStartReport(root, {
-    intent: 'which code retries failed requests',
-  });
-  expect(retryLookup.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which code retries failed requests',
       command: 'projscan search "failed requests retries" --format json',
-      tool: 'projscan_search',
       args: { query: 'failed requests retries' },
-    }),
-  );
-
-  const timeoutLookup = await computeStartReport(root, {
-    intent: 'what sets request timeout',
-  });
-  expect(timeoutLookup.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what sets request timeout',
       command: 'projscan search "request timeout" --format json',
-      tool: 'projscan_search',
       args: { query: 'request timeout' },
-    }),
-  );
-
-  const idempotency = await computeStartReport(root, {
-    intent: 'find idempotency key handling',
-  });
-  expect(idempotency.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find idempotency key handling',
       command: 'projscan search "idempotency key handling" --format json',
-      tool: 'projscan_search',
       args: { query: 'idempotency key handling' },
-    }),
-  );
-
-  const webhookSignature = await computeStartReport(root, {
-    intent: 'where is webhook signature verified',
-  });
-  expect(webhookSignature.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is webhook signature verified',
       command: 'projscan search "webhook signature verification" --format json',
-      tool: 'projscan_search',
       args: { query: 'webhook signature verification' },
-    }),
-  );
-
-  const inputValidation = await computeStartReport(root, {
-    intent: 'where is input validation for signup',
-  });
-  expect(inputValidation.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is input validation for signup',
       command: 'projscan search "signup input validation" --format json',
-      tool: 'projscan_search',
       args: { query: 'signup input validation' },
-    }),
-  );
-
-  const schemaValidation = await computeStartReport(root, {
-    intent: 'which schema validates checkout',
-  });
-  expect(schemaValidation.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which schema validates checkout',
       command: 'projscan search "checkout validation schema" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout validation schema' },
-    }),
-  );
-
-  const requestParams = await computeStartReport(root, {
-    intent: 'where are request params parsed',
-  });
-  expect(requestParams.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are request params parsed',
       command: 'projscan search "request params parsing" --format json',
-      tool: 'projscan_search',
       args: { query: 'request params parsing' },
-    }),
-  );
-
-  const apiSerialization = await computeStartReport(root, {
-    intent: 'what serializes API response',
-  });
-  expect(apiSerialization.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what serializes API response',
       command: 'projscan search "API response serialization" --format json',
-      tool: 'projscan_search',
       args: { query: 'API response serialization' },
-    }),
-  );
-
-  const transaction = await computeStartReport(root, {
-    intent: 'where is database transaction started',
-  });
-  expect(transaction.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is database transaction started',
       command: 'projscan search "database transaction" --format json',
-      tool: 'projscan_search',
       args: { query: 'database transaction' },
-    }),
-  );
-
-  const rowLock = await computeStartReport(root, {
-    intent: 'where do we lock the order row',
-  });
-  expect(rowLock.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where do we lock the order row',
       command: 'projscan search "order row lock" --format json',
-      tool: 'projscan_search',
       args: { query: 'order row lock' },
-    }),
-  );
-
-  const uniqueness = await computeStartReport(root, {
-    intent: 'what validates email uniqueness',
-  });
-  expect(uniqueness.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what validates email uniqueness',
       command: 'projscan search "email uniqueness validation" --format json',
-      tool: 'projscan_search',
       args: { query: 'email uniqueness validation' },
-    }),
-  );
-
-  const pagination = await computeStartReport(root, {
-    intent: 'what builds pagination cursors',
-  });
-  expect(pagination.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what builds pagination cursors',
       command: 'projscan search "pagination cursors" --format json',
-      tool: 'projscan_search',
       args: { query: 'pagination cursors' },
-    }),
-  );
-
-  const formSubmit = await computeStartReport(root, {
-    intent: 'where is the signup form submitted',
-  });
-  expect(formSubmit.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is the signup form submitted',
       command: 'projscan search "signup form submit" --format json',
-      tool: 'projscan_search',
       args: { query: 'signup form submit' },
-    }),
-  );
-
-  const loadingState = await computeStartReport(root, {
-    intent: 'where is loading state for dashboard',
-  });
-  expect(loadingState.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is loading state for dashboard',
       command: 'projscan search "dashboard loading state" --format json',
-      tool: 'projscan_search',
       args: { query: 'dashboard loading state' },
-    }),
-  );
-
-  const emptyState = await computeStartReport(root, {
-    intent: 'what renders empty state for search results',
-  });
-  expect(emptyState.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what renders empty state for search results',
       command: 'projscan search "search results empty state" --format json',
-      tool: 'projscan_search',
       args: { query: 'search results empty state' },
-    }),
-  );
-
-  const errorBoundary = await computeStartReport(root, {
-    intent: 'where is error boundary for settings',
-  });
-  expect(errorBoundary.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is error boundary for settings',
       command: 'projscan search "settings error boundary" --format json',
-      tool: 'projscan_search',
       args: { query: 'settings error boundary' },
-    }),
-  );
-
-  const toast = await computeStartReport(root, {
-    intent: 'where is toast shown after checkout',
-  });
-  expect(toast.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is toast shown after checkout',
       command: 'projscan search "checkout toast" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout toast' },
-    }),
-  );
-
-  const shortcut = await computeStartReport(root, {
-    intent: 'where is keyboard shortcut for save',
-  });
-  expect(shortcut.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is keyboard shortcut for save',
       command: 'projscan search "save keyboard shortcut" --format json',
-      tool: 'projscan_search',
       args: { query: 'save keyboard shortcut' },
-    }),
-  );
-
-  const commandPalette = await computeStartReport(root, {
-    intent: 'find command palette actions',
-  });
-  expect(commandPalette.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find command palette actions',
       command: 'projscan search "command palette actions" --format json',
-      tool: 'projscan_search',
       args: { query: 'command palette actions' },
-    }),
-  );
-
-  const pageComponent = await computeStartReport(root, {
-    intent: 'what component renders the billing page',
-  });
-  expect(pageComponent.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what component renders the billing page',
       command: 'projscan search "billing page component" --format json',
-      tool: 'projscan_search',
       args: { query: 'billing page component' },
-    }),
-  );
-
-  const translations = await computeStartReport(root, {
-    intent: 'where are i18n translations for checkout',
-  });
-  expect(translations.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are i18n translations for checkout',
       command: 'projscan search "checkout translations" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout translations' },
-    }),
-  );
-
-  const aria = await computeStartReport(root, {
-    intent: 'where is aria label for submit button',
-  });
-  expect(aria.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is aria label for submit button',
       command: 'projscan search "submit button aria label" --format json',
-      tool: 'projscan_search',
       args: { query: 'submit button aria label' },
-    }),
-  );
-
-  const focusTrap = await computeStartReport(root, {
-    intent: 'where is focus trap implemented',
-  });
-  expect(focusTrap.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is focus trap implemented',
       command: 'projscan search "focus trap" --format json',
-      tool: 'projscan_search',
       args: { query: 'focus trap' },
-    }),
-  );
-
-  const designTokens = await computeStartReport(root, {
-    intent: 'where are design tokens defined',
-  });
-  expect(designTokens.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are design tokens defined',
       command: 'projscan search "design tokens" --format json',
-      tool: 'projscan_search',
       args: { query: 'design tokens' },
-    }),
-  );
-
-  const tailwindTheme = await computeStartReport(root, {
-    intent: 'where is Tailwind theme configured',
-  });
-  expect(tailwindTheme.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Tailwind theme configured',
       command: 'projscan search "Tailwind theme" --format json',
-      tool: 'projscan_search',
       args: { query: 'Tailwind theme' },
-    }),
-  );
-
-  const globalCss = await computeStartReport(root, {
-    intent: 'where is global CSS imported',
-  });
-  expect(globalCss.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is global CSS imported',
       command: 'projscan search "global CSS" --format json',
-      tool: 'projscan_search',
       args: { query: 'global CSS' },
-    }),
-  );
-
-  const cssModule = await computeStartReport(root, {
-    intent: 'which CSS module styles Button',
-  });
-  expect(cssModule.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which CSS module styles Button',
       command: 'projscan search "Button CSS module" --format json',
-      tool: 'projscan_search',
       args: { query: 'Button CSS module' },
-    }),
-  );
-
-  const darkMode = await computeStartReport(root, {
-    intent: 'where is dark mode configured',
-  });
-  expect(darkMode.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is dark mode configured',
       command: 'projscan search "dark mode" --format json',
-      tool: 'projscan_search',
       args: { query: 'dark mode' },
-    }),
-  );
-
-  const breakpoints = await computeStartReport(root, {
-    intent: 'what breakpoints are defined',
-  });
-  expect(breakpoints.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what breakpoints are defined',
       command: 'projscan search "breakpoints" --format json',
-      tool: 'projscan_search',
       args: { query: 'breakpoints' },
-    }),
-  );
-
-  const failingDarkMode = await computeStartReport(root, {
-    intent: 'why is dark mode failing',
-  });
-  expect(failingDarkMode.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'why is dark mode failing',
       command: 'projscan regression-plan --level focused --format json',
       tool: 'projscan_regression_plan',
       args: { level: 'focused' },
-    }),
-  );
-
-  const sidebarNav = await computeStartReport(root, {
-    intent: 'where is sidebar nav item for billing',
-  });
-  expect(sidebarNav.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is sidebar nav item for billing',
       command: 'projscan search "billing sidebar nav item" --format json',
-      tool: 'projscan_search',
       args: { query: 'billing sidebar nav item' },
-    }),
-  );
-
-  const breadcrumb = await computeStartReport(root, {
-    intent: 'which breadcrumb renders settings',
-  });
-  expect(breadcrumb.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which breadcrumb renders settings',
       command: 'projscan search "settings breadcrumb" --format json',
-      tool: 'projscan_search',
       args: { query: 'settings breadcrumb' },
-    }),
-  );
-
-  const pageTitle = await computeStartReport(root, {
-    intent: 'where is page title set for checkout',
-  });
-  expect(pageTitle.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is page title set for checkout',
       command: 'projscan search "checkout page title" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout page title' },
-    }),
-  );
-
-  const nextLayout = await computeStartReport(root, {
-    intent: 'where is Next.js layout for dashboard',
-  });
-  expect(nextLayout.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Next.js layout for dashboard',
       command: 'projscan search "dashboard Next.js layout" --format json',
-      tool: 'projscan_search',
       args: { query: 'dashboard Next.js layout' },
-    }),
-  );
-
-  const authState = await computeStartReport(root, {
-    intent: 'where is auth state stored',
-  });
-  expect(authState.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is auth state stored',
       command: 'projscan search "auth state store" --format json',
-      tool: 'projscan_search',
       args: { query: 'auth state store' },
-    }),
-  );
-
-  const reduxSlice = await computeStartReport(root, {
-    intent: 'find Redux slice for cart',
-  });
-  expect(reduxSlice.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find Redux slice for cart',
       command: 'projscan search "cart Redux slice" --format json',
-      tool: 'projscan_search',
       args: { query: 'cart Redux slice' },
-    }),
-  );
-
-  const zustandStore = await computeStartReport(root, {
-    intent: 'where is Zustand store for user settings',
-  });
-  expect(zustandStore.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Zustand store for user settings',
       command: 'projscan search "user settings Zustand store" --format json',
-      tool: 'projscan_search',
       args: { query: 'user settings Zustand store' },
-    }),
-  );
-
-  const themeProvider = await computeStartReport(root, {
-    intent: 'which context provider supplies theme',
-  });
-  expect(themeProvider.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which context provider supplies theme',
       command: 'projscan search "theme context provider" --format json',
-      tool: 'projscan_search',
       args: { query: 'theme context provider' },
-    }),
-  );
-
-  const invoicesHook = await computeStartReport(root, {
-    intent: 'which hook fetches invoices',
-  });
-  expect(invoicesHook.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which hook fetches invoices',
       command: 'projscan search "invoices hook" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoices hook' },
-    }),
-  );
-
-  const checkoutMutation = await computeStartReport(root, {
-    intent: 'where is React Query mutation for checkout',
-  });
-  expect(checkoutMutation.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is React Query mutation for checkout',
       command: 'projscan search "checkout React Query mutation" --format json',
-      tool: 'projscan_search',
       args: { query: 'checkout React Query mutation' },
-    }),
-  );
-
-  const prismaModel = await computeStartReport(root, {
-    intent: 'where is Prisma model for User',
-  });
-  expect(prismaModel.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Prisma model for User',
       command: 'projscan search "User Prisma model" --format json',
-      tool: 'projscan_search',
       args: { query: 'User Prisma model' },
-    }),
-  );
-
-  const drizzleSchema = await computeStartReport(root, {
-    intent: 'find Drizzle schema for invoices',
-  });
-  expect(drizzleSchema.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find Drizzle schema for invoices',
       command: 'projscan search "invoices Drizzle schema" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoices Drizzle schema' },
-    }),
-  );
-
-  const sqlQuery = await computeStartReport(root, {
-    intent: 'where is SQL query for invoices',
-  });
-  expect(sqlQuery.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is SQL query for invoices',
       command: 'projscan search "invoices SQL query" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoices SQL query' },
-    }),
-  );
-
-  const repository = await computeStartReport(root, {
-    intent: 'which repository saves orders',
-  });
-  expect(repository.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which repository saves orders',
       command: 'projscan search "orders repository" --format json',
-      tool: 'projscan_search',
       args: { query: 'orders repository' },
-    }),
-  );
-
-  const dao = await computeStartReport(root, {
-    intent: 'find DAO for payments',
-  });
-  expect(dao.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find DAO for payments',
       command: 'projscan search "payments DAO" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments DAO' },
-    }),
-  );
-
-  const stripeCall = await computeStartReport(root, {
-    intent: 'where do we call Stripe',
-  });
-  expect(stripeCall.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where do we call Stripe',
       command: 'projscan search "Stripe API" --format json',
-      tool: 'projscan_search',
       args: { query: 'Stripe API' },
-    }),
-  );
-
-  const sendGridEmail = await computeStartReport(root, {
-    intent: 'which code sends email through SendGrid',
-  });
-  expect(sendGridEmail.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which code sends email through SendGrid',
       command: 'projscan search "SendGrid email" --format json',
-      tool: 'projscan_search',
       args: { query: 'SendGrid email' },
-    }),
-  );
-
-  const s3Upload = await computeStartReport(root, {
-    intent: 'where is S3 upload implemented',
-  });
-  expect(s3Upload.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is S3 upload implemented',
       command: 'projscan search "S3 upload" --format json',
-      tool: 'projscan_search',
       args: { query: 'S3 upload' },
-    }),
-  );
-
-  const githubClient = await computeStartReport(root, {
-    intent: 'find GitHub API client',
-  });
-  expect(githubClient.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find GitHub API client',
       command: 'projscan search "GitHub API client" --format json',
-      tool: 'projscan_search',
       args: { query: 'GitHub API client' },
-    }),
-  );
-
-  const graphqlQuery = await computeStartReport(root, {
-    intent: 'where is GraphQL query for invoices',
-  });
-  expect(graphqlQuery.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is GraphQL query for invoices',
       command: 'projscan search "invoices GraphQL query" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoices GraphQL query' },
-    }),
-  );
-
-  const websocketConnection = await computeStartReport(root, {
-    intent: 'where is websocket connection opened',
-  });
-  expect(websocketConnection.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is websocket connection opened',
       command: 'projscan search "websocket connection" --format json',
-      tool: 'projscan_search',
       args: { query: 'websocket connection' },
-    }),
-  );
-
-  const openApiSpec = await computeStartReport(root, {
-    intent: 'where is OpenAPI spec defined',
-  });
-  expect(openApiSpec.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is OpenAPI spec defined',
       command: 'projscan search "OpenAPI spec" --format json',
-      tool: 'projscan_search',
       args: { query: 'OpenAPI spec' },
-    }),
-  );
-
-  const swaggerDocs = await computeStartReport(root, {
-    intent: 'where is Swagger docs configured',
-  });
-  expect(swaggerDocs.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Swagger docs configured',
       command: 'projscan search "Swagger docs" --format json',
-      tool: 'projscan_search',
       args: { query: 'Swagger docs' },
-    }),
-  );
-
-  const trpcRouter = await computeStartReport(root, {
-    intent: 'where is tRPC router for billing',
-  });
-  expect(trpcRouter.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is tRPC router for billing',
       command: 'projscan search "billing tRPC router" --format json',
-      tool: 'projscan_search',
       args: { query: 'billing tRPC router' },
-    }),
-  );
-
-  const graphqlResolver = await computeStartReport(root, {
-    intent: 'which GraphQL resolver handles invoices',
-  });
-  expect(graphqlResolver.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which GraphQL resolver handles invoices',
       command: 'projscan search "invoices GraphQL resolver" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoices GraphQL resolver' },
-    }),
-  );
-
-  const protobufService = await computeStartReport(root, {
-    intent: 'which protobuf defines user service',
-  });
-  expect(protobufService.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which protobuf defines user service',
       command: 'projscan search "user service protobuf" --format json',
-      tool: 'projscan_search',
       args: { query: 'user service protobuf' },
-    }),
-  );
-
-  const grpcClient = await computeStartReport(root, {
-    intent: 'where is gRPC client for payments',
-  });
-  expect(grpcClient.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is gRPC client for payments',
       command: 'projscan search "payments gRPC client" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments gRPC client' },
-    }),
-  );
-
-  const dockerfile = await computeStartReport(root, {
-    intent: 'where is the Dockerfile',
-  });
-  expect(dockerfile.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is the Dockerfile',
       command: 'projscan search "Dockerfile" --format json',
-      tool: 'projscan_search',
       args: { query: 'Dockerfile' },
-    }),
-  );
-
-  const compose = await computeStartReport(root, {
-    intent: 'where is docker compose for local dev',
-  });
-  expect(compose.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is docker compose for local dev',
       command: 'projscan search "local dev docker compose" --format json',
-      tool: 'projscan_search',
       args: { query: 'local dev docker compose' },
-    }),
-  );
-
-  const kubernetes = await computeStartReport(root, {
-    intent: 'where are Kubernetes manifests',
-  });
-  expect(kubernetes.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where are Kubernetes manifests',
       command: 'projscan search "Kubernetes manifests" --format json',
-      tool: 'projscan_search',
       args: { query: 'Kubernetes manifests' },
-    }),
-  );
-
-  const helm = await computeStartReport(root, {
-    intent: 'find Helm chart for payments',
-  });
-  expect(helm.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find Helm chart for payments',
       command: 'projscan search "payments Helm chart" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments Helm chart' },
-    }),
-  );
-
-  const terraform = await computeStartReport(root, {
-    intent: 'where is Terraform module for S3',
-  });
-  expect(terraform.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Terraform module for S3',
       command: 'projscan search "S3 Terraform module" --format json',
-      tool: 'projscan_search',
       args: { query: 'S3 Terraform module' },
-    }),
-  );
-
-  const deployWorkflow = await computeStartReport(root, {
-    intent: 'which GitHub workflow deploys staging',
-  });
-  expect(deployWorkflow.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which GitHub workflow deploys staging',
       command: 'projscan search "staging GitHub workflow" --format json',
-      tool: 'projscan_search',
       args: { query: 'staging GitHub workflow' },
-    }),
-  );
-
-  const vercelConfig = await computeStartReport(root, {
-    intent: 'where is Vercel config',
-  });
-  expect(vercelConfig.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is Vercel config',
       command: 'projscan search "Vercel config" --format json',
-      tool: 'projscan_search',
       args: { query: 'Vercel config' },
-    }),
-  );
-
-  const passwordReset = await computeStartReport(root, {
-    intent: 'where is password reset handled',
-  });
-  expect(passwordReset.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is password reset handled',
       command: 'projscan search "password reset" --format json',
-      tool: 'projscan_search',
       args: { query: 'password reset' },
-    }),
-  );
-
-  const inviteFlow = await computeStartReport(root, {
-    intent: 'where is team invite flow',
-  });
-  expect(inviteFlow.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is team invite flow',
       command: 'projscan search "team invite flow" --format json',
-      tool: 'projscan_search',
       args: { query: 'team invite flow' },
-    }),
-  );
-
-  const onboarding = await computeStartReport(root, {
-    intent: 'where is onboarding flow implemented',
-  });
-  expect(onboarding.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is onboarding flow implemented',
       command: 'projscan search "onboarding flow" --format json',
-      tool: 'projscan_search',
       args: { query: 'onboarding flow' },
-    }),
-  );
-
-  const csvExport = await computeStartReport(root, {
-    intent: 'find CSV export for users',
-  });
-  expect(csvExport.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find CSV export for users',
       command: 'projscan search "users CSV export" --format json',
-      tool: 'projscan_search',
       args: { query: 'users CSV export' },
-    }),
-  );
-
-  const auditLog = await computeStartReport(root, {
-    intent: 'what creates audit log entries',
-  });
-  expect(auditLog.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'what creates audit log entries',
       command: 'projscan search "audit log entries" --format json',
-      tool: 'projscan_search',
       args: { query: 'audit log entries' },
-    }),
-  );
-
-  const refund = await computeStartReport(root, {
-    intent: 'where is refund handling for payments',
-  });
-  expect(refund.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is refund handling for payments',
       command: 'projscan search "payments refund handling" --format json',
-      tool: 'projscan_search',
       args: { query: 'payments refund handling' },
-    }),
-  );
-
-  const renewal = await computeStartReport(root, {
-    intent: 'where is subscription renewal handled',
-  });
-  expect(renewal.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is subscription renewal handled',
       command: 'projscan search "subscription renewal" --format json',
-      tool: 'projscan_search',
       args: { query: 'subscription renewal' },
-    }),
-  );
-
-  const welcomeEmail = await computeStartReport(root, {
-    intent: 'where is welcome email template',
-  });
-  expect(welcomeEmail.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is welcome email template',
       command: 'projscan search "welcome email template" --format json',
-      tool: 'projscan_search',
       args: { query: 'welcome email template' },
-    }),
-  );
-
-  const resetEmailCopy = await computeStartReport(root, {
-    intent: 'find password reset email copy',
-  });
-  expect(resetEmailCopy.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'find password reset email copy',
       command: 'projscan search "password reset email copy" --format json',
-      tool: 'projscan_search',
       args: { query: 'password reset email copy' },
-    }),
-  );
-
-  const pushCopy = await computeStartReport(root, {
-    intent: 'where is push notification copy for invites',
-  });
-  expect(pushCopy.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is push notification copy for invites',
       command: 'projscan search "invites push notification copy" --format json',
-      tool: 'projscan_search',
       args: { query: 'invites push notification copy' },
-    }),
-  );
-
-  const smsTemplate = await computeStartReport(root, {
-    intent: 'where is SMS verification template',
-  });
-  expect(smsTemplate.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is SMS verification template',
       command: 'projscan search "SMS verification template" --format json',
-      tool: 'projscan_search',
       args: { query: 'SMS verification template' },
-    }),
-  );
-
-  const receiptEmail = await computeStartReport(root, {
-    intent: 'which template sends receipt email',
-  });
-  expect(receiptEmail.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'which template sends receipt email',
       command: 'projscan search "receipt email template" --format json',
-      tool: 'projscan_search',
       args: { query: 'receipt email template' },
-    }),
-  );
-
-  const invoicePdf = await computeStartReport(root, {
-    intent: 'where is invoice PDF generated',
-  });
-  expect(invoicePdf.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
+    },
+    {
+      intent: 'where is invoice PDF generated',
       command: 'projscan search "invoice PDF" --format json',
-      tool: 'projscan_search',
       args: { query: 'invoice PDF' },
-    }),
-  );
-}, 120_000);
+    },
+  ];
+
+  for (const { intent, command, tool = 'projscan_search', args, route: expectedRoute } of cases) {
+    const { action, route } = primaryActionForIntent(intent);
+    if (expectedRoute) {
+      expect(route).toEqual(
+        expect.objectContaining({
+          category: expectedRoute.category,
+          tool,
+          confidence: expectedRoute.confidence,
+          matchedKeywords: expectedRoute.matchedKeywords
+            ? expect.arrayContaining(expectedRoute.matchedKeywords)
+            : undefined,
+        }),
+      );
+    }
+    expect(action).toEqual(expect.objectContaining({ command, tool, args }));
+  }
+});
 
 test('start report turns exact-file test coverage questions into direct file inspection', async () => {
   const root = await makeTempProject();
