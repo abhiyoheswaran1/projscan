@@ -95,6 +95,9 @@ Python lockfile parsing:
 - Declared dependency evidence covers PEP 621, PEP 735 `dependency-groups`,
   and Poetry dependency tables, including legacy `tool.poetry.dev-dependencies`
   as dev scope.
+- A root Python manifest is enough project evidence for upgrade preview even
+  before `.py` files exist; this keeps early package-review repos local and
+  offline.
 - Supported current-version evidence is intentionally narrow: Poetry/uv/PDM
   package blocks, Conda lockfile package entries, Pipfile exact versions, and
   pinned root requirements.

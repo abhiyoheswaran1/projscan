@@ -135,6 +135,25 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual(['tests/test_app.py']);
   });
 
+  it('previews Python dependencies from pyproject even before Python files exist', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        ['[project]', 'name = "py-app"', 'dependencies = ["requests>=2"]'].join('\n'),
+      ),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=2');
+    expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.declaredScope).toBe('main');
+    expect(preview.importers).toEqual([]);
+  });
+
   it('uses poetry.lock as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),

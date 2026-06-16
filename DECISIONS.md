@@ -1257,3 +1257,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move Next route source maps, route-file gating, HTTP method checks, and member-call/reference matching into `src/core/frameworkNextRouteSources.ts`, while keeping `frameworkSources.ts` as the shared public entry point.
 - Consequences: `src/core/frameworkSources.ts` drops from CC 69 to CC 55 and from 428 to 369 lines. The extracted module is 74 lines with max function CC 6. Dataflow source names and public schemas stay unchanged.
 - Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Next route source matching"` failed before the extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-16: Allow manifest-only Python upgrade previews
+
+- Status: accepted
+- Context: Python upgrade previews use local manifest and lockfile evidence, but the project detector returned `null` unless at least one `.py`/`.pyw` file was in the scanned file list. Early package-review repos can have a valid root `pyproject.toml` before Python source files are present.
+- Decision: Treat root Python manifests, root requirements/constraints, and known root Python lockfiles as project evidence alongside `.py` files.
+- Consequences: `projscan upgrade` can preview a package declared in `pyproject.toml` before any Python source exists, returning Python ecosystem metadata and no importers. The path remains offline and local-only; unsupported/nested manifests are still deferred.
+- Verification: `npm run test -- tests/core/upgradePreview.test.ts -t "pyproject even before Python files"` failed before manifest evidence was accepted, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

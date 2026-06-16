@@ -2460,3 +2460,47 @@ same after extraction, including helper lookalike suppression.
 
 Kept change: one focused Next matcher module, one maintainability regression,
 existing dataflow coverage, this persona note, and no public schema change.
+
+## Sixtieth Slice Decision
+
+Selected persona: Platform And Release Owner.
+
+Reason: Python package-review workflows can start with only manifest evidence,
+especially before source files are added or when reviewing dependency metadata
+in isolation. The upgrade preview should use that local proof instead of
+falling back to the Node package-not-found path.
+
+Smallest fix: let root Python manifests, root requirements/constraints, and
+known root Python lockfiles identify a Python project even when no `.py` file
+exists. Keep nested manifests and network-backed PyPI lookup out of scope.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/upgradePreview.test.ts -t "pyproject even before Python files"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Manifest-Only Python Upgrade Preview
+
+Delete-list after this slice:
+
+- Do not query PyPI, install packages, or add network-backed Python latest
+  version lookup.
+- Do not infer Python projects from arbitrary nested files or non-root
+  manifests.
+- Do not change Node upgrade behavior, output schemas, dependencies, package
+  metadata, release actions, or version numbers.
+
+Reviewer edge case: a repo with only root `pyproject.toml` and no `.py` files
+should preview declared Python packages with an empty importer list.
+
+Kept change: one project-detection gate, one upgrade-preview regression,
+focused docs, this persona note, and existing Python upgrade verification.

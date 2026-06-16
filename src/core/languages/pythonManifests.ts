@@ -21,13 +21,23 @@ export type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './py
 
 const REQUIREMENTS_FILE_RE = /^requirements(-.*)?\.txt$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
+const ROOT_PYTHON_MANIFEST_NAMES = new Set([
+  'pyproject.toml',
+  'setup.py',
+  'setup.cfg',
+  'poetry.lock',
+  'Pipfile.lock',
+  'pdm.lock',
+  'uv.lock',
+  'conda-lock.yml',
+  'conda-lock.yaml',
+]);
 
 export async function detectPythonProject(
   rootPath: string,
   files: FileEntry[],
 ): Promise<PythonProjectInfo | null> {
-  const hasPython = files.some((f) => f.extension === '.py' || f.extension === '.pyw');
-  if (!hasPython) return null;
+  if (!hasPythonProjectEvidence(files)) return null;
 
   const roots: string[] = [];
   const manifestFiles: string[] = [];
@@ -109,6 +119,23 @@ export async function detectPythonProject(
     locked,
     hasLockfile,
   };
+}
+
+function hasPythonProjectEvidence(files: FileEntry[]): boolean {
+  return files.some(
+    (file) =>
+      file.extension === '.py' || file.extension === '.pyw' || isRootPythonManifestFile(file),
+  );
+}
+
+function isRootPythonManifestFile(file: FileEntry): boolean {
+  if (file.directory && file.directory !== '.') return false;
+  const name = path.basename(file.relativePath);
+  return (
+    ROOT_PYTHON_MANIFEST_NAMES.has(name) ||
+    REQUIREMENTS_FILE_RE.test(name) ||
+    CONSTRAINTS_FILE_RE.test(name)
+  );
 }
 
 async function tryRead(absolutePath: string): Promise<string | null> {
