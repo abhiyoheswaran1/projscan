@@ -627,6 +627,46 @@ router.patch('/request-headers', (ctx) => {
     );
   });
 
+  it('treats Koa header accessor calls as framework request sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-header-get.ts'),
+      `import Koa from 'koa';
+import Router from '@koa/router';
+
+const app = new Koa();
+const router = new Router();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.use((ctx) => {
+  const tenant = ctx.get('x-tenant');
+  return db.query(String(tenant));
+});
+
+router.get('/request-get', (ctx) => {
+  const auth = ctx.request.get('authorization');
+  return db.query(String(auth));
+});
+
+export function helper(ctx: { get(name: string): string }) {
+  return cache.query(ctx.get('x-cache-key'));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const koaRisks = report.risks.filter((risk) => risk.files.includes('src/koa-header-get.ts'));
+
+    expect(koaRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'koa.ctx.get', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.get', sink: 'query' }),
+      ]),
+    );
+    expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat Koa response-body writes as request body sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'koa-response.ts'),

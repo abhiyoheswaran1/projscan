@@ -39,6 +39,11 @@ const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['headers', 'koa.ctx.headers'],
 ]);
 
+const KOA_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
+  ['get', 'koa.ctx.get'],
+  ['request.get', 'koa.ctx.request.get'],
+]);
+
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const EXPRESS_REQUEST_PARAM_NAMES = new Set(['req', 'request']);
 const HONO_CONTEXT_PARAM_NAMES = new Set(['c', 'ctx', 'context']);
@@ -95,6 +100,7 @@ export const FRAMEWORK_REQUEST_SOURCES = [
   ...EXPRESS_REQUEST_SOURCE_BY_REFERENCE.values(),
   ...FASTIFY_REQUEST_SOURCE_BY_REFERENCE.values(),
   ...KOA_REQUEST_SOURCE_BY_MEMBER.values(),
+  ...KOA_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
 ];
 
 export function frameworkRequestSourceForFunction(
@@ -127,7 +133,14 @@ export function frameworkRequestSourceForFunction(
   return (
     expressRequestSource(parameters, references, enabledSources, contextualCallSite, imports) ??
     fastifyRequestSource(parameters, references, enabledSources, contextualCallSite, imports) ??
-    koaRequestSource(parameters, memberReferences, enabledSources, contextualCallSite, imports)
+    koaRequestSource(
+      parameters,
+      memberReferences,
+      memberCallSites,
+      enabledSources,
+      contextualCallSite,
+      imports,
+    )
   );
 }
 
@@ -207,6 +220,7 @@ function fastifyRequestSource(
 function koaRequestSource(
   parameters: string[],
   memberReferences: string[],
+  memberCallSites: string[],
   enabledSources: Set<string>,
   contextualCallSite: string | undefined,
   imports: Array<{ source: string }>,
@@ -215,10 +229,35 @@ function koaRequestSource(
   if (!isKoaHandlerCall(contextualCallSite)) return null;
   const contextParams = parameters.filter((parameter) => KOA_CONTEXT_PARAM_NAMES.has(parameter));
   if (contextParams.length === 0) return null;
+  return (
+    koaMemberReferenceSource(contextParams, memberReferences, enabledSources) ??
+    koaMemberCallSource(contextParams, memberCallSites, enabledSources)
+  );
+}
+
+function koaMemberReferenceSource(
+  contextParams: string[],
+  memberReferences: string[],
+  enabledSources: Set<string>,
+): string | null {
   const members = new Set(memberReferences);
   for (const parameter of contextParams) {
     for (const [member, source] of KOA_REQUEST_SOURCE_BY_MEMBER) {
       if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
+    }
+  }
+  return null;
+}
+
+function koaMemberCallSource(
+  contextParams: string[],
+  memberCallSites: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const calls = new Set(memberCallSites);
+  for (const parameter of contextParams) {
+    for (const [member, source] of KOA_REQUEST_SOURCE_BY_MEMBER_CALL) {
+      if (enabledSources.has(source) && calls.has(`${parameter}.${member}`)) return source;
     }
   }
   return null;

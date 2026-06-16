@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Treat Koa header accessors as gated request sources
+
+- Status: accepted
+- Context: Koa header properties were detected as framework request sources, but the common `ctx.get(...)` / `ctx.request.get(...)` accessors stayed invisible even inside Koa handlers. Broadly treating every `get` call as a source would create noisy helper false positives.
+- Decision: Add `koa.ctx.get` and `koa.ctx.request.get` as framework request sources only when a Koa import, Koa handler call context, and Koa context parameter are all present.
+- Consequences: `projscan dataflow` can report Koa header accessor input flowing into database sinks, while same-file helper functions with `ctx.get(...)` remain quiet unless they are actually passed as Koa handlers.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Koa header accessor"`.
+
 ## 2026-06-16: Isolate per-file hotspot assembly behind a tested helper
 
 - Status: accepted

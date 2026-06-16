@@ -102,9 +102,10 @@ Koa/Fastify dataflow:
 
 - Trust boundary: request sources are not broad name matches. They require
   framework imports and handler call context.
-- Koa uses qualified `memberReferences`, so `ctx.request.body`, `ctx.query`,
-  `ctx.params`, and headers can be detected without treating `ctx.body`
-  response writes as request input.
+- Koa uses qualified `memberReferences` and gated `memberCallSites`, so
+  `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.get(...)`, and
+  `ctx.request.get(...)` can be detected without treating `ctx.body` response
+  writes or helper `ctx.get(...)` calls as request input.
 - Fastify remains parameter/reference gated and keeps lookalike helpers quiet.
 - Cache version is bumped to invalidate stale graph entries that lack
   `memberReferences`.
