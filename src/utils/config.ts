@@ -4,6 +4,7 @@ import type { Issue, IssueSeverity } from '../types/common.js';
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
 import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
+import { applyScan } from './configScan.js';
 
 const CONFIG_CANDIDATES = ['.projscanrc.json', '.projscanrc'];
 const PKG_KEY = 'projscan';
@@ -116,16 +117,6 @@ function applyHotspots(obj: Record<string, unknown>, out: ProjscanConfig): void 
 function applyIgnore(obj: Record<string, unknown>, out: ProjscanConfig): void {
   if (!Array.isArray(obj.ignore)) return;
   out.ignore = obj.ignore.filter((v): v is string => typeof v === 'string' && v.length > 0);
-}
-
-function applyScan(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!obj.scan || typeof obj.scan !== 'object') return;
-  const raw = obj.scan as Record<string, unknown>;
-  const scan: NonNullable<ProjscanConfig['scan']> = {};
-  if (typeof raw.includeIgnored === 'boolean') scan.includeIgnored = raw.includeIgnored;
-  if (typeof raw.scanEnvValues === 'boolean') scan.scanEnvValues = raw.scanEnvValues;
-  if (typeof raw.offline === 'boolean') scan.offline = raw.offline;
-  if (Object.keys(scan).length) out.scan = scan;
 }
 
 function applyDisableRules(obj: Record<string, unknown>, out: ProjscanConfig): void {

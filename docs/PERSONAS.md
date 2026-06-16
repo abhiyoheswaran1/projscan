@@ -3363,3 +3363,50 @@ only be retained when it has an `allow` or `deny` list.
 Kept change: one focused monorepo config module, one maintainability
 regression, existing cross-package import-policy coverage, this persona note,
 and no public schema change.
+
+## Seventy-Ninth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: scan config includes `scanEnvValues`, which controls whether projscan
+may inspect tracked `.env` values. Keeping those privacy toggles isolated makes
+secret-adjacent behavior easier to audit.
+
+Smallest fix: move scan option normalization into `configScan.ts` and import
+`applyScan` from `config.ts`. Preserve boolean-only handling for
+`includeIgnored`, `scanEnvValues`, and `offline`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "scan privacy option normalization"
+npm run test -- tests/utils/config.test.ts tests/core/issueEngine.trustConfig.test.ts tests/types/public-config-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configScan.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/core/issueEngine.trustConfig.test.ts tests/types/public-config-types.test.ts
+git diff --check
+```
+
+## Review Guardrails: Scan Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, `includeIgnored`, `scanEnvValues`, or
+  `offline` boolean-only handling.
+- Do not make `.env` value scanning implicit; it must still require explicit
+  `scan.scanEnvValues: true`.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: tracked `.env` files should remain path-only by default,
+and should only produce hardcoded-secret findings when `scan.scanEnvValues` is
+explicitly configured.
+
+Kept change: one focused scan config module, one maintainability regression,
+existing trust-config coverage, this persona note, and no public schema change.

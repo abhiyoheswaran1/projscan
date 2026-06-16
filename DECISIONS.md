@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract scan privacy config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned scan privacy option parsing for `includeIgnored`, `scanEnvValues`, and `offline`, keeping secret-adjacent config behavior inside the main loader.
+- Decision: Move scan option normalization into `src/utils/configScan.ts` and import `applyScan` from the main config normalizer.
+- Consequences: Scan config behavior stays unchanged, including the explicit `scan.scanEnvValues` opt-in required before reading tracked `.env` values.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "scan privacy option normalization"` and focused config/trust verification.
+
 ## 2026-06-16: Extract monorepo import-policy config normalization
 
 - Status: accepted

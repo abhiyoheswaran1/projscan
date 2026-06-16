@@ -147,6 +147,14 @@ describe('loadConfig', () => {
     expect(monorepoSource).not.toContain('for (const entry of raw)');
   });
 
+  it('keeps scan privacy option normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyScan');
+
+    const scanSource = readFileSync(path.join(process.cwd(), 'src/utils/configScan.ts'), 'utf8');
+    expect(scanSource).not.toContain("from './config.js'");
+  });
+
   it('drops invalid severity overrides', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),
