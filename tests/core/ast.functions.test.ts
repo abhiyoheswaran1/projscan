@@ -87,6 +87,20 @@ describe('per-function CC (JS/TS)', () => {
     expect(namer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps Babel body signal analysis out of the AST orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'analyzeBabelBody')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'collectBabelBodyCallSignal')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'functionParamNames')).toBe(false);
+
+    const bodySource = readFileSync(join(process.cwd(), 'src/core/astBodySignals.ts'), 'utf8');
+    const bodyFns = fns(bodySource, 'src/core/astBodySignals.ts');
+    const analyzer = bodyFns.find((fn) => fn.name === 'analyzeBabelBody');
+    expect(analyzer).toBeDefined();
+    expect(analyzer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
