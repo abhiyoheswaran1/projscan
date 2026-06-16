@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
-import type { AuthorShare, FileEntry, Issue, FileHotspot, HotspotReport } from '../types.js';
+import type { AuthorShare, FileEntry, FileHotspot, HotspotReport, Issue } from '../types.js';
 import type { CodeGraph } from './codeGraph.js';
 import { collectGitChurn, countCommits, isGitRepository } from './hotspotGit.js';
+import { indexIssuesByFile } from './hotspotIssues.js';
 
 const CODE_EXTENSIONS = new Set([
   '.ts',
@@ -274,86 +275,6 @@ async function countLines(absolutePath: string): Promise<number | null> {
 
 function estimateLines(sizeBytes: number): number {
   return Math.max(1, Math.round(sizeBytes / 40));
-}
-
-// ── Issue → File Mapping ──────────────────────────────────
-
-function indexIssuesByFile(issues: Issue[], files: FileEntry[]): Map<string, string[]> {
-  const index = new Map<string, string[]>();
-  const filePathSet = new Set(files.map((f) => f.relativePath));
-
-  const add = (file: string, issueId: string) => {
-    const list = index.get(file) ?? [];
-    if (!list.includes(issueId)) list.push(issueId);
-    index.set(file, list);
-  };
-
-  for (const issue of issues) {
-    // Prefer explicit locations when the analyzer supplied them - this is
-    // exact and avoids the substring-false-positive problem where "src/a.ts"
-    // would match issues that only mention "src/ab.ts".
-    if (issue.locations && issue.locations.length > 0) {
-      for (const loc of issue.locations) {
-        if (loc.file && filePathSet.has(loc.file)) add(loc.file, issue.id);
-      }
-      continue;
-    }
-
-    // Fall back to substring scan for legacy issues with no locations.
-    // Use word-boundary-ish guards: require the match to start at the
-    // beginning of title/description OR be preceded/followed by non-path chars.
-    const haystack = `${issue.title}\n${issue.description}`;
-    for (const filePath of filePathSet) {
-      if (!filePath) continue;
-      if (!haystack.includes(filePath)) continue;
-      if (!hasPathBoundaries(haystack, filePath)) continue;
-      add(filePath, issue.id);
-    }
-  }
-  return index;
-}
-
-function hasPathBoundaries(haystack: string, filePath: string): boolean {
-  let startIdx = 0;
-  while (startIdx < haystack.length) {
-    const idx = haystack.indexOf(filePath, startIdx);
-    if (idx === -1) return false;
-    const before = idx > 0 ? haystack.charCodeAt(idx - 1) : -1;
-    const after =
-      idx + filePath.length < haystack.length ? haystack.charCodeAt(idx + filePath.length) : -1;
-    // Good boundary = start-of-string, whitespace, quote, paren, comma, colon, or end-of-string.
-    if (isPathBoundary(before) && isPathBoundary(after)) return true;
-    startIdx = idx + 1;
-  }
-  return false;
-}
-
-const PATH_BOUNDARY_CODES = new Set<number>([
-  0x20, // space
-  0x09, // tab
-  0x0a, // \n
-  0x0d, // \r
-  0x22, // "
-  0x27, // '
-  0x60, // `
-  0x28, // (
-  0x29, // )
-  0x5b, // [
-  0x5d, // ]
-  0x7b, // {
-  0x7d, // }
-  0x3a, // :
-  0x2c, // ,
-  0x3b, // ;
-  0x2e, // . (e.g., "src/a.ts." end of sentence)
-  0x3f, // ?
-  0x21, // !
-  0x3e, // >
-  0x3c, // <
-]);
-
-function isPathBoundary(code: number): boolean {
-  return code === -1 || PATH_BOUNDARY_CODES.has(code);
 }
 
 // ── Risk Scoring ──────────────────────────────────────────

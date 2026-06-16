@@ -52,10 +52,17 @@ async function inspectRepoSourceFile(rel: string) {
 }
 
 describe('hotspotAnalyzer maintainability', () => {
-  it('keeps legacy path-boundary detection out of the high-complexity list', async () => {
-    const inspection = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
-    const boundaryHelper = inspection.functions?.find((fn) => fn.name === 'isPathBoundary');
+  it('keeps issue path matching out of the hotspot scoring module', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    expect(analyzer.functions?.some((fn) => fn.name === 'indexIssuesByFile')).toBe(false);
+    expect(analyzer.functions?.some((fn) => fn.name === 'hasPathBoundaries')).toBe(false);
 
+    const issueModule = await inspectRepoSourceFile('src/core/hotspotIssues.ts');
+    const boundaryHelper = issueModule.functions?.find((fn) => fn.name === 'isPathBoundary');
+    const indexHelper = issueModule.functions?.find((fn) => fn.name === 'indexIssuesByFile');
+
+    expect(indexHelper).toBeDefined();
+    expect(indexHelper!.cyclomaticComplexity).toBeLessThanOrEqual(8);
     expect(boundaryHelper).toBeDefined();
     expect(boundaryHelper!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
