@@ -199,6 +199,30 @@ describe('computeReview', () => {
     expect(indexHotspotRisk!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps graph evidence assembly isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const graphEvidenceFunctions = new Set([
+      'buildReviewGraphEvidence',
+      'scopeGraphToFiles',
+      'filterImporterMap',
+      'topPackages',
+    ]);
+    expect(review.functions?.some((fn) => graphEvidenceFunctions.has(fn.name))).toBe(false);
+
+    const graphEvidenceModule = await inspectRepoSourceFile('src/core/reviewGraphEvidence.ts');
+    const buildReviewGraphEvidence = graphEvidenceModule.functions?.find(
+      (fn) => fn.name === 'buildReviewGraphEvidence',
+    );
+    const scopeGraphToFiles = graphEvidenceModule.functions?.find(
+      (fn) => fn.name === 'scopeGraphToFiles',
+    );
+
+    expect(buildReviewGraphEvidence).toBeDefined();
+    expect(buildReviewGraphEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(scopeGraphToFiles).toBeDefined();
+    expect(scopeGraphToFiles!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

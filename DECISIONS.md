@@ -1153,3 +1153,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move changed-file row assembly and hotspot-risk indexing into `src/core/reviewChangedFiles.ts`; keep `computeReview` passing the diff, base graph, head graph, and hotspot index into one boundary.
 - Consequences: `src/core/review.ts` drops from CC 97 to CC 83 in the review pass. The review changed-file schema, sorting by hotspot risk, and per-status import/export/complexity fields stay unchanged.
 - Verification: `npm run test -- tests/core/review.test.ts -t "changed-file assembly"` failed before extraction, then `npm run test -- tests/core/review.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.
+
+## 2026-06-16: Extract review graph evidence
+
+- Status: accepted
+- Context: `src/core/review.ts` still built graph-evidence summaries and scoped graph copies directly. That evidence formatting is separate from review orchestration, diffing, and verdict decisions.
+- Decision: Move graph-evidence assembly, scoped graph filtering, importer-map filtering, and top-package ranking into `src/core/reviewGraphEvidence.ts`; keep `computeReview` calling one `buildReviewGraphEvidence` boundary.
+- Consequences: `src/core/review.ts` drops from CC 83 to CC 75 in the review pass. The graph evidence schema and scoping behavior stay unchanged.
+- Verification: `npm run test -- tests/core/review.test.ts -t "graph evidence assembly"` failed before extraction, then `npm run test -- tests/core/review.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.
