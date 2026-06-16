@@ -140,4 +140,8 @@ function printEvidence(report: CoordinationSummary): void {
   for (const step of evidence.validationWorkflow) {
     console.log(`  - ${step.command}`);
   }
+  console.log('  Session boundary:');
+  console.log(`  - Current: ${evidence.sessionSeparation.currentEvidence}`);
+  console.log(`  - Remembered: ${evidence.sessionSeparation.rememberedContext}`);
+  console.log(`  - Follow-up: ${evidence.sessionSeparation.command}`);
 }

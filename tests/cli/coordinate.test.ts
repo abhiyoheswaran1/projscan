@@ -38,6 +38,12 @@ test('coordinate console surfaces local evidence and validation commands', async
   expect(result.stdout).toContain('projscan coordinate --format json');
   expect(result.stdout).toContain('projscan coordinate --watch --interval 5 --format json');
   expect(result.stdout).toContain('projscan agent-brief --format json');
+  expect(result.stdout).toContain(
+    'Current worktree evidence is read from local git/worktree state during this command.',
+  );
+  expect(result.stdout).toContain(
+    'Remembered session context is read separately through projscan session and agent-brief coordination hints.',
+  );
 });
 
 async function git(args: string[]): Promise<void> {

@@ -2143,3 +2143,47 @@ unions from the compatibility barrel.
 Kept change: one leaf graph/dataflow type module, a compatibility barrel, a
 compile-only type probe covering every moved graph/dataflow type,
 typecheck/build verification, and this persona note.
+
+## Fifty-Third Slice Decision
+
+Selected persona: Session-Aware Agent.
+
+Reason: a terminal-first agent should not need JSON mode to see that current
+worktree evidence and remembered session context are different proof sources.
+That distinction keeps older session touches from being treated as live diff
+evidence during parallel-agent coordination.
+
+Smallest fix: print the existing coordination `sessionSeparation` evidence in
+the default `projscan coordinate` console `Evidence` section. Keep the JSON
+schema unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/coordinate.test.ts -t "coordinate console surfaces local evidence"
+npm run test -- tests/cli/coordinate.test.ts tests/core/coordination.test.ts tests/core/collisionDetector.test.ts tests/core/claims.test.ts tests/core/mergeRisk.test.ts tests/mcp/coordinateWatch.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Coordinate Console Session Boundary
+
+Delete-list after this slice:
+
+- Do not change `CoordinationCommandEvidence`, `CoordinationSummary`, or MCP
+  output schemas.
+- Do not change collision, claim, merge-risk, or watch semantics.
+- Do not treat remembered session touches as current changed files.
+- Do not add dependencies, telemetry, network calls, release actions, version
+  bumps, or package-lock churn.
+
+Reviewer edge case: unavailable single-worktree reports still need the evidence
+block, because that is often the first local coordination command a user runs.
+
+Kept change: one console-rendering addition, one CLI regression assertion,
+focused docs, this persona note, and existing coordination verification.
