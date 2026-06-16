@@ -70,6 +70,32 @@ describe('python manifest maintainability', () => {
     expect(parsePythonLockfile).toBeDefined();
     expect(parsePythonLockfile!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
+
+  it('keeps Python project evidence gating out of the manifest parser', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('ROOT_PYTHON_MANIFEST_NAMES');
+    expect(manifestSource).not.toContain('function isRootPythonManifestFile');
+    expect(manifestSource).not.toContain('function hasPythonProjectEvidence');
+
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonProjectEvidence.ts'),
+      'utf8',
+    );
+    expect(evidenceSource).not.toContain("from './pythonManifests.js'");
+
+    const evidenceInspection = await inspectRepoSourceFile(
+      'src/core/languages/pythonProjectEvidence.ts',
+    );
+    const hasPythonProjectEvidence = evidenceInspection.functions?.find(
+      (fn) => fn.name === 'hasPythonProjectEvidence',
+    );
+
+    expect(hasPythonProjectEvidence).toBeDefined();
+    expect(hasPythonProjectEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('splitPep508', () => {

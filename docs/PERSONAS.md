@@ -2549,3 +2549,50 @@ multi-worktree coordination gets one reminder to rerun `projscan coordinate`.
 
 Kept change: one coordination hint branch, one coordination regression, focused
 docs, this persona note, and existing coordination/agent-brief coverage.
+
+## Sixty-Second Slice Decision
+
+Selected persona: Maintainer Preparing Review.
+
+Reason: the Python manifest parser is easier to review when root project
+evidence detection is not mixed with dependency and lockfile parsing. The
+manifest-only preview behavior still matters, but the gate is its own
+validation concern.
+
+Smallest fix: move root Python project evidence detection into a focused module
+and keep `detectPythonProject` using one imported predicate. Preserve
+requirements and constraints parsing behavior in the manifest parser.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "project evidence gating"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonProjectEvidence.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Python Project Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change Python dependency parsing, lockfile parsing, or upgrade preview
+  output fields.
+- Do not broaden project detection beyond root Python manifests,
+  requirements/constraints files, known lockfiles, and `.py`/`.pyw` files.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: a root `pyproject.toml` without Python files still counts
+as Python project evidence, while nested manifests remain out of scope.
+
+Kept change: one focused project-evidence module, one maintainability
+regression, existing Python behavior coverage, this persona note, and no public
+schema change.

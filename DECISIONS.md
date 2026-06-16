@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Python project evidence gate
+
+- Status: accepted
+- Context: Manifest-only Python upgrade preview added a root project-evidence gate to `pythonManifests.ts`, but the manifest parser is already a roadmap hotspot and should stay focused on parsing manifests and lockfile evidence.
+- Decision: Move Python project evidence detection into `src/core/languages/pythonProjectEvidence.ts` and import the single `hasPythonProjectEvidence` gate from the manifest detector.
+- Consequences: Python project detection behavior and output schemas remain unchanged, while review of root manifest/project evidence rules is isolated from Python dependency parsing.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "project evidence gating"` and the focused Python manifest/upgrade verification matrix.
+
 ## 2026-06-16: Reuse shared AST child traversal in JavaScript walkers
 
 - Status: accepted
