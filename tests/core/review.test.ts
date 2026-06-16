@@ -264,6 +264,21 @@ describe('computeReview', () => {
     expect(shapeReviewForTier!.cyclomaticComplexity).toBeLessThanOrEqual(10);
   });
 
+  it('keeps cycle classification isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const cycleFunctions = new Set(['classifyNewCycles', 'scopeCyclesToFiles']);
+    expect(review.functions?.some((fn) => cycleFunctions.has(fn.name))).toBe(false);
+
+    const cycleModule = await inspectRepoSourceFile('src/core/reviewCycles.ts');
+    const classifyNewCycles = cycleModule.functions?.find((fn) => fn.name === 'classifyNewCycles');
+    const scopeCyclesToFiles = cycleModule.functions?.find((fn) => fn.name === 'scopeCyclesToFiles');
+
+    expect(classifyNewCycles).toBeDefined();
+    expect(classifyNewCycles!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+    expect(scopeCyclesToFiles).toBeDefined();
+    expect(scopeCyclesToFiles!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

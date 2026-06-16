@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract review cycle classification
+
+- Status: accepted
+- Context: `src/core/review.ts` still owned cycle scoping, new/expanded cycle classification, overlap counting, and added-file sort priority after review tier extraction.
+- Decision: Move review cycle classification into `src/core/reviewCycles.ts` and import `classifyNewCycles` plus `scopeCyclesToFiles` from the review orchestrator.
+- Consequences: Review cycle output, package scoping, and added-file priority stay unchanged, while cycle-specific logic can be reviewed independently from git worktree orchestration and verdict assembly.
+- Verification: `npm run test -- tests/core/review.test.ts -t "cycle classification isolated"` and focused review verification.
+
 ## 2026-06-16: Extract review tier shaping
 
 - Status: accepted

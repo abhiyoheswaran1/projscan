@@ -2927,3 +2927,51 @@ review output, while low and mid budgets keep the same `verdict-only` and
 Kept change: one focused review tier module, one maintainability regression,
 existing review-tier and MCP budget coverage, this persona note, and no public
 schema change.
+
+## Seventieth Slice Decision
+
+Selected persona: OSS Maintainer.
+
+Reason: New/expanded dependency-cycle classification is small but easy to
+break during review orchestration work. It decides whether a PR introduced
+architecture debt and how added-file cycles are prioritized, so it should be
+reviewable without reading git worktree and manifest diff setup.
+
+Smallest fix: move cycle scoping, overlap counting, new/expanded
+classification, and added-file ordering into `reviewCycles.ts`, then import
+only `classifyNewCycles` and `scopeCyclesToFiles` from `review.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "cycle classification isolated"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewCycles.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+git diff --check
+```
+
+## Review Guardrails: Review Cycle Extraction
+
+Delete-list after this slice:
+
+- Do not change review cycle classification semantics, package scoping,
+  added-file sort priority, verdict inputs, or public review schemas.
+- Do not broaden cycle detection beyond the existing coupling report inputs.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: identical base/head cycles should stay quiet, expanded
+cycles should still surface as `expanded`, and cycles touching newly added
+files should remain first in the review list.
+
+Kept change: one focused review cycle module, one maintainability regression,
+existing review behavior coverage, this persona note, and no public schema
+change.

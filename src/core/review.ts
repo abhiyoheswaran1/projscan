@@ -14,6 +14,7 @@ import { findRiskyFunctions } from './reviewRiskyFunctions.js';
 import { decideVerdict } from './reviewVerdict.js';
 import { buildContractChanges } from './reviewContractChanges.js';
 import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.js';
+import { classifyNewCycles, scopeCyclesToFiles } from './reviewCycles.js';
 import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
 import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
 import {
@@ -23,10 +24,7 @@ import {
   type ManifestSnapshot,
 } from './reviewManifests.js';
 import type { PrDiffReport } from '../types/prDiff.js';
-import type {
-  ReviewCycle,
-  ReviewReport,
-} from '../types/review.js';
+import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
 
@@ -302,50 +300,6 @@ function applyIntent(report: ReviewReport, rawIntent?: string): void {
     };
     appendIntentToSummary(report.summary, analysis);
   }
-}
-
-// ── cycle classification ──────────────────────────────────
-
-function scopeCyclesToFiles(cycles: ReviewCycle[], scopeFiles?: Set<string>): ReviewCycle[] {
-  if (!scopeFiles) return cycles;
-  return cycles.filter((cycle) => cycle.files.some((file) => scopeFiles.has(file)));
-}
-
-function classifyNewCycles(
-  baseCycles: { files: string[] }[],
-  headCycles: { files: string[] }[],
-  filesAddedInPr: string[],
-): ReviewCycle[] {
-  const added = new Set(filesAddedInPr);
-  const out: ReviewCycle[] = [];
-  for (const head of headCycles) {
-    const headSet = new Set(head.files);
-    let bestOverlap = 0;
-    for (const base of baseCycles) {
-      let overlap = 0;
-      for (const f of base.files) if (headSet.has(f)) overlap++;
-      if (overlap > bestOverlap) bestOverlap = overlap;
-    }
-    if (bestOverlap === 0) {
-      out.push({ files: [...head.files].sort(), size: head.files.length, classification: 'new' });
-    } else if (bestOverlap < head.files.length) {
-      // cycle existed but grew
-      out.push({
-        files: [...head.files].sort(),
-        size: head.files.length,
-        classification: 'expanded',
-      });
-    }
-    // bestOverlap === head.files.length means the cycle is identical at base.
-  }
-  // Bump cycles where any file is newly added to the very front.
-  out.sort((a, b) => {
-    const aTouchesAdded = a.files.some((f) => added.has(f)) ? 0 : 1;
-    const bTouchesAdded = b.files.some((f) => added.has(f)) ? 0 : 1;
-    if (aTouchesAdded !== bTouchesAdded) return aTouchesAdded - bTouchesAdded;
-    return b.size - a.size;
-  });
-  return out;
 }
 
 // ── git helpers (mirror prDiff.ts; kept private to keep coupling low) ──
