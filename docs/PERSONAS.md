@@ -3025,3 +3025,49 @@ line numbers.
 Kept change: one focused pyproject parser module, one shared text-helper
 module, one maintainability regression, existing Python parser coverage, this
 persona note, and no public schema change.
+
+## Seventy-Second Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: file-purpose labels are part of the first read an agent gets from
+`projscan file`. They should be easy to review without scanning path-safety,
+graph-cache, hotspot, and issue-detection code in `fileInspector.ts`.
+
+Smallest fix: move filename, directory, and export-shape purpose rules into
+`filePurpose.ts`, then re-export `inferPurpose` from `fileInspector.ts` so
+existing callers keep working.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "purpose inference rules|inferPurpose"
+npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/filePurpose.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: File Purpose Extraction
+
+Delete-list after this slice:
+
+- Do not change purpose labels, rule order, graph-backed import/export output,
+  file-inspection schema fields, path-safety behavior, or public imports.
+- Do not broaden file reads, read secret values, add dependencies, package
+  metadata changes, release actions, or version numbers.
+- Do not remove the compatibility re-export from `fileInspector.ts`.
+
+Reviewer edge case: test/spec, config/rc, index, route, service, component,
+model/schema, and class/function-library fallback labels should stay identical.
+
+Kept change: one focused file-purpose module, one maintainability regression,
+existing file-inspector coverage, this persona note, and no public schema
+change.

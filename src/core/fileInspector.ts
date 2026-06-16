@@ -16,6 +16,9 @@ import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { getAdapterFor } from './languages/registry.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
+import { inferPurpose } from './filePurpose.js';
+
+export { inferPurpose } from './filePurpose.js';
 
 export interface InspectOptions {
   scan?: { files: FileEntry[] };
@@ -242,66 +245,6 @@ function findHotspotForFile(
 ): FileHotspot | null {
   if (!report || !report.available) return null;
   return report.hotspots.find((h) => h.relativePath === relativePath) ?? null;
-}
-
-/**
- * Filename-keyword rules. Order matters — first match wins. Each pred
- * runs against the lowercase basename (without extension).
- */
-const NAME_RULES: ReadonlyArray<{
-  pred: (name: string) => boolean;
-  label: string;
-}> = [
-  { pred: (n) => n.includes('test') || n.includes('spec'), label: 'Test file' },
-  { pred: (n) => n.includes('config') || n.includes('rc'), label: 'Configuration file' },
-  { pred: (n) => n === 'index', label: 'Module entry point / barrel file' },
-  { pred: (n) => n === 'main' || n === 'app', label: 'Application entry point' },
-  { pred: (n) => n.includes('route') || n.includes('router'), label: 'Route definitions' },
-  { pred: (n) => n.includes('middleware'), label: 'Middleware handler' },
-  { pred: (n) => n.includes('controller'), label: 'Request controller' },
-  { pred: (n) => n.includes('service'), label: 'Service layer logic' },
-  {
-    pred: (n) => n.includes('model') || n.includes('schema'),
-    label: 'Data model / schema definition',
-  },
-  { pred: (n) => n.includes('util') || n.includes('helper'), label: 'Utility functions' },
-  { pred: (n) => n.includes('hook'), label: 'Custom hook' },
-  {
-    pred: (n) => n.includes('context') || n.includes('provider'),
-    label: 'Context / state provider',
-  },
-  { pred: (n) => n.includes('type') || n.includes('interface'), label: 'Type definitions' },
-  { pred: (n) => n.includes('constant'), label: 'Constants / configuration' },
-  { pred: (n) => n.includes('migration'), label: 'Database migration' },
-  { pred: (n) => n.includes('seed'), label: 'Database seed data' },
-  { pred: (n) => n.includes('auth'), label: 'Authentication logic' },
-  { pred: (n) => n.includes('api'), label: 'API endpoint handler' },
-];
-
-/** Directory-segment rules. Same first-match-wins semantics. */
-const DIR_RULES: ReadonlyArray<{
-  pred: (dir: string) => boolean;
-  label: string;
-}> = [
-  { pred: (d) => d.includes('component') || d.includes('pages'), label: 'UI component' },
-  { pred: (d) => d.includes('service'), label: 'Service module' },
-  { pred: (d) => d.includes('model'), label: 'Data model' },
-  { pred: (d) => d.includes('util') || d.includes('lib'), label: 'Library / utility module' },
-];
-
-export function inferPurpose(filePath: string, exports: ExportInfo[]): string {
-  const name = path.basename(filePath, path.extname(filePath)).toLowerCase();
-  const dir = path.dirname(filePath).toLowerCase();
-  for (const rule of NAME_RULES) if (rule.pred(name)) return rule.label;
-  for (const rule of DIR_RULES) if (rule.pred(dir)) return rule.label;
-  return inferPurposeFromExports(exports);
-}
-
-function inferPurposeFromExports(exports: ExportInfo[]): string {
-  const exportTypes = exports.map((e) => e.type);
-  if (exportTypes.includes('class')) return 'Class-based module';
-  if (exportTypes.filter((t) => t === 'function').length > 2) return 'Function library';
-  return 'Source module';
 }
 
 export function detectFileIssues(content: string, lineCount: number): string[] {

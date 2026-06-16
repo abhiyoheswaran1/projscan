@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract file purpose inference
+
+- Status: accepted
+- Context: `fileInspector.ts` remained a high-complexity hotspot and still mixed file inspection orchestration with filename/directory purpose rules and export-shape fallback inference.
+- Decision: Move purpose inference rules into `src/core/filePurpose.ts` and re-export `inferPurpose` from `fileInspector.ts` for compatibility.
+- Consequences: `projscan file` purpose labels and public imports stay unchanged, while purpose-rule changes can be reviewed separately from path safety, graph loading, hotspot lookup, and issue detection.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "purpose inference rules|inferPurpose"` and focused file-inspector verification.
+
 ## 2026-06-16: Extract Python pyproject dependency parser
 
 - Status: accepted

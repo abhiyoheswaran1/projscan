@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -9,6 +10,22 @@ describe('deprecated extractor exports', () => {
     const mod = await import('../../src/core/fileInspector.js');
     expect(['extract', 'Imports'].join('') in mod).toBe(false);
     expect(['extract', 'Exports'].join('') in mod).toBe(false);
+  });
+
+  it('keeps purpose inference rules out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('NAME_RULES');
+    expect(inspectorSource).not.toContain('DIR_RULES');
+    expect(inspectorSource).not.toContain('function inferPurposeFromExports');
+
+    const purposeSource = readFileSync(
+      path.join(process.cwd(), 'src/core/filePurpose.ts'),
+      'utf8',
+    );
+    expect(purposeSource).not.toContain("from './fileInspector.js'");
   });
 });
 
