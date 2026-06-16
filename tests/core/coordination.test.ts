@@ -33,6 +33,33 @@ describe('summarizeCoordination', () => {
           { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
           { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
         ],
+        evidence: {
+          commandPath: 'projscan collisions',
+          command: 'projscan collisions --format json',
+          localOnly: true,
+          worktreeCount: 2,
+          currentWorktree: { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          activeSignals: [
+            {
+              name: 'collisions',
+              commandPath: 'projscan collisions',
+              source: 'git worktree list, local diffs, and the local import graph',
+            },
+          ],
+          validationWorkflow: [
+            {
+              command: 'projscan collisions --format json',
+              purpose: 'Find same-file and dependency overlaps across sibling worktrees.',
+            },
+          ],
+          sessionSeparation: {
+            currentEvidence:
+              'Current worktree evidence is read from local git/worktree state during this command.',
+            rememberedContext:
+              'Remembered session context is read separately through projscan session and agent-brief coordination hints.',
+            command: 'projscan agent-brief --format json',
+          },
+        },
       }),
       claims: [claim('src/a.ts', 'a'), claim('src/b.ts', 'b')],
       mergeRisk: mergeRisk({}),
@@ -40,6 +67,21 @@ describe('summarizeCoordination', () => {
     expect(out.available).toBe(true);
     expect(out.readiness).toBe('clear');
     expect(out.worktreeCount).toBe(2);
+    expect(out.evidence).toMatchObject({
+      commandPath: 'projscan coordinate',
+      command: 'projscan coordinate --format json',
+      localOnly: true,
+      currentWorktree: { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+      activeSignals: [
+        { name: 'collisions', commandPath: 'projscan collisions' },
+        { name: 'claims', commandPath: 'projscan claim list' },
+        { name: 'merge-risk', commandPath: 'projscan merge-risk' },
+        { name: 'watch', commandPath: 'projscan coordinate --watch' },
+      ],
+    });
+    expect(out.evidence?.validationWorkflow.map((step) => step.command)).toContain(
+      'projscan coordinate --watch --interval 5 --format json',
+    );
   });
 
   it('is conflicted when there is a high-severity collision', () => {

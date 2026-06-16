@@ -4,6 +4,10 @@ import { scanRepository } from './repositoryScanner.js';
 import { buildCodeGraph, importersOf } from './codeGraph.js';
 import { computeImpact } from './impact.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
+import {
+  buildCollisionCommandEvidence,
+  type CoordinationCommandEvidence,
+} from './coordinationEvidence.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -55,6 +59,7 @@ export interface CollisionReport {
   reason?: string;
   worktrees: CollisionWorktreeSummary[];
   collisions: Collision[];
+  evidence?: CoordinationCommandEvidence;
 }
 
 export interface DetectCollisionsOptions {
@@ -122,6 +127,12 @@ export async function detectCollisions(
   const worktrees = await listWorktrees(rootPath);
 
   if (worktrees.length < 2) {
+    const summaries = worktrees.map((w) => ({
+      path: w.path,
+      branch: w.branch,
+      changedFileCount: 0,
+      baseRef: null,
+    }));
     return {
       schemaVersion: 1,
       available: false,
@@ -129,13 +140,9 @@ export async function detectCollisions(
         worktrees.length === 0
           ? 'not a git repository, or git worktrees are unavailable'
           : 'only one worktree — collision detection needs at least two in-flight worktrees',
-      worktrees: worktrees.map((w) => ({
-        path: w.path,
-        branch: w.branch,
-        changedFileCount: 0,
-        baseRef: null,
-      })),
+      worktrees: summaries,
       collisions: [],
+      evidence: buildCollisionCommandEvidence(rootPath, summaries),
     };
   }
 
@@ -264,16 +271,19 @@ export async function detectCollisions(
     }
   }
 
+  const summaries = changes.map((c) => ({
+    path: c.ref.path,
+    branch: c.ref.branch,
+    changedFileCount: c.files.length,
+    baseRef: c.baseRef,
+  }));
+
   return {
     schemaVersion: 1,
     available: true,
-    worktrees: changes.map((c) => ({
-      path: c.ref.path,
-      branch: c.ref.branch,
-      changedFileCount: c.files.length,
-      baseRef: c.baseRef,
-    })),
+    worktrees: summaries,
     collisions: dedupeCollisions(collisions),
+    evidence: buildCollisionCommandEvidence(rootPath, summaries),
   };
 }
 

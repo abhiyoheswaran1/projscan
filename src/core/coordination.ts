@@ -1,6 +1,10 @@
 import { detectCollisions, type CollisionReport } from './collisionDetector.js';
 import { listClaims, findContendedClaims, type Claim } from './claims.js';
 import { deriveMergeRisk, type MergeRiskReport } from './mergeRisk.js';
+import {
+  buildCoordinateCommandEvidence,
+  type CoordinationCommandEvidence,
+} from './coordinationEvidence.js';
 
 /**
  * Coordination summary (4.x arc, epic 5 — the capstone).
@@ -27,6 +31,7 @@ export interface CoordinationSummary {
   };
   readiness: CoordinationReadiness;
   summary: string[];
+  evidence?: CoordinationCommandEvidence;
 }
 
 export interface CoordinationInputs {
@@ -50,6 +55,10 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
       mergeRisk: { hotspotCount: 0, integrationOrder: [] },
       readiness: 'clear',
       summary: [collisionReport.reason ?? 'Coordination unavailable.'],
+      evidence: buildCoordinateCommandEvidence(
+        collisionReport.evidence,
+        collisionReport.worktrees.length,
+      ),
     };
   }
 
@@ -92,6 +101,10 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
     },
     readiness,
     summary,
+    evidence: buildCoordinateCommandEvidence(
+      collisionReport.evidence,
+      collisionReport.worktrees.length,
+    ),
   };
 }
 

@@ -51,6 +51,11 @@ Read the outputs this way:
 | `coordinate` | Is the current swarm clear, cautious, or conflicted? | Use this as the one-line status in handoffs. |
 | `agent-brief` | What should the next agent know? | Include coordination hints in the next-agent packet. |
 
+The JSON reports for `collisions` and `coordinate` include an `evidence` block
+with the active command path, current worktree state, local-only source signals,
+the validation workflow above, and a reminder that session memory is separate
+from current Git/worktree evidence.
+
 For MCP clients that support long-running notifications, use the watch tool:
 
 ```text

@@ -87,6 +87,26 @@ describe('detectCollisions', () => {
     const report = await detectCollisions(root);
 
     expect(report.available).toBe(true);
+    expect(report.evidence).toMatchObject({
+      commandPath: 'projscan collisions',
+      command: 'projscan collisions --format json',
+      localOnly: true,
+      worktreeCount: 2,
+      currentWorktree: {
+        path: await fs.realpath(root),
+        branch: 'main',
+        changedFileCount: 1,
+        baseRef: 'main',
+      },
+    });
+    expect(report.evidence?.validationWorkflow.map((step) => step.command)).toEqual([
+      'projscan collisions --format json',
+      'projscan claim list --format json',
+      'projscan merge-risk --format json',
+      'projscan coordinate --format json',
+      'projscan coordinate --watch --interval 5 --format json',
+      'projscan agent-brief --format json',
+    ]);
     const sameFile = report.collisions.filter((c) => c.kind === 'same-file');
     expect(sameFile.some((c) => c.fileA === 'src/db.ts' && c.severity === 'high')).toBe(true);
   });

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Add coordination evidence blocks to swarm reports
+
+- Status: accepted
+- Context: The roadmap requires swarm coordination evidence to name the active command path, current worktree state, and local-only validation workflow. `projscan collisions` and `projscan coordinate` already reported counts and readiness, but the JSON did not carry the workflow proof agents need in handoffs.
+- Decision: Add an additive `evidence` block to collision and coordination summaries with the active command, local-only source signals, current worktree state, validation workflow, and session-memory separation note. Keep existing verdict, count, worktree, and collision fields unchanged.
+- Consequences: CLI and MCP callers can cite coordination proof directly from the JSON report without inferring which command produced it or whether it mixed remembered session context with current Git/worktree evidence.
+- Verification: `npm run test -- tests/core/collisionDetector.test.ts tests/core/coordination.test.ts tests/mcp/coordinateWatch.test.ts`, `npm run lint`, `npm run typecheck`, `npm run build`, `npm exec projscan -- collisions --format json`, `npm exec projscan -- coordinate --format json`, `npm exec projscan -- agent-brief --format json`, `npm exec projscan -- release-train --format json`, and `npm exec projscan -- bug-hunt --format json`.
+
 ## 2026-06-16: Ignore prohibited release actions when routing autonomous work
 
 - Status: accepted
