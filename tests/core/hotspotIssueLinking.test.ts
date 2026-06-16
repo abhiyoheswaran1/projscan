@@ -59,6 +59,19 @@ describe('hotspotAnalyzer maintainability', () => {
     expect(boundaryHelper).toBeDefined();
     expect(boundaryHelper!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps git churn collection out of the hotspot scoring module', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    expect(analyzer.functions?.some((fn) => fn.name === 'collectGitChurn')).toBe(false);
+    expect(analyzer.functions?.some((fn) => fn.name === 'runGit')).toBe(false);
+
+    const gitModule = await inspectRepoSourceFile('src/core/hotspotGit.ts');
+    const gitFunctions = gitModule.functions ?? [];
+    const collectGitChurn = gitFunctions.find((fn) => fn.name === 'collectGitChurn');
+
+    expect(collectGitChurn).toBeDefined();
+    expect(collectGitChurn!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
 });
 
 describe('hotspot ↔ issue linking', () => {

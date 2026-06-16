@@ -977,3 +977,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move member-expression name, read-reference, and destructured-alias helpers into `src/core/astMembers.ts`, while keeping `parseSource` and `FunctionInfo` output unchanged.
 - Consequences: `src/core/ast.ts` drops from 970 lines / CC 196 to 886 lines / CC 146, and `collectMemberReadIdents` plus `babelQualifiedMemberName` are no longer part of the AST orchestrator hotspot.
 - Verification: `npm run test -- tests/core/ast.functions.test.ts -t "member-expression helpers"` failed before the extraction, then `npm run test -- tests/core/ast.functions.test.ts -t "member-expression helpers"`, `npm run test -- tests/core/ast.references.test.ts`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, `npm exec projscan -- file src/core/ast.ts --format json`, and `npm exec projscan -- file src/core/astMembers.ts --format json` passed after the change.
+
+## 2026-06-16: Extract hotspot git churn collection
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` remained a hotspot after the AST and review extractions, and the git-log collection/parsing path was branch-heavy infrastructure embedded in the risk-scoring module.
+- Decision: Move git repository probing, git-log churn collection, commit counting, and git process handling into `src/core/hotspotGit.ts`, keeping hotspot scoring, issue linking, and public `analyzeHotspots` output unchanged.
+- Consequences: `src/core/hotspotAnalyzer.ts` drops from 657 lines / CC 112 to 504 lines / CC 82, while `collectGitChurn` becomes a CC 2 boundary in a non-hotspot helper module.
+- Verification: `npm run test -- tests/core/hotspotIssueLinking.test.ts -t "git churn"` failed before the extraction, then `npm run test -- tests/core/hotspotIssueLinking.test.ts -t "git churn"`, `npm run test -- tests/core/hotspotAnalyzer.test.ts`, `npm run test -- tests/core/hotspotIssueLinking.test.ts tests/core/hotspotAnalyzer.test.ts tests/core/hotspotCoverage.test.ts`, `npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json`, and `npm exec projscan -- file src/core/hotspotGit.ts --format json` passed after the change.
