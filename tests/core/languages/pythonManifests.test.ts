@@ -120,6 +120,32 @@ describe('python manifest maintainability', () => {
     expect(detectPythonProject).toBeDefined();
     expect(detectPythonProject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
   });
+
+  it('keeps Python package root inference out of the manifest parser', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('function extractPyprojectRoots');
+    expect(manifestSource).not.toContain('function inferRootsFromInitFiles');
+    expect(manifestSource).not.toContain('function extractStringList');
+
+    const rootsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonRoots.ts'),
+      'utf8',
+    );
+    expect(rootsSource).not.toContain("from './pythonManifests.js'");
+
+    const manifestInspection = await inspectRepoSourceFile('src/core/languages/pythonManifests.ts');
+    expect(manifestInspection.cyclomaticComplexity).toBeLessThanOrEqual(60);
+
+    const rootsInspection = await inspectRepoSourceFile('src/core/languages/pythonRoots.ts');
+    const inferRootsFromInitFiles = rootsInspection.functions?.find(
+      (fn) => fn.name === 'inferRootsFromInitFiles',
+    );
+    expect(inferRootsFromInitFiles).toBeDefined();
+    expect(inferRootsFromInitFiles!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
 });
 
 describe('splitPep508', () => {

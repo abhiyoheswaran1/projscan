@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Python package root inference
+
+- Status: accepted
+- Context: `pythonManifests.ts` still mixed Python package-root inference from `pyproject.toml` and `__init__.py` placement into the dependency manifest parser, keeping the hotspot larger than necessary after requirements extraction.
+- Decision: Move `pyproject.toml` root extraction and `__init__.py` root inference into `src/core/languages/pythonRoots.ts`, while keeping `detectPythonProject` responsible for orchestration and final package-root fallback.
+- Consequences: Package-root behavior and Python upgrade output remain unchanged, while future root-inference fixes can be reviewed in a focused module.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "package root inference"` and the focused Python manifest/upgrade verification matrix.
+
 ## 2026-06-16: Extract Python requirements evidence reader
 
 - Status: accepted

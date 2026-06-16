@@ -6,6 +6,7 @@ import { splitPep508 } from './pythonPep508.js';
 import { hasPythonProjectEvidence } from './pythonProjectEvidence.js';
 import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
 import { readRootRequirementEvidence } from './pythonRequirements.js';
+import { extractPyprojectRoots, inferRootsFromInitFiles } from './pythonRoots.js';
 
 export {
   parseCondaLock,
@@ -218,37 +219,6 @@ function appendLegacyPoetryDevDependencies(out: PythonDeclaredDep[], content: st
   }
 }
 
-function extractPyprojectRoots(content: string): string[] {
-  const roots: string[] = [];
-
-  // [tool.setuptools.packages.find] where = ['src']
-  const findWhereRe = /\[tool\.setuptools\.packages\.find\]([\s\S]*?)(?=\n\[|$)/;
-  const findMatch = findWhereRe.exec(content);
-  if (findMatch) {
-    const whereRe = /where\s*=\s*\[\s*([^\]]+?)\s*\]/;
-    const whereMatch = whereRe.exec(findMatch[1]);
-    if (whereMatch) {
-      for (const s of extractStringList(whereMatch[1])) roots.push(s);
-    }
-  }
-
-  // [tool.setuptools] package-dir or [tool.setuptools.package-dir] { '' = 'src' }
-  const pkgDirRe = /package[-_]dir\s*=\s*\{[^}]*""\s*=\s*["']([^"']+)["']/;
-  const pkgDirMatch = pkgDirRe.exec(content);
-  if (pkgDirMatch) roots.push(pkgDirMatch[1]);
-
-  // Poetry explicit packages: [tool.poetry] packages = [{ include = "foo", from = "src" }]
-  const poetryPackagesRe = /\[tool\.poetry\][\s\S]*?packages\s*=\s*\[([\s\S]*?)\]/;
-  const poetryPkg = poetryPackagesRe.exec(content);
-  if (poetryPkg) {
-    const fromRe = /from\s*=\s*["']([^"']+)["']/g;
-    let m: RegExpExecArray | null;
-    while ((m = fromRe.exec(poetryPkg[1]))) roots.push(m[1]);
-  }
-
-  return dedupe(roots);
-}
-
 function parsePoetryKv(
   block: string,
   lineOffset: number,
@@ -314,14 +284,6 @@ function extractListValues(
   return out;
 }
 
-function extractStringList(fragment: string): string[] {
-  const out: string[] = [];
-  const re = /["']([^"']+)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(fragment))) out.push(m[1]);
-  return out;
-}
-
 function offsetToLine(content: string, offset: number): number {
   let line = 0;
   for (let i = 0; i < offset && i < content.length; i++) {
@@ -358,29 +320,4 @@ function parseSetupCfg(content: string): PythonDeclaredDep[] {
     out.push({ name, versionSpec, source: 'setup.cfg', line: baseLine + i + 1, scope: 'main' });
   }
   return out;
-}
-
-// ── __init__.py-walk fallback ─────────────────────────────────
-
-function inferRootsFromInitFiles(files: FileEntry[]): string[] {
-  // Find every dir that contains __init__.py, then take the SHALLOWEST ones
-  // whose parent is not itself an __init__.py holder - those parents are the
-  // candidate source roots.
-  const initDirs = new Set<string>();
-  for (const f of files) {
-    if (path.basename(f.relativePath) === '__init__.py') {
-      initDirs.add(f.directory === '.' ? '' : f.directory);
-    }
-  }
-  if (initDirs.size === 0) return [];
-
-  const candidateParents = new Set<string>();
-  for (const dir of initDirs) {
-    const parent = dir === '' ? '.' : path.posix.dirname(dir);
-    const parentKey = parent === '.' ? '' : parent;
-    // Skip if parent also has __init__.py (that's a nested package).
-    if (initDirs.has(parentKey)) continue;
-    candidateParents.add(parent === '' ? '.' : parent);
-  }
-  return [...candidateParents];
 }

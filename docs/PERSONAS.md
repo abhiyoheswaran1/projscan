@@ -2643,3 +2643,50 @@ evidence without declaring dependencies, and `parseRequirements` /
 Kept change: one focused requirements evidence module, one tiny PEP 508 splitter
 module, compatibility re-exports, one maintainability regression, this persona
 note, and existing Python behavior coverage.
+
+## Sixty-Fourth Slice Decision
+
+Selected persona: Maintainer Reviewing Root Detection.
+
+Reason: Python package-root inference has different review risks than
+dependency parsing. It decides where package code lives from `pyproject.toml`
+metadata and `__init__.py` placement, so it should be inspectable without
+reading every manifest dependency parser.
+
+Smallest fix: move `pyproject.toml` root extraction and `__init__.py` fallback
+root inference into `pythonRoots.ts`. Keep `detectPythonProject` as the
+orchestrator and preserve final `.` fallback behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "package root inference"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonRoots.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: Python Package Root Extraction
+
+Delete-list after this slice:
+
+- Do not change root inference semantics, package-root fallback behavior,
+  dependency parsing, lockfile parsing, or upgrade preview output fields.
+- Do not add dependencies, Python runtime execution, network calls, package
+  metadata changes, release actions, or version numbers.
+
+Reviewer edge case: projects with setuptools `where`, package-dir metadata,
+Poetry `from`, or only nested `__init__.py` files should keep the same inferred
+package roots.
+
+Kept change: one focused root-inference module, one maintainability regression,
+existing Python behavior coverage, this persona note, and no public schema
+change.
