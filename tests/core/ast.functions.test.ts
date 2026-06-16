@@ -101,6 +101,19 @@ describe('per-function CC (JS/TS)', () => {
     expect(analyzer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps function collection out of the AST parse orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'extractFunctionsFromBabel')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'collectFunctions')).toBe(false);
+
+    const collectorSource = readFileSync(join(process.cwd(), 'src/core/astFunctionCollector.ts'), 'utf8');
+    const collectorFns = fns(collectorSource, 'src/core/astFunctionCollector.ts');
+    const extractor = collectorFns.find((fn) => fn.name === 'extractFunctionsFromBabel');
+    expect(extractor).toBeDefined();
+    expect(extractor!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
