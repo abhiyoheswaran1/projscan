@@ -72,6 +72,18 @@ describe('markdownReporter', () => {
       const out = await captureStdout(() => reportHealthMarkdown([]));
       expect(out.toLowerCase()).toContain('no issues detected');
     });
+
+    it('renders path-safe report controls metadata when supplied', async () => {
+      const out = await captureStdout(() =>
+        reportHealthMarkdown([], {
+          active: true,
+          scopeCount: 2,
+          redactPaths: false,
+        }),
+      );
+
+      expect(out).toContain('> Report controls: active; scopes: 2; path redaction: disabled.');
+    });
   });
 
   describe('reportCiMarkdown', () => {
@@ -88,6 +100,19 @@ describe('markdownReporter', () => {
       );
       expect(out).toContain('# Projscan CI - FAIL');
       expect(out).toContain('❌ Fail');
+    });
+
+    it('renders path-safe report controls metadata when supplied', async () => {
+      const out = await captureStdout(() =>
+        reportCiMarkdown([], 50, {
+          active: true,
+          scopeCount: 1,
+          redactPaths: true,
+          pathLabelFormat: 'redacted-path-N',
+        }),
+      );
+
+      expect(out).toContain('> Report controls: active; scopes: 1; path redaction: redacted-path-N.');
     });
   });
 

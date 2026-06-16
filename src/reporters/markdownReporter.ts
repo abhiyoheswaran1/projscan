@@ -10,6 +10,7 @@ import type {
   PrDiffReport,
   WorkspaceInfo,
 } from '../types.js';
+import type { ReportControlsMetadata } from '../core/reportScope.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 export { reportDiffMarkdown } from './markdownDiffReporter.js';
 export { reportFileMarkdown } from './markdownFileReporter.js';
@@ -24,10 +25,14 @@ export { reportUpgradeMarkdown } from './markdownUpgradeReporter.js';
 export { reportAuditMarkdown } from './markdownAuditReporter.js';
 export { reportAnalysisMarkdown } from './markdownAnalysisReporter.js';
 
-export function reportHealthMarkdown(issues: Issue[]): void {
+export function reportHealthMarkdown(
+  issues: Issue[],
+  reportControls?: ReportControlsMetadata,
+): void {
   const { score, grade } = calculateScore(issues);
   const lines: string[] = ['# Project Health Report', ''];
 
+  appendReportControlsMarkdown(lines, reportControls);
   lines.push(`**Health Score: ${grade} (${score}/100)**`);
   lines.push('');
   lines.push(badgeMarkdown(grade));
@@ -52,19 +57,23 @@ export function reportHealthMarkdown(issues: Issue[]): void {
   console.log(lines.join('\n'));
 }
 
-export function reportCiMarkdown(issues: Issue[], threshold: number): void {
+export function reportCiMarkdown(
+  issues: Issue[],
+  threshold: number,
+  reportControls?: ReportControlsMetadata,
+): void {
   const { score, grade } = calculateScore(issues);
   const pass = score >= threshold;
-  const lines: string[] = [
-    `# Projscan CI - ${pass ? 'PASS' : 'FAIL'}`,
-    '',
+  const lines: string[] = [`# Projscan CI - ${pass ? 'PASS' : 'FAIL'}`, ''];
+  appendReportControlsMarkdown(lines, reportControls);
+  lines.push(
     `| Metric | Value |`,
     `| --- | --- |`,
     `| Score | **${score}/100** |`,
     `| Grade | **${grade}** |`,
     `| Threshold | ${threshold} |`,
     `| Result | ${pass ? '✅ Pass' : '❌ Fail'} |`,
-  ];
+  );
 
   if (issues.length > 0) {
     lines.push('', '## Issues', '');
@@ -75,6 +84,17 @@ export function reportCiMarkdown(issues: Issue[], threshold: number): void {
   }
 
   console.log(lines.join('\n'));
+}
+
+function appendReportControlsMarkdown(
+  lines: string[],
+  reportControls: ReportControlsMetadata | undefined,
+): void {
+  if (!reportControls) return;
+  lines.push(
+    `> Report controls: active; scopes: ${reportControls.scopeCount}; path redaction: ${reportControls.redactPaths ? (reportControls.pathLabelFormat ?? 'enabled') : 'disabled'}.`,
+  );
+  lines.push('');
 }
 
 export function reportExplanationMarkdown(explanation: FileExplanation): void {

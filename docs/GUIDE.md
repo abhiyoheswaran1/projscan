@@ -931,8 +931,9 @@ For shareable evidence artifacts, `analyze`, `doctor`, and `ci` accept
 `--report-policy <name>`, `--report-scope <paths>`, and `--redact-paths`. Scope
 is comma-separated and repo-relative. Redaction replaces file paths with stable
 labels while preserving correlation across issues and files in the same report.
-Direct `--report-scope` and `--redact-paths` flags override the selected preset
-for a single run.
+JSON/SARIF include path-safe `reportControls` metadata, and Markdown prints a
+path-safe controls banner. Direct `--report-scope` and `--redact-paths` flags
+override the selected preset for a single run.
 - `properties.fixAvailable` - whether `projscan fix` can remediate it
 
 When uploaded to GitHub Code Scanning, findings appear in the **Security → Code scanning** tab and (for PRs) as inline annotations on changed lines.

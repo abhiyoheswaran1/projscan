@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Surface report controls in Markdown artifacts
+
+- Status: accepted
+- Context: Scoped/redacted issue data flowed into Markdown outputs, but Markdown artifacts did not state that report controls were active. Reviewers could not distinguish an intentionally scoped or redacted Markdown artifact from an ordinary short report.
+- Decision: Add a path-safe report-controls banner to `analyze`, `doctor`, and `ci` Markdown output when `--report-policy`, `--report-scope`, or `--redact-paths` activates export controls.
+- Consequences: Markdown artifacts can prove scope/redaction was applied without exposing the requested scope paths. JSON/SARIF `reportControls` metadata remains unchanged.
+- Verification: `npm run test -- tests/reporters/markdownAnalysisReporter.test.ts tests/reporters/markdownReporter.test.ts -t "report controls"`.
+
 ## 2026-06-16: Use uv.lock as Python upgrade current-version evidence
 
 - Status: accepted

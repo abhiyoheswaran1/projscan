@@ -92,7 +92,7 @@ export function registerDoctor(): void {
             reportHealthJson(issues, reportControlsInfo);
             break;
           case 'markdown':
-            reportHealthMarkdown(issues);
+            reportHealthMarkdown(issues, reportControlsInfo);
             break;
           case 'sarif':
             reportHealthSarif(issues, pkg.version, reportControlsInfo);

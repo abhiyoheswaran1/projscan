@@ -94,7 +94,7 @@ export function registerCi(): void {
             reportCiJson(issues, threshold, reportControlsInfo);
             break;
           case 'markdown':
-            reportCiMarkdown(issues, threshold);
+            reportCiMarkdown(issues, threshold, reportControlsInfo);
             break;
           case 'sarif':
             reportCiSarif(issues, pkg.version, reportControlsInfo);

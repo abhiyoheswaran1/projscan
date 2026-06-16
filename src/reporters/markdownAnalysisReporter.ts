@@ -1,10 +1,15 @@
 import type { AnalysisReport } from '../types.js';
+import type { ReportControlsMetadata } from '../core/reportScope.js';
 
-export function reportAnalysisMarkdown(report: AnalysisReport): void {
+export function reportAnalysisMarkdown(
+  report: AnalysisReport,
+  reportControls?: ReportControlsMetadata,
+): void {
   const lines: string[] = [];
 
   lines.push('# ProjScan Project Report');
   lines.push('');
+  appendReportControlsMarkdown(lines, reportControls);
   lines.push('## Project');
   lines.push('');
   lines.push(`| Field | Value |`);
@@ -45,4 +50,15 @@ export function reportAnalysisMarkdown(report: AnalysisReport): void {
   }
 
   console.log(lines.join('\n'));
+}
+
+function appendReportControlsMarkdown(
+  lines: string[],
+  reportControls: ReportControlsMetadata | undefined,
+): void {
+  if (!reportControls) return;
+  lines.push(
+    `> Report controls: active; scopes: ${reportControls.scopeCount}; path redaction: ${reportControls.redactPaths ? (reportControls.pathLabelFormat ?? 'enabled') : 'disabled'}.`,
+  );
+  lines.push('');
 }

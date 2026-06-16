@@ -116,7 +116,7 @@ export function registerAnalyze(): void {
             reportAnalysisJson(report, reportControlsInfo);
             break;
           case 'markdown':
-            reportAnalysisMarkdown(report);
+            reportAnalysisMarkdown(report, reportControlsInfo);
             break;
           case 'sarif':
             reportAnalysisSarif(report.issues, pkg.version, reportControlsInfo);

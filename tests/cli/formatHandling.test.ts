@@ -128,6 +128,23 @@ describe('CLI format handling', () => {
     expect(result.stdout).not.toContain('src/public');
   });
 
+  it('surfaces scoped and redacted report controls in analyze Markdown output', async () => {
+    const result = await runCli([
+      'analyze',
+      '--report-scope',
+      'src',
+      '--redact-paths',
+      '--format',
+      'markdown',
+      '--quiet',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      '> Report controls: active; scopes: 1; path redaction: redacted-path-N.',
+    );
+  });
+
   it('rejects unsupported command formats instead of falling back to console output', async () => {
     const result = await runCli(['structure', '--format', 'sarif', '--quiet']);
 

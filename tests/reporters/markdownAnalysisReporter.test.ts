@@ -21,6 +21,20 @@ describe('markdownAnalysisReporter', () => {
     expect(out).toContain('| Scan Time | 123ms |');
   });
 
+  it('renders path-safe report controls metadata when supplied', async () => {
+    const out = await captureStdout(() =>
+      reportAnalysisMarkdown(makeAnalysisReport({ issues: [] }), {
+        active: true,
+        scopeCount: 1,
+        redactPaths: true,
+        pathLabelFormat: 'redacted-path-N',
+      }),
+    );
+
+    expect(out).toContain('> Report controls: active; scopes: 1; path redaction: redacted-path-N.');
+    expect(out).not.toContain('src/private');
+  });
+
   it('omits optional framework, dependency, language, and issue sections when absent', async () => {
     const out = await captureStdout(() =>
       reportAnalysisMarkdown(
