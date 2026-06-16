@@ -11,7 +11,8 @@ import { buildStartNextActions } from './startNextActions.js';
 import { normalizeStartOptions, type ComputeStartOptions } from './startOptions.js';
 import { chooseWorkflow, combineRisks, summarize } from './startMissionPolicy.js';
 import { buildMissionControl } from './startMissionControl.js';
-import type { StartAdoptionGap, StartReport } from '../types/start.js';
+import { buildStartAdoptionGaps } from './startAdoptionGaps.js';
+import type { StartReport } from '../types/start.js';
 
 export type { ComputeStartOptions } from './startOptions.js';
 
@@ -33,17 +34,7 @@ export async function computeStartReport(
   const workflow = chooseWorkflow(mode, getWorkflowRecipes().recipes);
   const topRisks = combineRisks(workplan, quality.topRisks, maxRisks);
   const fixFirst = workplan.fixFirst ?? fixFirstFromStartRisk(topRisks[0]);
-  const adoptionGaps = setup.diagnostics
-    .filter((diagnostic) => diagnostic.status !== 'pass')
-    .map(
-      (diagnostic): StartAdoptionGap => ({
-        id: diagnostic.id,
-        status: diagnostic.status as StartAdoptionGap['status'],
-        title: diagnostic.label,
-        summary: diagnostic.summary,
-        ...(diagnostic.command ? { command: diagnostic.command } : {}),
-      }),
-    );
+  const adoptionGaps = buildStartAdoptionGaps(setup.diagnostics);
   const adoptionLoop = buildAdoptionLoop();
   const firstTenMinutes = buildFirstTenMinutes(mode);
   const coordinationHints = buildStartCoordinationHints(riskSources, mode, harnessHints);

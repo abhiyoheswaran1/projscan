@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
@@ -21,6 +22,19 @@ function primaryActionForIntent(intent: string) {
   if (!action) throw new Error(`Expected an action for intent: ${intent}`);
   return { action, route };
 }
+
+test('start report keeps adoption gap shaping out of the main orchestrator', () => {
+  const startSource = readFileSync(path.join(process.cwd(), 'src/core/start.ts'), 'utf8');
+  expect(startSource).not.toContain(
+    ".filter((diagnostic) => diagnostic.status !== 'pass')",
+  );
+
+  const adoptionGapsSource = readFileSync(
+    path.join(process.cwd(), 'src/core/startAdoptionGaps.ts'),
+    'utf8',
+  );
+  expect(adoptionGapsSource).not.toContain("from './start.js'");
+});
 
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
   const root = await makeTempProject();

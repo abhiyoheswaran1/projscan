@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract start adoption-gap shaping
+
+- Status: accepted
+- Context: `computeStartReport` still shaped first-run diagnostics into adoption gaps inline, mixing setup evidence projection with start report orchestration.
+- Decision: Move adoption-gap projection into `src/core/startAdoptionGaps.ts` and call `buildStartAdoptionGaps` from the start orchestrator.
+- Consequences: Start report JSON, CLI rendering, setup diagnostics, and adoption gap command preservation stay unchanged, while future adoption evidence changes can be reviewed separately from report assembly.
+- Verification: `npm run test -- tests/core/start.test.ts -t "adoption gap shaping"` and focused start core/CLI verification.
+
 ## 2026-06-16: Extract basic config normalization
 
 - Status: accepted

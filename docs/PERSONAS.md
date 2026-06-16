@@ -3654,3 +3654,53 @@ should still keep only non-empty strings.
 Kept change: one focused basic config module, one maintainability regression,
 existing config/issue-trust coverage, this persona note, and no public schema
 change.
+
+## Eighty-Fifth Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: `projscan start` is the entry point agents use to choose the next
+workflow and handoff path. Adoption gaps are setup evidence, not orchestration,
+so isolating their projection makes the start report easier to review without
+changing the JSON or CLI contract.
+
+Smallest fix: move first-run diagnostic to `StartAdoptionGap` shaping into
+`startAdoptionGaps.ts` and call `buildStartAdoptionGaps` from `start.ts`.
+Preserve non-pass filtering, status mapping, labels, summaries, and optional
+commands.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "adoption gap shaping"
+npm run test -- tests/core/start.test.ts tests/cli/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/start.ts --format json
+npm exec projscan -- file src/core/startAdoptionGaps.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/start.test.ts tests/cli/start.test.ts
+git diff --check
+```
+
+## Review Guardrails: Start Adoption-Gap Extraction
+
+Delete-list after this slice:
+
+- Do not change `projscan start` JSON fields, CLI rendering, setup diagnostics,
+  adoption-loop data, mission-control data, or next-action ordering.
+- Do not change which diagnostics become adoption gaps; only non-pass
+  diagnostics should be projected.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: diagnostics with `command` should keep it in the adoption
+gap, pass diagnostics should stay out, and warning/failure statuses should
+remain unchanged.
+
+Kept change: one focused start evidence projection module, one maintainability
+regression, existing start core/CLI coverage, this persona note, and no public
+schema change.
