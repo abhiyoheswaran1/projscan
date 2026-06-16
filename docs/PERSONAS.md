@@ -3844,3 +3844,47 @@ still take the full review path.
 Kept change: one focused no-change report helper, one maintainability
 regression, existing review behavior coverage, this persona note, and no public
 schema change.
+
+## Eighty-Ninth Slice Decision
+
+Selected persona: Platform Reviewer.
+
+Reason: `computeReview` still mixed current-worktree enrichment with base
+worktree comparison. Moving head-side scan, graph, issue, and hotspot assembly
+behind one helper narrows the review orchestrator without changing verdict
+inputs or public review output.
+
+Smallest fix: add `reviewHeadSnapshot.ts`, delegate head graph/hotspot
+construction from `review.ts`, keep base worktree scan and cleanup in the
+orchestrator, and guard against reintroducing issue/hotspot assembly inline.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "head-side scan"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewHeadSnapshot.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Head Snapshot Extraction
+
+Delete-list after this slice:
+
+- Do not change review verdict rules, hotspot scoring, issue collection,
+  package scoping, base worktree checkout/cleanup, manifest diffing,
+  taint/dataflow comparison, graph evidence, or intent annotation.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: the head snapshot must still use the current worktree,
+limit hotspots to 200 for review enrichment, and pass the built code graph to
+hotspot analysis so AST-derived complexity remains available.
+
+Kept change: one focused head-snapshot helper, one maintainability regression,
+existing review behavior coverage, this persona note, and no public schema
+change.

@@ -3,9 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { scanRepository } from './repositoryScanner.js';
-import { collectIssues } from './issueEngine.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
-import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
@@ -17,6 +15,7 @@ import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.
 import { classifyNewCycles, scopeCyclesToFiles } from './reviewCycles.js';
 import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
 import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
+import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
 import { buildNoChangeReviewReport } from './reviewNoChanges.js';
 import {
   diffManifests,
@@ -88,14 +87,7 @@ export async function computeReview(
     return report;
   }
 
-  // Head-side data: scan + graph + issues + hotspots.
-  const headScan = await scanRepository(rootPath);
-  const headGraph = await buildCodeGraph(rootPath, headScan.files);
-  const headIssues = await collectIssues(rootPath, headScan.files);
-  const headHotspots = await analyzeHotspots(rootPath, headScan.files, headIssues, {
-    limit: 200,
-    graph: headGraph,
-  });
+  const { graph: headGraph, hotspots: headHotspots } = await buildReviewHeadSnapshot(rootPath);
 
   // Base-side: spin up a worktree, scan, build graph. Best-effort cleanup.
   const worktreeDir = await mkTempWorktreeDir();

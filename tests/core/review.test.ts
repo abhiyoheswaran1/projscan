@@ -292,6 +292,20 @@ describe('computeReview', () => {
     expect(buildNoChangeReport!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps head-side scan and hotspot assembly isolated from the review orchestrator', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).not.toContain('collectIssues');
+    expect(reviewSource).not.toContain('analyzeHotspots');
+
+    const headModule = await inspectRepoSourceFile('src/core/reviewHeadSnapshot.ts');
+    const buildHeadSnapshot = headModule.functions?.find(
+      (fn) => fn.name === 'buildReviewHeadSnapshot',
+    );
+
+    expect(buildHeadSnapshot).toBeDefined();
+    expect(buildHeadSnapshot!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract review head snapshot assembly
+
+- Status: accepted
+- Context: `computeReview` still assembled head-side scan, graph, issue, and hotspot data inline before comparing against the base worktree.
+- Decision: Move head-side graph and hotspot enrichment into `src/core/reviewHeadSnapshot.ts`, leaving base worktree checkout and comparison orchestration in `review.ts`.
+- Consequences: Review behavior and verdict inputs stay unchanged, while `computeReview` has a smaller boundary between current-worktree enrichment and base-worktree comparison.
+- Verification: `npm run test -- tests/core/review.test.ts -t "head-side scan"` plus focused review tests.
+
 ## 2026-06-16: Extract review no-change report assembly
 
 - Status: accepted
