@@ -1,12 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Issue, IssueSeverity } from '../types/common.js';
-import type {
-  ImportPolicyRule,
-  LoadedConfig,
-  ProjscanConfig,
-  ReportPolicyPreset,
-} from '../types/config.js';
+import type { ImportPolicyRule, LoadedConfig, ProjscanConfig } from '../types/config.js';
+import { applyReportPolicies } from './configReportPolicies.js';
 
 const CONFIG_CANDIDATES = ['.projscanrc.json', '.projscanrc'];
 const PKG_KEY = 'projscan';
@@ -148,40 +144,6 @@ function applySeverityOverrides(obj: Record<string, unknown>, out: ProjscanConfi
     }
   }
   if (Object.keys(overrides).length) out.severityOverrides = overrides;
-}
-
-function applyReportPolicies(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (
-    !obj.reportPolicies ||
-    typeof obj.reportPolicies !== 'object' ||
-    Array.isArray(obj.reportPolicies)
-  ) {
-    return;
-  }
-  const raw = obj.reportPolicies as Record<string, unknown>;
-  const policies: Record<string, ReportPolicyPreset> = {};
-
-  for (const [rawName, rawPolicy] of Object.entries(raw)) {
-    const name = rawName.trim();
-    const policy = name ? normalizeReportPolicy(rawPolicy) : null;
-    if (policy) policies[name] = policy;
-  }
-
-  if (Object.keys(policies).length > 0) out.reportPolicies = policies;
-}
-
-function normalizeReportPolicy(rawPolicy: unknown): ReportPolicyPreset | null {
-  if (!rawPolicy || typeof rawPolicy !== 'object' || Array.isArray(rawPolicy)) return null;
-  const entry = rawPolicy as Record<string, unknown>;
-  const policy: ReportPolicyPreset = {};
-  if (Array.isArray(entry.reportScope)) {
-    const scopes = entry.reportScope.filter(
-      (v): v is string => typeof v === 'string' && v.length > 0,
-    );
-    if (scopes.length > 0) policy.reportScope = scopes;
-  }
-  if (typeof entry.redactPaths === 'boolean') policy.redactPaths = entry.redactPaths;
-  return Object.keys(policy).length > 0 ? policy : null;
 }
 
 function applyMonorepo(obj: Record<string, unknown>, out: ProjscanConfig): void {

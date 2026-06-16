@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -112,6 +113,18 @@ describe('loadConfig', () => {
         redactPaths: true,
       },
     });
+  });
+
+  it('keeps report policy preset normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyReportPolicies');
+    expect(configSource).not.toContain('function normalizeReportPolicy');
+
+    const reportPoliciesSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configReportPolicies.ts'),
+      'utf8',
+    );
+    expect(reportPoliciesSource).not.toContain("from './config.js'");
   });
 
   it('drops invalid severity overrides', async () => {

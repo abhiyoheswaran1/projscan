@@ -3266,3 +3266,52 @@ readable and report the user-supplied alias path.
 Kept change: one focused access-policy module, one maintainability regression,
 existing security regression coverage, this persona note, and no public schema
 change.
+
+## Seventy-Seventh Slice Decision
+
+Selected persona: Platform/Release Owner.
+
+Reason: report-policy presets back the scoped/redacted evidence controls used
+by `analyze`, `doctor`, and `ci`. The config loader should keep those preset
+rules isolated so release reviewers can verify export controls without
+re-reading unrelated config branches.
+
+Smallest fix: move report-policy preset normalization into
+`configReportPolicies.ts` and import `applyReportPolicies` from `config.ts`.
+Keep `reportScope` filtering, `redactPaths` boolean handling, invalid preset
+dropping, and preset names unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "report policy preset normalization"
+npm run test -- tests/utils/config.test.ts tests/core/reportScope.test.ts tests/reporters/jsonReporter.test.ts tests/reporters/sarifReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configReportPolicies.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/core/reportScope.test.ts tests/reporters/jsonReporter.test.ts tests/reporters/sarifReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: Report Policy Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, report policy names, `reportScope`
+  filtering, `redactPaths` boolean behavior, invalid preset dropping, or
+  report-control metadata emitted by reporters.
+- Do not read environment files or secret values, add dependencies, change
+  package metadata, perform release actions, or change version numbers.
+
+Reviewer edge case: a preset with `reportScope: ['src/api', '', './packages/backend/']`
+and `redactPaths: true` should still normalize to exactly the two non-empty
+scope strings plus `redactPaths: true`; invalid presets should still be dropped.
+
+Kept change: one focused report-policy config module, one maintainability
+regression, existing config and report-scope coverage, this persona note, and
+no public schema change.

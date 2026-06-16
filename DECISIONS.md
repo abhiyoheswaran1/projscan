@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract report policy config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned report-policy preset parsing for scoped/redacted evidence, adding branches to the main config loader alongside unrelated scan, hotspot, monorepo, taint, and severity normalization.
+- Decision: Move report-policy preset normalization into `src/utils/configReportPolicies.ts` and import `applyReportPolicies` from the main config normalizer.
+- Consequences: `reportScope` and `redactPaths` config behavior stays unchanged, while scoped/redacted evidence config review can focus on one helper module.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "report policy preset normalization"` and focused config/report-scope verification.
+
 ## 2026-06-16: Extract file access path safety
 
 - Status: accepted
