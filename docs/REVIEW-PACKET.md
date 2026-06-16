@@ -48,7 +48,7 @@ This train contains five product slices plus maintainability cleanup:
 4. Python upgrade intelligence
    - `projscan upgrade` and MCP `projscan_upgrade` now support offline Python
      previews from `pyproject.toml`, `setup.cfg`, `setup.py`, root
-     `requirements*.txt`, Poetry/Pipfile/uv/PDM lockfiles, and pinned root requirements.
+     `requirements*.txt`, Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements.
    - Optional public fields identify declared/current version evidence source
      and line.
    - Python previews remain PyPI-free; npm registry lookup remains opt-in via
@@ -90,7 +90,8 @@ Python lockfile parsing:
 - Trust boundary: local manifests/lockfiles only. The Python path does not query
   PyPI and does not add a package install/execution path.
 - Supported current-version evidence is intentionally narrow: Poetry/uv/PDM
-  package blocks, Pipfile exact versions, and pinned root requirements.
+  package blocks, Conda lockfile package entries, Pipfile exact versions, and
+  pinned root requirements.
 - Optional evidence fields are additive: `ecosystem`, `declaredSource`,
   `declaredLine`, `declaredScope`, `installedSource`, `installedLine`.
 - Residual risk: lockfile coverage is partial by design; unsupported Python

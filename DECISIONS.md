@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Use conda-lock files as Python upgrade current-version evidence
+
+- Status: accepted
+- Context: `conda-lock.yml` and `conda-lock.yaml` were already recognized as Python lockfile presence signals, but upgrade previews did not parse resolved versions from them. Conda-managed Python projects therefore fell back to pinned requirements when present and otherwise lacked installed/current evidence.
+- Decision: Parse the common `conda-lock` YAML `package:` list entries containing `name` and `version` with a narrow local line scanner and feed those versions into Python upgrade preview current-version fields.
+- Consequences: `projscan upgrade <python-package>` can report `installed`, `latest`, `drift`, and `installedSource: "conda-lock.yml"` or `"conda-lock.yaml"` for Conda-managed projects without querying PyPI, executing environments, changing npm registry behavior, or adding a YAML dependency.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts -t "conda-lock|parseCondaLock"`.
+
 ## 2026-06-16: Use pdm.lock as Python upgrade current-version evidence
 
 - Status: accepted

@@ -700,7 +700,7 @@ Preview the impact of upgrading a package. The default path is fully offline; pa
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
 - Importer list - every file in your source tree that imports the package (direct or sub-path)
 - Python manifest evidence for packages declared in `pyproject.toml`, `setup.cfg`, `setup.py`, or root `requirements*.txt`
-- Python current-version evidence from `poetry.lock` / `uv.lock` / `pdm.lock` package blocks, `Pipfile.lock` exact versions, or pinned root `requirements*.txt` entries
+- Python current-version evidence from `poetry.lock` / `uv.lock` / `pdm.lock` package blocks, `conda-lock.yml` / `conda-lock.yaml` package entries, `Pipfile.lock` exact versions, or pinned root `requirements*.txt` entries
 
 **Example:**
 

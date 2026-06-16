@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {
   detectPythonProject,
+  parseCondaLock,
   parsePdmLock,
   parsePipfileLock,
   parsePoetryLock,
@@ -166,6 +167,34 @@ describe('parsePdmLock', () => {
   });
 });
 
+describe('parseCondaLock', () => {
+  it('reads package versions from conda-lock package entries', () => {
+    const lock = [
+      'version: 1',
+      'metadata:',
+      '  platforms:',
+      '    - linux-64',
+      'package:',
+      '  - name: requests',
+      '    version: "2.31.0"',
+      '    manager: conda',
+      '  - manager: pip',
+      '    name: charset-normalizer',
+      '    version: 3.3.2',
+    ].join('\n');
+
+    expect(parseCondaLock(lock, 'conda-lock.yml')).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'conda-lock.yml', line: 7 },
+      {
+        name: 'charset-normalizer',
+        version: '3.3.2',
+        source: 'conda-lock.yml',
+        line: 11,
+      },
+    ]);
+  });
+});
+
 describe('parsePyproject (PEP 621)', () => {
   it('reads project.dependencies list', () => {
     const toml = [
@@ -323,6 +352,23 @@ describe('detectPythonProject', () => {
     expect(info?.hasLockfile).toBe(true);
     expect(info?.locked).toEqual([
       { name: 'requests', version: '2.31.0', source: 'pdm.lock', line: 3 },
+    ]);
+  });
+
+  it('uses conda-lock package versions as lockfile evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'conda-lock.yaml'),
+      ['package:', '  - name: requests', '    version: "2.31.0"'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests>=2\n');
+    const info = await detectPythonProject(tmp, [
+      fileEntry('a.py'),
+      fileEntry('requirements.txt'),
+      fileEntry('conda-lock.yaml'),
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'conda-lock.yaml', line: 3 },
     ]);
   });
 
