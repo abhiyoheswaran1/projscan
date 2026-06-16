@@ -3,7 +3,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import { computeReview } from '../../src/core/review.js';
+import type { FileEntry } from '../../src/types.js';
 
 let tmp: string;
 const GIT_REVIEW_TIMEOUT_MS = 60000;
@@ -47,6 +50,21 @@ async function write(rel: string, content: string): Promise<void> {
   await fs.writeFile(full, content, 'utf-8');
 }
 
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
 async function setupRepo(): Promise<void> {
   await git(['init', '-q', '-b', 'main']);
   await git(['config', 'user.email', 't@x']);
@@ -86,6 +104,17 @@ PATH="$PROJSCAN_TEST_REAL_PATH" exec git "$@"
 }
 
 describe('computeReview', () => {
+  it('keeps risky-function matching isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    expect(review.functions?.some((fn) => fn.name === 'findRiskyFunctions')).toBe(false);
+
+    const matcherModule = await inspectRepoSourceFile('src/core/reviewRiskyFunctions.ts');
+    const matcher = matcherModule.functions?.find((fn) => fn.name === 'findRiskyFunctions');
+
+    expect(matcher).toBeDefined();
+    expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(12);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

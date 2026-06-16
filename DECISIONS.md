@@ -905,3 +905,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace the branch chain with a named set of accepted boundary character codes and keep the legacy issue-linking fallback behavior pinned with punctuation and path-neighbor tests.
 - Consequences: `isPathBoundary` drops from CC 22 to CC 2, `src/core/hotspotAnalyzer.ts` drops from CC 132 to CC 112, and legacy issue text still links file paths only when surrounded by safe boundaries.
 - Verification: `npm run test -- tests/core/hotspotIssueLinking.test.ts -t "legacy path-boundary"` failed before the change with CC 22, then `npm run test -- tests/core/hotspotIssueLinking.test.ts`, `npm run test -- tests/core/hotspotAnalyzer.test.ts tests/core/hotspotIssueLinking.test.ts`, and `npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json` passed after the change.
+
+## 2026-06-16: Extract review risky-function matcher
+
+- Status: accepted
+- Context: `src/core/review.ts` remained a high-risk review hotspot, and risky-function matching mixed added-file detection, modified-file matching, duplicate-name guards, and row construction into the review orchestrator.
+- Decision: Move risky-function detection into `src/core/reviewRiskyFunctions.ts` and keep `computeReview` as the orchestration boundary.
+- Consequences: `review.ts` drops from 1400 lines / CC 208 to 1285 lines / CC 183, the focused matcher module is 131 lines / CC 27, and added high-CC plus duplicate anonymous-function regression behavior remains covered.
+- Verification: `npm run test -- tests/core/review.test.ts -t "risky-function matching isolated"` failed before the extraction, then `npm run test -- tests/core/review.test.ts -t "risky-function matching isolated"`, `npm run test -- tests/core/review.test.ts -t "flags new high-CC function"`, `npm run test -- tests/core/review.test.ts -t "multiple anonymous arrows"`, `npm run test -- tests/core/review.test.ts`, `npm exec projscan -- file src/core/review.ts --format json`, and `npm exec projscan -- file src/core/reviewRiskyFunctions.ts --format json` passed after the extraction.
