@@ -41,6 +41,17 @@ describe('deprecated extractor exports', () => {
     );
     expect(exportTypeSource).not.toContain("from './fileInspector.js'");
   });
+
+  it('keeps file issue detection out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('function detectFileIssues');
+
+    const issueSource = readFileSync(path.join(process.cwd(), 'src/core/fileIssues.ts'), 'utf8');
+    expect(issueSource).not.toContain("from './fileInspector.js'");
+  });
 });
 
 describe('inferPurpose', () => {

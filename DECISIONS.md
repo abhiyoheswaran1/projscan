@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract file issue detection
+
+- Status: accepted
+- Context: `fileInspector.ts` still owned file-level issue detection rules after prior purpose and export-type extractions, keeping linter-style checks inside the path-safety and graph-loading orchestrator.
+- Decision: Move `detectFileIssues` into `src/core/fileIssues.ts`, import it from `fileInspector.ts`, and re-export it from `fileInspector.ts` for compatibility.
+- Consequences: Existing file-inspection issue labels remain unchanged, while future issue-detection rules can be reviewed separately from path resolution, graph loading, hotspot lookup, and import/export shaping.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "file issue detection"` and focused file-inspector verification.
+
 ## 2026-06-16: Extract file export type mapping
 
 - Status: accepted

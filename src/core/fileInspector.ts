@@ -17,9 +17,11 @@ import { getAdapterFor } from './languages/registry.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
 import { mapExportType } from './fileExportTypes.js';
+import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
 
 export { inferPurpose } from './filePurpose.js';
+export { detectFileIssues } from './fileIssues.js';
 
 export interface InspectOptions {
   scan?: { files: FileEntry[] };
@@ -230,25 +232,4 @@ function findHotspotForFile(
 ): FileHotspot | null {
   if (!report || !report.available) return null;
   return report.hotspots.find((h) => h.relativePath === relativePath) ?? null;
-}
-
-export function detectFileIssues(content: string, lineCount: number): string[] {
-  const issues: string[] = [];
-
-  if (lineCount > 500) issues.push(`Large file (${lineCount} lines) - consider splitting`);
-  if (lineCount > 1000) issues.push('Very large file - strongly consider refactoring');
-
-  if (/console\.(log|warn|error|debug)\s*\(/.test(content)) {
-    issues.push('Contains console.log statements - consider using a proper logger');
-  }
-
-  if (/TODO|FIXME|HACK|XXX/i.test(content)) {
-    issues.push('Contains TODO/FIXME comments');
-  }
-
-  if (/:\s*any\b/.test(content) && /\.tsx?$/.test(content)) {
-    issues.push('Uses "any" type - consider using proper types');
-  }
-
-  return issues;
 }

@@ -3117,3 +3117,52 @@ should still map to `type`; unknown kinds should still map to `unknown`.
 Kept change: one focused export-type mapper module, one maintainability
 regression, existing file-inspector coverage, this persona note, and no public
 schema change.
+
+## Seventy-Fourth Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: file issue detection feeds the `projscan file` payload that agents use
+when deciding whether a file needs attention, but those linter-style checks do
+not belong in the path-safety and graph-loading orchestrator. Isolating them
+makes future issue-rule changes easier to review.
+
+Smallest fix: move `detectFileIssues` into `fileIssues.ts`, import it from
+`fileInspector.ts`, and re-export it from `fileInspector.ts` so existing
+callers keep working. Keep every emitted issue label and threshold unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "file issue detection"
+npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileIssues.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: File Issue Detection Extraction
+
+Delete-list after this slice:
+
+- Do not change large-file thresholds, console/TODO/`any` detection patterns,
+  emitted issue labels, file-inspection schema fields, path-safety behavior, or
+  the `detectFileIssues` export from `fileInspector.ts`.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: files above 500 lines should still emit the large-file
+message; files above 1000 lines should still emit both large-file messages;
+console calls, TODO-family comments, and TypeScript `any` annotations should
+still emit the same labels.
+
+Kept change: one focused file-issue module, one maintainability regression,
+existing file-inspector coverage, this persona note, and no public schema
+change.
