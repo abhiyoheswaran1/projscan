@@ -22,6 +22,11 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['cookies', 'express.req.cookies'],
 ]);
 
+const EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
+  ['get', 'express.req.get'],
+  ['header', 'express.req.header'],
+]);
+
 const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['body', 'fastify.request.body'],
   ['query', 'fastify.request.query'],
@@ -98,6 +103,7 @@ export const FRAMEWORK_REQUEST_SOURCES = [
   ...NEXT_ROUTE_SOURCE_BY_CALLEE.values(),
   ...HONO_REQUEST_SOURCE_BY_MEMBER.values(),
   ...EXPRESS_REQUEST_SOURCE_BY_REFERENCE.values(),
+  ...EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
   ...FASTIFY_REQUEST_SOURCE_BY_REFERENCE.values(),
   ...KOA_REQUEST_SOURCE_BY_MEMBER.values(),
   ...KOA_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
@@ -131,7 +137,14 @@ export function frameworkRequestSourceForFunction(
   );
   if (honoSource) return honoSource;
   return (
-    expressRequestSource(parameters, references, enabledSources, contextualCallSite, imports) ??
+    expressRequestSource(
+      parameters,
+      references,
+      memberCallSites,
+      enabledSources,
+      contextualCallSite,
+      imports,
+    ) ??
     fastifyRequestSource(parameters, references, enabledSources, contextualCallSite, imports) ??
     koaRequestSource(
       parameters,
@@ -186,16 +199,39 @@ function honoRequestSource(
 function expressRequestSource(
   parameters: string[],
   references: string[],
+  memberCallSites: string[],
   enabledSources: Set<string>,
   contextualCallSite: string | undefined,
   imports: Array<{ source: string }>,
 ): string | null {
   if (!isExpressFile(imports)) return null;
   if (!isExpressHandlerCall(contextualCallSite)) return null;
-  if (!parameters.some((parameter) => EXPRESS_REQUEST_PARAM_NAMES.has(parameter))) return null;
+  const requestParams = parameters.filter((parameter) => EXPRESS_REQUEST_PARAM_NAMES.has(parameter));
+  if (requestParams.length === 0) return null;
+  return (
+    expressReferenceSource(references, enabledSources) ??
+    expressMemberCallSource(requestParams, memberCallSites, enabledSources)
+  );
+}
+
+function expressReferenceSource(references: string[], enabledSources: Set<string>): string | null {
   const refs = new Set(references);
   for (const [reference, source] of EXPRESS_REQUEST_SOURCE_BY_REFERENCE) {
     if (enabledSources.has(source) && refs.has(reference)) return source;
+  }
+  return null;
+}
+
+function expressMemberCallSource(
+  requestParams: string[],
+  memberCallSites: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const calls = new Set(memberCallSites);
+  for (const parameter of requestParams) {
+    for (const [member, source] of EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL) {
+      if (enabledSources.has(source) && calls.has(`${parameter}.${member}`)) return source;
+    }
   }
   return null;
 }

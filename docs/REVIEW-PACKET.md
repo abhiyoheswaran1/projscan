@@ -100,10 +100,13 @@ Python lockfile parsing:
   `tests/mcp/pythonUpgradeFallback.test.ts`, reporter tests, and public type
   tests.
 
-Koa/Fastify dataflow:
+Express/Koa/Fastify dataflow:
 
 - Trust boundary: request sources are not broad name matches. They require
   framework imports and handler call context.
+- Express uses gated `memberCallSites`, so `req.get(...)` and
+  `request.header(...)` can be detected without treating helper `req.get(...)`
+  calls as request input.
 - Koa uses qualified `memberReferences` and gated `memberCallSites`, so
   `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.get(...)`, and
   `ctx.request.get(...)` can be detected without treating `ctx.body` response

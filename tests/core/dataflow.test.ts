@@ -411,6 +411,46 @@ export function searchCache(req: { body: { key: string } }) {
     ).toBeUndefined();
   });
 
+  it('treats Express header accessor calls as framework request sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'express-header-get.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/get', (req) => {
+  const auth = req.get('authorization');
+  return db.query(String(auth));
+});
+
+app.post('/header', (request) => {
+  const tenant = request.header('x-tenant');
+  return db.query(String(tenant));
+});
+
+export function helper(req: { get(name: string): string }) {
+  return cache.query(req.get('x-cache-key'));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const expressRisks = report.risks.filter((risk) =>
+      risk.files.includes('src/express-header-get.ts'),
+    );
+
+    expect(expressRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'express.req.get', sink: 'query' }),
+        expect.objectContaining({ source: 'express.req.header', sink: 'query' }),
+      ]),
+    );
+    expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Fastify request fields as framework sources without flagging lookalike helpers', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'fastify.ts'),

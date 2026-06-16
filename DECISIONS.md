@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Treat Express header accessors as gated request sources
+
+- Status: accepted
+- Context: Express request property sources were detected, but common `req.get(...)` and `req.header(...)` header accessors stayed invisible inside route handlers. Treating every `get` or `header` call as a source would create noisy helper false positives.
+- Decision: Add `express.req.get` and `express.req.header` as framework request sources only when an Express import, Express handler call context, and Express request parameter are present.
+- Consequences: `projscan dataflow` can report Express header accessor input flowing into database sinks, while same-file helper functions with `req.get(...)` remain quiet unless they are passed as Express handlers.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Express header accessor"`.
+
 ## 2026-06-16: Extract changed-file enrichment from review orchestration
 
 - Status: accepted
