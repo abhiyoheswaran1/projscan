@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { buildCodeGraph } from '../../../src/core/codeGraph.js';
+import { inspectFile } from '../../../src/core/fileInspector.js';
 import {
   detectPythonProject,
   parseCondaLock,
@@ -28,6 +31,46 @@ function fileEntry(rel: string, dir = '.'): FileEntry {
     directory: dir,
   };
 }
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const absolutePath = path.join(root, rel);
+  const stat = await fs.stat(absolutePath);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
+describe('python manifest maintainability', () => {
+  it('keeps lockfile parsers out of the manifest detector module', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('function parseTomlPackageLock');
+    expect(manifestSource).not.toContain('function parsePipfileLock');
+
+    const lockfileSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonLockfiles.ts'),
+      'utf8',
+    );
+    expect(lockfileSource).not.toContain("from './pythonManifests.js'");
+
+    const lockfileInspection = await inspectRepoSourceFile('src/core/languages/pythonLockfiles.ts');
+    const parsePythonLockfile = lockfileInspection.functions?.find(
+      (fn) => fn.name === 'parsePythonLockfile',
+    );
+
+    expect(parsePythonLockfile).toBeDefined();
+    expect(parsePythonLockfile!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+});
 
 describe('splitPep508', () => {
   it('splits plain name', () => {

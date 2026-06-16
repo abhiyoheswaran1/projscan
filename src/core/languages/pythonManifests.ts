@@ -1,6 +1,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
+import { parsePythonLockfile, readPythonLockfile } from './pythonLockfiles.js';
+import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
+
+export {
+  parseCondaLock,
+  parsePdmLock,
+  parsePipfileLock,
+  parsePoetryLock,
+  parseUvLock,
+} from './pythonLockfiles.js';
+export type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
 
 /**
  * Lightweight parsing of Python project manifests. We do NOT pull a TOML
@@ -8,51 +19,8 @@ import type { FileEntry } from '../../types.js';
  * projects use standard layouts. More sophisticated parsing is deferred.
  */
 
-export interface PythonDeclaredDep {
-  name: string;
-  /** Raw version spec from the manifest (may be empty if unpinned). */
-  versionSpec: string;
-  /** Which file declared this dep. */
-  source: string;
-  /** 1-based line in the source file, or 0 if unknown. */
-  line: number;
-  /** main (runtime) vs dev (test/lint groups). */
-  scope: 'main' | 'dev';
-}
-
-export interface PythonLockedDep {
-  name: string;
-  version: string;
-  /** Lockfile or pinned requirements file that supplied this version. */
-  source: string;
-  /** 1-based line in the source file, or 0 if unknown. */
-  line: number;
-}
-
-export interface PythonProjectInfo {
-  /** Directories under which `from pkg import ...` should resolve. */
-  packageRoots: string[];
-  /** pyproject.toml / setup.py / setup.cfg path (relative to repo root), if any. */
-  manifestFiles: string[];
-  /** Declared dependencies across all manifests. */
-  declared: PythonDeclaredDep[];
-  /** Resolved/current versions from supported local lockfiles, pinned requirements, or constraints. */
-  locked: PythonLockedDep[];
-  /** Lockfiles present (poetry/Pipfile/PDM/uv/Conda locks, pinned requirements, or pinned constraints). */
-  hasLockfile: boolean;
-}
-
 const REQUIREMENTS_FILE_RE = /^requirements(-.*)?\.txt$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
-
-const LOCKFILES = [
-  'poetry.lock',
-  'Pipfile.lock',
-  'pdm.lock',
-  'uv.lock',
-  'conda-lock.yml',
-  'conda-lock.yaml',
-];
 
 export async function detectPythonProject(
   rootPath: string,
@@ -148,34 +116,6 @@ async function tryRead(absolutePath: string): Promise<string | null> {
     return await fs.readFile(absolutePath, 'utf-8');
   } catch {
     return null;
-  }
-}
-
-async function readPythonLockfile(
-  rootPath: string,
-): Promise<{ name: string; content: string } | null> {
-  for (const name of LOCKFILES) {
-    const content = await tryRead(path.join(rootPath, name));
-    if (content !== null) return { name, content };
-  }
-  return null;
-}
-
-function parsePythonLockfile(name: string, content: string): PythonLockedDep[] {
-  switch (name) {
-    case 'poetry.lock':
-      return parsePoetryLock(content, name);
-    case 'Pipfile.lock':
-      return parsePipfileLock(content, name);
-    case 'pdm.lock':
-      return parsePdmLock(content, name);
-    case 'uv.lock':
-      return parseUvLock(content, name);
-    case 'conda-lock.yml':
-    case 'conda-lock.yaml':
-      return parseCondaLock(content, name);
-    default:
-      return [];
   }
 }
 
@@ -398,198 +338,14 @@ export function parseRequirements(
   return out;
 }
 
-export function parsePoetryLock(content: string, sourceFile: string): PythonLockedDep[] {
-  return parseTomlPackageLock(content, sourceFile);
-}
-
-export function parseUvLock(content: string, sourceFile: string): PythonLockedDep[] {
-  return parseTomlPackageLock(content, sourceFile);
-}
-
-export function parsePdmLock(content: string, sourceFile: string): PythonLockedDep[] {
-  return parseTomlPackageLock(content, sourceFile);
-}
-
-export function parseCondaLock(content: string, sourceFile: string): PythonLockedDep[] {
-  const lines = content.split('\n');
-  const packageList = findCondaPackageList(lines);
-  if (!packageList) return [];
-  return parseCondaPackageEntries(lines, packageList.index + 1, packageList.indent, sourceFile);
-}
-
-function findCondaPackageList(lines: string[]): { index: number; indent: number } | null {
-  for (let index = 0; index < lines.length; index++) {
-    const raw = lines[index];
-    const trimmed = raw.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    if (/^package:\s*$/.test(trimmed)) return { index, indent: leadingWhitespace(raw) };
-  }
-  return null;
-}
-
-function parseCondaPackageEntries(
-  lines: string[],
-  startIndex: number,
-  packageIndent: number,
-  sourceFile: string,
-): PythonLockedDep[] {
-  const out: PythonLockedDep[] = [];
-  let current: CondaLockEntry | null = null;
-  for (let i = startIndex; i < lines.length; i++) {
-    const parsed = condaPackageLine(lines[i], packageIndent);
-    if (parsed.kind === 'skip') continue;
-    if (parsed.kind === 'end') break;
-    current = updateCondaLockEntry(out, current, parsed, i + 1, sourceFile);
-  }
-  pushCondaLockEntry(out, current, sourceFile);
-  return out;
-}
-
-type CondaPackageLine =
-  | { kind: 'skip' }
-  | { kind: 'end' }
-  | { kind: 'entryStart'; fragment: string }
-  | { kind: 'entryField'; fragment: string };
-
-function condaPackageLine(raw: string, packageIndent: number): CondaPackageLine {
-  const trimmed = raw.trim();
-  if (!trimmed || trimmed.startsWith('#')) return { kind: 'skip' };
-  const indent = leadingWhitespace(raw);
-  if (indent <= packageIndent && !trimmed.startsWith('-')) return { kind: 'end' };
-  if (trimmed.startsWith('- ')) return { kind: 'entryStart', fragment: trimmed.slice(2) };
-  return { kind: 'entryField', fragment: trimmed };
-}
-
-function updateCondaLockEntry(
-  out: PythonLockedDep[],
-  current: CondaLockEntry | null,
-  parsed: Exclude<CondaPackageLine, { kind: 'skip' | 'end' }>,
-  line: number,
-  sourceFile: string,
-): CondaLockEntry | null {
-  if (parsed.kind === 'entryStart') {
-    pushCondaLockEntry(out, current, sourceFile);
-    const next: CondaLockEntry = {};
-    readCondaLockPair(next, parsed.fragment, line);
-    return next;
-  }
-
-  if (current) readCondaLockPair(current, parsed.fragment, line);
-  return current;
-}
-
-interface CondaLockEntry {
-  name?: string;
-  version?: string;
-  versionLine?: number;
-}
-
-function readCondaLockPair(entry: CondaLockEntry, fragment: string, line: number): void {
-  const match = /^([A-Za-z_][\w.-]*)\s*:\s*(.*?)\s*$/.exec(fragment);
-  if (!match) return;
-  const value = yamlScalarValue(match[2]);
-  if (!value) return;
-  if (match[1] === 'name') entry.name = value;
-  if (match[1] === 'version') {
-    entry.version = value;
-    entry.versionLine = line;
-  }
-}
-
-function pushCondaLockEntry(
-  out: PythonLockedDep[],
-  entry: CondaLockEntry | null,
-  sourceFile: string,
-): void {
-  if (!entry?.name || !entry.version) return;
-  out.push({
-    name: entry.name,
-    version: entry.version,
-    source: sourceFile,
-    line: entry.versionLine ?? 0,
-  });
-}
-
-function yamlScalarValue(value: string): string {
-  const trimmed = value.trim();
-  const quoted = /^(['"])(.*?)\1(?:\s+#.*)?$/.exec(trimmed);
-  if (quoted) return quoted[2];
-  return trimmed.replace(/\s+#.*$/, '').trim();
-}
-
-function leadingWhitespace(value: string): number {
-  return value.length - value.trimStart().length;
-}
-
-function parseTomlPackageLock(content: string, sourceFile: string): PythonLockedDep[] {
-  const out: PythonLockedDep[] = [];
-  const blockRe = /\[\[package\]\]([\s\S]*?)(?=\n\[\[package\]\]|$)/g;
-  let block: RegExpExecArray | null;
-  while ((block = blockRe.exec(content))) {
-    const body = block[1];
-    const bodyStart = block.index + block[0].indexOf(body);
-    const name = /(?:^|\n)\s*name\s*=\s*["']([^"']+)["']/.exec(body)?.[1];
-    const versionMatch = /(?:^|\n)\s*version\s*=\s*["']([^"']+)["']/.exec(body);
-    if (!name || !versionMatch) continue;
-    out.push({
-      name,
-      version: versionMatch[1],
-      source: sourceFile,
-      line: offsetToLine(
-        content,
-        bodyStart + versionMatch.index + versionMatch[0].indexOf('version'),
-      ),
-    });
-  }
-  return out;
-}
-
-export function parsePipfileLock(content: string, sourceFile: string): PythonLockedDep[] {
-  const parsed = parseJsonObject(content);
-  if (!parsed || typeof parsed !== 'object') return [];
-
-  const out: PythonLockedDep[] = [];
-  for (const sectionName of ['default', 'develop']) {
-    const section = (parsed as Record<string, unknown>)[sectionName];
-    out.push(...parsePipfileLockSection(section, sourceFile));
-  }
-  return out;
-}
-
-function parseJsonObject(content: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(content);
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function parsePipfileLockSection(section: unknown, sourceFile: string): PythonLockedDep[] {
-  if (!section || typeof section !== 'object') return [];
-  const out: PythonLockedDep[] = [];
-  for (const [name, value] of Object.entries(section as Record<string, unknown>)) {
-    const version = exactPipfileLockVersion(value);
-    if (version) out.push({ name, version, source: sourceFile, line: 0 });
-  }
-  return out;
-}
-
-function exactPipfileLockVersion(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null;
-  const version = (value as Record<string, unknown>).version;
-  if (typeof version !== 'string') return null;
-  return exactVersionFromSpec(version);
-}
-
 function exactVersionFromSpec(version: string): string | null {
   return /^={2,3}\s*([^\s,;]+)/.exec(version)?.[1] ?? null;
 }
 
 function requirementPinToLockedDep(dep: PythonDeclaredDep): PythonLockedDep[] {
-  const match = /^={2,3}\s*([^\s,;]+)/.exec(dep.versionSpec);
-  if (!match) return [];
-  return [{ name: dep.name, version: match[1], source: dep.source, line: dep.line }];
+  const version = exactVersionFromSpec(dep.versionSpec);
+  if (!version) return [];
+  return [{ name: dep.name, version, source: dep.source, line: dep.line }];
 }
 
 // ── PEP 508 splitter ──────────────────────────────────────────
