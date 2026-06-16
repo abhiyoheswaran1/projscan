@@ -2880,3 +2880,50 @@ quiet unless they are passed as Hono handlers.
 Kept change: one focused Hono matcher module, one maintainability regression,
 existing Hono dataflow coverage, this persona note, and no public schema
 change.
+
+## Sixty-Ninth Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: Review tier shaping controls how much evidence an agent receives under
+token budgets. It should be reviewable without reading git worktree setup,
+cycle classification, manifest diffing, or dataflow comparison logic.
+
+Smallest fix: move tier selection, totals, summary trimming, and verdict-only
+shaping into `reviewTier.ts`, then re-export `selectReviewTier` and
+`shapeReviewForTier` from `review.ts` so current callers keep working.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "tier shaping isolated"
+npm run test -- tests/core/reviewTier.test.ts tests/core/review.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/crossCutting.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewTier.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/reviewTier.test.ts tests/core/review.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/crossCutting.test.ts
+git diff --check
+```
+
+## Review Guardrails: Review Tier Extraction
+
+Delete-list after this slice:
+
+- Do not change review tier thresholds, tier names, totals, summary trimming,
+  verdict-only fields, MCP cost-sidecar behavior, or public review schemas.
+- Do not remove the compatibility exports from `review.ts`.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: `max_cost_tokens=0` and omitted budgets still return full
+review output, while low and mid budgets keep the same `verdict-only` and
+`summary` shapes.
+
+Kept change: one focused review tier module, one maintainability regression,
+existing review-tier and MCP budget coverage, this persona note, and no public
+schema change.

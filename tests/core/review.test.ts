@@ -247,6 +247,23 @@ describe('computeReview', () => {
     expect(computeNewDataflowRisks!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps tier shaping isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const tierFunctions = new Set(['selectReviewTier', 'shapeReviewForTier']);
+    expect(review.functions?.some((fn) => tierFunctions.has(fn.name))).toBe(false);
+
+    const tierModule = await inspectRepoSourceFile('src/core/reviewTier.ts');
+    const selectReviewTier = tierModule.functions?.find((fn) => fn.name === 'selectReviewTier');
+    const shapeReviewForTier = tierModule.functions?.find(
+      (fn) => fn.name === 'shapeReviewForTier',
+    );
+
+    expect(selectReviewTier).toBeDefined();
+    expect(selectReviewTier!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(shapeReviewForTier).toBeDefined();
+    expect(shapeReviewForTier!.cyclomaticComplexity).toBeLessThanOrEqual(10);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);

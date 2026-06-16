@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract review tier shaping
+
+- Status: accepted
+- Context: `src/core/review.ts` remained a high-churn hotspot and still owned token-budget tier selection plus summary/verdict-only response shaping after the review graph, flow, contract, manifest, verdict, and changed-file extraction work.
+- Decision: Move review tier selection and report shaping into `src/core/reviewTier.ts`, while re-exporting `selectReviewTier` and `shapeReviewForTier` from `review.ts` for compatibility with existing callers.
+- Consequences: Review response tiers, totals, truncation behavior, and MCP cost-sidecar behavior stay unchanged, while budget shaping can be reviewed independently from PR diff orchestration.
+- Verification: `npm run test -- tests/core/review.test.ts -t "tier shaping isolated"` and focused review-tier verification.
+
 ## 2026-06-16: Extract Hono framework request source matcher
 
 - Status: accepted
