@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Express framework request source matcher
+
+- Status: accepted
+- Context: After Koa extraction, `frameworkSources.ts` still owned Express request-source maps, handler gating, request parameter selection, reference matching, and member-call matching.
+- Decision: Move Express request-source matching into `src/core/frameworkExpressSources.ts` and have the shared orchestrator import `EXPRESS_REQUEST_SOURCES` plus `expressRequestSource`.
+- Consequences: Express dataflow source names, handler gating, and false-positive behavior stay unchanged, while future Express source changes can be reviewed separately from Hono, Fastify, Koa, and Next.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Express source matching"` and focused framework/dataflow verification.
+
 ## 2026-06-16: Extract Koa framework request source matcher
 
 - Status: accepted

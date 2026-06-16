@@ -2737,3 +2737,50 @@ stay quiet.
 
 Kept change: one focused Koa matcher module, one maintainability regression,
 existing Koa dataflow coverage, this persona note, and no public schema change.
+
+## Sixty-Sixth Slice Decision
+
+Selected persona: Security-Conscious Framework Reviewer.
+
+Reason: Express request-source matching is a common security review path, and
+its body/query/params/header/cookie/IP plus accessor patterns should be
+reviewed in one focused place instead of mixed with other framework gates.
+
+Smallest fix: move Express source maps and matching helpers into
+`frameworkExpressSources.ts`, then import only the source list and matcher from
+the shared orchestrator. Preserve all Express source names and gating behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts -t "Express source matching"
+npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkExpressSources.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+git diff --check
+```
+
+## Review Guardrails: Express Source Matcher Extraction
+
+Delete-list after this slice:
+
+- Do not change Express source names, handler gating, source enablement,
+  dataflow output fields, or default sink behavior.
+- Do not broaden Express matching to helper lookalikes or non-Express imports.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: Express body/query/params/header/cookie/IP fixtures and
+header accessor fixtures should behave the same after extraction, while
+non-handler lookalikes stay quiet.
+
+Kept change: one focused Express matcher module, one maintainability
+regression, existing Express dataflow coverage, this persona note, and no
+public schema change.

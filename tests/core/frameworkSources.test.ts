@@ -50,4 +50,19 @@ describe('framework source maintainability', () => {
     expect(matcher).toBeDefined();
     expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
   });
+
+  it('keeps Express source matching out of the shared framework source orchestrator', async () => {
+    const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
+    const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));
+
+    expect(sharedFunctions.has('expressRequestSource')).toBe(false);
+    expect(sharedFunctions.has('expressReferenceSource')).toBe(false);
+    expect(sharedFunctions.has('expressMemberCallSource')).toBe(false);
+
+    const express = await inspectRepoSourceFile('src/core/frameworkExpressSources.ts');
+    const matcher = express.functions?.find((fn) => fn.name === 'expressRequestSource');
+
+    expect(matcher).toBeDefined();
+    expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  });
 });
