@@ -2832,3 +2832,51 @@ object-option route handlers.
 Kept change: one focused Fastify matcher module, one maintainability
 regression, existing Fastify dataflow coverage, this persona note, and no
 public schema change.
+
+## Sixty-Eighth Slice Decision
+
+Selected persona: Security-Conscious Framework Reviewer.
+
+Reason: Hono request-source matching is compact but security-sensitive. It
+combines Hono import gating, handler method gating, context parameter aliases,
+and `c.req.*` accessor matching, so it should be reviewed in one Hono-specific
+module rather than inside the shared framework orchestrator.
+
+Smallest fix: move Hono source maps and matching helpers into
+`frameworkHonoSources.ts`, then import only the source list and matcher from
+the shared orchestrator. Preserve all Hono source names and gating behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts -t "Hono source matching"
+npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkHonoSources.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+git diff --check
+```
+
+## Review Guardrails: Hono Source Matcher Extraction
+
+Delete-list after this slice:
+
+- Do not change Hono source names, handler gating, source enablement,
+  dataflow output fields, or default sink behavior.
+- Do not broaden Hono matching to helper lookalikes or non-Hono imports.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: Hono JSON/body/text/query/param/header/validator fixtures
+should behave the same after extraction, while same-file helper lookalikes stay
+quiet unless they are passed as Hono handlers.
+
+Kept change: one focused Hono matcher module, one maintainability regression,
+existing Hono dataflow coverage, this persona note, and no public schema
+change.

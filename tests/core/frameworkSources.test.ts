@@ -80,4 +80,19 @@ describe('framework source maintainability', () => {
     expect(matcher).toBeDefined();
     expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
   });
+
+  it('keeps Hono source matching out of the shared framework source orchestrator', async () => {
+    const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
+    const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));
+
+    expect(sharedFunctions.has('honoRequestSource')).toBe(false);
+    expect(sharedFunctions.has('isHonoFile')).toBe(false);
+    expect(sharedFunctions.has('isHonoHandlerCall')).toBe(false);
+
+    const hono = await inspectRepoSourceFile('src/core/frameworkHonoSources.ts');
+    const matcher = hono.functions?.find((fn) => fn.name === 'honoRequestSource');
+
+    expect(matcher).toBeDefined();
+    expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
 });

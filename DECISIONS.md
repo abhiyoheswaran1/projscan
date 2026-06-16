@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Hono framework request source matcher
+
+- Status: accepted
+- Context: After Koa, Express, and Fastify extraction, `frameworkSources.ts` still owned Hono request-source maps, import gating, handler-call gating, context parameter selection, and member-call matching.
+- Decision: Move Hono request-source matching into `src/core/frameworkHonoSources.ts` and have the shared orchestrator import `HONO_REQUEST_SOURCES` plus `honoRequestSource`.
+- Consequences: Hono dataflow source names, handler gating, and false-positive behavior stay unchanged, while future Hono source changes can be reviewed separately from Next, Express, Fastify, and Koa.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Hono source matching"` and focused framework/dataflow verification.
+
 ## 2026-06-16: Extract Fastify framework request source matcher
 
 - Status: accepted
