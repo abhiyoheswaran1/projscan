@@ -2282,3 +2282,46 @@ load promise, so adjacent tool calls do not overwrite each other's touches.
 Kept change: one focused session recorder module, one maintainability
 regression, existing MCP session/progress/watch behavior tests, this persona
 note, and no public schema changes.
+
+## Fifty-Sixth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: scoped evidence must redact repo paths without destroying useful
+reviewer context. External HTTP(S) documentation links can contain file-like
+suffixes, and over-redacting them makes exported findings harder to review.
+
+Smallest fix: preserve path-like tokens that are part of an HTTP(S) URL while
+continuing to redact standalone file-like tokens. Keep local/file URL and
+repo-path handling conservative.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/reportScope.test.ts -t "preserves http urls"
+npm run test -- tests/core/reportScope.test.ts tests/reporters/jsonReporter.test.ts tests/reporters/sarifReporter.test.ts tests/reporters/markdownAnalysisReporter.test.ts tests/reporters/markdownHealthReporter.test.ts tests/reporters/htmlReporter.test.ts tests/cli/formatHandling.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Report Redaction URL Preservation
+
+Delete-list after this slice:
+
+- Do not weaken redaction for standalone repo-relative paths, absolute POSIX
+  paths, or Windows paths.
+- Do not change report-control metadata, path label format, SARIF/JSON shapes,
+  scope filtering, or reporter APIs.
+- Do not read secret values, add network calls, add telemetry, change
+  dependencies, or touch package metadata.
+
+Reviewer edge case: `https://.../src/private/file.ts` stays readable, but
+`src/private/file.ts` in the same sentence still redacts to a stable label.
+
+Kept change: one text-redaction guard, one regression fixture, focused docs,
+this persona note, and existing reporter coverage.

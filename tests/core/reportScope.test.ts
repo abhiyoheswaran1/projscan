@@ -254,4 +254,24 @@ describe('reportScope', () => {
     );
     expect(serialized).not.toContain('src/private/secret.ts');
   });
+
+  it('preserves http urls while redacting standalone path tokens in issue text', () => {
+    const scoped = applyReportControlsToIssues(
+      [
+        {
+          ...issue('url-path', []),
+          locations: undefined,
+          title: 'See https://example.com/docs/src/private/secret.ts',
+          description:
+            'Internal file src/private/secret.ts differs from https://example.com/docs/src/private/secret.ts.',
+        },
+      ],
+      { redactPaths: true },
+    );
+
+    expect(scoped[0].title).toBe('See https://example.com/docs/src/private/secret.ts');
+    expect(scoped[0].description).toBe(
+      'Internal file redacted-path-1 differs from https://example.com/docs/src/private/secret.ts.',
+    );
+  });
 });

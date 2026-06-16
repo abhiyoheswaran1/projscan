@@ -915,6 +915,8 @@ projscan doctor --format html > HEALTH.html
 Supported on `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
 For `analyze` and `doctor`, scoped/redacted report controls also appear as a
 path-safe controls card when active.
+Path redaction keeps HTTP(S) documentation links readable while redacting
+standalone file-like path tokens from issue text.
 
 ### SARIF
 

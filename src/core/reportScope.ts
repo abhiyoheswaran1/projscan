@@ -227,14 +227,25 @@ const TEXT_PATH_TOKEN_PATTERN =
 function redactUnmappedPathTokens(text: string, redactor: PathRedactor): string {
   return text.replace(TEXT_PATH_TOKEN_PATTERN, (match, ...args) => {
     const offset = args[args.length - 2] as number;
-    if (hasUrlSchemeBefore(text, offset)) return match;
+    if (isHttpUrlPathToken(text, offset)) return match;
     return redactor(match);
   });
 }
 
-function hasUrlSchemeBefore(text: string, offset: number): boolean {
-  const prefix = text.slice(Math.max(0, offset - 8), offset).toLowerCase();
-  return prefix.endsWith('://');
+function isHttpUrlPathToken(text: string, offset: number): boolean {
+  const tokenStart = previousTokenStart(text, offset);
+  const prefix = text.slice(tokenStart, Math.min(text.length, offset + 2)).toLowerCase();
+  return prefix.startsWith('http://') || prefix.startsWith('https://');
+}
+
+function previousTokenStart(text: string, offset: number): number {
+  let index = offset;
+  while (index > 0 && !isPathTokenBoundary(text[index - 1])) index -= 1;
+  return index;
+}
+
+function isPathTokenBoundary(char: string | undefined): boolean {
+  return char === undefined || /[\s'"()[\]{}<>]/.test(char);
 }
 
 function pathReferenceRegExp(filePath: string): RegExp {

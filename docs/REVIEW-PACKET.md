@@ -77,7 +77,8 @@ Report redaction and scoping:
 - Redaction replaces paths with stable per-report labels such as
   `redacted-path-1`; the same source path maps to the same label inside one
   report. File-like path tokens in unlocated issue text are also redacted so
-  title/action summaries do not leak paths when an analyzer lacks a location.
+  title/action summaries do not leak paths when an analyzer lacks a location,
+  while HTTP(S) documentation URLs remain readable.
 - JSON/SARIF artifacts carry path-safe `reportControls` metadata, and
   Markdown/HTML artifacts carry the same active/scope-count/redaction signal as
   path-safe banners.
