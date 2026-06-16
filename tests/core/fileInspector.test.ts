@@ -67,6 +67,18 @@ describe('deprecated extractor exports', () => {
     );
     expect(metricsSource).not.toContain("from './fileInspector.js'");
   });
+
+  it('keeps file access path safety out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('path.isAbsolute(relOrAbsFile)');
+    expect(inspectorSource).not.toContain('fs.realpath');
+
+    const accessSource = readFileSync(path.join(process.cwd(), 'src/core/fileAccess.ts'), 'utf8');
+    expect(accessSource).not.toContain("from './fileInspector.js'");
+  });
 });
 
 describe('inferPurpose', () => {

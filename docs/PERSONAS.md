@@ -3216,3 +3216,53 @@ metrics, and function summaries should remain sorted by descending CC.
 Kept change: one focused graph-metric module, one maintainability regression,
 existing file-inspector and reporter coverage, this persona note, and no public
 schema change.
+
+## Seventy-Sixth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: the file-inspection path-safety block is security-sensitive because it
+guards absolute path use, traversal, symlink escapes, and secret-adjacent file
+reads. It should be isolated so reviewers can reason about access policy
+without reading import/export, hotspot, and metric payload assembly.
+
+Smallest fix: move safe project-file reading into `fileAccess.ts` as
+`readProjectFile`, and keep `fileInspector.ts` responsible for converting
+failed reads into the existing `FileInspection` response. Preserve every
+failure reason and relative-path behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "file access path safety"
+npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileAccess.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: File Access Extraction
+
+Delete-list after this slice:
+
+- Do not change absolute-path refusal, traversal rejection, symlink escape
+  blocking, in-root symlink support, missing-file and non-file reasons, or the
+  reported relative path for in-root symlinks.
+- Do not read environment files or secrets, add network calls or telemetry,
+  change public schemas/imports, alter graph/cache behavior, add dependencies,
+  change package metadata, perform release actions, or change version numbers.
+
+Reviewer edge case: a symlink inside the project that points outside should
+still be rejected, while a symlink that points inside the project should remain
+readable and report the user-supplied alias path.
+
+Kept change: one focused access-policy module, one maintainability regression,
+existing security regression coverage, this persona note, and no public schema
+change.

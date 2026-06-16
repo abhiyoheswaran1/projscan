@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract file access path safety
+
+- Status: accepted
+- Context: `inspectFile` still owned relative-path validation, root canonicalization, symlink escape checks, stat checks, and file reads, making the inspector responsible for security-sensitive access policy plus payload assembly.
+- Decision: Move safe project-file reading into `src/core/fileAccess.ts` with `readProjectFile`; keep `inspectFile` responsible for mapping failures into its existing `FileInspection` shape.
+- Consequences: Absolute-path refusal, traversal rejection, symlink escape blocking, in-root symlink support, missing-file reasons, and relative-path reporting stay unchanged, while path-safety review can focus on one module.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "file access path safety"` and focused file-inspector security verification.
+
 ## 2026-06-16: Extract file graph metric shaping
 
 - Status: accepted
