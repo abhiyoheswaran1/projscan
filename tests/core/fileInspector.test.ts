@@ -27,6 +27,20 @@ describe('deprecated extractor exports', () => {
     );
     expect(purposeSource).not.toContain("from './fileInspector.js'");
   });
+
+  it('keeps graph export type mapping out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('function mapExportType');
+
+    const exportTypeSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileExportTypes.ts'),
+      'utf8',
+    );
+    expect(exportTypeSource).not.toContain("from './fileInspector.js'");
+  });
 });
 
 describe('inferPurpose', () => {

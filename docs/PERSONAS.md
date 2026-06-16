@@ -3071,3 +3071,49 @@ model/schema, and class/function-library fallback labels should stay identical.
 Kept change: one focused file-purpose module, one maintainability regression,
 existing file-inspector coverage, this persona note, and no public schema
 change.
+
+## Seventy-Third Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: graph export-kind mapping is part of the `projscan file` payload an
+agent consumes, but it does not belong in the path-safety and graph-loading
+orchestrator. Isolating it makes future graph export-kind changes easier to
+review.
+
+Smallest fix: move `mapExportType` into `fileExportTypes.ts` and import it
+from `fileInspector.ts`. Keep all emitted export type labels identical.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "export type mapping"
+npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileExportTypes.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: File Export Type Extraction
+
+Delete-list after this slice:
+
+- Do not change export type labels, graph-backed import/export output,
+  file-inspection schema fields, path-safety behavior, or public imports.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: graph export kinds `function`, `class`, `variable`,
+`type`, `interface`, and `default` should pass through unchanged; `enum`
+should still map to `type`; unknown kinds should still map to `unknown`.
+
+Kept change: one focused export-type mapper module, one maintainability
+regression, existing file-inspector coverage, this persona note, and no public
+schema change.

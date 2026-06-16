@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract file export type mapping
+
+- Status: accepted
+- Context: After purpose inference extraction, `fileInspector.ts` still owned graph export-kind to file-inspection export-type mapping, keeping a branch table inside the file inspection orchestrator.
+- Decision: Move export-type mapping into `src/core/fileExportTypes.ts` and import `mapExportType` from `fileInspector.ts`.
+- Consequences: Graph-backed export output stays unchanged, while future graph export-kind changes can be reviewed separately from path safety, graph loading, purpose inference, and issue detection.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "export type mapping"` and focused file-inspector verification.
+
 ## 2026-06-16: Extract file purpose inference
 
 - Status: accepted

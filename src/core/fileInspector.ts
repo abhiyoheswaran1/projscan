@@ -16,6 +16,7 @@ import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { getAdapterFor } from './languages/registry.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
+import { mapExportType } from './fileExportTypes.js';
 import { inferPurpose } from './filePurpose.js';
 
 export { inferPurpose } from './filePurpose.js';
@@ -201,22 +202,6 @@ export async function inspectFile(
     language,
     functions,
   };
-}
-
-function mapExportType(kind: string): ExportInfo['type'] {
-  switch (kind) {
-    case 'function':
-    case 'class':
-    case 'variable':
-    case 'type':
-    case 'interface':
-    case 'default':
-      return kind;
-    case 'enum':
-      return 'type';
-    default:
-      return 'unknown';
-  }
 }
 
 function makeEmpty(relativePath: string, reason: string): FileInspection {
