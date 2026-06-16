@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Split JavaScript function naming into private helpers
+
+- Status: accepted
+- Context: `nameForFunctionNode` remained a high-complexity hotspot after the AST traversal and export extraction work. It mixed declaration names, method key decoding, private method handling, function-expression names, and binding fallback.
+- Decision: Keep emitted `FunctionInfo.name` values unchanged, but split function declarations, method naming, method key decoding, private names, and function-expression names into private helpers.
+- Consequences: Function naming stays schema-compatible while future Babel node-shape adjustments can be reviewed in focused helpers.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts tests/core/ast.test.ts tests/core/ast.references.test.ts`.
+
 ## 2026-06-16: Split JavaScript named-export collection into private helpers
 
 - Status: accepted

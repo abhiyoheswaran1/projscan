@@ -41,6 +41,12 @@ describe('per-function CC (JS/TS)', () => {
     expect(out[0].cyclomaticComplexity).toBe(2);
   });
 
+  it('private and string-literal methods keep useful names', () => {
+    const out = fns(`class A { #secret() { return 1; } }
+const obj = { "go-now"() { return 2; } };`);
+    expect(out.map((fn) => fn.name)).toEqual(expect.arrayContaining(['A.#secret', 'go-now']));
+  });
+
   it('nested functions emit separate entries; outer CC excludes inner decisions', () => {
     const out = fns(`function outer(x) {
       if (x) return 1;

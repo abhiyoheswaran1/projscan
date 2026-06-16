@@ -468,36 +468,55 @@ function nameForFunctionNode(
   parentClassName: string | null,
   bindingName: string | null,
 ): string {
-  // FunctionDeclaration: function foo() {}
-  if (node.type === 'FunctionDeclaration') {
-    const id = (node as { id?: { name?: string } }).id;
-    return id?.name ?? bindingName ?? '<anonymous>';
-  }
-  // ClassMethod / ObjectMethod / ClassPrivateMethod
-  if (
+  return (
+    functionDeclarationName(node, bindingName) ??
+    methodFunctionName(node, parentClassName) ??
+    functionExpressionName(node) ??
+    bindingName ??
+    '<anonymous>'
+  );
+}
+
+function functionDeclarationName(node: Node, bindingName: string | null): string | null {
+  if (node.type !== 'FunctionDeclaration') return null;
+  const id = (node as { id?: { name?: string } }).id;
+  return id?.name ?? bindingName ?? '<anonymous>';
+}
+
+function methodFunctionName(node: Node, parentClassName: string | null): string | null {
+  if (!isMethodFunctionNode(node)) return null;
+  const key = (node as { key?: { type: string; name?: string; value?: string } }).key;
+  const methodName = methodKeyName(key);
+  return parentClassName ? `${parentClassName}.${methodName}` : methodName;
+}
+
+function isMethodFunctionNode(node: Node): boolean {
+  return (
     node.type === 'ClassMethod' ||
     node.type === 'ObjectMethod' ||
     node.type === 'ClassPrivateMethod'
-  ) {
-    const key = (node as { key?: { type: string; name?: string; value?: string } }).key;
-    let methodName = '<anonymous>';
-    if (key) {
-      if (key.type === 'Identifier') methodName = key.name ?? '<anonymous>';
-      else if (key.type === 'StringLiteral') methodName = key.value ?? '<anonymous>';
-      else if (key.type === 'PrivateName') {
-        const inner = (key as unknown as { id?: { name?: string } }).id;
-        methodName = inner?.name ? `#${inner.name}` : '<anonymous>';
-      }
-    }
-    return parentClassName ? `${parentClassName}.${methodName}` : methodName;
-  }
-  // FunctionExpression with an inner id: const x = function named() {}
-  if (node.type === 'FunctionExpression') {
-    const id = (node as { id?: { name?: string } }).id;
-    if (id?.name) return id.name;
-  }
-  // Arrow / unnamed function expression: use the binding name if we have it.
-  return bindingName ?? '<anonymous>';
+  );
+}
+
+function methodKeyName(
+  key: { type: string; name?: string; value?: string } | undefined,
+): string {
+  if (!key) return '<anonymous>';
+  if (key.type === 'Identifier') return key.name ?? '<anonymous>';
+  if (key.type === 'StringLiteral') return key.value ?? '<anonymous>';
+  if (key.type === 'PrivateName') return privateMethodName(key);
+  return '<anonymous>';
+}
+
+function privateMethodName(key: { type: string }): string {
+  const inner = (key as unknown as { id?: { name?: string } }).id;
+  return inner?.name ? `#${inner.name}` : '<anonymous>';
+}
+
+function functionExpressionName(node: Node): string | null {
+  if (node.type !== 'FunctionExpression') return null;
+  const id = (node as { id?: { name?: string } }).id;
+  return id?.name ?? null;
 }
 
 /**
