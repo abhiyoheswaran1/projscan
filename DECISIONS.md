@@ -953,3 +953,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Apply path replacements from longest to shortest and require a path-token boundary after each matched reference.
 - Consequences: Sibling files with shared prefixes receive distinct stable labels in issue text, while absolute path-prefix redaction and existing scoped JSON/SARIF metadata behavior remain intact.
 - Verification: `npm run test -- tests/core/reportScope.test.ts -t "sibling path"` failed before the change, then `npm run test -- tests/core/reportScope.test.ts -t "sibling path"`, `npm run test -- tests/core/reportScope.test.ts -t "absolute path prefixes"`, `npm run test -- tests/core/reportScope.test.ts -t "file paths embedded"`, `npm run test -- tests/core/reportScope.test.ts tests/cli/formatHandling.test.ts tests/reporters/sarifReporter.test.ts tests/reporters/jsonReporter.test.ts`, `npm exec projscan -- doctor --report-scope src --redact-paths --format json`, and `npm exec projscan -- analyze --report-scope src --redact-paths --format sarif` passed after the change.
+
+## 2026-06-16: Detect Koa request IP dataflow sources
+
+- Status: accepted
+- Context: Express and Fastify request IP reads were framework-gated dataflow sources, but Koa handlers reading `ctx.ip` or `ctx.request.ip` were missed even though Koa exposes those values as request metadata.
+- Decision: Add receiver-sensitive Koa member-reference sources for `ctx.ip` and `ctx.request.ip`, using the existing Koa import and handler-context gates.
+- Consequences: Dataflow reports `koa.ctx.ip` and `koa.ctx.request.ip` into database sinks while helper functions with the same `ctx` shape remain quiet.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Koa request IP"` failed before the change, then `npm run test -- tests/core/dataflow.test.ts -t "Koa request IP"` and `npm run test -- tests/core/dataflow.test.ts -t "Koa request fields|Koa query params|Koa header accessor|Koa cookie accessor|Koa response-body|Fastify request IP"` passed after the change.

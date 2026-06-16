@@ -879,6 +879,46 @@ export function helper(ctx: { cookies: { get(name: string): string } }) {
     expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Koa request IP fields as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-ip.ts'),
+      `import Koa from 'koa';
+import Router from '@koa/router';
+
+const app = new Koa();
+const router = new Router();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.use((ctx) => {
+  const ip = ctx.ip;
+  return db.query(String(ip));
+});
+
+router.get('/request-ip', (context) => {
+  const requestIp = context.request.ip;
+  return db.query(String(requestIp));
+});
+
+export function helper(ctx: { ip: string, request: { ip: string } }) {
+  return cache.query(ctx.ip + ctx.request.ip);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const koaRisks = report.risks.filter((risk) => risk.files.includes('src/koa-ip.ts'));
+
+    expect(koaRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'koa.ctx.ip', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.ip', sink: 'query' }),
+      ]),
+    );
+    expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat Koa response-body writes as request body sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'koa-response.ts'),

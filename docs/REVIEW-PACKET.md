@@ -113,9 +113,10 @@ Hono/Express/Koa/Fastify dataflow:
   `req.ip`, without treating helper `req.get(...)` or `.ip` calls as request
   input.
 - Koa uses qualified `memberReferences` and gated `memberCallSites`, so
-  `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.get(...)`, and
-  `ctx.request.get(...)` can be detected without treating `ctx.body` response
-  writes or helper `ctx.get(...)` calls as request input.
+  `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.ip`,
+  `ctx.request.ip`, `ctx.get(...)`, and `ctx.request.get(...)` can be detected
+  without treating `ctx.body` response writes or helper `ctx.get(...)` calls as
+  request input.
 - Fastify remains parameter/reference gated, including `request.ip` and
   `request.raw` URL/header evidence, and keeps lookalike helpers quiet.
 - Cache version is bumped to invalidate stale graph entries that lack
