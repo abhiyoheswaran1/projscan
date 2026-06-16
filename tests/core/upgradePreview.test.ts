@@ -83,6 +83,104 @@ describe('previewUpgrade', () => {
     expect(preview.breakingMarkers.length).toBeGreaterThan(0);
     expect(preview.changelogExcerpt).toContain('BREAKING CHANGE');
   });
+
+  it('previews Poetry dependency impact with Python importers', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      [
+        '[tool.poetry]',
+        'name = "py-app"',
+        'version = "0.1.0"',
+        '',
+        '[tool.poetry.dependencies]',
+        'python = "^3.12"',
+        'requests = "^2.31.0"',
+      ].join('\n'),
+    );
+    const files = [await writeFile(tmp, 'pkg/client.py', 'import requests\n')];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('^2.31.0');
+    expect(preview.installed).toBeNull();
+    expect(preview.latest).toBeNull();
+    expect(preview.drift).toBe('unknown');
+    expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.declaredScope).toBe('main');
+    expect(preview.importers).toEqual(['pkg/client.py']);
+  });
+
+  it('uses poetry.lock as Python current-version evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      [
+        '[tool.poetry]',
+        'name = "py-app"',
+        'version = "0.1.0"',
+        '',
+        '[tool.poetry.dependencies]',
+        'python = "^3.12"',
+        'requests = "^2.30.0"',
+      ].join('\n'),
+    );
+    await fs.writeFile(
+      path.join(tmp, 'poetry.lock'),
+      ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+    );
+    const files = [await writeFile(tmp, 'pkg/client.py', 'import requests\n')];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('^2.30.0');
+    expect(preview.installed).toBe('2.31.0');
+    expect(preview.latest).toBe('2.31.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('poetry.lock');
+    expect(preview.installedLine).toBe(3);
+  });
+
+  it('previews requirements.txt dependency impact with Python importers', async () => {
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'fastapi==0.110.0\n');
+    const files = [
+      await writeFile(tmp, 'requirements.txt', 'fastapi==0.110.0\n'),
+      await writeFile(tmp, 'app/main.py', 'from fastapi import FastAPI\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'fastapi', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('==0.110.0');
+    expect(preview.declaredSource).toBe('requirements.txt');
+    expect(preview.importers).toEqual(['app/main.py']);
+  });
+
+  it('uses pinned root requirements as Python current-version evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      ['[project]', 'name = "py-app"', 'dependencies = ["fastapi>=0.109.0"]'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'fastapi==0.110.0\n');
+    const files = [
+      await writeFile(tmp, 'requirements.txt', 'fastapi==0.110.0\n'),
+      await writeFile(tmp, 'app/main.py', 'from fastapi import FastAPI\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'fastapi', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.109.0');
+    expect(preview.installed).toBe('0.110.0');
+    expect(preview.latest).toBe('0.110.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('requirements.txt');
+    expect(preview.installedLine).toBe(1);
+  });
 });
 
 describe('isValidPackageName (path-traversal guard)', () => {

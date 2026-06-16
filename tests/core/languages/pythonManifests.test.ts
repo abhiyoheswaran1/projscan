@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {
   detectPythonProject,
+  parsePoetryLock,
   parsePyproject,
   parseRequirements,
   splitPep508,
@@ -74,6 +75,26 @@ describe('parseRequirements', () => {
     const out = parseRequirements(txt, 'r.txt', 'main');
     expect(out.find((d) => d.name === 'requests')?.line).toBe(2);
     expect(out.find((d) => d.name === 'flask')?.line).toBe(3);
+  });
+});
+
+describe('parsePoetryLock', () => {
+  it('reads package versions from poetry.lock package blocks', () => {
+    const lock = [
+      '[[package]]',
+      'name = "requests"',
+      'version = "2.31.0"',
+      'description = "Python HTTP for Humans."',
+      '',
+      '[[package]]',
+      'name = "Django"',
+      'version = "4.2.1"',
+    ].join('\n');
+
+    expect(parsePoetryLock(lock, 'poetry.lock')).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'poetry.lock', line: 3 },
+      { name: 'Django', version: '4.2.1', source: 'poetry.lock', line: 8 },
+    ]);
   });
 });
 
@@ -171,19 +192,28 @@ describe('detectPythonProject', () => {
   });
 
   it('detects poetry.lock as lockfile', async () => {
-    await fs.writeFile(path.join(tmp, 'poetry.lock'), '');
+    await fs.writeFile(
+      path.join(tmp, 'poetry.lock'),
+      ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+    );
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),
       '[tool.poetry.dependencies]\nrequests = "^2"\n',
     );
     const info = await detectPythonProject(tmp, [fileEntry('a.py')]);
     expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'poetry.lock', line: 3 },
+    ]);
   });
 
   it('treats requirements.txt with == pins as a lockfile', async () => {
     await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests==2.31.0\n');
     const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('requirements.txt')]);
     expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'requirements.txt', line: 1 },
+    ]);
   });
 
   it('no lockfile when requirements are unpinned', async () => {

@@ -18,10 +18,27 @@ export function reportUpgradeMarkdown(preview: UpgradePreview): void {
 }
 
 function appendUpgradeMetadata(lines: string[], preview: UpgradePreview): void {
-  lines.push(`- Declared: \`${preview.declared ?? '-'}\``);
-  lines.push(`- Installed: \`${preview.installed ?? '-'}\``);
-  lines.push(`- Drift: **${preview.drift}**`);
-  lines.push('');
+  lines.push(...upgradeMetadataLines(preview), '');
+}
+
+function upgradeMetadataLines(preview: UpgradePreview): string[] {
+  return [
+    ...(preview.ecosystem ? [`- Ecosystem: \`${preview.ecosystem}\``] : []),
+    `- Declared: \`${preview.declared ?? '-'}\``,
+    ...sourceLine('Declared source', preview.declaredSource, preview.declaredLine, scopeSuffix(preview)),
+    `- Installed: \`${preview.installed ?? '-'}\``,
+    ...sourceLine('Installed source', preview.installedSource, preview.installedLine),
+    `- Drift: **${preview.drift}**`,
+  ];
+}
+
+function sourceLine(label: string, source?: string, line?: number, suffix = ''): string[] {
+  if (!source) return [];
+  return [`- ${label}: \`${source}${line ? `:${line}` : ''}\`${suffix}`];
+}
+
+function scopeSuffix(preview: UpgradePreview): string {
+  return preview.declaredScope ? ` (${preview.declaredScope})` : '';
 }
 
 function appendBreakingMarkers(lines: string[], preview: UpgradePreview): void {

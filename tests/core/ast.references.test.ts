@@ -14,6 +14,7 @@ describe('FunctionInfo.references (1.6+)', () => {
     expect(out).toHaveLength(1);
     // process.env.MY_CMD: rightmost-of-each-link → MY_CMD, env
     expect(out[0].references).toEqual(expect.arrayContaining(['env', 'MY_CMD']));
+    expect(out[0].memberReferences).toEqual(expect.arrayContaining(['process.env.MY_CMD']));
     expect(out[0].callSites ?? []).not.toContain('env');
     expect(out[0].callSites ?? []).not.toContain('MY_CMD');
   });

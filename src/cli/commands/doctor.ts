@@ -15,6 +15,7 @@ import {
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
+import { applyReportControlsToIssues, resolveReportControls } from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { reportHealth } from '../../reporters/consoleReporter.js';
 import { reportHealthJson } from '../../reporters/jsonReporter.js';
@@ -31,6 +32,9 @@ export function registerDoctor(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
+    .option('--report-policy <name>', 'use a named report policy preset from config')
+    .option('--report-scope <paths>', 'comma-separated repo-relative paths to include in exported evidence')
+    .option('--redact-paths', 'replace file paths in exported evidence with stable redacted labels')
     .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -41,6 +45,12 @@ export function registerDoctor(): void {
       const spinner = format === 'console' ? ora('Running health checks...').start() : null;
 
       try {
+        const reportControls = resolveReportControls({
+          reportPolicies: config.reportPolicies,
+          reportPolicy: cmdOpts.reportPolicy,
+          reportScope: cmdOpts.reportScope,
+          redactPaths: cmdOpts.redactPaths,
+        });
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
         let issues = await collectIssues(rootPath, scan.files);
         issues = applyConfigToIssues(issues, config);
@@ -64,6 +74,7 @@ export function registerDoctor(): void {
             (i.locations ?? []).some((l) => l.file && allowed.has(l.file)),
           );
         }
+        issues = applyReportControlsToIssues(issues, reportControls);
 
         if (spinner) spinner.stop();
 

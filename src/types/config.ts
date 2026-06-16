@@ -18,6 +18,12 @@ export interface ProjscanConfig {
   disableRules?: string[];
   severityOverrides?: Record<string, IssueSeverity>;
   /**
+   * Named evidence-export presets. `analyze`, `doctor`, and `ci` can select
+   * one with `--report-policy <name>` and still override scope/redaction with
+   * direct CLI flags for a single run.
+   */
+  reportPolicies?: Record<string, ReportPolicyPreset>;
+  /**
    * Monorepo-specific configuration (0.14.0+). Currently scopes the
    * cross-package import policy: each entry says "package P may only import
    * from these listed packages, or specifically may NOT import from these
@@ -38,6 +44,11 @@ export interface ProjscanConfig {
     sources?: string[];
     sinks?: string[];
   };
+}
+
+export interface ReportPolicyPreset {
+  reportScope?: string[];
+  redactPaths?: boolean;
 }
 
 /**

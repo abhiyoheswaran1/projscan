@@ -7,8 +7,9 @@ import { loadMissionOutcome } from './missionOutcome.js';
 import { detectStartHarnessHints } from './startHarness.js';
 import { buildAdoptionLoop } from './startAdoptionLoop.js';
 import { buildStartCoordinationHints, buildStartRiskSources } from './startEvidence.js';
+import { buildStartNextActions } from './startNextActions.js';
 import { normalizeStartOptions, type ComputeStartOptions } from './startOptions.js';
-import { chooseWorkflow, combineRisks, dedupeActions, summarize } from './startMissionPolicy.js';
+import { chooseWorkflow, combineRisks, summarize } from './startMissionPolicy.js';
 import { buildMissionControl } from './startMissionControl.js';
 import type { StartAdoptionGap, StartReport } from '../types/start.js';
 
@@ -58,20 +59,14 @@ export async function computeStartReport(
     riskSources,
     missionOutcome,
   });
-  const nextActions = dedupeActions([
-    missionControl.primaryAction,
-    ...firstTenMinutes.commands.map((step) => ({
-      label: `First 10 minutes: ${step.label}`,
-      command: step.command,
-    })),
-    ...workflow.commands.map((command) => ({ label: `Run ${workflow.name}`, command })),
-    ...adoptionLoop.nextCommands.map((command) => ({
-      label: 'Keep using projscan every PR',
-      command,
-    })),
-    ...workplan.suggestedNextActions,
-    ...quality.suggestedNextActions,
-  ]);
+  const nextActions = buildStartNextActions({
+    missionControl,
+    firstTenMinutes,
+    workflow,
+    adoptionLoop,
+    workplan,
+    quality,
+  });
   const report: StartReport = {
     schemaVersion: 1,
     readOnly: true,

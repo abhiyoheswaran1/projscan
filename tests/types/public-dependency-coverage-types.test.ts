@@ -83,6 +83,8 @@ const upgradePreview: UpgradePreview = {
   breakingMarkers: ['major version bump'],
   changelogExcerpt: 'Compile-check changelog excerpt.',
   importers: ['package.json'],
+  installedSource: 'poetry.lock',
+  installedLine: 3,
   latestSource: 'registry',
   registryError: 'compile-check registry error shape',
 };

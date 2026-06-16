@@ -13,6 +13,7 @@ import {
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
+import { applyReportControlsToIssues, resolveReportControls } from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { calculateScore } from '../../utils/scoreCalculator.js';
 import { reportCi } from '../../reporters/consoleReporter.js';
@@ -27,6 +28,9 @@ export function registerCi(): void {
     .option('--min-score <score>', 'minimum passing score (0-100)')
     .option('--changed-only', 'gate only on issues in files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+    .option('--report-policy <name>', 'use a named report policy preset from config')
+    .option('--report-scope <paths>', 'comma-separated repo-relative paths to include in exported evidence')
+    .option('--redact-paths', 'replace file paths in exported evidence with stable redacted labels')
     .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -36,6 +40,12 @@ export function registerCi(): void {
       const config = await loadProjectConfig();
 
       try {
+        const reportControls = resolveReportControls({
+          reportPolicies: config.reportPolicies,
+          reportPolicy: cmdOpts.reportPolicy,
+          reportScope: cmdOpts.reportScope,
+          redactPaths: cmdOpts.redactPaths,
+        });
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
         let issues = await collectIssues(rootPath, scan.files);
         issues = applyConfigToIssues(issues, config);
@@ -46,6 +56,7 @@ export function registerCi(): void {
             cmdOpts.baseRef ?? config.baseRef,
           );
         }
+        issues = applyReportControlsToIssues(issues, reportControls);
 
         const rawThreshold = cmdOpts.minScore ?? config.minScore ?? 70;
         const threshold = Math.max(

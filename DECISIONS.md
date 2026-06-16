@@ -2,6 +2,30 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Track qualified member reads for Koa dataflow precision
+
+- Status: accepted
+- Context: Koa request fields are read as qualified context members such as `ctx.request.body`, `ctx.query`, and `ctx.headers`, while the existing framework source matcher only had reliable bare-reference or member-call evidence.
+- Decision: Add per-function qualified `memberReferences` to the AST graph cache and use them only inside framework-gated Koa handler detection. Koa sources require Koa/router imports, a handler call context, and a context-shaped parameter. Line-qualified taint node identity prevents multiple inline anonymous handlers in one file from replacing each other internally.
+- Consequences: `projscan dataflow` can detect Koa body/query/params/header data into default database sinks without treating ordinary ctx-shaped helpers or `ctx.body` response writes as request sources. The index cache version is bumped so stale cache entries do not omit qualified member reads, while public flow names remain unchanged.
+- Verification: `npm run test -- tests/core/ast.references.test.ts tests/core/dataflow.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+
+## 2026-06-16: Use local Python lockfile evidence in upgrade previews
+
+- Status: accepted
+- Context: Python upgrade previews reported declarations and importers, but left `installed`, `latest`, and `drift` empty even when local lockfiles or pinned requirements already recorded a current version.
+- Decision: Add offline current-version evidence from Poetry lock package blocks and pinned root `requirements*.txt` entries. Reuse existing `installed`, `latest`, and `drift` fields, and add optional `installedSource` / `installedLine` fields to identify the source line.
+- Consequences: Python previews remain local-only and PyPI-free while becoming useful for release owners comparing declared intent against resolved local evidence. Broader lockfile formats stay deferred until there is user demand.
+- Verification: `npm run test -- tests/core/upgradePreview.test.ts tests/core/languages/pythonManifests.test.ts tests/reporters/consoleUpgradeReporter.test.ts tests/reporters/markdownUpgradeReporter.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+
+## 2026-06-16: Add named report policy presets for shareable evidence
+
+- Status: accepted
+- Context: Scoped and redacted report exports are useful for partner, security, and release-review artifacts, but repeated raw `--report-scope` / `--redact-paths` flags are easy for teams and agents to drift.
+- Decision: Add additive `.projscanrc` `reportPolicies.<name>` presets with `reportScope` and `redactPaths`, selected by `--report-policy <name>` on `analyze`, `doctor`, and `ci`. Direct `--report-scope` and `--redact-paths` flags override the selected preset for one run.
+- Consequences: Teams can reuse a stable evidence-export shape without changing JSON report schemas, reporter plugins, or existing direct flags. Unknown policy names fail with a clear diagnostic before scanning.
+- Verification: `npm run test -- tests/core/reportScope.test.ts tests/utils/config.test.ts tests/types/public-config-types.test.ts`, task AgentLoop verification, and a built CLI smoke for `analyze --report-policy` plus unknown-policy failure.
+
 ## 2026-06-16: Prepare 4.4.0 release candidate and clear npm audit gate
 
 - Status: accepted

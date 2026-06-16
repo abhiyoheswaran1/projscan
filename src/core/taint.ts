@@ -207,6 +207,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
   // same-named methods on different classes; we project to bare-name
   // edges for the call-graph traversal.
   interface FnNode {
+    id: string;
     qualName: string; // "Foo.bar" or "doIt"
     bareName: string; // "bar" or "doIt"
     file: string;
@@ -228,6 +229,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       const callees = fn.callSites ?? [];
       const directCallSites = fn.directCallSites ?? [];
       const memberCallSites = fn.memberCallSites ?? [];
+      const memberReferences = fn.memberReferences ?? [];
       const memberAliases = fn.memberAliases ?? [];
       const references = fn.references ?? [];
       totalCallSites += callees.length;
@@ -238,6 +240,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
           file,
           fn.name,
           memberCallSites,
+          memberReferences,
           fn.parameters ?? [],
           sources,
           references,
@@ -257,6 +260,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       const hasSource = sourceHit !== null;
       const hasSink = sinkHit !== null;
       const node: FnNode = {
+        id: `${file}::${fn.name}@${fn.line}`,
         qualName: fn.name,
         bareName: bareName(fn.name),
         file,
@@ -267,7 +271,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
         hasSource,
         hasSink,
       };
-      fnByQual.set(`${file}::${fn.name}`, node);
+      fnByQual.set(node.id, node);
       let list = fnsByBareName.get(node.bareName);
       if (!list) {
         list = [];
@@ -290,7 +294,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
   }
 
   const flows: TaintFlow[] = [];
-  const seen = new Set<string>(); // dedupe key: sourceFnQual::sinkFnQual
+  const seen = new Set<string>(); // dedupe key: sourceFnId::sinkFnId
   // 1.8+ — track which source functions hit MAX_DEPTH with frontier
   // still non-empty. The agent gets these in `truncatedSources` so it
   // knows where the analysis was clipped.
@@ -314,7 +318,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     if (!sourceFn.hasSource) continue;
     // Same-function shortcut.
     if (sourceFn.hasSink) {
-      const key = `${sourceFn.file}::${sourceFn.qualName}::${sourceFn.file}::${sourceFn.qualName}`;
+      const key = `${sourceFn.id}::${sourceFn.id}`;
       if (!seen.has(key)) {
         seen.add(key);
         flows.push({
@@ -328,7 +332,7 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
       }
     }
     // BFS through callees.
-    const visited = new Set<string>([`${sourceFn.file}::${sourceFn.qualName}`]);
+    const visited = new Set<string>([sourceFn.id]);
     type FrontierEntry = { node: FnNode; path: FnNode[] };
     let frontier: FrontierEntry[] = [{ node: sourceFn, path: [sourceFn] }];
     let depth = 0;
@@ -342,12 +346,11 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
         for (const calleeName of entry.node.callees) {
           const candidates = fnsByBareName.get(calleeName) ?? [];
           for (const candidate of candidates) {
-            const key = `${candidate.file}::${candidate.qualName}`;
-            if (visited.has(key)) continue;
-            visited.add(key);
+            if (visited.has(candidate.id)) continue;
+            visited.add(candidate.id);
             const newPath = [...entry.path, candidate];
             if (candidate.hasSink) {
-              const flowKey = `${sourceFn.file}::${sourceFn.qualName}::${candidate.file}::${candidate.qualName}`;
+              const flowKey = `${sourceFn.id}::${candidate.id}`;
               if (!seen.has(flowKey)) {
                 seen.add(flowKey);
                 const filesInPath: string[] = [];

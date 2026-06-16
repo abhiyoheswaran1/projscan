@@ -15,6 +15,7 @@ export type {
   ImportPolicyRule,
   LoadedConfig,
   ProjscanConfig,
+  ReportPolicyPreset,
   ReportFormat,
 } from './types/config.js';
 export type {

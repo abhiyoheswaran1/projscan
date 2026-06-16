@@ -202,6 +202,7 @@ function functionNode(
   const callees = fn.callSites ?? [];
   const directCallSites = fn.directCallSites ?? [];
   const memberCallSites = fn.memberCallSites ?? [];
+  const memberReferences = fn.memberReferences ?? [];
   const memberAliases = fn.memberAliases ?? [];
   const references = fn.references ?? [];
   const source =
@@ -209,6 +210,7 @@ function functionNode(
       file,
       fn.name,
       memberCallSites,
+      memberReferences,
       fn.parameters ?? [],
       sources,
       references,

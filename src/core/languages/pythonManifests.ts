@@ -20,6 +20,15 @@ export interface PythonDeclaredDep {
   scope: 'main' | 'dev';
 }
 
+export interface PythonLockedDep {
+  name: string;
+  version: string;
+  /** Lockfile or pinned requirements file that supplied this version. */
+  source: string;
+  /** 1-based line in the source file, or 0 if unknown. */
+  line: number;
+}
+
 export interface PythonProjectInfo {
   /** Directories under which `from pkg import ...` should resolve. */
   packageRoots: string[];
@@ -27,6 +36,8 @@ export interface PythonProjectInfo {
   manifestFiles: string[];
   /** Declared dependencies across all manifests. */
   declared: PythonDeclaredDep[];
+  /** Resolved/current versions from supported local lockfiles or pinned requirements. */
+  locked: PythonLockedDep[];
   /** Lockfiles present (any of poetry.lock, Pipfile.lock, pdm.lock, uv.lock, conda-lock.yml, requirements.txt with pins). */
   hasLockfile: boolean;
 }
@@ -50,6 +61,7 @@ export async function detectPythonProject(
   const roots: string[] = [];
   const manifestFiles: string[] = [];
   const declared: PythonDeclaredDep[] = [];
+  const locked: PythonLockedDep[] = [];
 
   const pyprojectPath = path.join(rootPath, 'pyproject.toml');
   const pyprojectContent = await tryRead(pyprojectPath);
@@ -85,7 +97,9 @@ export async function detectPythonProject(
     if (content === null) continue;
     manifestFiles.push(rel);
     const isDev = /requirements(-test|-dev|-lint)\.txt$/i.test(rel);
-    declared.push(...parseRequirements(content, rel, isDev ? 'dev' : 'main'));
+    const deps = parseRequirements(content, rel, isDev ? 'dev' : 'main');
+    declared.push(...deps);
+    locked.push(...deps.flatMap(requirementPinToLockedDep));
   }
 
   // Infer package roots from __init__.py placement if none declared.
@@ -100,26 +114,20 @@ export async function detectPythonProject(
   let hasLockfile = false;
   for (const name of LOCKFILES) {
     const lockPath = path.join(rootPath, name);
-    if ((await tryRead(lockPath)) !== null) {
+    const content = await tryRead(lockPath);
+    if (content !== null) {
       hasLockfile = true;
+      if (name === 'poetry.lock') locked.unshift(...parsePoetryLock(content, name));
       break;
     }
   }
-  if (!hasLockfile) {
-    // requirements.txt with pinned versions counts as a lockfile for us.
-    for (const rel of reqFiles) {
-      const content = await tryRead(path.join(rootPath, rel));
-      if (content !== null && hasPinnedRequirements(content)) {
-        hasLockfile = true;
-        break;
-      }
-    }
-  }
+  if (!hasLockfile && locked.length > 0) hasLockfile = true;
 
   return {
     packageRoots: dedupe(roots),
     manifestFiles,
     declared,
+    locked,
     hasLockfile,
   };
 }
@@ -351,13 +359,33 @@ export function parseRequirements(
   return out;
 }
 
-function hasPinnedRequirements(content: string): boolean {
-  for (const raw of content.split('\n')) {
-    const line = raw.replace(/\s+#.*$/, '').trim();
-    if (!line || line.startsWith('#') || line.startsWith('-')) continue;
-    if (/==/.test(line)) return true;
+export function parsePoetryLock(content: string, sourceFile: string): PythonLockedDep[] {
+  const out: PythonLockedDep[] = [];
+  const blockRe = /\[\[package\]\]([\s\S]*?)(?=\n\[\[package\]\]|$)/g;
+  let block: RegExpExecArray | null;
+  while ((block = blockRe.exec(content))) {
+    const body = block[1];
+    const bodyStart = block.index + block[0].indexOf(body);
+    const name = /(?:^|\n)\s*name\s*=\s*["']([^"']+)["']/.exec(body)?.[1];
+    const versionMatch = /(?:^|\n)\s*version\s*=\s*["']([^"']+)["']/.exec(body);
+    if (!name || !versionMatch) continue;
+    out.push({
+      name,
+      version: versionMatch[1],
+      source: sourceFile,
+      line: offsetToLine(
+        content,
+        bodyStart + versionMatch.index + versionMatch[0].indexOf('version'),
+      ),
+    });
   }
-  return false;
+  return out;
+}
+
+function requirementPinToLockedDep(dep: PythonDeclaredDep): PythonLockedDep[] {
+  const match = /^={2,3}\s*([^\s,;]+)/.exec(dep.versionSpec);
+  if (!match) return [];
+  return [{ name: dep.name, version: match[1], source: dep.source, line: dep.line }];
 }
 
 // ── PEP 508 splitter ──────────────────────────────────────────

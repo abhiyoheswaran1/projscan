@@ -29,10 +29,28 @@ function header(title: string): string {
 
 function printUpgradeMetadata(preview: UpgradePreview): void {
   const drift = UPGRADE_DRIFT_COLORS[preview.drift] ?? chalk.dim;
-  console.log(`  Declared:  ${chalk.dim(preview.declared ?? '-')}`);
-  console.log(`  Installed: ${chalk.bold(preview.installed ?? '-')}`);
+  if (preview.ecosystem) {
+    console.log(`  Ecosystem: ${chalk.dim(preview.ecosystem)}`);
+  }
+  const declaredSource = formatDeclaredSource(preview);
+  const installedSource = formatInstalledSource(preview);
+  console.log(`  Declared:  ${chalk.dim(preview.declared ?? '-')}${declaredSource}`);
+  console.log(`  Installed: ${chalk.bold(preview.installed ?? '-')}${installedSource}`);
   console.log(`  Drift:     ${drift(preview.drift.toUpperCase())}`);
   console.log('');
+}
+
+function formatDeclaredSource(preview: UpgradePreview): string {
+  if (!preview.declaredSource) return '';
+  const line = preview.declaredLine ? `:${preview.declaredLine}` : '';
+  const scope = preview.declaredScope ? `, ${preview.declaredScope}` : '';
+  return chalk.dim(` (${preview.declaredSource}${line}${scope})`);
+}
+
+function formatInstalledSource(preview: UpgradePreview): string {
+  if (!preview.installedSource) return '';
+  const line = preview.installedLine ? `:${preview.installedLine}` : '';
+  return chalk.dim(` (${preview.installedSource}${line})`);
 }
 
 function printBreakingMarkers(preview: UpgradePreview): void {
@@ -66,6 +84,10 @@ function printImporters(preview: UpgradePreview): void {
 
 function printChangelog(preview: UpgradePreview): void {
   if (!preview.changelogExcerpt) {
+    if (preview.ecosystem === 'python') {
+      console.log(chalk.dim('  No package CHANGELOG loaded for offline Python previews.\n'));
+      return;
+    }
     console.log(chalk.dim('  No local CHANGELOG found (node_modules/<pkg>/CHANGELOG.md).\n'));
     return;
   }

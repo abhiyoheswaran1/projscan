@@ -19,6 +19,7 @@ import { detectFrameworks } from '../../core/frameworkDetector.js';
 import { analyzeDependencies } from '../../core/dependencyAnalyzer.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
+import { applyReportControlsToAnalysis, resolveReportControls } from '../../core/reportScope.js';
 import { applyConfigToIssues } from '../../utils/config.js';
 import { reportAnalysis } from '../../reporters/consoleReporter.js';
 import { reportAnalysisJson } from '../../reporters/jsonReporter.js';
@@ -34,6 +35,9 @@ export function registerAnalyze(): void {
     .option('--changed-only', 'only report issues on files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
     .option('--package <name>', 'monorepo: scope issues to a single workspace package')
+    .option('--report-policy <name>', 'use a named report policy preset from config')
+    .option('--report-scope <paths>', 'comma-separated repo-relative paths to include in exported evidence')
+    .option('--redact-paths', 'replace file paths in exported evidence with stable redacted labels')
     .option('--reporter <name>', 'render output with a local reporter plugin')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -44,6 +48,12 @@ export function registerAnalyze(): void {
       const spinner = format === 'console' ? ora('Scanning repository...').start() : null;
 
       try {
+        const reportControls = resolveReportControls({
+          reportPolicies: config.reportPolicies,
+          reportPolicy: cmdOpts.reportPolicy,
+          reportScope: cmdOpts.reportScope,
+          redactPaths: cmdOpts.redactPaths,
+        });
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
         if (spinner) spinner.text = 'Detecting languages...';
         const languages = detectLanguages(scan.files);
@@ -80,16 +90,19 @@ export function registerAnalyze(): void {
 
         if (spinner) spinner.stop();
 
-        const report: AnalysisReport = {
-          projectName: path.basename(rootPath),
-          rootPath,
-          scan,
-          languages,
-          frameworks,
-          dependencies,
-          issues,
-          timestamp: new Date().toISOString(),
-        };
+        const report: AnalysisReport = applyReportControlsToAnalysis(
+          {
+            projectName: path.basename(rootPath),
+            rootPath,
+            scan,
+            languages,
+            frameworks,
+            dependencies,
+            issues,
+            timestamp: new Date().toISOString(),
+          },
+          reportControls,
+        );
 
         if (await renderPluginReporterIfRequested('analyze', cmdOpts.reporter, report)) return;
 

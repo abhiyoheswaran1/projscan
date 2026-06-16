@@ -8,7 +8,7 @@ async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'projscan-upgrade-fallback-'));
 }
 
-describe('projscan_upgrade Python fallback', () => {
+describe('projscan_upgrade Python support', () => {
   let tmp: string;
   beforeEach(async () => {
     tmp = await makeTempDir();
@@ -23,21 +23,36 @@ describe('projscan_upgrade Python fallback', () => {
     return handler;
   }
 
-  it('returns available=false with Python-specific reason on a Python-dominated repo', async () => {
-    await fs.writeFile(path.join(tmp, 'pyproject.toml'), '[project]\nname = "x"\n');
+  it('previews Python dependencies on a Python-dominated repo', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      [
+        '[tool.poetry]',
+        'name = "py-app"',
+        'version = "0.1.0"',
+        '',
+        '[tool.poetry.dependencies]',
+        'python = "^3.12"',
+        'requests = "^2.31.0"',
+      ].join('\n'),
+    );
     await fs.mkdir(path.join(tmp, 'pkg'), { recursive: true });
-    await fs.writeFile(path.join(tmp, 'pkg', 'mod.py'), 'x = 1\n');
+    await fs.writeFile(path.join(tmp, 'pkg', 'mod.py'), 'import requests\n');
 
     const result = (await upgradeHandler()({ package: 'requests' }, tmp)) as {
       available: boolean;
-      reason: string;
+      ecosystem: string;
       name: string;
+      declared: string | null;
+      installed: string | null;
       importers: string[];
     };
-    expect(result.available).toBe(false);
-    expect(result.reason).toMatch(/Node\.js|Python/);
+    expect(result.available).toBe(true);
+    expect(result.ecosystem).toBe('python');
     expect(result.name).toBe('requests');
-    expect(result.importers).toEqual([]);
+    expect(result.declared).toBe('^2.31.0');
+    expect(result.installed).toBeNull();
+    expect(result.importers).toEqual(['pkg/mod.py']);
   });
 
   it('proceeds normally on a JS repo (no Python manifest)', async () => {

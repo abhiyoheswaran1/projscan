@@ -411,6 +411,154 @@ export function searchCache(req: { body: { key: string } }) {
     ).toBeUndefined();
   });
 
+  it('treats Fastify request fields as framework sources without flagging lookalike helpers', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'fastify.ts'),
+      `import Fastify from 'fastify';
+
+const app = Fastify();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.post('/users', async (request, reply) => {
+  const body = request.body as { sql: string };
+  return db.query(body.sql);
+});
+
+export function helper(request: { body: { key: string } }) {
+  return cache.query(request.body.key);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some(
+        (risk) =>
+          risk.source === 'fastify.request.body' &&
+          risk.sink === 'query' &&
+          risk.files.includes('src/fastify.ts'),
+      ),
+    ).toBe(true);
+    expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
+  it('treats Koa request fields as framework sources without flagging lookalike helpers', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa.ts'),
+      `import Koa from 'koa';
+
+const app = new Koa();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.use(async (ctx) => {
+  const body = ctx.request.body as { sql: string };
+  return db.query(body.sql);
+});
+
+export function helper(ctx: { request: { body: { key: string } } }) {
+  return cache.query(ctx.request.body.key);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.some(
+        (risk) =>
+          risk.source === 'koa.ctx.request.body' &&
+          risk.sink === 'query' &&
+          risk.files.includes('src/koa.ts'),
+      ),
+    ).toBe(true);
+    expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
+  it('treats Koa query params and headers as framework request sources', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-router.ts'),
+      `import Koa from 'koa';
+import Router from '@koa/router';
+
+const app = new Koa();
+const router = new Router();
+const db = { query(sql: string) { return sql; } };
+
+app.use((ctx) => {
+  const term = ctx.query.term;
+  return db.query(String(term));
+});
+
+router.get('/users/:id', (ctx) => {
+  const id = ctx.params.id;
+  return db.query(String(id));
+});
+
+router.post('/request-query', (ctx) => {
+  const filter = ctx.request.query.filter;
+  return db.query(String(filter));
+});
+
+router.put('/headers', (ctx) => {
+  const auth = ctx.headers.authorization;
+  return db.query(String(auth));
+});
+
+router.patch('/request-headers', (ctx) => {
+  const requestAuth = ctx.request.headers.authorization;
+  return db.query(String(requestAuth));
+});
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const koaRisks = report.risks.filter((risk) => risk.files.includes('src/koa-router.ts'));
+
+    expect(koaRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'koa.ctx.query', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.params', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.query', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.headers', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.headers', sink: 'query' }),
+      ]),
+    );
+  });
+
+  it('does not treat Koa response-body writes as request body sources', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-response.ts'),
+      `import Koa from 'koa';
+
+const app = new Koa();
+const db = { query(sql: string) { return sql; } };
+
+app.use((ctx) => {
+  ctx.body = { ok: true };
+  return db.query('select 1');
+});
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(
+      report.risks.find(
+        (risk) =>
+          risk.sourceFn.includes('app.use') &&
+          risk.source === 'koa.ctx.request.body' &&
+          risk.sink === 'query',
+      ),
+    ).toBeUndefined();
+  });
+
   it('does not treat route response helpers as request body sources', async () => {
     await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
     await fs.writeFile(

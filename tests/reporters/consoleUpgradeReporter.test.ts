@@ -64,6 +64,24 @@ describe('consoleUpgradeReporter', () => {
     expect(out).toContain('No direct importers found in source.');
   });
 
+  it('renders installed source when Python lockfile evidence is present', async () => {
+    const out = await capturePlain(() =>
+      reportUpgrade(
+        preview({
+          ecosystem: 'python',
+          installed: '2.31.0',
+          latest: '2.31.0',
+          installedSource: 'poetry.lock',
+          installedLine: 3,
+        }),
+      ),
+    );
+
+    expect(out).toContain('Installed:');
+    expect(out).toContain('2.31.0');
+    expect(out).toContain('(poetry.lock:3)');
+  });
+
   it('truncates importer rows after 15 entries', async () => {
     const importers = Array.from({ length: 17 }, (_, index) => `src/file-${index + 1}.ts`);
     const out = await capturePlain(() => reportUpgrade(preview({ importers })));

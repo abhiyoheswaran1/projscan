@@ -19,7 +19,8 @@ const CACHE_FILE = 'graph.json';
 // be distinguished from ordinary req-shaped helpers.
 // v8: added `directCallSites` and `memberAliases` so bare imported DB
 // helpers stay visible without treating cache.query() as a raw SQL sink.
-const CACHE_VERSION = 8;
+// v9: added `memberReferences` for precise qualified framework request reads.
+const CACHE_VERSION = 9;
 
 interface SerializedGraph {
   version: number;

@@ -11,7 +11,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 ### CLI
 
 - **Command names**: `agent-brief`, `analyze`, `apply-fix`, `audit`, `badge`, `bug-hunt`, `ci`, `coupling`, `coverage`, `dataflow`, `dependencies`, `diagram`, `diff`, `doctor`, `evidence-pack`, `explain`, `explain-issue`, `file`, `first-run`, `fix`, `fix-suggest`, `handoff`, `hotspots`, `impact`, `init`, `install-hook`, `mcp`, `memory`, `outdated`, `plugin`, `preflight`, `pr-diff`, `quality-scorecard`, `recipes`, `release-train`, `regression-plan`, `review`, `search`, `semantic-graph`, `session`, `structure`, `taint`, `understand`, `upgrade`, `watch`, `workplan`, `workspace`, `workspaces`. New commands may be added; existing names will not be renamed or removed.
-- **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--view`, `--intent`, `--max-items`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
+- **Documented flags** on those commands: `--format`, `--config`, `--changed-only`, `--base-ref`, `--package`, `--report-policy`, `--report-scope`, `--redact-paths`, `--limit`, `--cycles-only`, `--high-fan-in`, `--high-fan-out`, `--file`, `--mode`, `--view`, `--intent`, `--max-items`, `--semantic`, `--scope`, `--min-score`, `--save-baseline`, `--against`, `--timeout`, `--aggregate`, `--verbose`, `--quiet`. Documented at `projscan <cmd> --help` or in `docs/GUIDE.md`.
 - **Exit codes**: `0` = success / pass, `1` = found issues / failed gate, `2` = invalid usage. We will not flip an existing code's meaning.
 - **Output formats**: `console`, `json`, `markdown`, `sarif`, `html`. The `--format` flag will continue to accept these names. Individual commands may support only a subset; unsupported combinations fail with a clear diagnostic rather than falling back to a different renderer. Per-format guarantees:
   - **JSON**: existing report-level `schemaVersion` values remain stable for their report families. The semantic graph contract uses `schemaVersion: 3`; graph-evidence summaries are additive optional fields. Data keys (`issues`, `hotspots`, `coverage`, `nodes`, `edges`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
@@ -35,7 +35,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
 
 ### Configuration
 
-- **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`. New keys may be added; existing keys will not change name or type.
+- **`.projscanrc`** schema: `ignore`, `disableRules`, `severityOverrides`, `hotspots.limit`, `hotspots.since`, `reportPolicies.<name>.reportScope`, `reportPolicies.<name>.redactPaths`. New keys may be added; existing keys will not change name or type.
 - **Environment variables** consulted: `PROJSCAN_PLUGINS_PREVIEW=1` enables local plugin execution. `PROJSCAN_TELEMETRY_HOME`, `PROJSCAN_TELEMETRY_ENDPOINT`, `PROJSCAN_TELEMETRY_DISABLED`, and `PROJSCAN_TELEMETRY_NO_NETWORK` control the explicit opt-in telemetry storage, endpoint, hard-disable, and queue-only modes. Existing names remain stable in 3.x.
 
 ### Plugin API

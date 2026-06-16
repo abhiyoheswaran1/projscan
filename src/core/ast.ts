@@ -100,6 +100,11 @@ export interface FunctionInfo {
    * it and taint will only match call-shaped sources for those files.
    */
   references?: string[];
+  /**
+   * Qualified member-expression reads for JavaScript/TypeScript functions,
+   * e.g. `ctx.request.body`. Used when bare references are too ambiguous.
+   */
+  memberReferences?: string[];
 }
 
 export interface AstResult {
@@ -284,8 +289,15 @@ function collectFunctions(
     const name = nameForFunctionNode(node, parentClassName, bindingName);
     const line = (node as NodeWithLoc).loc?.start.line ?? 0;
     const endLine = (node as NodeWithLoc).loc?.end.line ?? line;
-    const { cc, callSites, memberCallSites, directCallSites, memberAliases, references } =
-      analyzeBabelBody(node);
+    const {
+      cc,
+      callSites,
+      memberCallSites,
+      directCallSites,
+      memberAliases,
+      memberReferences,
+      references,
+    } = analyzeBabelBody(node);
     const parameters = functionParamNames(node);
     out.push({
       name,
@@ -296,6 +308,7 @@ function collectFunctions(
       memberCallSites,
       directCallSites,
       memberAliases,
+      memberReferences,
       parameters,
       ...(contextualCallSite ? { contextualCallSite } : {}),
       references,
@@ -438,6 +451,7 @@ function analyzeBabelBody(fnNode: Node): {
   memberCallSites: string[];
   directCallSites: string[];
   memberAliases: string[];
+  memberReferences: string[];
   references: string[];
 } {
   const body = (fnNode as { body?: Node }).body;
@@ -448,6 +462,7 @@ function analyzeBabelBody(fnNode: Node): {
       memberCallSites: [],
       directCallSites: [],
       memberAliases: [],
+      memberReferences: [],
       references: [],
     };
   let decisions = 0;
@@ -455,6 +470,7 @@ function analyzeBabelBody(fnNode: Node): {
   const directCalls = new Set<string>();
   const memberCalls = new Set<string>();
   const aliases = new Set<string>();
+  const memberRefs = new Set<string>();
   const refs = new Set<string>();
   // MemberExpression nodes that ARE in callee position get their rightmost
   // identifier added to callSites instead of references — track them here so
@@ -486,6 +502,8 @@ function analyzeBabelBody(fnNode: Node): {
     if (n.type === 'VariableDeclarator') collectMemberAliases(n, aliases);
     if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') {
       if (calleeMembers.has(n)) return;
+      const qualified = babelQualifiedMemberName(n);
+      if (qualified) memberRefs.add(qualified);
       collectMemberReadIdents(n, refs);
     }
   });
@@ -495,6 +513,7 @@ function analyzeBabelBody(fnNode: Node): {
     memberCallSites: [...memberCalls],
     directCallSites: [...directCalls],
     memberAliases: [...aliases],
+    memberReferences: [...memberRefs],
     references: [...refs],
   };
 }

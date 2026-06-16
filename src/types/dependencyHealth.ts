@@ -44,6 +44,8 @@ export interface UpgradePreview {
   available: boolean;
   reason?: string;
   name: string;
+  /** Package ecosystem used for this preview. Absent on older/npm-only callers. */
+  ecosystem?: 'npm' | 'python';
   declared: string | null;
   installed: string | null;
   latest: string | null;
@@ -51,6 +53,16 @@ export interface UpgradePreview {
   breakingMarkers: string[];
   changelogExcerpt?: string;
   importers: string[];
+  /** Manifest file that declared the dependency, when known. */
+  declaredSource?: string;
+  /** 1-based line in the manifest that declared the dependency, when known. */
+  declaredLine?: number;
+  /** Manifest scope for the dependency, when known. */
+  declaredScope?: 'dependency' | 'devDependency' | 'peerDependency' | 'main' | 'dev';
+  /** Lockfile or pinned requirements file that supplied the installed/current version, when known. */
+  installedSource?: string;
+  /** 1-based line in installedSource that supplied the installed/current version, when known. */
+  installedLine?: number;
   /**
    * 1.3+ — set when `previewUpgrade` was called with `checkRegistry: true`.
    * "registry" if the latest came from npm; "installed" if we fell back to

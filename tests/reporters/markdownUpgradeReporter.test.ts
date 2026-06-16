@@ -77,6 +77,23 @@ describe('markdownUpgradeReporter', () => {
     expect(out).not.toContain('## Importers');
     expect(out).not.toContain('## CHANGELOG excerpt');
   });
+
+  it('renders installed source when Python lockfile evidence is present', async () => {
+    const out = await captureStdout(() =>
+      reportUpgradeMarkdown(
+        preview({
+          ecosystem: 'python',
+          installed: '2.31.0',
+          latest: '2.31.0',
+          installedSource: 'requirements.txt',
+          installedLine: 1,
+        }),
+      ),
+    );
+
+    expect(out).toContain('- Installed: `2.31.0`');
+    expect(out).toContain('- Installed source: `requirements.txt:1`');
+  });
 });
 
 function preview(overrides: Partial<UpgradePreview> = {}): UpgradePreview {

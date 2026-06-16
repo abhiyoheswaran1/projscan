@@ -19,7 +19,7 @@ export function registerUpgrade(): void {
   program
     .command('upgrade <package>')
     .description(
-      'Preview the impact of upgrading a package (offline by default - reads local CHANGELOG + importers)',
+      'Preview the impact of upgrading a package (offline by default - npm CHANGELOG/importers or Python manifests/lockfiles/importers)',
     )
     .option(
       '--check-registry',

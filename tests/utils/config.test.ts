@@ -88,6 +88,32 @@ describe('loadConfig', () => {
     expect(result.config.hotspots?.since).toBe('3 months ago');
   });
 
+  it('normalizes report policy presets', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscanrc.json'),
+      JSON.stringify({
+        reportPolicies: {
+          apiEvidence: {
+            reportScope: ['src/api', '', './packages/backend/'],
+            redactPaths: true,
+          },
+          invalidPreset: {
+            reportScope: [''],
+            redactPaths: 'yes',
+          },
+          notAnObject: true,
+        },
+      }),
+    );
+    const result = await loadConfig(tmp);
+    expect(result.config.reportPolicies).toEqual({
+      apiEvidence: {
+        reportScope: ['src/api', './packages/backend/'],
+        redactPaths: true,
+      },
+    });
+  });
+
   it('drops invalid severity overrides', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),

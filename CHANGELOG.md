@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.5.0]
+
+2026-06-16 - "Review-Ready Intelligence Train"
+
+### Added
+
+- Added a post-4.4 release-train catalog so `projscan release-train` defaults to the current 4.5.x through 4.9.x product lines for 4.4.x and newer projects.
+- Added adoption workflow docs for agent orchestration, package ownership, custom policy plugins, swarm coordination, and shareable evidence controls.
+- Added scoped and redacted evidence export controls for `analyze`, `doctor`, and `ci`: `--report-policy`, `--report-scope`, `--redact-paths`, and reusable `.projscanrc` `reportPolicies` presets.
+- Added offline Python upgrade previews for `projscan upgrade` and MCP `projscan_upgrade`, including manifest declarations, Poetry lockfile and pinned-requirements current-version evidence, drift, source lines, and importers.
+- Added framework-gated Fastify and Koa request-source detection for dataflow, with qualified member reads and false-positive fixtures.
+
+### Changed
+
+- Updated README, Guide, Stability, and roadmap docs to reflect Python upgrade support, scoped evidence exports, adoption examples, and post-4.4 planning.
+- Included the new adoption example docs in the npm package contents.
+- Extracted Mission Control start next-action assembly into a focused helper while preserving public behavior.
+
+### Fixed
+
+- Fixed taint internal function identity so multiple same-named inline handlers in one file do not overwrite each other during flow traversal.
+- Fixed stale roadmap text that still described validating 3.6 and preparing 4.0 after those lines had already shipped.
+
+### Security
+
+- Scoped/redacted report controls remain local-only and do not add network calls, telemetry, or secret-value reads. Redaction replaces paths with stable per-report labels for shareable review artifacts.
+
 ## [4.4.0]
 
 2026-06-16 - "Agent Release Harness"

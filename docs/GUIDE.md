@@ -434,6 +434,8 @@ graph. Bridge risks are graph-backed dataflow additions: a wrapper that calls a 
 and a sink wrapper is surfaced even when legacy taint reachability cannot see a
 downstream call path from source to sink. By default, dataflow suppresses test-file paths,
 broad readFile/writeFile-style noise, and JavaScript RegExp.exec false positives.
+Framework request-source detection covers narrow tested patterns for Next.js, Hono,
+Express, Fastify, and Koa handlers while keeping lookalike helpers quiet.
 
 For release hardening, `npm run check:graph-corpus` compares bundled fixture metrics against `docs/graph-corpus-baseline.json`. The gate fails only when graph coverage drops below the baseline or dataflow risks rise above it.
 
@@ -688,7 +690,7 @@ Each finding becomes a SARIF result with `ruleId: audit-<pkg>`, severity mapped 
 projscan upgrade <package>
 ```
 
-Preview the impact of upgrading a package. The default path is fully offline; pass `--check-registry` when you explicitly want npm registry lookup for the current latest version.
+Preview the impact of upgrading a package. The default path is fully offline; pass `--check-registry` when you explicitly want npm registry lookup for the current latest npm version.
 
 **What you get:**
 
@@ -696,6 +698,8 @@ Preview the impact of upgrading a package. The default path is fully offline; pa
 - Breaking-change markers found in the CHANGELOG: scans for `BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`, and section headers containing "breaking"
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
 - Importer list - every file in your source tree that imports the package (direct or sub-path)
+- Python manifest evidence for packages declared in `pyproject.toml`, `setup.cfg`, `setup.py`, or root `requirements*.txt`
+- Python current-version evidence from `poetry.lock` package blocks or pinned root `requirements*.txt` entries
 
 **Example:**
 
@@ -717,6 +721,7 @@ $ projscan upgrade react --format markdown
 
 - Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
 - Without `--check-registry`, works with what's **installed** and reports `latestSource: "installed"`. With `--check-registry`, npm registry lookup is attempted and failures fall back to the installed version with `registryError`.
+- Python previews stay offline. They do not query PyPI; current-version evidence comes from supported local lockfiles or pinned root requirements.
 
 ### coverage
 
@@ -882,6 +887,8 @@ Machine-readable output. Useful for piping into other tools, storing results, or
 ```bash
 projscan analyze --format json | jq '.issues[] | select(.severity == "error")'
 projscan analyze --format json > analysis.json
+projscan analyze --report-scope src/api --redact-paths --format json > scoped-analysis.json
+projscan analyze --report-policy apiEvidence --format json > scoped-analysis.json
 ```
 
 ### Markdown
@@ -918,6 +925,13 @@ Supported on `analyze`, `audit`, `ci`, `doctor`, and `outdated`. Each issue is e
 - `message.text` - the issue description
 - `locations` - real file + line/column when the analyzer can supply them (security findings include line numbers); project-level issues anchor to repo root
 - `properties.category` - the analyzer category (`security`, `formatting`, `architecture`, …)
+
+For shareable evidence artifacts, `analyze`, `doctor`, and `ci` accept
+`--report-policy <name>`, `--report-scope <paths>`, and `--redact-paths`. Scope
+is comma-separated and repo-relative. Redaction replaces file paths with stable
+labels while preserving correlation across issues and files in the same report.
+Direct `--report-scope` and `--redact-paths` flags override the selected preset
+for a single run.
 - `properties.fixAvailable` - whether `projscan fix` can remediate it
 
 When uploaded to GitHub Code Scanning, findings appear in the **Security → Code scanning** tab and (for PRs) as inline annotations on changed lines.
@@ -951,6 +965,12 @@ ProjScan loads a project-wide config from one of:
   "severityOverrides": {
     "missing-prettier": "info"
   },
+  "reportPolicies": {
+    "apiEvidence": {
+      "reportScope": ["src/api", "packages/backend"],
+      "redactPaths": true
+    }
+  },
   "hotspots": {
     "limit": 20,
     "since": "6 months ago"
@@ -970,6 +990,7 @@ ProjScan loads a project-wide config from one of:
 | `scan.offline`        | boolean                                          | Block projscan network-capable features: telemetry sending, `audit`, registry checks, and optional semantic model loading. Default `false`.                   |
 | `disableRules`        | string[]                                         | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`).                                                                         |
 | `severityOverrides`   | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them.                                                      |
+| `reportPolicies`      | `Record<string, { reportScope?: string[]; redactPaths?: boolean }>` | Named evidence export presets selected with `--report-policy <name>` on `analyze`, `doctor`, and `ci`.                                      |
 | `hotspots.limit`      | number (1–100)                                   | Default limit for `projscan hotspots`.                                                                                                                        |
 | `hotspots.since`      | string                                           | Default git history window for `projscan hotspots`.                                                                                                           |
 
@@ -1059,6 +1080,9 @@ Example GitHub Actions snippet:
 | `--offline`         | Block projscan network-capable features for this run                                        |
 | `--changed-only`    | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`)                   |
 | `--base-ref <ref>`  | Git base ref for `--changed-only` (default: origin/main)                                    |
+| `--report-policy <name>` | Use a named report policy preset from config (`analyze`, `doctor`, `ci`)              |
+| `--report-scope <paths>` | Comma-separated repo-relative paths to include in exported evidence (`analyze`, `doctor`, `ci`) |
+| `--redact-paths`    | Replace file paths in exported evidence with stable labels (`analyze`, `doctor`, `ci`)      |
 | `--verbose`         | Show debug-level logging - useful for diagnosing scan issues                                |
 | `--quiet`           | Suppress all non-essential output (spinners, status messages)                               |
 | `-V, --version`     | Print the version number                                                                    |

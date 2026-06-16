@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-05.
+Last reviewed 2026-06-16.
 
 ---
 
@@ -44,7 +44,8 @@ Four plays, in order:
 2. **Lean into multi-agent** — make projscan the _shared substrate_ for agent swarms. This is where the market is moving and where our context-budget design pays off. ✅ Largely shipped (1.4 Session, 1.5 Budgeted by default + Project Memory).
 3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). ✅ Shipped in the 1.6 arc.
 4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. ✅ The 1.7 → 2.0 arc turns this into a platform contract.
-5. **Coordinate the swarm** — the Swarm Coordination arc. Plays 1–4 made projscan the best _single-agent_ code-intelligence server; the market has moved to multi-agent orchestration, where the unsolved pain is concurrent-change arbitration across parallel agents. Turn the graph + impact + session primitives into a local-first coordination layer (collision detection, claims/leases, merge-risk preflight, intent router, one-call coordinate). ✅ Shipped additively in 3.6.0. The remaining piece — consolidating the tool surface agents pay for — is breaking, so it's reserved for **4.0**.
+5. **Coordinate the swarm** — collision detection, claims/leases, merge-risk preflight, intent routing, one-call coordination, and live coordinate watch shipped across the 3.6 through 3.7 arc, with the 4.0 tool-surface consolidation now complete. The next work is evidence: prove which commands agents reach for in real multi-worktree sessions, then deepen only the paths that prevent integration failures.
+6. **Make agent proof release-ready** — 4.1 through 4.5 turned Mission Control into a goal → mission → proof → review harness and packaged the post-4.4 implementation train: current planning surfaces, adoption examples, precise framework dataflow, scoped/redacted evidence exports, Python upgrade previews, and hotspot maintainability cleanup.
 
 We are _not_ trying to be:
 
@@ -55,29 +56,61 @@ We are _not_ trying to be:
 
 ## Now / Next / Later
 
-### Now — Validate the Swarm Coordination arc; prepare the 4.0 surface break
+### Now — Post-4.5 Validation
 
-The **Swarm Coordination arc shipped in 3.6.0** (see Recently Completed). It was additive — five new tools, nothing removed — so it shipped as a minor release, not a major one. ("4.x" was an earlier label for the _theme_; the version is 3.6.0. The name **4.0** is reserved strictly for the one _breaking_ change below.)
+4.5.0 "Review-Ready Intelligence Train" packages the post-4.4 implementation train. The next work is validation and selective hardening from real use, not another broad feature push.
 
-What's now:
+The active validation lines are:
 
-- **Validate it in real swarm usage.** The arc is built on an unvalidated bet that concurrent-change arbitration is the pain. Before deepening it, find out which of `collision` / `claim` / `merge-risk` / `coordinate` agents actually reach for, and harden from there (transitive collision recall, live `--watch` coordination, integration into `preflight` / `agent_brief`).
-- **`4.0` — tool-surface consolidation (the first breaking release since 1.0).** In progress on the `next` branch (publish held for a real deprecation window). 4.0 removes the two tools deprecated in 3.8.0 — `projscan_explain` (use `projscan_file`) and `projscan_graph` (use `projscan_semantic_graph`, which gains a targeted `query` mode that subsumes it) — taking the surface from 47 → 45. Both have drop-in replacements (see [MIGRATION-4.0.md](MIGRATION-4.0.md)). The _broader_ consolidation (routing the long tail behind `projscan_route`) is deliberately deferred until real usage signal justifies which tools to fold — same deprecate-before-remove discipline.
+- **Swarm coordination evidence.** Validate how real agents use `collisions`, `claim`, `merge-risk`, `coordinate`, and `coordinate --watch`; deepen only the coordination paths that prevent integration failures.
+- **Evidence export adoption.** Prove scoped/redacted report controls work for partner, security, and release-review handoffs without leaking unnecessary repo structure.
+- **Python upgrade coverage.** Extend lockfile support only after Poetry and pinned-requirement evidence prove useful in real repos.
+- **Framework dataflow precision.** Add more framework patterns only when each has a narrow request source, sink, and false-positive fixture.
+- **Hotspot maintainability.** Continue extracting and covering high-churn start/review/type surfaces when they show concrete review or defect risk.
 
-Strictly **local-first** throughout: same-repo / same-machine swarms via the shared store, never a daemon, cloud, or cross-machine server (that would be a SaaS non-goal).
+Strictly **local-first** throughout: same-repo / same-machine evidence, no daemon, no cloud, no hidden network calls, no new telemetry, and no secret-value reads.
 
-Success signals: collisions prevented pre-merge, integration-failure-rate reduction, tokens saved per turn via the router, first external swarm adopter.
+Success signals: teams copy the adoption examples into real reviews, scoped/redacted artifacts are accepted by reviewers, Python upgrade previews identify useful local evidence, dataflow additions stay quiet on lookalikes, and release bug-hunts remain free of concrete defects.
 
-### Recently Completed — 3.6.0 (2026)
+### Recently Completed — 4.5.0 (2026)
 
-**3.6.0 "Swarm Coordination"** turned projscan into the local-first coordination substrate for parallel agents working one repo across git worktrees:
+**4.5.0 "Review-Ready Intelligence Train"** shipped the post-4.4 implementation train:
 
-- `projscan collisions` / `projscan_collision` — same-file and dependency overlaps across in-flight worktrees, surfaced before the branches merge (reuses the import graph for blast radius).
-- `projscan claim` / `projscan_claim` — advisory claims/leases over files, dirs, or symbols, shared across worktrees, with `--ttl` expiry (so a crashed agent's claim auto-expires), contention warnings, and `prune`.
-- `projscan merge-risk` / `projscan_merge_risk` — safe integration order (merge the least-entangled branch first) plus conflict hotspots.
-- `projscan route` / `projscan_route` — map a stated goal to the right tool (additive discovery entry over the surface; deterministic, no LLM).
-- `projscan coordinate` / `projscan_coordinate` — one-call read folding it all into a `clear` / `caution` / `conflicted` readiness verdict.
-- Also: semantic search degrades to BM25 when the embedding model can't load instead of crashing. 41 → 47 MCP tools.
+- Roadmap and release-train planning now default to the current post-4.4 product lines instead of stale shipped work.
+- Adoption examples cover agent orchestration, package ownership, custom policy plugins, swarm coordination, and scoped evidence exports.
+- `analyze`, `doctor`, and `ci` can scope and redact shareable evidence with direct flags or named `reportPolicies` presets.
+- `projscan upgrade` and MCP `projscan_upgrade` support offline Python previews from manifests, Poetry lockfiles, pinned requirements, and Python importers.
+- Dataflow detects narrow Fastify and Koa request-source patterns while suppressing lookalike helpers and Koa response-body writes.
+- Start next-action assembly and taint function identity were tightened during release readiness cleanup.
+
+### Recently Completed — 4.4.0 (2026)
+
+**4.4.0 "Agent Release Harness"** turned Mission Control into a release-ready agent harness:
+
+- Repo-local AgentLoopKit and AgentFlight harness commands are surfaced as proof hints when harness files exist.
+- Product-planning intents route to verifiable bug-hunt/action planning instead of generic orientation.
+- Bug-hunt, release-train, evidence-pack, and review wording distinguish concrete fix targets from manual release sign-off actions.
+- Public type contracts are split into focused modules with a dedicated `typecheck:public-types` gate.
+- Same-SHA dirty-worktree review and directory-only verification guidance were fixed.
+- The dev dependency chain cleared the release audit gate without adding runtime dependencies.
+
+### Recently Completed — 4.0.0 through 4.3.1 (2026)
+
+- **4.0.0 "Surface Consolidation"** removed the deprecated MCP tools `projscan_explain` and `projscan_graph` after a documented deprecation cycle. CLI commands were not removed. `projscan_file` and `projscan_semantic_graph` query mode are the replacements.
+- **4.1.0 through 4.2.0 "Mission Control Handoffs"** added execution plans, cursors, runbooks, task cards, review gates, shortcut commands, and saved mission bundles.
+- **4.3.0 "Mission Outcome Loop"** added `projscan start --mission <dir>` and Mission Proof outcome summaries.
+- **4.3.1 "Mission Proof Polish"** added Markdown proof reports, saved proof output, newest/all-bundle selection, attention filters, one-line CI summaries, and reproducible demo media.
+
+### Recently Completed — 3.6.0 and 3.7.x Coordination (2026)
+
+The **Swarm Coordination arc** turned projscan into the local-first coordination substrate for parallel agents working one repo across git worktrees:
+
+- `projscan collisions` / `projscan_collision` — same-file and dependency overlaps across in-flight worktrees, surfaced before branches merge.
+- `projscan claim` / `projscan_claim` — advisory claims/leases over files, dirs, or symbols, shared across worktrees, with `--ttl` expiry, contention warnings, and `prune`.
+- `projscan merge-risk` / `projscan_merge_risk` — safe integration order plus conflict hotspots.
+- `projscan route` / `projscan_route` — deterministic goal-to-tool routing.
+- `projscan coordinate` / `projscan_coordinate` — one-call readiness verdict over collisions, claims, and merge risk.
+- `projscan coordinate --watch` / `projscan_coordinate_watch` — local polling with MCP coordination-change notifications.
 
 ### Recently Completed — 3.5.0 (2026)
 
@@ -133,11 +166,11 @@ Success signals: collisions prevented pre-merge, integration-failure-rate reduct
 
 ### Later
 
-Later work should expand the moat after 3.4.0 repo-understanding output is verified in real engineering workflows:
+Later work should deepen proven surfaces rather than add broad categories:
 
-- Broaden framework dataflow precision from narrow, tested source patterns rather than broad source-name matching.
-- Add adoption examples from real agent orchestration, package ownership, and custom policy plugin workflows.
-- Explore stronger report-export controls for teams that want path redaction or scoped evidence artifacts.
+- Add stronger sub-file and symbol-level coordination once real swarm examples show which conflicts matter.
+- Extend Python upgrade intelligence toward broader lockfile formats after Poetry and pinned-requirement evidence are proven useful.
+- Add more framework dataflow patterns only when each has a clear request source, sink, and false-positive fixture.
 
 ## Non-goals
 

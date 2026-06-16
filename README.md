@@ -35,16 +35,16 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.4.0
+## What's New in 4.5.0
 
-4.4.0 turns the Mission Control loop into a release-ready agent harness. Agents get repo-local AgentLoopKit task contracts, AgentFlight verification, explicit personas for decisions, clearer release sign-off queues, and tighter public-surface checks.
+4.5.0 packages the post-4.4 intelligence train: current roadmap planning, shareable evidence controls, Python upgrade previews, framework dataflow precision, and concrete adoption workflows.
 
-- **Agent harness proof.** `projscan start` now surfaces `npm exec agentloop -- status` and `npm exec agentflight -- verify` when this repo's harness files exist, so handoffs include the local task and verification loop without executing it.
-- **Release-owner bug pass.** `projscan bug-hunt`, release-train, evidence-pack, and review wording now distinguish concrete fix targets from manual release sign-off actions, with review-useful files ranked first.
-- **Product planning routes.** Broad prompts like `what should we build next?` and `what should we improve next?` now route to bug-hunt/action planning instead of generic orientation.
-- **Public surface discipline.** Public type contracts move into focused modules with dedicated typecheck coverage, while review contract detection follows package entrypoints and re-exports instead of treating internal helper exports as public API.
-- **Audit-clean dev chain.** The release gate now clears npm audit after moving the dev test infrastructure to Vite 8 and refreshing protobuf transitive packages.
-- **Persona-backed decisions.** `docs/PERSONAS.md` records the team and user personas used for agent prioritization, review safety, and adoption tradeoffs.
+- **Current release train.** `projscan release-train` now defaults 4.4.x and newer projects to the current 4.5.x through 4.9.x product lines instead of stale shipped 3.x/4.0 work.
+- **Shareable evidence controls.** `analyze`, `doctor`, and `ci` accept `--report-policy`, `--report-scope`, and `--redact-paths`; `.projscanrc` can define reusable `reportPolicies` presets.
+- **Python upgrade previews.** `projscan upgrade requests` and MCP `projscan_upgrade` now read Python manifests, Poetry lockfiles, pinned requirements, and importers offline.
+- **Framework dataflow precision.** Fastify and Koa request sources are framework-gated and fixture-backed, including Koa body/query/params/header patterns without flagging response-body writes.
+- **Adoption proof recipes.** New docs cover agent orchestration, package ownership, policy plugins, swarm coordination, and scoped evidence workflows teams can copy into real reviews.
+- **Readiness cleanup.** The release packet documents the broad bug pass, review-risk sign-off, rollback plan, and verification evidence for the train.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 
@@ -573,6 +573,10 @@ projscan dogfood --repo ../api --repo ../web --repo ../worker --feedback .projsc
 projscan trial --repo ../api --repo ../web --repo ../worker --feedback .projscan-feedback.json --format json
 ```
 
+For copyable team recipes, see
+[`docs/examples/swarm-coordination.md`](docs/examples/swarm-coordination.md)
+and [`docs/examples/adoption-workflows.md`](docs/examples/adoption-workflows.md).
+
 For maintainers changing trust-sensitive behavior:
 
 ```bash
@@ -643,7 +647,7 @@ The report includes file/symbol-backed `claims`, `readFirst` files, entrypoints,
 | `projscan dependencies`       | Dependency analysis - counts, license summary, risks, recommendations                                                                                                                                                                                            |
 | `projscan outdated`           | Declared-vs-installed drift check (offline)                                                                                                                                                                                                                      |
 | `projscan audit`              | `npm audit`-powered vulnerability report - SARIF-ready for Code Scanning                                                                                                                                                                                         |
-| `projscan upgrade <pkg>`      | Preview upgrade impact - local CHANGELOG + importer list, offline                                                                                                                                                                                                |
+| `projscan upgrade <pkg>`      | Preview upgrade impact - npm CHANGELOG/importers or Python manifest, lockfile, and importer evidence, offline by default                                                                                                                                         |
 | `projscan coverage`           | **Coverage × hotspots - rank the scariest untested files** (`--changed-only` for diff mode)                                                                                                                                                                      |
 | `projscan badge`              | Generate a health score badge for your README                                                                                                                                                                                                                    |
 | `projscan init`               | _(1.6)_ Scaffold `.projscanrc.json` with sensible defaults                                                                                                                                                                                                       |
@@ -697,9 +701,17 @@ projscan doctor --format markdown    # Markdown for docs/PRs
 projscan mission-proof --format markdown # Mission proof report for handoffs
 projscan mission-proof --write reports/mission-proof.md # Save Markdown proof
 projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
+projscan analyze --report-scope src/api --redact-paths --format json # Scoped, redacted shareable evidence
+projscan doctor --report-policy apiEvidence --format markdown # Reuse a configured evidence policy
 ```
 
 Formats: `console` (default), `json`, `markdown`, `sarif`, `html`
+
+`analyze`, `doctor`, and `ci` also accept `--report-policy <name>`,
+`--report-scope <paths>`, and `--redact-paths` for shareable evidence artifacts.
+Scope is comma-separated and repo-relative; redaction replaces file paths with
+stable labels. Direct `--report-scope` and `--redact-paths` flags override the
+selected preset for a single run.
 
 Run `projscan help` for the generated command-by-command support matrix.
 
@@ -766,6 +778,9 @@ Reporter plugins are intentionally CLI-only. MCP tools keep returning structured
 | `--runbook`                                                             | Print only the Mission Control Markdown runbook (`start`)                                                                 |
 | `--changed-only`                                                        | Scope to files changed vs base ref (ci/analyze/doctor)                                                                    |
 | `--base-ref <ref>`                                                      | Git base ref for `--changed-only` (default: origin/main)                                                                  |
+| `--report-policy <name>`                                                | Use a named report policy preset from config (`analyze`, `doctor`, `ci`)                                                  |
+| `--report-scope <paths>`                                                | Comma-separated repo-relative paths to include in exported evidence (`analyze`, `doctor`, `ci`)                           |
+| `--redact-paths`                                                        | Replace file paths in exported evidence with stable labels (`analyze`, `doctor`, `ci`)                                    |
 | `--reporter <name>`                                                     | Render `doctor`, `analyze`, or `ci` with a local reporter plugin                                                          |
 | `--verbose`                                                             | Enable debug output                                                                                                       |
 | `--quiet`                                                               | Suppress non-essential output                                                                                             |
@@ -806,11 +821,12 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 
 - **AST-accurate import graph.** `from pkg.mod import x`, relative imports, `__init__.py` packages, `__all__`. Parsed via tree-sitter-python (wasm, offline).
 - **Python-aware analyzers.** Missing pytest / ruff / black config. Deprecated packages (nose, simplejson, pycrypto). Unused `pyproject.toml` / `requirements.txt` deps. Missing lockfile.
+- **Python upgrade preview.** `projscan upgrade requests` reads `pyproject.toml`, `setup.cfg`, `setup.py`, root `requirements*.txt`, Poetry lockfiles, and pinned root requirements, then reports declared scope, current-version source, drift, and importers offline.
 - **Code search.** BM25 and semantic modes work on `.py` files out of the box.
 - **Hotspots + dead code.** Same scoring as JS/TS, with `__init__.py` and pytest test-file conventions understood.
 - **MCP tools work unchanged.** `projscan_semantic_graph`, `projscan_search`, `projscan_doctor`, `projscan_hotspots`, etc. all accept Python projects. Agents can ask "which files import `pkg.core`?" and get an answer in milliseconds.
 
-`projscan_upgrade` remains Node-only for now - a Python equivalent (reading pip / poetry metadata) is on the roadmap.
+`projscan_upgrade` supports Node and Python offline previews. Python current-version evidence comes from Poetry lockfiles or pinned root requirements when present. Registry lookup remains npm-only behind `--check-registry`.
 
 ### Go (0.11)
 
@@ -1028,6 +1044,12 @@ Drop a `.projscanrc.json` at your repo root to set defaults - CLI flags always w
   "severityOverrides": {
     "missing-prettier": "info"
   },
+  "reportPolicies": {
+    "apiEvidence": {
+      "reportScope": ["src/api", "packages/backend"],
+      "redactPaths": true
+    }
+  },
   "hotspots": {
     "limit": 20,
     "since": "6 months ago"
@@ -1045,6 +1067,7 @@ Fields:
 - `scan.offline` - block projscan network-capable features by default
 - `disableRules` - silence rules by id; supports wildcard `prefix-*`
 - `severityOverrides` - remap a rule's severity (`info` / `warning` / `error`)
+- `reportPolicies.<name>` - reusable evidence export preset for `analyze`, `doctor`, and `ci`
 - `hotspots.limit` / `hotspots.since` - defaults for the `hotspots` command
 - `monorepo.importPolicy` - cross-package import allow/deny rules in monorepos _(0.14+)_
 
@@ -1114,7 +1137,7 @@ projscan upgrade chalk --format markdown # Paste-ready review comment
 
 - **`outdated`** - reads `package.json` and `node_modules/<pkg>/package.json` to classify drift (`major` / `minor` / `patch` / `same` / `unknown`). No network.
 - **`audit`** - wraps `npm audit --json`, normalizes the output, and emits SARIF with per-finding rules anchored to `package.json`. Graceful fallback message for yarn/pnpm projects.
-- **`upgrade <pkg>`** - reads `node_modules/<pkg>/CHANGELOG.md`, slices the section between your installed version and the previous one, flags `BREAKING CHANGE` / `deprecated` / `removed support` markers, and lists every file in your repo that imports the package. All offline.
+- **`upgrade <pkg>`** - reads `node_modules/<pkg>/CHANGELOG.md` for npm packages or Python manifests/lockfiles for Python packages, flags available breaking-change markers, and lists every file in your repo that imports the package. All offline unless `--check-registry` is passed for npm.
 
 ### Unused dependencies (automatic in `doctor`)
 
@@ -1310,7 +1333,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_start`** _(3.0.4)_ - first-60-seconds repo orientation. Composes setup diagnostics, `firstTenMinutes`, workflow recipes, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
 - **`projscan_understand`** _(3.4)_ - cited repo-comprehension report with `map`, `flow`, `contracts`, `change`, and `verify` views, read-first files, unknowns, change readiness, verification tiers, and exact next commands.
 - **`projscan_semantic_graph`** _(3.0; query mode 4.0)_ - the code graph, two ways. With no `query`: the stable v3 semantic graph contract (file, function, package, and symbol nodes plus `defines`, `imports`, `imports_package`, `exports`, and `calls` edges). With `query: { direction, file?, symbol? }`: one cheap targeted lookup — `imports`, `exports`, `importers`, `symbol_defs`, `package_importers` — with millisecond responses on a warm cache. (Subsumes the former `projscan_graph`, removed in 4.0.)
-- **`projscan_dataflow`** _(3.0)_ - focused direct, propagated, and bridge source-to-sink dataflow risks. Next.js and Express request sources are framework-aware, DB/write sinks are receiver-sensitive, and defaults suppress test-file paths, broad readFile/writeFile noise, JavaScript RegExp.exec false positives, and generated-code anxiety; opt into broader scans with `include_tests` / `include_broad_file_io` / `include_generated` or the matching CLI flags.
+- **`projscan_dataflow`** _(3.0)_ - focused direct, propagated, and bridge source-to-sink dataflow risks. Next.js, Hono, Express, Fastify, and Koa request sources are framework-aware, DB/write sinks are receiver-sensitive, and defaults suppress test-file paths, broad readFile/writeFile noise, JavaScript RegExp.exec false positives, and generated-code anxiety; opt into broader scans with `include_tests` / `include_broad_file_io` / `include_generated` or the matching CLI flags.
 - **`projscan_search`** - fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Sub-file mode (`sub_file: true`) embeds per-function for sharper semantic results _(0.15)_.
 - **`projscan_coupling`** _(0.11)_ - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
 - **`projscan_pr_diff`** _(0.11)_ - structural diff between two git refs. Returns added/removed/modified files with explicit lists of exports, imports, and call sites that changed, plus ΔCC and Δfan-in.

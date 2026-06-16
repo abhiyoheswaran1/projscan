@@ -157,7 +157,7 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
   );
 });
 
-test('release train defaults to repo understanding for 3.4 and newer', async () => {
+test('release train defaults to repo understanding for 3.4 through 4.3 versions', async () => {
   const root = await makeTempProject('3.4.0');
 
   const report = await computeReleaseTrain(root);
@@ -166,6 +166,42 @@ test('release train defaults to repo understanding for 3.4 and newer', async () 
   expect(report.tracks.map((track) => track.theme)).toEqual(['Repo Understanding']);
   expect(report.tasks.map((task) => task.id)).toEqual(
     expect.arrayContaining(['rt-3-4-repo-understanding', 'rt-plan-readiness']),
+  );
+});
+
+test('release train keeps very large 3.x minors on the 3.x roadmap', async () => {
+  const root = await makeTempProject('3.1005.0');
+
+  const report = await computeReleaseTrain(root);
+
+  expect(report.plan.lines).toEqual(['3.4.x']);
+});
+
+test('release train defaults to the post-4.4 product plan for 4.4 and newer', async () => {
+  const root = await makeTempProject('4.4.0');
+
+  const report = await computeReleaseTrain(root);
+
+  expect(report.plan.lines).toEqual(['4.5.x', '4.6.x', '4.7.x', '4.8.x', '4.9.x']);
+  expect(report.tracks.map((track) => track.theme)).toEqual([
+    'Roadmap And Release-Train Reliability',
+    'Swarm Coordination Evidence',
+    'Framework Dataflow Precision',
+    'Scoped Evidence Exports',
+    'Python Upgrade Intelligence And Hotspot Maintainability',
+  ]);
+  expect(report.tasks.map((task) => task.id)).toEqual(
+    expect.arrayContaining([
+      'rt-4-5-roadmap-release-train-refresh',
+      'rt-4-6-swarm-coordination-validation',
+      'rt-4-7-framework-dataflow-precision',
+      'rt-4-8-scoped-redacted-evidence',
+      'rt-4-9-python-upgrade-and-hotspot-maintainability',
+      'rt-plan-readiness',
+    ]),
+  );
+  expect(report.tasks.find((task) => task.id === 'rt-4-8-scoped-redacted-evidence')?.files).toEqual(
+    expect.arrayContaining(['src/core/reportScope.ts', 'src/reporters/sarifReporter.ts']),
   );
 });
 
