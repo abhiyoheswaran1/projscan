@@ -104,6 +104,20 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps file explanation rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportExplanationMarkdown')).toBe(false);
+
+    const explanationReporter = await inspectRepoSourceFile(
+      'src/reporters/markdownExplanationReporter.ts',
+    );
+    const renderer = explanationReporter.functions?.find(
+      (fn) => fn.name === 'reportExplanationMarkdown',
+    );
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {

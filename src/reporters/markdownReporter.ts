@@ -1,6 +1,5 @@
 import type {
   Issue,
-  FileExplanation,
   ArchitectureLayer,
   DirectoryNode,
 } from '../types.js';
@@ -24,6 +23,7 @@ export { reportCouplingMarkdown } from './markdownCouplingReporter.js';
 export { reportOutdatedMarkdown } from './markdownOutdatedReporter.js';
 export { reportHotspotsMarkdown } from './markdownHotspotReporter.js';
 export { reportWorkspacesMarkdown } from './markdownWorkspaceReporter.js';
+export { reportExplanationMarkdown } from './markdownExplanationReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -95,39 +95,6 @@ function appendReportControlsMarkdown(
     `> Report controls: active; scopes: ${reportControls.scopeCount}; path redaction: ${reportControls.redactPaths ? (reportControls.pathLabelFormat ?? 'enabled') : 'disabled'}.`,
   );
   lines.push('');
-}
-
-export function reportExplanationMarkdown(explanation: FileExplanation): void {
-  const lines: string[] = [`# File: ${explanation.filePath}`, ''];
-
-  lines.push(`**Purpose:** ${explanation.purpose}`);
-  lines.push(`**Lines:** ${explanation.lineCount}`);
-
-  if (explanation.imports.length > 0) {
-    lines.push('');
-    lines.push('## Dependencies');
-    for (const imp of explanation.imports) {
-      lines.push(`- \`${imp.source}\`${imp.isRelative ? ' (local)' : ''}`);
-    }
-  }
-
-  if (explanation.exports.length > 0) {
-    lines.push('');
-    lines.push('## Exports');
-    for (const exp of explanation.exports) {
-      lines.push(`- \`${exp.name}\` (${exp.type})`);
-    }
-  }
-
-  if (explanation.potentialIssues.length > 0) {
-    lines.push('');
-    lines.push('## Potential Issues');
-    for (const issue of explanation.potentialIssues) {
-      lines.push(`- ⚠️ ${issue}`);
-    }
-  }
-
-  console.log(lines.join('\n'));
 }
 
 export function reportDiagramMarkdown(layers: ArchitectureLayer[]): void {
