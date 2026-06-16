@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
+import { applyBaseRef, applyDisableRules, applyIgnore, applyMinScore } from './configBasics.js';
 import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
@@ -76,28 +77,4 @@ function normalize(input: unknown): ProjscanConfig {
   applyMonorepo(obj, out);
   applyTaint(obj, out);
   return out;
-}
-
-function applyMinScore(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (typeof obj.minScore === 'number' && Number.isFinite(obj.minScore)) {
-    out.minScore = Math.max(0, Math.min(100, Math.floor(obj.minScore)));
-  }
-}
-
-function applyBaseRef(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (typeof obj.baseRef === 'string' && obj.baseRef.trim()) {
-    out.baseRef = obj.baseRef.trim();
-  }
-}
-
-function applyIgnore(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!Array.isArray(obj.ignore)) return;
-  out.ignore = obj.ignore.filter((v): v is string => typeof v === 'string' && v.length > 0);
-}
-
-function applyDisableRules(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!Array.isArray(obj.disableRules)) return;
-  out.disableRules = obj.disableRules.filter(
-    (v): v is string => typeof v === 'string' && v.length > 0,
-  );
 }

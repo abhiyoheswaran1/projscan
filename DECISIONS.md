@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract basic config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned basic scalar/list config normalization for `minScore`, `baseRef`, `ignore`, and `disableRules`, keeping low-level field parsing in the main loader.
+- Decision: Move those basic field normalizers into `src/utils/configBasics.ts` and import them from the main config normalizer.
+- Consequences: `minScore` clamping, `baseRef` trimming, and string-list filtering for `ignore` and `disableRules` stay unchanged, while the main loader focuses on discovery and composition.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "basic scalar and list normalization"` and focused config/issue-trust verification.
+
 ## 2026-06-16: Extract config issue-rule application
 
 - Status: accepted

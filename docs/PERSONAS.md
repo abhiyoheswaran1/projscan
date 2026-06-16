@@ -3604,3 +3604,53 @@ should still clone only remapped issues.
 Kept change: one focused issue-rule module, one maintainability regression,
 existing config/issue-trust coverage, this persona note, and no public API
 break.
+
+## Eighty-Fourth Slice Decision
+
+Selected persona: OSS Maintainer.
+
+Reason: the remaining embedded config helpers are routine scalar/list
+normalizers. Moving them together keeps the loader focused on file discovery
+and composition while preserving the small public config behaviors maintainers
+expect.
+
+Smallest fix: move `minScore`, `baseRef`, `ignore`, and `disableRules`
+normalization into `configBasics.ts`, then import those helpers from
+`config.ts`. Preserve min-score clamping, base-ref trimming, and string-only
+list filtering.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "basic scalar and list normalization"
+npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configBasics.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+git diff --check
+```
+
+## Review Guardrails: Basic Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, `minScore`, `baseRef`, `ignore`, or
+  `disableRules` behavior.
+- Do not change config file discovery order, package.json fallback behavior,
+  issue-rule application, or any report/review verdict behavior.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: `minScore` should still floor and clamp to 0..100,
+`baseRef` should still trim non-empty strings, and `ignore` / `disableRules`
+should still keep only non-empty strings.
+
+Kept change: one focused basic config module, one maintainability regression,
+existing config/issue-trust coverage, this persona note, and no public schema
+change.
