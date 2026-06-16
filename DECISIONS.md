@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract taint config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned taint source/sink config parsing, keeping security-sensitive analyzer tuning mixed with unrelated config branches.
+- Decision: Move taint option normalization into `src/utils/configTaint.ts` and import `applyTaint` from the main config normalizer.
+- Consequences: `taint.sources` and `taint.sinks` filtering behavior stays unchanged, while source/sink tuning review can focus on one helper module.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "taint option normalization"` and focused config/taint verification.
+
 ## 2026-06-16: Extract scan privacy config normalization
 
 - Status: accepted

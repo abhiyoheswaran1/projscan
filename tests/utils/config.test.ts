@@ -155,6 +155,14 @@ describe('loadConfig', () => {
     expect(scanSource).not.toContain("from './config.js'");
   });
 
+  it('keeps taint option normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyTaint');
+
+    const taintSource = readFileSync(path.join(process.cwd(), 'src/utils/configTaint.ts'), 'utf8');
+    expect(taintSource).not.toContain("from './config.js'");
+  });
+
   it('drops invalid severity overrides', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscanrc.json'),

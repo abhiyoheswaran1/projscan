@@ -3410,3 +3410,50 @@ explicitly configured.
 
 Kept change: one focused scan config module, one maintainability regression,
 existing trust-config coverage, this persona note, and no public schema change.
+
+## Eightieth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: taint config controls project-specific source and sink names used by
+review-blocking flow analysis. Keeping source/sink normalization separate from
+the general config loader makes analyzer-tuning behavior easier to audit.
+
+Smallest fix: move taint option normalization into `configTaint.ts` and import
+`applyTaint` from `config.ts`. Preserve string-only, non-empty filtering for
+`taint.sources` and `taint.sinks`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "taint option normalization"
+npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts tests/mcp/taintIntegration.test.ts tests/core/taint.test.ts tests/core/dataflow.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configTaint.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts tests/mcp/taintIntegration.test.ts tests/core/taint.test.ts tests/core/dataflow.test.ts
+git diff --check
+```
+
+## Review Guardrails: Taint Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, `taint.sources`, or `taint.sinks`
+  string-only/non-empty filtering.
+- Do not alter built-in taint defaults, review verdicting, dataflow behavior, or
+  generated-code suppression behavior.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: invalid source or sink entries should continue to be
+dropped, and configured names should still merge on top of built-in taint
+defaults in CLI, MCP, review, and dataflow paths.
+
+Kept change: one focused taint config module, one maintainability regression,
+existing config/taint coverage, this persona note, and no public schema change.
