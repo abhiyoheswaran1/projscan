@@ -112,6 +112,29 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual(['pkg/client.py']);
   });
 
+  it('previews pyproject dependency-group entries as Python dev-scope evidence', async () => {
+    const pyproject = [
+      '[project]',
+      'name = "py-app"',
+      '',
+      '[dependency-groups]',
+      'dev = ["pytest>=8"]',
+    ].join('\n');
+    const files = [
+      await writeFile(tmp, 'pyproject.toml', pyproject),
+      await writeFile(tmp, 'tests/test_app.py', 'import pytest\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'pytest', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=8');
+    expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.declaredScope).toBe('dev');
+    expect(preview.importers).toEqual(['tests/test_app.py']);
+  });
+
   it('uses poetry.lock as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),

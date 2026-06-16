@@ -308,6 +308,24 @@ describe('parsePyproject (PEP 621)', () => {
       ruff: 'dev',
     });
   });
+
+  it('reads PEP 735 dependency groups as dev scope without include-group entries', () => {
+    const toml = [
+      '[dependency-groups]',
+      'dev = ["pytest>=8", "ruff"]',
+      'docs = [',
+      '  "sphinx>=8",',
+      '  { include-group = "dev" },',
+      ']',
+    ].join('\n');
+
+    const deps = parsePyproject(toml);
+
+    expect(deps.map((d) => d.name).sort()).toEqual(['pytest', 'ruff', 'sphinx']);
+    expect(deps.every((d) => d.scope === 'dev')).toBe(true);
+    expect(deps.find((d) => d.name === 'pytest')?.versionSpec).toBe('>=8');
+    expect(deps.find((d) => d.name === 'sphinx')?.versionSpec).toBe('>=8');
+  });
 });
 
 describe('detectPythonProject', () => {

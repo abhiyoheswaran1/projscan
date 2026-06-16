@@ -152,6 +152,7 @@ export function parsePyproject(content: string): PythonDeclaredDep[] {
       out.push({ name, versionSpec, source: 'pyproject.toml', line, scope: 'dev' });
     }
   }
+  appendDependencyGroups(out, content);
 
   // [tool.poetry.dependencies] / [tool.poetry.group.<name>.dependencies]
   const poetryMainRe = /\[tool\.poetry\.dependencies\]([\s\S]*?)(?=\n\[|$)/;
@@ -174,6 +175,66 @@ export function parsePyproject(content: string): PythonDeclaredDep[] {
   appendLegacyPoetryDevDependencies(out, content);
 
   return out;
+}
+
+function appendDependencyGroups(out: PythonDeclaredDep[], content: string): void {
+  const groupsRe = /\[dependency-groups\]([\s\S]*?)(?=\n\[|$)/;
+  const groupsMatch = groupsRe.exec(content);
+  if (!groupsMatch) return;
+  const blockStart = groupsMatch.index + groupsMatch[0].indexOf(groupsMatch[1]);
+  const block = groupsMatch[1];
+  const groupRe = /(?:^|\n)\s*[A-Za-z0-9_.-]+\s*=\s*\[/g;
+  let groupMatch: RegExpExecArray | null;
+  while ((groupMatch = groupRe.exec(block))) {
+    const open = block.indexOf('[', groupMatch.index);
+    const close = matchingBracketOffset(block, open);
+    if (open < 0 || close < 0) continue;
+    appendDependencyGroupArray(out, content, block, blockStart, open, close);
+    groupRe.lastIndex = close + 1;
+  }
+}
+
+function appendDependencyGroupArray(
+  out: PythonDeclaredDep[],
+  content: string,
+  block: string,
+  blockStart: number,
+  open: number,
+  close: number,
+): void {
+  const inside = maskIncludeGroupObjects(block.slice(open + 1, close));
+  const insideStart = blockStart + open + 1;
+  const stringRe = /["']([^"'\n]+)["']/g;
+  let sm: RegExpExecArray | null;
+  while ((sm = stringRe.exec(inside))) {
+    const { name, versionSpec } = splitPep508(sm[1]);
+    if (!name) continue;
+    out.push({
+      name,
+      versionSpec,
+      source: 'pyproject.toml',
+      line: offsetToLine(content, insideStart + sm.index),
+      scope: 'dev',
+    });
+  }
+}
+
+function matchingBracketOffset(value: string, open: number): number {
+  if (open < 0) return -1;
+  let depth = 1;
+  for (let index = open + 1; index < value.length; index++) {
+    const char = value[index];
+    if (char === '[') depth += 1;
+    else if (char === ']') depth -= 1;
+    if (depth === 0) return index;
+  }
+  return -1;
+}
+
+function maskIncludeGroupObjects(value: string): string {
+  return value.replace(/\{[^{}\n]*include-group\s*=[^{}]*\}/g, (match) =>
+    match.replace(/[^\n]/g, ' '),
+  );
 }
 
 function appendLegacyPoetryDevDependencies(out: PythonDeclaredDep[], content: string): void {

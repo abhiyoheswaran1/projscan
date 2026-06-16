@@ -2325,3 +2325,45 @@ Reviewer edge case: `https://.../src/private/file.ts` stays readable, but
 
 Kept change: one text-redaction guard, one regression fixture, focused docs,
 this persona note, and existing reporter coverage.
+
+## Fifty-Seventh Slice Decision
+
+Selected persona: Platform And Release Owner.
+
+Reason: Python teams adopting newer packaging standards need offline upgrade
+evidence to work from the same local `pyproject.toml` file they already review.
+PEP 735 dependency groups are internal/dev requirements, so they should appear
+as dev-scope declared evidence rather than being ignored.
+
+Smallest fix: parse `[dependency-groups]` arrays as dev-scope declared
+dependencies, ignore `{ include-group = "..." }` composition entries, and add a
+preview-level assertion for `declaredScope: "dev"`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "PEP 735 dependency groups"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Python Dependency Groups
+
+Delete-list after this slice:
+
+- Do not query PyPI or add network-backed Python latest-version lookup.
+- Do not treat `include-group` references as package dependencies.
+- Do not change lockfile/current-version semantics, output schemas,
+  dependencies, package metadata, release actions, or version numbers.
+
+Reviewer edge case: inline arrays and multiline arrays both work, but group
+composition entries remain group references, not declared packages.
+
+Kept change: one pyproject parser helper path, parser and preview regressions,
+focused docs, this persona note, and existing Python upgrade verification.

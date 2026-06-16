@@ -822,7 +822,7 @@ Python repos now get the same treatment JS/TS has had since 0.6:
 
 - **AST-accurate import graph.** `from pkg.mod import x`, relative imports, `__init__.py` packages, `__all__`. Parsed via tree-sitter-python (wasm, offline).
 - **Python-aware analyzers.** Missing pytest / ruff / black config. Deprecated packages (nose, simplejson, pycrypto). Unused `pyproject.toml` / `requirements.txt` deps. Missing lockfile.
-- **Python upgrade preview.** `projscan upgrade requests` reads `pyproject.toml`, `setup.cfg`, `setup.py`, root `requirements*.txt`, Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements/constraints, then reports declared scope, current-version source, drift, and importers offline.
+- **Python upgrade preview.** `projscan upgrade requests` reads `pyproject.toml` (including dependency groups), `setup.cfg`, `setup.py`, root `requirements*.txt`, Poetry/Pipfile/uv/PDM/Conda lockfiles, and pinned root requirements/constraints, then reports declared scope, current-version source, drift, and importers offline.
 - **Code search.** BM25 and semantic modes work on `.py` files out of the box.
 - **Hotspots + dead code.** Same scoring as JS/TS, with `__init__.py` and pytest test-file conventions understood.
 - **MCP tools work unchanged.** `projscan_semantic_graph`, `projscan_search`, `projscan_doctor`, `projscan_hotspots`, etc. all accept Python projects. Agents can ask "which files import `pkg.core`?" and get an answer in milliseconds.
