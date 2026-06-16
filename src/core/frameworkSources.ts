@@ -42,6 +42,8 @@ const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
 const FASTIFY_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['raw.headers', 'fastify.request.raw.headers'],
   ['raw.url', 'fastify.request.raw.url'],
+  ['host', 'fastify.request.host'],
+  ['hostname', 'fastify.request.hostname'],
 ]);
 
 const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([

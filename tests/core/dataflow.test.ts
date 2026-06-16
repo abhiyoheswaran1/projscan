@@ -708,6 +708,44 @@ export function helper(request: { ip: string }) {
     expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Fastify request host fields as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'fastify-host.ts'),
+      `import Fastify from 'fastify';
+
+const app = Fastify();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/by-host', async (request) => {
+  const host = request.host;
+  return db.query(String(host));
+});
+
+app.get('/by-hostname', async (request) => {
+  const hostname = request.hostname;
+  return db.query(String(hostname));
+});
+
+export function helper(request: { host: string, hostname: string }) {
+  return cache.query(request.host + request.hostname);
+}
+`,
+    );
+
+    const graph = await buildFixtureGraph();
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const fastifyRisks = report.risks.filter((risk) => risk.files.includes('src/fastify-host.ts'));
+
+    expect(fastifyRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'fastify.request.host', sink: 'query' }),
+        expect.objectContaining({ source: 'fastify.request.hostname', sink: 'query' }),
+      ]),
+    );
+    expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Fastify raw request URL and headers as framework sources without helper lookalikes', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'fastify-raw.ts'),

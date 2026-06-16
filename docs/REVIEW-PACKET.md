@@ -120,8 +120,9 @@ Hono/Express/Koa/Fastify dataflow:
   `ctx.request.ip`, `ctx.get(...)`, and `ctx.request.get(...)` can be detected
   without treating `ctx.body` response writes or helper `ctx.get(...)` calls as
   request input.
-- Fastify remains parameter/reference gated, including `request.ip` and
-  `request.raw` URL/header evidence, and keeps lookalike helpers quiet.
+- Fastify remains parameter/reference gated, including `request.ip`,
+  `request.host`, `request.hostname`, and `request.raw` URL/header evidence,
+  and keeps lookalike helpers quiet.
 - Cache version is bumped to invalidate stale graph entries that lack
   `memberReferences`.
 - Tests: `tests/core/ast.references.test.ts` and `tests/core/dataflow.test.ts`.

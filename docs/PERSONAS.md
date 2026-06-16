@@ -2187,3 +2187,48 @@ block, because that is often the first local coordination command a user runs.
 
 Kept change: one console-rendering addition, one CLI regression assertion,
 focused docs, this persona note, and existing coordination verification.
+
+## Fifty-Fourth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: Fastify documents host-derived request fields, and host header data can
+be security-sensitive when it flows into persistence or routing decisions. The
+static-analysis value comes from adding only framework-gated, qualified request
+member patterns with a false-positive fixture.
+
+Smallest fix: add Fastify `request.host` and `request.hostname` as qualified
+request-source member references. Keep helper objects with the same field names
+quiet, and keep the JSON schema unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/dataflow.test.ts -t "Fastify request host fields"
+npm run test -- tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+git diff --check
+```
+
+## Review Guardrails: Fastify Host Dataflow Sources
+
+Delete-list after this slice:
+
+- Do not broaden Fastify source matching to ungated `host` or `hostname`
+  references.
+- Do not change sink defaults, custom source/sink override behavior, or review
+  report schemas.
+- Do not add dependencies, network lookup, telemetry, package metadata changes,
+  release actions, or version bumps.
+
+Reviewer edge case: helper functions that accept a `{ host, hostname }` shaped
+object should remain quiet even when the file imports Fastify.
+
+Kept change: two qualified Fastify source strings, one source-to-sink fixture
+with a helper lookalike, focused docs, this persona note, and existing dataflow
+verification.
