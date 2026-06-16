@@ -4,11 +4,41 @@ import type { FileEntry } from '../../src/types.js';
 
 vi.mock('../../src/utils/fileWalker.js', () => ({
   walkFiles: vi.fn().mockResolvedValue([
-    { relativePath: 'src/index.ts', absolutePath: '/proj/src/index.ts', extension: '.ts', sizeBytes: 200, directory: 'src' },
-    { relativePath: 'src/utils/helper.ts', absolutePath: '/proj/src/utils/helper.ts', extension: '.ts', sizeBytes: 150, directory: 'src/utils' },
-    { relativePath: 'src/utils/format.ts', absolutePath: '/proj/src/utils/format.ts', extension: '.ts', sizeBytes: 100, directory: 'src/utils' },
-    { relativePath: 'package.json', absolutePath: '/proj/package.json', extension: '.json', sizeBytes: 500, directory: '.' },
-    { relativePath: 'README.md', absolutePath: '/proj/README.md', extension: '.md', sizeBytes: 300, directory: '.' },
+    {
+      relativePath: 'src/index.ts',
+      absolutePath: '/proj/src/index.ts',
+      extension: '.ts',
+      sizeBytes: 200,
+      directory: 'src',
+    },
+    {
+      relativePath: 'src/utils/helper.ts',
+      absolutePath: '/proj/src/utils/helper.ts',
+      extension: '.ts',
+      sizeBytes: 150,
+      directory: 'src/utils',
+    },
+    {
+      relativePath: 'src/utils/format.ts',
+      absolutePath: '/proj/src/utils/format.ts',
+      extension: '.ts',
+      sizeBytes: 100,
+      directory: 'src/utils',
+    },
+    {
+      relativePath: 'package.json',
+      absolutePath: '/proj/package.json',
+      extension: '.json',
+      sizeBytes: 500,
+      directory: '.',
+    },
+    {
+      relativePath: 'README.md',
+      absolutePath: '/proj/README.md',
+      extension: '.md',
+      sizeBytes: 300,
+      directory: '.',
+    },
   ] as FileEntry[]),
 }));
 

@@ -1,10 +1,12 @@
-import type { StartFirstTenMinutes, WorkplanMode } from '../types.js';
+import type { StartFirstTenMinutes } from '../types/start.js';
+import type { WorkplanMode } from '../types/workplan.js';
 
 export function buildFirstTenMinutes(mode: WorkplanMode = 'before_edit'): StartFirstTenMinutes {
   const preflightMode = firstTenMinutesPreflightMode(mode);
   return {
     title: 'First 10 minutes with projscan',
-    outcome: 'Verify the local trust boundary, orient the workflow, gate the first edit, then produce reviewer-facing PR evidence.',
+    outcome:
+      'Verify the local trust boundary, orient the workflow, gate the first edit, then produce reviewer-facing PR evidence.',
     commands: [
       {
         id: 'trust-boundary',
@@ -40,19 +42,23 @@ export function buildFirstTenMinutes(mode: WorkplanMode = 'before_edit'): StartF
         id: 'feedback-capture',
         label: 'Capture reviewer feedback',
         why: 'Records whether the PR comment saved time, prevented a bad edit, or produced noise.',
-        command: 'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10',
+        command:
+          'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10',
       },
       {
         id: 'adoption-proof',
         label: 'Run adoption proof',
         why: 'Rolls repo coverage and reviewer feedback into measured adoption proof.',
-        command: 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
+        command:
+          'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
       },
     ],
   };
 }
 
-function firstTenMinutesPreflightMode(mode: WorkplanMode): 'before_edit' | 'before_commit' | 'before_merge' {
+function firstTenMinutesPreflightMode(
+  mode: WorkplanMode,
+): 'before_edit' | 'before_commit' | 'before_merge' {
   if (mode === 'before_commit') return 'before_commit';
   if (mode === 'hardening') return 'before_commit';
   if (mode === 'before_merge' || mode === 'release') return 'before_merge';
@@ -66,7 +72,9 @@ function preflightLabel(mode: 'before_edit' | 'before_commit' | 'before_merge'):
 }
 
 function preflightWhy(mode: 'before_edit' | 'before_commit' | 'before_merge'): string {
-  if (mode === 'before_commit') return 'Returns proceed, caution, or block before a developer commits the change.';
-  if (mode === 'before_merge') return 'Returns proceed, caution, or block before a branch is merged or released.';
+  if (mode === 'before_commit')
+    return 'Returns proceed, caution, or block before a developer commits the change.';
+  if (mode === 'before_merge')
+    return 'Returns proceed, caution, or block before a branch is merged or released.';
   return 'Returns proceed, caution, or block before an agent changes code.';
 }

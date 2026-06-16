@@ -23,7 +23,9 @@ describe('per-function CC (Ruby)', () => {
   });
 
   it('case + when counts each when (case itself does not)', async () => {
-    const out = await fns(`def foo(x)\n  case x\n  when 1 then 1\n  when 2 then 2\n  else 0\n  end\nend\n`);
+    const out = await fns(
+      `def foo(x)\n  case x\n  when 1 then 1\n  when 2 then 2\n  else 0\n  end\nend\n`,
+    );
     expect(out[0].cyclomaticComplexity).toBe(3);
   });
 

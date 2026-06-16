@@ -1,4 +1,4 @@
-import type { MissionOutcome, MissionProofReport, MissionProofTotals } from '../types.js';
+import type { MissionOutcome, MissionProofReport, MissionProofTotals } from '../types/start.js';
 
 export function renderMissionProofMarkdown(report: MissionProofReport): string {
   const totals = report.missionControl.totals;
@@ -28,7 +28,9 @@ export function renderMissionProofMarkdown(report: MissionProofReport): string {
   }
 
   if (report.baseline && report.comparison) {
-    lines.push(...renderBaselineComparison(report.baseline.path, report.baseline.totals, report.comparison));
+    lines.push(
+      ...renderBaselineComparison(report.baseline.path, report.baseline.totals, report.comparison),
+    );
   }
 
   lines.push('## Risk Avoided', '');
@@ -43,7 +45,12 @@ export function renderMissionProofMarkdown(report: MissionProofReport): string {
     }
   }
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  return (
+    lines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd() + '\n'
+  );
 }
 
 function renderMissionOutcome(outcome: MissionOutcome): string[] {
@@ -60,7 +67,9 @@ function renderMissionOutcome(outcome: MissionOutcome): string[] {
     lines.push(`- Reason: ${outcome.reason}`);
   }
   if (outcome.review.decisions.length > 0) {
-    lines.push(`- Reviewer decisions: ${outcome.review.decisions.map((decision) => decision.decision).join(', ')}`);
+    lines.push(
+      `- Reviewer decisions: ${outcome.review.decisions.map((decision) => decision.decision).join(', ')}`,
+    );
   }
   lines.push('');
   return lines;

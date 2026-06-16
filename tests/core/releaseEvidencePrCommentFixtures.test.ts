@@ -15,131 +15,177 @@ const tempRoots: string[] = [];
 const PR_COMMENT_TIMEOUT = 180_000;
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
-test('docs-only PR comment stays clean short and validator-passing', async () => {
-  const root = await makeGitFixture();
-  await write('docs/guide.md', '# Guide\n\nSmall docs update.\n', root);
-  await git(root, ['add', '.']);
-  await git(root, ['commit', '-m', 'docs: update guide']);
+test(
+  'docs-only PR comment stays clean short and validator-passing',
+  async () => {
+    const root = await makeGitFixture();
+    await write('docs/guide.md', '# Guide\n\nSmall docs update.\n', root);
+    await git(root, ['add', '.']);
+    await git(root, ['commit', '-m', 'docs: update guide']);
 
-  const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
+    const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
 
-  expectUsefulPrComment(report);
-  expect(report.prComment).toContain('### Trust Calibration');
-  expect(report.prComment).toContain('### Baseline Trend');
-  expect(report.prComment).toContain('- actual defects: none');
-  expect(report.prComment).not.toMatch(/new dataflow risk|new taint flow/i);
-  expect(report.prComment).toContain('Add .github/CODEOWNERS line: `docs/** @team-name`');
-}, PR_COMMENT_TIMEOUT);
+    expectUsefulPrComment(report);
+    expect(report.prComment).toContain('### Trust Calibration');
+    expect(report.prComment).toContain('### Baseline Trend');
+    expect(report.prComment).toContain('- actual defects: none');
+    expect(report.prComment).not.toMatch(/new dataflow risk|new taint flow/i);
+    expect(report.prComment).toContain('Add .github/CODEOWNERS line: `docs/** @team-name`');
+  },
+  PR_COMMENT_TIMEOUT,
+);
 
-test('auth API PR comment includes owner routing and a fix-first command', async () => {
-  const root = await makeGitFixture();
-  await write('.github/CODEOWNERS', 'src/auth/** @security-team\nsrc/api/** @api-team\n', root);
-  await write('src/auth/session.ts', 'export function requireUser(req: { headers: Record<string, string> }) { return req.headers.authorization; }\n', root);
-  await write('src/api/routes.ts', "export function route() { return requireUser({ headers: { authorization: 'token' } }); }\n", root);
-  await git(root, ['add', '.']);
-  await git(root, ['commit', '-m', 'feat: auth api route']);
+test(
+  'auth API PR comment includes owner routing and a fix-first command',
+  async () => {
+    const root = await makeGitFixture();
+    await write('.github/CODEOWNERS', 'src/auth/** @security-team\nsrc/api/** @api-team\n', root);
+    await write(
+      'src/auth/session.ts',
+      'export function requireUser(req: { headers: Record<string, string> }) { return req.headers.authorization; }\n',
+      root,
+    );
+    await write(
+      'src/api/routes.ts',
+      "export function route() { return requireUser({ headers: { authorization: 'token' } }); }\n",
+      root,
+    );
+    await git(root, ['add', '.']);
+    await git(root, ['commit', '-m', 'feat: auth api route']);
 
-  const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
+    const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
 
-  expectUsefulPrComment(report);
-  expect(report.prSummary?.teamRoutes.map((route) => route.owner).join(' ')).toMatch(/@security-team|@api-team/);
-  expect(report.prSummary?.fixFirst?.commands.length).toBeGreaterThan(0);
-  expect(report.prComment).toContain('### First Fix');
-  expect(report.prComment).toMatch(/@security-team|@api-team/);
-}, PR_COMMENT_TIMEOUT);
+    expectUsefulPrComment(report);
+    expect(report.prSummary?.teamRoutes.map((route) => route.owner).join(' ')).toMatch(
+      /@security-team|@api-team/,
+    );
+    expect(report.prSummary?.fixFirst?.commands.length).toBeGreaterThan(0);
+    expect(report.prComment).toContain('### First Fix');
+    expect(report.prComment).toMatch(/@security-team|@api-team/);
+  },
+  PR_COMMENT_TIMEOUT,
+);
 
-test('dataflow security PR comment calls out actual defects with owner and review command', async () => {
-  const root = await makeGitFixture();
-  await write('.github/CODEOWNERS', 'src/api/** @security-team\n', root);
-  await write(
-    'src/api/run.ts',
-    [
-      "import { exec } from 'node:child_process';",
-      '',
-      'export function runSearch() {',
-      '  const command = process.env.SEARCH_CMD;',
-      "  exec(command ?? 'echo ok');",
-      '}',
-      '',
-    ].join('\n'),
-    root,
-  );
-  await git(root, ['add', '.']);
-  await git(root, ['commit', '-m', 'feat: add command-backed api']);
+test(
+  'dataflow security PR comment calls out actual defects with owner and review command',
+  async () => {
+    const root = await makeGitFixture();
+    await write('.github/CODEOWNERS', 'src/api/** @security-team\n', root);
+    await write(
+      'src/api/run.ts',
+      [
+        "import { exec } from 'node:child_process';",
+        '',
+        'export function runSearch() {',
+        '  const command = process.env.SEARCH_CMD;',
+        "  exec(command ?? 'echo ok');",
+        '}',
+        '',
+      ].join('\n'),
+      root,
+    );
+    await git(root, ['add', '.']);
+    await git(root, ['commit', '-m', 'feat: add command-backed api']);
 
-  const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
+    const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
 
-  expectUsefulPrComment(report);
-  expect(report.prSummary?.trust.verdict).toBe('actual_defect');
-  expect(report.prSummary?.trust.concreteBlockers.join(' ')).toMatch(/taint|dataflow|review/i);
-  expect(report.prSummary?.teamRoutes.map((route) => route.owner).join(' ')).toContain('@security-team');
-  expect(report.prSummary?.fixFirst?.commands.join(' ')).toMatch(/projscan (review|preflight|doctor)/);
-  expect(report.prComment).toContain('- actual defects:');
-  expect(report.prComment).toContain('projscan review --format json');
-}, PR_COMMENT_TIMEOUT);
+    expectUsefulPrComment(report);
+    expect(report.prSummary?.trust.verdict).toBe('actual_defect');
+    expect(report.prSummary?.trust.concreteBlockers.join(' ')).toMatch(/taint|dataflow|review/i);
+    expect(report.prSummary?.teamRoutes.map((route) => route.owner).join(' ')).toContain(
+      '@security-team',
+    );
+    expect(report.prSummary?.fixFirst?.commands.join(' ')).toMatch(
+      /projscan (review|preflight|doctor)/,
+    );
+    expect(report.prComment).toContain('- actual defects:');
+    expect(report.prComment).toContain('projscan review --format json');
+  },
+  PR_COMMENT_TIMEOUT,
+);
 
-test('large release PR comment stays manual-review calibrated instead of calling scale a defect', async () => {
-  const root = await makeGitFixture();
-  await write(
-    'src/platform.ts',
-    [
-      'export function complex(value: number) {',
-      ...Array.from({ length: 24 }, (_, index) => '  if (value > ' + (index + 1) + ') return ' + (index + 1) + ';'),
-      '  return 0;',
-      '}',
-      '',
-    ].join('\n'),
-    root,
-  );
-  await write('docs/release.md', '# Release notes\n', root);
-  await git(root, ['add', '.']);
-  await git(root, ['commit', '-m', 'feat: large platform change']);
+test(
+  'large release PR comment stays manual-review calibrated instead of calling scale a defect',
+  async () => {
+    const root = await makeGitFixture();
+    await write(
+      'src/platform.ts',
+      [
+        'export function complex(value: number) {',
+        ...Array.from(
+          { length: 24 },
+          (_, index) => '  if (value > ' + (index + 1) + ') return ' + (index + 1) + ';',
+        ),
+        '  return 0;',
+        '}',
+        '',
+      ].join('\n'),
+      root,
+    );
+    await write('docs/release.md', '# Release notes\n', root);
+    await git(root, ['add', '.']);
+    await git(root, ['commit', '-m', 'feat: large platform change']);
 
-  const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3, preflightMaxChangedFiles: 1 });
+    const report = await computeEvidencePack(root, {
+      includePrComment: true,
+      maxFindings: 3,
+      preflightMaxChangedFiles: 1,
+    });
 
-  expectUsefulPrComment(report);
-  expect(report.prSummary?.trust.verdict).toBe('manual_review');
-  expect(report.verdict).toBe('caution');
-  expect(report.prComment).toContain('**Verdict:** caution');
-  expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
-  expect(report.prSummary?.trust.manualReviewSignals.join(' ')).toMatch(/Large platform release risk|scale\/complexity/i);
-  expect(report.prComment).toContain('- actual defects: none');
-  expect(report.prComment).toMatch(/manual release sign-off|manual review/i);
-}, PR_COMMENT_TIMEOUT);
+    expectUsefulPrComment(report);
+    expect(report.prSummary?.trust.verdict).toBe('manual_review');
+    expect(report.verdict).toBe('caution');
+    expect(report.prComment).toContain('**Verdict:** caution');
+    expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
+    expect(report.prSummary?.trust.manualReviewSignals.join(' ')).toMatch(
+      /Large platform release risk|scale\/complexity/i,
+    );
+    expect(report.prComment).toContain('- actual defects: none');
+    expect(report.prComment).toMatch(/manual release sign-off|manual review/i);
+  },
+  PR_COMMENT_TIMEOUT,
+);
 
-test('generated-code PR comment suppresses default generated taint and dataflow anxiety', async () => {
-  const root = await makeGitFixture();
-  await write(
-    'src/__generated__/client.ts',
-    [
-      "import { exec } from 'node:child_process';",
-      '',
-      'export function generatedClient() {',
-      '  const command = process.env.GENERATED_CMD;',
-      "  exec(command ?? 'echo generated');",
-      '}',
-      '',
-    ].join('\n'),
-    root,
-  );
-  await git(root, ['add', '.']);
-  await git(root, ['commit', '-m', 'chore: regenerate api client']);
+test(
+  'generated-code PR comment suppresses default generated taint and dataflow anxiety',
+  async () => {
+    const root = await makeGitFixture();
+    await write(
+      'src/__generated__/client.ts',
+      [
+        "import { exec } from 'node:child_process';",
+        '',
+        'export function generatedClient() {',
+        '  const command = process.env.GENERATED_CMD;',
+        "  exec(command ?? 'echo generated');",
+        '}',
+        '',
+      ].join('\n'),
+      root,
+    );
+    await git(root, ['add', '.']);
+    await git(root, ['commit', '-m', 'chore: regenerate api client']);
 
-  const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
+    const report = await computeEvidencePack(root, { includePrComment: true, maxFindings: 3 });
 
-  expectUsefulPrComment(report);
-  expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
-  expect(report.prComment).toContain('- actual defects: none');
-  expect(report.prComment).not.toMatch(/new taint flow|new dataflow risk/i);
-}, PR_COMMENT_TIMEOUT);
+    expectUsefulPrComment(report);
+    expect(report.prSummary?.trust.concreteBlockers).toEqual([]);
+    expect(report.prComment).toContain('- actual defects: none');
+    expect(report.prComment).not.toMatch(/new taint flow|new dataflow risk/i);
+  },
+  PR_COMMENT_TIMEOUT,
+);
 
 function expectUsefulPrComment(report: Awaited<ReturnType<typeof computeEvidencePack>>): void {
   const body = report.prComment ?? '';
   if (report.currentVersion) expect(body).toContain(`**Version:** ${report.currentVersion}`);
-  if (report.currentVersion && report.verdict !== "blocked") expect(report.summary).toContain(report.currentVersion);
+  if (report.currentVersion && report.verdict !== 'blocked')
+    expect(report.summary).toContain(report.currentVersion);
   expect(report.prCommentValidation?.status).toBe('pass');
   expect(body.length).toBeLessThan(12000);
   expect(body).toContain('### Verdict');
@@ -160,7 +206,15 @@ async function makeGitFixture(): Promise<string> {
   await git(root, ['init', '-b', 'main']);
   await git(root, ['config', 'user.email', 'projscan@example.com']);
   await git(root, ['config', 'user.name', 'projscan']);
-  await write('package.json', JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module', scripts: { test: 'node --test' } }, null, 2) + '\n', root);
+  await write(
+    'package.json',
+    JSON.stringify(
+      { name: 'fixture', version: '0.0.0', type: 'module', scripts: { test: 'node --test' } },
+      null,
+      2,
+    ) + '\n',
+    root,
+  );
   await write('README.md', '# fixture\n', root);
   await write('src/index.ts', 'export const value = 1;\n', root);
   await git(root, ['add', '.']);

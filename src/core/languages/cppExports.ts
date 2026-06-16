@@ -72,7 +72,12 @@ function visitTopLevel(node: TsNode, out: AstExport[]): void {
   if (node.type === 'declaration') {
     const declarators = collectDeclarators(node);
     for (const d of declarators) {
-      out.push({ name: d.name, kind: 'variable', typeOnly: false, line: node.startPosition.row + 1 });
+      out.push({
+        name: d.name,
+        kind: 'variable',
+        typeOnly: false,
+        line: node.startPosition.row + 1,
+      });
     }
     return;
   }

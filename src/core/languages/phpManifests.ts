@@ -90,7 +90,8 @@ async function readComposer(dir: string): Promise<PhpProjectInfo | null> {
     }
     const cm = (block as Record<string, unknown>).classmap;
     if (Array.isArray(cm)) {
-      for (const entry of cm) if (typeof entry === 'string') classmap.push(stripTrailingSlash(entry));
+      for (const entry of cm)
+        if (typeof entry === 'string') classmap.push(stripTrailingSlash(entry));
     }
   }
 

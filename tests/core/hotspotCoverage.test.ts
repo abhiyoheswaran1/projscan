@@ -3,7 +3,13 @@ import { computeRiskScore } from '../../src/core/hotspotAnalyzer.js';
 
 describe('computeRiskScore with coverage', () => {
   it('produces the same score when coverage is not provided', () => {
-    const a = computeRiskScore({ churn: 10, lines: 200, authors: 3, daysSinceLastChange: 5, issueCount: 0 });
+    const a = computeRiskScore({
+      churn: 10,
+      lines: 200,
+      authors: 3,
+      daysSinceLastChange: 5,
+      issueCount: 0,
+    });
     const b = computeRiskScore({
       churn: 10,
       lines: 200,

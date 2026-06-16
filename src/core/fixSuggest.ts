@@ -51,7 +51,8 @@ const TEMPLATES: Template[] = [
         `Either (a) remove "${parseDepName(i.id)}" from the relevant package.json dependencies/devDependencies block, or ` +
         `(b) confirm it's used implicitly (e.g. plugin loaded by tooling, type-only import) and add it to .projscanrc \`disableRules: ["${i.id}"]\` ` +
         'so projscan stops flagging it. Run the test suite + a build after the change.',
-      suggestedTest: 'After removal: `npm install && npm test && npm run build`. CI must pass on all three matrix entries.',
+      suggestedTest:
+        'After removal: `npm install && npm test && npm run build`. CI must pass on all three matrix entries.',
     }),
     buildApplyPlan: async (i, ctx) => {
       // Patch package.json to remove the dep from dependencies / devDependencies.
@@ -75,8 +76,7 @@ const TEMPLATES: Template[] = [
       }
       const deps = pkg.dependencies as Record<string, string> | undefined;
       const devDeps = pkg.devDependencies as Record<string, string> | undefined;
-      const present =
-        (deps && depName in deps) || (devDeps && depName in devDeps);
+      const present = (deps && depName in deps) || (devDeps && depName in devDeps);
       if (!present) return null;
       if (deps && depName in deps) delete deps[depName];
       if (devDeps && depName in devDeps) delete devDeps[depName];
@@ -106,18 +106,19 @@ const TEMPLATES: Template[] = [
       instruction:
         'Run `npm install` (or `pnpm install` / `yarn install` / `bun install` depending on what the team uses) at the repo root, then commit the resulting lockfile. ' +
         "Add it to .gitignore exceptions if your top-level .gitignore overshadows it. Don't hand-edit lockfiles.",
-      suggestedTest: 'After committing the lockfile, run `npm ci` (which fails if the lockfile is out of sync) - it should succeed.',
+      suggestedTest:
+        'After committing the lockfile, run `npm ci` (which fails if the lockfile is out of sync) - it should succeed.',
     }),
   },
   {
-    match: (i) => i.id === 'dep-risk-excessive-dependencies' || i.id === 'dep-risk-many-dependencies',
+    match: (i) =>
+      i.id === 'dep-risk-excessive-dependencies' || i.id === 'dep-risk-many-dependencies',
     render: (i) => ({
       issueId: i.id,
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        'High dependency counts compound supply-chain risk and slow installs. Beyond ~50 prod deps, projects rarely need every one - some are dead, some are duplicates, some have native replacements.',
+      why: 'High dependency counts compound supply-chain risk and slow installs. Beyond ~50 prod deps, projects rarely need every one - some are dead, some are duplicates, some have native replacements.',
       where: [{ file: 'package.json' }],
       instruction:
         'Run `projscan_dependencies` to see the full list, then `projscan_outdated` and `projscan_audit` for surface area. ' +
@@ -128,7 +129,11 @@ const TEMPLATES: Template[] = [
   {
     match: (i) =>
       i.id.startsWith('dep-risk-') &&
-      !['dep-risk-no-lockfile', 'dep-risk-excessive-dependencies', 'dep-risk-many-dependencies'].includes(i.id),
+      ![
+        'dep-risk-no-lockfile',
+        'dep-risk-excessive-dependencies',
+        'dep-risk-many-dependencies',
+      ].includes(i.id),
     render: (i) => {
       const name = i.id.slice('dep-risk-'.length);
       return {
@@ -178,8 +183,8 @@ const TEMPLATES: Template[] = [
       instruction:
         'Identify the leaf concept being passed around the cycle. The fix pattern is one of: ' +
         '(1) extract that concept into a NEW shared module that all participants import (interface, types, constants), ' +
-        '(2) invert one of the dependencies via dependency injection (pass the value in, don\'t import it), or ' +
-        '(3) merge two participants if they\'re semantically one unit. Run `projscan coupling --cycles-only` after the fix to confirm the cycle is gone.',
+        "(2) invert one of the dependencies via dependency injection (pass the value in, don't import it), or " +
+        "(3) merge two participants if they're semantically one unit. Run `projscan coupling --cycles-only` after the fix to confirm the cycle is gone.",
       suggestedTest: 'After: `projscan coupling --cycles-only` should not list these files.',
     }),
   },
@@ -190,12 +195,11 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        'Catch-all directories (utils/helpers/lib/shared) are the project graveyard. Every file under one is implicitly "miscellaneous", which means changes touching it also rarely have a clear owner.',
+      why: 'Catch-all directories (utils/helpers/lib/shared) are the project graveyard. Every file under one is implicitly "miscellaneous", which means changes touching it also rarely have a clear owner.',
       where: i.locations ?? [],
       instruction:
         'Group the files under the flagged directory by domain (e.g. `auth/`, `format/`, `validation/`) using `projscan_semantic_graph` to see which symbols are imported together. ' +
-        'Move them into domain-named subdirectories. Update imports - your editor\'s rename-and-update should handle the bulk; finish with a `projscan analyze` to verify no leftover imports broke.',
+        "Move them into domain-named subdirectories. Update imports - your editor's rename-and-update should handle the bulk; finish with a `projscan analyze` to verify no leftover imports broke.",
     }),
   },
   {
@@ -211,7 +215,7 @@ const TEMPLATES: Template[] = [
       where: i.locations ?? [],
       instruction:
         'For each flagged file: confirm with `projscan_semantic_graph { query: { direction: "importers", file: "<file>" } }`. ' +
-        'If the result is genuinely empty AND this isn\'t package.json#main / #exports, delete the file (or just the unused exports). ' +
+        "If the result is genuinely empty AND this isn't package.json#main / #exports, delete the file (or just the unused exports). " +
         'If it IS public surface (entry point, re-exported), add it to package.json#exports or list the file in .projscanrc `disableRules: ["dead-code"]`.',
     }),
   },
@@ -223,14 +227,13 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        'No test runner means no regression coverage and no CI gate to defend against future regressions. The cost of getting one wired up early is small; the cost of retrofitting one onto a year of code is large.',
+      why: 'No test runner means no regression coverage and no CI gate to defend against future regressions. The cost of getting one wired up early is small; the cost of retrofitting one onto a year of code is large.',
       where: [{ file: 'package.json' }],
-      instruction:
-        i.id.includes('python')
-          ? 'Add pytest: `pip install -D pytest && python -m pytest --version`. Create a `tests/` directory with one trivial passing test (`def test_smoke(): assert True`). Add `[tool.pytest.ini_options]` to pyproject.toml or a `pytest.ini` so the runner knows where to look.'
-          : 'Add vitest: `npm i -D vitest` then add `"test": "vitest run"` to package.json scripts. Create `src/__smoke__.test.ts` with one trivial passing test. Wire `npm test` into your CI workflow.',
-      suggestedTest: 'After: `npm test` (or `pytest`) should exit 0 with at least the one smoke test passing.',
+      instruction: i.id.includes('python')
+        ? 'Add pytest: `pip install -D pytest && python -m pytest --version`. Create a `tests/` directory with one trivial passing test (`def test_smoke(): assert True`). Add `[tool.pytest.ini_options]` to pyproject.toml or a `pytest.ini` so the runner knows where to look.'
+        : 'Add vitest: `npm i -D vitest` then add `"test": "vitest run"` to package.json scripts. Create `src/__smoke__.test.ts` with one trivial passing test. Wire `npm test` into your CI workflow.',
+      suggestedTest:
+        'After: `npm test` (or `pytest`) should exit 0 with at least the one smoke test passing.',
     }),
     buildApplyPlan: async (i, ctx) => {
       // Only auto-apply for the JS/TS variant — Python projects need
@@ -266,10 +269,12 @@ const TEMPLATES: Template[] = [
       headline: i.title,
       why: 'ESLint catches a class of correctness bugs (unused vars, accidental globals, async-without-await) before they ship. A repo without it is leaving free defect prevention on the table.',
       where: [{ file: 'eslint.config.js' }],
-      instruction: 'Add ESLint with the modern flat config. Run `npm i -D eslint @eslint/js` and commit `eslint.config.js`. Wire `npm run lint` into CI.',
+      instruction:
+        'Add ESLint with the modern flat config. Run `npm i -D eslint @eslint/js` and commit `eslint.config.js`. Wire `npm run lint` into CI.',
     }),
     buildApplyPlan: () => ({
-      summary: 'Scaffold eslint.config.js with a sensible default (you still need to run `npm i -D eslint @eslint/js`).',
+      summary:
+        'Scaffold eslint.config.js with a sensible default (you still need to run `npm i -D eslint @eslint/js`).',
       changes: [
         {
           path: 'eslint.config.js',
@@ -289,7 +294,8 @@ const TEMPLATES: Template[] = [
       headline: i.title,
       why: 'Prettier removes whole categories of bikeshedding from code review. The cost is one config file; the benefit is every PR.',
       where: [{ file: '.prettierrc' }],
-      instruction: 'Add Prettier: `npm i -D prettier`. Commit `.prettierrc` (even an empty `{}` is enough; defaults are sensible).',
+      instruction:
+        'Add Prettier: `npm i -D prettier`. Commit `.prettierrc` (even an empty `{}` is enough; defaults are sensible).',
     }),
     buildApplyPlan: () => ({
       summary: 'Scaffold .prettierrc (you still need to run `npm i -D prettier`).',
@@ -312,7 +318,8 @@ const TEMPLATES: Template[] = [
       headline: i.title,
       why: 'EditorConfig synchronizes whitespace + line-ending conventions across every editor used on the repo. One file; consistent diffs forever.',
       where: [{ file: '.editorconfig' }],
-      instruction: 'Commit a top-level `.editorconfig` declaring `indent_style`, `indent_size`, `end_of_line`, `charset`, `trim_trailing_whitespace`, and `insert_final_newline`.',
+      instruction:
+        'Commit a top-level `.editorconfig` declaring `indent_style`, `indent_size`, `end_of_line`, `charset`, `trim_trailing_whitespace`, and `insert_final_newline`.',
     }),
     buildApplyPlan: () => ({
       summary: 'Create top-level .editorconfig with sensible defaults.',
@@ -335,7 +342,8 @@ const TEMPLATES: Template[] = [
       headline: i.title,
       why: 'A README is the first signal a contributor (or your future self) reads about the project. Even a minimal stub — name, what it does, how to run it — is dramatically better than nothing.',
       where: [{ file: 'README.md' }],
-      instruction: 'Commit a README.md skeleton: project name + one-line purpose + an "Install" or "Quick start" section. Even three lines is enough to start.',
+      instruction:
+        'Commit a README.md skeleton: project name + one-line purpose + an "Install" or "Quick start" section. Even three lines is enough to start.',
     }),
     buildApplyPlan: async (_i, ctx) => {
       let projectName = path.basename(path.resolve(ctx.rootPath));
@@ -365,8 +373,7 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        'Test framework is configured but no test files exist. The runner is plumbed; the safety net isn\'t.',
+      why: "Test framework is configured but no test files exist. The runner is plumbed; the safety net isn't.",
       where: [],
       instruction:
         'Pick the most-changed file (run `projscan_hotspots`) and write the first test against it. Even one test transforms the project: it proves the runner works, exercises the import graph, and gives the next contributor a template. Aim for behavior tests, not 100% coverage.',
@@ -383,13 +390,11 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        "Style debates eat review time. A linter + formatter pair makes them moot - the tools own the rule, code review owns the design. Without them, you'll re-litigate the same questions every PR.",
+      why: "Style debates eat review time. A linter + formatter pair makes them moot - the tools own the rule, code review owns the design. Without them, you'll re-litigate the same questions every PR.",
       where: [{ file: 'package.json' }],
-      instruction:
-        i.id.includes('python')
-          ? 'Add ruff: `pip install -D ruff` and create a `ruff.toml` (or `[tool.ruff]` in pyproject.toml) with `select = ["E", "F", "I"]`. Run `ruff check . --fix` once to bring the codebase to baseline.'
-          : 'Add eslint + prettier: `npm i -D eslint prettier` (and the typescript-eslint preset if TS). Create `eslint.config.js` and `.prettierrc.json`. Run once with `--fix` to baseline; commit the result before further changes so the diff stays clean.',
+      instruction: i.id.includes('python')
+        ? 'Add ruff: `pip install -D ruff` and create a `ruff.toml` (or `[tool.ruff]` in pyproject.toml) with `select = ["E", "F", "I"]`. Run `ruff check . --fix` once to bring the codebase to baseline.'
+        : 'Add eslint + prettier: `npm i -D eslint prettier` (and the typescript-eslint preset if TS). Create `eslint.config.js` and `.prettierrc.json`. Run once with `--fix` to baseline; commit the result before further changes so the diff stays clean.',
       suggestedTest: 'After: `npm run lint` and `npm run format -- --check` should both pass.',
     }),
   },
@@ -401,11 +406,10 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: i.title,
-      why:
-        'Cross-package imports that bypass a package\'s declared entry surface make refactoring inside that package impossible without breaking its consumers. The .projscanrc `monorepo.importPolicy` block flagged this specific edge.',
+      why: "Cross-package imports that bypass a package's declared entry surface make refactoring inside that package impossible without breaking its consumers. The .projscanrc `monorepo.importPolicy` block flagged this specific edge.",
       where: i.locations ?? [],
       instruction:
-        'Either (a) replace the deep import with the package\'s public entry (its `main` / `exports`), (b) export the desired symbol from that public entry if it\'s genuinely shared, or ' +
+        "Either (a) replace the deep import with the package's public entry (its `main` / `exports`), (b) export the desired symbol from that public entry if it's genuinely shared, or " +
         '(c) widen the .projscanrc importPolicy `allow` list if this edge is intentional. Prefer (a) or (b) - the policy exists to keep refactoring options open.',
     }),
   },
@@ -419,8 +423,7 @@ const TEMPLATES: Template[] = [
         severity: i.severity,
         category: i.category,
         headline: `ESLint rule failed: \`${ruleName}\``,
-        why:
-          'ESLint rules represent codified team agreement about how the codebase should look and behave. A failing rule means either the code is wrong by the team\'s own standard, or the rule itself is wrong for this project — both deserve resolution rather than silencing.',
+        why: "ESLint rules represent codified team agreement about how the codebase should look and behave. A failing rule means either the code is wrong by the team's own standard, or the rule itself is wrong for this project — both deserve resolution rather than silencing.",
         where: i.locations ?? [],
         instruction:
           `Three valid moves, in order of preference: ` +
@@ -441,8 +444,7 @@ const TEMPLATES: Template[] = [
       severity: i.severity,
       category: i.category,
       headline: `Python type error: ${i.title}`,
-      why:
-        'Type errors flagged by mypy / pyright catch bugs the runtime would only catch later — `None` reaching code that expects a concrete value, mismatched return types, callers passing the wrong shape. Fixing the type usually fixes the latent bug.',
+      why: 'Type errors flagged by mypy / pyright catch bugs the runtime would only catch later — `None` reaching code that expects a concrete value, mismatched return types, callers passing the wrong shape. Fixing the type usually fixes the latent bug.',
       where: i.locations ?? [],
       instruction:
         'Three valid moves, in order of preference: ' +
@@ -510,10 +512,7 @@ function pickManifestPath(locations: IssueLocation[] | undefined, _rootPath: str
  * reach into the file system or git for context (none today, but the surface
  * is async-ready).
  */
-export async function suggestFixForIssue(
-  issue: Issue,
-  rootPath: string,
-): Promise<FixSuggestion> {
+export async function suggestFixForIssue(issue: Issue, rootPath: string): Promise<FixSuggestion> {
   for (const tpl of TEMPLATES) {
     if (tpl.match(issue)) {
       return await Promise.resolve(tpl.render(issue, { rootPath }));
@@ -551,29 +550,41 @@ export function previewSuggestionForIssue(issue: Issue): { summary: string } | n
 }
 
 function staticHeadlineFor(issue: Issue): string | null {
-  if (issue.id.startsWith('unused-dependency-')) return `Remove or wire up "${parseDepName(issue.id)}".`;
+  if (issue.id.startsWith('unused-dependency-'))
+    return `Remove or wire up "${parseDepName(issue.id)}".`;
   if (issue.id === 'dep-risk-no-lockfile') return 'Run `npm install` and commit the lockfile.';
-  if (issue.id.startsWith('dep-risk-')) return `Audit "${issue.id.slice('dep-risk-'.length)}" or pin to an exact version.`;
+  if (issue.id.startsWith('dep-risk-'))
+    return `Audit "${issue.id.slice('dep-risk-'.length)}" or pin to an exact version.`;
   if (issue.id.startsWith('audit-')) return 'Try `npm audit fix`, then upgrade or pin manually.';
-  if (issue.id.startsWith('cycle-detected-')) return 'Break the cycle by extracting a shared module.';
-  if (issue.id.startsWith('large-') && issue.id.endsWith('-dir')) return 'Split the directory by domain.';
-  if (issue.id === 'dead-code' || issue.id.startsWith('dead-code-')) return 'Confirm with `projscan_semantic_graph { query: { direction: "importers", file: "<file>" } }` then delete or expose.';
+  if (issue.id.startsWith('cycle-detected-'))
+    return 'Break the cycle by extracting a shared module.';
+  if (issue.id.startsWith('large-') && issue.id.endsWith('-dir'))
+    return 'Split the directory by domain.';
+  if (issue.id === 'dead-code' || issue.id.startsWith('dead-code-'))
+    return 'Confirm with `projscan_semantic_graph { query: { direction: "importers", file: "<file>" } }` then delete or expose.';
   if (issue.id === 'missing-test-framework' || issue.id === 'missing-python-test-framework')
-    return issue.id.includes('python') ? 'Install pytest + write one smoke test.' : 'Install vitest + write one smoke test.';
-  if (issue.id === 'no-test-files' || issue.id === 'no-python-test-files') return 'Write the first test against your top hotspot.';
+    return issue.id.includes('python')
+      ? 'Install pytest + write one smoke test.'
+      : 'Install vitest + write one smoke test.';
+  if (issue.id === 'no-test-files' || issue.id === 'no-python-test-files')
+    return 'Write the first test against your top hotspot.';
   if (
     issue.id === 'missing-linter' ||
     issue.id === 'missing-python-linter' ||
     issue.id === 'missing-formatter' ||
     issue.id === 'missing-python-formatter'
   )
-    return issue.id.includes('python') ? 'Add ruff and run `ruff check . --fix` once.' : 'Add eslint + prettier; baseline with `--fix`.';
-  if (issue.id.startsWith('cross-package-violation-')) return 'Use the package\'s public entry, or widen the importPolicy.';
+    return issue.id.includes('python')
+      ? 'Add ruff and run `ruff check . --fix` once.'
+      : 'Add eslint + prettier; baseline with `--fix`.';
+  if (issue.id.startsWith('cross-package-violation-'))
+    return "Use the package's public entry, or widen the importPolicy.";
   if (issue.id.startsWith('eslint-')) {
     const ruleName = issue.id.slice('eslint-'.length);
     return `Fix per docs, or scope a disable to the line with a reason: \`${ruleName}\`.`;
   }
-  if (issue.id.startsWith('python-type-error-')) return 'Refine the annotation, narrow at the call site, or pin a `# type: ignore[code]`.';
+  if (issue.id.startsWith('python-type-error-'))
+    return 'Refine the annotation, narrow at the call site, or pin a `# type: ignore[code]`.';
   return null;
 }
 
@@ -592,7 +603,11 @@ export function findIssue(issues: Issue[], issueId: string): Issue | null {
  * without first running doctor. The synthetic issue mimics the schema
  * collectIssues would produce, so the same template registry handles it.
  */
-export function syntheticIssue(rule: string, file: string, severity: 'info' | 'warning' | 'error' = 'warning'): Issue {
+export function syntheticIssue(
+  rule: string,
+  file: string,
+  severity: 'info' | 'warning' | 'error' = 'warning',
+): Issue {
   return {
     id: rule,
     title: rule,

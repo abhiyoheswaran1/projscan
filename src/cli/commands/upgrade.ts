@@ -18,8 +18,13 @@ import { reportUpgradeMarkdown } from '../../reporters/markdownReporter.js';
 export function registerUpgrade(): void {
   program
     .command('upgrade <package>')
-    .description('Preview the impact of upgrading a package (offline by default - reads local CHANGELOG + importers)')
-    .option('--check-registry', 'fetch the actual latest version from npm (1.3+; otherwise latest = installed)')
+    .description(
+      'Preview the impact of upgrading a package (offline by default - reads local CHANGELOG + importers)',
+    )
+    .option(
+      '--check-registry',
+      'fetch the actual latest version from npm (1.3+; otherwise latest = installed)',
+    )
     .action(async (pkgName: string, opts: { checkRegistry?: boolean }) => {
       setupLogLevel();
       maybeCompactBanner();

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { suggestFixForIssue, syntheticIssue, previewSuggestionForIssue, findIssue } from '../../src/core/fixSuggest.js';
+import {
+  suggestFixForIssue,
+  syntheticIssue,
+  previewSuggestionForIssue,
+  findIssue,
+} from '../../src/core/fixSuggest.js';
 import type { Issue } from '../../src/types.js';
 
 function issue(partial: Partial<Issue>): Issue {
@@ -36,7 +41,10 @@ describe('suggestFixForIssue (template registry)', () => {
   });
 
   it('falls back to a generic template for unknown issue ids', async () => {
-    const f = await suggestFixForIssue(issue({ id: 'totally-made-up-rule', title: 'Made up' }), '/tmp');
+    const f = await suggestFixForIssue(
+      issue({ id: 'totally-made-up-rule', title: 'Made up' }),
+      '/tmp',
+    );
     // Generic fallback echoes title as headline.
     expect(f.headline).toBe('Made up');
     expect(f.instruction).toContain('totally-made-up-rule');
@@ -56,7 +64,9 @@ describe('suggestFixForIssue (template registry)', () => {
 
 describe('previewSuggestionForIssue (inline doctor preview)', () => {
   it('returns a one-line summary for known rules', () => {
-    expect(previewSuggestionForIssue(issue({ id: 'dep-risk-no-lockfile' }))?.summary).toMatch(/npm install/i);
+    expect(previewSuggestionForIssue(issue({ id: 'dep-risk-no-lockfile' }))?.summary).toMatch(
+      /npm install/i,
+    );
     expect(previewSuggestionForIssue(issue({ id: 'cycle-detected-1' }))?.summary).toMatch(/cycle/i);
   });
   it('returns null for issues with no template match', () => {

@@ -70,7 +70,11 @@ describe('buildImportGraph', () => {
 
   it('extracts ES imports and maps packages', async () => {
     const files = [
-      await writeFile(tmp, 'src/a.ts', "import React from 'react';\nimport { join } from 'node:path';\nimport './local';"),
+      await writeFile(
+        tmp,
+        'src/a.ts',
+        "import React from 'react';\nimport { join } from 'node:path';\nimport './local';",
+      ),
       await writeFile(tmp, 'src/b.ts', "import { get } from 'lodash/get';"),
     ];
 
@@ -83,7 +87,11 @@ describe('buildImportGraph', () => {
 
   it('detects CommonJS requires', async () => {
     const files = [
-      await writeFile(tmp, 'src/c.js', "const express = require('express');\nconst { resolve } = require('path');"),
+      await writeFile(
+        tmp,
+        'src/c.js',
+        "const express = require('express');\nconst { resolve } = require('path');",
+      ),
     ];
     const graph = await buildImportGraph(tmp, files);
     expect(graph.externalPackages.has('express')).toBe(true);

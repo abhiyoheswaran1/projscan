@@ -9,7 +9,9 @@ import type { WorkplanMode, WorkplanPriority } from '../../src/types.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('workplan contract supports agent mission modes', () => {
@@ -60,7 +62,9 @@ test('hardening workplan turns blocking supply-chain evidence into the first p0 
     }),
   );
   expect(report.tasks[0]?.verification.commands).toContain('projscan preflight --format json');
-  expect(report.tasks.some((task) => task.suggestedTools.includes('projscan_semantic_graph'))).toBe(true);
+  expect(report.tasks.some((task) => task.suggestedTools.includes('projscan_semantic_graph'))).toBe(
+    true,
+  );
   expect(report.topRisks[0]).toEqual(
     expect.objectContaining({ source: 'supply-chain', severity: 'error' }),
   );
@@ -93,9 +97,9 @@ test('release workplan includes release check, registry, and website follow-up t
   expect(report.tasks.map((task) => task.id)).toEqual(
     expect.arrayContaining(['wp-release-readiness', 'wp-release-website']),
   );
-  expect(report.tasks.find((task) => task.id === 'wp-release-readiness')?.verification.commands).toContain(
-    'npm run release:check',
-  );
+  expect(
+    report.tasks.find((task) => task.id === 'wp-release-readiness')?.verification.commands,
+  ).toContain('npm run release:check');
   expect(report.tasks.find((task) => task.id === 'wp-release-website')?.suggestedTools).toContain(
     'GitHub Release assets',
   );
@@ -113,8 +117,6 @@ test('workplan carries touched-file coordination into the handoff', async () => 
   expect(report.coordination.recommendedNextAgent).toContain('preflight');
   expect(report.tasks.some((task) => task.handoffText.includes('src/index.ts'))).toBe(true);
 });
-
-
 
 test('workplan routes touched files to CODEOWNERS owners', async () => {
   const root = await makeTempProject();
@@ -140,7 +142,9 @@ test('workplan handoff payload is reusable and includes verification commands', 
   expect(handoff.summary).toBe(report.summary);
   expect(handoff.verdict).toBe(report.verdict);
   expect(handoff.next.length).toBeGreaterThan(0);
-  expect(handoff.verificationCommands).toEqual(expect.arrayContaining(['projscan preflight --format json']));
+  expect(handoff.verificationCommands).toEqual(
+    expect.arrayContaining(['projscan preflight --format json']),
+  );
   expect(handoff.markdown).toContain('## Next');
   expect(handoff.markdown).toContain('projscan preflight --format json');
 });
@@ -148,7 +152,11 @@ test('workplan handoff payload is reusable and includes verification commands', 
 async function makeTempProject(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-workplan-'));
   tempRoots.push(root);
-  await writeJson(path.join(root, 'package.json'), { name: 'fixture', version: '0.0.0', type: 'module' });
+  await writeJson(path.join(root, 'package.json'), {
+    name: 'fixture',
+    version: '0.0.0',
+    type: 'module',
+  });
   await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');

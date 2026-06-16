@@ -25,8 +25,28 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const EXPRESS_REQUEST_PARAM_NAMES = new Set(['req', 'request']);
 const HONO_CONTEXT_PARAM_NAMES = new Set(['c', 'ctx', 'context']);
-const EXPRESS_HANDLER_METHODS = new Set(['all', 'delete', 'get', 'head', 'options', 'patch', 'post', 'put', 'use']);
-const HONO_HANDLER_METHODS = new Set(['all', 'delete', 'get', 'head', 'options', 'patch', 'post', 'put', 'use']);
+const EXPRESS_HANDLER_METHODS = new Set([
+  'all',
+  'delete',
+  'get',
+  'head',
+  'options',
+  'patch',
+  'post',
+  'put',
+  'use',
+]);
+const HONO_HANDLER_METHODS = new Set([
+  'all',
+  'delete',
+  'get',
+  'head',
+  'options',
+  'patch',
+  'post',
+  'put',
+  'use',
+]);
 
 export const FRAMEWORK_REQUEST_SOURCES = [
   ...NEXT_ROUTE_SOURCE_BY_CALLEE.values(),
@@ -44,9 +64,21 @@ export function frameworkRequestSourceForFunction(
   contextualCallSite?: string,
   imports: Array<{ source: string }> = [],
 ): string | null {
-  const nextSource = nextRouteRequestSource(file, functionName, memberCallSites, parameters, enabledSources);
+  const nextSource = nextRouteRequestSource(
+    file,
+    functionName,
+    memberCallSites,
+    parameters,
+    enabledSources,
+  );
   if (nextSource) return nextSource;
-  const honoSource = honoRequestSource(parameters, memberCallSites, enabledSources, contextualCallSite, imports);
+  const honoSource = honoRequestSource(
+    parameters,
+    memberCallSites,
+    enabledSources,
+    contextualCallSite,
+    imports,
+  );
   if (honoSource) return honoSource;
   return expressRequestSource(parameters, references, enabledSources, contextualCallSite, imports);
 }

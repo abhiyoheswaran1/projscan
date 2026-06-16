@@ -72,7 +72,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
       title: `Disallowed import from "${edge.from.package}" to "${edge.to.package}"`,
       description:
         `${edge.from.file} imports from package "${edge.to.package}" but the .projscanrc importPolicy rule for "${edge.from.package}" forbids it. ` +
-        'Replace with the package\'s public entry or update the importPolicy.',
+        "Replace with the package's public entry or update the importPolicy.",
       severity: 'warning',
       category: 'architecture',
       fixAvailable: false,
@@ -80,7 +80,10 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
     });
   }
 
-  if (coupling.crossPackageEdges.length > MAX_VIOLATIONS_REPORTED && issues.length === MAX_VIOLATIONS_REPORTED) {
+  if (
+    coupling.crossPackageEdges.length > MAX_VIOLATIONS_REPORTED &&
+    issues.length === MAX_VIOLATIONS_REPORTED
+  ) {
     issues.push({
       id: 'cross-package-violation-overflow',
       title: 'Additional cross-package policy violations not reported',

@@ -29,10 +29,7 @@ export interface BudgetResult<T> {
  * fits within maxTokens, return as-is. Otherwise, walk truncatable array
  * fields and trim them until we fit (or give up and mark truncated).
  */
-export function applyBudget<T>(
-  value: T,
-  options: BudgetOptions = {},
-): BudgetResult<T> {
+export function applyBudget<T>(value: T, options: BudgetOptions = {}): BudgetResult<T> {
   const maxTokens = options.maxTokens;
   if (!maxTokens || maxTokens <= 0) {
     return {

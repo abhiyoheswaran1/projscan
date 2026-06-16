@@ -40,7 +40,9 @@ describe('extractTouchedPaths', () => {
       definitions: ['src/e.ts', 'src/f.ts'],
     };
     const found = extractTouchedPaths(result);
-    expect(new Set(found)).toEqual(new Set(['src/a.ts', 'src/b.ts', 'src/c.ts', 'src/d.ts', 'src/e.ts', 'src/f.ts']));
+    expect(new Set(found)).toEqual(
+      new Set(['src/a.ts', 'src/b.ts', 'src/c.ts', 'src/d.ts', 'src/e.ts', 'src/f.ts']),
+    );
   });
 
   it('rejects absolute paths and traversal', () => {

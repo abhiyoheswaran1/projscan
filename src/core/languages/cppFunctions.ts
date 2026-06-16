@@ -240,7 +240,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call_expression') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : n.namedChildren[0] ?? null;
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = bareName(fn);
       if (name) calls.add(name);
     }

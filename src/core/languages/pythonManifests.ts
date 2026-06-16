@@ -219,7 +219,10 @@ function extractPyprojectRoots(content: string): string[] {
   return dedupe(roots);
 }
 
-function parsePoetryKv(block: string, lineOffset: number): { name: string; versionSpec: string; line: number }[] {
+function parsePoetryKv(
+  block: string,
+  lineOffset: number,
+): { name: string; versionSpec: string; line: number }[] {
   const out: { name: string; versionSpec: string; line: number }[] = [];
   const lines = block.split('\n');
   for (let i = 0; i < lines.length; i++) {
@@ -329,7 +332,11 @@ function parseSetupCfg(content: string): PythonDeclaredDep[] {
 
 // ── requirements.txt ──────────────────────────────────────────
 
-export function parseRequirements(content: string, sourceFile: string, scope: 'main' | 'dev'): PythonDeclaredDep[] {
+export function parseRequirements(
+  content: string,
+  sourceFile: string,
+  scope: 'main' | 'dev',
+): PythonDeclaredDep[] {
   const out: PythonDeclaredDep[] = [];
   const lines = content.split('\n');
   for (let i = 0; i < lines.length; i++) {

@@ -35,10 +35,7 @@ export function extractKotlinFunctions(root: TsNode): FunctionInfo[] {
 }
 
 function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void {
-  if (
-    node.type === 'class_declaration' ||
-    node.type === 'object_declaration'
-  ) {
+  if (node.type === 'class_declaration' || node.type === 'object_declaration') {
     const name = nameOfDecl(node) ?? ownerName;
     const body = bodyOf(node);
     if (body) {
@@ -79,11 +76,7 @@ function bodyOf(node: TsNode): TsNode | null {
     if (b) return b;
   }
   for (const c of node.namedChildren) {
-    if (
-      c.type === 'class_body' ||
-      c.type === 'enum_class_body' ||
-      c.type === 'function_body'
-    ) {
+    if (c.type === 'class_body' || c.type === 'enum_class_body' || c.type === 'function_body') {
       return c;
     }
   }
@@ -114,7 +107,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call_expression') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : n.namedChildren[0] ?? null;
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = bareName(fn);
       if (name) calls.add(name);
     }
@@ -161,4 +156,3 @@ function walkSkipNested(node: TsNode, visit: (n: TsNode) => void): void {
     walkSkipNested(child, visit);
   }
 }
-

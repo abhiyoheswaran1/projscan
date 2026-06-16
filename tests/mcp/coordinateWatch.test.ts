@@ -3,7 +3,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { coordinateWatchTool, __resetCoordinateWatchesForTests } from '../../src/mcp/tools/coordinateWatch.js';
+import {
+  coordinateWatchTool,
+  __resetCoordinateWatchesForTests,
+} from '../../src/mcp/tools/coordinateWatch.js';
 import type { McpToolContext } from '../../src/mcp/tools/_shared.js';
 
 vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
@@ -69,7 +72,11 @@ describe('projscan_coordinate_watch', () => {
 
   it('registers a watch and returns a watchId when a notify channel is present', async () => {
     const context = makeContext();
-    const result = (await coordinateWatchTool.handler({ action: 'start', interval_seconds: 30 }, root, context)) as {
+    const result = (await coordinateWatchTool.handler(
+      { action: 'start', interval_seconds: 30 },
+      root,
+      context,
+    )) as {
       registered: boolean;
       watchId: string;
     };
@@ -80,23 +87,39 @@ describe('projscan_coordinate_watch', () => {
 
   it('clamps interval_seconds to [5, 600]', async () => {
     const context = makeContext();
-    const low = (await coordinateWatchTool.handler({ action: 'start', interval_seconds: 1 }, root, context)) as { intervalSeconds: number };
+    const low = (await coordinateWatchTool.handler(
+      { action: 'start', interval_seconds: 1 },
+      root,
+      context,
+    )) as { intervalSeconds: number };
     expect(low.intervalSeconds).toBe(5);
-    const high = (await coordinateWatchTool.handler({ action: 'start', interval_seconds: 100000 }, root, context)) as { intervalSeconds: number };
+    const high = (await coordinateWatchTool.handler(
+      { action: 'start', interval_seconds: 100000 },
+      root,
+      context,
+    )) as { intervalSeconds: number };
     expect(high.intervalSeconds).toBe(600);
   });
 
   it('lists and stops active watches', async () => {
     const context = makeContext();
-    const start = (await coordinateWatchTool.handler({ action: 'start' }, root, context)) as { watchId: string };
+    const start = (await coordinateWatchTool.handler({ action: 'start' }, root, context)) as {
+      watchId: string;
+    };
     const list = (await coordinateWatchTool.handler({ action: 'list' }, root, context)) as {
       watches: Array<{ watchId: string }>;
     };
     expect(list.watches.map((w) => w.watchId)).toContain(start.watchId);
 
-    const stop = (await coordinateWatchTool.handler({ action: 'stop', watchId: start.watchId }, root, context)) as { stopped: boolean };
+    const stop = (await coordinateWatchTool.handler(
+      { action: 'stop', watchId: start.watchId },
+      root,
+      context,
+    )) as { stopped: boolean };
     expect(stop.stopped).toBe(true);
-    const afterList = (await coordinateWatchTool.handler({ action: 'list' }, root, context)) as { watches: unknown[] };
+    const afterList = (await coordinateWatchTool.handler({ action: 'list' }, root, context)) as {
+      watches: unknown[];
+    };
     expect(afterList.watches).toEqual([]);
   });
 });

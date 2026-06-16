@@ -98,6 +98,9 @@ export function sliceTree(node: DirectoryNode, targetPath: string): DirectoryNod
   return null;
 }
 
-export async function explainFile(absolutePath: string, rootPath: string): Promise<FileExplanation> {
+export async function explainFile(
+  absolutePath: string,
+  rootPath: string,
+): Promise<FileExplanation> {
   return await explainProjectFile(rootPath, path.relative(rootPath, absolutePath));
 }

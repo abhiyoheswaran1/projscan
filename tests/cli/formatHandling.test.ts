@@ -16,7 +16,10 @@ let tmp: string;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-cli-format-'));
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.writeFile(path.join(tmp, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'index.ts'), 'export const value = 1;\n');
@@ -26,7 +29,9 @@ afterEach(async () => {
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }
 
@@ -83,7 +88,7 @@ describe('CLI format handling', () => {
     const pkg = JSON.parse(raw) as { scripts: Record<string, string> };
 
     expect(pkg.scripts['test:trust-smoke']).toBe(
-      'vitest run tests/cli/privacyCheck.test.ts tests/cli/start.test.ts tests/cli/preflight.test.ts tests/mcp/start.test.ts tests/mcp/preflight.test.ts tests/mcp/fileChangedNotifications.test.ts tests/core/repositoryScanner.gitignore.test.ts tests/core/issueEngine.trustConfig.test.ts tests/utils/changedFiles.test.ts tests/core/auditRunner.offline.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/core/telemetry.test.ts tests/analyzers/securityCheck.test.ts --test-timeout 60000 --hook-timeout 60000',
+      "vitest run --exclude '.worktrees/**' tests/cli/privacyCheck.test.ts tests/cli/start.test.ts tests/cli/preflight.test.ts tests/mcp/start.test.ts tests/mcp/preflight.test.ts tests/mcp/fileChangedNotifications.test.ts tests/core/repositoryScanner.gitignore.test.ts tests/core/issueEngine.trustConfig.test.ts tests/utils/changedFiles.test.ts tests/core/auditRunner.offline.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/core/telemetry.test.ts tests/analyzers/securityCheck.test.ts --test-timeout 60000 --hook-timeout 60000",
     );
   });
 });

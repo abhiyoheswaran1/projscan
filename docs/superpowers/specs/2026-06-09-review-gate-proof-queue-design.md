@@ -67,7 +67,9 @@ When structured proof items exist, render each item with the command plus either
 
 ```md
 ## Proof Queue
+
 Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.
+
 - `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})
 - `projscan handoff` (CLI only)
 ```

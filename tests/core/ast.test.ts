@@ -20,10 +20,7 @@ describe('isParseable', () => {
 
 describe('parseSource', () => {
   it('parses plain ES imports', () => {
-    const r = parseSource(
-      'a.ts',
-      "import React from 'react';\nimport { join } from 'node:path';",
-    );
+    const r = parseSource('a.ts', "import React from 'react';\nimport { join } from 'node:path';");
     expect(r.ok).toBe(true);
     expect(r.imports).toHaveLength(2);
     expect(r.imports[0]).toMatchObject({
@@ -97,10 +94,7 @@ describe('parseSource', () => {
   });
 
   it('handles decorators-legacy', () => {
-    const r = parseSource(
-      'a.ts',
-      '@Component({})\nexport class MyComponent {}',
-    );
+    const r = parseSource('a.ts', '@Component({})\nexport class MyComponent {}');
     expect(r.ok).toBe(true);
     expect(r.exports.some((e) => e.name === 'MyComponent')).toBe(true);
   });
@@ -117,10 +111,7 @@ describe('parseSource', () => {
   });
 
   it('collects call sites', () => {
-    const r = parseSource(
-      'a.ts',
-      'function main() { helper(); util.do(); return 1; }\nmain();',
-    );
+    const r = parseSource('a.ts', 'function main() { helper(); util.do(); return 1; }\nmain();');
     expect(r.callSites).toContain('main');
     expect(r.callSites).toContain('helper');
     expect(r.callSites).toContain('do');

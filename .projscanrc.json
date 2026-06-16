@@ -8,6 +8,8 @@
   ],
   "disableRules": [
     "large-utils-dir",
+    "unused-dependency-agentflight",
+    "unused-dependency-agentloopkit",
     "unused-dependency-tree-sitter-python"
   ],
   "hotspots": {

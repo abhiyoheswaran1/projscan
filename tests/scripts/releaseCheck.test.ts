@@ -28,7 +28,9 @@ describe('release readiness check', () => {
     expect(result.status).toBe('ready');
     expect(result.version).toBe('2.2.0');
     expect(result.tag).toBe('v2.2.0');
-    expect(result.nextAction.command).toBe('git tag -a v2.2.0 -m "Release v2.2.0" && git push origin v2.2.0');
+    expect(result.nextAction.command).toBe(
+      'git tag -a v2.2.0 -m "Release v2.2.0" && git push origin v2.2.0',
+    );
     expect(check(result, 'version-sync')?.status).toBe('ok');
     expect(check(result, 'changelog')?.status).toBe('ok');
     expect(check(result, 'worktree')?.status).toBe('ok');
@@ -48,7 +50,9 @@ describe('release readiness check', () => {
 
     expect(report.status).toBe('blocked');
     expect(report.nextAction.kind).toBe('commit');
-    expect(report.nextAction.command).toBe('git add . && git commit -m "chore: prepare v2.2.0 release"');
+    expect(report.nextAction.command).toBe(
+      'git add . && git commit -m "chore: prepare v2.2.0 release"',
+    );
     expect(check(report, 'worktree')?.status).toBe('block');
   });
 
@@ -106,8 +110,12 @@ describe('release readiness check', () => {
 
     expect(report.status).toBe('ready');
     expect(gates).toContain('npm run check:graph-corpus');
-    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(gates.indexOf('npm run build'));
-    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(gates.indexOf('npm run check:stability'));
+    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(
+      gates.indexOf('npm run build'),
+    );
+    expect(gates.indexOf('npm run check:graph-corpus')).toBeGreaterThan(
+      gates.indexOf('npm run check:stability'),
+    );
   });
 });
 
@@ -147,33 +155,66 @@ function createReleaseFixture(): string {
   );
   writeFileSync(
     join(root, 'package-lock.json'),
-    JSON.stringify({ name: 'projscan', version: '2.2.0', packages: { '': { version: '2.2.0' } } }, null, 2),
+    JSON.stringify(
+      { name: 'projscan', version: '2.2.0', packages: { '': { version: '2.2.0' } } },
+      null,
+      2,
+    ),
   );
   mkdirSync(join(root, '.github/mcp-registry'), { recursive: true });
   writeFileSync(
     join(root, '.github/mcp-registry/server.json'),
     JSON.stringify({ version: '2.2.0', packages: [{ version: '2.2.0' }] }, null, 2),
   );
-  writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## [2.2.0] - 2026-05-21\n\n- Release check.\n');
+  writeFileSync(
+    join(root, 'CHANGELOG.md'),
+    '# Changelog\n\n## [2.2.0] - 2026-05-21\n\n- Release check.\n',
+  );
   writeFileSync(join(root, 'README.md'), 'fixture\n');
 
   return root;
 }
 
-function fakeGit({ branch = 'main', status, remoteTag = '' }: { branch?: string; status: string; remoteTag?: string }) {
+function fakeGit({
+  branch = 'main',
+  status,
+  remoteTag = '',
+}: {
+  branch?: string;
+  status: string;
+  remoteTag?: string;
+}) {
   return (_root: string, args: string[]) => {
     const command = args.join(' ');
-    const responses: Record<string, { ok: boolean; stdout: string; stderr?: string; status?: number }> = {
+    const responses: Record<
+      string,
+      { ok: boolean; stdout: string; stderr?: string; status?: number }
+    > = {
       'rev-parse --is-inside-work-tree': { ok: true, stdout: 'true\n' },
       'branch --show-current': { ok: true, stdout: `${branch}\n` },
       'rev-parse HEAD': { ok: true, stdout: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' },
       'status --short': { ok: true, stdout: status },
       'rev-parse --abbrev-ref --symbolic-full-name @{u}': { ok: true, stdout: 'origin/main\n' },
       'rev-list --left-right --count HEAD...@{u}': { ok: true, stdout: '0\t0\n' },
-      'rev-list -n 1 v2.2.0': { ok: false, stdout: '', stderr: 'fatal: ambiguous argument', status: 128 },
-      'ls-remote --tags origin refs/tags/v2.2.0 refs/tags/v2.2.0^{}': { ok: true, stdout: remoteTag },
+      'rev-list -n 1 v2.2.0': {
+        ok: false,
+        stdout: '',
+        stderr: 'fatal: ambiguous argument',
+        status: 128,
+      },
+      'ls-remote --tags origin refs/tags/v2.2.0 refs/tags/v2.2.0^{}': {
+        ok: true,
+        stdout: remoteTag,
+      },
     };
 
-    return responses[command] ?? { ok: false, stdout: '', stderr: `unexpected git command: ${command}`, status: 1 };
+    return (
+      responses[command] ?? {
+        ok: false,
+        stdout: '',
+        stderr: `unexpected git command: ${command}`,
+        status: 1,
+      }
+    );
   };
 }

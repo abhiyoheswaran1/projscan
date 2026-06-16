@@ -19,7 +19,10 @@ beforeEach(async () => {
   // so `approvePlugin` can pre-seed approvals in-process without a CLI spawn.
   originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
   process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
   await writePluginFixture(tmp);
@@ -41,7 +44,10 @@ async function runCli(
   args: string[],
   env: Record<string, string | undefined> = {},
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return spawnCli(cliPath, args, { cwd: tmp, env: { ...process.env, PROJSCAN_PLUGIN_TRUST_HOME: trustHome, ...env } });
+  return spawnCli(cliPath, args, {
+    cwd: tmp,
+    env: { ...process.env, PROJSCAN_PLUGIN_TRUST_HOME: trustHome, ...env },
+  });
 }
 
 async function writePluginFixture(root: string): Promise<void> {
@@ -131,9 +137,12 @@ describe('CLI reporter plugins', () => {
   it('prints reporter output before preserving ci exit behavior', async () => {
     await approvePlugin('policy.mjs', 'policy');
     await approvePlugin('team-summary.mjs', 'team-summary');
-    const result = await runCli(['ci', '--reporter', 'team-summary', '--min-score', '100', '--quiet'], {
-      PROJSCAN_PLUGINS_PREVIEW: '1',
-    });
+    const result = await runCli(
+      ['ci', '--reporter', 'team-summary', '--min-score', '100', '--quiet'],
+      {
+        PROJSCAN_PLUGINS_PREVIEW: '1',
+      },
+    );
     expect(result.exitCode).toBe(1);
     expect(result.stdout.trim()).toMatch(/^reporter:ci:plugin:/);
   });
@@ -170,9 +179,12 @@ describe('CLI reporter plugins', () => {
   });
 
   it('rejects combining reporter plugins with core formats', async () => {
-    const result = await runCli(['doctor', '--reporter', 'team-summary', '--format', 'json', '--quiet'], {
-      PROJSCAN_PLUGINS_PREVIEW: '1',
-    });
+    const result = await runCli(
+      ['doctor', '--reporter', 'team-summary', '--format', 'json', '--quiet'],
+      {
+        PROJSCAN_PLUGINS_PREVIEW: '1',
+      },
+    );
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--reporter cannot be combined with --format json');
   });

@@ -76,7 +76,7 @@ export function customDangerousSink(v: string | undefined) { return v; }
     const empty = await call(server, 1);
     expect(empty.flowCount).toBe(0);
     const declared = await call(server, 2, { sinks: ['customDangerousSink'] });
-    expect((declared.flowCount as number)).toBeGreaterThan(0);
+    expect(declared.flowCount as number).toBeGreaterThan(0);
   });
 
   it('honors .projscanrc.json taint config', async () => {
@@ -96,6 +96,6 @@ export function customDangerousSink(v: string | undefined) { return v; }
     const server = createMcpServer(tmp);
     await init(server);
     const res = await call(server, 1);
-    expect((res.flowCount as number)).toBeGreaterThan(0);
+    expect(res.flowCount as number).toBeGreaterThan(0);
   });
 });

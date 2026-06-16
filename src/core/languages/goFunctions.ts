@@ -45,12 +45,16 @@ function walk(node: TsNode, out: FunctionInfo[]): void {
 function nameOfGoFunction(node: TsNode): string {
   // function_declaration has a `name` field (identifier).
   if (node.type === 'function_declaration') {
-    const n = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const n = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     return n?.text ?? '<anonymous>';
   }
   // method_declaration has `receiver` + `name`. Receiver is a parameter_list.
   if (node.type === 'method_declaration') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'field_identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'field_identifier');
     const fnName = nameNode?.text ?? '<anonymous>';
     const receiver = node.childForFieldName ? node.childForFieldName('receiver') : null;
     if (receiver) {
@@ -86,7 +90,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call_expression') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = goCalleeName(fn);
       if (name) calls.add(name);
     }

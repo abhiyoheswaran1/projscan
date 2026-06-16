@@ -3,7 +3,7 @@
  *
  * For `foo(...)` we record `foo`. For `obj.method(...)` (attribute call) we
  * record `method` (the rightmost name). For more complex callees (subscripts,
- * lambdas-immediately-invoked, decorators acting as callees, etc.) we skip  - 
+ * lambdas-immediately-invoked, decorators acting as callees, etc.) we skip  -
  * a name is needed to be useful for "who calls X" lookups.
  *
  * Mirrors the JS/TS behaviour in `src/core/ast.ts`: identifiers and the final

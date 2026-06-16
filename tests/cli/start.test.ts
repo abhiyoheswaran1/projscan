@@ -1,30 +1,24 @@
 import fs from 'node:fs/promises';
-import { execFile } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
-import { spawnCli } from '../helpers/cli.js';
-
-const repoRoot = path.resolve(__dirname, '..', '..');
-const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
-const execFileAsync = promisify(execFile);
-const expectedReviewDecisionReplies = [
-  'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  'Changes requested: address the review feedback first, update proof, then stop for another review.',
-  'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
-];
-const expectedReviewReplyLines = [
-  `- Approve next slice: ${expectedReviewDecisionReplies[0]}`,
-  `- Request changes: ${expectedReviewDecisionReplies[1]}`,
-  `- Review version candidate: ${expectedReviewDecisionReplies[2]}`,
-];
-const expectedReviewPolicy = {
-  approvalRequired: true,
-  blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-  summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
-};
+import {
+  extractNextCommands,
+  extractProofCommands,
+  extractReadyCommands,
+  runScript,
+  runStartCli,
+} from '../helpers/startCli.js';
+import {
+  expectedReviewDecisionIds,
+  expectedReviewDecisionReplies,
+  expectedReviewPolicy,
+  expectedReviewReplyLines,
+  expectedReviewReplyQuotes,
+  expectedReviewReplyTextLines,
+  expectedReviewPromptReplies,
+} from '../helpers/startReviewGate.js';
 
 let tmp: string;
 
@@ -68,8 +62,12 @@ test('start renders machine-readable orientation JSON', async () => {
   expect(report.missionControl.actionPlan[0].command).toBe('projscan bug-hunt --format json');
   expect(report.missionControl.readyActions[0].command).toBe('projscan bug-hunt --format json');
   expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
-  expect(report.firstTenMinutes.commands.map((step: { command: string }) => step.command)).toContain('projscan evidence-pack --pr-comment');
-  expect(report.coordinationHints.map((hint: { id: string }) => hint.id)).toContain('current-worktree-check');
+  expect(
+    report.firstTenMinutes.commands.map((step: { command: string }) => step.command),
+  ).toContain('projscan evidence-pack --pr-comment');
+  expect(report.coordinationHints.map((hint: { id: string }) => hint.id)).toContain(
+    'current-worktree-check',
+  );
   expect(report.nextActions.length).toBeGreaterThan(0);
 });
 
@@ -98,12 +96,18 @@ test('start infers bug-hunt and release workflows from intent when mode is omitt
   expect(bugHuntReport.mode).toBe('bug_hunt');
   expect(bugHuntReport.modeSource).toBe('intent');
   expect(bugHuntReport.recommendedWorkflow.id).toBe('bug_hunt');
-  expect(bugHuntReport.missionControl.readyActions[0].command).toBe('projscan bug-hunt --format json');
+  expect(bugHuntReport.missionControl.readyActions[0].command).toBe(
+    'projscan bug-hunt --format json',
+  );
   expect(releaseReport.mode).toBe('release');
   expect(releaseReport.modeSource).toBe('intent');
   expect(releaseReport.recommendedWorkflow.id).toBe('release_approval');
-  expect(releaseReport.firstTenMinutes.commands[2].command).toBe('projscan preflight --mode before_merge --format json');
-  expect(releaseReport.missionControl.readyActions[0].command).toBe('projscan release-train --format json');
+  expect(releaseReport.firstTenMinutes.commands[2].command).toBe(
+    'projscan preflight --mode before_merge --format json',
+  );
+  expect(releaseReport.missionControl.readyActions[0].command).toBe(
+    'projscan release-train --format json',
+  );
 });
 
 test('start infers the workflow mode from safety-gate intent when mode is omitted', async () => {
@@ -122,9 +126,15 @@ test('start infers the workflow mode from safety-gate intent when mode is omitte
   expect(report.modeSource).toBe('intent');
   expect(report.modeReason).toContain('is it safe to commit this change');
   expect(report.recommendedWorkflow.id).toBe('pre_merge');
-  expect(report.missionControl.primaryAction.command).toBe('projscan preflight --mode before_commit --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan preflight --mode before_edit --format json');
-  expect(report.missionControl.successCriteria).toContain('projscan preflight --mode before_commit returns proceed or only documented manual-review items.');
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan preflight --mode before_commit --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
+  expect(report.missionControl.successCriteria).toContain(
+    'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
+  );
 });
 
 test('start keeps an explicit workflow mode even when intent routes elsewhere', async () => {
@@ -144,7 +154,9 @@ test('start keeps an explicit workflow mode even when intent routes elsewhere', 
   expect(report.mode).toBe('before_edit');
   expect(report.modeSource).toBe('explicit');
   expect(report.recommendedWorkflow.id).toBe('before_edit');
-  expect(report.missionControl.primaryAction.command).toBe('projscan preflight --mode before_commit --format json');
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan preflight --mode before_commit --format json',
+  );
 });
 
 test('start console shows the full first-ten-minutes path and coordination hints', async () => {
@@ -156,95 +168,182 @@ test('start console shows the full first-ten-minutes path and coordination hints
   expect(result.stdout).toContain('Workflow: Pre-Merge');
   expect(result.stdout).toContain('Mission Control');
   expect(result.stdout).toContain('is it safe to commit this change');
-  expect(result.stdout).toContain('Route: Safety gate via projscan_preflight (confidence: high; matched: safe, commit)');
+  expect(result.stdout).toContain(
+    'Route: Safety gate via projscan_preflight (confidence: high; matched: safe, commit)',
+  );
   expect(result.stdout).toContain('projscan preflight --mode before_commit --format json');
   expect(result.stdout).toContain('Done When');
-  expect(result.stdout).toContain('- projscan preflight --mode before_commit returns proceed or only documented manual-review items.');
+  expect(result.stdout).toContain(
+    '- projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
+  );
   expect(result.stdout).toContain('First 10 Minutes');
   expect(result.stdout).toContain('projscan privacy-check --offline');
   expect(result.stdout).toContain('projscan start --mode before_commit');
   expect(result.stdout).toContain('projscan preflight --mode before_commit --format json');
   expect(result.stdout).toContain('projscan evidence-pack --pr-comment');
-  expect(result.stdout).toContain('projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json');
+  expect(result.stdout).toContain(
+    'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
+  );
   expect(result.stdout).toContain('Coordination Hints');
   expect(result.stdout).toContain('projscan preflight --mode before_commit --format json');
   const nextCommands = extractNextCommands(result.stdout);
   expect(nextCommands).toEqual([...new Set(nextCommands)]);
-  expect(nextCommands.filter((command) => command === 'projscan preflight --mode before_commit --format json')).toHaveLength(1);
+  expect(
+    nextCommands.filter(
+      (command) => command === 'projscan preflight --mode before_commit --format json',
+    ),
+  ).toHaveLength(1);
+});
+
+test('start console surfaces AgentLoop harness guidance when present', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'AGENTLOOP.md'),
+    '# AgentLoopKit\n\nUse npm exec agentloop -- status.\n',
+  );
+
+  const result = await runCli(['start', '--mode', 'before_edit', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Coordination Hints');
+  expect(result.stdout).toContain(
+    'Start with the AgentLoop task contract: npm exec agentloop -- status',
+  );
+});
+
+test('start console surfaces AgentFlight verification guidance when present', async () => {
+  await fs.mkdir(path.join(tmp, '.agentflight'), { recursive: true });
+  await fs.writeFile(path.join(tmp, '.agentflight', 'config.json'), '{"version":1}\n');
+
+  const result = await runCli(['start', '--mode', 'before_edit', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Coordination Hints');
+  expect(result.stdout).toContain(
+    'Run AgentFlight verification evidence: npm exec agentflight -- verify',
+  );
 });
 
 test('start console renders a concrete action plan for fuzzy impact intents', async () => {
-  const result = await runCli(['start', '--intent', 'what breaks if I rename the auth token loader', '--quiet']);
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I rename the auth token loader',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Action Plan');
   expect(result.stdout).toContain('Execution Plan');
   expect(result.stdout).toContain('- [ready] Next Action');
-  expect(result.stdout).toContain('  - Find exact target for impact analysis: projscan search "auth token loader" --format json');
+  expect(result.stdout).toContain(
+    '  - Find exact target for impact analysis: projscan search "auth token loader" --format json',
+  );
   expect(result.stdout).toContain('Run Cursor');
   expect(result.stdout).toContain('next: ready-1 in Ready Commands');
   expect(result.stdout).toContain('command: projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('unlocks: input-1, input-2');
   expect(result.stdout).toContain('Resume Checklist');
-  expect(result.stdout.indexOf('Run Cursor')).toBeLessThan(result.stdout.indexOf('Resume Checklist'));
-  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(result.stdout.indexOf('Action Plan'));
-  expect(result.stdout).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
-  expect(result.stdout).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.stdout).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
-  expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout.indexOf('Run Cursor')).toBeLessThan(
+    result.stdout.indexOf('Resume Checklist'),
+  );
+  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(
+    result.stdout.indexOf('Action Plan'),
+  );
+  expect(result.stdout).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})',
+  );
+  expect(result.stdout).toContain(
+    '- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.stdout).toContain(
+    '- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})',
+  );
+  expect(result.stdout).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.stdout).toContain('Handoff Prompt');
-  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(result.stdout.indexOf('Handoff Prompt'));
-  expect(result.stdout.indexOf('Handoff Prompt')).toBeLessThan(result.stdout.indexOf('Review Gate'));
+  expect(result.stdout.indexOf('Resume Checklist')).toBeLessThan(
+    result.stdout.indexOf('Handoff Prompt'),
+  );
+  expect(result.stdout.indexOf('Handoff Prompt')).toBeLessThan(
+    result.stdout.indexOf('Review Gate'),
+  );
   expect(result.stdout.indexOf('Review Gate')).toBeLessThan(result.stdout.indexOf('Action Plan'));
-  expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
-  expect(result.stdout).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(result.stdout).toContain(
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
+  expect(result.stdout).toContain(
+    'Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
   expect(result.stdout).toContain('Review Gate');
-  expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
+  expect(result.stdout).toContain(
+    'Stop after the current Mission Control checklist and proof are complete.',
+  );
   expect(result.stdout).toContain('- git status --short');
   expect(result.stdout).toContain('- git diff --stat');
   expect(result.stdout).toContain('Current worktree evidence');
   expect(result.stdout).toContain('Reviewer Replies');
-  expect(result.stdout).toContain(
-    '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+  for (const replyLine of expectedReviewReplyLines) {
+    expect(result.stdout).toContain(replyLine);
+  }
+  expect(result.stdout.indexOf('Reviewer Replies')).toBeLessThan(
+    result.stdout.indexOf('Action Plan'),
   );
   expect(result.stdout).toContain(
-    '- Request changes: Changes requested: address the review feedback first, update proof, then stop for another review.',
+    'Stop and ask for approval before starting another slice, release, publish, or deploy.',
   );
-  expect(result.stdout).toContain(
-    '- Review version candidate: Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
-  );
-  expect(result.stdout.indexOf('Reviewer Replies')).toBeLessThan(result.stdout.indexOf('Action Plan'));
-  expect(result.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
   expect(result.stdout).toContain('- [blocked] Resolve Inputs');
-  expect(result.stdout).toContain('  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain(
+    '  - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
   expect(result.stdout).toContain('- [pending] Follow Up');
-  expect(result.stdout).toContain('  - If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json');
+  expect(result.stdout).toContain(
+    '  - If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json',
+  );
   expect(result.stdout).toContain('    blocked by: input-1');
   expect(result.stdout).toContain('- [ready] Proof');
   expect(result.stdout).toContain('  - projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('- [pending] Done When');
   expect(result.stdout).toContain('Proceed carefully: Find exact target for impact analysis');
-  expect(result.stdout).toContain('- Find exact target for impact analysis: projscan search "auth token loader" --format json');
-  expect(result.stdout).toContain('- If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json');
-  expect(result.stdout).toContain('- If search returns a file path: projscan impact <file-from-search> --format json');
+  expect(result.stdout).toContain(
+    '- Find exact target for impact analysis: projscan search "auth token loader" --format json',
+  );
+  expect(result.stdout).toContain(
+    '- If search returns an exported symbol: projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(result.stdout).toContain(
+    '- If search returns a file path: projscan impact <file-from-search> --format json',
+  );
   expect(result.stdout).toContain('Ready Now');
   const readyCommands = extractReadyCommands(result.stdout);
   expect(readyCommands).toEqual(['projscan search "auth token loader" --format json']);
   expect(result.stdout).toContain('Needs Input');
-  expect(result.stdout).toContain('- symbol: replace <symbol-from-search> after Find exact target for impact analysis');
-  expect(result.stdout).toContain('- file: replace <file-from-search> after Find exact target for impact analysis');
+  expect(result.stdout).toContain(
+    '- symbol: replace <symbol-from-search> after Find exact target for impact analysis',
+  );
+  expect(result.stdout).toContain(
+    '- file: replace <file-from-search> after Find exact target for impact analysis',
+  );
   expect(result.stdout).toContain('Done When');
-  expect(result.stdout).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.stdout).toContain(
+    '- An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(result.stdout).toContain('Ready Proof');
-  expect(result.stdout).toContain('Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(result.stdout).toContain(
+    'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
   const proofCommands = extractProofCommands(result.stdout);
   expect(proofCommands.some((command) => command.includes('<'))).toBe(false);
   expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
   expect(result.stdout).toContain('Proof Queue');
-  expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(result.stdout).toContain('- proof-4: projscan preflight --format json (MCP: projscan_preflight {})');
+  expect(result.stdout).toContain(
+    '- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(result.stdout).toContain(
+    '- proof-4: projscan preflight --format json (MCP: projscan_preflight {})',
+  );
   expect(result.stdout).not.toContain('projscan impact --symbol buildCodeGraph --format json');
   expect(result.stdout).not.toContain('Agent Runbook');
 });
@@ -273,37 +372,75 @@ test('start console renders a compact agent runbook when handoff is requested', 
   expect(result.stdout).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
   expect(result.stdout).toContain('MCP call: projscan_search {"query":"auth token loader"}');
   expect(result.stdout).toContain('After running, resolve:');
-  expect(result.stdout).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.stdout).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.stdout).toContain(
+    '- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.stdout).toContain(
+    '- input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(result.stdout).toContain('Template inputs:');
-  expect(result.stdout).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.stdout).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.stdout).toContain(
+    '- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.stdout).toContain(
+    '- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(result.stdout).toContain('Resume checklist:');
-  expect(result.stdout).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
-  expect(result.stdout).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
-  expect(result.stdout).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.stdout).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
-  expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
-  expect(result.stdout).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json',
+  );
+  expect(result.stdout).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})',
+  );
+  expect(result.stdout).toContain(
+    '- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.stdout).toContain(
+    '- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})',
+  );
+  expect(result.stdout).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json',
+  );
+  expect(result.stdout).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.stdout).toContain('Remaining proof:');
-  expect(result.stdout).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(result.stdout).not.toContain(
+    'Remaining proof:\n- `projscan search "auth token loader" --format json`',
+  );
   expect(result.stdout).toContain('MCP proof calls:');
   expect(result.stdout).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
   expect(result.stdout).toContain('- proof-3: projscan_understand {"view":"verify"}');
   expect(result.stdout).toContain('Then use:');
-  expect(result.stdout).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
-  expect(result.stdout).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
-  expect(result.stdout).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(result.stdout).toContain(
+    '- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(result.stdout).toContain(
+    '- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json',
+  );
+  expect(result.stdout).toContain(
+    'Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
   expect(result.stdout).toContain('## Handoff Prompt');
-  expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
-  expect(result.stdout.indexOf('## Resume')).toBeLessThan(result.stdout.indexOf('## Handoff Prompt'));
-  expect(result.stdout.indexOf('## Handoff Prompt')).toBeLessThan(result.stdout.indexOf('## Ready Commands'));
+  expect(result.stdout).toContain(
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
+  expect(result.stdout.indexOf('## Resume')).toBeLessThan(
+    result.stdout.indexOf('## Handoff Prompt'),
+  );
+  expect(result.stdout.indexOf('## Handoff Prompt')).toBeLessThan(
+    result.stdout.indexOf('## Ready Commands'),
+  );
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('- `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('## Blocked Inputs');
-  expect(result.stdout).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain(
+    '- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
   expect(result.stdout).toContain('## Done When');
-  expect(result.stdout).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.stdout).toContain(
+    '- An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
 });
 
 test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async () => {
@@ -319,21 +456,35 @@ test('start JSON exposes a resume-aware handoff prompt for fuzzy intents', async
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
   expect(report.missionControl.handoffPrompt).toContain(report.missionControl.resume.prompt);
-  expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
-  expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(report.missionControl.handoffPrompt).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Done when: An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
   expect(report.missionControl.handoffPrompt).toContain(
     'Review gate: Stop after the current Mission Control checklist and proof are complete.',
   );
-  expect(report.missionControl.handoffPrompt).toContain(
-    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  );
+  expect(report.missionControl.handoffPrompt).toContain(expectedReviewPromptReplies[0]);
   expect(report.missionControl.handoffPrompt).not.toContain('Next:');
-  expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
-  expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
-  expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
-  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
-  expect(report.missionControl.handoff.readyProof.toolCalls?.map((call: { tool: string }) => call.tool)).not.toContain('projscan_search');
+  expect(report.missionControl.handoffPrompt).not.toContain(
+    'projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(report.missionControl.handoff.readyProof.commands).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
+  expect(report.missionControl.handoff.readyProof.commands).not.toContain(
+    'projscan search "auth token loader" --format json',
+  );
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(
+    report.missionControl.resume.remainingProofToolCalls,
+  );
+  expect(
+    report.missionControl.handoff.readyProof.toolCalls?.map((call: { tool: string }) => call.tool),
+  ).not.toContain('projscan_search');
 });
 
 test('start prints only the concise handoff prompt when requested', async () => {
@@ -347,13 +498,19 @@ test('start prints only the concise handoff prompt when requested', async () => 
 
   expect(result.exitCode).toBe(0);
   const output = result.stdout.trim();
-  expect(output).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.');
-  expect(output).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(output).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
-  expect(output).toContain('Review gate: Stop after the current Mission Control checklist and proof are complete.');
   expect(output).toContain(
-    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.',
   );
+  expect(output).toContain(
+    'Done when: An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(output).toContain(
+    'Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
+  expect(output).toContain(
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+  );
+  expect(output).toContain(expectedReviewPromptReplies[0]);
   expect(output.split('\n')).toHaveLength(1);
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Agent Runbook');
@@ -408,7 +565,9 @@ test('start JSON keeps the full report when next-command shortcut is requested',
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
 });
 
@@ -474,7 +633,9 @@ test('start prints every ready MCP tool call when requested', async () => {
     tool: 'projscan_understand',
     args: { view: 'verify' },
   });
-  expect(calls.some((call: Record<string, unknown>) => 'stepId' in call || 'command' in call)).toBe(false);
+  expect(calls.some((call: Record<string, unknown>) => 'stepId' in call || 'command' in call)).toBe(
+    false,
+  );
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
 });
@@ -496,7 +657,9 @@ test('start JSON keeps the full report when ready tool calls are requested', asy
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
   });
-  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(
+    report.missionControl.resume.remainingProofToolCalls,
+  );
 });
 
 test('start prints only ready proof commands when requested', async () => {
@@ -533,8 +696,12 @@ test('start JSON keeps the full report when proof-commands shortcut is requested
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
-  expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.handoff.readyProof.commands).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
+  expect(report.missionControl.handoff.readyProof.commands).not.toContain(
+    'projscan search "auth token loader" --format json',
+  );
 });
 
 test('start prints only the resume checklist when requested', async () => {
@@ -548,10 +715,18 @@ test('start prints only the resume checklist when requested', async () => {
 
   expect(result.exitCode).toBe(0);
   const checklistRows = result.stdout.trim().split('\n');
-  expect(checklistRows[0]).toBe('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
-  expect(checklistRows).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(checklistRows).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
-  expect(checklistRows).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(checklistRows[0]).toBe(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})',
+  );
+  expect(checklistRows).toContain(
+    '- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(checklistRows).toContain(
+    '- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})',
+  );
+  expect(checklistRows).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
   expect(result.stdout).not.toContain('Resume Checklist');
@@ -571,8 +746,12 @@ test('start JSON keeps the full report when checklist shortcut is requested', as
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.resume.checklist).toEqual(report.missionControl.handoff.resume.checklist);
-  expect(report.missionControl.resume.checklist[0].command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.resume.checklist).toEqual(
+    report.missionControl.handoff.resume.checklist,
+  );
+  expect(report.missionControl.resume.checklist[0].command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
 });
 
 test('start prints only the resume object as compact JSON when requested', async () => {
@@ -730,38 +909,64 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(quickstart.indexOf('## Run Next')).toBeLessThan(quickstart.indexOf('## Reviewer Replies'));
   expect(quickstart).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
   expect(quickstart).toContain('MCP call: `projscan_search {"query":"auth token loader"}`');
-  expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
-  expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
-  expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
-  expect(quickstart).toContain('- `review-gate.md`: Stop-and-review gate for approving another slice, release, publish, or deploy.');
-  expect(quickstart).toContain('- `review-gate.json`: Machine-readable review gate with policy, proof, decisions, and worktree evidence.');
-  expect(quickstart).toContain('- `review-policy.json`: Machine-readable review approval boundary and blocked actions.');
-  expect(quickstart).toContain('- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.');
+  expect(quickstart).toContain(
+    '- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.',
+  );
+  expect(quickstart).toContain(
+    '- `resume-prompt.txt`: Focused prompt for resuming the current cursor.',
+  );
+  expect(quickstart).toContain(
+    '- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.',
+  );
+  expect(quickstart).toContain(
+    '- `review-gate.md`: Stop-and-review gate for approving another slice, release, publish, or deploy.',
+  );
+  expect(quickstart).toContain(
+    '- `review-gate.json`: Machine-readable review gate with policy, proof, decisions, and worktree evidence.',
+  );
+  expect(quickstart).toContain(
+    '- `review-policy.json`: Machine-readable review approval boundary and blocked actions.',
+  );
+  expect(quickstart).toContain(
+    '- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.',
+  );
   expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control runbook.');
-  expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
-  expect(quickstart).toContain('- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.');
-  expect(quickstart).toContain('- `status.sh`: Shell script that prints the latest mission run state from summary.json.');
-  expect(quickstart).toContain('- `review.sh`: Shell script that prints status, review evidence, run report, and reviewer replies.');
-  expect(quickstart).toContain('- `proof-logs/README.md`: Proof-log index for output written by mission.sh.');
-  expect(quickstart).toContain('- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.');
-  expect(quickstart).toContain('- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.');
-  expect(quickstart).toContain('- `proof-logs/summary.json`: Machine-readable mission run state refreshed by mission.sh.');
+  expect(quickstart).toContain(
+    '- `shortcuts.json`: Machine-readable Mission Control shortcut command index.',
+  );
+  expect(quickstart).toContain(
+    '- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.',
+  );
+  expect(quickstart).toContain(
+    '- `status.sh`: Shell script that prints the latest mission run state from summary.json.',
+  );
+  expect(quickstart).toContain(
+    '- `review.sh`: Shell script that prints status, review evidence, run report, and reviewer replies.',
+  );
+  expect(quickstart).toContain(
+    '- `proof-logs/README.md`: Proof-log index for output written by mission.sh.',
+  );
+  expect(quickstart).toContain(
+    '- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.',
+  );
+  expect(quickstart).toContain(
+    '- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.',
+  );
+  expect(quickstart).toContain(
+    '- `proof-logs/summary.json`: Machine-readable mission run state refreshed by mission.sh.',
+  );
   expect(quickstart).toContain('## Reviewer Replies');
-  expect(quickstart).toContain(
-    '- Approve next slice: Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  );
-  expect(quickstart).toContain(
-    '- Request changes: Changes requested: address the review feedback first, update proof, then stop for another review.',
-  );
-  expect(quickstart).toContain(
-    '- Review version candidate: Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
-  );
+  for (const replyLine of expectedReviewReplyLines) {
+    expect(quickstart).toContain(replyLine);
+  }
   expect(quickstart.indexOf('## Reviewer Replies')).toBeLessThan(quickstart.indexOf('## Files'));
 
   const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
   expect(nextCommand).toBe('projscan search "auth token loader" --format json\n');
 
-  const nextToolCall = JSON.parse(await fs.readFile(path.join(bundleDir, 'next-tool-call.json'), 'utf-8'));
+  const nextToolCall = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'next-tool-call.json'), 'utf-8'),
+  );
   expect(nextToolCall).toEqual({
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
@@ -770,10 +975,10 @@ test('start writes a Mission Control bundle when requested', async () => {
   const handoffPrompt = await fs.readFile(path.join(bundleDir, 'handoff-prompt.txt'), 'utf-8');
   expect(handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now');
   expect(handoffPrompt).toContain('Ready proof: Ready-to-run proof commands');
-  expect(handoffPrompt).toContain('Review gate: Stop after the current Mission Control checklist and proof are complete.');
   expect(handoffPrompt).toContain(
-    'Review version candidate => Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+    'Review gate: Stop after the current Mission Control checklist and proof are complete.',
   );
+  expect(handoffPrompt).toContain(expectedReviewPromptReplies[2]);
   expect(handoffPrompt.endsWith('\n')).toBe(true);
 
   const resumePrompt = await fs.readFile(path.join(bundleDir, 'resume-prompt.txt'), 'utf-8');
@@ -796,14 +1001,18 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(reviewGate).toContain('## Worktree Evidence');
   expect(reviewGate).toContain('Current worktree evidence');
   expect(reviewGate).toContain('## Proof Queue');
-  expect(reviewGate).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(reviewGate).toContain('## Done When');
-  expect(reviewGate).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(reviewGate).toContain('## Reviewer Decision');
-  expect(reviewGate).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
   expect(reviewGate).toContain(
-    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+    '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
   );
+  expect(reviewGate).toContain('## Done When');
+  expect(reviewGate).toContain(
+    '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(reviewGate).toContain('## Reviewer Decision');
+  expect(reviewGate).toContain(
+    '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
+  expect(reviewGate).toContain(expectedReviewReplyQuotes[0]);
   expect(reviewGate).toContain('## Review Policy');
   expect(reviewGate).toContain('Approval required: yes');
   expect(reviewGate).toContain('- Push (`push`)');
@@ -814,7 +1023,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   const reviewReplies = await fs.readFile(path.join(bundleDir, 'review-replies.txt'), 'utf-8');
   expect(reviewReplies).toBe([...expectedReviewReplyLines, ''].join('\n'));
 
-  const reviewPolicy = JSON.parse(await fs.readFile(path.join(bundleDir, 'review-policy.json'), 'utf-8'));
+  const reviewPolicy = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'review-policy.json'), 'utf-8'),
+  );
   expect(reviewPolicy).toEqual(expectedReviewPolicy);
 
   const runbook = await fs.readFile(path.join(bundleDir, 'runbook.md'), 'utf-8');
@@ -836,24 +1047,26 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(handoff.reviewGate.proof.items).toEqual(handoff.readyProof.items);
   expect(handoff.reviewGate.proof.toolCalls).toEqual(handoff.readyProof.toolCalls);
   expect(handoff.reviewGate.doneWhen).toEqual(handoff.doneWhen);
-  expect(handoff.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
-    'approve_next_slice',
-    'request_changes',
-    'review_version_candidate',
-  ]);
+  expect(handoff.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual(
+    expectedReviewDecisionIds,
+  );
   expect(handoff.reviewGate.decisions.map((decision: { reply: string }) => decision.reply)).toEqual(
     expectedReviewDecisionReplies,
   );
   expect(handoff.reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(reviewPolicy).toEqual(handoff.reviewGate.policy);
 
-  const reviewGateJson = JSON.parse(await fs.readFile(path.join(bundleDir, 'review-gate.json'), 'utf-8'));
+  const reviewGateJson = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'review-gate.json'), 'utf-8'),
+  );
   expect(reviewGateJson).toEqual(handoff.reviewGate);
 
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
 
-  const readyToolCalls = JSON.parse(await fs.readFile(path.join(bundleDir, 'ready-tool-calls.json'), 'utf-8'));
+  const readyToolCalls = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'ready-tool-calls.json'), 'utf-8'),
+  );
   expect(readyToolCalls[0]).toEqual({
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
@@ -889,7 +1102,9 @@ test('start writes a Mission Control bundle when requested', async () => {
     'handoff-prompt',
     'start',
   ]);
-  expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json')).toBeUndefined();
+  expect(
+    shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json'),
+  ).toBeUndefined();
   expect(shortcuts.shortcuts.map((entry: { command: string }) => entry.command)).toContain(
     "projscan start --mission-script --intent 'what breaks if I rename the auth token loader'",
   );
@@ -900,7 +1115,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   const missionScript = await fs.readFile(path.join(bundleDir, 'mission.sh'), 'utf-8');
   expect(missionScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
   expect(missionScript).toContain("printf '%s\\n' 'projscan Mission Control'");
-  expect(missionScript).toContain("printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'");
+  expect(missionScript).toContain(
+    "printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'",
+  );
   expect(missionScript).toContain("printf '%s\\n' 'Current step: ready-1 in ready_now'");
   expect(missionScript).toContain('MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)');
   expect(missionScript).toContain('PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"');
@@ -915,9 +1132,13 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('"status":"running"');
   expect(missionScript).toContain('"status":"passed"');
   expect(missionScript).toContain('"status":"failed"');
-  expect(missionScript).toContain('"nextAction":"wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl."');
+  expect(missionScript).toContain(
+    '"nextAction":"wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl."',
+  );
   expect(missionScript).toContain('"nextAction":"run ./review.sh and choose a reviewer reply."');
-  expect(missionScript).toContain('"nextAction":"inspect the failed log, fix the issue, then rerun ./mission.sh."');
+  expect(missionScript).toContain(
+    '"nextAction":"inspect the failed log, fix the issue, then rerun ./mission.sh."',
+  );
   expect(missionScript).toContain('"totalCommands":');
   expect(missionScript).toContain('"failedStep":');
   expect(missionScript).toContain('"exitCode":');
@@ -931,7 +1152,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('"id":"current-ready-1"');
   expect(missionScript).toContain('"exitCode":');
   expect(missionScript).toContain(
-    'printf \'| %s | %s | %s | %s |\\n\' \'current-ready-1\' \'Run current command\' "$status" \'proof-logs/current-ready-1.log\'',
+    "printf '| %s | %s | %s | %s |\\n' 'current-ready-1' 'Run current command' \"$status\" 'proof-logs/current-ready-1.log'",
   );
   expect(missionScript).toContain("printf '%s\\n' '## Result'");
   expect(missionScript).toContain("printf '%s\\n' 'All current and proof commands exited 0.'");
@@ -964,7 +1185,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(statusScript).toContain('run ./mission.sh to generate proof.');
   expect(statusScript).toContain('run ./review.sh and choose a reviewer reply.');
   expect(statusScript).toContain('inspect the failed log, fix the issue, then rerun ./mission.sh.');
-  expect(statusScript).toContain('process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;');
+  expect(statusScript).toContain(
+    'process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;',
+  );
 
   const statusMode = (await fs.stat(path.join(bundleDir, 'status.sh'))).mode;
   expect(statusMode & 0o111).not.toBe(0);
@@ -997,24 +1220,45 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(initialReview.stdout).toContain('- git status --short');
   expect(initialReview.stdout).toContain('- git diff --stat');
   expect(initialReview.stdout).toContain('Reviewer replies:');
-  expect(initialReview.stdout).toContain('Approve next slice: Approved: start one more bounded implementation slice.');
+  expect(initialReview.stdout).toContain(expectedReviewReplyTextLines[0]);
 
-  const proofLogReadme = await fs.readFile(path.join(bundleDir, 'proof-logs', 'README.md'), 'utf-8');
+  const proofLogReadme = await fs.readFile(
+    path.join(bundleDir, 'proof-logs', 'README.md'),
+    'utf-8',
+  );
   expect(proofLogReadme).toContain('# Mission Proof Logs');
-  expect(proofLogReadme).toContain('Read `summary.json` for the latest not_run, running, passed, or failed state.');
-  expect(proofLogReadme).toContain('Read `status.jsonl` for command exit codes after `mission.sh` runs.');
-  expect(proofLogReadme).toContain('- `current-ready-1.log`: `projscan search "auth token loader" --format json`');
-  expect(proofLogReadme).toContain('- `proof-1.log`: `projscan preflight --mode before_edit --format json`');
+  expect(proofLogReadme).toContain(
+    'Read `summary.json` for the latest not_run, running, passed, or failed state.',
+  );
+  expect(proofLogReadme).toContain(
+    'Read `status.jsonl` for command exit codes after `mission.sh` runs.',
+  );
+  expect(proofLogReadme).toContain(
+    '- `current-ready-1.log`: `projscan search "auth token loader" --format json`',
+  );
+  expect(proofLogReadme).toContain(
+    '- `proof-1.log`: `projscan preflight --mode before_edit --format json`',
+  );
 
-  const proofStatus = await fs.readFile(path.join(bundleDir, 'proof-logs', 'status.jsonl'), 'utf-8');
+  const proofStatus = await fs.readFile(
+    path.join(bundleDir, 'proof-logs', 'status.jsonl'),
+    'utf-8',
+  );
   expect(proofStatus).toBe('');
 
-  const proofRunReport = await fs.readFile(path.join(bundleDir, 'proof-logs', 'run-report.md'), 'utf-8');
+  const proofRunReport = await fs.readFile(
+    path.join(bundleDir, 'proof-logs', 'run-report.md'),
+    'utf-8',
+  );
   expect(proofRunReport).toContain('# Mission Run Report');
-  expect(proofRunReport).toContain('Run `./mission.sh` to refresh this report with command exit codes and log links.');
+  expect(proofRunReport).toContain(
+    'Run `./mission.sh` to refresh this report with command exit codes and log links.',
+  );
   expect(proofRunReport).toContain('Review `status.jsonl` for machine-readable status rows.');
 
-  const proofSummary = JSON.parse(await fs.readFile(path.join(bundleDir, 'proof-logs', 'summary.json'), 'utf-8'));
+  const proofSummary = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'proof-logs', 'summary.json'), 'utf-8'),
+  );
   expect(proofSummary).toEqual({
     schemaVersion: 1,
     status: 'not_run',
@@ -1065,7 +1309,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(failedStatus.stdout).toContain('Failed step: proof-1');
   expect(failedStatus.stdout).toContain('Exit code: 7');
   expect(failedStatus.stdout).toContain('Log: proof-logs/proof-1.log');
-  expect(failedStatus.stdout).toContain('Next action: inspect the failed log, fix the issue, then rerun ./mission.sh.');
+  expect(failedStatus.stdout).toContain(
+    'Next action: inspect the failed log, fix the issue, then rerun ./mission.sh.',
+  );
 
   const proofCommands = await fs.readFile(path.join(bundleDir, 'proof-commands.txt'), 'utf-8');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
@@ -1154,11 +1400,9 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
     'status',
     'review',
   ]);
-  expect(payload.missionBundle.quickCommands.map((entry: { command: string }) => entry.command)).toEqual([
-    './mission.sh',
-    './status.sh',
-    './review.sh',
-  ]);
+  expect(
+    payload.missionBundle.quickCommands.map((entry: { command: string }) => entry.command),
+  ).toEqual(['./mission.sh', './status.sh', './review.sh']);
   expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toEqual(
     expect.arrayContaining([
       'README.md',
@@ -1204,20 +1448,32 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout).toContain('## Do Next');
   expect(result.stdout).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('(MCP: projscan_search {"query":"auth token loader"})');
-  expect(result.stdout).toContain('- [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.stdout).toContain('- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
-  expect(result.stdout).toContain('## Proof');
-  expect(result.stdout).toContain('- [ ] `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(result.stdout).toContain('- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})');
-  expect(result.stdout).toContain('## Done When');
-  expect(result.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(result.stdout).toContain('## Review Gate');
-  expect(result.stdout).toContain('- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.');
-  expect(result.stdout).toContain('## Reviewer Decision');
-  expect(result.stdout).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
   expect(result.stdout).toContain(
-    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
+    '- [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.',
   );
+  expect(result.stdout).toContain(
+    '- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`',
+  );
+  expect(result.stdout).toContain('## Proof');
+  expect(result.stdout).toContain(
+    '- [ ] `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(result.stdout).toContain(
+    '- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})',
+  );
+  expect(result.stdout).toContain('## Done When');
+  expect(result.stdout).toContain(
+    '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(result.stdout).toContain('## Review Gate');
+  expect(result.stdout).toContain(
+    '- [ ] Stop and ask for approval before starting another slice, release, publish, or deploy.',
+  );
+  expect(result.stdout).toContain('## Reviewer Decision');
+  expect(result.stdout).toContain(
+    '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+  );
+  expect(result.stdout).toContain(expectedReviewReplyQuotes[0]);
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
   expect(result.stdout).not.toContain('Start:');
@@ -1272,26 +1528,32 @@ test('start review-gate shortcut prints the structured review gate markdown', as
   expect(shortcut.stdout).toContain('## Worktree Evidence');
   expect(shortcut.stdout).toContain(report.missionControl.reviewGate.worktree.summary);
   expect(shortcut.stdout).toContain('## Proof Queue');
-  expect(shortcut.stdout).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(report.missionControl.reviewGate.proof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
+  expect(shortcut.stdout).toContain(
+    '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(report.missionControl.reviewGate.proof.commands).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
   expect(shortcut.stdout).toContain('## Done When');
-  expect(shortcut.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(shortcut.stdout).toContain(
+    '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(shortcut.stdout).toContain('## Reviewer Decision');
   expect(shortcut.stdout).toContain('## Review Policy');
   expect(shortcut.stdout).toContain('Approval required: yes');
   expect(shortcut.stdout).toContain('- Push (`push`)');
   expect(shortcut.stdout).toContain('- Version bump (`version_bump`)');
-  expect(shortcut.stdout).toContain('- [ ] Request changes: The agent must address review feedback before starting more scope.');
   expect(shortcut.stdout).toContain(
-    'Reply: "Changes requested: address the review feedback first, update proof, then stop for another review."',
+    '- [ ] Request changes: The agent must address review feedback before starting more scope.',
   );
-  expect(report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
-    'approve_next_slice',
-    'request_changes',
-    'review_version_candidate',
-  ]);
-  expect(shortcut.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
+  expect(shortcut.stdout).toContain(expectedReviewReplyQuotes[1]);
+  expect(
+    report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id),
+  ).toEqual(expectedReviewDecisionIds);
+  expect(shortcut.stdout).toContain(
+    'Stop and ask for approval before starting another slice, release, publish, or deploy.',
+  );
   expect(shortcut.stdout).not.toContain('Start:');
   expect(shortcut.stdout).not.toContain('Run Cursor');
   expect(shortcut.stdout).not.toContain('Ready Proof');
@@ -1375,10 +1637,10 @@ test('start prints only the mission runbook when requested', async () => {
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('## Review Gate');
   expect(result.stdout).toContain('## Reviewer Decision');
-  expect(result.stdout).toContain('- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.');
   expect(result.stdout).toContain(
-    'Reply: "Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version."',
+    '- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.',
   );
+  expect(result.stdout).toContain(expectedReviewReplyQuotes[2]);
   expect(result.stdout).toContain('## Ready Commands');
   expect(result.stdout).toContain('## Proof Commands');
   expect(result.stdout).toContain('Resume checklist:');
@@ -1400,7 +1662,9 @@ test('start prints a mission shell script when requested', async () => {
   expect(result.stderr).toBe('');
   expect(result.stdout.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
   expect(result.stdout).toContain("printf '%s\\n' 'projscan Mission Control'");
-  expect(result.stdout).toContain("printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain(
+    "printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'",
+  );
   expect(result.stdout).toContain("printf '%s\\n' 'Mode: before_edit'");
   expect(result.stdout).toContain("printf '%s\\n' 'Status: needs_attention'");
   expect(result.stdout).toContain("printf '%s\\n' 'Current step: ready-1 in ready_now'");
@@ -1409,7 +1673,9 @@ test('start prints a mission shell script when requested', async () => {
   expect(result.stdout).toContain("printf '%s\\n' 'Run remaining proof'");
   expect(result.stdout).toContain('projscan preflight --mode before_edit --format json');
   expect(result.stdout).toContain("printf '%s\\n' 'Review gate'");
-  expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
+  expect(result.stdout).toContain(
+    'Stop after the current Mission Control checklist and proof are complete.',
+  );
   expect(result.stdout).toContain("printf '%s\\n' 'Capture: git status --short'");
   expect(result.stdout).toContain("printf '%s\\n' 'Capture: git diff --stat'");
   expect(result.stdout).not.toContain('PROOF_LOG_DIR');
@@ -1458,7 +1724,9 @@ test('start JSON keeps the full report when mission-script is requested', async 
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(report.missionScript).toBeUndefined();
 });
@@ -1514,23 +1782,57 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain('Current command:');
   expect(result.stdout).toContain('projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('Current MCP tool call:');
-  expect(result.stdout).toContain('{"tool":"projscan_search","args":{"query":"auth token loader"}}');
-  expect(result.stdout).toContain("projscan start --next-command --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --resume-json --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --task-card --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --review-gate --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --review-policy --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --review-replies --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain(
+    '{"tool":"projscan_search","args":{"query":"auth token loader"}}',
+  );
+  expect(result.stdout).toContain(
+    "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --checklist --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --resume-json --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --task-card --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --review-gate --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --review-policy --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --review-replies --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --runbook --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --intent 'what breaks if I rename the auth token loader'",
+  );
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
   expect(result.stdout).not.toContain('Run Cursor');
@@ -1559,7 +1861,9 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
   });
-  expect(shortcuts.baseCommand).toBe("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(shortcuts.baseCommand).toBe(
+    "projscan start --intent 'what breaks if I rename the auth token loader'",
+  );
   expect(shortcuts.shortcuts.map((entry: { id: string }) => entry.id)).toEqual([
     'next-command',
     'next-tool-call',
@@ -1582,13 +1886,17 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
   expect(shortcuts.shortcuts[0]).toEqual({
     id: 'next-command',
     label: 'Current shell command',
-    command: "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
+    command:
+      "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
     description: 'Print only the current Mission Control cursor command.',
   });
-  expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'mission-script')).toEqual({
+  expect(
+    shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'mission-script'),
+  ).toEqual({
     id: 'mission-script',
     label: 'Mission script',
-    command: "projscan start --mission-script --intent 'what breaks if I rename the auth token loader'",
+    command:
+      "projscan start --mission-script --intent 'what breaks if I rename the auth token loader'",
     description: 'Print the Mission Control shell script.',
   });
   expect(shortcuts.shortcuts.at(-1)).toEqual({
@@ -1612,7 +1920,9 @@ test('start JSON keeps the full report when shortcuts-json index is requested', 
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(report.kind).not.toBe('projscan.start-shortcuts');
 });
@@ -1630,7 +1940,9 @@ test('start JSON keeps the full report when shortcuts index is requested', async
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.resume.toolCall).toEqual({
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
@@ -1671,10 +1983,16 @@ test('start JSON exposes complete remaining proof items for handoff intents', as
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
   expect(report.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
-  expect(report.missionControl.resume.remainingProofToolCalls.map((call: { command: string }) => call.command)).not.toContain('projscan handoff');
-  expect(report.missionControl.resume.remainingProofItems.map((item: { command: string }) => item.command)).toEqual(
-    report.missionControl.resume.remainingProofCommands,
-  );
+  expect(
+    report.missionControl.resume.remainingProofToolCalls.map(
+      (call: { command: string }) => call.command,
+    ),
+  ).not.toContain('projscan handoff');
+  expect(
+    report.missionControl.resume.remainingProofItems.map(
+      (item: { command: string }) => item.command,
+    ),
+  ).toEqual(report.missionControl.resume.remainingProofCommands);
   expect(report.missionControl.resume.remainingProofItems).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -1691,9 +2009,19 @@ test('start JSON exposes complete remaining proof items for handoff intents', as
       }),
     ]),
   );
-  expect(report.missionControl.resume.remainingProofItems.find((item: { command: string }) => item.command === 'projscan handoff').toolCall).toBeUndefined();
-  expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
-  expect(report.missionControl.handoff.readyProof.toolCalls.map((call: { command: string }) => call.command)).not.toContain('projscan handoff');
+  expect(
+    report.missionControl.resume.remainingProofItems.find(
+      (item: { command: string }) => item.command === 'projscan handoff',
+    ).toolCall,
+  ).toBeUndefined();
+  expect(report.missionControl.handoff.readyProof.items).toEqual(
+    report.missionControl.resume.remainingProofItems,
+  );
+  expect(
+    report.missionControl.handoff.readyProof.toolCalls.map(
+      (call: { command: string }) => call.command,
+    ),
+  ).not.toContain('projscan handoff');
 });
 
 test('start console runbook renders a complete proof queue for handoff intents', async () => {
@@ -1713,7 +2041,9 @@ test('start console runbook renders a complete proof queue for handoff intents',
   expect(result.stdout).toContain('Agent Runbook');
   expect(result.stdout).toContain('Proof queue:');
   expect(result.stdout).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
-  expect(result.stdout).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain(
+    '- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.stdout).toContain('- proof-6: `projscan handoff` (CLI only)');
 });
 
@@ -1722,25 +2052,27 @@ test('start console renders a proof queue for handoff intents without the runboo
   recordTouch(session, 'src/index.ts', 'explicit');
   await saveSession(tmp, session);
 
-  const result = await runCli([
-    'start',
-    '--intent',
-    'give the next agent a handoff',
-    '--quiet',
-  ]);
+  const result = await runCli(['start', '--intent', 'give the next agent a handoff', '--quiet']);
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Ready Proof');
   expect(result.stdout).toContain('Resume Checklist');
   expect(result.stdout).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
   expect(result.stdout).toContain('Proof Queue');
-  expect(result.stdout).toContain('- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.stdout).toContain(
+    '- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.stdout).toContain('- proof-6: projscan handoff (CLI only)');
   expect(result.stdout).not.toContain('Agent Runbook');
 });
 
 test('start console runs impact directly for file path intents', async () => {
-  const result = await runCli(['start', '--intent', 'what breaks if I change src/core/start.ts', '--quiet']);
+  const result = await runCli([
+    'start',
+    '--intent',
+    'what breaks if I change src/core/start.ts',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Action Plan');
@@ -1760,7 +2092,9 @@ test('start console shows alternative routes for mixed intents', async () => {
   expect(result.stdout).toContain('Start: before_commit');
   expect(result.stdout).toContain('Mode: inferred from intent');
   expect(result.stdout).toContain('Also Consider');
-  expect(result.stdout).toContain('- Safety gate: projscan preflight (confidence: high; matched: safe, commit)');
+  expect(result.stdout).toContain(
+    '- Safety gate: projscan preflight (confidence: high; matched: safe, commit)',
+  );
 });
 
 test('start rejects unsupported formats through the shared matrix', async () => {
@@ -1771,53 +2105,8 @@ test('start rejects unsupported formats through the shared matrix', async () => 
   expect(result.stderr).toContain('projscan start does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return spawnCli(cliPath, args, { cwd: tmp });
-}
-
-async function runScript(scriptPath: string, args: string[] = [], options: { cwd?: string } = {}): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const result = await execFileAsync(scriptPath, args, {
-      cwd: options.cwd,
-      env: process.env,
-    });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; code?: number };
-    return {
-      stdout: e.stdout ?? '',
-      stderr: e.stderr ?? '',
-      exitCode: typeof e.code === 'number' ? e.code : 1,
-    };
-  }
-}
-
-function extractNextCommands(stdout: string): string[] {
-  const match = stdout.match(/Next Commands\n(?<body>[\s\S]*?)\n\nTop Risks/);
-  const body = match?.groups?.body ?? '';
-  return body
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.slice(2));
-}
-
-function extractProofCommands(stdout: string): string[] {
-  const match = stdout.match(/Ready Proof\n(?<body>[\s\S]*?)\n\nFirst 10 Minutes/);
-  const body = match?.groups?.body ?? '';
-  return body
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.slice(2));
-}
-
-function extractReadyCommands(stdout: string): string[] {
-  const match = stdout.match(/Ready Now\n(?<body>[\s\S]*?)\nNeeds Input/);
-  const body = match?.groups?.body ?? '';
-  return body
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.replace(/^- [^:]+: /, ''));
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return runStartCli(tmp, args);
 }

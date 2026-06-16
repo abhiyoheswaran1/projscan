@@ -1,5 +1,5 @@
 import { computeReview } from '../../core/review.js';
-import type { ReviewReport } from '../../types.js';
+import type { ReviewReport } from '../../types/review.js';
 import type { McpTool, McpToolContext } from './_shared.js';
 
 /**
@@ -64,7 +64,9 @@ interface WatchDelta {
    * agent decide whether to refetch full data or just react to one
    * dimension (e.g. only `deps` triggered, so re-run audit not review).
    */
-  changeKinds: Array<'verdict' | 'baseSha' | 'headSha' | 'changedFiles' | 'cycles' | 'risky' | 'taint' | 'deps'>;
+  changeKinds: Array<
+    'verdict' | 'baseSha' | 'headSha' | 'changedFiles' | 'cycles' | 'risky' | 'taint' | 'deps'
+  >;
   cycles: { added: number; removed: number };
   risky: { added: number; removed: number };
   taint: { added: number; removed: number };
@@ -281,10 +283,7 @@ async function runTick(
   }
 }
 
-function stopWatch(
-  args: Record<string, unknown>,
-  context: McpToolContext | undefined,
-): unknown {
+function stopWatch(args: Record<string, unknown>, context: McpToolContext | undefined): unknown {
   const watchId = typeof args.watchId === 'string' ? args.watchId : '';
   if (!watchId) throw new Error('stop action requires a "watchId" argument');
   // 1.8+ — always remove from `watches` regardless of whether the
@@ -331,15 +330,11 @@ function listWatches(): unknown {
  * with the same anonymous name in different files don't collapse.
  */
 function snapshotOf(report: ReviewReport): WatchSnapshot {
-  const cycleKeys = (report.newCycles ?? [])
-    .map((c) => [...c.files].sort().join('|'))
-    .sort();
+  const cycleKeys = (report.newCycles ?? []).map((c) => [...c.files].sort().join('|')).sort();
   const taintFlowKeys = (report.newTaintFlows ?? [])
     .map((f) => `${f.sourceFn}::${f.sinkFn}`)
     .sort();
-  const riskyFunctionKeys = (report.riskyFunctions ?? [])
-    .map((f) => `${f.file}::${f.name}`)
-    .sort();
+  const riskyFunctionKeys = (report.riskyFunctions ?? []).map((f) => `${f.file}::${f.name}`).sort();
   const depAdds: string[] = [];
   const depRemoves: string[] = [];
   const depBumps: string[] = [];
@@ -423,9 +418,13 @@ function diffSnapshots(prev: WatchSnapshot | null, next: WatchSnapshot): WatchDe
     bumped: depBumpsDiff.added,
   };
   const depsChanged =
-    depAddsDiff.added + depAddsDiff.removed +
-    depRemovesDiff.added + depRemovesDiff.removed +
-    depBumpsDiff.added + depBumpsDiff.removed > 0;
+    depAddsDiff.added +
+      depAddsDiff.removed +
+      depRemovesDiff.added +
+      depRemovesDiff.removed +
+      depBumpsDiff.added +
+      depBumpsDiff.removed >
+    0;
 
   const changeKinds: WatchDelta['changeKinds'] = [];
   if (!prev || prev.verdict !== next.verdict) changeKinds.push('verdict');

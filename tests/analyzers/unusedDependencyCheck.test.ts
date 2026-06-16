@@ -112,14 +112,7 @@ describe('unusedDependencyCheck', () => {
   });
 
   it('emits package.json location with line number', async () => {
-    const pkg = [
-      '{',
-      '  "dependencies": {',
-      '    "orphan": "^1.0.0"',
-      '  }',
-      '}',
-      '',
-    ].join('\n');
+    const pkg = ['{', '  "dependencies": {', '    "orphan": "^1.0.0"', '  }', '}', ''].join('\n');
     await fs.writeFile(path.join(tmp, 'package.json'), pkg);
     const files = [await writeFile(tmp, 'src/index.ts', '// nothing')];
 

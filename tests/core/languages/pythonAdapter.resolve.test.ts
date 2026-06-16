@@ -31,9 +31,9 @@ describe('pythonAdapter resolveImport', () => {
   });
 
   it('resolves absolute package import to __init__.py', () => {
-    expect(
-      pythonAdapter.resolveImport('pkg/core.py', 'pkg', graph, { packageRoots: ['.'] }),
-    ).toBe('pkg/__init__.py');
+    expect(pythonAdapter.resolveImport('pkg/core.py', 'pkg', graph, { packageRoots: ['.'] })).toBe(
+      'pkg/__init__.py',
+    );
   });
 
   it('resolves absolute import under src/ root', () => {
@@ -58,9 +58,9 @@ describe('pythonAdapter resolveImport', () => {
   });
 
   it('resolves relative import one-dot bare to package __init__', () => {
-    expect(
-      pythonAdapter.resolveImport('pkg/core.py', '.', graph, { packageRoots: ['.'] }),
-    ).toBe('pkg/__init__.py');
+    expect(pythonAdapter.resolveImport('pkg/core.py', '.', graph, { packageRoots: ['.'] })).toBe(
+      'pkg/__init__.py',
+    );
   });
 
   it('resolves relative import with submodule', () => {

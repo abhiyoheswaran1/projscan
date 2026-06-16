@@ -15,12 +15,14 @@ export const coordinateTool: McpTool = {
     properties: {
       base_ref: {
         type: 'string',
-        description: 'Base ref each worktree is diffed against. Default: origin/main → main → master → HEAD~1.',
+        description:
+          'Base ref each worktree is diffed against. Default: origin/main → main → master → HEAD~1.',
       },
     },
   },
   handler: async (args, rootPath) => {
-    const baseRef = typeof args.base_ref === 'string' && args.base_ref.length > 0 ? args.base_ref : undefined;
+    const baseRef =
+      typeof args.base_ref === 'string' && args.base_ref.length > 0 ? args.base_ref : undefined;
     return computeCoordination(rootPath, baseRef ? { baseRef } : {});
   },
 };

@@ -33,7 +33,9 @@ afterEach(async () => {
   if (originalTrustHome === undefined) delete process.env[PLUGIN_TRUST_HOME_ENV];
   else process.env[PLUGIN_TRUST_HOME_ENV] = originalTrustHome;
   await fs.rm(trustHome, { recursive: true, force: true });
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('preflight contract supports the three agent modes', () => {
@@ -101,13 +103,9 @@ test('plugin policy errors block preflight when preview execution is already tru
     expect.objectContaining({ enabled: true, errorIssues: 1 }),
   );
   expect(
-    report.reasons.some(
-      (reason) => reason.source === 'plugin' && reason.severity === 'error',
-    ),
+    report.reasons.some((reason) => reason.source === 'plugin' && reason.severity === 'error'),
   ).toBe(true);
 });
-
-
 
 test('preflight enablePlugins option does not enable local plugin code without preview flag', async () => {
   const root = await makeTempProject();
@@ -229,7 +227,9 @@ test('expected build prepare scripts do not caution preflight', async () => {
 
   const report = await computePreflight(root, { mode: 'before_edit' });
 
-  expect(report.reasons.some((reason) => reason.issueId === 'supply-chain-lifecycle-prepare')).toBe(false);
+  expect(report.reasons.some((reason) => reason.issueId === 'supply-chain-lifecycle-prepare')).toBe(
+    false,
+  );
   expect(report.evidence.supplyChain).toEqual(
     expect.objectContaining({ errorIssues: 0, warningIssues: 0 }),
   );
@@ -449,7 +449,11 @@ async function git(root: string, args: string[]): Promise<void> {
 async function makeTempProject(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-preflight-'));
   tempRoots.push(root);
-  await writeJson(path.join(root, 'package.json'), { name: 'fixture', version: '0.0.0', type: 'module' });
+  await writeJson(path.join(root, 'package.json'), {
+    name: 'fixture',
+    version: '0.0.0',
+    type: 'module',
+  });
   await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
@@ -459,7 +463,6 @@ async function makeTempProject(): Promise<string> {
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
-
 
 async function writeMarkerPlugin(root: string, markerPath: string): Promise<void> {
   const pluginDir = path.join(root, '.projscan-plugins');
@@ -529,7 +532,11 @@ test('preflight surfaces swarm-coordination evidence and a caution (not block) a
   await execFileAsync('git', ['init', '-q', '-b', 'main'], { cwd: root });
   await execFileAsync('git', ['config', 'user.email', 't@t.t'], { cwd: root });
   await execFileAsync('git', ['config', 'user.name', 't'], { cwd: root });
-  await writeJson(path.join(root, 'package.json'), { name: 'fixture', version: '0.0.0', type: 'module' });
+  await writeJson(path.join(root, 'package.json'), {
+    name: 'fixture',
+    version: '0.0.0',
+    type: 'module',
+  });
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'a.ts'), 'export const a = 1;\n');
   await execFileAsync('git', ['add', '.'], { cwd: root });
@@ -550,5 +557,7 @@ test('preflight surfaces swarm-coordination evidence and a caution (not block) a
   // Advisory only — coordination contributes a warning (caution), never an error/block.
   expect(coordReason?.severity).toBe('warning');
 
-  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(() => {});
+  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(
+    () => {},
+  );
 });

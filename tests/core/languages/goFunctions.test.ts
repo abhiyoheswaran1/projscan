@@ -16,14 +16,18 @@ describe('per-function CC (Go)', () => {
   });
 
   it('method named Receiver.Method', async () => {
-    const out = await fns(`package p\ntype T struct{}\nfunc (t *T) Bar(x int) int { if x > 0 { return 1 }; return 0 }\n`);
+    const out = await fns(
+      `package p\ntype T struct{}\nfunc (t *T) Bar(x int) int { if x > 0 { return 1 }; return 0 }\n`,
+    );
     const bar = out.find((f) => f.name === 'T.Bar');
     expect(bar).toBeDefined();
     expect(bar?.cyclomaticComplexity).toBe(2);
   });
 
   it('switch case adds 1 per case (default does not count)', async () => {
-    const out = await fns(`package p\nfunc F(x int) int {\n  switch x {\n  case 1: return 1\n  case 2: return 2\n  default: return 0\n  }\n}\n`);
+    const out = await fns(
+      `package p\nfunc F(x int) int {\n  switch x {\n  case 1: return 1\n  case 2: return 2\n  default: return 0\n  }\n}\n`,
+    );
     expect(out[0].cyclomaticComplexity).toBe(3);
   });
 

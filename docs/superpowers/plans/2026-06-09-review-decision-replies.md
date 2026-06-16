@@ -23,6 +23,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -44,7 +45,9 @@ const expectedReviewDecisionReplies = [
 In `start exposes a Mission Control task card for MCP and JSON clients`, after the existing decision id assertions, assert:
 
 ```ts
-expect(report.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(expectedReviewDecisionReplies);
+expect(report.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
+  expectedReviewDecisionReplies,
+);
 expect(report.missionControl.reviewGate.markdown).toContain(
   'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
 );
@@ -64,7 +67,9 @@ In `start writes a Mission Control bundle when requested`, assert:
 expect(reviewGate).toContain(
   'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
 );
-expect(handoff.reviewGate.decisions.map((decision: { reply: string }) => decision.reply)).toEqual(expectedReviewDecisionReplies);
+expect(handoff.reviewGate.decisions.map((decision: { reply: string }) => decision.reply)).toEqual(
+  expectedReviewDecisionReplies,
+);
 ```
 
 In `start prints only the mission task card when requested`, assert the approve reply appears in stdout.
@@ -78,7 +83,9 @@ In `start prints only the mission runbook when requested`, assert the version-ca
 In `projscan_start returns MCP-callable args for fuzzy impact intents`, assert:
 
 ```ts
-expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(expectedReviewDecisionReplies);
+expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
+  expectedReviewDecisionReplies,
+);
 expect(result.start.missionControl.reviewGate.markdown).toContain(
   'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
 );
@@ -99,6 +106,7 @@ Expected: fail because `reply` does not exist and Markdown does not render reply
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -138,6 +146,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -172,6 +181,7 @@ This script uses Playwright. Keep generated image changes only if the repo scrip
 ## Task 4: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run full verification**

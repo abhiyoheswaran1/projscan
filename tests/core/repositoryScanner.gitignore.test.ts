@@ -81,7 +81,9 @@ describe('scanRepository git privacy boundary', () => {
     const scan = await scanRepository(tmp, { includeIgnored: true });
     const paths = scan.files.map((file) => file.relativePath).sort();
 
-    expect(paths).toEqual(expect.arrayContaining(['.env', '.gitignore', 'secrets/token.ts', 'src/index.ts']));
+    expect(paths).toEqual(
+      expect.arrayContaining(['.env', '.gitignore', 'secrets/token.ts', 'src/index.ts']),
+    );
     expect(scan.scanBoundary).toMatchObject({
       source: 'glob',
       gitignoreRespected: false,

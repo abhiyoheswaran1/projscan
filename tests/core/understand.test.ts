@@ -7,7 +7,9 @@ import { computeUnderstandReport } from '../../src/core/understand.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('map view explains the repo with cited claims and read-first files', async () => {
@@ -18,7 +20,9 @@ test('map view explains the repo with cited claims and read-first files', async 
   expect(report.schemaVersion).toBe(1);
   expect(report.view).toBe('map');
   expect(report.summary).toContain('repo map');
-  expect(report.entrypoints.map((entry) => entry.file)).toEqual(expect.arrayContaining(['src/server.ts', 'src/cli.ts']));
+  expect(report.entrypoints.map((entry) => entry.file)).toEqual(
+    expect.arrayContaining(['src/server.ts', 'src/cli.ts']),
+  );
   expect(report.boundaries.map((boundary) => boundary.name)).toContain('src');
   expect(report.readFirst.length).toBeGreaterThan(0);
   expect(report.claims.length).toBeGreaterThan(0);
@@ -34,7 +38,9 @@ test('flow view describes runtime paths and side-effect sinks', async () => {
   expect(report.view).toBe('flow');
   expect(report.flows.length).toBeGreaterThan(0);
   expect(report.flows.map((flow) => flow.entry.file)).toContain('src/server.ts');
-  expect(report.flows.flatMap((flow) => flow.sideEffects.map((effect) => effect.kind))).toContain('database');
+  expect(report.flows.flatMap((flow) => flow.sideEffects.map((effect) => effect.kind))).toContain(
+    'database',
+  );
   expect(report.claims.some((claim) => claim.id === 'flow-runtime-paths')).toBe(true);
 });
 
@@ -44,7 +50,9 @@ test('contracts view lists public exports config contracts and breaking risks', 
   const report = await computeUnderstandReport(root, { view: 'contracts', maxItems: 8 });
 
   expect(report.view).toBe('contracts');
-  expect(report.contracts.publicExports.map((entry) => entry.name)).toEqual(expect.arrayContaining(['createApp', 'loadConfig']));
+  expect(report.contracts.publicExports.map((entry) => entry.name)).toEqual(
+    expect.arrayContaining(['createApp', 'loadConfig']),
+  );
   expect(report.contracts.configContracts.map((entry) => entry.name)).toContain('API_KEY');
   expect(report.contracts.breakingChangeRisks.length).toBeGreaterThan(0);
   expect(report.commands).toContain('projscan understand --view contracts --format json');
@@ -63,10 +71,16 @@ test('change view ties intent to blast radius safe edit verification and rollbac
   expect(report.view).toBe('change');
   expect(report.intent).toBe('rename the auth token loader');
   expect(report.changeReadiness.intent).toContain('auth token');
-  expect(report.changeReadiness.blastRadius.some((item) => item.files.includes('src/server.ts'))).toBe(true);
-  expect(report.changeReadiness.safeEdit.command).toContain('projscan file src/config.ts --format json');
+  expect(
+    report.changeReadiness.blastRadius.some((item) => item.files.includes('src/server.ts')),
+  ).toBe(true);
+  expect(report.changeReadiness.safeEdit.command).toContain(
+    'projscan file src/config.ts --format json',
+  );
   expect(report.changeReadiness.rollback.command).toContain('git restore');
-  expect(report.changeReadiness.verificationCommands).toContain('projscan understand --view verify --format json');
+  expect(report.changeReadiness.verificationCommands).toContain(
+    'projscan understand --view verify --format json',
+  );
 });
 
 test('verify view returns minimal focused and full proof tiers with direct-test gaps', async () => {
@@ -80,9 +94,46 @@ test('verify view returns minimal focused and full proof tiers with direct-test 
 
   expect(report.view).toBe('verify');
   expect(report.verification.tiers.map((tier) => tier.id)).toEqual(['minimal', 'focused', 'full']);
-  expect(report.verification.tiers[0]?.commands).toContain('projscan preflight --mode before_edit --format json');
-  expect(report.verification.directTests.some((entry) => entry.file === 'src/server.ts')).toBe(true);
+  expect(report.verification.tiers[0]?.commands).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
+  expect(report.verification.directTests.some((entry) => entry.file === 'src/server.ts')).toBe(
+    true,
+  );
   expect(report.verification.gaps.length).toBeGreaterThan(0);
+});
+
+test('verify view does not match every test for directory-like changed paths', async () => {
+  const root = await makeUnderstandFixture();
+
+  const report = await computeUnderstandReport(root, {
+    view: 'verify',
+    changedFiles: ['.agentflight/'],
+    maxItems: 8,
+  });
+
+  expect(report.verification.directTests).toContainEqual({
+    file: '.agentflight/',
+    tests: [],
+    confidence: 'none',
+  });
+  expect(report.verification.gaps.map((gap) => gap.file)).toContain('.agentflight/');
+});
+
+test('verify view keeps direct-test matches for normal source filenames', async () => {
+  const root = await makeUnderstandFixture();
+
+  const report = await computeUnderstandReport(root, {
+    view: 'verify',
+    changedFiles: ['src/config.ts'],
+    maxItems: 8,
+  });
+
+  expect(report.verification.directTests).toContainEqual({
+    file: 'src/config.ts',
+    tests: ['tests/config.test.ts'],
+    confidence: 'medium',
+  });
 });
 
 async function makeUnderstandFixture(): Promise<string> {
@@ -106,12 +157,7 @@ async function makeUnderstandFixture(): Promise<string> {
   );
   await fs.writeFile(
     path.join(root, 'src', 'db.ts'),
-    [
-      'export async function query(sql: string) {',
-      '  return sql;',
-      '}',
-      '',
-    ].join('\n'),
+    ['export async function query(sql: string) {', '  return sql;', '}', ''].join('\n'),
   );
   await fs.writeFile(
     path.join(root, 'src', 'server.ts'),
@@ -132,12 +178,7 @@ async function makeUnderstandFixture(): Promise<string> {
   );
   await fs.writeFile(
     path.join(root, 'src', 'cli.ts'),
-    [
-      'import { createApp } from "./server";',
-      '',
-      'createApp();',
-      '',
-    ].join('\n'),
+    ['import { createApp } from "./server";', '', 'createApp();', ''].join('\n'),
   );
   await fs.writeFile(
     path.join(root, 'tests', 'config.test.ts'),

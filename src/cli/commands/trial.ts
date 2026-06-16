@@ -9,14 +9,23 @@ import {
 } from '../_shared.js';
 import { readFeedbackFile } from '../../core/feedback.js';
 import { computeTrialReport } from '../../core/trial.js';
-import type { TrialReport } from '../../types.js';
+import type { TrialReport } from '../../types/trial.js';
 
 export function registerTrial(): void {
   program
     .command('trial')
     .description('Run the end-to-end local adoption trial report for a team or product')
-    .option('--repo <path>', 'repo path to evaluate, repeatable (default: current repo)', collectRepo, [])
-    .option('--target-repos <count>', 'target number of repos before adoption is considered proven', parsePositiveInt)
+    .option(
+      '--repo <path>',
+      'repo path to evaluate, repeatable (default: current repo)',
+      collectRepo,
+      [],
+    )
+    .option(
+      '--target-repos <count>',
+      'target number of repos before adoption is considered proven',
+      parsePositiveInt,
+    )
     .option('--feedback <path>', 'JSON feedback artifact from projscan feedback')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -48,12 +57,37 @@ function printTrial(report: TrialReport): void {
   console.log(chalk.dim('────────────────────────────────────────'));
   console.log('  verdict:     ' + colorVerdict(report.verdict)(report.verdict));
   console.log('  summary:     ' + report.summary);
-  console.log('  activation:  ' + report.activation.status + ' (health ' + report.activation.healthScore + ', MCP ' + bool(report.activation.mcpReady) + ')');
-  console.log('  repos:       ' + report.dogfood.totals.reposEvaluated + '/' + report.dogfood.targetRepoCount);
-  console.log('  feedback:    ' + (report.feedback ? report.feedback.responses + ' response(s)' : 'not captured'));
+  console.log(
+    '  activation:  ' +
+      report.activation.status +
+      ' (health ' +
+      report.activation.healthScore +
+      ', MCP ' +
+      bool(report.activation.mcpReady) +
+      ')',
+  );
+  console.log(
+    '  repos:       ' + report.dogfood.totals.reposEvaluated + '/' + report.dogfood.targetRepoCount,
+  );
+  console.log(
+    '  feedback:    ' +
+      (report.feedback ? report.feedback.responses + ' response(s)' : 'not captured'),
+  );
   console.log('  market:      ' + report.dogfood.marketValidation.status);
-  console.log('  repeat PRs:  ' + report.dogfood.marketValidation.repeatUse.distinctPrs + ' PR(s), ' + report.dogfood.marketValidation.repeatUse.repeatedRepos + ' repeated repo(s)');
-  console.log('  value:       avg ' + report.dogfood.marketValidation.value.averageMinutesSaved + ' min, ' + report.dogfood.marketValidation.value.preventedBadEdits + ' risky edit(s) prevented');
+  console.log(
+    '  repeat PRs:  ' +
+      report.dogfood.marketValidation.repeatUse.distinctPrs +
+      ' PR(s), ' +
+      report.dogfood.marketValidation.repeatUse.repeatedRepos +
+      ' repeated repo(s)',
+  );
+  console.log(
+    '  value:       avg ' +
+      report.dogfood.marketValidation.value.averageMinutesSaved +
+      ' min, ' +
+      report.dogfood.marketValidation.value.preventedBadEdits +
+      ' risky edit(s) prevented',
+  );
   if (report.decision.reasons.length > 0) {
     console.log('');
     console.log(chalk.bold('Decision reasons'));
@@ -72,7 +106,8 @@ function collectRepo(value: string, previous: string[]): string[] {
 
 function parsePositiveInt(value: string): number {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) throw new Error('Expected a positive integer, got ' + value);
+  if (!Number.isInteger(parsed) || parsed < 1)
+    throw new Error('Expected a positive integer, got ' + value);
   return parsed;
 }
 

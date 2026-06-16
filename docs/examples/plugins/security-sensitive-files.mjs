@@ -1,4 +1,5 @@
-const SECURITY_SENSITIVE = /(^|\/)(auth|crypto|security|secrets?|payments?|billing|middleware)(\/|\.)|\.env(\.|$)|(^|\/)server\.ts$/i;
+const SECURITY_SENSITIVE =
+  /(^|\/)(auth|crypto|security|secrets?|payments?|billing|middleware)(\/|\.)|\.env(\.|$)|(^|\/)server\.ts$/i;
 
 export default {
   check: async (_rootPath, files) => {

@@ -51,7 +51,13 @@ export async function detectKotlinProject(
 }
 
 async function hasGradleManifest(rootPath: string): Promise<boolean> {
-  const candidates = ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'pom.xml'];
+  const candidates = [
+    'build.gradle',
+    'build.gradle.kts',
+    'settings.gradle',
+    'settings.gradle.kts',
+    'pom.xml',
+  ];
   for (const c of candidates) {
     try {
       await fs.access(path.join(rootPath, c));

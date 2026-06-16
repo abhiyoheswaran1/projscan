@@ -80,8 +80,10 @@ export async function loadOrCreateWorkspace(rootPath: string): Promise<Workspace
   };
 }
 
-
-export async function resolveTrustedWorkspaceRepoPath(rootPath: string, repoPath: string): Promise<string> {
+export async function resolveTrustedWorkspaceRepoPath(
+  rootPath: string,
+  repoPath: string,
+): Promise<string> {
   if (typeof repoPath !== 'string' || repoPath.length === 0) {
     throw new Error('Repo path is required.');
   }
@@ -158,7 +160,6 @@ export async function saveWorkspace(rootPath: string, workspace: Workspace): Pro
     // best-effort
   }
 }
-
 
 async function trustWorkspace(rootPath: string, workspace: Workspace): Promise<Workspace | null> {
   const rootReal = await realpathOrResolve(rootPath);

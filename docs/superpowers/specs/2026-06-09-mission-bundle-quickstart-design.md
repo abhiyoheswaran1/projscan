@@ -48,7 +48,7 @@ projscan search "auth token loader" --format json
 `next-tool-call.json` contains the same compact call as `projscan start --next-tool-call`:
 
 ```json
-{"tool":"projscan_search","args":{"query":"auth token loader"}}
+{ "tool": "projscan_search", "args": { "query": "auth token loader" } }
 ```
 
 If Mission Control points to a blocked input or done criterion instead of a command, `next-command.txt` contains `missionControl.resume.instruction`, and `next-tool-call.json` contains `null`.

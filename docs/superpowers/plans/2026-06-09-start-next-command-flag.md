@@ -13,6 +13,7 @@
 ### Task 1: Add Failing CLI Coverage
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add command-only console test**
@@ -60,7 +61,9 @@ const result = await runCli([
 Parse stdout and assert:
 
 ```ts
-expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+expect(report.missionControl.executionPlan.cursor.command).toBe(
+  'projscan search "auth token loader" --format json',
+);
 expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
 ```
 
@@ -77,6 +80,7 @@ Expected: Commander rejects unknown option `--next-command`.
 ### Task 2: Implement CLI Shortcut
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Register the option**
@@ -118,6 +122,7 @@ Expected: all CLI start tests pass.
 ### Task 3: Update Docs And Verify
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

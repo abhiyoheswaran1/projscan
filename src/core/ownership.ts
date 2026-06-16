@@ -28,7 +28,10 @@ async function loadCodeownersOwnership(rootPath: string): Promise<OwnershipLooku
       const content = await fs.readFile(path.join(rootPath, candidate), 'utf-8');
       return createOwnershipLookup(content);
     } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : '';
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code?: unknown }).code)
+          : '';
       if (code !== 'ENOENT') return undefined;
     }
   }
@@ -63,8 +66,14 @@ async function readPackageOwner(packageJsonPath: string): Promise<string | undef
     return undefined;
   }
   try {
-    const parsed = JSON.parse(raw) as { owner?: unknown; owners?: unknown; projscan?: { owner?: unknown; owners?: unknown } };
-    return normalizeOwnerValue(parsed.projscan?.owner ?? parsed.projscan?.owners ?? parsed.owner ?? parsed.owners);
+    const parsed = JSON.parse(raw) as {
+      owner?: unknown;
+      owners?: unknown;
+      projscan?: { owner?: unknown; owners?: unknown };
+    };
+    return normalizeOwnerValue(
+      parsed.projscan?.owner ?? parsed.projscan?.owners ?? parsed.owner ?? parsed.owners,
+    );
   } catch {
     return undefined;
   }
@@ -73,7 +82,9 @@ async function readPackageOwner(packageJsonPath: string): Promise<string | undef
 function normalizeOwnerValue(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   if (Array.isArray(value)) {
-    const owners = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    const owners = value.filter(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0,
+    );
     return owners.length > 0 ? owners.map((owner) => owner.trim()).join(' ') : undefined;
   }
   return undefined;

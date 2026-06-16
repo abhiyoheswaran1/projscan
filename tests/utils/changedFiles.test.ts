@@ -9,7 +9,10 @@ import { getChangedFiles } from '../../src/utils/changedFiles.js';
 const execFileAsync = promisify(execFile);
 const GIT_CHANGED_FILES_TIMEOUT_MS = 60000;
 
-vi.setConfig({ testTimeout: GIT_CHANGED_FILES_TIMEOUT_MS, hookTimeout: GIT_CHANGED_FILES_TIMEOUT_MS });
+vi.setConfig({
+  testTimeout: GIT_CHANGED_FILES_TIMEOUT_MS,
+  hookTimeout: GIT_CHANGED_FILES_TIMEOUT_MS,
+});
 
 async function git(cwd: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd });
@@ -74,6 +77,24 @@ describe('getChangedFiles', () => {
     const result = await getChangedFiles(repo);
     expect(result.available).toBe(true);
     expect(result.files).toContain('uncommitted.txt');
+  });
+
+  it('expands untracked nested directories to file paths', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    await fs.mkdir(path.join(repo, 'packages', 'api'), { recursive: true });
+    await fs.writeFile(
+      path.join(repo, 'packages', 'api', 'package.json'),
+      '{"name":"@fixture/api"}\n',
+    );
+
+    const result = await getChangedFiles(repo);
+
+    expect(result.available).toBe(true);
+    expect(result.files).toContain('packages/api/package.json');
+    expect(result.files).not.toContain('packages/');
   });
 
   it('normalizes modified working-tree paths without porcelain status prefixes', async () => {

@@ -2,11 +2,7 @@ import { computePreflight } from '../../core/preflight.js';
 import type { PreflightMode } from '../../types.js';
 import type { McpTool } from './_shared.js';
 
-const PREFLIGHT_MODES: readonly PreflightMode[] = [
-  'before_edit',
-  'before_commit',
-  'before_merge',
-];
+const PREFLIGHT_MODES: readonly PreflightMode[] = ['before_edit', 'before_commit', 'before_merge'];
 
 export const preflightTool: McpTool = {
   name: 'projscan_preflight',

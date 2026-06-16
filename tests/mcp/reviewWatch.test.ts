@@ -3,10 +3,7 @@ import { execSync } from 'node:child_process';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-  reviewWatchTool,
-  __resetReviewWatchesForTests,
-} from '../../src/mcp/tools/reviewWatch.js';
+import { reviewWatchTool, __resetReviewWatchesForTests } from '../../src/mcp/tools/reviewWatch.js';
 import type { McpToolContext } from '../../src/mcp/tools/_shared.js';
 
 const GIT_WATCH_TIMEOUT_MS = 60000;
@@ -119,11 +116,10 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
       root,
       context,
     )) as Record<string, unknown>;
-    const list = (await reviewWatchTool.handler(
-      { action: 'list' },
-      root,
-      context,
-    )) as Record<string, unknown>;
+    const list = (await reviewWatchTool.handler({ action: 'list' }, root, context)) as Record<
+      string,
+      unknown
+    >;
     expect(list.count).toBe(1);
     expect((list.watches as Array<{ watchId: string }>)[0].watchId).toBe(start.watchId);
   });
@@ -140,23 +136,22 @@ describe('projscan_review_watch — start (with notify + registry)', () => {
       context,
     )) as Record<string, unknown>;
     expect(stop.cancelled).toBe(true);
-    const list = (await reviewWatchTool.handler(
-      { action: 'list' },
-      root,
-      context,
-    )) as Record<string, unknown>;
+    const list = (await reviewWatchTool.handler({ action: 'list' }, root, context)) as Record<
+      string,
+      unknown
+    >;
     expect(list.count).toBe(0);
   });
 
   it('rejects unknown action', async () => {
-    await expect(
-      reviewWatchTool.handler({ action: 'unknown' }, root, context),
-    ).rejects.toThrow(/Unknown action/);
+    await expect(reviewWatchTool.handler({ action: 'unknown' }, root, context)).rejects.toThrow(
+      /Unknown action/,
+    );
   });
 
   it('rejects stop without watchId', async () => {
-    await expect(
-      reviewWatchTool.handler({ action: 'stop' }, root, context),
-    ).rejects.toThrow(/watchId/);
+    await expect(reviewWatchTool.handler({ action: 'stop' }, root, context)).rejects.toThrow(
+      /watchId/,
+    );
   });
 });

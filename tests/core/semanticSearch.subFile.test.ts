@@ -56,10 +56,7 @@ describe('buildChunks (sub-file embedding chunk extraction)', () => {
   });
 
   it('includes the matched line range in the chunk text', async () => {
-    await write(
-      'src/a.ts',
-      ['', 'export function foo() {', '  return 1;', '}', ''].join('\n'),
-    );
+    await write('src/a.ts', ['', 'export function foo() {', '  return 1;', '}', ''].join('\n'));
     const scan = await scanRepository(tmp);
     const graph = await buildCodeGraph(tmp, scan.files);
     const chunks = await buildChunks(tmp, scan.files, { subFile: true, graph });

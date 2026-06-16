@@ -53,7 +53,10 @@ export async function computeRegressionPlan(
       bugHuntVerdict: bugHunt.verdict,
       preflightVerdict: preflight.verdict,
       changedFiles: preflight.evidence.changedFiles?.count ?? 0,
-      touchedFiles: preflight.evidence.session?.totalTouchedFiles ?? preflight.evidence.session?.touchedFiles.length ?? 0,
+      touchedFiles:
+        preflight.evidence.session?.totalTouchedFiles ??
+        preflight.evidence.session?.touchedFiles.length ??
+        0,
     },
     targets,
     commands,
@@ -72,23 +75,35 @@ function baselineTargets(level: RegressionPlanLevel): RegressionPlanTarget[] {
       why: 'Every product line needs a repeatable health gate before deeper regression work starts.',
       files: [],
       verification: {
-        commands: ['projscan doctor --format json', 'projscan preflight --mode before_commit --format json'],
-        expected: 'Doctor has no unresolved error-level issues and preflight does not block the handoff.',
+        commands: [
+          'projscan doctor --format json',
+          'projscan preflight --mode before_commit --format json',
+        ],
+        expected:
+          'Doctor has no unresolved error-level issues and preflight does not block the handoff.',
       },
     },
     ...(level === 'full'
-      ? [{
-          id: 'rp-baseline-release',
-          priority: 'p1' as const,
-          source: 'baseline' as const,
-          title: 'Run full package and stability gates',
-          why: 'The larger product update should prove build output, stable public surfaces, and readiness checks in one pass.',
-          files: ['package.json', 'docs/STABILITY.md', 'scripts/check-stability.mjs'],
-          verification: {
-            commands: ['npm run build', 'npm run lint', 'npm run check:stability', 'npm run release:check'],
-            expected: 'Build, lint, stability guard, and release check all pass from the committed tree.',
+      ? [
+          {
+            id: 'rp-baseline-release',
+            priority: 'p1' as const,
+            source: 'baseline' as const,
+            title: 'Run full package and stability gates',
+            why: 'The larger product update should prove build output, stable public surfaces, and readiness checks in one pass.',
+            files: ['package.json', 'docs/STABILITY.md', 'scripts/check-stability.mjs'],
+            verification: {
+              commands: [
+                'npm run build',
+                'npm run lint',
+                'npm run check:stability',
+                'npm run release:check',
+              ],
+              expected:
+                'Build, lint, stability guard, and release check all pass from the committed tree.',
+            },
           },
-        }]
+        ]
       : []),
   ];
 }
@@ -121,7 +136,10 @@ function preflightTargets(preflight: PreflightReport): RegressionPlanTarget[] {
     why: reason.message,
     files: reason.file ? [reason.file] : [],
     verification: {
-      commands: ['projscan preflight --mode before_commit --format json', commandForTool(reason.tool)],
+      commands: [
+        'projscan preflight --mode before_commit --format json',
+        commandForTool(reason.tool),
+      ],
       expected: 'The preflight signal is either gone or documented as accepted risk.',
     },
   }));
@@ -143,7 +161,10 @@ function releaseLineTargets(train: ReleaseTrainReport): RegressionPlanTarget[] {
 }
 
 function commandsForLevel(level: RegressionPlanLevel, targets: RegressionPlanTarget[]): string[] {
-  const smoke = ['projscan doctor --format json', 'projscan preflight --mode before_commit --format json'];
+  const smoke = [
+    'projscan doctor --format json',
+    'projscan preflight --mode before_commit --format json',
+  ];
   if (level === 'smoke') return dedupeStrings(smoke);
   const focused = [
     ...smoke,
@@ -167,7 +188,8 @@ function regressionVerdict(
   targets: RegressionPlanTarget[],
 ): RegressionPlanVerdict {
   if (preflight.verdict === 'block' || bugHunt.verdict === 'block') return 'blocked';
-  if (preflight.verdict === 'caution' || bugHunt.verdict === 'fix' || targets.length > 1) return 'needs_tests';
+  if (preflight.verdict === 'caution' || bugHunt.verdict === 'fix' || targets.length > 1)
+    return 'needs_tests';
   return 'ready';
 }
 
@@ -195,9 +217,15 @@ function rankTargets(targets: RegressionPlanTarget[]): RegressionPlanTarget[] {
     });
 }
 
-function summarize(verdict: RegressionPlanVerdict, level: RegressionPlanLevel, targetCount: number): string {
-  if (verdict === 'blocked') return `blocked: ${level} regression plan has ${targetCount} target(s) and p0 evidence`;
-  if (verdict === 'needs_tests') return `needs_tests: run ${level} regression plan across ${targetCount} target(s)`;
+function summarize(
+  verdict: RegressionPlanVerdict,
+  level: RegressionPlanLevel,
+  targetCount: number,
+): string {
+  if (verdict === 'blocked')
+    return `blocked: ${level} regression plan has ${targetCount} target(s) and p0 evidence`;
+  if (verdict === 'needs_tests')
+    return `needs_tests: run ${level} regression plan across ${targetCount} target(s)`;
   return `ready: ${level} regression baseline has no immediate extra targets`;
 }
 

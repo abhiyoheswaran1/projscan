@@ -32,6 +32,7 @@ Add this section after the `## Review Gate` checklist and before the review prom
 
 ```md
 ## Reviewer Decision
+
 - [ ] Approve next slice: The agent may start another bounded implementation slice. Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.
 - [ ] Request changes: The agent must address review feedback before starting more scope. Consequence: The current mission stays open until feedback and proof are updated.
 - [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review. Consequence: Publishing still requires a separate explicit approval.

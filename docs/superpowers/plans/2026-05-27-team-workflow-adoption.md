@@ -13,6 +13,7 @@
 ### Task 1: Start Workflow
 
 **Files:**
+
 - Create: `src/core/start.ts`
 - Create: `src/cli/commands/start.ts`
 - Create: `src/mcp/tools/start.ts`
@@ -32,6 +33,7 @@
 ### Task 2: Policy Starter Kits
 
 **Files:**
+
 - Modify: `src/core/adoption.ts`
 - Modify: `src/cli/commands/init.ts`
 - Modify: `src/utils/formatSupport.ts`
@@ -45,6 +47,7 @@
 ### Task 3: Handoff Artifact
 
 **Files:**
+
 - Modify: `src/core/workplan.ts`
 - Modify: `src/cli/commands/workplan.ts`
 - Test: `tests/core/workplan.test.ts`
@@ -58,6 +61,7 @@
 ### Task 4: PR Comment Renderer
 
 **Files:**
+
 - Modify: `src/core/releaseEvidence.ts`
 - Modify: `src/cli/commands/evidencePack.ts`
 - Test: `tests/core/releaseEvidence.test.ts`
@@ -70,6 +74,7 @@
 ### Task 6: GitHub Action Starter
 
 **Files:**
+
 - Modify: `src/core/adoption.ts`
 - Modify: `src/cli/commands/init.ts`
 - Modify: `src/utils/formatSupport.ts`
@@ -83,6 +88,7 @@
 ### Task 5: Verification
 
 **Files:**
+
 - Modify docs and README command lists only after code is green.
 
 - [x] Run `npm run build`.

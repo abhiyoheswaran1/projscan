@@ -112,7 +112,7 @@ projscan is structured around the four questions an AI coding agent (or a carefu
 
 ### 1. Diagnose — "what's wrong here?"
 
-When the agent first opens a repo, or before starting a refactor, the question is: *is anything obviously broken or risky?*
+When the agent first opens a repo, or before starting a refactor, the question is: _is anything obviously broken or risky?_
 
 - **`projscan privacy-check`** — trust boundary report. Shows telemetry/offline status, scan root, Git ignore handling, `.env` content handling, plugin execution status, local write surfaces, report-export sensitivity, and network-capable endpoints.
 - **`projscan_start` / `projscan start`** — first-60-seconds workflow orientation. Composes setup diagnostics, Mission Control, the recommended workflow recipe, `firstTenMinutes`, workplan, quality scorecard, top risks, adoption gaps, repeat-use metrics, next commands, optional handoff payload, and a split between current Git/worktree evidence and remembered session context. Pass `intent` / `--intent "<goal>"` when the developer or agent wants one routed action plan with route confidence, immediately callable `readyActions`, and proof commands, such as `projscan start --intent "what breaks if I rename this API?"`. For fuzzy impact targets, Mission Control searches first, then gives symbol and file impact follow-ups for the search result. For exact symbols or paths, such as `projscan start --intent "what breaks if I change src/core/start.ts?"`, `projscan start --intent "where is runAudit used?"`, `projscan start --intent "what depends on src/core/start.ts?"`, or `projscan start --intent "can I delete src/core/start.ts?"`, it runs impact directly. For repo-orientation questions, such as `projscan start --intent "summarize this repo"`, `projscan start --intent "what files should I read first?"`, `projscan start --intent "where do I start in this codebase?"`, `projscan start --intent "give me a tour of the repo"`, or `projscan start --intent "explain the architecture"`, it routes to `projscan_understand --view map` so the developer gets cited read-first files, entrypoints, boundaries, risks, and unknowns. For public surface questions, such as `projscan start --intent "what are the public contracts?"` or `projscan start --intent "how do I safely deprecate this API?"`, it routes to `projscan_understand --view contracts` so public exports, config contracts, and likely breaking-change risks are reviewed before touching API surfaces. For API breakage questions, such as `projscan start --intent "what will this API change break?"`, it searches for the exact public symbol or file before continuing to impact analysis. For broad quality/risk questions, such as `projscan start --intent "what is risky in this repo?"`, it routes to `projscan_quality_scorecard` so health, security, tests, maintainability, coordination, and top risks are reviewed before choosing work. For file-orientation questions, such as `projscan start --intent "what should I read before changing src/core/start.ts?"`, `projscan start --intent "explain src/core/start.ts"`, `projscan start --intent "who owns src/core/start.ts?"`, `projscan start --intent "who should review src/core/start.ts?"`, or `projscan start --intent "who last touched src/core/start.ts?"`, it routes to `projscan_file` so the developer sees purpose, imports, exports, ownership, history, reviewer context, and risk before editing. For targeted graph questions, such as `projscan start --intent "who imports src/core/start.ts?"`, it routes to `projscan_semantic_graph` query mode instead of dumping the full graph. For security source-to-sink questions, such as `projscan start --intent "is user input reaching SQL sinks?"`, it routes to `projscan_dataflow` and infers the `hardening` workflow. For coverage-gap questions, such as `projscan start --intent "what are the scariest untested files?"`, it routes to `projscan_coverage` so the next test target is chosen by risk. For dependency inventory questions, such as `projscan start --intent "what dependencies does this repo use?"`, it routes to `projscan_dependencies` instead of an upgrade preview. For dependency vulnerability questions, such as `projscan start --intent "does lodash have a CVE?"`, `projscan start --intent "what CVEs affect this repo?"`, or `projscan start --intent "find vulnerable packages"`, it routes to `projscan_audit`, scoped with `--package` when the package can be inferred. For package-bump or package-update questions, such as `projscan start --intent "what breaks if I bump chalk to 6?"` or `projscan start --intent "what breaks if I update react?"`, it routes to `projscan_upgrade`; if no package is named, Mission Control runs `projscan outdated --format json` first and marks the package name as `Needs Input`. For "what changed in this PR?", it routes to `projscan_pr_diff` before full review. For "what should I fix first?" or "what is the fastest safe fix?", it routes to `projscan_bug_hunt` instead of issue-specific fix-suggest or generic preflight. For open-ended next-step questions, such as `projscan start --intent "what should I do next?"`, it routes to `projscan_workplan --mode before_edit` so the developer gets an ordered plan with verification before editing. For "give the next agent a handoff", it routes to `projscan_agent_brief` with `intent: "next_agent"`. For issue context, such as `projscan start --intent "explain issue missing-test-framework"`, it routes to `projscan_explain_issue`; if no issue id is named, Mission Control runs `projscan doctor --format json` first and marks the issue id as `Needs Input`. For direct issue repair, such as `projscan start --intent "fix issue missing-test-framework"`, it routes to `projscan_fix_suggest`; if no issue id is named, Mission Control runs `projscan doctor --format json` first and marks the fix-suggest issue id as `Needs Input`. For failing CI or tests, such as `projscan start --intent "CI is failing after this PR"`, it routes to `projscan_regression_plan` with a focused verification plan. For right-sized verification questions, such as `projscan start --intent "what smoke checks should I run before commit?"` or `projscan start --intent "what full regression should I run before merge?"`, Mission Control preserves the requested `smoke` or `full` regression depth.
@@ -180,7 +180,9 @@ When the agent first opens a repo, or before starting a refactor, the question i
   For short proof-command phrasing, such as `projscan start --intent "give me proof commands"`, it also routes to `projscan_regression_plan --level focused`; reviewer-proof wording with PR comments still routes to `projscan_evidence_pack`.
   For pre-push command questions, such as `projscan start --intent "what commands should I run before pushing?"`, it routes to `projscan_regression_plan --level focused` so the branch has a small verification loop before it leaves the workstation.
   For release-readiness wording, such as `projscan start --intent "what should I check before release?"`, `projscan start --intent "can I deploy this?"`, `projscan start --intent "prepare this branch for deployment"`, `projscan start --intent "what changed since last release?"`, `projscan start --intent "write a release note for this change"`, or `projscan start --intent "draft changelog entry"`, it routes to `projscan_release_train` so changelog, package, SBOM, provenance, and blockers are reviewed before deploying or publishing.
-  For quick-win and low-risk improvement wording, such as `projscan start --intent "find a quick win"`, `projscan start --intent "what is a low risk improvement?"`, or `projscan start --intent "pick a small safe task"`, it routes to `projscan_bug_hunt` so a ranked, verifiable fix queue is selected instead of a generic quality readout.
+  For product-planning questions, such as `projscan start --intent "what should we build next?"` or `projscan start --intent "plan the product roadmap"`, it routes to `projscan_workplan --mode bug_hunt` so broad product direction becomes an ordered, verifiable product-planning workplan with explicit accept, defer, or split criteria instead of a generic before-edit orientation.
+  For broad improvement-planning questions, such as `projscan start --intent "what should we improve next?"`, it routes to `projscan_bug_hunt` so the agent gets an actionable ranked queue; technical variants such as tests, performance, release, dependencies, or safety keep their specialized routes.
+  For quick-win and low-risk improvement wording, such as `projscan start --intent "find a quick win"`, `projscan start --intent "what is a low risk improvement?"`, or `projscan start --intent "pick a small safe task"`, it routes to `projscan_bug_hunt` so a ranked, verifiable action queue is selected instead of a generic quality readout.
   For tiny-task and beginner-safe wording, such as `projscan start --intent "what can I do in five minutes?"`, `projscan start --intent "pick an easy task for me"`, or `projscan start --intent "what should an intern work on?"`, it also routes to `projscan_bug_hunt`.
   For branch-diff, PR-size, and commit-message questions, such as `projscan start --intent "what did I change since main?"`, `projscan start --intent "is this PR too large?"`, `projscan start --intent "how big is this change?"`, `projscan start --intent "write a commit message for these changes"`, or `projscan start --intent "summarize my changes for a commit"`, it routes to `projscan_pr_diff` so changed exports, imports, call sites, complexity, and fan-in are reviewed before full review.
   For branch freshness and comparison questions, such as `projscan start --intent "is my branch stale?"` or `projscan start --intent "compare my branch with main"`, it also routes to `projscan_pr_diff` so the developer checks the structural diff before rebasing or asking for review. For rebase and merge-conflict recovery, such as `projscan start --intent "rebase went wrong"` or `projscan start --intent "resolve merge conflicts"`, it routes to `projscan_preflight --mode before_merge`; post-conflict test-plan wording such as `projscan start --intent "what should I test after resolving conflicts?"` stays on `projscan_regression_plan`.
@@ -190,7 +192,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
   For file-claim requests, such as `projscan start --intent "claim src/core/start.ts for me"`, it routes to `projscan_claim`, lists active claims first, then adds the requested target only after a real agent name replaces `Needs Input`.
   For architecture-coupling questions, such as `projscan start --intent "show circular dependencies"` or `projscan start --intent "find dependency cycles"`, it routes to `projscan_coupling` with `direction: "cycles_only"` / `projscan coupling --cycles-only --format json`; broader wording such as `projscan start --intent "what modules are tightly coupled"` routes to the full fan-in, fan-out, instability, cross-package-edge, and cycle report.
 - **`projscan_workplan` / `projscan workplan`** — agent mission control. Composes preflight, review, session, hotspot, plugin-policy, and supply-chain evidence into prioritized tasks with suggested tools, exact verification commands, and short handoff text. Modes: `before_edit`, `before_commit`, `before_merge`, `refactor`, `release`, `bug_hunt`, and `hardening`.
-- **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt fix queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked fix targets with verification commands; pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
+- **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt action queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked actions with verification commands; release-scale findings can be manual sign-off actions, while pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, coordination hints, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
 - **`projscan_understand` / `projscan understand`** — cited repo-comprehension surface. Returns repo maps, runtime flow maps, contract maps, change-readiness guidance, verification tiers, unknowns, read-first files, and exact next commands.
@@ -206,7 +208,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` or `projscan coupling --cycles-only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
-**Typical agent flow:** start with `projscan privacy-check`, then `projscan_start` with an optional plain-language intent. If no explicit mode is supplied, start infers the workflow mode from the intent, such as `before_commit` for commit-safety checks; read `modeSource` and `modeReason` to see whether the mode was explicit, inferred, or defaulted. `modeReason` distinguishes workflow-mode defaulting from action routing, so an impact intent can still route through Mission Control while the workflow stays `before_edit`. The `firstTenMinutes` path and current-worktree coordination hint follow that resolved mode, so a commit-safety start does not send the developer back through a before-edit gate. Follow `missionControl.actionPlan`, call `missionControl.readyActions` immediately, use `missionControl.executionPlan.currentPhase` as the cursor-aligned phase pointer, and use `missionControl.executionPlan.cursor.tool` / `args` when the cursor is directly MCP-callable. Use routed-intent weighted `confidence`, `score`, and `matchedKeywords` to judge weak or ambiguous matches, and read the same confidence line in console output when working manually. Fill any `missionControl.unresolvedInputs` before running placeholder follow-ups, inspect `missionControl.alternatives` when the intent mixes goals, stop only when `missionControl.successCriteria` is satisfied, and hand off with `missionControl.handoff`, `missionControl.runbook`, or the concise `missionControl.handoffPrompt`. Use `missionControl.reviewGate` as the autonomous-work stop boundary: finish the current checklist and proof, capture `git status --short` and `git diff --stat`, then wait for approval before another slice, release, publish, or deploy. Read `missionControl.reviewGate.worktree` for current worktree availability, changed-file count, base ref, and visible changed files. Use `missionControl.reviewGate.proof` when the reviewer needs the remaining proof queue without reading the full resume object. Read `missionControl.reviewGate.doneWhen` for the success criteria the reviewer must confirm before approving more work. Read `missionControl.reviewGate.policy` before continuing from a review handoff; it lists the actions blocked until explicit reviewer approval: another slice, release, publish, deploy, push, merge, and version bump. Use `projscan start --review-gate-json --intent "<goal>"` or saved `review-gate.json` when a script needs proof, worktree evidence, done criteria, decisions, and policy in one review object. Use `projscan start --review-policy --intent "<goal>"` or saved `review-policy.json` when a script only needs that approval boundary. Use `missionControl.reviewGate.decisions` as the approval menu in review gates, task cards, and runbooks; each decision includes copyable reviewer reply text so agents do not infer permission to continue, release, or publish. The default console review gate, saved mission bundle README, concise handoff prompt, `--review-replies`, and saved `review-replies.txt` show those replies for first-open review. `missionControl.handoff.reviewGate`, `--handoff-json`, and saved `handoff.json` carry that same gate for transfer-only flows. The handoff prompt starts with `missionControl.resume.prompt`, so it carries the current cursor, runnable command or blocked input instruction, labeled unlocks or blockers, done criteria, ready proof, review stop condition, and reviewer replies in one copyable sentence; the normal console prints that same value as `Handoff Prompt` without requiring JSON or `--include-handoff`, `projscan start --handoff-prompt --intent "<goal>"` prints only that prompt for piping or copy/paste, and the Markdown runbook renders it as `## Handoff Prompt` so copied runbooks carry the same next-agent prompt. When a human just needs the runnable shell step, `projscan start --next-command --intent "<goal>"` prints only the current cursor command; when an MCP agent needs the callable equivalent, `projscan start --next-tool-call --intent "<goal>"` prints the current cursor tool call as compact JSON. Cite `missionControl.proofSummary` plus the runnable-only `missionControl.proofCommands` in broad handoff notes, and use `missionControl.handoff.readyProof.items` when resuming because it is the complete ordered remaining-proof queue; each item carries its CLI command and an optional MCP `toolCall`. `missionControl.handoff.readyProof.commands` and `toolCalls` remain convenient command-only and MCP-callable views. MCP agents should use `missionControl.resume.toolCall` when present, use `missionControl.resume.inputBindings` to map unlocked placeholders to input steps, then call `missionControl.resume.followUps` as the next template calls; when they need one ordered sequence, follow `missionControl.resume.checklist`, whose `run_proof` rows include `tool` and `args` for MCP-callable proof steps. The normal console `Resume Checklist` and Markdown runbook checklist print callable rows inline as `(MCP: ...)` and mark unmapped proof rows as `(CLI only)`, so a copied runbook or default terminal run remains self-contained even outside the JSON payload. After the current action, prefer `missionControl.resume.remainingProofItems` for complete proof, using `remainingProofToolCalls` for the callable MCP subset without rerunning the current command. Humans can run the matching `command`; the normal console `Ready Proof` command list, normal console `Proof Queue`, and runbook `Proof queue` all use remaining proof so the current cursor command is not repeated, and each queued item shows either its MCP call or `CLI only`. Use `projscan_understand` and `projscan_preflight` when you need broader context or a safety gate. Use `projscan_workplan` when you need an ordered execution plan, `projscan_agent_brief` for a compact handoff, and `projscan_evidence_pack --pr-comment` when you need reviewer-facing proof. Deeper tools such as `doctor`, `hotspots`, `dataflow`, `review`, `bug-hunt`, `quality-scorecard`, `dogfood`, and `trial` are follow-up tools.
+**Typical agent flow:** start with `projscan privacy-check`, then `projscan_start` with an optional plain-language intent. If no explicit mode is supplied, start infers the workflow mode from the intent, such as `before_commit` for commit-safety checks; read `modeSource` and `modeReason` to see whether the mode was explicit, inferred, or defaulted. `modeReason` distinguishes workflow-mode defaulting from action routing, so an impact intent can still route through Mission Control while the workflow stays `before_edit`. The `firstTenMinutes` path and current-worktree coordination hint follow that resolved mode, so a commit-safety start does not send the developer back through a before-edit gate. Follow `missionControl.actionPlan`, call `missionControl.readyActions` immediately, use `missionControl.executionPlan.currentPhase` as the cursor-aligned phase pointer, and use `missionControl.executionPlan.cursor.tool` / `args` when the cursor is directly MCP-callable. Use routed-intent weighted `confidence`, `score`, and `matchedKeywords` to judge weak or ambiguous matches, and read the same confidence line in console output when working manually. Fill any `missionControl.unresolvedInputs` before running placeholder follow-ups, inspect `missionControl.alternatives` when the intent mixes goals, stop only when `missionControl.successCriteria` is satisfied, and hand off with `missionControl.handoff`, `missionControl.runbook`, or the concise `missionControl.handoffPrompt`. Use `missionControl.reviewGate` as the autonomous-work stop boundary: finish the current checklist and proof, capture `git status --short` and `git diff --stat`, then wait for approval before another slice, release, publish, or deploy. Read `missionControl.reviewGate.worktree` for current worktree availability, changed-file count, base ref, and visible changed files. Use `missionControl.reviewGate.proof` when the reviewer needs the remaining proof queue without reading the full resume object. Read `missionControl.reviewGate.doneWhen` for the success criteria the reviewer must confirm before approving more work. Read `missionControl.reviewGate.policy` before continuing from a review handoff; it lists the actions blocked until explicit reviewer approval: another slice, release, publish, deploy, push, merge, and version bump. Use `projscan start --review-gate-json --intent "<goal>"` or saved `review-gate.json` when a script needs proof, worktree evidence, done criteria, decisions, and policy in one review object. Use `projscan start --review-policy --intent "<goal>"` or saved `review-policy.json` when a script only needs that approval boundary. Use `missionControl.reviewGate.decisions` as the approval menu in review gates, task cards, and runbooks; each decision includes copyable reviewer reply text so agents do not infer permission to continue, release, or publish. The default console review gate, saved mission bundle README, concise handoff prompt, `--review-replies`, and saved `review-replies.txt` show those replies for first-open review. `missionControl.handoff.reviewGate`, `--handoff-json`, and saved `handoff.json` carry that same gate for transfer-only flows. The handoff prompt starts with `missionControl.resume.prompt`, so it carries the current cursor, runnable command or blocked input instruction, labeled unlocks or blockers, done criteria, ready proof, review stop condition, and reviewer replies in one copyable sentence; the normal console prints that same value as `Handoff Prompt` without requiring JSON or `--include-handoff`, `projscan start --handoff-prompt --intent "<goal>"` prints only that prompt for piping or copy/paste, and the Markdown runbook renders it as `## Handoff Prompt` so copied runbooks carry the same next-agent prompt. When a human just needs the runnable shell step, `projscan start --next-command --intent "<goal>"` prints only the current cursor command; when an MCP agent needs the callable equivalent, `projscan start --next-tool-call --intent "<goal>"` prints the current cursor tool call as compact JSON. Cite `missionControl.proofSummary` plus the runnable-only `missionControl.proofCommands` in broad handoff notes, and use `missionControl.handoff.readyProof.items` when resuming because it is the complete ordered remaining-proof queue; each item carries its CLI command and an optional MCP `toolCall`. `missionControl.handoff.readyProof.commands` and `toolCalls` remain convenient command-only and MCP-callable views. If the repo has `AGENTLOOP.md` or `agentloop.config.json`, start adds `npm exec agentloop -- status` to the coordination/proof queue; if `.agentflight/config.json` exists, it adds `npm exec agentflight -- verify`. These harness commands are emitted for agents, scripts, saved mission bundles, and `--proof-commands`; start reports them but does not execute them. MCP agents should use `missionControl.resume.toolCall` when present, use `missionControl.resume.inputBindings` to map unlocked placeholders to input steps, then call `missionControl.resume.followUps` as the next template calls; when they need one ordered sequence, follow `missionControl.resume.checklist`, whose `run_proof` rows include `tool` and `args` for MCP-callable proof steps. The normal console `Resume Checklist` and Markdown runbook checklist print callable rows inline as `(MCP: ...)` and mark unmapped proof rows as `(CLI only)`, so a copied runbook or default terminal run remains self-contained even outside the JSON payload. After the current action, prefer `missionControl.resume.remainingProofItems` for complete proof, using `remainingProofToolCalls` for the callable MCP subset without rerunning the current command. Humans can run the matching `command`; the normal console `Ready Proof` command list, normal console `Proof Queue`, and runbook `Proof queue` all use remaining proof so the current cursor command is not repeated, and each queued item shows either its MCP call or `CLI only`. Use `projscan_understand` and `projscan_preflight` when you need broader context or a safety gate. Use `projscan_workplan` when you need an ordered execution plan, `projscan_agent_brief` for a compact handoff, and `projscan_evidence_pack --pr-comment` when you need reviewer-facing proof. Deeper tools such as `doctor`, `hotspots`, `dataflow`, `review`, `bug-hunt`, `quality-scorecard`, `dogfood`, and `trial` are follow-up tools.
 
 For shortcut discovery, `projscan start --shortcuts --intent "<goal>"` prints the copyable command menu for the current mission, and `projscan start --shortcuts-json --intent "<goal>"` prints the same menu as JSON for agents and scripts. For shell copy/paste, `projscan start --mission-script --intent "<goal>"` prints a POSIX script that runs the current cursor command, then the remaining proof queue, then prints the review evidence commands. For MCP queue copy/paste, `projscan start --ready-tool-calls --intent "<goal>"` prints the current cursor call followed by remaining MCP-callable proof as compact JSON. For structured resume handoff, `projscan start --resume-json --intent "<goal>"` prints only `missionControl.resume`. For the complete transfer object, `projscan start --handoff-json --intent "<goal>"` prints only `missionControl.handoff`. For a file bundle, `projscan start --save-mission .projscan/mission --intent "<goal>"` writes `README.md`, `next-command.txt`, `next-tool-call.json`, `handoff-prompt.txt`, `resume-prompt.txt`, `task-card.md`, `review-gate.md`, `review-gate.json`, `review-policy.json`, `review-replies.txt`, the runbook, handoff JSON, resume JSON, `ready-tool-calls.json`, `shortcuts.json`, `mission.sh`, `status.sh`, `proof-logs/README.md`, `proof-logs/status.jsonl`, `proof-logs/run-report.md`, `proof-logs/summary.json`, proof commands, and manifest. Saved `mission.sh` writes current-command and proof-command output under `proof-logs/`, appends exit-code rows to `status.jsonl`, refreshes `run-report.md`, and writes `summary.json`, so reviewers and wrappers can scan pass/fail proof before opening raw logs. Bundle `status.sh` reads `summary.json` and uses exit codes `0`, `1`, and `2` for passed, failed, and not-ready states. For verification-only copy/paste, `projscan start --proof-commands --intent "<goal>"` prints the remaining ready proof commands one per line without the rest of the start report. For an ordered checklist without the full report, `projscan start --checklist --intent "<goal>"` prints only the resume checklist rows. For paste-ready PR, issue, or handoff notes, `projscan start --task-card --intent "<goal>"` prints the Markdown task card. MCP agents can read `missionControl.taskCard.markdown` when they need the same checklist without rendering it from `resume.checklist`. For stop-and-review notes, `projscan start --review-gate --intent "<goal>"` prints only `missionControl.reviewGate.markdown`, `projscan start --review-gate-json --intent "<goal>"` prints only the review gate JSON, `projscan start --review-policy --intent "<goal>"` prints only the review policy JSON, and `projscan start --review-replies --intent "<goal>"` prints only the copyable reviewer replies. For a full Markdown artifact, `projscan start --runbook --intent "<goal>"` prints the mission runbook. For post-run proof, `projscan mission-proof --mission .projscan/mission --format markdown` prints a paste-ready evidence report, while `--format json` keeps the same data machine-readable. Add `--list` to show saved mission bundles, status, update time, totals, and copyable resume/proof commands before choosing a target; add `--needs-attention` or `--mission-status failed` to focus that list. Add `--latest` to select the saved mission bundle with the newest `proof-logs/summary.json`. Add `--all` to include `.projscan/mission` and direct child bundles under `.projscan/missions/`. Add `--summary` when logs need one pass/fail line. Add `--require-passed` when a local script should fail unless every selected bundle passed. Add `--write reports/mission-proof.md` or `--write reports/mission-proof.json` when a reviewer, CI job, or next agent needs a saved local artifact. Run `projscan mission-proof --init-baseline manual-runs.json` before manual comparison if the team has not created the baseline file yet; use `--add-baseline-run manual-runs.json --id manual-1 --status passed --minutes-spent 25` to append measured manual runs without editing JSON. Run `--check-baseline manual-runs.json` before comparison when you want to validate the file without scanning mission bundles. Add `--format json` to baseline init, append, or check commands when a wrapper needs the written path, run count, added run, or totals. Baseline run IDs must be non-empty and unique; statuses must be `passed`, `failed`, `running`, `not_run`, or `unknown`; metric fields must be non-negative numbers.
 
@@ -235,8 +237,8 @@ npm run docs:demos
 
 When the agent has changes in flight (or is asked to review someone else's), the question shifts from "what's wrong globally" to "what changed, and does the change introduce risk?"
 
-- **`projscan_pr_diff` / `projscan pr-diff`** *(0.11+)* — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
-- **`projscan_review` / `projscan review`** *(0.13+)* — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + `newTaintFlows`, hardened `newDataflowRisks`, compact `graphEvidence`, and a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
+- **`projscan_pr_diff` / `projscan pr-diff`** _(0.11+)_ — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in. Not a text diff: surfaces the symbols that moved, not the whitespace.
+- **`projscan_review` / `projscan review`** _(0.13+)_ — **the headline tool for this phase**. Composes `pr_diff` + per-file risk + new/expanded import cycles + risky function additions + dependency changes + optional `contractChanges` for export and package-entrypoint changes + `newTaintFlows`, hardened `newDataflowRisks`, compact `graphEvidence`, and a verdict (`ok` / `review` / `block`). One tool call answers the whole question.
 - **`projscan_preflight --mode before_merge` / `projscan_preflight { mode: "before_merge" }`** — smaller merge gate over review, changed-file health, taint, dataflow, session, hotspot, plugin, supply-chain, and release-scale signals. `evidence.releaseScale` marks large platform-release sign-off when review blocks on scale/complexity rather than a concrete defect. Use it when the agent needs the decision before reading the full review payload.
 
 **Typical agent flow:** start with `projscan_review` for the verdict + summary; if it returns `review` or `block`, drill into the `riskyFunctions` and `newCycles` arrays for specifics.
@@ -245,18 +247,18 @@ When the agent has changes in flight (or is asked to review someone else's), the
 
 projscan diagnoses but does not run an LLM. The agent (the LLM) is what writes the fix. projscan's job in this phase is to package the issue context into something the agent can act on.
 
-- **`projscan_fix_suggest` / `projscan fix-suggest`** *(0.14+)* — given an issue id (or a `file` + `rule` pair), return a structured action prompt: headline, why it matters, where to change, one-paragraph instruction, optional suggested test. Hand-tuned templates for ~12 common issue families plus a severity-anchored generic fallback.
-- **`projscan_explain_issue` / `projscan explain-issue`** *(0.14+)* — deep dive: code excerpt around the location, related issues touching the same file, similar past commits via `git log --grep=<rule>`. Use when an agent wants more context than `doctor` gave.
+- **`projscan_fix_suggest` / `projscan fix-suggest`** _(0.14+)_ — given an issue id (or a `file` + `rule` pair), return a structured action prompt: headline, why it matters, where to change, one-paragraph instruction, optional suggested test. Hand-tuned templates for ~12 common issue families plus a severity-anchored generic fallback.
+- **`projscan_explain_issue` / `projscan explain-issue`** _(0.14+)_ — deep dive: code excerpt around the location, related issues touching the same file, similar past commits via `git log --grep=<rule>`. Use when an agent wants more context than `doctor` gave.
 - **`projscan fix`** — rule-based auto-fix (ESLint, Prettier, Vitest scaffolding, EditorConfig). Pre-dates the `fix_suggest` flow; useful for the no-LLM-required class of fixes.
 
 **Typical agent flow:** read an issue from `projscan_doctor`, call `projscan_fix_suggest` with its id, paste the `instruction` field into the agent's plan.
 
 ### 4. Reach — "what breaks if I change this?"
 
-Before the agent commits to a refactor (or accepts a name-rename suggestion), the question is: *who depends on this thing, transitively?*
+Before the agent commits to a refactor (or accepts a name-rename suggestion), the question is: _who depends on this thing, transitively?_
 
-- **`projscan_impact` / `projscan impact`** *(0.15+)* — transitive blast-radius. File mode returns every file that transitively imports the target, ranked by BFS distance. Symbol mode returns the symbol's definition file(s), the files that directly call it (their callSites match), and the transitive importers of those callers. Cycle-safe; depth-bounded.
-- **`projscan_semantic_graph` (`query` mode) / `projscan semantic-graph`** — direct one-hop queries via `query: { direction, file?, symbol? }`: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer. Package wording such as `which files import package chalk`, `who uses lodash`, or `why do we depend on lodash` maps to `package_importers`. With no `query`, returns the full graph projection (file, function, package, and symbol context in one contract). *(Subsumes the former `projscan_graph`, removed in 4.0.)*
+- **`projscan_impact` / `projscan impact`** _(0.15+)_ — transitive blast-radius. File mode returns every file that transitively imports the target, ranked by BFS distance. Symbol mode returns the symbol's definition file(s), the files that directly call it (their callSites match), and the transitive importers of those callers. Cycle-safe; depth-bounded.
+- **`projscan_semantic_graph` (`query` mode) / `projscan semantic-graph`** — direct one-hop queries via `query: { direction, file?, symbol? }`: `imports`, `exports`, `importers`, `symbol_defs`, `package_importers`. Use when impact is overkill and you want a pin-point answer. Package wording such as `which files import package chalk`, `who uses lodash`, or `why do we depend on lodash` maps to `package_importers`. With no `query`, returns the full graph projection (file, function, package, and symbol context in one contract). _(Subsumes the former `projscan_graph`, removed in 4.0.)_
 
 **Typical agent flow:** before renaming or deleting an export, call `projscan_impact --symbol <name>` to see the dependent set; before deleting a file, call `projscan_impact <path>`. The truncated flag tells you whether the actual blast radius extends beyond what you saw.
 
@@ -264,12 +266,12 @@ Before the agent commits to a refactor (or accepts a name-rename suggestion), th
 
 Long agent sessions edit files repeatedly. Each edit could otherwise cost a full repo re-scan. The watch infrastructure keeps the graph current at low cost.
 
-- **`projscan watch`** *(0.16+)* — long-running CLI command. On file change, debounces 200ms then runs the incremental graph update + re-runs `doctor`, printing a one-line status. Uses `node:fs.watch`, no new runtime dep. Filters out `node_modules`, `.git`, build dirs, etc.
+- **`projscan watch`** _(0.16+)_ — long-running CLI command. On file change, debounces 200ms then runs the incremental graph update + re-runs `doctor`, printing a one-line status. Uses `node:fs.watch`, no new runtime dep. Filters out `node_modules`, `.git`, build dirs, etc.
 - **`incrementallyUpdateGraph(graph, rootPath, changedPaths[])`** — the public API the watcher uses; exported so callers maintaining their own state can patch the graph in place after handling their own change events.
-- **`--format html`** *(0.16+, expanded in 2.x)* — for sharing review snapshots: `projscan analyze --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
-- **`projscan mcp --watch`** *(1.3+)* — when projscan runs as an MCP server with this flag, it pushes JSON-RPC `notifications/file_changed` events to the connected agent on every debounced batch. Long-session agents stop polling. The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support.
-- **`projscan_session` MCP tool + `projscan session` CLI** *(1.4+)* — durable cross-invocation session. Auto-records every file path that any tool returned (`tool-result` source) and every fs-watch batch (`fs-watch` source), so multiple agent invocations against the same project share a "what's been touched here" view without re-running git. Idle window 1 hour by default; subactions: `current` / `touched` / `events` / `reset`. State lives at `.projscan-cache/session.json`.
-- **MCP resources** *(2.1+)* — `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now` expose the shared session as resource reads. Agents can pick up touched files, coordination conflicts, remaining risks, `coordinationHints`, and recommended next tool calls without spending a tool call on discovery. The hints separate current worktree checks from remembered session context and conflict resolution.
+- **`--format html`** _(0.16+, expanded in 2.x)_ — for sharing review snapshots: `projscan analyze --format html > report.html` produces a self-contained HTML page suitable for posting as a PR comment or saving as a CI artifact. Renderers exist for `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
+- **`projscan mcp --watch`** _(1.3+)_ — when projscan runs as an MCP server with this flag, it pushes JSON-RPC `notifications/file_changed` events to the connected agent on every debounced batch. Long-session agents stop polling. The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support.
+- **`projscan_session` MCP tool + `projscan session` CLI** _(1.4+)_ — durable cross-invocation session. Auto-records every file path that any tool returned (`tool-result` source) and every fs-watch batch (`fs-watch` source), so multiple agent invocations against the same project share a "what's been touched here" view without re-running git. Idle window 1 hour by default; subactions: `current` / `touched` / `events` / `reset`. State lives at `.projscan-cache/session.json`.
+- **MCP resources** _(2.1+)_ — `projscan://session/summary`, `projscan://handoff`, and `projscan://risk-now` expose the shared session as resource reads. Agents can pick up touched files, coordination conflicts, remaining risks, `coordinationHints`, and recommended next tool calls without spending a tool call on discovery. The hints separate current worktree checks from remembered session context and conflict resolution.
 
 **Typical workflow:** start `projscan watch` in a side terminal at the start of a long session; subsequent agent tool calls hit a warm graph cache. With multi-agent setups, every MCP tool call additionally records into the session, so a coordinator agent can ask `projscan_session { action: "touched" }` to see what its peers have touched.
 
@@ -286,6 +288,7 @@ projscan analyze
 The flagship command. Runs every detection module and produces the full project report.
 
 **What it does internally:**
+
 1. Builds the scan file set. In Git repos, projscan uses `git ls-files --cached --others --exclude-standard` by default, then applies built-in noise ignores and `.projscanrc` `ignore` globs. Non-Git folders fall back to the local file walker.
 2. Builds a language breakdown by mapping file extensions to language names
 3. Detects frameworks by inspecting `package.json` dependencies and config file presence
@@ -296,9 +299,9 @@ The flagship command. Runs every detection module and produces the full project 
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
-| `--changed-only` | Only report issues on files changed vs base ref |
+| Flag               | Description                                              |
+| ------------------ | -------------------------------------------------------- |
+| `--changed-only`   | Only report issues on files changed vs base ref          |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 
 <img src="https://abhiyoheswaran.com/images/projscan/hero-poster.png" alt="npx projscan analyze: banner, scan progress, full project report" width="700">
@@ -315,14 +318,15 @@ Use this when you want a quick "is this project in good shape?" answer without t
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
-| `--changed-only` | Only report issues on files changed vs base ref |
+| Flag               | Description                                              |
+| ------------------ | -------------------------------------------------------- |
+| `--changed-only`   | Only report issues on files changed vs base ref          |
 | `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
 
 <img src="npx%20projscan%20doctor.gif" alt="npx projscan doctor" width="700">
 
 **Severity levels:**
+
 - **error** (✖) - Problems that should be addressed immediately
 - **warning** (⚠) - Issues that affect code quality or maintainability
 - **info** (ℹ) - Suggestions for best practices
@@ -339,12 +343,13 @@ Ranks files by **risk** - a combination of git churn, complexity (lines of code)
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--limit <n>` | Number of hotspots to show | 10 (or `hotspots.limit` from `.projscanrc`) |
-| `--since <when>` | Git history window (e.g. `"6 months ago"`, `"2024-01-01"`) | `12 months ago` |
+| Flag             | Description                                                | Default                                     |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| `--limit <n>`    | Number of hotspots to show                                 | 10 (or `hotspots.limit` from `.projscanrc`) |
+| `--since <when>` | Git history window (e.g. `"6 months ago"`, `"2024-01-01"`) | `12 months ago`                             |
 
 **What you get per file:**
+
 - `riskScore` - combined score (0–100)
 - `churn` - number of commits touching the file in the window
 - `distinctAuthors` - how many people have touched it
@@ -379,14 +384,14 @@ import a package.
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--max-nodes <n>` | Maximum nodes to return | 10000 |
-| `--max-edges <n>` | Maximum edges to return | 25000 |
+| Flag                  | Description                                                                              | Default    |
+| --------------------- | ---------------------------------------------------------------------------------------- | ---------- |
+| `--max-nodes <n>`     | Maximum nodes to return                                                                  | 10000      |
+| `--max-edges <n>`     | Maximum edges to return                                                                  | 25000      |
 | `--query <direction>` | Targeted query: `imports`, `exports`, `importers`, `symbol_defs`, or `package_importers` | full graph |
-| `--file <path>` | Repo-relative file for `imports`, `exports`, or `importers` | - |
-| `--symbol <name>` | Symbol/package for `symbol_defs` or `package_importers` | - |
-| `--limit <n>` | Maximum targeted query entries | 50 |
+| `--file <path>`       | Repo-relative file for `imports`, `exports`, or `importers`                              | -          |
+| `--symbol <name>`     | Symbol/package for `symbol_defs` or `package_importers`                                  | -          |
+| `--limit <n>`         | Maximum targeted query entries                                                           | 50         |
 
 ### understand
 
@@ -402,21 +407,21 @@ Repo understanding for engineers before they edit. The command returns a cited r
 
 Views:
 
-| View | Use it for |
-|------|------------|
-| `map` | Orient around entrypoints, package boundaries, read-first files, risks, and unknowns |
-| `flow` | Trace runtime paths and side-effect sinks through graph-backed evidence |
-| `contracts` | Inspect public exports, config/env contracts, and likely breaking-change risks |
-| `change` | Tie an intent to blast radius, first safe edit, owner state, rollback, and verification commands |
-| `verify` | Build minimal, focused, and full proof tiers plus direct-test gap evidence |
+| View        | Use it for                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| `map`       | Orient around entrypoints, package boundaries, read-first files, risks, and unknowns             |
+| `flow`      | Trace runtime paths and side-effect sinks through graph-backed evidence                          |
+| `contracts` | Inspect public exports, config/env contracts, and likely breaking-change risks                   |
+| `change`    | Tie an intent to blast radius, first safe edit, owner state, rollback, and verification commands |
+| `verify`    | Build minimal, focused, and full proof tiers plus direct-test gap evidence                       |
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--view <view>` | `map`, `flow`, `contracts`, `change`, or `verify` | `map` |
-| `--intent <text>` | Planned change or question for change-readiness output | none |
-| `--max-items <n>` | Maximum items per section | 8 |
+| Flag              | Description                                            | Default |
+| ----------------- | ------------------------------------------------------ | ------- |
+| `--view <view>`   | `map`, `flow`, `contracts`, `change`, or `verify`      | `map`   |
+| `--intent <text>` | Planned change or question for change-readiness output | none    |
+| `--max-items <n>` | Maximum items per section                              | 8       |
 
 ### dataflow
 
@@ -434,13 +439,13 @@ For release hardening, `npm run check:graph-corpus` compares bundled fixture met
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--source <name...>` | Add custom source identifiers | Built-ins + config |
-| `--sink <name...>` | Add custom sink identifiers | Built-ins + config |
-| `--max-risks <n>` | Maximum risks to return | 50 |
-| `--include-tests` | Include risks that touch test files | false |
-| `--include-broad-file-io` | Include broad default readFile/writeFile-style risks | false |
+| Flag                      | Description                                          | Default            |
+| ------------------------- | ---------------------------------------------------- | ------------------ |
+| `--source <name...>`      | Add custom source identifiers                        | Built-ins + config |
+| `--sink <name...>`        | Add custom sink identifiers                          | Built-ins + config |
+| `--max-risks <n>`         | Maximum risks to return                              | 50                 |
+| `--include-tests`         | Include risks that touch test files                  | false              |
+| `--include-broad-file-io` | Include broad default readFile/writeFile-style risks | false              |
 
 ### search
 
@@ -457,14 +462,15 @@ BM25-ranked search across content, symbol names, and path tokens. No embeddings,
 
 **Scopes:**
 
-| Scope | What it matches | Ranking |
-|-------|-----------------|---------|
-| `auto` (default) | Content, with symbol + path boost | BM25 + symbol boost × 2.0 + path boost × 0.5 |
-| `content` | Same as `auto` | BM25 |
-| `symbols` | Names of exported functions/classes/types/etc. | Exact → prefix → substring |
-| `files` | Relative path substring | Path order |
+| Scope            | What it matches                                | Ranking                                      |
+| ---------------- | ---------------------------------------------- | -------------------------------------------- |
+| `auto` (default) | Content, with symbol + path boost              | BM25 + symbol boost × 2.0 + path boost × 0.5 |
+| `content`        | Same as `auto`                                 | BM25                                         |
+| `symbols`        | Names of exported functions/classes/types/etc. | Exact → prefix → substring                   |
+| `files`          | Relative path substring                        | Path order                                   |
 
 **Query handling:**
+
 - Tokens are split on camelCase, snake_case, and digits. `userAuthToken` indexes as `user`, `auth`, `token`.
 - Light stemming (trailing `-s`, `-ing`, `-ed` stripped).
 - Stopwords and TypeScript keywords filtered (`the`, `function`, `class`, `export`, …).
@@ -473,7 +479,8 @@ BM25-ranked search across content, symbol names, and path tokens. No embeddings,
 **Output includes:** file path, line number, a one-line excerpt centered on the first matching line, the match score, and which tokens matched.
 
 **Limitations:**
-- No real semantic understanding by default. Searching for *"payment processing"* won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) shipped in 0.9.0 as an opt-in peer dep - install `@xenova/transformers` and pass `--mode semantic` (or `--mode hybrid` for BM25 + semantic via reciprocal rank fusion).
+
+- No real semantic understanding by default. Searching for _"payment processing"_ won't find a file that implements Stripe under the name `charge()`. True semantic search (local embeddings) shipped in 0.9.0 as an opt-in peer dep - install `@xenova/transformers` and pass `--mode semantic` (or `--mode hybrid` for BM25 + semantic via reciprocal rank fusion).
 - Index is rebuilt on every run (fast - the AST is already parsed from the code-graph cache).
 
 ### file
@@ -490,7 +497,7 @@ Per-file drill-down. Combines everything ProjScan knows about a file into one vi
 - **Related issues** - every open issue whose `locations` reference the file
 - **Inline smells** - large files, `console.log`, TODO/FIXME, `any` types
 
-Natural follow-up to `projscan hotspots` - once hotspots tells you *which* file to look at, `file` tells you *what* to do about it.
+Natural follow-up to `projscan hotspots` - once hotspots tells you _which_ file to look at, `file` tells you _what_ to do about it.
 
 ### ci
 
@@ -502,11 +509,11 @@ A CI-pipeline-friendly health gate. Runs the full health check and exits with co
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--min-score <n>` | Minimum passing score (0–100) | `minScore` from `.projscanrc`, else 70 |
-| `--changed-only` | Gate only on issues in files changed vs base ref | off |
-| `--base-ref <ref>` | Git base ref for `--changed-only` | auto (origin/main → origin/master → main → master → HEAD~1) |
+| Flag               | Description                                      | Default                                                     |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------------- |
+| `--min-score <n>`  | Minimum passing score (0–100)                    | `minScore` from `.projscanrc`, else 70                      |
+| `--changed-only`   | Gate only on issues in files changed vs base ref | off                                                         |
+| `--base-ref <ref>` | Git base ref for `--changed-only`                | auto (origin/main → origin/master → main → master → HEAD~1) |
 
 **Example:**
 
@@ -519,6 +526,7 @@ projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
 <img src="npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci" width="700">
 
 **Exit codes:**
+
 - `0` - Score meets or exceeds the threshold
 - `1` - Score is below the threshold
 
@@ -553,9 +561,9 @@ Compare your project's current health and hotspots against a saved baseline. Use
 
 **Options:**
 
-| Flag | Description |
-|------|-------------|
-| `--save-baseline` | Save current health + top hotspots as the baseline |
+| Flag                | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `--save-baseline`   | Save current health + top hotspots as the baseline         |
 | `--baseline <path>` | Path to baseline file (default: `.projscan-baseline.json`) |
 
 **Workflow:**
@@ -593,12 +601,12 @@ projscan fix -y
 
 **Available fixes:**
 
-| Fix | What it creates | What it installs |
-|-----|----------------|-----------------|
-| ESLint | `eslint.config.js` (with TypeScript support if TS is detected) | `eslint`, `@eslint/js`, optionally `typescript-eslint` |
-| Prettier | `.prettierrc` with sensible defaults | `prettier` |
-| Test framework | `vitest.config.ts` + sample test file, adds `test` script to package.json | `vitest` |
-| EditorConfig | `.editorconfig` (UTF-8, LF, 2-space indent, trim trailing whitespace) | Nothing |
+| Fix            | What it creates                                                           | What it installs                                       |
+| -------------- | ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| ESLint         | `eslint.config.js` (with TypeScript support if TS is detected)            | `eslint`, `@eslint/js`, optionally `typescript-eslint` |
+| Prettier       | `.prettierrc` with sensible defaults                                      | `prettier`                                             |
+| Test framework | `vitest.config.ts` + sample test file, adds `test` script to package.json | `vitest`                                               |
+| EditorConfig   | `.editorconfig` (UTF-8, LF, 2-space indent, trim trailing whitespace)     | Nothing                                                |
 
 ### diagram
 
@@ -639,6 +647,7 @@ projscan outdated
 Offline drift check - compares the version declared in `package.json` against the version installed under `node_modules/<pkg>/package.json`. Classifies each package as `patch`, `minor`, `major`, `same`, or `unknown` drift. Does **not** hit the npm registry.
 
 **Output fields per package:**
+
 - `declared` - the range in `package.json` (e.g., `^1.2.3`)
 - `installed` - the concrete version in `node_modules`, or `null` if not installed
 - `latest` - same as `installed` in this offline drift check
@@ -669,9 +678,9 @@ Each finding becomes a SARIF result with `ruleId: audit-<pkg>`, severity mapped 
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--timeout <ms>` | Override npm audit timeout | 60000 |
+| Flag             | Description                | Default |
+| ---------------- | -------------------------- | ------- |
+| `--timeout <ms>` | Override npm audit timeout | 60000   |
 
 ### upgrade
 
@@ -682,6 +691,7 @@ projscan upgrade <package>
 Preview the impact of upgrading a package. The default path is fully offline; pass `--check-registry` when you explicitly want npm registry lookup for the current latest version.
 
 **What you get:**
+
 - Drift classification (`patch` / `minor` / `major`)
 - Breaking-change markers found in the CHANGELOG: scans for `BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`, and section headers containing "breaking"
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
@@ -704,6 +714,7 @@ $ projscan upgrade react --format markdown
 ```
 
 **Limitations:**
+
 - Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
 - Without `--check-registry`, works with what's **installed** and reports `latestSource: "installed"`. With `--check-registry`, npm registry lookup is attempted and failures fall back to the installed version with `registryError`.
 
@@ -716,11 +727,13 @@ projscan coverage
 Joins test coverage with the hotspot ranking and produces a list sorted by "risk × uncovered fraction" - the files that most deserve tests.
 
 **Supported formats** (auto-detected in this order):
+
 - `coverage/lcov.info` - lcov format (Vitest, Jest, c8)
 - `coverage/coverage-final.json` - Istanbul per-file detail
 - `coverage/coverage-summary.json` - Istanbul summary
 
 **Output fields per entry:**
+
 - `relativePath` - file path
 - `riskScore` - the file's hotspot risk
 - `coverage` - line coverage %, or `null` if the file isn't in the coverage report
@@ -729,8 +742,8 @@ Joins test coverage with the hotspot ranking and produces a list sorted by "risk
 
 **Options:**
 
-| Flag | Description | Default |
-|------|-------------|---------|
+| Flag          | Description                 | Default      |
+| ------------- | --------------------------- | ------------ |
 | `--limit <n>` | Number of entries to return | 30 (max 200) |
 
 **How it feeds into `hotspots`:** when any coverage file exists, `projscan hotspots` automatically passes it into the risk calculator. Uncovered churning files get a score bump and a `low coverage (X%)` reason tag. No coverage file? Hotspots behaves exactly as before.
@@ -758,7 +771,7 @@ With `--watch`, the server starts an in-process file watcher and emits a JSON-RP
 
 See [MCP Server for AI Agents](#mcp-server-for-ai-agents).
 
-### session *(1.4+)*
+### session _(1.4+)_
 
 ```bash
 projscan session                        # current session summary
@@ -829,22 +842,23 @@ Every `projscan doctor` and `projscan badge` run calculates a health score from 
 **Scoring:**
 
 | Severity | Deduction per issue |
-|----------|-------------------|
-| Error | -20 points |
-| Warning | -10 points |
-| Info | -3 points |
+| -------- | ------------------- |
+| Error    | -20 points          |
+| Warning  | -10 points          |
+| Info     | -3 points           |
 
 **Grade thresholds:**
 
-| Grade | Score Range | Meaning |
-|-------|-------------|---------|
-| A | 90–100 | Excellent - project follows best practices |
-| B | 80–89 | Good - minor improvements possible |
-| C | 70–79 | Fair - several issues to address |
-| D | 60–69 | Poor - significant issues found |
-| F | < 60 | Critical - major issues need attention |
+| Grade | Score Range | Meaning                                    |
+| ----- | ----------- | ------------------------------------------ |
+| A     | 90–100      | Excellent - project follows best practices |
+| B     | 80–89       | Good - minor improvements possible         |
+| C     | 70–79       | Fair - several issues to address           |
+| D     | 60–69       | Poor - significant issues found            |
+| F     | < 60        | Critical - major issues need attention     |
 
 The score appears in all output formats:
+
 - **Console**: Shown at the top of the doctor report
 - **JSON**: Included as `health.score` and `health.grade` fields
 - **Markdown**: Shown as a heading with an auto-generated shields.io badge
@@ -898,6 +912,7 @@ projscan ci --format sarif > projscan.sarif
 ```
 
 Supported on `analyze`, `audit`, `ci`, `doctor`, and `outdated`. Each issue is emitted as a SARIF `result` with:
+
 - `ruleId` - stable rule identifier (e.g., `hardcoded-secret`, `missing-prettier`)
 - `level` - `error`, `warning`, or `note` (mapped from projscan severity)
 - `message.text` - the issue description
@@ -945,18 +960,18 @@ ProjScan loads a project-wide config from one of:
 
 ### Fields
 
-| Field | Type | Effect |
-|-------|------|--------|
-| `minScore` | number (0–100) | Default threshold for `projscan ci`. Clamped to 0–100. |
-| `baseRef` | string | Default base ref for `--changed-only`. |
-| `ignore` | string[] | Extra glob patterns added to the built-in ignore list (`node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, `.cache`, `.turbo`, `.output`). |
-| `scan.includeIgnored` | boolean | Explicitly include files hidden by Git ignore rules. Default `false`. |
-| `scan.scanEnvValues` | boolean | Explicitly read `.env*` contents during secret-pattern checks. Default `false`; `.env` files are path-only. |
-| `scan.offline` | boolean | Block projscan network-capable features: telemetry sending, `audit`, registry checks, and optional semantic model loading. Default `false`. |
-| `disableRules` | string[] | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`). |
-| `severityOverrides` | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them. |
-| `hotspots.limit` | number (1–100) | Default limit for `projscan hotspots`. |
-| `hotspots.since` | string | Default git history window for `projscan hotspots`. |
+| Field                 | Type                                             | Effect                                                                                                                                                        |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minScore`            | number (0–100)                                   | Default threshold for `projscan ci`. Clamped to 0–100.                                                                                                        |
+| `baseRef`             | string                                           | Default base ref for `--changed-only`.                                                                                                                        |
+| `ignore`              | string[]                                         | Extra glob patterns added to the built-in ignore list (`node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, `.cache`, `.turbo`, `.output`). |
+| `scan.includeIgnored` | boolean                                          | Explicitly include files hidden by Git ignore rules. Default `false`.                                                                                         |
+| `scan.scanEnvValues`  | boolean                                          | Explicitly read `.env*` contents during secret-pattern checks. Default `false`; `.env` files are path-only.                                                   |
+| `scan.offline`        | boolean                                          | Block projscan network-capable features: telemetry sending, `audit`, registry checks, and optional semantic model loading. Default `false`.                   |
+| `disableRules`        | string[]                                         | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`).                                                                         |
+| `severityOverrides`   | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them.                                                      |
+| `hotspots.limit`      | number (1–100)                                   | Default limit for `projscan hotspots`.                                                                                                                        |
+| `hotspots.since`      | string                                           | Default git history window for `projscan hotspots`.                                                                                                           |
 
 Invalid JSON in a discovered config file is a hard error - projscan exits rather than silently ignoring it.
 
@@ -974,7 +989,7 @@ If you prefer to keep everything in `package.json`:
 }
 ```
 
-### Monorepo: cross-package import policy *(0.14+)*
+### Monorepo: cross-package import policy _(0.14+)_
 
 In a monorepo, you can declare which packages may import which. Violations surface as `cross-package-violation-N` issues in `projscan_doctor` and on the CLI. The analyzer is **off by default**; adding any rule turns it on for the matching `from` package.
 
@@ -1035,19 +1050,19 @@ Example GitHub Actions snippet:
 
 ## Global Options
 
-| Option | Description |
-|--------|-------------|
-| `--format <type>` | Output format: `console` (default), `json`, `markdown`, `sarif`, `html` (command-dependent) |
-| `--config <path>` | Path to a `.projscanrc` config file |
-| `--include-ignored` | Explicitly include files hidden by Git ignore rules |
-| `--scan-env-values` | Explicitly read `.env*` contents during secret checks |
-| `--offline` | Block projscan network-capable features for this run |
-| `--changed-only` | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`) |
-| `--base-ref <ref>` | Git base ref for `--changed-only` (default: origin/main) |
-| `--verbose` | Show debug-level logging - useful for diagnosing scan issues |
-| `--quiet` | Suppress all non-essential output (spinners, status messages) |
-| `-V, --version` | Print the version number |
-| `-h, --help` | Print help for any command |
+| Option              | Description                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| `--format <type>`   | Output format: `console` (default), `json`, `markdown`, `sarif`, `html` (command-dependent) |
+| `--config <path>`   | Path to a `.projscanrc` config file                                                         |
+| `--include-ignored` | Explicitly include files hidden by Git ignore rules                                         |
+| `--scan-env-values` | Explicitly read `.env*` contents during secret checks                                       |
+| `--offline`         | Block projscan network-capable features for this run                                        |
+| `--changed-only`    | Scope to files changed vs base ref (applies to `analyze`, `doctor`, `ci`)                   |
+| `--base-ref <ref>`  | Git base ref for `--changed-only` (default: origin/main)                                    |
+| `--verbose`         | Show debug-level logging - useful for diagnosing scan issues                                |
+| `--quiet`           | Suppress all non-essential output (spinners, status messages)                               |
+| `-V, --version`     | Print the version number                                                                    |
+| `-h, --help`        | Print help for any command                                                                  |
 
 **Per-command help:**
 
@@ -1085,31 +1100,37 @@ Each detection has a **confidence level** (high, medium, low) and a **category**
 ProjScan ships with six analyzer modules:
 
 #### 1. ESLint Check
+
 - Looks for `.eslintrc.*`, `eslint.config.*`, or `eslintConfig` in package.json
 - If missing: warning with auto-fix available
 
 #### 2. Prettier Check
+
 - Looks for `.prettierrc`, `.prettierrc.*`, `prettier.config.*`, or `prettier` in package.json
 - If missing: warning with auto-fix available
 
 #### 3. Test Check
+
 - Looks for test frameworks in devDependencies (vitest, jest, mocha, etc.)
 - Looks for test files (`*.test.*`, `*.spec.*`, `__tests__/`)
 - If no framework: warning with auto-fix available
 - If framework exists but zero test files: separate warning
 
 #### 4. Architecture Check
+
 - **Large utility directories**: warns if `utils/`, `helpers/`, or `lib/` contains 10+ files (issue anchored to the directory path)
 - **Missing .editorconfig**: info with auto-fix available
 - **Missing/empty README**: warning / info
 
 #### 5. Dependency Risk Check
+
 - Warns if production dependencies exceed 50
 - Errors if total dependencies exceed 100
 - Flags `*` or `latest` version ranges
 - Warns if no lock file is present
 
 #### 6. Security Check
+
 - **Committed `.env` files**: Flags `.env`, `.env.local`, `.env.production`, etc. (but not `.env.example`, `.env.sample`, `.env.template`) - location anchored to the file
 - **Private key files**: Detects `.pem`, `.key`, `id_rsa`, `id_ed25519`, `.p12`, `.pfx` files
 - **Hardcoded secrets**: Scans file contents (files under 512KB) for:
@@ -1118,7 +1139,7 @@ ProjScan ships with six analyzer modules:
   - Slack tokens (`xoxb-...`, `xoxp-...`)
   - Generic patterns (`password=`, `secret=`, `api_key=` with quoted values)
   - PEM private key headers
-  Each finding carries the exact **line number** of the match, which SARIF and GitHub Code Scanning use for inline PR annotations.
+    Each finding carries the exact **line number** of the match, which SARIF and GitHub Code Scanning use for inline PR annotations.
 - **Missing `.gitignore` entries**: Warns if `.env` is not in `.gitignore`
 - **Path-only `.env` handling**: Tracked `.env*` files are flagged by filename, but their values are not read unless `--scan-env-values` or `scan.scanEnvValues: true` is set
 
@@ -1142,11 +1163,13 @@ The fix system is intentionally conservative. It only creates configuration file
 ### Fix details
 
 **ESLint fix:**
+
 - Creates `eslint.config.js` using the flat config format (ESLint v9+)
 - If TypeScript files are detected, includes `typescript-eslint` plugin
 - Installs `eslint` and `@eslint/js` via the detected package manager
 
 **Prettier fix:**
+
 - Creates `.prettierrc` with these defaults:
   ```json
   {
@@ -1160,12 +1183,14 @@ The fix system is intentionally conservative. It only creates configuration file
 - Installs `prettier`
 
 **Test framework fix:**
+
 - Creates `vitest.config.ts`
 - Creates a sample test file at `tests/example.test.ts`
 - Adds `"test": "vitest run"` to package.json scripts (if not already present)
 - Installs `vitest`
 
 **EditorConfig fix:**
+
 - Creates `.editorconfig`
 - Installs nothing - EditorConfig is handled by editor plugins
 
@@ -1189,6 +1214,7 @@ This is heuristic-based and works best with conventional project structures. Pro
 The `explain` command performs regex-based static analysis. It does not execute your code or make network calls.
 
 **Import detection** handles:
+
 - ES modules: `import { foo } from 'bar'`
 - Default imports: `import foo from 'bar'`
 - Namespace imports: `import * as foo from 'bar'`
@@ -1196,11 +1222,13 @@ The `explain` command performs regex-based static analysis. It does not execute 
 - CommonJS: `const foo = require('bar')`
 
 **Export detection** handles:
+
 - Named exports: `export function`, `export class`, `export const`
 - Type exports: `export interface`, `export type`
 - Default exports: `export default`
 
 **Purpose inference** is based on file name and directory conventions. For example:
+
 - Files named `*.test.*` or `*.spec.*` → "Test file"
 - Files in `routes/` → "Route definitions"
 - Files named `index.ts` → "Module entry point"
@@ -1212,15 +1240,16 @@ The `explain` command performs regex-based static analysis. It does not execute 
 
 The `hotspots` command reads `git log` to build a per-file risk picture. The risk score combines five signals:
 
-| Signal | Weight | Intuition |
-|--------|--------|-----------|
-| Churn | 0.40 | Files that change often are more likely to harbor bugs |
-| Complexity (AST CC) | 0.30 | Files with more decision points are harder to reason about. **AST-derived McCabe cyclomatic complexity for JS/TS, Python, Go, Java, Ruby, Rust, PHP, and C#; falls back to LOC for non-AST languages.** |
-| Issue density | 0.20 | Files that already have open issues need help |
-| Recency | 0.10 | Recently touched hot files deserve attention first |
-| Bus factor | penalty tag | Single-author + high churn = organizational risk |
+| Signal              | Weight      | Intuition                                                                                                                                                                                               |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Churn               | 0.40        | Files that change often are more likely to harbor bugs                                                                                                                                                  |
+| Complexity (AST CC) | 0.30        | Files with more decision points are harder to reason about. **AST-derived McCabe cyclomatic complexity for JS/TS, Python, Go, Java, Ruby, Rust, PHP, and C#; falls back to LOC for non-AST languages.** |
+| Issue density       | 0.20        | Files that already have open issues need help                                                                                                                                                           |
+| Recency             | 0.10        | Recently touched hot files deserve attention first                                                                                                                                                      |
+| Bus factor          | penalty tag | Single-author + high churn = organizational risk                                                                                                                                                        |
 
 **Ownership signals:**
+
 - `primaryAuthor` - the top committer by share
 - `primaryAuthorShare` - fraction of commits (0–1)
 - `topAuthors` - ranked list
@@ -1229,6 +1258,7 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 **Bus-factor-one files get a score penalty and a `bus-factor-one` reason tag** - they show up higher in the ranking because if that one author leaves, the knowledge is gone.
 
 **What "hotspots" can't do:**
+
 - It's a heuristic, not a proof. Low-risk files may still have bugs.
 - It weights LOC as a proxy for complexity; a clean 1,000-line file may rank higher than it deserves.
 - It has no visibility into logical coupling - two small files that change together still look independent.
@@ -1243,16 +1273,17 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 
 **Core tools include:**
 
-*Structural / agent-native:*
+_Structural / agent-native:_
+
 - `projscan_start` — first-60-seconds repo orientation with setup diagnostics, recommended workflow, top risks, adoption gaps, and next commands.
-- `projscan_semantic_graph` — the code graph, two ways. With no `query`: the stable v3 semantic graph (file/function/package/symbol nodes and normalized structural edges). With `query: { direction, file?, symbol? }`: a targeted structural query (`imports`, `exports`, `importers`, `symbol_defs`, `package_importers`) in milliseconds on a warm cache. *(Subsumes the former `projscan_graph`, removed in 4.0.)*
+- `projscan_semantic_graph` — the code graph, two ways. With no `query`: the stable v3 semantic graph (file/function/package/symbol nodes and normalized structural edges). With `query: { direction, file?, symbol? }`: a targeted structural query (`imports`, `exports`, `importers`, `symbol_defs`, `package_importers`) in milliseconds on a warm cache. _(Subsumes the former `projscan_graph`, removed in 4.0.)_
 - `projscan_dataflow` — direct, propagated, and bridge source-to-sink dataflow risks over the function graph.
 - `projscan_search` — BM25-ranked search. Scopes: `auto` / `content` (ranked content + symbol + path boosts, line excerpts), `symbols` (exported names), `files` (path substring). Optional semantic mode + sub-file chunking with the `@xenova/transformers` peer dep.
 - `projscan_coupling` — per-file fan-in / fan-out / instability + Tarjan circular-import cycles.
 - `projscan_pr_diff` — structural (AST) diff between two refs. Returns added / removed / modified files with explicit lists of exports, imports, call sites, and ΔCC / Δfan-in.
 - `projscan_review` — one-call PR review composing `pr_diff` + per-changed-file risk + new/expanded cycles + risky function additions + dependency changes + a verdict (`ok` / `review` / `block`).
 - `projscan_workplan` — prioritized agent execution plan with evidence, suggested tools, verification commands, coordination context, and handoff text.
-- `projscan_bug_hunt` — prioritized bug-hunt fix queue with per-target verification.
+- `projscan_bug_hunt` — prioritized bug-hunt action queue with per-action verification.
 - `projscan_agent_brief` — compact next-agent context packet with focus items, guardrails, repo context, and suggested next actions.
 - `projscan_quality_scorecard` — dimensioned quality view with top risks and verification commands.
 - `projscan_adoption` — adoption helper for MCP client snippets, MCP setup doctor, agent workflow recipes, and first-run diagnostics.
@@ -1263,7 +1294,8 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_explain_issue` — deep dive on one issue: code excerpt, related issues, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - `projscan_impact` — transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Cycle-safe; depth-bounded.
 
-*Analysis:*
+_Analysis:_
+
 - `projscan_analyze` — full project snapshot.
 - `projscan_doctor` — health score + issues with inline `suggestedAction` hints.
 - `projscan_preflight` — compact `proceed` / `caution` / `block` gate with health, changed-file, review, session, plugin, and supply-chain evidence.
@@ -1272,23 +1304,26 @@ The `hotspots` command reads `git log` to build a per-file risk picture. The ris
 - `projscan_structure` — directory tree.
 - `projscan_coverage` — coverage × hotspots, ranked by "risk × uncovered fraction".
 
-*Dependencies (workspace-aware in monorepos):*
+_Dependencies (workspace-aware in monorepos):_
+
 - `projscan_dependencies` — declared deps + risks, with a `byWorkspace` breakdown.
 - `projscan_outdated` — declared-vs-installed drift (offline), per-package.
 - `projscan_audit` — npm audit, normalized; `package` arg scopes findings to one workspace's direct deps.
 - `projscan_upgrade` — upgrade preview: drift + local CHANGELOG + importers.
 
-*Workspace:*
+_Workspace:_
+
 - `projscan_workspaces` — list monorepo packages (npm/yarn/pnpm/Nx/Turbo/Lerna).
 
-*Session (1.4+):*
+_Session (1.4+):_
+
 - `projscan_session` — durable cross-invocation session. Subactions: `current`, `touched`, `events`, `reset`. Auto-populated from every tool result and from `notifications/file_changed` push events when `--watch` is on.
 
 **Every tool accepts `max_tokens` (optional).** projscan estimates serialized output and truncates the largest array field until it fits. Over-budget responses include a `_budget: { truncated: true, estimatedTokens, maxTokens }` field. Tools that return arrays also support cursor pagination via `cursor` + `page_size`.
 
 **Every tool result also carries a `_cost` sidecar (1.5+).** `_cost: { estimatedTokens: N }` lets agents see what they paid for a call without counting tokens themselves — useful for budgeting tool sequences. Cost is the chars-divided-by-4 approximation of the serialized payload (within ~±15% of GPT/Claude tokenizers for code-shaped output).
 
-**`projscan_review` accepts `max_cost_tokens` (1.5+).** Adaptive shape budget. The tool picks a tier based on the value and reshapes the response *before* serializing — different from `max_tokens` (post-hoc truncation):
+**`projscan_review` accepts `max_cost_tokens` (1.5+).** Adaptive shape budget. The tool picks a tier based on the value and reshapes the response _before_ serializing — different from `max_tokens` (post-hoc truncation):
 
 - **full** (no budget, or ≥ 7000): everything — full structural diff + per-changed-file lists + all cycles + risky functions + dependency changes.
 - **summary** (3000–6999): verdict + summary + top-5 changed files + top-3 of each list, with the heavy per-file expansion arrays stripped.
@@ -1301,14 +1336,16 @@ The chosen tier is surfaced as a top-level `tier` field on the response and lift
 For the analyzer and reporter plugin platform, including minimal manifests, analyzer modules, and `--reporter <name>`, see [Plugin Authoring](PLUGIN-AUTHORING.md). Reporter plugins are the supported boundary for custom presentation, white-label reports, and team-branded CLI summaries; the built-in HTML reporter remains the default core renderer.
 
 **Prompts (6, parameterized with live project data):**
+
 - `prioritize_refactoring` — ranked plan grounded in current hotspots
 - `investigate_file` — senior-engineer brief for a specific file
-- `refactor_hotspot` *(1.5+)* — step-by-step refactor plan for one hotspot file
-- `triage_doctor_issues` *(1.5+)* — critical / important / backlog ordering of open issues
-- `review_this_pr` *(1.5+)* — PR-comment-ready review primed with the structural diff and verdict
-- `safely_rename_symbol` *(1.5+)* — ordered rename + verification checklist via `projscan_impact` blast radius
+- `refactor_hotspot` _(1.5+)_ — step-by-step refactor plan for one hotspot file
+- `triage_doctor_issues` _(1.5+)_ — critical / important / backlog ordering of open issues
+- `review_this_pr` _(1.5+)_ — PR-comment-ready review primed with the structural diff and verdict
+- `safely_rename_symbol` _(1.5+)_ — ordered rename + verification checklist via `projscan_impact` blast radius
 
 **Resources (3, readable on demand):**
+
 - `projscan://health`
 - `projscan://hotspots`
 - `projscan://structure`
@@ -1332,7 +1369,7 @@ claude mcp add projscan -- npx projscan mcp
 }
 ```
 
-Once connected, your agent can ask *"what are the riskiest files in this repo?"* or *"run projscan_doctor before proposing an edit"* and get grounded answers.
+Once connected, your agent can ask _"what are the riskiest files in this repo?"_ or _"run projscan_doctor before proposing an edit"_ and get grounded answers.
 
 ---
 
@@ -1340,14 +1377,15 @@ Once connected, your agent can ask *"what are the riskiest files in this repo?"*
 
 ProjScan is designed to be fast enough to run on every save or as a pre-commit hook.
 
-| Metric | Target |
-|--------|--------|
-| 5,000 files | < 1.5 seconds |
-| 20,000 files | < 3 seconds |
-| Network requests | Zero |
-| Runtime dependencies | 4 packages |
+| Metric               | Target        |
+| -------------------- | ------------- |
+| 5,000 files          | < 1.5 seconds |
+| 20,000 files         | < 3 seconds   |
+| Network requests     | Zero          |
+| Runtime dependencies | 4 packages    |
 
 **How it stays fast:**
+
 - Uses `fast-glob` for file walking
 - Language detection is a pure function - no I/O, just extension mapping
 - Framework detection reads at most one file (`package.json`) plus checks file names already in memory
@@ -1420,14 +1458,14 @@ on:
 
 permissions:
   contents: read
-  security-events: write   # required for SARIF upload
+  security-events: write # required for SARIF upload
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }   # needed for --changed-only
+        with: { fetch-depth: 0 } # needed for --changed-only
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - uses: abhiyoheswaran1/projscan@v1
@@ -1498,6 +1536,7 @@ If scanning takes more than a few seconds, check whether you have large unignore
 ### `--changed-only` reports everything
 
 Check stderr for a warning. Most common causes:
+
 - Running outside a git repository
 - The base ref doesn't exist (e.g., `origin/main` isn't fetched in a shallow CI clone - set `fetch-depth: 0` in checkout)
 - Fresh commit with no parent (no `HEAD~1`)
@@ -1582,6 +1621,7 @@ src/
 ```
 
 **Key design decisions:**
+
 - **Single `types.ts`** - avoids circular dependencies between modules
 - **ESM-only** - required by chalk v5 and ora v8; all imports use `.js` extensions
 - **Pure functions where possible** - `detectLanguages` is pure (no I/O), trivially testable

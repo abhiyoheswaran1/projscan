@@ -61,9 +61,13 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('what files should I read first?').matches[0].tool).toBe('projscan_understand');
+    expect(routeIntent('what files should I read first?').matches[0].tool).toBe(
+      'projscan_understand',
+    );
     expect(routeIntent('run a health check').matches[0].tool).toBe('projscan_doctor');
-    expect(routeIntent('write a PR description').matches[0].tool).not.toBe('projscan_privacy_check');
+    expect(routeIntent('write a PR description').matches[0].tool).not.toBe(
+      'projscan_privacy_check',
+    );
   });
 
   it('routes symbol usage questions to impact instead of generic search', () => {
@@ -154,7 +158,9 @@ describe('routeIntent', () => {
     expect(safeRemove.matches.find((match) => match.tool === 'projscan_upgrade')).toBeUndefined();
 
     expect(routeIntent('can I delete src/core/start.ts?').matches[0].tool).toBe('projscan_impact');
-    expect(routeIntent('what breaks if I delete auth token loader?').matches[0].tool).toBe('projscan_impact');
+    expect(routeIntent('what breaks if I delete auth token loader?').matches[0].tool).toBe(
+      'projscan_impact',
+    );
   });
 
   it('routes test-location questions to search without path-token start or hotspot noise', () => {
@@ -229,7 +235,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['test']),
       }),
     );
-    expect(beforePush.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      beforePush.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     expect(routeIntent('tests are failing').matches[0].tool).toBe('projscan_regression_plan');
   });
@@ -245,7 +253,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['tests', 'cover']),
       }),
     );
-    expect(which.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      which.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const what = routeIntent('what tests cover checkout');
     expect(what.matches[0]).toEqual(
@@ -357,7 +367,9 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('why is /settings returning 404').matches[0].tool).toBe('projscan_regression_plan');
+    expect(routeIntent('why is /settings returning 404').matches[0].tool).toBe(
+      'projscan_regression_plan',
+    );
 
     const flags = routeIntent('which feature flags exist');
     expect(flags.matches[0]).toEqual(
@@ -386,7 +398,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['migration', 'files', 'exist']),
       }),
     );
-    expect(migrationFiles.matches.find((match) => match.tool === 'projscan_impact')).toBeUndefined();
+    expect(
+      migrationFiles.matches.find((match) => match.tool === 'projscan_impact'),
+    ).toBeUndefined();
 
     const generatedFiles = routeIntent('show me generated files');
     expect(generatedFiles.matches[0]).toEqual(
@@ -439,7 +453,13 @@ describe('routeIntent', () => {
       expect.objectContaining({
         tool: 'projscan_search',
         confidence: 'high',
-        matchedKeywords: expect.arrayContaining(['where', 'tsconfig', 'path', 'aliases', 'configured']),
+        matchedKeywords: expect.arrayContaining([
+          'where',
+          'tsconfig',
+          'path',
+          'aliases',
+          'configured',
+        ]),
       }),
     );
 
@@ -534,7 +554,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'thrown']),
       }),
     );
-    expect(thrownString.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      thrownString.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const errorMessage = routeIntent('find error message "Payment failed"');
     expect(errorMessage.matches[0]).toEqual(
@@ -544,7 +566,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['find', 'error', 'message']),
       }),
     );
-    expect(errorMessage.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      errorMessage.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const loggedString = routeIntent('where do we log "could not connect"');
     expect(loggedString.matches[0]).toEqual(
@@ -554,7 +578,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'log']),
       }),
     );
-    expect(loggedString.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      loggedString.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const throwsString = routeIntent('what throws "Missing API key"');
     expect(throwsString.matches[0]).toEqual(
@@ -564,7 +590,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['throws']),
       }),
     );
-    expect(throwsString.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      throwsString.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const backgroundJobs = routeIntent('what background jobs exist');
     expect(backgroundJobs.matches[0]).toEqual(
@@ -592,7 +620,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['find', 'queue', 'processor']),
       }),
     );
-    expect(queueProcessor.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      queueProcessor.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const scheduledTasks = routeIntent('where are scheduled tasks defined');
     expect(scheduledTasks.matches[0]).toEqual(
@@ -602,7 +632,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'scheduled', 'tasks', 'defined']),
       }),
     );
-    expect(scheduledTasks.matches.find((match) => match.tool === 'projscan_semantic_graph')).toBeUndefined();
+    expect(
+      scheduledTasks.matches.find((match) => match.tool === 'projscan_semantic_graph'),
+    ).toBeUndefined();
 
     expect(routeIntent('what tasks should I do next').matches[0].tool).toBe('projscan_workplan');
 
@@ -641,7 +673,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['logs', 'check']),
       }),
     );
-    expect(checkoutLogs.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      checkoutLogs.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const dashboard = routeIntent('find the dashboard for payments');
     expect(dashboard.matches[0]).toEqual(
@@ -661,7 +695,9 @@ describe('routeIntent', () => {
       }),
     );
     expect(seedData.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
-    expect(seedData.matches.find((match) => match.tool === 'projscan_semantic_graph')).toBeUndefined();
+    expect(
+      seedData.matches.find((match) => match.tool === 'projscan_semantic_graph'),
+    ).toBeUndefined();
 
     const fixtures = routeIntent('find fixtures for checkout');
     expect(fixtures.matches[0]).toEqual(
@@ -773,7 +809,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'cache', 'invalidated']),
       }),
     );
-    expect(cacheInvalidation.matches.find((match) => match.tool === 'projscan_impact')).toBeUndefined();
+    expect(
+      cacheInvalidation.matches.find((match) => match.tool === 'projscan_impact'),
+    ).toBeUndefined();
 
     const retryLookup = routeIntent('which code retries failed requests');
     expect(retryLookup.matches[0]).toEqual(
@@ -783,7 +821,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['code', 'retries', 'failed', 'requests']),
       }),
     );
-    expect(retryLookup.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      retryLookup.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const timeoutLookup = routeIntent('what sets request timeout');
     expect(timeoutLookup.matches[0]).toEqual(
@@ -793,7 +833,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['request', 'timeout']),
       }),
     );
-    expect(timeoutLookup.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      timeoutLookup.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const idempotency = routeIntent('find idempotency key handling');
     expect(idempotency.matches[0]).toEqual(
@@ -830,7 +872,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['schema', 'validates']),
       }),
     );
-    expect(schemaValidation.matches.find((match) => match.tool === 'projscan_impact')).toBeUndefined();
+    expect(
+      schemaValidation.matches.find((match) => match.tool === 'projscan_impact'),
+    ).toBeUndefined();
 
     const requestParams = routeIntent('where are request params parsed');
     expect(requestParams.matches[0]).toEqual(
@@ -840,7 +884,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'request', 'params', 'parsed']),
       }),
     );
-    expect(requestParams.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      requestParams.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const apiSerialization = routeIntent('what serializes API response');
     expect(apiSerialization.matches[0]).toEqual(
@@ -850,7 +896,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['api', 'response', 'serializes']),
       }),
     );
-    expect(apiSerialization.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      apiSerialization.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const transaction = routeIntent('where is database transaction started');
     expect(transaction.matches[0]).toEqual(
@@ -860,7 +908,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'database', 'transaction']),
       }),
     );
-    expect(transaction.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      transaction.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const rowLock = routeIntent('where do we lock the order row');
     expect(rowLock.matches[0]).toEqual(
@@ -926,8 +976,12 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'error', 'boundary']),
       }),
     );
-    expect(errorBoundary.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
-    expect(errorBoundary.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      errorBoundary.matches.find((match) => match.tool === 'projscan_privacy_check'),
+    ).toBeUndefined();
+    expect(
+      errorBoundary.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const toast = routeIntent('where is toast shown after checkout');
     expect(toast.matches[0]).toEqual(
@@ -955,7 +1009,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['find', 'command', 'palette', 'actions']),
       }),
     );
-    expect(commandPalette.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      commandPalette.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const pageComponent = routeIntent('what component renders the billing page');
     expect(pageComponent.matches[0]).toEqual(
@@ -1003,7 +1059,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'design', 'tokens', 'defined']),
       }),
     );
-    expect(designTokens.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      designTokens.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const tailwindTheme = routeIntent('where is Tailwind theme configured');
     expect(tailwindTheme.matches[0]).toEqual(
@@ -1051,7 +1109,9 @@ describe('routeIntent', () => {
     );
 
     expect(routeIntent('add dark mode').matches[0].tool).toBe('projscan_understand');
-    expect(routeIntent('why is dark mode failing').matches[0].tool).toBe('projscan_regression_plan');
+    expect(routeIntent('why is dark mode failing').matches[0].tool).toBe(
+      'projscan_regression_plan',
+    );
 
     const stripeCall = routeIntent('where do we call Stripe');
     expect(stripeCall.matches[0]).toEqual(
@@ -1070,7 +1130,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['code', 'sends', 'email', 'sendgrid']),
       }),
     );
-    expect(sendGridEmail.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      sendGridEmail.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const s3Upload = routeIntent('where is S3 upload implemented');
     expect(s3Upload.matches[0]).toEqual(
@@ -1080,7 +1142,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 's3', 'upload', 'implemented']),
       }),
     );
-    expect(s3Upload.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
+    expect(
+      s3Upload.matches.find((match) => match.tool === 'projscan_privacy_check'),
+    ).toBeUndefined();
 
     const githubClient = routeIntent('find GitHub API client');
     expect(githubClient.matches[0]).toEqual(
@@ -1099,7 +1163,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'graphql', 'query']),
       }),
     );
-    expect(graphqlQuery.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      graphqlQuery.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const websocketConnection = routeIntent('where is websocket connection opened');
     expect(websocketConnection.matches[0]).toEqual(
@@ -1109,7 +1175,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'websocket', 'connection', 'opened']),
       }),
     );
-    expect(websocketConnection.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      websocketConnection.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const openApiSpec = routeIntent('where is OpenAPI spec defined');
     expect(openApiSpec.matches[0]).toEqual(
@@ -1137,7 +1205,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'trpc', 'router']),
       }),
     );
-    expect(trpcRouter.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      trpcRouter.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const graphqlResolver = routeIntent('which GraphQL resolver handles invoices');
     expect(graphqlResolver.matches[0]).toEqual(
@@ -1166,7 +1236,9 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('what are the public contracts?').matches[0].tool).toBe('projscan_understand');
+    expect(routeIntent('what are the public contracts?').matches[0].tool).toBe(
+      'projscan_understand',
+    );
 
     const dockerfile = routeIntent('where is the Dockerfile');
     expect(dockerfile.matches[0]).toEqual(
@@ -1221,7 +1293,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['github', 'workflow', 'deploys', 'staging']),
       }),
     );
-    expect(deployWorkflow.matches.find((match) => match.tool === 'projscan_release_train')).toBeUndefined();
+    expect(
+      deployWorkflow.matches.find((match) => match.tool === 'projscan_release_train'),
+    ).toBeUndefined();
     expect(routeIntent('can I deploy this?').matches[0].tool).toBe('projscan_release_train');
 
     const vercelConfig = routeIntent('where is Vercel config');
@@ -1241,7 +1315,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'password', 'reset', 'handled']),
       }),
     );
-    expect(passwordReset.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      passwordReset.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const inviteFlow = routeIntent('where is team invite flow');
     expect(inviteFlow.matches[0]).toEqual(
@@ -1260,7 +1336,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'onboarding', 'flow', 'implemented']),
       }),
     );
-    expect(onboarding.matches.find((match) => match.tool === 'projscan_understand')).toBeUndefined();
+    expect(
+      onboarding.matches.find((match) => match.tool === 'projscan_understand'),
+    ).toBeUndefined();
 
     const csvExport = routeIntent('find CSV export for users');
     expect(csvExport.matches[0]).toEqual(
@@ -1279,7 +1357,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['creates', 'audit', 'log', 'entries']),
       }),
     );
-    expect(auditLog.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      auditLog.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const refund = routeIntent('where is refund handling for payments');
     expect(refund.matches[0]).toEqual(
@@ -1309,7 +1389,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['where', 'welcome', 'email', 'template']),
       }),
     );
-    expect(welcomeEmail.matches.find((match) => match.tool === 'projscan_dataflow')).toBeUndefined();
+    expect(
+      welcomeEmail.matches.find((match) => match.tool === 'projscan_dataflow'),
+    ).toBeUndefined();
 
     const resetEmailCopy = routeIntent('find password reset email copy');
     expect(resetEmailCopy.matches[0]).toEqual(
@@ -1325,10 +1407,18 @@ describe('routeIntent', () => {
       expect.objectContaining({
         tool: 'projscan_search',
         confidence: 'high',
-        matchedKeywords: expect.arrayContaining(['where', 'push', 'notification', 'copy', 'invites']),
+        matchedKeywords: expect.arrayContaining([
+          'where',
+          'push',
+          'notification',
+          'copy',
+          'invites',
+        ]),
       }),
     );
-    expect(pushCopy.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      pushCopy.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const smsTemplate = routeIntent('where is SMS verification template');
     expect(smsTemplate.matches[0]).toEqual(
@@ -1462,7 +1552,9 @@ describe('routeIntent', () => {
     );
 
     expect(routeIntent('implement Prisma model').matches[0].tool).toBe('projscan_understand');
-    expect(routeIntent('is user input reaching SQL sinks').matches[0].tool).toBe('projscan_dataflow');
+    expect(routeIntent('is user input reaching SQL sinks').matches[0].tool).toBe(
+      'projscan_dataflow',
+    );
 
     const sidebarNav = routeIntent('where is sidebar nav item for billing');
     expect(sidebarNav.matches[0]).toEqual(
@@ -1501,7 +1593,9 @@ describe('routeIntent', () => {
     );
 
     expect(routeIntent('add sidebar nav item').matches[0].tool).toBe('projscan_understand');
-    expect(routeIntent('is customer email leaking to logs').matches[0].tool).toBe('projscan_dataflow');
+    expect(routeIntent('is customer email leaking to logs').matches[0].tool).toBe(
+      'projscan_dataflow',
+    );
   });
 
   it('routes exact-file coverage questions to file inspection without hijacking test search or run plans', () => {
@@ -1534,8 +1628,12 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('where are the tests for src/core/start.ts?').matches[0].tool).toBe('projscan_search');
-    expect(routeIntent('which tests should I run for src/core/start.ts?').matches[0].tool).toBe('projscan_understand');
+    expect(routeIntent('where are the tests for src/core/start.ts?').matches[0].tool).toBe(
+      'projscan_search',
+    );
+    expect(routeIntent('which tests should I run for src/core/start.ts?').matches[0].tool).toBe(
+      'projscan_understand',
+    );
   });
 
   it('routes exact-file test-authoring questions to file inspection without hijacking test search or run plans', () => {
@@ -1557,7 +1655,9 @@ describe('routeIntent', () => {
       }),
     );
 
-    const writeRegression = routeIntent('what regression test should I write for src/core/start.ts?');
+    const writeRegression = routeIntent(
+      'what regression test should I write for src/core/start.ts?',
+    );
     expect(writeRegression.matches[0]).toEqual(
       expect.objectContaining({
         tool: 'projscan_file',
@@ -1575,8 +1675,12 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('where are the tests for src/core/start.ts?').matches[0].tool).toBe('projscan_search');
-    expect(routeIntent('which tests should I run for src/core/start.ts?').matches[0].tool).toBe('projscan_understand');
+    expect(routeIntent('where are the tests for src/core/start.ts?').matches[0].tool).toBe(
+      'projscan_search',
+    );
+    expect(routeIntent('which tests should I run for src/core/start.ts?').matches[0].tool).toBe(
+      'projscan_understand',
+    );
   });
 
   it('routes exact-file read-before-change questions to file inspection without hijacking repo orientation', () => {
@@ -1598,8 +1702,12 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('what files should I read first?').matches[0].tool).toBe('projscan_understand');
-    expect(routeIntent('what should I read before changing auth').matches[0].tool).toBe('projscan_understand');
+    expect(routeIntent('what files should I read first?').matches[0].tool).toBe(
+      'projscan_understand',
+    );
+    expect(routeIntent('what should I read before changing auth').matches[0].tool).toBe(
+      'projscan_understand',
+    );
   });
 
   it('routes "review my PR" to review', () => {
@@ -1653,7 +1761,9 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('what is risky in this repo').matches[0].tool).toBe('projscan_quality_scorecard');
+    expect(routeIntent('what is risky in this repo').matches[0].tool).toBe(
+      'projscan_quality_scorecard',
+    );
   });
 
   it('routes merge risk summaries to preflight instead of generic quality scorecards', () => {
@@ -1703,7 +1813,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['description', 'pr'],
       }),
     );
-    expect(description.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
+    expect(
+      description.matches.find((match) => match.tool === 'projscan_privacy_check'),
+    ).toBeUndefined();
 
     const reviewerSummary = routeIntent('summarize my changes for reviewers');
     expect(reviewerSummary.matches[0]).toEqual(
@@ -1874,7 +1986,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['owns'],
       }),
     );
-    expect(fileOwner.matches.find((match) => match.tool === 'projscan_evidence_pack')).toBeUndefined();
+    expect(
+      fileOwner.matches.find((match) => match.tool === 'projscan_evidence_pack'),
+    ).toBeUndefined();
     expect(fileOwner.matches.find((match) => match.tool === 'projscan_claim')).toBeUndefined();
   });
 
@@ -1899,7 +2013,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['release', 'prepare'],
       }),
     );
-    expect(release.matches.find((match) => match.tool === 'projscan_evidence_pack')).toBeUndefined();
+    expect(
+      release.matches.find((match) => match.tool === 'projscan_evidence_pack'),
+    ).toBeUndefined();
   });
 
   it('routes release-readiness phrasings to release train before generic checks', () => {
@@ -2339,7 +2455,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['script', 'runs', 'tests']),
       }),
     );
-    expect(e2eScript.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      e2eScript.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const lintCommand = routeIntent('what command runs lint');
     expect(lintCommand.matches[0]).toEqual(
@@ -2349,7 +2467,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['command', 'runs', 'lint']),
       }),
     );
-    expect(lintCommand.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      lintCommand.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const typecheckCommand = routeIntent('how do I run typecheck');
     expect(typecheckCommand.matches[0]).toEqual(
@@ -2368,7 +2488,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['run', 'storybook']),
       }),
     );
-    expect(storybookCommand.matches.find((match) => match.tool === 'projscan_search')).toBeUndefined();
+    expect(
+      storybookCommand.matches.find((match) => match.tool === 'projscan_search'),
+    ).toBeUndefined();
 
     const cypressCommand = routeIntent('how do I run cypress tests');
     expect(cypressCommand.matches[0]).toEqual(
@@ -2378,7 +2500,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['run', 'cypress', 'tests']),
       }),
     );
-    expect(cypressCommand.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      cypressCommand.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const playwrightCommand = routeIntent('which script runs playwright tests');
     expect(playwrightCommand.matches[0]).toEqual(
@@ -2418,7 +2542,9 @@ describe('routeIntent', () => {
 
     expect(routeIntent('e2e tests are failing').matches[0].tool).toBe('projscan_regression_plan');
     expect(routeIntent('lint is failing').matches[0].tool).toBe('projscan_regression_plan');
-    expect(routeIntent('cypress tests are failing').matches[0].tool).toBe('projscan_regression_plan');
+    expect(routeIntent('cypress tests are failing').matches[0].tool).toBe(
+      'projscan_regression_plan',
+    );
 
     const seedDatabase = routeIntent('how do I seed the database');
     expect(seedDatabase.matches[0]).toEqual(
@@ -2655,7 +2781,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['env', 'vars'],
       }),
     );
-    expect(envRequirements.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
+    expect(
+      envRequirements.matches.find((match) => match.tool === 'projscan_privacy_check'),
+    ).toBeUndefined();
 
     expect(routeIntent('does projscan read .env values?').matches[0]).toEqual(
       expect.objectContaining({
@@ -2859,6 +2987,100 @@ describe('routeIntent', () => {
     );
   });
 
+  it('routes broad improve next wording to bug hunt without stealing technical improve next intents', () => {
+    const improveNext = routeIntent('what should we improve next');
+
+    expect(improveNext.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Agent planning',
+        tool: 'projscan_bug_hunt',
+        cli: 'projscan bug-hunt',
+        confidence: 'high',
+        matchedKeywords: ['improve'],
+      }),
+    );
+
+    const testImprovement = routeIntent('what should we improve next in tests');
+    expect(testImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_regression_plan',
+        confidence: 'high',
+        matchedKeywords: ['tests'],
+      }),
+    );
+
+    const performanceImprovement = routeIntent('what should we improve next in performance');
+    expect(performanceImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_hotspots',
+        confidence: 'high',
+        matchedKeywords: ['performance'],
+      }),
+    );
+
+    const releaseImprovement = routeIntent('what should we improve next before release');
+    expect(releaseImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_release_train',
+        matchedKeywords: ['release'],
+      }),
+    );
+
+    const dependencyImprovement = routeIntent('what should we improve next for dependencies');
+    expect(dependencyImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_dependencies',
+        confidence: 'high',
+        matchedKeywords: ['dependencies'],
+      }),
+    );
+
+    const safetyImprovement = routeIntent('what should we improve next for safety');
+    expect(safetyImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_preflight',
+        matchedKeywords: ['safety'],
+      }),
+    );
+  });
+
+  it('routes product-planning wording to high-confidence workplan', () => {
+    const buildNext = routeIntent('what should we build next');
+
+    expect(buildNext.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Agent planning',
+        tool: 'projscan_workplan',
+        cli: 'projscan workplan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['build', 'next']),
+      }),
+    );
+    expect(buildNext.matches[0]?.matchedKeywords).not.toEqual(['next']);
+
+    const roadmap = routeIntent('plan the product roadmap');
+    expect(roadmap.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['plan', 'product', 'roadmap']),
+      }),
+    );
+  });
+
+  it('keeps bug-hunt route metadata on action-queue wording', () => {
+    const result = routeIntent('what should I fix first?');
+    const bugHunt = result.matches[0];
+
+    expect(bugHunt).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_bug_hunt',
+        what: expect.stringContaining('Ranked action queue'),
+      }),
+    );
+    expect(bugHunt?.what).not.toContain('fix queue');
+  });
+
   it('routes blocker-discovery questions to preflight before weak PR matches', () => {
     const result = routeIntent('what is blocking this PR');
 
@@ -2917,7 +3139,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['ready', 'open', 'pr'],
       }),
     );
-    expect(prReadiness.matches.find((match) => match.tool === 'projscan_preflight')).toBeUndefined();
+    expect(
+      prReadiness.matches.find((match) => match.tool === 'projscan_preflight'),
+    ).toBeUndefined();
   });
 
   it('routes quality and risk picture questions to the scorecard', () => {
@@ -3143,7 +3367,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['changed', 'offline']),
       }),
     );
-    expect(offline.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
+    expect(
+      offline.matches.find((match) => match.tool === 'projscan_privacy_check'),
+    ).toBeUndefined();
   });
 
   it('routes wake-up and last-agent status questions to session context', () => {
@@ -3625,7 +3851,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['breaks'],
       }),
     );
-    expect(impactQuestion.matches.find((match) => match.tool === 'projscan_pr_diff')).toBeUndefined();
+    expect(
+      impactQuestion.matches.find((match) => match.tool === 'projscan_pr_diff'),
+    ).toBeUndefined();
   });
 
   it('routes branch freshness and comparison questions to structural diff', () => {
@@ -3872,7 +4100,9 @@ describe('routeIntent', () => {
       }),
     );
 
-    expect(routeIntent('what is risky in this repo?').matches[0].tool).toBe('projscan_quality_scorecard');
+    expect(routeIntent('what is risky in this repo?').matches[0].tool).toBe(
+      'projscan_quality_scorecard',
+    );
     expect(routeIntent('what files are risky to touch?').matches[0].tool).toBe('projscan_hotspots');
   });
 
@@ -4052,7 +4282,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['import']),
       }),
     );
-    expect(packageImport.matches.find((match) => match.tool === 'projscan_upgrade')).toBeUndefined();
+    expect(
+      packageImport.matches.find((match) => match.tool === 'projscan_upgrade'),
+    ).toBeUndefined();
 
     const packageWho = routeIntent('who imports package chalk');
     expect(packageWho.matches[0]).toEqual(
@@ -4122,7 +4354,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['files', 'no', 'tests']),
       }),
     );
-    expect(noTests.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      noTests.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
   });
 
   it('routes package bump questions to upgrade preview before generic impact', () => {
@@ -4309,7 +4543,9 @@ describe('routeIntent', () => {
         matchedKeywords: ['vulnerable', 'packages'],
       }),
     );
-    expect(vulnerablePackages.matches.find((match) => match.tool === 'projscan_dependencies')).toEqual(
+    expect(
+      vulnerablePackages.matches.find((match) => match.tool === 'projscan_dependencies'),
+    ).toEqual(
       expect.objectContaining({
         matchedKeywords: ['packages'],
       }),
@@ -4514,7 +4750,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['tech', 'debt']),
       }),
     );
-    expect(techDebt.matches.find((match) => match.tool === 'projscan_regression_plan')).toBeUndefined();
+    expect(
+      techDebt.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
 
     const simplify = routeIntent('what code should I simplify');
     expect(simplify.matches[0]).toEqual(
@@ -4537,7 +4775,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['start', 'local', 'services']),
       }),
     );
-    expect(localServices.matches.find((match) => match.tool === 'projscan_hotspots')).toBeUndefined();
+    expect(
+      localServices.matches.find((match) => match.tool === 'projscan_hotspots'),
+    ).toBeUndefined();
 
     const dockerCommand = routeIntent('what command starts docker compose');
     expect(dockerCommand.matches[0]).toEqual(
@@ -4680,7 +4920,9 @@ describe('routeIntent', () => {
         matchedKeywords: expect.arrayContaining(['circular', 'dependencies']),
       }),
     );
-    expect(circular.matches.find((match) => match.tool === 'projscan_dependencies')).toBeUndefined();
+    expect(
+      circular.matches.find((match) => match.tool === 'projscan_dependencies'),
+    ).toBeUndefined();
 
     const cycles = routeIntent('find dependency cycles');
     expect(cycles.matches[0]).toEqual(

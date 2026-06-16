@@ -29,7 +29,9 @@ import { isSemanticAvailable } from '../../core/embeddings.js';
 export function registerSearch(): void {
   program
     .command('search <query...>')
-    .description('Ranked search - BM25 by default, semantic or hybrid when @xenova/transformers peer is installed')
+    .description(
+      'Ranked search - BM25 by default, semantic or hybrid when @xenova/transformers peer is installed',
+    )
     .option('--scope <scope>', 'auto | content | symbols | files', 'auto')
     .option('--mode <mode>', 'lexical | semantic | hybrid (content/auto scope only)', 'lexical')
     .option('--semantic', 'shortcut for --mode semantic')
@@ -48,7 +50,10 @@ export function registerSearch(): void {
         process.exit(1);
       }
       const limitRaw = cmdOpts.limit ?? 15;
-      const limit = Math.max(1, Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 15 : limitRaw));
+      const limit = Math.max(
+        1,
+        Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 15 : limitRaw),
+      );
       const scope = String(cmdOpts.scope ?? 'auto');
 
       const spinner = format === 'console' ? ora('Indexing repository...').start() : null;
@@ -88,8 +93,10 @@ export function registerSearch(): void {
             }
           }
           matches.sort((a, b) => {
-            const aExact = a.symbol.toLowerCase() === q ? 0 : a.symbol.toLowerCase().startsWith(q) ? 1 : 2;
-            const bExact = b.symbol.toLowerCase() === q ? 0 : b.symbol.toLowerCase().startsWith(q) ? 1 : 2;
+            const aExact =
+              a.symbol.toLowerCase() === q ? 0 : a.symbol.toLowerCase().startsWith(q) ? 1 : 2;
+            const bExact =
+              b.symbol.toLowerCase() === q ? 0 : b.symbol.toLowerCase().startsWith(q) ? 1 : 2;
             return aExact - bExact;
           });
           results = { scope, query, matches: matches.slice(0, limit), total: matches.length };
@@ -107,7 +114,9 @@ export function registerSearch(): void {
             mode === 'lexical' && format === 'console' && !(await isSemanticAvailable());
           const index = await buildSearchIndex(rootPath, scan.files, graph);
           const lexicalHitsAll = searchIndex(index, query, { limit });
-          const lexicalHits = passes ? lexicalHitsAll.filter((h) => passes!(h.file)) : lexicalHitsAll;
+          const lexicalHits = passes
+            ? lexicalHitsAll.filter((h) => passes!(h.file))
+            : lexicalHitsAll;
           const tokens = expandQuery(query);
 
           if (mode === 'lexical') {
@@ -132,7 +141,9 @@ export function registerSearch(): void {
               process.exit(1);
             }
 
-            if (spinner) spinner.text = 'Building semantic index (first run may take ~10s + model download)...';
+            if (spinner)
+              spinner.text =
+                'Building semantic index (first run may take ~10s + model download)...';
             const semIndex = await buildSemanticIndex(rootPath, scan.files, {
               subFile: Boolean(cmdOpts.subFile),
               graph,
@@ -208,15 +219,21 @@ export function registerSearch(): void {
         }
 
         if (format === 'markdown') {
-          const r = results as { matches: Array<Record<string, unknown>>; query: string; scope: string };
+          const r = results as {
+            matches: Array<Record<string, unknown>>;
+            query: string;
+            scope: string;
+          };
           console.log(`# Search - \`${r.query}\` (${r.scope})\n`);
           if (r.matches.length === 0) {
             console.log('_No matches._');
             return;
           }
           for (const m of r.matches) {
-            if ('symbol' in m) console.log(`- \`${m.symbol}\` (${m.kind}) → \`${m.file}:${m.line}\``);
-            else if ('score' in m) console.log(`- \`${m.file}:${m.line}\` - score ${m.score} - ${m.excerpt ?? ''}`);
+            if ('symbol' in m)
+              console.log(`- \`${m.symbol}\` (${m.kind}) → \`${m.file}:${m.line}\``);
+            else if ('score' in m)
+              console.log(`- \`${m.file}:${m.line}\` - score ${m.score} - ${m.excerpt ?? ''}`);
             else console.log(`- \`${m.file}\``);
           }
           return;

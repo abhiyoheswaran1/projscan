@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { buildCodeGraph, incrementallyUpdateGraph } from '../../src/core/codeGraph.js';
+import { buildCodeGraph, exportsOf, incrementallyUpdateGraph } from '../../src/core/codeGraph.js';
 import { scanRepository } from '../../src/core/repositoryScanner.js';
 
 let tmp: string;
@@ -79,6 +79,36 @@ describe('incrementallyUpdateGraph', () => {
     await incrementallyUpdateGraph(graph, tmp, ['src/b.ts']);
     const fooFnAfter = graph.files.get('src/a.ts')!.functions!.find((f) => f.name === 'foo');
     expect(fooFnAfter?.fanIn).toBe(0);
+  });
+
+  it('refreshes local star re-exported symbols after an edit', async () => {
+    await write('src/index.ts', `export * from './api.js';\n`);
+    await write('src/api.ts', `export function oldApi() { return 1; }\n`);
+    const scan = await scanRepository(tmp);
+    const graph = await buildCodeGraph(tmp, scan.files);
+
+    expect(exportsOf(graph, 'src/index.ts').map((exp) => exp.name)).toEqual(['oldApi']);
+
+    await write(
+      'src/api.ts',
+      `export function oldApi() { return 1; }
+export function newApi() { return 2; }
+`,
+    );
+    await incrementallyUpdateGraph(graph, tmp, ['src/api.ts']);
+
+    expect(
+      exportsOf(graph, 'src/index.ts')
+        .map((exp) => exp.name)
+        .sort(),
+    ).toEqual(['newApi', 'oldApi']);
+    expect(graph.symbolDefs.get('newApi')?.has('src/index.ts')).toBe(true);
+
+    await write('src/api.ts', `export function newApi() { return 2; }\n`);
+    await incrementallyUpdateGraph(graph, tmp, ['src/api.ts']);
+
+    expect(exportsOf(graph, 'src/index.ts').map((exp) => exp.name)).toEqual(['newApi']);
+    expect(graph.symbolDefs.get('oldApi')).toBeUndefined();
   });
 
   it('returns the same graph reference (in-place update)', async () => {

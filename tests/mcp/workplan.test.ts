@@ -47,8 +47,6 @@ test('lists projscan_workplan as an MCP tool', () => {
   );
 });
 
-
-
 test('projscan_workplan does not honor per-request plugin execution toggles', async () => {
   const markerPath = path.join(tmp, 'plugin-executed.txt');
   await writeMarkerPlugin(markerPath);
@@ -83,7 +81,6 @@ test('projscan_workplan returns an agent-ready task plan', async () => {
   expect(result.workplan.tasks[0]?.verification.commands.length).toBeGreaterThan(0);
   expect(Array.isArray(result.workplan.coordination.touchedFiles)).toBe(true);
 });
-
 
 async function writeMarkerPlugin(markerPath: string): Promise<void> {
   const pluginDir = path.join(tmp, '.projscan-plugins');

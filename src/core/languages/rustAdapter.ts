@@ -8,11 +8,7 @@ import { extractRustCyclomatic } from './rustCyclomatic.js';
 import { extractRustFunctions } from './rustFunctions.js';
 import { extractRustCallSites } from './rustCallSites.js';
 import { detectRustProject, type RustProjectInfo } from './rustManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const RUST_EXTENSIONS = new Set(['.rs']);
 const MAX_RUST_FILE = 1024 * 1024;
@@ -54,12 +50,8 @@ export const rustAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractRustCyclomatic(
         root as Parameters<typeof extractRustCyclomatic>[0],
       );
-      const callSites = extractRustCallSites(
-        root as Parameters<typeof extractRustCallSites>[0],
-      );
-      const functions = extractRustFunctions(
-        root as Parameters<typeof extractRustFunctions>[0],
-      );
+      const callSites = extractRustCallSites(root as Parameters<typeof extractRustCallSites>[0]);
+      const functions = extractRustFunctions(root as Parameters<typeof extractRustFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -101,10 +93,7 @@ export const rustAdapter: LanguageAdapter = {
     return source.split('::')[0];
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectRustProject(rootPath, files);
     return {
       packageRoots: info ? [path.relative(rootPath, info.crateRoot) || '.'] : [],

@@ -59,7 +59,9 @@ test('start writes a Mission Control bundle when requested', async () => {
   const resume = JSON.parse(await fs.readFile(path.join(bundleDir, 'resume.json'), 'utf-8'));
   expect(resume.currentStep.stepId).toBe('ready-1');
 
-  const readyToolCalls = JSON.parse(await fs.readFile(path.join(bundleDir, 'ready-tool-calls.json'), 'utf-8'));
+  const readyToolCalls = JSON.parse(
+    await fs.readFile(path.join(bundleDir, 'ready-tool-calls.json'), 'utf-8'),
+  );
   expect(readyToolCalls[0]).toEqual({
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
@@ -118,7 +120,9 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
   const payload = JSON.parse(result.stdout);
   const bundleDir = path.join(tmp, 'artifacts', 'json-mission');
   expect(payload.missionBundle.directory).toBe(bundleDir);
-  expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toContain('manifest.json');
+  expect(payload.missionBundle.files.map((file: { name: string }) => file.name)).toContain(
+    'manifest.json',
+  );
   const manifest = JSON.parse(await fs.readFile(path.join(bundleDir, 'manifest.json'), 'utf-8'));
   expect(manifest.directory).toBe(bundleDir);
 });
@@ -129,7 +133,9 @@ test('start reports the Mission Control bundle as JSON when save-mission uses JS
 In `start prints a shortcut index for the current mission when requested`, add:
 
 ```ts
-expect(result.stdout).toContain("projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --save-mission .projscan/mission --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 4: Run the red test**

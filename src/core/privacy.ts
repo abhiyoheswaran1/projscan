@@ -98,7 +98,6 @@ export function knownNetworkEndpoints(offline = isOfflineMode()): NetworkEndpoin
   ];
 }
 
-
 export function knownLocalWriteSurfaces(): LocalWriteSurfaceInfo[] {
   return [
     {
@@ -173,7 +172,8 @@ export async function buildPrivacyCheckReport(
       ignoredFileCount: scan.scanBoundary.ignoredFileCount,
       totalFiles: scan.totalFiles,
     },
-    envContentScanning: config.scan?.scanEnvValues === true || process.env[SCAN_ENV_VALUES_ENV] === '1',
+    envContentScanning:
+      config.scan?.scanEnvValues === true || process.env[SCAN_ENV_VALUES_ENV] === '1',
     plugins: {
       executionEnabled: pluginExecutionEnabled,
       envFlag: PLUGIN_PREVIEW_FLAG,

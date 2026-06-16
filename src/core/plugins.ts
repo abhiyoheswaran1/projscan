@@ -2,7 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { CodeGraph } from './codeGraph.js';
-import type { FileEntry, Issue, IssueSeverity, DataflowReport, SemanticGraphReport } from '../types.js';
+import type {
+  FileEntry,
+  Issue,
+  IssueSeverity,
+  DataflowReport,
+  SemanticGraphReport,
+} from '../types.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
 
 /**
@@ -66,7 +72,11 @@ export interface PluginAnalyzerContext {
 }
 
 export interface PluginAnalyzerExports {
-  check: (rootPath: string, files: FileEntry[], context?: PluginAnalyzerContext) => Promise<Issue[]> | Issue[];
+  check: (
+    rootPath: string,
+    files: FileEntry[],
+    context?: PluginAnalyzerContext,
+  ) => Promise<Issue[]> | Issue[];
 }
 
 export interface PluginReporterContext<TPayload = unknown> {
@@ -123,7 +133,9 @@ export function pluginsEnabled(): boolean {
   return v === '1' || v === 'true';
 }
 
-export async function readPluginManifestFile(manifestPath: string): Promise<PluginManifestFileResult> {
+export async function readPluginManifestFile(
+  manifestPath: string,
+): Promise<PluginManifestFileResult> {
   let raw: string;
   try {
     raw = await fs.readFile(manifestPath, 'utf-8');
@@ -235,7 +247,12 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
         exports: { check: exportsObj.check as PluginAnalyzerExports['check'] },
       });
     } catch (err) {
-      const detail = describePluginModuleLoadError(err, entry.manifest.module, modulePath, 'manifest');
+      const detail = describePluginModuleLoadError(
+        err,
+        entry.manifest.module,
+        modulePath,
+        'manifest',
+      );
       process.stderr.write(
         `[projscan] plugin "${entry.manifest.name}" failed to load: ${detail.message}${detail.hint ? ` ${detail.hint}` : ''}. skipped.\n`,
       );
@@ -338,7 +355,12 @@ async function loadReporterPlugin(
       },
     };
   } catch (err) {
-    const detail = describePluginModuleLoadError(err, manifest.module, modulePath, 'reporter manifest');
+    const detail = describePluginModuleLoadError(
+      err,
+      manifest.module,
+      modulePath,
+      'reporter manifest',
+    );
     return pluginRuntimeFail({
       code: 'reporter-load-error',
       message: `reporter plugin "${manifest.name}" failed to load: ${detail.message}`,
@@ -348,22 +370,35 @@ async function loadReporterPlugin(
 }
 
 class PluginModuleMissingError extends Error {
-  constructor(readonly manifestModule: string, readonly modulePath: string) {
+  constructor(
+    readonly manifestModule: string,
+    readonly modulePath: string,
+  ) {
     super(`module "${manifestModule}" was not found at ${modulePath}`);
   }
 }
 
 class PluginModuleReadError extends Error {
-  constructor(readonly manifestModule: string, readonly modulePath: string, err: unknown) {
+  constructor(
+    readonly manifestModule: string,
+    readonly modulePath: string,
+    err: unknown,
+  ) {
     super(`module "${manifestModule}" could not be read at ${modulePath}: ${formatError(err)}`);
   }
 }
 
-async function assertPluginModuleReadable(manifestModule: string, modulePath: string): Promise<void> {
+async function assertPluginModuleReadable(
+  manifestModule: string,
+  modulePath: string,
+): Promise<void> {
   try {
     await fs.access(modulePath);
   } catch (err) {
-    const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code: unknown }).code) : '';
+    const code =
+      typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code: unknown }).code)
+        : '';
     if (code === 'ENOENT') throw new PluginModuleMissingError(manifestModule, modulePath);
     throw new PluginModuleReadError(manifestModule, modulePath, err);
   }
@@ -398,9 +433,7 @@ function describePluginModuleLoadError(
 
 function untrustedAnalyzerWarning(name: string, status: PluginTrustStatus): string {
   const reason =
-    status === 'changed'
-      ? 'module changed since it was trusted'
-      : 'module is not trusted';
+    status === 'changed' ? 'module changed since it was trusted' : 'module is not trusted';
   const verb = status === 'changed' ? 'Re-run' : 'Run';
   return `[projscan] plugin "${name}" ${reason}; skipped (not executed). ${verb} \`projscan plugin trust ${name}\` to approve this module.\n`;
 }
@@ -424,7 +457,9 @@ function importPluginModule(modulePath: string): Promise<Record<string, unknown>
 }
 
 function isMissingDynamicImportCallback(err: unknown): boolean {
-  return err instanceof TypeError && err.message.includes('dynamic import callback was not specified');
+  return (
+    err instanceof TypeError && err.message.includes('dynamic import callback was not specified')
+  );
 }
 
 async function importPluginModuleFromSource(modulePath: string): Promise<Record<string, unknown>> {
@@ -436,10 +471,13 @@ async function importPluginModuleFromSource(modulePath: string): Promise<Record<
   }
 
   const names: string[] = [];
-  let transformed = source.replace(/\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g, (_m, kind, name) => {
-    names.push(String(name));
-    return `${kind} ${name}`;
-  });
+  let transformed = source.replace(
+    /\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g,
+    (_m, kind, name) => {
+      names.push(String(name));
+      return `${kind} ${name}`;
+    },
+  );
   transformed = transformed.replace(/\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g, (_m, name) => {
     names.push(String(name));
     return `const ${name} =`;
@@ -447,7 +485,10 @@ async function importPluginModuleFromSource(modulePath: string): Promise<Record<
   if (names.length === 0) {
     throw new Error('unsupported module syntax in Vitest VM fallback');
   }
-  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<string, unknown>;
+  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<
+    string,
+    unknown
+  >;
 }
 
 /**
@@ -525,7 +566,9 @@ function failValidation(diagnostic: PluginDiagnostic): ValidationFail {
   return { ok: false, reason: diagnostic.message, diagnostic };
 }
 
-function pluginRuntimeFail(diagnostic: PluginDiagnostic): PluginReporterResolveResult & PluginReporterRenderResult {
+function pluginRuntimeFail(
+  diagnostic: PluginDiagnostic,
+): PluginReporterResolveResult & PluginReporterRenderResult {
   return { ok: false, reason: diagnostic.message, diagnostic };
 }
 
@@ -628,7 +671,9 @@ export function validateManifest(input: unknown): ValidationOk | ValidationFail 
   };
 }
 
-function validateReporterCommands(input: unknown): { ok: true; commands: PluginReporterCommand[] } | ValidationFail {
+function validateReporterCommands(
+  input: unknown,
+): { ok: true; commands: PluginReporterCommand[] } | ValidationFail {
   if (!Array.isArray(input) || input.length === 0) {
     return failValidation({
       code: 'invalid-commands',

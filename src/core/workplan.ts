@@ -63,7 +63,11 @@ export async function computeWorkplan(
     safeRiskNow(rootPath),
     loadOwnership(rootPath).catch(() => undefined),
   ]);
-  const coordination = buildCoordination(preflight.verdict, riskNow.touchedFiles, riskNow.conflicts);
+  const coordination = buildCoordination(
+    preflight.verdict,
+    riskNow.touchedFiles,
+    riskNow.conflicts,
+  );
   const tasks = rankWorkplanTasks([
     ...tasksFromPreflight(preflight.reasons),
     ...tasksFromCoordination(coordination),
@@ -71,8 +75,12 @@ export async function computeWorkplan(
   ]);
   const maxTasks = normalizeMaxTasks(options.maxTasks);
   const limitedTasks = annotateTasksWithOwners(tasks.slice(0, maxTasks), ownership);
-  const topRisks = annotateTopRisksWithOwners(buildTopRisks(preflight.reasons, coordination.conflicts), ownership);
-  const fixFirst = fixFirstFromWorkplanTask(limitedTasks[0]) ?? fixFirstFromWorkplanRisk(topRisks[0]);
+  const topRisks = annotateTopRisksWithOwners(
+    buildTopRisks(preflight.reasons, coordination.conflicts),
+    ownership,
+  );
+  const fixFirst =
+    fixFirstFromWorkplanTask(limitedTasks[0]) ?? fixFirstFromWorkplanRisk(topRisks[0]);
   const truncated =
     tasks.length > limitedTasks.length ||
     preflight.truncated === true ||
@@ -96,10 +104,11 @@ export async function computeWorkplan(
   };
 }
 
-
 export function buildWorkplanHandoff(report: WorkplanReport): WorkplanHandoffPayload {
   const next = report.tasks.slice(0, 5).map((task) => task.handoffText);
-  const verificationCommands = unique(report.tasks.flatMap((task) => task.verification.commands)).slice(0, 12);
+  const verificationCommands = unique(
+    report.tasks.flatMap((task) => task.verification.commands),
+  ).slice(0, 12);
   return {
     summary: report.summary,
     verdict: report.verdict,
@@ -128,7 +137,9 @@ function renderWorkplanHandoffMarkdown(
     ...(next.length > 0 ? next.map((item) => `- ${item}`) : ['- Preserve the current baseline.']),
     '',
     '## Verification',
-    ...(verificationCommands.length > 0 ? verificationCommands.map((command) => `- \`${command}\``) : ['- `projscan preflight --format json`']),
+    ...(verificationCommands.length > 0
+      ? verificationCommands.map((command) => `- \`${command}\``)
+      : ['- `projscan preflight --format json`']),
     '',
     '## Coordination',
     `- ${report.coordination.recommendedNextAgent}`,
@@ -175,9 +186,11 @@ function buildCoordination(
   if (verdict === 'block') {
     recommendedNextAgent = 'hardening agent: resolve p0 blockers before feature work continues';
   } else if (conflicts.length > 0) {
-    recommendedNextAgent = 'coordination agent: inspect touched-file overlap before parallel edits continue';
+    recommendedNextAgent =
+      'coordination agent: inspect touched-file overlap before parallel edits continue';
   } else if (visibleTouched.length > 0) {
-    recommendedNextAgent = 'handoff/preflight agent: continue from touched-file context, then confirm the safety gate before editing';
+    recommendedNextAgent =
+      'handoff/preflight agent: continue from touched-file context, then confirm the safety gate before editing';
   }
   return {
     touchedFiles: visibleTouched,
@@ -208,12 +221,15 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         files: filesFromReasons(supplyChain),
         suggestedTools: ['projscan_doctor', 'projscan_preflight'],
         commands: ['projscan preflight --format json', 'projscan doctor --format json'],
-        expected: 'No supply-chain errors remain, and preflight no longer blocks on supply-chain evidence.',
+        expected:
+          'No supply-chain errors remain, and preflight no longer blocks on supply-chain evidence.',
       }),
     );
   }
 
-  const review = reasons.filter((reason) => reason.source === 'review' || reason.source === 'taint');
+  const review = reasons.filter(
+    (reason) => reason.source === 'review' || reason.source === 'taint',
+  );
   if (review.length > 0) {
     tasks.push(
       makeTask({
@@ -223,14 +239,27 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         why: 'Review, taint, and dataflow findings describe merge safety, new risky flows, and structural changes that need explicit handling before handoff.',
         evidence: review.map(reasonToEvidence),
         files: filesFromReasons(review),
-        suggestedTools: ['projscan_review', 'projscan_semantic_graph', 'projscan_taint', 'projscan_dataflow'],
-        commands: ['projscan review --format json', 'projscan semantic-graph --format json', 'projscan dataflow --format json', 'projscan preflight --mode before_merge --format json'],
-        expected: 'The review verdict is ok or the remaining review items are intentionally documented.',
+        suggestedTools: [
+          'projscan_review',
+          'projscan_semantic_graph',
+          'projscan_taint',
+          'projscan_dataflow',
+        ],
+        commands: [
+          'projscan review --format json',
+          'projscan semantic-graph --format json',
+          'projscan dataflow --format json',
+          'projscan preflight --mode before_merge --format json',
+        ],
+        expected:
+          'The review verdict is ok or the remaining review items are intentionally documented.',
       }),
     );
   }
 
-  const doctor = reasons.filter((reason) => reason.source === 'doctor' || reason.source === 'plugin');
+  const doctor = reasons.filter(
+    (reason) => reason.source === 'doctor' || reason.source === 'plugin',
+  );
   if (doctor.length > 0) {
     tasks.push(
       makeTask({
@@ -242,7 +271,8 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         files: filesFromReasons(doctor),
         suggestedTools: ['projscan_doctor', 'projscan_fix_suggest'],
         commands: ['projscan doctor --format json', 'npm test'],
-        expected: 'The relevant issue ids disappear from projscan doctor and the focused test command passes.',
+        expected:
+          'The relevant issue ids disappear from projscan doctor and the focused test command passes.',
       }),
     );
   }
@@ -259,12 +289,15 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         files: filesFromReasons(hotspots),
         suggestedTools: ['projscan_hotspots', 'projscan_file'],
         commands: ['projscan hotspots --format json', 'projscan file <path> --format json'],
-        expected: 'The touched hotspot has a clear owner, test target, and reduced or accepted risk.',
+        expected:
+          'The touched hotspot has a clear owner, test target, and reduced or accepted risk.',
       }),
     );
   }
 
-  const changed = reasons.filter((reason) => reason.source === 'changed-files' || reason.source === 'git');
+  const changed = reasons.filter(
+    (reason) => reason.source === 'changed-files' || reason.source === 'git',
+  );
   if (changed.length > 0) {
     tasks.push(
       makeTask({
@@ -276,7 +309,8 @@ function tasksFromPreflight(reasons: PreflightReason[]): WorkplanTask[] {
         files: [],
         suggestedTools: ['projscan_preflight', 'projscan_review'],
         commands: ['projscan preflight --base-ref main --format json'],
-        expected: 'Changed-file evidence is available and review can compare the intended base/head refs.',
+        expected:
+          'Changed-file evidence is available and review can compare the intended base/head refs.',
       }),
     );
   }
@@ -302,14 +336,17 @@ function tasksFromCoordination(coordination: WorkplanCoordination): WorkplanTask
   return [
     makeTask({
       id: 'wp-session-handoff',
-      priority: coordination.conflicts.some((conflict) => conflict.severity === 'error') ? 'p0' : 'p1',
+      priority: coordination.conflicts.some((conflict) => conflict.severity === 'error')
+        ? 'p0'
+        : 'p1',
       title: 'Coordinate touched files before parallel work continues',
       why: 'Session evidence tells the next agent what changed recently and which files may collide across agents.',
       evidence,
       files: coordination.touchedFiles,
       suggestedTools: ['projscan_session', 'projscan://handoff', 'projscan://risk-now'],
       commands: ['projscan session touched --format json', 'projscan handoff'],
-      expected: 'The next agent can name touched files, current overlap risks, and the first safe task.',
+      expected:
+        'The next agent can name touched files, current overlap risks, and the first safe task.',
     }),
   ];
 }
@@ -327,11 +364,17 @@ function modeTasks(
         priority: verdict === 'block' ? 'p1' : 'p0',
         title: 'Hunt bugs in the highest-risk files',
         why: 'The fastest polish pass starts where churn, complexity, and current issues overlap instead of scanning the whole repository equally.',
-        evidence: [{ source: 'verification', message: 'bug_hunt mode prioritizes hotspots, doctor issues, and focused tests' }],
+        evidence: [
+          {
+            source: 'verification',
+            message: 'bug_hunt mode prioritizes hotspots, doctor issues, and focused tests',
+          },
+        ],
         files: touchedFiles,
         suggestedTools: ['projscan_hotspots', 'projscan_file', 'projscan_doctor'],
         commands: ['projscan hotspots --format json', 'projscan doctor --format json', 'npm test'],
-        expected: 'At least one high-risk file or issue is either fixed, covered by a focused test, or explicitly deferred with evidence.',
+        expected:
+          'At least one high-risk file or issue is either fixed, covered by a focused test, or explicitly deferred with evidence.',
       }),
     );
     tasks.push(
@@ -340,11 +383,17 @@ function modeTasks(
         priority: 'p1',
         title: 'Add or run regression tests for the risky change path',
         why: 'Polish work only sticks when the exact failure mode is covered by a repeatable command.',
-        evidence: [{ source: 'verification', message: 'every bug hunt task should end with a reproducible verification command' }],
+        evidence: [
+          {
+            source: 'verification',
+            message: 'every bug hunt task should end with a reproducible verification command',
+          },
+        ],
         files: touchedFiles,
         suggestedTools: ['projscan_review', 'projscan_coverage'],
         commands: ['npm test', 'npm run lint'],
-        expected: 'The focused regression test fails before the fix, passes after the fix, and lint stays clean.',
+        expected:
+          'The focused regression test fails before the fix, passes after the fix, and lint stays clean.',
       }),
     );
   }
@@ -356,7 +405,12 @@ function modeTasks(
         priority: 'p0',
         title: 'Run the local release-readiness gate',
         why: 'Release work needs one local command that checks version metadata, changelog, tag state, release gates, SBOM, and packed install smoke before any publish action.',
-        evidence: [{ source: 'release', message: 'release mode requires release:check before tagging or dispatching workflows' }],
+        evidence: [
+          {
+            source: 'release',
+            message: 'release mode requires release:check before tagging or dispatching workflows',
+          },
+        ],
         files: ['package.json', 'CHANGELOG.md', '.github/mcp-registry/server.json'],
         suggestedTools: ['release:check', 'projscan_preflight'],
         commands: ['npm run release:check'],
@@ -369,11 +423,17 @@ function modeTasks(
         priority: 'p2',
         title: 'Prepare the website update handoff',
         why: 'The website pins the release manifest and must be updated after the package, GitHub Release assets, and MCP Registry agree on the same version.',
-        evidence: [{ source: 'release', message: 'website follow-up consumes GitHub Release assets and registry metadata' }],
+        evidence: [
+          {
+            source: 'release',
+            message: 'website follow-up consumes GitHub Release assets and registry metadata',
+          },
+        ],
         files: ['docs/WEBSITE-UPDATE-PROMPT.md'],
         suggestedTools: ['GitHub Release assets', 'MCP Registry', 'npm view'],
         commands: ['npm view projscan version', 'gh release view vX.Y.Z --json assets'],
-        expected: 'Website prompt references the shipped tag, manifest asset, SBOM asset, npm version, and MCP Registry latest version.',
+        expected:
+          'Website prompt references the shipped tag, manifest asset, SBOM asset, npm version, and MCP Registry latest version.',
       }),
     );
   }
@@ -385,11 +445,17 @@ function modeTasks(
         priority: verdict === 'block' ? 'p1' : 'p0',
         title: 'Pick one hotspot and inspect blast radius',
         why: 'A safe refactor starts with one high-risk file and an impact map, not a broad cleanup pass.',
-        evidence: [{ source: 'verification', message: 'refactor mode composes hotspots with impact before edits' }],
+        evidence: [
+          {
+            source: 'verification',
+            message: 'refactor mode composes hotspots with impact before edits',
+          },
+        ],
         files: touchedFiles,
         suggestedTools: ['projscan_hotspots', 'projscan_impact'],
         commands: ['projscan hotspots --format json', 'projscan impact <file> --format json'],
-        expected: 'The chosen refactor target has importers, tests, and rollback scope identified before edits begin.',
+        expected:
+          'The chosen refactor target has importers, tests, and rollback scope identified before edits begin.',
       }),
     );
   }
@@ -401,11 +467,26 @@ function modeTasks(
         priority: verdict === 'block' ? 'p1' : 'p0',
         title: 'Run security and supply-chain hardening checks',
         why: 'Hardening mode should prove the repo can reject compromised dependencies, unsafe scripts, and known audit findings.',
-        evidence: [{ source: 'supply-chain', message: 'hardening mode pairs preflight evidence with release security gates' }],
+        evidence: [
+          {
+            source: 'supply-chain',
+            message: 'hardening mode pairs preflight evidence with release security gates',
+          },
+        ],
         files: ['package.json', 'package-lock.json'],
-        suggestedTools: ['projscan_preflight', 'projscan_doctor', 'projscan_semantic_graph', 'npm audit'],
-        commands: ['projscan preflight --format json', 'projscan semantic-graph --format json', 'npm audit --audit-level=moderate'],
-        expected: 'Preflight has no supply-chain blockers and npm audit reports no moderate-or-higher vulnerabilities.',
+        suggestedTools: [
+          'projscan_preflight',
+          'projscan_doctor',
+          'projscan_semantic_graph',
+          'npm audit',
+        ],
+        commands: [
+          'projscan preflight --format json',
+          'projscan semantic-graph --format json',
+          'npm audit --audit-level=moderate',
+        ],
+        expected:
+          'Preflight has no supply-chain blockers and npm audit reports no moderate-or-higher vulnerabilities.',
       }),
     );
   }
@@ -417,11 +498,17 @@ function modeTasks(
         priority: verdict === 'block' ? 'p1' : 'p0',
         title: 'Orient before editing',
         why: 'Before editing, the agent needs a compact safety verdict, touched-file context, and the first target file.',
-        evidence: [{ source: 'verification', message: 'before_edit mode starts from preflight and session context' }],
+        evidence: [
+          {
+            source: 'verification',
+            message: 'before_edit mode starts from preflight and session context',
+          },
+        ],
         files: touchedFiles,
         suggestedTools: ['projscan_preflight', 'projscan_session', 'projscan_hotspots'],
         commands: ['projscan preflight --format json'],
-        expected: 'The agent can explain whether it may proceed and which evidence supports the next edit.',
+        expected:
+          'The agent can explain whether it may proceed and which evidence supports the next edit.',
       }),
     );
   }
@@ -433,11 +520,22 @@ function modeTasks(
         priority: verdict === 'block' ? 'p1' : 'p0',
         title: 'Prove commit and merge readiness',
         why: 'Commit and merge gates should be based on changed-file evidence, review verdict, taint status, and focused verification commands.',
-        evidence: [{ source: 'review', message: `${mode} mode composes review, preflight, and changed-file checks` }],
+        evidence: [
+          {
+            source: 'review',
+            message: `${mode} mode composes review, preflight, and changed-file checks`,
+          },
+        ],
         files: touchedFiles,
         suggestedTools: ['projscan_preflight', 'projscan_review', 'projscan_semantic_graph'],
-        commands: [`projscan preflight --mode ${mode} --format json`, 'projscan semantic-graph --format json', 'npm test', 'npm run lint'],
-        expected: 'Preflight is proceed or the remaining caution/block reasons are fixed before handoff.',
+        commands: [
+          `projscan preflight --mode ${mode} --format json`,
+          'projscan semantic-graph --format json',
+          'npm test',
+          'npm run lint',
+        ],
+        expected:
+          'Preflight is proceed or the remaining caution/block reasons are fixed before handoff.',
       }),
     );
   }
@@ -518,20 +616,25 @@ function reasonToEvidence(reason: PreflightReason): WorkplanEvidence {
 }
 
 function filesFromReasons(reasons: PreflightReason[]): string[] {
-  return unique(reasons.map((reason) => reason.file).filter((file): file is string => typeof file === 'string'));
+  return unique(
+    reasons.map((reason) => reason.file).filter((file): file is string => typeof file === 'string'),
+  );
 }
 
-function buildTopRisks(reasons: PreflightReason[], conflicts: SessionConflict[]): WorkplanTopRisk[] {
+function buildTopRisks(
+  reasons: PreflightReason[],
+  conflicts: SessionConflict[],
+): WorkplanTopRisk[] {
   const reasonRisks = reasons.map((reason) => ({
     ...reasonToEvidence(reason),
-    priority: reason.severity === 'error' ? 'p0' as const : 'p1' as const,
+    priority: reason.severity === 'error' ? ('p0' as const) : ('p1' as const),
   }));
   const conflictRisks = conflicts.map((conflict) => ({
     source: 'coordination' as const,
     message: conflict.message,
     severity: conflict.severity,
     file: conflict.files[0],
-    priority: conflict.severity === 'error' ? 'p0' as const : 'p1' as const,
+    priority: conflict.severity === 'error' ? ('p0' as const) : ('p1' as const),
   }));
   return [...reasonRisks, ...conflictRisks]
     .sort((a, b) => {
@@ -541,7 +644,6 @@ function buildTopRisks(reasons: PreflightReason[], conflicts: SessionConflict[])
     })
     .slice(0, MAX_TOP_RISKS);
 }
-
 
 function annotateTasksWithOwners(
   tasks: WorkplanTask[],
@@ -565,7 +667,10 @@ function annotateTopRisksWithOwners(
 ): WorkplanTopRisk[] {
   if (!ownership) return risks;
   return risks.map((risk) => {
-    const owner = ownerForFiles([risk.file].filter((file): file is string => typeof file === 'string'), ownership);
+    const owner = ownerForFiles(
+      [risk.file].filter((file): file is string => typeof file === 'string'),
+      ownership,
+    );
     return owner ? { ...risk, owner } : risk;
   });
 }

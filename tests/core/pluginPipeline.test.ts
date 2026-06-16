@@ -23,7 +23,10 @@ beforeEach(async () => {
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
   originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
   process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
   await fs.mkdir(path.join(tmp, '.projscan-plugins'), { recursive: true });
@@ -150,10 +153,12 @@ describe('plugin analyzer pipeline', () => {
 
     const issues = await collectFixtureIssues();
 
-    expect(issues.find((i) => i.id === 'plugin:graph-context:graph-context-summary')).toMatchObject({
-      title: 'Graph context available',
-      category: 'architecture',
-      severity: 'info',
-    });
+    expect(issues.find((i) => i.id === 'plugin:graph-context:graph-context-summary')).toMatchObject(
+      {
+        title: 'Graph context available',
+        category: 'architecture',
+        severity: 'info',
+      },
+    );
   });
 });

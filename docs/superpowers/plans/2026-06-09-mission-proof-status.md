@@ -27,11 +27,17 @@ In `tests/cli/start.test.ts`, inside `start writes a Mission Control bundle when
 
 ```ts
 expect(result.stdout).toContain('proof-logs/status.jsonl');
-expect(quickstart).toContain('- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.');
+expect(quickstart).toContain(
+  '- `proof-logs/status.jsonl`: Runtime status rows written by mission.sh.',
+);
 const proofStatus = await fs.readFile(path.join(bundleDir, 'proof-logs', 'status.jsonl'), 'utf-8');
 expect(proofStatus).toBe('');
-expect(proofLogReadme).toContain('Read `status.jsonl` for command exit codes after `mission.sh` runs.');
-expect(manifest.files.map((file: { name: string }) => file.name)).toContain('proof-logs/status.jsonl');
+expect(proofLogReadme).toContain(
+  'Read `status.jsonl` for command exit codes after `mission.sh` runs.',
+);
+expect(manifest.files.map((file: { name: string }) => file.name)).toContain(
+  'proof-logs/status.jsonl',
+);
 ```
 
 - [ ] **Step 2: Add script status assertions**

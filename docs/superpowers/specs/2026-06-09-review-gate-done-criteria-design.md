@@ -65,6 +65,7 @@ Do not alter `missionControl.successCriteria`, execution-plan `done_when` rows, 
 
 ```md
 ## Done When
+
 - [ ] An exact symbol or file path is selected from search results before impact analysis continues.
 - [ ] The impact report is reviewed for direct and transitive dependents before editing starts.
 ```

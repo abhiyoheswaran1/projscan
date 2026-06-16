@@ -5,11 +5,30 @@ import type { AuthorShare, FileEntry, Issue, FileHotspot, HotspotReport } from '
 import type { CodeGraph } from './codeGraph.js';
 
 const CODE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.py', '.rb', '.go', '.java', '.rs', '.php',
-  '.c', '.cc', '.cpp', '.h', '.hpp',
-  '.cs', '.swift', '.kt', '.kts', '.scala',
-  '.vue', '.svelte',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.rb',
+  '.go',
+  '.java',
+  '.rs',
+  '.php',
+  '.c',
+  '.cc',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.cs',
+  '.swift',
+  '.kt',
+  '.kts',
+  '.scala',
+  '.vue',
+  '.svelte',
 ]);
 
 const MAX_LINE_READS = 400;
@@ -164,9 +183,8 @@ export async function analyzeHotspots(
 
 async function markAcceptedHotspots(rootPath: string, top: FileHotspot[]): Promise<void> {
   try {
-    const { loadMemory, saveMemory, recordHotspots, findAcceptedHotspots } = await import(
-      './memory.js'
-    );
+    const { loadMemory, saveMemory, recordHotspots, findAcceptedHotspots } =
+      await import('./memory.js');
     const memory = await loadMemory(rootPath);
     recordHotspots(
       memory,
@@ -266,7 +284,10 @@ async function collectGitChurn(rootPath: string, since: string): Promise<Map<str
       }
     }
     if (currentAuthor) entry.authors.add(currentAuthor);
-    if (currentTsMs !== null && (entry.lastTimestampMs === null || currentTsMs > entry.lastTimestampMs)) {
+    if (
+      currentTsMs !== null &&
+      (entry.lastTimestampMs === null || currentTsMs > entry.lastTimestampMs)
+    ) {
       entry.lastTimestampMs = currentTsMs;
     }
   }
@@ -398,7 +419,8 @@ function hasPathBoundaries(haystack: string, filePath: string): boolean {
     const idx = haystack.indexOf(filePath, startIdx);
     if (idx === -1) return false;
     const before = idx > 0 ? haystack.charCodeAt(idx - 1) : -1;
-    const after = idx + filePath.length < haystack.length ? haystack.charCodeAt(idx + filePath.length) : -1;
+    const after =
+      idx + filePath.length < haystack.length ? haystack.charCodeAt(idx + filePath.length) : -1;
     // Good boundary = start-of-string, whitespace, quote, paren, comma, colon, or end-of-string.
     if (isPathBoundary(before) && isPathBoundary(after)) return true;
     startIdx = idx + 1;

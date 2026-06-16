@@ -54,13 +54,19 @@ describe('baseline with hotspots', () => {
 
   it('summarizes trend memory with new hotspots and recurring noisy rules', () => {
     const before = baselineFromIssues(
-      [makeIssue('warning', 'legacy file', 'legacy-rule'), makeIssue('warning', 'legacy file again', 'legacy-rule')],
+      [
+        makeIssue('warning', 'legacy file', 'legacy-rule'),
+        makeIssue('warning', 'legacy file again', 'legacy-rule'),
+      ],
       makeHotspotReport([{ relativePath: 'src/old.ts', riskScore: 15, churn: 1 }]),
     );
 
     const diff = computeDiff(
       before,
-      [makeIssue('warning', 'legacy file still here', 'legacy-rule'), makeIssue('warning', 'new warning', 'new-rule')],
+      [
+        makeIssue('warning', 'legacy file still here', 'legacy-rule'),
+        makeIssue('warning', 'new warning', 'new-rule'),
+      ],
       makeHotspotReport([
         { relativePath: 'src/old.ts', riskScore: 12, churn: 1 },
         { relativePath: 'src/new.ts', riskScore: 44, churn: 4 },
@@ -85,7 +91,6 @@ describe('baseline with hotspots', () => {
       expect.arrayContaining([expect.objectContaining({ id: 'legacy-rule', before: 2, after: 1 })]),
     );
   });
-
 
   it('accepts older BaselineTrend-shaped mocks without the 3.0.5 optional fields', () => {
     const trend: import('../../src/types.js').BaselineTrend = {

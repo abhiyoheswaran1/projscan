@@ -25,7 +25,10 @@ afterEach(async () => {
 
 describe('projscan_semantic_graph query mode (folds in the old graph tool)', () => {
   it('returns the full semantic graph when no query is given', async () => {
-    const out = (await semanticGraphTool.handler({}, tmp)) as { nodes?: unknown[]; schemaVersion?: number };
+    const out = (await semanticGraphTool.handler({}, tmp)) as {
+      nodes?: unknown[];
+      schemaVersion?: number;
+    };
     expect(Array.isArray(out.nodes)).toBe(true);
   });
 

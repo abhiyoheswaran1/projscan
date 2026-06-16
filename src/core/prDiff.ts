@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { scanRepository } from './repositoryScanner.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
-import type { FileAstDiff, PrDiffReport } from '../types.js';
+import type { ExportRename, FileAstDiff, PrDiffReport } from '../types/prDiff.js';
 
 export interface PrDiffOptions {
   /** Base ref (branch, tag, sha). Default: origin/main, falling back to main. */
@@ -144,10 +144,7 @@ export function diffGraphs(
     const rawExportsAdded = [...exportsHead].filter((x) => !exportsBase.has(x));
     const rawExportsRemoved = [...exportsBase].filter((x) => !exportsHead.has(x));
     // Pull out renames first; whatever's left stays as +/-.
-    const { renames, addedAfter, removedAfter } = detectRenames(
-      rawExportsRemoved,
-      rawExportsAdded,
-    );
+    const { renames, addedAfter, removedAfter } = detectRenames(rawExportsRemoved, rawExportsAdded);
     const exportsAdded = addedAfter;
     const exportsRemoved = removedAfter;
     const exportsRenamed = renames;
@@ -221,8 +218,6 @@ export function diffGraphs(
  * pair "fooBar" → "fooBaz" and "Widget" → "WidgetThing" without pairing
  * unrelated names like "save" → "load".
  */
-import type { ExportRename } from '../types.js';
-
 interface RenameSplit {
   renames: ExportRename[];
   removedAfter: string[];
@@ -324,9 +319,11 @@ async function isGitRepository(rootPath: string): Promise<boolean> {
 }
 
 async function resolveSha(rootPath: string, ref: string): Promise<string | null> {
-  const { code, stdout } = await runGit(rootPath, ['rev-parse', '--verify', `${ref}^{commit}`]).catch(
-    () => ({ code: 1, stdout: '', stderr: '' }),
-  );
+  const { code, stdout } = await runGit(rootPath, [
+    'rev-parse',
+    '--verify',
+    `${ref}^{commit}`,
+  ]).catch(() => ({ code: 1, stdout: '', stderr: '' }));
   if (code !== 0) return null;
   const sha = stdout.trim();
   return sha || null;
@@ -349,7 +346,6 @@ interface GitResult {
   stdout: string;
   stderr: string;
 }
-
 
 function gitFailureSummary(result: GitResult): string {
   const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');
@@ -381,14 +377,15 @@ function runGit(
     let stderr = '';
     let settled = false;
     const effectiveTimeoutMs = opts.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS;
-    const timeout = effectiveTimeoutMs > 0
-      ? setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          child.kill('SIGKILL');
-          reject(new Error(`git command timed out after ${effectiveTimeoutMs}ms`));
-        }, effectiveTimeoutMs)
-      : null;
+    const timeout =
+      effectiveTimeoutMs > 0
+        ? setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            child.kill('SIGKILL');
+            reject(new Error(`git command timed out after ${effectiveTimeoutMs}ms`));
+          }, effectiveTimeoutMs)
+        : null;
     child.stdout.on('data', (d) => (stdout += d.toString()));
     child.stderr.on('data', (d) => (stderr += d.toString()));
     child.on('error', (err) => {

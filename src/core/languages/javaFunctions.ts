@@ -38,7 +38,9 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
     node.type === 'record_declaration' ||
     node.type === 'annotation_type_declaration'
   ) {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     const cls = nameNode?.text ?? null;
     const body = node.childForFieldName ? node.childForFieldName('body') : null;
     if (body) {
@@ -50,8 +52,11 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
   }
 
   if (node.type === 'method_declaration' || node.type === 'constructor_declaration') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
-    const baseName = node.type === 'constructor_declaration' ? '<init>' : (nameNode?.text ?? '<anonymous>');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
+    const baseName =
+      node.type === 'constructor_declaration' ? '<init>' : (nameNode?.text ?? '<anonymous>');
     const fnName = className ? `${className}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;

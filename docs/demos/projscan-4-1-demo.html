@@ -34,8 +34,13 @@
         background: var(--paper);
         color: var(--ink);
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", sans-serif;
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
         line-height: 1.45;
       }
 
@@ -181,8 +186,7 @@
 
       .terminal-body {
         padding: 26px;
-        font-family:
-          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
         font-size: 15px;
       }
 
@@ -425,9 +429,9 @@
             <p class="eyebrow">Mission Outcome Loop</p>
             <h1>Resume from real proof.</h1>
             <p class="lead">
-              projscan routes a developer goal, saves the mission, reads the
-              proof state, and tells the next agent what changed, what remains,
-              and whether the work is ready for version review.
+              projscan routes a developer goal, saves the mission, reads the proof state, and tells
+              the next agent what changed, what remains, and whether the work is ready for version
+              review.
             </p>
             <div class="pills" aria-label="Product capabilities">
               <span class="pill">Mission Control</span>
@@ -464,64 +468,41 @@
           <div class="terminal-body">
             <span class="line"
               ><span class="prompt">$</span>
-              <span class="cmd"
-                >projscan start --mission .projscan/mission</span
-              ></span
+              <span class="cmd">projscan start --mission .projscan/mission</span></span
             >
             <span class="line dim">ProjScan Mission Control</span>
             <span class="line">Mission: .projscan/mission</span>
             <span class="line">Status: <span class="success">passed</span></span>
             <span class="line"
-              >Outcome:
-              <span class="notice">proof passed after 3 commands</span></span
+              >Outcome: <span class="notice">proof passed after 3 commands</span></span
             >
-            <span class="line dim"
-              >read proof-logs/summary.json and status.jsonl</span
-            >
+            <span class="line dim">read proof-logs/summary.json and status.jsonl</span>
 
             <div class="term-section">
               <span class="line term-heading">What Changed</span>
-              <span class="line"
-                >- Mission proof passed after 3 command(s).</span
-              >
-              <span class="line"
-                >- 1 reviewer decision recorded.</span
-              >
+              <span class="line">- Mission proof passed after 3 command(s).</span>
+              <span class="line">- 1 reviewer decision recorded.</span>
               <span class="line">- 0 failed gates remain.</span>
             </div>
 
             <div class="term-section">
               <span class="line term-heading">What Remains</span>
-              <span class="line success"
-                >Run ./review.sh and choose a reviewer reply.</span
-              >
-              <span class="line success"
-                >Version candidate: review_candidate</span
-              >
+              <span class="line success">Run ./review.sh and choose a reviewer reply.</span>
+              <span class="line success">Version candidate: review_candidate</span>
             </div>
 
             <div class="term-section">
               <span class="line term-heading">Outcome Commands</span>
-              <span class="line success"
-                >projscan start --mission .projscan/mission</span
-              >
-              <span class="line success"
-                >projscan mission-proof --mission .projscan/mission</span
-              >
-              <span class="line success"
-                >projscan mission-proof --baseline manual-runs.json</span
-              >
+              <span class="line success">projscan start --mission .projscan/mission</span>
+              <span class="line success">projscan mission-proof --mission .projscan/mission</span>
+              <span class="line success">projscan mission-proof --baseline manual-runs.json</span>
               <span class="line dim">all source stays local</span>
             </div>
 
             <div class="term-section">
               <span class="line term-heading">Proof Evidence</span>
-              <span class="line success"
-                >proof-logs/summary.json: passed</span
-              >
-              <span class="line success"
-                >proof-logs/status.jsonl: 3 rows</span
-              >
+              <span class="line success">proof-logs/summary.json: passed</span>
+              <span class="line success">proof-logs/status.jsonl: 3 rows</span>
             </div>
 
             <div class="term-section">
@@ -540,27 +521,25 @@
           <span class="label green">Goal routing</span>
           <h2>Ask in plain language.</h2>
           <p>
-            Route privacy, merge readiness, refactor risk, local setup,
-            ownership, dependency, release, and handoff questions to the right
-            command with matched keywords and confidence.
+            Route privacy, merge readiness, refactor risk, local setup, ownership, dependency,
+            release, and handoff questions to the right command with matched keywords and
+            confidence.
           </p>
         </article>
         <article class="card">
           <span class="label blue">Outcome resume</span>
           <h2>Start from saved proof.</h2>
           <p>
-            <code>projscan start --mission</code> reads the bundle proof state
-            and gives the next agent a focused "what changed / what remains"
-            handoff.
+            <code>projscan start --mission</code> reads the bundle proof state and gives the next
+            agent a focused "what changed / what remains" handoff.
           </p>
         </article>
         <article class="card">
           <span class="label amber">Proof report</span>
           <h2>Measure the saved work.</h2>
           <p>
-            <code>projscan mission-proof</code> reports proof completion,
-            reviewer approvals, reruns, failed gates, time saved, and local
-            risk avoided.
+            <code>projscan mission-proof</code> reports proof completion, reviewer approvals,
+            reruns, failed gates, time saved, and local risk avoided.
           </p>
         </article>
       </section>
@@ -572,9 +551,9 @@
             <h2>Close the loop.</h2>
           </div>
           <p>
-            Developers and agents can resume from a saved mission bundle,
-            summarize pass/fail evidence, and compare local proof against a
-            manual baseline without sending source code anywhere.
+            Developers and agents can resume from a saved mission bundle, summarize pass/fail
+            evidence, and compare local proof against a manual baseline without sending source code
+            anywhere.
           </p>
         </div>
 
@@ -590,27 +569,18 @@
               <span class="line"
                 ><span class="prompt">$</span>
                 <span class="cmd"
-                  >projscan mission-proof --mission .projscan/mission --format
-                  json</span
+                  >projscan mission-proof --mission .projscan/mission --format json</span
                 ></span
               >
               <span class="line dim">Local proof summary</span>
               <span class="line">&nbsp;</span>
               <span class="line term-heading">{"passed":1,"failed":0,</span>
-              <span class="line success"
-                >&nbsp;"reruns":0,"reviewerApprovals":1}</span
-              >
+              <span class="line success">&nbsp;"reruns":0,"reviewerApprovals":1}</span>
               <span class="line">&nbsp;</span>
               <span class="line term-heading">Risk avoided</span>
-              <span class="line success"
-                >- proof gate passed before release</span
-              >
-              <span class="line success"
-                >- version review is safe to request</span
-              >
-              <span class="line notice"
-                >Next: projscan start --mission .projscan/mission</span
-              >
+              <span class="line success">- proof gate passed before release</span>
+              <span class="line success">- version review is safe to request</span>
+              <span class="line notice">Next: projscan start --mission .projscan/mission</span>
             </div>
           </section>
 
@@ -619,32 +589,29 @@
               <span class="tag green">Verify</span>
               <span>
                 <strong>Outcome resume</strong>
-                <code>--mission</code> reads <code>summary.json</code>, status
-                rows, and reviewer decisions.
+                <code>--mission</code> reads <code>summary.json</code>, status rows, and reviewer
+                decisions.
               </span>
             </div>
             <div class="signal">
               <span class="tag blue">MCP</span>
               <span>
                 <strong>MCP start input</strong>
-                <code>mission_dir</code> carries the same proof outcome to
-                agent clients.
+                <code>mission_dir</code> carries the same proof outcome to agent clients.
               </span>
             </div>
             <div class="signal">
               <span class="tag amber">List</span>
               <span>
                 <strong>Proof summary</strong>
-                <code>mission-proof</code> reports completion, reruns, failed
-                gates, and approvals.
+                <code>mission-proof</code> reports completion, reruns, failed gates, and approvals.
               </span>
             </div>
             <div class="signal">
               <span class="tag red">Gate</span>
               <span>
                 <strong>Version review</strong>
-                Outcome data says whether to request review or keep fixing
-                failed proof.
+                Outcome data says whether to request review or keep fixing failed proof.
               </span>
             </div>
           </div>
@@ -652,10 +619,10 @@
       </section>
     </main>
     <script>
-      if (window.location.hash === "#proof") {
-        document.body.classList.add("proof-only");
+      if (window.location.hash === '#proof') {
+        document.body.classList.add('proof-only');
       }
-      document.documentElement.dataset.ready = "true";
+      document.documentElement.dataset.ready = 'true';
     </script>
   </body>
 </html>

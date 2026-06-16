@@ -13,22 +13,22 @@ old `projscan_graph` did.
 
 ## Removed in 4.0
 
-| Removed | Use instead | Notes |
-| --- | --- | --- |
-| `projscan_explain` (MCP) / `projscan explain` (CLI) | `projscan_file` / `projscan file` | `file` is a strict superset: same purpose / imports / exports, **plus** churn, risk, ownership, and related-health signal. |
-| `projscan_graph` (MCP) | `projscan_semantic_graph` with a `query` | `semantic_graph` gained a targeted `query` mode in 4.0 that subsumes graph's queries (see below). With no `query` it still returns the full v3 semantic graph. |
+| Removed                                             | Use instead                              | Notes                                                                                                                                                          |
+| --------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projscan_explain` (MCP) / `projscan explain` (CLI) | `projscan_file` / `projscan file`        | `file` is a strict superset: same purpose / imports / exports, **plus** churn, risk, ownership, and related-health signal.                                     |
+| `projscan_graph` (MCP)                              | `projscan_semantic_graph` with a `query` | `semantic_graph` gained a targeted `query` mode in 4.0 that subsumes graph's queries (see below). With no `query` it still returns the full v3 semantic graph. |
 
 ## Migrating `projscan_graph` → `projscan_semantic_graph`
 
 The old `projscan_graph` took `{ direction, file?, symbol? }` at the top level.
 The same query now nests under `query`:
 
-| Old `projscan_graph` | New `projscan_semantic_graph` |
-| --- | --- |
-| `{ direction: "imports", file: "src/a.ts" }` | `{ query: { direction: "imports", file: "src/a.ts" } }` |
-| `{ direction: "exports", file: "src/a.ts" }` | `{ query: { direction: "exports", file: "src/a.ts" } }` |
-| `{ direction: "importers", file: "src/a.ts" }` | `{ query: { direction: "importers", file: "src/a.ts" } }` |
-| `{ direction: "symbol_defs", symbol: "foo" }` | `{ query: { direction: "symbol_defs", symbol: "foo" } }` |
+| Old `projscan_graph`                                  | New `projscan_semantic_graph`                                    |
+| ----------------------------------------------------- | ---------------------------------------------------------------- |
+| `{ direction: "imports", file: "src/a.ts" }`          | `{ query: { direction: "imports", file: "src/a.ts" } }`          |
+| `{ direction: "exports", file: "src/a.ts" }`          | `{ query: { direction: "exports", file: "src/a.ts" } }`          |
+| `{ direction: "importers", file: "src/a.ts" }`        | `{ query: { direction: "importers", file: "src/a.ts" } }`        |
+| `{ direction: "symbol_defs", symbol: "foo" }`         | `{ query: { direction: "symbol_defs", symbol: "foo" } }`         |
 | `{ direction: "package_importers", symbol: "chalk" }` | `{ query: { direction: "package_importers", symbol: "chalk" } }` |
 
 The result shapes (`{ imports }`, `{ exports }`, `{ importers }`, `{ definedIn }`,

@@ -13,7 +13,8 @@ export const structureTool: McpTool = {
   },
   handler: async (args, rootPath) => {
     const scan = await scanRepository(rootPath);
-    const pkgName = typeof args.package === 'string' && args.package.length > 0 ? args.package : null;
+    const pkgName =
+      typeof args.package === 'string' && args.package.length > 0 ? args.package : null;
     if (!pkgName) {
       return { structure: scan.directoryTree, totalFiles: scan.totalFiles };
     }
@@ -25,7 +26,13 @@ export const structureTool: McpTool = {
     const sliced = sliceTree(scan.directoryTree, pkg.relativePath);
     if (!sliced) {
       return {
-        structure: { name: pkg.name, path: pkg.relativePath, children: [], fileCount: 0, totalFileCount: 0 },
+        structure: {
+          name: pkg.name,
+          path: pkg.relativePath,
+          children: [],
+          fileCount: 0,
+          totalFileCount: 0,
+        },
         totalFiles: 0,
       };
     }

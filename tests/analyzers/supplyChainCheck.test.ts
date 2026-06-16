@@ -8,7 +8,9 @@ import type { FileEntry } from '../../src/types.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('flags git ssh and GitHub shorthand dependencies pinned to commits', async () => {
@@ -19,10 +21,12 @@ test('flags git ssh and GitHub shorthand dependencies pinned to commits', async 
       'runtime-policy': 'github:example/runtime-policy#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
     },
     devDependencies: {
-      'build-policy': 'https://github.com/example/build-policy.git#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
+      'build-policy':
+        'https://github.com/example/build-policy.git#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
     },
     optionalDependencies: {
-      'ssh-policy': 'git+ssh://git@github.com/example/team-policy.git#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
+      'ssh-policy':
+        'git+ssh://git@github.com/example/team-policy.git#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
       'shorthand-policy': 'example/team-policy#2e5f6c7d8a9b0c1d2e3f4a5b6c7d8e9f00112233',
     },
   });

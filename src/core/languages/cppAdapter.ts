@@ -8,11 +8,7 @@ import { extractCppCyclomatic } from './cppCyclomatic.js';
 import { extractCppFunctions } from './cppFunctions.js';
 import { extractCppCallSites } from './cppCallSites.js';
 import { detectCppProject, type CppProjectInfo } from './cppManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const CPP_EXTENSIONS = new Set(['.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.hxx']);
 const SOURCE_EXTENSIONS = new Set(['.cpp', '.cc', '.cxx', '.c']);
@@ -55,12 +51,8 @@ export const cppAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractCppCyclomatic(
         root as Parameters<typeof extractCppCyclomatic>[0],
       );
-      const callSites = extractCppCallSites(
-        root as Parameters<typeof extractCppCallSites>[0],
-      );
-      const functions = extractCppFunctions(
-        root as Parameters<typeof extractCppFunctions>[0],
-      );
+      const callSites = extractCppCallSites(root as Parameters<typeof extractCppCallSites>[0]);
+      const functions = extractCppFunctions(root as Parameters<typeof extractCppFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -107,13 +99,12 @@ export const cppAdapter: LanguageAdapter = {
     return source;
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectCppProject(rootPath, files);
     return {
-      packageRoots: info ? info.includeRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.') : [],
+      packageRoots: info
+        ? info.includeRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.')
+        : [],
       meta: info ? { cppProject: info } : undefined,
     };
   },

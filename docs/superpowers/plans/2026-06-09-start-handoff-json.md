@@ -81,7 +81,9 @@ test('start JSON keeps the full report when handoff-json shortcut is requested',
 In `start prints a shortcut index for the current mission when requested`, add:
 
 ```ts
-expect(result.stdout).toContain("projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --handoff-json --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 4: Run the focused red test**

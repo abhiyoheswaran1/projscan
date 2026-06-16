@@ -102,7 +102,6 @@ describe('loadWorkspace', () => {
     expect(w?.repos).toEqual([{ path: await fs.realpath(sibling), name: 'sibling' }]);
   });
 
-
   it('caps trusted workspace repos before cross-repo scans consume them', async () => {
     const repos = [];
     for (let i = 0; i < 25; i += 1) {
@@ -123,7 +122,6 @@ describe('loadWorkspace', () => {
     expect(w?.repos[0].name).toBe('repo-0');
     expect(w?.repos[19].name).toBe('repo-19');
   });
-
 });
 
 describe('loadOrCreateWorkspace', () => {

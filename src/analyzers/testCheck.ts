@@ -2,7 +2,16 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
 
-const TEST_FRAMEWORKS = ['vitest', 'jest', 'mocha', 'ava', 'tap', 'jasmine', '@playwright/test', 'cypress'];
+const TEST_FRAMEWORKS = [
+  'vitest',
+  'jest',
+  'mocha',
+  'ava',
+  'tap',
+  'jasmine',
+  '@playwright/test',
+  'cypress',
+];
 
 const TEST_FILE_PATTERNS = ['.test.', '.spec.', '__tests__'];
 

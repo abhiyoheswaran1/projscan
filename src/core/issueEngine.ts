@@ -19,7 +19,12 @@ import { loadMemory, recordRun, saveMemory } from './memory.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { computeDataflow } from './dataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
-import { loadPlugins, runAnalyzerPlugins, pluginsEnabled, type PluginAnalyzerContext } from './plugins.js';
+import {
+  loadPlugins,
+  runAnalyzerPlugins,
+  pluginsEnabled,
+  type PluginAnalyzerContext,
+} from './plugins.js';
 import { loadConfig } from '../utils/config.js';
 import type { DataflowReport, SemanticGraphReport } from '../types.js';
 
@@ -74,7 +79,12 @@ export async function collectIssues(
   if (pluginsEnabled()) {
     const plugins = await loadPlugins(rootPath);
     if (plugins.length > 0) {
-      const pluginIssues = await runAnalyzerPlugins(plugins, rootPath, files, createPluginAnalyzerContext(rootPath, files));
+      const pluginIssues = await runAnalyzerPlugins(
+        plugins,
+        rootPath,
+        files,
+        createPluginAnalyzerContext(rootPath, files),
+      );
       issues.push(...pluginIssues);
     }
   }
@@ -102,7 +112,10 @@ export async function collectIssues(
   return issues;
 }
 
-async function shouldScanEnvValues(rootPath: string, options: IssueCollectionOptions): Promise<boolean> {
+async function shouldScanEnvValues(
+  rootPath: string,
+  options: IssueCollectionOptions,
+): Promise<boolean> {
   if (options.scanEnvValues === true || process.env[SCAN_ENV_VALUES_ENV] === '1') return true;
   if (options.useConfig === false) return false;
   const config = await loadConfig(rootPath).catch(() => ({ config: {} as ProjscanConfig }));
@@ -127,7 +140,9 @@ function createPluginAnalyzerContext(rootPath: string, files: FileEntry[]): Plug
       return semanticGraphPromise;
     },
     getDataflow: () => {
-      dataflowPromise ??= getCodeGraph().then((graph) => computeDataflow(graph, { sources: [], sinks: [] }));
+      dataflowPromise ??= getCodeGraph().then((graph) =>
+        computeDataflow(graph, { sources: [], sinks: [] }),
+      );
       return dataflowPromise;
     },
   };

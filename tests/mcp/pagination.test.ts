@@ -30,7 +30,11 @@ describe('pagination', () => {
 
     // Simulate shape change
     const trimmed = items.slice(0, 10);
-    const second = paginate(trimmed, { cursor: first.nextCursor, pageSize: 20 }, listChecksum(trimmed));
+    const second = paginate(
+      trimmed,
+      { cursor: first.nextCursor, pageSize: 20 },
+      listChecksum(trimmed),
+    );
     expect(second.items).toEqual(trimmed);
   });
 
@@ -45,6 +49,9 @@ describe('pagination', () => {
   it('decodeCursor rejects garbage input', () => {
     expect(decodeCursor(undefined)).toBeNull();
     expect(decodeCursor('not-base64!@#')).toBeNull();
-    expect(decodeCursor(encodeCursor({ offset: 5, checksum: 'x' }))).toEqual({ offset: 5, checksum: 'x' });
+    expect(decodeCursor(encodeCursor({ offset: 5, checksum: 'x' }))).toEqual({
+      offset: 5,
+      checksum: 'x',
+    });
   });
 });

@@ -30,7 +30,15 @@ test('telemetry is disabled by default and explains the privacy boundary', async
   expect(status.queueLength).toBe(0);
   await expect(fs.stat(path.join(tmp, 'telemetry.json'))).rejects.toThrow();
   expect(status.neverCollected).toEqual(
-    expect.arrayContaining(['source_code', 'file_paths', 'repo_names', 'branch_names', 'package_names', 'raw_findings', 'secrets']),
+    expect.arrayContaining([
+      'source_code',
+      'file_paths',
+      'repo_names',
+      'branch_names',
+      'package_names',
+      'raw_findings',
+      'secrets',
+    ]),
   );
 
   const policy = explainTelemetryPolicy();

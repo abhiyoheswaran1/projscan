@@ -38,9 +38,13 @@ expect(proofSummary).toEqual({
 In the same test, near the existing mission script summary assertions, add:
 
 ```ts
-expect(missionScript).toContain('"nextAction":"wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl."');
+expect(missionScript).toContain(
+  '"nextAction":"wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl."',
+);
 expect(missionScript).toContain('"nextAction":"run ./review.sh and choose a reviewer reply."');
-expect(missionScript).toContain('"nextAction":"inspect the failed log, fix the issue, then rerun ./mission.sh."');
+expect(missionScript).toContain(
+  '"nextAction":"inspect the failed log, fix the issue, then rerun ./mission.sh."',
+);
 ```
 
 - [ ] **Step 3: Prove status.sh prefers summary.nextAction**

@@ -14,7 +14,8 @@ export const dataflowTool: McpTool = {
       sources: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Additional source names to merge with defaults and .projscanrc taint.sources.',
+        description:
+          'Additional source names to merge with defaults and .projscanrc taint.sources.',
       },
       sinks: {
         type: 'array',
@@ -63,11 +64,15 @@ export const dataflowTool: McpTool = {
       typeof args.max_risks === 'number' && Number.isFinite(args.max_risks)
         ? Math.max(1, Math.min(500, Math.floor(args.max_risks)))
         : 50;
-    const report = computeDataflow(graph, { sources, sinks }, {
-      includeTests: args.include_tests === true,
-      includeBroadFileIo: args.include_broad_file_io === true,
-      includeGenerated: args.include_generated === true,
-    });
+    const report = computeDataflow(
+      graph,
+      { sources, sinks },
+      {
+        includeTests: args.include_tests === true,
+        includeBroadFileIo: args.include_broad_file_io === true,
+        includeGenerated: args.include_generated === true,
+      },
+    );
     return {
       ...report,
       risks: report.risks.slice(0, maxRisks),

@@ -61,7 +61,13 @@ export function registerCoupling(): void {
         if (cmdOpts.file) files = files.filter((f) => f.relativePath === cmdOpts.file);
         if (cmdOpts.package) {
           const ws2 = await detectWorkspaces(rootPath);
-          const allowed = new Set(filterFilesByPackage(ws2, cmdOpts.package, files.map((f) => f.relativePath)));
+          const allowed = new Set(
+            filterFilesByPackage(
+              ws2,
+              cmdOpts.package,
+              files.map((f) => f.relativePath),
+            ),
+          );
           files = files.filter((f) => allowed.has(f.relativePath));
         }
         files = files.slice(0, limit);

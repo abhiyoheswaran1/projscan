@@ -61,9 +61,9 @@ export function handler() {
     expect(report.nodes.some((node) => node.kind === 'function' && node.label === 'handler')).toBe(
       true,
     );
-    expect(report.edges.some((edge) => edge.kind === 'defines' && edge.from === 'file:src/app.ts')).toBe(
-      true,
-    );
+    expect(
+      report.edges.some((edge) => edge.kind === 'defines' && edge.from === 'file:src/app.ts'),
+    ).toBe(true);
     expect(report.edges.some((edge) => edge.kind === 'calls' && edge.label === 'run')).toBe(true);
     expect(report.metrics.totalFiles).toBe(3);
     expect(report.metrics.totalFunctions).toBeGreaterThanOrEqual(3);

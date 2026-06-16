@@ -28,8 +28,7 @@ export async function explainIssue(
     ? allIssues
         .filter(
           (other) =>
-            other.id !== issue.id &&
-            (other.locations ?? []).some((l) => l.file === primary.file),
+            other.id !== issue.id && (other.locations ?? []).some((l) => l.file === primary.file),
         )
         .slice(0, 10)
         .map((o) => ({ id: o.id, title: o.title }))

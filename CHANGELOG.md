@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.4.0]
+
+2026-06-16 - "Agent Release Harness"
+
+### Added
+
+- Added repo-local AgentLoopKit and AgentFlight development harnesses so agent work can use task contracts, verification evidence, and local handoffs through `npm exec agentloop -- ...` and `npm exec agentflight -- verify`.
+- Added Mission Control start guidance that surfaces existing AgentLoop and AgentFlight harness commands as read-only proof/coordination hints when their repo files are present.
+- Added team and user personas plus research notes in `docs/PERSONAS.md` so agent decisions have an explicit review frame for platform owners, security reviewers, agent-orchestrating engineers, and OSS adopters.
+- Added public-type module coverage and a `typecheck:public-types` gate for focused package entrypoint contract checks.
+
+### Changed
+
+- Split large Mission Control, CLI registration, MCP payload, reporter, public-type, and review public-surface code into focused modules while preserving the existing CLI, MCP, and package entrypoint surfaces.
+- Updated product-planning and improvement intents so broad "build next" and "improve next" prompts route to bug-hunt/action planning instead of generic orientation.
+- Clarified bug-hunt, release-train, evidence-pack, and review wording so release-scale queues are described as manual sign-off actions when they are not concrete code defects.
+- Upgraded the dev test infrastructure from Vite 6 to Vite 8, which is supported by the existing Vitest 4 range and removes the vulnerable esbuild dev chain from the install graph.
+
+### Fixed
+
+- Fixed same-SHA dirty-worktree review so local staged, unstaged, and untracked changes are still reviewed instead of returning an empty no-change result.
+- Fixed directory-only changed paths in verification guidance so they no longer create false direct-test confidence.
+- Fixed preflight-derived bug-hunt routing so release sign-off findings carry bounded, review-useful changed-file context and prioritize package/source/test files ahead of runtime evidence directories.
+- Fixed public-review contract-change detection so internal helper exports are not mislabeled as public API while entrypoint re-exports remain visible.
+
+### Security
+
+- Cleared the release `npm audit` gate by updating Vite to `^8.0.16` and refreshing transitive protobuf packages to non-vulnerable versions with install scripts disabled during the audit fix.
+
 ## [4.3.1] - 2026-06-10 - "Mission Proof Polish"
 
 ### Added
@@ -163,7 +192,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `projscan collisions --transitive` (and MCP `projscan_collision { transitive: true }`): opt-in multi-hop dependency overlap detection — flags when one worktree changes a file another worktree's change *transitively* imports, with the `distance` (hops). The 1-hop default stays precise; `--max-distance` bounds the walk.
+- `projscan collisions --transitive` (and MCP `projscan_collision { transitive: true }`): opt-in multi-hop dependency overlap detection — flags when one worktree changes a file another worktree's change _transitively_ imports, with the `distance` (hops). The 1-hop default stays precise; `--max-distance` bounds the walk.
 - `projscan coordinate --watch` (`--interval <seconds>`): re-evaluates swarm coordination on an interval and re-emits only when the state changes (console summary, or NDJSON with `--format json`) — a live coordination feed for long-running agent sessions.
 - MCP `projscan_coordinate_watch` (`start` / `stop` / `list`): the MCP counterpart — polls the in-flight worktrees and emits a `notifications/projscan/coordination_changed` notification whenever the swarm state changes, so an agent can react to other agents' work without re-asking.
 
@@ -253,7 +282,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - PR comment evidence now includes a `### Reviewer Decision` section with a ship/review/fix-first decision, reason, owner state, and first command.
 - Dataflow framework-source detection now recognizes Hono route-context request reads such as `c.req.json()` while guarding ordinary Hono-shaped helpers.
 - Roadmap data and first-ten-minutes onboarding guidance now live in focused core helpers instead of being embedded only in orchestration modules.
-
 
 ## [3.1.0] — 2026-06-02 — "Trust Boundary Hardening"
 
@@ -753,7 +781,7 @@ Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pi
 
 ### Fixed
 
-- **`projscan_review` no longer false-positive-blocks safe PRs when the base graph fails to parse.** 1.6.0's new-taint-flow detection diffed `(sourceFn, sinkFn)` pairs between base and head; if the base graph couldn't be parsed (worktree problem, transient adapter failure), `baseFlowKeys` was empty and *every* head flow was flagged as new — the verdict avalanched to `block`. A flow is now only "new" if at least one file in its path is in the PR's changed-file set. Strictly tighter — any genuinely-introduced flow must touch a modified file by construction (the new source-fn, sink-fn, or intermediate hop), so this never drops a real flow. Thanks to a post-1.6.0 review pass for catching it.
+- **`projscan_review` no longer false-positive-blocks safe PRs when the base graph fails to parse.** 1.6.0's new-taint-flow detection diffed `(sourceFn, sinkFn)` pairs between base and head; if the base graph couldn't be parsed (worktree problem, transient adapter failure), `baseFlowKeys` was empty and _every_ head flow was flagged as new — the verdict avalanched to `block`. A flow is now only "new" if at least one file in its path is in the PR's changed-file set. Strictly tighter — any genuinely-introduced flow must touch a modified file by construction (the new source-fn, sink-fn, or intermediate hop), so this never drops a real flow. Thanks to a post-1.6.0 review pass for catching it.
 - **`src/mcp/prompts.ts` lint cleanup.** Stray `\\\``-style escapes inside a single-quoted string were emitting `no-useless-escape` errors that CI had been failing on silently since 1.5.0. Real bug: not user-visible, but main was red.
 
 ### Added
@@ -762,7 +790,7 @@ Patch release. Two fixes that surfaced after 1.6.0 went out, plus the release pi
 
 ## [1.6.0] — 2026-05-06 — "Operator"
 
-projscan grows from a *report-and-suggest* tool into a *report-and-act* tool, and learns to look across repository boundaries. Three pillars: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
+projscan grows from a _report-and-suggest_ tool into a _report-and-act_ tool, and learns to look across repository boundaries. Three pillars: cross-repo intelligence over registered sibling repos, an apply layer that mechanically executes the safest fix templates with rollback support, and a security-aware review that surfaces newly-introduced source-to-sink taint flows.
 
 ### Added — cross-repo intelligence (Pillar 1)
 
@@ -819,11 +847,11 @@ Theme: **"Budgeted by default"** — every tool reports a token-cost estimate, `
 ### Added — cost-aware tool composition
 
 - **`_cost` sidecar on every tool result.** The MCP server attaches `_cost: { estimatedTokens: N }` to every `tools/call` response automatically. Agents can see what they paid for a call without counting tokens themselves, which makes it cheap to budget tool sequences. Cost is the chars-divided-by-4 approximation of the serialized payload — within roughly ±15% of GPT/Claude tokenizers for code-shaped output.
-- **`max_cost_tokens` arg on `projscan_review`** — adaptive shape budget. The tool picks a tier and reshapes the response *before* serializing, so an agent on a tight budget gets a response sized to fit instead of a truncated full one. Three tiers:
+- **`max_cost_tokens` arg on `projscan_review`** — adaptive shape budget. The tool picks a tier and reshapes the response _before_ serializing, so an agent on a tight budget gets a response sized to fit instead of a truncated full one. Three tiers:
   - **full** (no budget, or budget ≥ 7000): everything — full structural diff, per-changed-file lists, all cycles, all risky functions, all dependency changes.
   - **summary** (3000-6999): verdict + summary + top-5 changed files + top-3 of each list (cycles, risky functions, deps), with the heavy per-file expansion arrays (exports added/removed, imports added/removed, calls added/removed) stripped. Aggregate `totals` included.
   - **verdict-only** (<3000): verdict + summary + base/head + aggregate `totals`. Roughly 500 tokens, suitable for very tight budgets.
-  The chosen tier is surfaced as a top-level `tier` field on the response and lifted into `_cost.tier` so an agent sees it in one place.
+    The chosen tier is surfaced as a top-level `tier` field on the response and lifted into `_cost.tier` so an agent sees it in one place.
 - **Coexistence with `max_tokens`.** `max_cost_tokens` shapes; `max_tokens` truncates. Agents can use either, both, or neither. When both fire, the shaped result is also truncated, and both `_cost` and `_budget` sidecars appear on the response.
 
 ### Added — specialist prompts
@@ -839,7 +867,7 @@ Four new MCP prompts that compose existing tools into a single agent-callable re
 
 A local feedback loop that learns which analyzer rules this specific repo has been carrying across many runs and surfaces them as candidates to silence — without phoning home, without an LLM, without ever leaving your machine.
 
-- **Persistent on-disk store at `.projscan-memory/memory.json`** (auto-gitignored). Records, per analyzer rule id: when it first surfaced, when it was last seen, how many runs surfaced it, how many runs *fixed* it (rule appeared then disappeared), and whether the user explicitly suppressed it via `.projscanrc disableRules`. Schema is versioned for forward evolution.
+- **Persistent on-disk store at `.projscan-memory/memory.json`** (auto-gitignored). Records, per analyzer rule id: when it first surfaced, when it was last seen, how many runs surfaced it, how many runs _fixed_ it (rule appeared then disappeared), and whether the user explicitly suppressed it via `.projscanrc disableRules`. Schema is versioned for forward evolution.
 - **Auto-recorded on every `projscan doctor` / `projscan ci` / `projscan analyze` run.** The issue engine folds the run's rule ids into memory as a best-effort side effect; transient disk failures are swallowed so memory never breaks the analyzer pipeline. Stale rules (unseen for ≥ 90 days) are aged out automatically.
 - **`projscan_memory` MCP tool + `projscan memory` CLI.** Subactions:
   - `current` — aggregate counts (total runs, rules tracked, stable-rule count, last update).
@@ -859,9 +887,9 @@ A local feedback loop that learns which analyzer rules this specific repo has be
 
 ### Added — extending the loop
 
-- **`projscan_doctor` adaptive shaping.** Same three-tier pattern that `projscan_review` shipped with: pass `max_cost_tokens` and the doctor reshapes its response *before* serializing. <3000 returns verdict-only (score + grade + per-severity counts); <7000 returns a summary (top-5 issues by severity, no descriptions); otherwise the full issue list. The chosen tier is surfaced as `tier` and lifted into `_cost.tier`.
+- **`projscan_doctor` adaptive shaping.** Same three-tier pattern that `projscan_review` shipped with: pass `max_cost_tokens` and the doctor reshapes its response _before_ serializing. <3000 returns verdict-only (score + grade + per-severity counts); <7000 returns a summary (top-5 issues by severity, no descriptions); otherwise the full issue list. The chosen tier is surfaced as `tier` and lifted into `_cost.tier`.
 - **Doctor surfaces stable-rule tip from Project Memory.** When memory has accumulated ≥ 1 stable rules, the console doctor output includes a one-line tip: "N rules have been open across enough runs to count as accepted. Run `projscan memory stable` to review and silence them." Closes the feedback loop without requiring the agent to know about `projscan_memory`.
-- **`quiet_the_doctor` specialist prompt** *(prompt #7)*. Reads Project Memory's stable-rule list, frames a PR-ready proposal: per-rule rationale, the exact `.projscanrc.json` patch, a verification command, and a rollback note. Single MCP call → committable change.
+- **`quiet_the_doctor` specialist prompt** _(prompt #7)_. Reads Project Memory's stable-rule list, frames a PR-ready proposal: per-rule rationale, the exact `.projscanrc.json` patch, a verification command, and a rollback note. Single MCP call → committable change.
 - **Hotspot acceptance memory (Project Memory's second loop).** `projscan hotspots` now records the top-K into memory on every run. Files that have ranked top-K for ≥ 5 runs over ≥ 7 days without their CC/churn improving are marked `accepted` — the hotspot reporter tags them as `[accepted]` instead of repeated noise. Surfaced via the new `projscan_memory { action: "accepted" }` subaction.
 
 ### Security
@@ -989,14 +1017,14 @@ Theme: **"Live"** — keeps the index fresh while the agent works, and unblocks 
 
 ## [0.15.0] — 2026-04-27
 
-Theme: **"Reach"** — answers the question *what breaks if I change this?* before the agent commits to a refactor.
+Theme: **"Reach"** — answers the question _what breaks if I change this?_ before the agent commits to a refactor.
 
 ### Added
 
 - **`projscan_impact` MCP tool + `projscan impact` CLI.** Transitive blast-radius analysis. Two modes:
   - **File mode**: pass a repo-relative path; returns every file that transitively imports it, ranked by BFS distance.
   - **Symbol mode**: pass a symbol name; returns the file(s) that define it, the files that directly call it, and the transitive importers of those callers.
-  Cycle-safe; depth-bounded by `max_distance` (default 10) with a `truncated` flag when the limit is hit. Use this BEFORE renaming or deleting an export.
+    Cycle-safe; depth-bounded by `max_distance` (default 10) with a `truncated` flag when the limit is hit. Use this BEFORE renaming or deleting an export.
 - **Per-function fan-in.** `FunctionInfo` and `FunctionDetail` gain optional `fanIn?: number`. Counts how many other files include the function's bare name in their call sites. Useful as a "is anyone using this?" signal.
 - **Sub-file embeddings.** Opt-in semantic-search mode that embeds each function separately instead of each file. Set `sub_file: true` on `projscan_search` (or `--sub-file` on the CLI) when running in semantic mode. Hits return a `function: { name, startLine, endLine }` field pointing at the matched function.
 
@@ -1007,7 +1035,7 @@ Theme: **"Reach"** — answers the question *what breaks if I change this?* befo
 
 ## [0.14.0] — 2026-04-26
 
-Theme: **"Agent Fix Loop"** — closes the diagnose → fix half of the agent's loop. projscan was already great at telling agents *what's wrong*; now it tells them *what to do about it*, in structured form.
+Theme: **"Agent Fix Loop"** — closes the diagnose → fix half of the agent's loop. projscan was already great at telling agents _what's wrong_; now it tells them _what to do about it_, in structured form.
 
 ### Added
 
@@ -1077,7 +1105,7 @@ Theme: **"Agent Review"**
 
 ### Migration note on hotspot scores
 
-CC is much smaller than LOC for the same file (a 200-line file might have CC of 10–20 vs LOC of 200). Absolute hotspot scores will drop for adapter-parsed files (JS/TS, Python, Go), even though *rankings* improve. If your CI uses a hard threshold against `riskScore`, recalibrate it after the first 0.11 run.
+CC is much smaller than LOC for the same file (a 200-line file might have CC of 10–20 vs LOC of 200). Absolute hotspot scores will drop for adapter-parsed files (JS/TS, Python, Go), even though _rankings_ improve. If your CI uses a hard threshold against `riskScore`, recalibrate it after the first 0.11 run.
 
 ## [0.10.0] — 2026-04-24
 
@@ -1167,7 +1195,7 @@ Theme: **"Streaming & Pagination"** — MCP agents can now consume large respons
 ### Fixed
 
 - **`--changed-only` silently dropped issues without file locations.** Now emits a stderr message: `"N issue(s) filtered out; X had no file location"`.
-- **Hotspot substring fallback had incomplete path-boundary chars.** Added `.`, `?`, `!`, `>`, `<` so cases like *"see src/a.ts."* (sentence end) correctly link to `src/a.ts`.
+- **Hotspot substring fallback had incomplete path-boundary chars.** Added `.`, `?`, `!`, `>`, `<` so cases like _"see src/a.ts."_ (sentence end) correctly link to `src/a.ts`.
 
 ## [0.7.0] — 2026-04-20
 
@@ -1260,6 +1288,7 @@ Theme: **"Dependency Health"**
   - `severityOverrides` — remap a rule's severity (`info` / `warning` / `error`).
 
   CLI flags always win over config; use `--config <path>` to load a specific file.
+
 - **First-party GitHub Action (`action.yml`).** Composite action that installs projscan, runs `projscan ci --format sarif` (optionally `--changed-only`), uploads SARIF to GitHub Code Scanning, and exposes `score` / `grade` outputs plus a Job Summary.
 - **Issue locations.** `Issue` carries optional `locations: IssueLocation[]` (file, line, column). Security checks populate real file/line locations (including line numbers for hardcoded secrets).
 
@@ -1276,7 +1305,7 @@ Theme: **"Dependency Health"**
 - **`projscan file <path>`.** Per-file drill-down combining purpose, imports, exports, hotspot risk data, ownership, and the health issues that reference it.
 - **`projscan mcp`.** Runs projscan as an MCP server over stdio. Exposes 7 tools (`projscan_analyze`, `projscan_doctor`, `projscan_hotspots`, `projscan_file`, `projscan_explain`, `projscan_structure`, `projscan_dependencies`), 2 prompts (`prioritize_refactoring`, `investigate_file`), and 3 resources (`projscan://health`, `projscan://hotspots`, `projscan://structure`).
 - **Ownership / bus-factor analysis** on hotspots. `primaryAuthor`, `primaryAuthorShare`, `topAuthors`, and a `busFactorOne` flag (single-author + high churn ⇒ organizational risk).
-- **Hotspot trend tracking.** `.projscan-baseline.json` snapshots top hotspots; `projscan diff` reports hotspots that *rose*, *fell*, *appeared*, or were *resolved* since the baseline.
+- **Hotspot trend tracking.** `.projscan-baseline.json` snapshots top hotspots; `projscan diff` reports hotspots that _rose_, _fell_, _appeared_, or were _resolved_ since the baseline.
 
 ### Changed
 

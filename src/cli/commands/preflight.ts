@@ -10,11 +10,7 @@ import {
 import { computePreflight } from '../../core/preflight.js';
 import type { PreflightMode, PreflightReport } from '../../types.js';
 
-const PREFLIGHT_MODES: readonly PreflightMode[] = [
-  'before_edit',
-  'before_commit',
-  'before_merge',
-];
+const PREFLIGHT_MODES: readonly PreflightMode[] = ['before_edit', 'before_commit', 'before_merge'];
 
 export function registerPreflight(): void {
   program
@@ -111,5 +107,9 @@ function printConsoleReport(report: PreflightReport): void {
   }
 
   console.log('');
-  console.log(chalk.dim('For agent workflows, run `projscan workplan --mode before_edit --format json` or `projscan recipes`.'));
+  console.log(
+    chalk.dim(
+      'For agent workflows, run `projscan workplan --mode before_edit --format json` or `projscan recipes`.',
+    ),
+  );
 }

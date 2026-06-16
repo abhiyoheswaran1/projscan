@@ -8,11 +8,7 @@ import { extractSwiftCyclomatic } from './swiftCyclomatic.js';
 import { extractSwiftFunctions } from './swiftFunctions.js';
 import { extractSwiftCallSites } from './swiftCallSites.js';
 import { detectSwiftProject, type SwiftProjectInfo } from './swiftManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const SWIFT_EXTENSIONS = new Set(['.swift']);
 const MAX_SWIFT_FILE = 1024 * 1024;
@@ -52,12 +48,8 @@ export const swiftAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractSwiftCyclomatic(
         root as Parameters<typeof extractSwiftCyclomatic>[0],
       );
-      const callSites = extractSwiftCallSites(
-        root as Parameters<typeof extractSwiftCallSites>[0],
-      );
-      const functions = extractSwiftFunctions(
-        root as Parameters<typeof extractSwiftFunctions>[0],
-      );
+      const callSites = extractSwiftCallSites(root as Parameters<typeof extractSwiftCallSites>[0]);
+      const functions = extractSwiftFunctions(root as Parameters<typeof extractSwiftFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -96,13 +88,12 @@ export const swiftAdapter: LanguageAdapter = {
     return source.split('.')[0] || null;
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectSwiftProject(rootPath, files);
     return {
-      packageRoots: info ? info.packageRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.') : [],
+      packageRoots: info
+        ? info.packageRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.')
+        : [],
       meta: info ? { swiftProject: info } : undefined,
     };
   },
@@ -139,7 +130,9 @@ function resolveSwiftImport(
       if (graphFiles.has(asFile)) return asFile;
     }
     const moduleDir = [...rootSegs, ...segments].join('/');
-    const preferred = [...rootSegs, ...segments, `${segments[segments.length - 1]}.swift`].join('/');
+    const preferred = [...rootSegs, ...segments, `${segments[segments.length - 1]}.swift`].join(
+      '/',
+    );
     if (graphFiles.has(preferred)) return preferred;
     const prefix = moduleDir + '/';
     let firstHit: string | null = null;

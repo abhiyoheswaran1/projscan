@@ -27,11 +27,7 @@ describe('issuesToSarif', () => {
   });
 
   it('creates one rule per unique issue id', () => {
-    const issues = [
-      issue({ id: 'a' }),
-      issue({ id: 'a' }),
-      issue({ id: 'b' }),
-    ];
+    const issues = [issue({ id: 'a' }), issue({ id: 'a' }), issue({ id: 'b' })];
     const sarif = issuesToSarif(issues, '0.3.0');
     const rules = sarif.runs[0].tool.driver.rules;
     expect(rules.map((r) => r.id).sort()).toEqual(['a', 'b']);
@@ -44,9 +40,7 @@ describe('issuesToSarif', () => {
       issue({ id: 'inf', severity: 'info' }),
     ];
     const sarif = issuesToSarif(issues, '0.3.0');
-    const byId = Object.fromEntries(
-      sarif.runs[0].results.map((r) => [r.ruleId, r.level]),
-    );
+    const byId = Object.fromEntries(sarif.runs[0].results.map((r) => [r.ruleId, r.level]));
     expect(byId).toEqual({ err: 'error', warn: 'warning', inf: 'note' });
   });
 
@@ -73,9 +67,7 @@ describe('issuesToSarif', () => {
   });
 
   it('normalizes Windows-style paths to POSIX', () => {
-    const issues = [
-      issue({ id: 'x', locations: [{ file: 'src\\a\\b.ts', line: 1 }] }),
-    ];
+    const issues = [issue({ id: 'x', locations: [{ file: 'src\\a\\b.ts', line: 1 }] })];
     const sarif = issuesToSarif(issues, '0.3.0');
     expect(sarif.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri).toBe(
       'src/a/b.ts',

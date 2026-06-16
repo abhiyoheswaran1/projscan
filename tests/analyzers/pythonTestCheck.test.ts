@@ -95,7 +95,11 @@ describe('pythonTestCheck', () => {
   it('detects stdlib unittest via import in a pytest-named test file', async () => {
     const files = [
       await writeFile(tmp, 'pkg/mod.py', 'x = 1'),
-      await writeFile(tmp, 'tests/test_foo.py', 'import unittest\n\nclass T(unittest.TestCase): pass\n'),
+      await writeFile(
+        tmp,
+        'tests/test_foo.py',
+        'import unittest\n\nclass T(unittest.TestCase): pass\n',
+      ),
     ];
     const issues = await check(tmp, files);
     expect(issues.find((i) => i.id === 'missing-python-test-framework')).toBeUndefined();

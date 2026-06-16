@@ -44,7 +44,8 @@ export const costSummaryTool: McpTool = {
       },
       top: {
         type: 'number',
-        description: 'Optional. Number of top spenders to return. Default: 10. (snapshot + start_stream)',
+        description:
+          'Optional. Number of top spenders to return. Default: 10. (snapshot + start_stream)',
       },
       interval_seconds: {
         type: 'number',
@@ -68,7 +69,9 @@ export const costSummaryTool: McpTool = {
       case 'list_streams':
         return listStreams();
       default:
-        throw new Error(`Unknown action "${action}". Known: snapshot, start_stream, stop_stream, list_streams.`);
+        throw new Error(
+          `Unknown action "${action}". Known: snapshot, start_stream, stop_stream, list_streams.`,
+        );
     }
   },
 };
@@ -96,44 +99,44 @@ async function computeSnapshot(rootPath: string, args: Record<string, unknown>):
   const { session } = await loadSession(rootPath);
   const buckets = bucketize(session.events);
 
-    let totalCalls = 0;
-    let totalEstimatedTokens = 0;
-    for (const bucket of buckets.values()) {
-      totalCalls += bucket.callCount;
-      totalEstimatedTokens += bucket.totalTokens;
-    }
+  let totalCalls = 0;
+  let totalEstimatedTokens = 0;
+  for (const bucket of buckets.values()) {
+    totalCalls += bucket.callCount;
+    totalEstimatedTokens += bucket.totalTokens;
+  }
 
-    const ranked = [...buckets.values()].sort((a, b) => b.totalTokens - a.totalTokens);
-    const topSpenders = ranked.slice(0, top).map((b) => ({
+  const ranked = [...buckets.values()].sort((a, b) => b.totalTokens - a.totalTokens);
+  const topSpenders = ranked.slice(0, top).map((b) => ({
+    tool: b.tool,
+    totalTokens: b.totalTokens,
+    callCount: b.callCount,
+    averageTokens: b.callCount > 0 ? Math.round(b.totalTokens / b.callCount) : 0,
+  }));
+
+  // 1.8+ — only report a real p95 when we have enough samples for it
+  // to be meaningful. With < MIN_P95_SAMPLES, sorted[len*0.95] just
+  // returns the observed maximum, which agents misinterpret as a
+  // representative high-water mark for budgeting. We surface null and
+  // an explicit `insufficientSamples: true` flag so the agent knows
+  // to fall back to expectedTokens or wait for more data.
+  const MIN_P95_SAMPLES = 20;
+  const perToolCatalog = ranked.map((b) => {
+    const sorted = [...b.tokenSamples].sort((x, y) => x - y);
+    const median = sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)];
+    const hasEnoughForP95 = sorted.length >= MIN_P95_SAMPLES;
+    const p95 = hasEnoughForP95
+      ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
+      : null;
+    return {
       tool: b.tool,
-      totalTokens: b.totalTokens,
+      observedTypicalTokens: median,
+      observedP95Tokens: p95,
+      observedP95InsufficientSamples: !hasEnoughForP95,
       callCount: b.callCount,
-      averageTokens: b.callCount > 0 ? Math.round(b.totalTokens / b.callCount) : 0,
-    }));
-
-    // 1.8+ — only report a real p95 when we have enough samples for it
-    // to be meaningful. With < MIN_P95_SAMPLES, sorted[len*0.95] just
-    // returns the observed maximum, which agents misinterpret as a
-    // representative high-water mark for budgeting. We surface null and
-    // an explicit `insufficientSamples: true` flag so the agent knows
-    // to fall back to expectedTokens or wait for more data.
-    const MIN_P95_SAMPLES = 20;
-    const perToolCatalog = ranked.map((b) => {
-      const sorted = [...b.tokenSamples].sort((x, y) => x - y);
-      const median = sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)];
-      const hasEnoughForP95 = sorted.length >= MIN_P95_SAMPLES;
-      const p95 = hasEnoughForP95
-        ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
-        : null;
-      return {
-        tool: b.tool,
-        observedTypicalTokens: median,
-        observedP95Tokens: p95,
-        observedP95InsufficientSamples: !hasEnoughForP95,
-        callCount: b.callCount,
-        expectedTokens: STATIC_EXPECTED_TOKENS[b.tool] ?? null,
-      };
-    });
+      expectedTokens: STATIC_EXPECTED_TOKENS[b.tool] ?? null,
+    };
+  });
 
   return {
     sessionId: session.id,

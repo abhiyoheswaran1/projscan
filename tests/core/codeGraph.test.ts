@@ -101,6 +101,23 @@ describe('buildCodeGraph', () => {
     expect(importsOf(graph, 'src/a.ts')[0].source).toBe('react');
   });
 
+  it('expands local type-only star re-exports into exported symbols', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/types.ts',
+        'export interface PublicReport { ok: boolean }\nexport type PublicMode = "ready";',
+      ),
+      await writeFile(tmp, 'src/index.ts', "export type * from './types.js';"),
+    ];
+    const graph = await buildCodeGraph(tmp, files);
+    const entrypointExports = exportsOf(graph, 'src/index.ts');
+
+    expect(entrypointExports.map((exp) => exp.name).sort()).toEqual(['PublicMode', 'PublicReport']);
+    expect(entrypointExports.every((exp) => exp.typeOnly)).toBe(true);
+    expect(filesDefiningSymbol(graph, 'PublicReport')).toContain('src/index.ts');
+  });
+
   it('reuses cached entries when mtime matches', async () => {
     const files = [await writeFile(tmp, 'src/a.ts', 'export function hi() {}')];
     const first = await buildCodeGraph(tmp, files);

@@ -38,7 +38,13 @@ async function writeAnalyzer(name: string, moduleRel: string, source: string): P
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
     path.join(dir, `${name}.projscan-plugin.json`),
-    JSON.stringify({ schemaVersion: 1, name, kind: 'analyzer', module: moduleRel, category: 'custom' }),
+    JSON.stringify({
+      schemaVersion: 1,
+      name,
+      kind: 'analyzer',
+      module: moduleRel,
+      category: 'custom',
+    }),
     'utf-8',
   );
   const modulePath = path.join(dir, moduleRel);
@@ -51,7 +57,13 @@ async function writeReporter(name: string, moduleRel: string, source: string): P
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(
     path.join(dir, `${name}.projscan-plugin.json`),
-    JSON.stringify({ schemaVersion: 1, name, kind: 'reporter', module: moduleRel, commands: ['doctor'] }),
+    JSON.stringify({
+      schemaVersion: 1,
+      name,
+      kind: 'reporter',
+      module: moduleRel,
+      commands: ['doctor'],
+    }),
     'utf-8',
   );
   const modulePath = path.join(dir, moduleRel);

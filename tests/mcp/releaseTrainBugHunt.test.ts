@@ -27,6 +27,17 @@ test('lists release train and bug hunt MCP tools', () => {
   expect(names).toEqual(expect.arrayContaining(['projscan_release_train', 'projscan_bug_hunt']));
 });
 
+test('projscan_bug_hunt metadata describes a prioritized action queue', () => {
+  const bugHunt = getToolDefinitions().find((tool) => tool.name === 'projscan_bug_hunt');
+
+  expect(bugHunt?.description).toContain('prioritized action queue');
+  expect(bugHunt?.description).not.toContain('fix queue');
+  expect(bugHunt?.inputSchema.properties?.max_findings.description).toContain(
+    'action-queue entries',
+  );
+  expect(bugHunt?.inputSchema.properties?.max_findings.description).not.toContain('fix-queue');
+});
+
 test('projscan_release_train returns a product readiness plan', async () => {
   const handler = getToolHandler('projscan_release_train');
   expect(handler).toBeDefined();
@@ -39,7 +50,7 @@ test('projscan_release_train returns a product readiness plan', async () => {
   expect(result.releaseTrain.tracks.map((track) => track.line)).toEqual(['2.3.x', '2.4.x']);
 });
 
-test('projscan_bug_hunt returns a prioritized fix queue', async () => {
+test('projscan_bug_hunt returns prioritized action queue entries', async () => {
   const handler = getToolHandler('projscan_bug_hunt');
   expect(handler).toBeDefined();
 

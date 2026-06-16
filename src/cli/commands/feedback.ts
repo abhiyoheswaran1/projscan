@@ -8,7 +8,7 @@ import {
   summarizeFeedbackFile,
 } from '../../core/feedback.js';
 import { recordFeedbackTelemetry } from '../../core/telemetry.js';
-import type { DogfoodFeedbackResponse, FeedbackSummaryReport } from '../../types.js';
+import type { DogfoodFeedbackResponse, FeedbackSummaryReport } from '../../types/dogfood.js';
 import {
   assertFormatSupported,
   getRootPath,
@@ -45,12 +45,29 @@ export function registerFeedback(): void {
     .requiredOption('--reviewer <handle>', 'reviewer handle or role')
     .option('--file <path>', 'feedback file to update', DEFAULT_FEEDBACK_FILE)
     .option('--useful <bool>', 'whether the PR comment was useful')
-    .option('--minutes-saved <count>', 'measured minutes saved by the PR comment', parseNonNegativeNumber)
-    .option('--prevented-bad-edit', 'record that projscan prevented a risky edit or missed review step')
+    .option(
+      '--minutes-saved <count>',
+      'measured minutes saved by the PR comment',
+      parseNonNegativeNumber,
+    )
+    .option(
+      '--prevented-bad-edit',
+      'record that projscan prevented a risky edit or missed review step',
+    )
     .option('--owner-routing-clear <bool>', 'whether owner routing was clear')
     .option('--next-command-clear <bool>', 'whether the next command was clear')
-    .option('--false-positive-rule <rule>', 'false-positive/noisy rule id, repeatable', collectString, [])
-    .option('--missing-signal <signal>', 'missing signal reviewers expected, repeatable', collectString, [])
+    .option(
+      '--false-positive-rule <rule>',
+      'false-positive/noisy rule id, repeatable',
+      collectString,
+      [],
+    )
+    .option(
+      '--missing-signal <signal>',
+      'missing signal reviewers expected, repeatable',
+      collectString,
+      [],
+    )
     .option('--noisy-finding <finding>', 'noisy finding description, repeatable', collectString, [])
     .option('--note <text>', 'optional reviewer note')
     .action(async (cmdOpts) => {
@@ -71,13 +88,21 @@ async function runInit(cmdOpts: { output: string; force?: boolean }): Promise<vo
   maybeCompactBanner();
   const format = assertFormatSupported('feedback init');
   try {
-    const result = await createFeedbackTemplate(resolveFromRoot(cmdOpts.output), { force: cmdOpts.force === true });
+    const result = await createFeedbackTemplate(resolveFromRoot(cmdOpts.output), {
+      force: cmdOpts.force === true,
+    });
     if (format === 'json') {
       console.log(JSON.stringify(result, null, 2));
       return;
     }
     console.log(chalk.green('Created feedback artifact: ') + result.path);
-    console.log(chalk.dim('Next: projscan feedback add --file ' + result.path + ' --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10'));
+    console.log(
+      chalk.dim(
+        'Next: projscan feedback add --file ' +
+          result.path +
+          ' --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10',
+      ),
+    );
   } catch (error) {
     printError(error);
   }
@@ -104,19 +129,27 @@ async function runAdd(cmdOpts: Record<string, unknown>): Promise<void> {
       note: asString(cmdOpts.note),
     };
     const artifact = await addFeedbackResponse(filePath, response);
-    await recordFeedbackTelemetry(response, { rootPath: getRootPath(), version: pkg.version }).catch(() => undefined);
+    await recordFeedbackTelemetry(response, {
+      rootPath: getRootPath(),
+      version: pkg.version,
+    }).catch(() => undefined);
     if (format === 'json') {
       console.log(JSON.stringify(artifact, null, 2));
       return;
     }
-    console.log(chalk.green('Recorded feedback response ') + chalk.bold(String(artifact.responses.length)));
+    console.log(
+      chalk.green('Recorded feedback response ') + chalk.bold(String(artifact.responses.length)),
+    );
     console.log(chalk.dim('Next: projscan feedback summary --file ' + filePath + ' --format json'));
   } catch (error) {
     printError(error);
   }
 }
 
-async function runSummary(cmdOpts: { file?: string }, commandName: 'feedback' | 'feedback summary'): Promise<void> {
+async function runSummary(
+  cmdOpts: { file?: string },
+  commandName: 'feedback' | 'feedback summary',
+): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const format = assertFormatSupported(commandName);
@@ -140,8 +173,19 @@ function printSummary(report: FeedbackSummaryReport): void {
   console.log('  responses:       ' + report.responses);
   console.log('  useful:          ' + report.usefulResponses);
   console.log('  repos / PRs:     ' + report.distinctRepos + ' / ' + report.distinctPrs);
-  console.log('  repeated repos:  ' + report.repeatUse.repeatedRepos + ' ' + (report.repeatUse.ready ? chalk.green('(ready)') : chalk.yellow('(needs repeat PRs)')));
-  console.log('  minutes saved:   ' + report.minutesSaved.total + ' total, ' + report.minutesSaved.average + ' avg');
+  console.log(
+    '  repeated repos:  ' +
+      report.repeatUse.repeatedRepos +
+      ' ' +
+      (report.repeatUse.ready ? chalk.green('(ready)') : chalk.yellow('(needs repeat PRs)')),
+  );
+  console.log(
+    '  minutes saved:   ' +
+      report.minutesSaved.total +
+      ' total, ' +
+      report.minutesSaved.average +
+      ' avg',
+  );
   console.log('  bad edits saved: ' + report.preventedBadEdits);
   console.log('  false positives: ' + report.falsePositive.totalReports);
   console.log('');
@@ -159,7 +203,8 @@ function collectString(value: string, previous: string[]): string[] {
 
 function parseNonNegativeNumber(value: string): number {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) throw new Error('Expected a non-negative number, got ' + value);
+  if (!Number.isFinite(parsed) || parsed < 0)
+    throw new Error('Expected a non-negative number, got ' + value);
   return parsed;
 }
 

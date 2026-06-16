@@ -101,7 +101,11 @@ describe('pythonLinterCheck', () => {
   it('accepts pylint in pyproject.toml', async () => {
     const files = [
       await writeFile(tmp, 'pkg/mod.py', 'x = 1'),
-      await writeFile(tmp, 'pyproject.toml', '[tool.pylint.messages_control]\nmax-line-length = 120\n'),
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        '[tool.pylint.messages_control]\nmax-line-length = 120\n',
+      ),
     ];
     const issues = await check(tmp, files);
     expect(issues.find((i) => i.id === 'missing-python-linter')).toBeUndefined();

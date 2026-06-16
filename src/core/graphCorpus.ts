@@ -3,7 +3,7 @@ import { scanRepository } from './repositoryScanner.js';
 import { buildCodeGraph } from './codeGraph.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { computeDataflow } from './dataflow.js';
-import type { GraphCorpusFixtureMetrics, GraphCorpusReport } from '../types.js';
+import type { GraphCorpusFixtureMetrics, GraphCorpusReport } from '../types/graphCorpus.js';
 
 export interface GraphCorpusOptions {
   fixtures: string[];
@@ -32,12 +32,23 @@ export async function computeGraphCorpus(
         callEdges: totals.callEdges + fixture.callEdges,
         dataflowRisks: totals.dataflowRisks + fixture.dataflowRisks,
       }),
-      { files: 0, functions: 0, packages: 0, symbols: 0, importEdges: 0, callEdges: 0, dataflowRisks: 0 },
+      {
+        files: 0,
+        functions: 0,
+        packages: 0,
+        symbols: 0,
+        importEdges: 0,
+        callEdges: 0,
+        dataflowRisks: 0,
+      },
     ),
   };
 }
 
-async function computeFixtureMetrics(rootPath: string, fixture: string): Promise<GraphCorpusFixtureMetrics> {
+async function computeFixtureMetrics(
+  rootPath: string,
+  fixture: string,
+): Promise<GraphCorpusFixtureMetrics> {
   const absolute = path.resolve(rootPath, fixture);
   const scan = await scanRepository(absolute);
   const graph = await buildCodeGraph(absolute, scan.files);
@@ -50,7 +61,9 @@ async function computeFixtureMetrics(rootPath: string, fixture: string): Promise
     functions: semantic.metrics.totalFunctions,
     packages: semantic.metrics.totalPackages,
     symbols: semantic.metrics.totalSymbols,
-    importEdges: semantic.edges.filter((edge) => edge.kind === 'imports' || edge.kind === 'imports_package').length,
+    importEdges: semantic.edges.filter(
+      (edge) => edge.kind === 'imports' || edge.kind === 'imports_package',
+    ).length,
     callEdges: semantic.edges.filter((edge) => edge.kind === 'calls').length,
     dataflowRisks: dataflow.riskCount,
   };

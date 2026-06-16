@@ -42,6 +42,7 @@ npm run format        # Prettier
 For security vulnerabilities, do not open a public issue. Follow [SECURITY.md](SECURITY.md).
 
 For ordinary bugs, open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=bug_report.md) with:
+
 - Steps to reproduce
 - Expected vs actual behavior
 - Node.js version and OS
@@ -49,6 +50,7 @@ For ordinary bugs, open an [issue](https://github.com/abhiyoheswaran1/projscan/i
 ### Suggesting Features
 
 Open an [issue](https://github.com/abhiyoheswaran1/projscan/issues/new?template=feature_request.md) describing:
+
 - The problem you're trying to solve
 - Your proposed solution
 - Alternative approaches you've considered
@@ -134,7 +136,7 @@ Concrete on-ramps for new contributors. Each is scoped to fit a first PR. Pre-dr
 - **New analyzers.** Issue checkers live in `src/analyzers/`. Each is a pure function `(rootPath, files) => Promise<Issue[]>`. Existing ones (`testCheck`, `prettierCheck`, `securityCheck`, `dependencyRiskCheck`, `cycleCheck`) are good shape templates. Wire into `src/core/issueEngine.ts`. Tests in `tests/analyzers/`.
 - **New reporters.** Output formatters in `src/reporters/`. Implement the same surface as `consoleReporter.ts` / `markdownReporter.ts` / `jsonReporter.ts` / `htmlReporter.ts`. Pre-drafted tickets: [HTML for `pr-diff`](.github/seed-issues/04-html-reporter-for-pr-diff.md), [HTML for `coverage`](.github/seed-issues/05-html-reporter-for-coverage.md).
 - **MCP tools.** Each tool is a `{name, description, inputSchema, handler}` object exported from `src/mcp/tools/<name>.ts` and registered in `src/mcp/tools.ts`. Mirror an existing one (e.g. `src/mcp/tools/coupling.ts` is a clean shape). Add a `tools/list` assertion to `tests/mcp/server.test.ts`.
-- **Fix-suggest templates.** The rule-driven action-prompt registry in `src/core/fixSuggest.ts` covers ~12 issue families. Each new template is ~25 LOC. Pre-drafted ticket: [eslint-* template](.github/seed-issues/06-eslint-fix-suggest-template.md).
+- **Fix-suggest templates.** The rule-driven action-prompt registry in `src/core/fixSuggest.ts` covers ~12 issue families. Each new template is ~25 LOC. Pre-drafted ticket: [eslint-\* template](.github/seed-issues/06-eslint-fix-suggest-template.md).
 - **UX polish.** Small, high-leverage CLI ergonomics. Pre-drafted ticket: [impact-symbol disambiguation warning](.github/seed-issues/07-impact-cli-symbol-disambiguation.md).
 - **Documentation.** `docs/GUIDE.md` covers the agent journey + per-command reference; tighter sections still wanted: per-analyzer "what triggers / how to silence" tables, monorepo setup walkthroughs, framework-specific guides.
 
@@ -188,6 +190,7 @@ A release is a four-step ritual now that `.github/workflows/release.yml` does th
 2. **Merge the PR.** Per the project's PR-and-review rule, every change including release prep goes through review. Wait for CI to pass on the merged `main` commit before tagging.
 
 3. **Tag and push.** Tags are allowed from `main` only. Never tag or publish from a feature, fix, release, or temporary branch. From a clean, current `main` checkout, run:
+
    ```
    git switch main
    git pull --ff-only origin main
@@ -195,6 +198,7 @@ A release is a four-step ritual now that `.github/workflows/release.yml` does th
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
+
    The `Release` workflow fires automatically. It validates versions, runs the full build / test / lint / stability gate, slices the CHANGELOG entry, publishes to npm with provenance, creates the GitHub Release with `dist/tool-manifest.json` and the SBOM attached, and republishes the MCP Registry metadata through GitHub OIDC. If anything fails before npm, no GitHub Release is created and no npm publish happens. If anything fails after npm, fix it and use the workflow's `workflow_dispatch` re-run with the same tag; npm, GitHub Release, and MCP Registry steps are idempotent.
 
 4. **Bump the website's expectations** (separate repo). In the personal-website repo, open `tools.astro` (or wherever the EXPECTED block lives) and edit:

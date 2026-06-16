@@ -10,11 +10,30 @@ const PRIVATE_KEY_NAMES = ['id_rsa', 'id_ed25519', 'id_ecdsa', 'id_dsa'];
 const PRIVATE_KEY_EXTENSIONS = ['.pem', '.key', '.p12', '.pfx'];
 
 const SCANNABLE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.py', '.rb', '.go', '.java', '.rs', '.php',
-  '.json', '.yml', '.yaml', '.toml', '.xml',
-  '.cfg', '.conf', '.properties', '.sh', '.bash',
-  '.env', '.ini',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.rb',
+  '.go',
+  '.java',
+  '.rs',
+  '.php',
+  '.json',
+  '.yml',
+  '.yaml',
+  '.toml',
+  '.xml',
+  '.cfg',
+  '.conf',
+  '.properties',
+  '.sh',
+  '.bash',
+  '.env',
+  '.ini',
 ]);
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB
@@ -38,7 +57,11 @@ export interface SecurityCheckOptions {
   scanEnvValues?: boolean;
 }
 
-export async function check(rootPath: string, files: FileEntry[], options: SecurityCheckOptions = {}): Promise<Issue[]> {
+export async function check(
+  rootPath: string,
+  files: FileEntry[],
+  options: SecurityCheckOptions = {},
+): Promise<Issue[]> {
   const issues: Issue[] = [];
 
   // Detection 1: Sensitive .env files
@@ -65,9 +88,7 @@ export async function check(rootPath: string, files: FileEntry[], options: Secur
     const basename = path.basename(file.relativePath).toLowerCase();
     const ext = file.extension.toLowerCase();
 
-    const isKeyFile =
-      PRIVATE_KEY_NAMES.includes(basename) ||
-      PRIVATE_KEY_EXTENSIONS.includes(ext);
+    const isKeyFile = PRIVATE_KEY_NAMES.includes(basename) || PRIVATE_KEY_EXTENSIONS.includes(ext);
 
     if (isKeyFile) {
       issues.push({
@@ -87,17 +108,14 @@ export async function check(rootPath: string, files: FileEntry[], options: Secur
     (f) =>
       f.sizeBytes <= MAX_FILE_SIZE &&
       (options.scanEnvValues === true || !isEnvLikeFile(f.relativePath)) &&
-      (SCANNABLE_EXTENSIONS.has(f.extension) ||
-        path.basename(f.relativePath).startsWith('.env')),
+      (SCANNABLE_EXTENSIONS.has(f.extension) || path.basename(f.relativePath).startsWith('.env')),
   );
 
   // 1.9+ — was Promise.all unbounded; on a 50K-file repo that opens
   // 50K concurrent fs.readFile and trips EMFILE (macOS default ulimit
   // 256). Route through the shared concurrency helper instead.
-  const scanResults = await mapWithConcurrency(
-    filesToScan,
-    DEFAULT_FILE_IO_CONCURRENCY,
-    (f) => scanFileForSecrets(f),
+  const scanResults = await mapWithConcurrency(filesToScan, DEFAULT_FILE_IO_CONCURRENCY, (f) =>
+    scanFileForSecrets(f),
   );
 
   for (const result of scanResults) {

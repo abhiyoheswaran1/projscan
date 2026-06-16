@@ -53,7 +53,8 @@ const decisions: StartMissionReviewDecision[] = [
     id: 'approve_next_slice',
     label: 'Approve next slice',
     description: 'The agent may start another bounded implementation slice.',
-    consequence: 'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+    consequence:
+      'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
   },
   {
     id: 'request_changes',
@@ -64,7 +65,8 @@ const decisions: StartMissionReviewDecision[] = [
   {
     id: 'review_version_candidate',
     label: 'Review version candidate',
-    description: 'The agent may prepare release notes, version rationale, and remaining gates for review.',
+    description:
+      'The agent may prepare release notes, version rationale, and remaining gates for review.',
     consequence: 'Publishing still requires a separate explicit approval.',
   },
 ];
@@ -78,6 +80,7 @@ Keep this deterministic. Do not inspect package versions, tags, registry state, 
 
 ```md
 ## Reviewer Decision
+
 - [ ] Approve next slice: The agent may start another bounded implementation slice. Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.
 - [ ] Request changes: The agent must address review feedback before starting more scope. Consequence: The current mission stays open until feedback and proof are updated.
 - [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review. Consequence: Publishing still requires a separate explicit approval.

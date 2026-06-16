@@ -20,6 +20,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add default console assertions**
@@ -37,7 +38,9 @@ expect(result.stdout).toContain(
 expect(result.stdout).toContain(
   '- Review version candidate: Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
 );
-expect(result.stdout.indexOf('Reviewer Replies')).toBeLessThan(result.stdout.indexOf('Action Plan'));
+expect(result.stdout.indexOf('Reviewer Replies')).toBeLessThan(
+  result.stdout.indexOf('Action Plan'),
+);
 ```
 
 - [ ] **Step 2: Add bundle README assertions**
@@ -71,6 +74,7 @@ Expected: fail because default console output and bundle README do not render `R
 ## Task 2: CLI Implementation
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add shared reply line formatter**
@@ -131,6 +135,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -165,6 +170,7 @@ If PNGs change, inspect the changed image before committing.
 ## Task 4: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run verification**

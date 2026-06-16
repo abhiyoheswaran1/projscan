@@ -8,7 +8,8 @@ const tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'projscan-packed-install-'));
 const packDir = path.join(tmpRoot, 'pack');
 const projectDir = path.join(tmpRoot, 'project');
 const trustHome = path.join(tmpRoot, 'plugin-trust');
-const npmCacheDir = process.env.PROJSCAN_NPM_CACHE ?? path.join(os.tmpdir(), 'projscan-packed-install-npm-cache');
+const npmCacheDir =
+  process.env.PROJSCAN_NPM_CACHE ?? path.join(os.tmpdir(), 'projscan-packed-install-npm-cache');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -39,7 +40,9 @@ function parseJson(value, label) {
   try {
     return JSON.parse(value);
   } catch (err) {
-    throw new Error(`${label} did not emit valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(
+      `${label} did not emit valid JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -89,18 +92,19 @@ function writePluginFixture() {
 }
 
 function verifyMcp(binPath, expectedVersion) {
-  const input = [
-    {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: { protocolVersion: '2025-03-26' },
-    },
-    { jsonrpc: '2.0', id: 2, method: 'tools/list' },
-    { jsonrpc: '2.0', id: 3, method: 'shutdown' },
-  ]
-    .map((line) => JSON.stringify(line))
-    .join('\n') + '\n';
+  const input =
+    [
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-03-26' },
+      },
+      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 3, method: 'shutdown' },
+    ]
+      .map((line) => JSON.stringify(line))
+      .join('\n') + '\n';
 
   const stdout = runProjscan(binPath, ['mcp'], { input, timeout: 20_000 });
   const responses = stdout
@@ -111,7 +115,10 @@ function verifyMcp(binPath, expectedVersion) {
   const init = responses.find((response) => response.id === 1);
   const tools = responses.find((response) => response.id === 2);
 
-  assert(init?.result?.serverInfo?.name === 'projscan', 'MCP initialize did not return projscan serverInfo');
+  assert(
+    init?.result?.serverInfo?.name === 'projscan',
+    'MCP initialize did not return projscan serverInfo',
+  );
   assert(
     init?.result?.serverInfo?.version === expectedVersion,
     `MCP initialize version mismatch: expected ${expectedVersion}, got ${init?.result?.serverInfo?.version}`,
@@ -123,11 +130,17 @@ function verifyMcp(binPath, expectedVersion) {
 }
 
 try {
-  assert(existsSync(path.join(repoRoot, 'dist', 'cli', 'index.js')), 'dist/ missing; run npm run build first');
+  assert(
+    existsSync(path.join(repoRoot, 'dist', 'cli', 'index.js')),
+    'dist/ missing; run npm run build first',
+  );
   mkdirSync(packDir, { recursive: true });
   mkdirSync(projectDir, { recursive: true });
 
-  const pkg = parseJson(exec('node', ['-e', 'process.stdout.write(JSON.stringify(require("./package.json")))']), 'package.json');
+  const pkg = parseJson(
+    exec('node', ['-e', 'process.stdout.write(JSON.stringify(require("./package.json")))']),
+    'package.json',
+  );
   const packOut = exec('npm', ['pack', '--pack-destination', packDir, '--ignore-scripts']).trim();
   const tarballName = packOut.split(/\n/).filter(Boolean).at(-1);
   assert(tarballName?.endsWith('.tgz'), `npm pack did not report a tarball name: ${packOut}`);
@@ -146,15 +159,35 @@ try {
   const version = runProjscan(binPath, ['--version']).trim();
   assert(version === pkg.version, `CLI version mismatch: expected ${pkg.version}, got ${version}`);
 
-  const analyze = parseJson(runProjscan(binPath, ['analyze', '--format', 'json', '--quiet']), 'analyze');
+  const analyze = parseJson(
+    runProjscan(binPath, ['analyze', '--format', 'json', '--quiet']),
+    'analyze',
+  );
   assert(analyze.schemaVersion === 2, 'analyze JSON did not include schemaVersion 2');
-  assert(analyze.scan.files.some((file) => file.relativePath === 'src/index.ts'), 'analyze did not include src/index.ts');
+  assert(
+    analyze.scan.files.some((file) => file.relativePath === 'src/index.ts'),
+    'analyze did not include src/index.ts',
+  );
 
-  const structure = parseJson(runProjscan(binPath, ['structure', '--format', 'json', '--quiet']), 'structure');
+  const structure = parseJson(
+    runProjscan(binPath, ['structure', '--format', 'json', '--quiet']),
+    'structure',
+  );
   assert(structure.structure.totalFileCount >= 1, 'structure JSON did not include files');
 
-  const pluginInit = runProjscan(binPath, ['plugin', 'init', '--kind', 'analyzer', '--name', 'packed-policy', '--quiet']);
-  assert(pluginInit.includes('packed-policy.projscan-plugin.json'), 'plugin init did not create packed-policy manifest');
+  const pluginInit = runProjscan(binPath, [
+    'plugin',
+    'init',
+    '--kind',
+    'analyzer',
+    '--name',
+    'packed-policy',
+    '--quiet',
+  ]);
+  assert(
+    pluginInit.includes('packed-policy.projscan-plugin.json'),
+    'plugin init did not create packed-policy manifest',
+  );
   const generatedPluginTest = parseJson(
     runProjscan(binPath, [
       'plugin',
@@ -170,7 +203,14 @@ try {
 
   writePluginFixture();
   const pluginTest = parseJson(
-    runProjscan(binPath, ['plugin', 'test', '.projscan-plugins/policy.projscan-plugin.json', '--format', 'json', '--quiet']),
+    runProjscan(binPath, [
+      'plugin',
+      'test',
+      '.projscan-plugins/policy.projscan-plugin.json',
+      '--format',
+      'json',
+      '--quiet',
+    ]),
     'plugin test fixture',
   );
   assert(pluginTest.ok === true, 'fixture plugin did not pass plugin test');

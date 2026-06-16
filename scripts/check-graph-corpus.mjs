@@ -26,19 +26,37 @@ export function compareGraphCorpus(baseline, current) {
   for (const expected of baseline.fixtures ?? []) {
     const actual = currentByName.get(expected.name);
     if (!actual) {
-      failures.push({ fixture: expected.name, metric: 'fixture', expected: 'present', actual: 'missing', direction: 'missing' });
+      failures.push({
+        fixture: expected.name,
+        metric: 'fixture',
+        expected: 'present',
+        actual: 'missing',
+        direction: 'missing',
+      });
       continue;
     }
 
     for (const metric of MINIMUM_METRICS) {
       if ((actual[metric] ?? 0) < (expected[metric] ?? 0)) {
-        failures.push({ fixture: expected.name, metric, expected: expected[metric], actual: actual[metric], direction: 'below-minimum' });
+        failures.push({
+          fixture: expected.name,
+          metric,
+          expected: expected[metric],
+          actual: actual[metric],
+          direction: 'below-minimum',
+        });
       }
     }
 
     for (const metric of MAXIMUM_METRICS) {
       if ((actual[metric] ?? 0) > (expected[metric] ?? 0)) {
-        failures.push({ fixture: expected.name, metric, expected: expected[metric], actual: actual[metric], direction: 'above-maximum' });
+        failures.push({
+          fixture: expected.name,
+          metric,
+          expected: expected[metric],
+          actual: actual[metric],
+          direction: 'above-maximum',
+        });
       }
     }
   }
@@ -80,7 +98,9 @@ async function runCli() {
       console.error(`graph corpus check failed: ${report.failures.length} regression(s)`);
       for (const failure of report.failures) {
         const op = failure.direction === 'above-maximum' ? '<=' : '>=';
-        console.error(`  ${failure.fixture} ${failure.metric}: expected ${op} ${failure.expected}, got ${failure.actual}`);
+        console.error(
+          `  ${failure.fixture} ${failure.metric}: expected ${op} ${failure.expected}, got ${failure.actual}`,
+        );
       }
     }
     process.exitCode = report.status === 'pass' ? 0 : 1;

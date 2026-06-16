@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { startWatcher } from '../../core/watcher.js';
 import { collectIssues } from '../../core/issueEngine.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
@@ -44,7 +50,9 @@ export function registerWatch(): void {
       try {
         await handle.ready;
       } catch (err) {
-        console.error(chalk.red(`Initial scan failed: ${err instanceof Error ? err.message : String(err)}`));
+        console.error(
+          chalk.red(`Initial scan failed: ${err instanceof Error ? err.message : String(err)}`),
+        );
         handle.close();
         process.exit(1);
       }

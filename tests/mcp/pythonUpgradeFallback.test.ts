@@ -41,10 +41,13 @@ describe('projscan_upgrade Python fallback', () => {
   });
 
   it('proceeds normally on a JS repo (no Python manifest)', async () => {
-    await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({
-      name: 'app',
-      dependencies: { chalk: '^5.0.0' },
-    }));
+    await fs.writeFile(
+      path.join(tmp, 'package.json'),
+      JSON.stringify({
+        name: 'app',
+        dependencies: { chalk: '^5.0.0' },
+      }),
+    );
     await fs.mkdir(path.join(tmp, 'node_modules', 'chalk'), { recursive: true });
     await fs.writeFile(
       path.join(tmp, 'node_modules', 'chalk', 'package.json'),

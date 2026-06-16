@@ -22,14 +22,14 @@ async function write(rel: string, content: string): Promise<void> {
 }
 
 async function setupMonorepo(): Promise<void> {
-  await write(
-    'package.json',
-    JSON.stringify({ name: 'root', workspaces: ['packages/*'] }),
-  );
+  await write('package.json', JSON.stringify({ name: 'root', workspaces: ['packages/*'] }));
   await write('packages/a/package.json', JSON.stringify({ name: 'a' }));
   await write('packages/b/package.json', JSON.stringify({ name: 'b' }));
   // a imports from b
-  await write('packages/a/src/index.ts', `import { thing } from '../../b/src/index.js';\nexport const useA = thing;\n`);
+  await write(
+    'packages/a/src/index.ts',
+    `import { thing } from '../../b/src/index.js';\nexport const useA = thing;\n`,
+  );
   await write('packages/b/src/index.ts', `export const thing = 1;\n`);
 }
 
@@ -93,7 +93,10 @@ describe('crossPackageImportCheck', () => {
     await write('package.json', JSON.stringify({ name: 'single' }));
     await write('src/a.ts', `export const a = 1;`);
     await write('src/b.ts', `import { a } from './a.js';\nexport const b = a;`);
-    await write('.projscanrc.json', JSON.stringify({ monorepo: { importPolicy: [{ from: 'a', deny: ['b'] }] } }));
+    await write(
+      '.projscanrc.json',
+      JSON.stringify({ monorepo: { importPolicy: [{ from: 'a', deny: ['b'] }] } }),
+    );
     const scan = await scanRepository(tmp);
     const issues = await check(tmp, scan.files);
     expect(issues).toEqual([]);

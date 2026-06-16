@@ -1,7 +1,13 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { computePrDiff } from '../../core/prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from '../../core/monorepo.js';
 import { reportPrDiff } from '../../reporters/consoleReporter.js';
@@ -12,7 +18,9 @@ import { reportPrDiffHtml } from '../../reporters/htmlReporter.js';
 export function registerPrDiff(): void {
   program
     .command('pr-diff')
-    .description('Structural (AST) diff between two refs - what changed in exports, imports, calls, CC, fan-in')
+    .description(
+      'Structural (AST) diff between two refs - what changed in exports, imports, calls, CC, fan-in',
+    )
     .option('--base <ref>', 'base ref (default: origin/main, falling back to main/master/HEAD~1)')
     .option('--head <ref>', 'head ref (default: HEAD)')
     .option('--package <name>', 'monorepo: scope diff to a single workspace package')

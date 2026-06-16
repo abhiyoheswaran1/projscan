@@ -1,7 +1,13 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { analyzeDependencies } from '../../core/dependencyAnalyzer.js';
 import { reportDependencies } from '../../reporters/consoleReporter.js';
 import { reportDependenciesJson } from '../../reporters/jsonReporter.js';

@@ -8,11 +8,7 @@ import { extractKotlinCyclomatic } from './kotlinCyclomatic.js';
 import { extractKotlinFunctions } from './kotlinFunctions.js';
 import { extractKotlinCallSites } from './kotlinCallSites.js';
 import { detectKotlinProject, type KotlinProjectInfo } from './kotlinManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const KOTLIN_EXTENSIONS = new Set(['.kt', '.kts']);
 const MAX_KOTLIN_FILE = 1024 * 1024;
@@ -102,13 +98,12 @@ export const kotlinAdapter: LanguageAdapter = {
     return source.split('.')[0] || null;
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectKotlinProject(rootPath, files);
     return {
-      packageRoots: info ? info.packageRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.') : [],
+      packageRoots: info
+        ? info.packageRoots.map((r) => path.relative(rootPath, path.join(rootPath, r)) || '.')
+        : [],
       meta: info ? { kotlinProject: info } : undefined,
     };
   },
@@ -128,7 +123,8 @@ function resolveKotlinImport(
   context: LanguageResolveContext,
 ): string | null {
   if (!source) return null;
-  const project = (context.meta as { kotlinProject?: KotlinProjectInfo } | undefined)?.kotlinProject;
+  const project = (context.meta as { kotlinProject?: KotlinProjectInfo } | undefined)
+    ?.kotlinProject;
   const packageRoots = context.packageRoots ?? project?.packageRoots ?? [];
   if (packageRoots.length === 0) return null;
 

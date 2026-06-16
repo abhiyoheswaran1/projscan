@@ -23,6 +23,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
@@ -35,17 +36,22 @@ In `start exposes a Mission Control task card for MCP and JSON clients`, after t
 expect(report.missionControl.reviewGate.policy).toEqual({
   approvalRequired: true,
   blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-  summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+  summary:
+    'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
 });
 expect(report.missionControl.reviewGate.markdown).toContain('## Review Policy');
-expect(report.missionControl.reviewGate.markdown).toContain('- Start another implementation slice (`next_slice`)');
+expect(report.missionControl.reviewGate.markdown).toContain(
+  '- Start another implementation slice (`next_slice`)',
+);
 expect(report.missionControl.reviewGate.markdown).toContain('- Version bump (`version_bump`)');
 ```
 
 After the existing `handoff.reviewGate.decisions` expectation, add:
 
 ```ts
-expect(report.missionControl.handoff.reviewGate.policy).toEqual(report.missionControl.reviewGate.policy);
+expect(report.missionControl.handoff.reviewGate.policy).toEqual(
+  report.missionControl.reviewGate.policy,
+);
 ```
 
 - [ ] **Step 2: Add MCP policy expectations**
@@ -56,7 +62,8 @@ In `projscan_start returns MCP-callable args for fuzzy impact intents`, after th
 expect(result.start.missionControl.reviewGate.policy).toEqual({
   approvalRequired: true,
   blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-  summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+  summary:
+    'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
 });
 expect(result.start.missionControl.reviewGate.markdown).toContain('## Review Policy');
 expect(result.start.missionControl.handoff.reviewGate.policy).toEqual(
@@ -90,6 +97,7 @@ Expected: fail because `reviewGate.policy` and the Markdown section do not exist
 ## Task 2: Core Types And Policy Builder
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -133,7 +141,8 @@ function buildMissionReviewPolicy(): StartMissionReviewPolicy {
   return {
     approvalRequired: true,
     blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+    summary:
+      'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
   };
 }
 ```
@@ -151,6 +160,7 @@ Return `policy`, and pass it into `renderMissionReviewGateMarkdown()`.
 ## Task 3: Markdown Rendering
 
 **Files:**
+
 - Modify: `src/core/start.ts`
 
 - [ ] **Step 1: Extend renderer input**
@@ -175,7 +185,9 @@ input.policy.summary,
 Add after `formatMissionReviewDecision()`:
 
 ```ts
-function formatMissionReviewBlockedAction(action: StartMissionReviewPolicy['blockedActions'][number]): string {
+function formatMissionReviewBlockedAction(
+  action: StartMissionReviewPolicy['blockedActions'][number],
+): string {
   const labels: Record<StartMissionReviewPolicy['blockedActions'][number], string> = {
     next_slice: 'Start another implementation slice',
     release: 'Release',
@@ -203,6 +215,7 @@ Expected: build and focused tests pass.
 ## Task 4: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -236,6 +249,7 @@ If PNGs change, inspect the changed image before committing.
 ## Task 5: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run verification**

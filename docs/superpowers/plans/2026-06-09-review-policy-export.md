@@ -20,6 +20,7 @@
 ## Task 1: Red CLI Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add expected policy helper**
@@ -30,7 +31,8 @@ Near the existing `expectedReviewReplyLines`, add:
 const expectedReviewPolicy = {
   approvalRequired: true,
   blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-  summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+  summary:
+    'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
 };
 ```
 
@@ -40,9 +42,13 @@ In `start writes a Mission Control bundle when requested`, add:
 
 ```ts
 expect(result.stdout).toContain('review-policy.json');
-expect(quickstart).toContain('- `review-policy.json`: Machine-readable review approval boundary and blocked actions.');
+expect(quickstart).toContain(
+  '- `review-policy.json`: Machine-readable review approval boundary and blocked actions.',
+);
 
-const reviewPolicy = JSON.parse(await fs.readFile(path.join(bundleDir, 'review-policy.json'), 'utf-8'));
+const reviewPolicy = JSON.parse(
+  await fs.readFile(path.join(bundleDir, 'review-policy.json'), 'utf-8'),
+);
 expect(reviewPolicy).toEqual(expectedReviewPolicy);
 ```
 
@@ -86,7 +92,9 @@ test('start prints only the review policy when requested', async () => {
 In `start prints a shortcut index for the current mission when requested`, add:
 
 ```ts
-expect(result.stdout).toContain("projscan start --review-policy --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --review-policy --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 6: Run red tests**
@@ -102,6 +110,7 @@ Expected: fail because `--review-policy` and `review-policy.json` do not exist y
 ## Task 2: CLI And Bundle Implementation
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add Commander option**
@@ -181,6 +190,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -214,6 +224,7 @@ If PNGs change, inspect the changed image before committing.
 ## Task 4: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run verification**

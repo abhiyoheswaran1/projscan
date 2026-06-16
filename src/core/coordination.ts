@@ -58,11 +58,7 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
   const contendedTargets = new Set(findContendedClaims(claims).map((c) => c.target)).size;
 
   const readiness: CoordinationReadiness =
-    high > 0 || contendedTargets > 0
-      ? 'conflicted'
-      : medium > 0
-        ? 'caution'
-        : 'clear';
+    high > 0 || contendedTargets > 0 ? 'conflicted' : medium > 0 ? 'caution' : 'clear';
 
   const summary: string[] = [];
   summary.push(`${collisionReport.worktrees.length} in-flight worktree(s).`);
@@ -71,8 +67,10 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
   } else {
     summary.push('No collisions across worktrees.');
   }
-  if (contendedTargets > 0) summary.push(`${contendedTargets} claim target(s) contended by multiple agents.`);
-  if (mergeRisk.hotFiles.length > 0) summary.push(`${mergeRisk.hotFiles.length} merge hotspot file(s).`);
+  if (contendedTargets > 0)
+    summary.push(`${contendedTargets} claim target(s) contended by multiple agents.`);
+  if (mergeRisk.hotFiles.length > 0)
+    summary.push(`${mergeRisk.hotFiles.length} merge hotspot file(s).`);
   if (mergeRisk.integrationOrder.length > 0) {
     const first = mergeRisk.integrationOrder[0];
     summary.push(`Merge ${first.branch ?? first.worktree} first (lowest risk).`);
@@ -105,9 +103,13 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
  */
 export function coordinationHints(summary: CoordinationSummary): string[] {
   if (!summary.available || summary.readiness === 'clear') return [];
-  const hints: string[] = [`Swarm readiness: ${summary.readiness} — run \`projscan coordinate\` for details.`];
+  const hints: string[] = [
+    `Swarm readiness: ${summary.readiness} — run \`projscan coordinate\` for details.`,
+  ];
   if (summary.collisions.high > 0) {
-    hints.push(`${summary.collisions.high} high-severity collision(s) (same file edited by two worktrees).`);
+    hints.push(
+      `${summary.collisions.high} high-severity collision(s) (same file edited by two worktrees).`,
+    );
   }
   if (summary.collisions.medium > 0) {
     hints.push(`${summary.collisions.medium} dependency collision(s) across worktrees.`);

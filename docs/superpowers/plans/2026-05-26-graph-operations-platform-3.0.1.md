@@ -25,6 +25,7 @@
 ## Task 1: Dataflow False-Positive Hardening
 
 **Files:**
+
 - Modify: `tests/core/dataflow.test.ts`
 - Modify: `tests/core/review.test.ts`
 - Modify: `src/core/dataflow.ts`
@@ -54,6 +55,7 @@ Expected: pass.
 ## Task 2: Graph Evidence in Review, Workplan, and Agent Brief
 
 **Files:**
+
 - Modify: `tests/core/review.test.ts`
 - Modify: `tests/core/workplan.test.ts`
 - Modify: `tests/core/agentBrief.test.ts`
@@ -83,6 +85,7 @@ Expected: pass.
 ## Task 3: Cross-Repo Boundary Impact
 
 **Files:**
+
 - Modify: `tests/core/impact.test.ts`
 - Modify: `src/core/impact.ts`
 - Modify: `src/types.ts`
@@ -108,6 +111,7 @@ Expected: pass.
 ## Task 4: Plugin Graph Read Context
 
 **Files:**
+
 - Modify: `tests/core/pluginPipeline.test.ts`
 - Modify: `tests/core/plugins.test.ts`
 - Modify: `src/core/plugins.ts`
@@ -135,6 +139,7 @@ Expected: pass.
 ## Task 5: Golden Graph Corpus
 
 **Files:**
+
 - Create: `src/core/graphCorpus.ts`
 - Create: `tests/core/graphCorpus.test.ts`
 - Modify: `src/index.ts`
@@ -161,6 +166,7 @@ Expected: pass.
 ## Task 6: Docs, Metadata, and Release Wiring
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `CHANGELOG.md`
@@ -187,6 +193,7 @@ Expected: TypeScript build passes and tool manifest/stability-facing generated f
 ## Task 7: Big Bug Hunt and Verification
 
 **Files:**
+
 - Modify files discovered by the bug hunt only when a failing test or tool output proves the issue.
 
 - [ ] **Step 1: Run focused feature tests**

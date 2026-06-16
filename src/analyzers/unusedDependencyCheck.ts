@@ -101,9 +101,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   const rootPkg = ws.packages.find((p) => p.isRoot);
   if (rootPkg) {
     // Root manifest: only consider files NOT under any workspace package dir.
-    const claimedPrefixes = realWorkspaces
-      .map((p) => p.relativePath)
-      .filter((p) => p.length > 0);
+    const claimedPrefixes = realWorkspaces.map((p) => p.relativePath).filter((p) => p.length > 0);
     const rootFiles = files.filter(
       (f) => !claimedPrefixes.some((prefix) => f.relativePath.startsWith(prefix + '/')),
     );
@@ -113,7 +111,9 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   for (const wp of realWorkspaces) {
     const pkgDir = path.join(rootPath, wp.relativePath);
     const prefix = wp.relativePath + '/';
-    const wpFiles = files.filter((f) => f.relativePath === wp.relativePath || f.relativePath.startsWith(prefix));
+    const wpFiles = files.filter(
+      (f) => f.relativePath === wp.relativePath || f.relativePath.startsWith(prefix),
+    );
     issues.push(...(await checkOnePackage(pkgDir, wp.relativePath, fullGraph, wpFiles)));
   }
 
@@ -183,15 +183,17 @@ async function checkOnePackage(
     const inWorkspace = locationPrefix ? ` (workspace: ${locationPrefix})` : '';
 
     unused.push({
-      id: locationPrefix ? `unused-dependency-${locationPrefix}-${name}` : `unused-dependency-${name}`,
-      title: `Unused ${isDev ? 'dev' : ''} dependency: ${name}${inWorkspace}`.replace('  ', ' ').trim(),
+      id: locationPrefix
+        ? `unused-dependency-${locationPrefix}-${name}`
+        : `unused-dependency-${name}`,
+      title: `Unused ${isDev ? 'dev' : ''} dependency: ${name}${inWorkspace}`
+        .replace('  ', ' ')
+        .trim(),
       description: `The package "${name}" is declared in ${locationFile} but never imported from source files under that package. If it's used only in package.json scripts or as a plugin, add it to the projscan allowlist via .projscanrc → disableRules.`,
       severity: isDev ? 'info' : 'warning',
       category: 'dependencies',
       fixAvailable: false,
-      locations: locations
-        ? [{ file: locationFile, line: line ?? 1 }]
-        : undefined,
+      locations: locations ? [{ file: locationFile, line: line ?? 1 }] : undefined,
     });
   }
 

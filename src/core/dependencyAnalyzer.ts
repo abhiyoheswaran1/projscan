@@ -392,7 +392,10 @@ function summarizeSizes(entries: DependencySizeEntry[]): DependencySizeSummary {
     largest,
     totalBytes,
     formattedTotal: formatBytes(totalBytes),
-    missing: entries.filter((entry) => !entry.installed).map((entry) => entry.name).sort((a, b) => a.localeCompare(b)),
+    missing: entries
+      .filter((entry) => !entry.installed)
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b)),
   };
 }
 

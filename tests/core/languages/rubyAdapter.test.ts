@@ -65,7 +65,7 @@ describe('rubyAdapter', () => {
     });
 
     it('does NOT export defs nested inside classes', async () => {
-      const src = "class Foo\n  def bar\n  end\nend\n";
+      const src = 'class Foo\n  def bar\n  end\nend\n';
       const r = await rubyAdapter.parse('t.rb', src);
       expect(r.exports.map((e) => e.name)).toEqual(['Foo']);
     });
@@ -91,13 +91,13 @@ describe('rubyAdapter', () => {
     });
 
     it('counts elsif (each adds 1; else does not)', async () => {
-      const src = "if a\n  1\nelsif b\n  2\nelsif c\n  3\nelse\n  4\nend\n";
+      const src = 'if a\n  1\nelsif b\n  2\nelsif c\n  3\nelse\n  4\nend\n';
       // 1 if + 2 elsif = 3 decisions → CC 4.
       expect(await cc(src)).toBe(4);
     });
 
     it('counts while/until/for', async () => {
-      const src = "while x do\nend\nuntil y do\nend\nfor i in xs do\nend\n";
+      const src = 'while x do\nend\nuntil y do\nend\nfor i in xs do\nend\n';
       expect(await cc(src)).toBe(4);
     });
 
@@ -124,14 +124,14 @@ describe('rubyAdapter', () => {
 
   describe('callSites', () => {
     it('captures bare method calls', async () => {
-      const r = await rubyAdapter.parse('t.rb', "foo()\nbar()\n");
+      const r = await rubyAdapter.parse('t.rb', 'foo()\nbar()\n');
       const calls = [...r.callSites].sort();
       expect(calls).toContain('foo');
       expect(calls).toContain('bar');
     });
 
     it('captures receiver method calls', async () => {
-      const r = await rubyAdapter.parse('t.rb', "obj.method_name\n");
+      const r = await rubyAdapter.parse('t.rb', 'obj.method_name\n');
       expect(r.callSites).toContain('method_name');
     });
 
@@ -164,12 +164,9 @@ describe('rubyAdapter', () => {
         ['lib/foo.rb', { relativePath: 'lib/foo.rb' }],
         ['lib/helper.rb', { relativePath: 'lib/helper.rb' }],
       ]);
-      const resolved = rubyAdapter.resolveImport(
-        'lib/foo.rb',
-        './helper',
-        graphFiles,
-        { packageRoots: ['lib'] },
-      );
+      const resolved = rubyAdapter.resolveImport('lib/foo.rb', './helper', graphFiles, {
+        packageRoots: ['lib'],
+      });
       expect(resolved).toBe('lib/helper.rb');
     });
 
@@ -177,12 +174,9 @@ describe('rubyAdapter', () => {
       const graphFiles = new Map<string, { relativePath: string }>([
         ['lib/mygem/util.rb', { relativePath: 'lib/mygem/util.rb' }],
       ]);
-      const resolved = rubyAdapter.resolveImport(
-        'lib/mygem/main.rb',
-        'mygem/util',
-        graphFiles,
-        { packageRoots: ['lib'] },
-      );
+      const resolved = rubyAdapter.resolveImport('lib/mygem/main.rb', 'mygem/util', graphFiles, {
+        packageRoots: ['lib'],
+      });
       expect(resolved).toBe('lib/mygem/util.rb');
     });
 
@@ -190,12 +184,9 @@ describe('rubyAdapter', () => {
       const graphFiles = new Map<string, { relativePath: string }>([
         ['lib/foo.rb', { relativePath: 'lib/foo.rb' }],
       ]);
-      const resolved = rubyAdapter.resolveImport(
-        'lib/foo.rb',
-        'json',
-        graphFiles,
-        { packageRoots: ['lib'] },
-      );
+      const resolved = rubyAdapter.resolveImport('lib/foo.rb', 'json', graphFiles, {
+        packageRoots: ['lib'],
+      });
       expect(resolved).toBe(null);
     });
   });

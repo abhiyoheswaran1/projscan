@@ -3,8 +3,12 @@ import { check } from '../../src/analyzers/architectureCheck.js';
 import type { FileEntry } from '../../src/types.js';
 
 function makeFile(relativePath: string, sizeBytes = 500): FileEntry {
-  const ext = relativePath.includes('.') ? relativePath.substring(relativePath.lastIndexOf('.')) : '';
-  const dir = relativePath.includes('/') ? relativePath.substring(0, relativePath.lastIndexOf('/')) : '.';
+  const ext = relativePath.includes('.')
+    ? relativePath.substring(relativePath.lastIndexOf('.'))
+    : '';
+  const dir = relativePath.includes('/')
+    ? relativePath.substring(0, relativePath.lastIndexOf('/'))
+    : '.';
   return {
     relativePath,
     absolutePath: `/proj/${relativePath}`,
@@ -108,13 +112,21 @@ describe('architectureCheck', () => {
     });
 
     it('does not flag when .editorconfig is at root', async () => {
-      const files = [makeFile('.editorconfig', 50), makeFile('src/a.ts'), makeFile('README.md', 500)];
+      const files = [
+        makeFile('.editorconfig', 50),
+        makeFile('src/a.ts'),
+        makeFile('README.md', 500),
+      ];
       const issues = await check('/proj', files);
       expect(issues.find((i) => i.id === 'missing-editorconfig')).toBeUndefined();
     });
 
     it('does not treat a nested .editorconfig as root config', async () => {
-      const files = [makeFile('packages/a/.editorconfig', 50), makeFile('src/a.ts'), makeFile('README.md', 500)];
+      const files = [
+        makeFile('packages/a/.editorconfig', 50),
+        makeFile('src/a.ts'),
+        makeFile('README.md', 500),
+      ];
       const issues = await check('/proj', files);
       expect(issues.find((i) => i.id === 'missing-editorconfig')).toBeDefined();
     });
@@ -130,24 +142,35 @@ describe('architectureCheck', () => {
     });
 
     it('flags nearly-empty README (under 50 bytes)', async () => {
-      const files = [makeFile('README.md', 20), makeFile('src/a.ts'), makeFile('.editorconfig', 50)];
+      const files = [
+        makeFile('README.md', 20),
+        makeFile('src/a.ts'),
+        makeFile('.editorconfig', 50),
+      ];
       const issues = await check('/proj', files);
       expect(issues.find((i) => i.id === 'empty-readme')).toBeDefined();
       expect(issues.find((i) => i.id === 'missing-readme')).toBeUndefined();
     });
 
     it('accepts a healthy README', async () => {
-      const files = [makeFile('README.md', 500), makeFile('src/a.ts'), makeFile('.editorconfig', 50)];
+      const files = [
+        makeFile('README.md', 500),
+        makeFile('src/a.ts'),
+        makeFile('.editorconfig', 50),
+      ];
       const issues = await check('/proj', files);
       expect(issues.find((i) => i.id === 'missing-readme')).toBeUndefined();
       expect(issues.find((i) => i.id === 'empty-readme')).toBeUndefined();
     });
 
-    it.each(['readme', 'README.md', 'readme.txt'])('recognises %s case-insensitively', async (name) => {
-      const files = [makeFile(name, 500), makeFile('src/a.ts'), makeFile('.editorconfig', 50)];
-      const issues = await check('/proj', files);
-      expect(issues.find((i) => i.id === 'missing-readme')).toBeUndefined();
-    });
+    it.each(['readme', 'README.md', 'readme.txt'])(
+      'recognises %s case-insensitively',
+      async (name) => {
+        const files = [makeFile(name, 500), makeFile('src/a.ts'), makeFile('.editorconfig', 50)];
+        const issues = await check('/proj', files);
+        expect(issues.find((i) => i.id === 'missing-readme')).toBeUndefined();
+      },
+    );
   });
 
   it('sets architecture category on all emitted issues', async () => {

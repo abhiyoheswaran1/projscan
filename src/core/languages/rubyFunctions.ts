@@ -34,7 +34,9 @@ export function extractRubyFunctions(root: TsNode): FunctionInfo[] {
 
 function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void {
   if (node.type === 'class' || node.type === 'module') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'constant');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'constant');
     const cls = nameNode?.text ?? null;
     const body = node.childForFieldName ? node.childForFieldName('body') : null;
     if (body) {
@@ -46,7 +48,9 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
   }
 
   if (node.type === 'method' || node.type === 'singleton_method') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     const baseName = nameNode?.text ?? '<anonymous>';
     const fnName = className ? `${className}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;

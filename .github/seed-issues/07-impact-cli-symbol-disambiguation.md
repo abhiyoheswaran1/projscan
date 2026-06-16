@@ -18,7 +18,7 @@ if (report.available && report.target.kind === 'symbol' && report.definitionFile
   console.error(
     chalk.yellow(
       `\n  ⚠ "${report.target.value}" is defined in ${report.definitionFiles.length} files. ` +
-      `The reachable set below includes callers of all definitions.\n`,
+        `The reachable set below includes callers of all definitions.\n`,
     ),
   );
 }

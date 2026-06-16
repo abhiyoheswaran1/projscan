@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue, IssueSeverity } from '../types.js';
 
-type DependencyScope = 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies';
+type DependencyScope =
+  | 'dependencies'
+  | 'devDependencies'
+  | 'optionalDependencies'
+  | 'peerDependencies';
 
 interface PackageManifest {
   name?: string;
@@ -153,7 +157,11 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   return issues;
 }
 
-async function scanPackageManifest(file: FileEntry, issues: Issue[], seen: Set<string>): Promise<void> {
+async function scanPackageManifest(
+  file: FileEntry,
+  issues: Issue[],
+  seen: Set<string>,
+): Promise<void> {
   const manifest = await readJson<PackageManifest>(file.absolutePath, MAX_JSON_MANIFEST_BYTES);
   if (!manifest) return;
 
@@ -218,7 +226,15 @@ async function scanPackageManifest(file: FileEntry, issues: Issue[], seen: Set<s
 
 async function scanPackageLock(file: FileEntry, issues: Issue[], seen: Set<string>): Promise<void> {
   const lock = await readJson<{
-    packages?: Record<string, { version?: unknown; resolved?: unknown; dependencies?: Record<string, unknown>; optionalDependencies?: Record<string, unknown> }>;
+    packages?: Record<
+      string,
+      {
+        version?: unknown;
+        resolved?: unknown;
+        dependencies?: Record<string, unknown>;
+        optionalDependencies?: Record<string, unknown>;
+      }
+    >;
     dependencies?: Record<string, { version?: unknown; resolved?: unknown }>;
   }>(file.absolutePath, MAX_LOCKFILE_BYTES);
   if (!lock) return;
@@ -247,7 +263,9 @@ async function scanPackageLock(file: FileEntry, issues: Issue[], seen: Set<strin
     const manifestDeps = { ...(entry.dependencies ?? {}), ...(entry.optionalDependencies ?? {}) };
     for (const [depName, rawSpec] of Object.entries(manifestDeps)) {
       const spec = typeof rawSpec === 'string' ? rawSpec : '';
-      const ioc = KNOWN_CONTENT_IOCS.find(({ value }) => spec.includes(value) || resolved.includes(value));
+      const ioc = KNOWN_CONTENT_IOCS.find(
+        ({ value }) => spec.includes(value) || resolved.includes(value),
+      );
       if (!ioc) continue;
       pushIssue(
         issues,
@@ -306,7 +324,11 @@ async function scanHiddenHook(file: FileEntry, issues: Issue[], seen: Set<string
   );
 }
 
-async function scanJavaScriptPayload(file: FileEntry, issues: Issue[], seen: Set<string>): Promise<void> {
+async function scanJavaScriptPayload(
+  file: FileEntry,
+  issues: Issue[],
+  seen: Set<string>,
+): Promise<void> {
   const basename = path.basename(file.relativePath);
   if (PAYLOAD_FILENAMES.has(basename)) {
     pushIssue(
@@ -427,7 +449,10 @@ function isGithubCommitDependency(spec: string): boolean {
 }
 
 function isPackageManifest(file: FileEntry): boolean {
-  return path.basename(file.relativePath) === 'package.json' && !normalizePath(file.relativePath).includes('/node_modules/');
+  return (
+    path.basename(file.relativePath) === 'package.json' &&
+    !normalizePath(file.relativePath).includes('/node_modules/')
+  );
 }
 
 function isPackageLock(file: FileEntry): boolean {
@@ -451,7 +476,10 @@ function packageNameFromLockPath(entryPath: string): string | null {
 }
 
 function safeId(value: string): string {
-  return value.replace(/^@/, '').replace(/[^A-Za-z0-9._/-]+/g, '-').replace(/\/+/g, '-');
+  return value
+    .replace(/^@/, '')
+    .replace(/[^A-Za-z0-9._/-]+/g, '-')
+    .replace(/\/+/g, '-');
 }
 
 function normalizePath(value: string): string {

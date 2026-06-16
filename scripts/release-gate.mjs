@@ -16,7 +16,9 @@ if (!existsSync(path.join(distDir, 'core', 'repositoryScanner.js'))) {
   process.exit(1);
 }
 
-const { scanRepository } = await import(pathToFileURL(path.join(distDir, 'core', 'repositoryScanner.js')).href);
+const { scanRepository } = await import(
+  pathToFileURL(path.join(distDir, 'core', 'repositoryScanner.js')).href
+);
 const { check: supplyChainCheck } = await import(
   pathToFileURL(path.join(distDir, 'analyzers', 'supplyChainCheck.js')).href
 );
@@ -34,7 +36,9 @@ for (const issue of issues) {
 }
 
 if (errors.length > 0) {
-  console.error(`release gate blocked: ${errors.length} supply-chain error(s), ${warnings.length} warning(s).`);
+  console.error(
+    `release gate blocked: ${errors.length} supply-chain error(s), ${warnings.length} warning(s).`,
+  );
   process.exit(1);
 }
 

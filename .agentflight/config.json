@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "projectName": "projscan",
+  "createdAt": "2026-06-15T15:08:16.535Z",
+  "engines": {
+    "projscan": {
+      "enabled": true,
+      "mode": "npx"
+    },
+    "agentloopkit": {
+      "enabled": true,
+      "mode": "npx"
+    }
+  },
+  "verification": {
+    "commands": [
+      "npm run typecheck",
+      "npm run lint",
+      "npm run build",
+      "npm exec projscan -- doctor --format json"
+    ]
+  },
+  "changedFileFilters": {
+    "ignore": []
+  },
+  "privacy": {
+    "localOnly": true,
+    "telemetry": false
+  }
+}

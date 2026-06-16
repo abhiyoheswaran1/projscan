@@ -25,7 +25,16 @@ afterEach(async () => {
 });
 
 test('agent-brief renders JSON', async () => {
-  const result = await runCli(['agent-brief', '--intent', 'release', '--max-items', '3', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'agent-brief',
+    '--intent',
+    'release',
+    '--max-items',
+    '3',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
@@ -34,7 +43,14 @@ test('agent-brief renders JSON', async () => {
 });
 
 test('quality-scorecard renders JSON', async () => {
-  const result = await runCli(['quality-scorecard', '--max-risks', '4', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'quality-scorecard',
+    '--max-risks',
+    '4',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
@@ -50,6 +66,8 @@ test('agent-brief rejects unsupported formats through the shared matrix', async 
   expect(result.stderr).toContain('projscan agent-brief does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

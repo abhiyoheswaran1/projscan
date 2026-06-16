@@ -3,8 +3,21 @@ import path from 'node:path';
 import chalk from 'chalk';
 
 import { computeStartReport } from '../../core/start.js';
-import { disableTelemetry, enableTelemetry, getTelemetryOptInPrompt, getTelemetryStatus, type TelemetryStatus } from '../../core/telemetry.js';
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported, promptYesNo } from '../_shared.js';
+import {
+  disableTelemetry,
+  enableTelemetry,
+  getTelemetryOptInPrompt,
+  getTelemetryStatus,
+  type TelemetryStatus,
+} from '../../core/telemetry.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+  promptYesNo,
+} from '../_shared.js';
 import {
   getGithubActionStarter,
   getMcpConfigGuide,
@@ -22,7 +35,7 @@ import {
   type WriteGithubActionStarterResult,
   type WritePolicyStarterResult,
 } from '../../core/adoption.js';
-import type { StartReport } from '../../types.js';
+import type { StartReport } from '../../types/start.js';
 
 /**
  * `projscan init` (1.6+) — scaffold `.projscanrc.json` for new
@@ -47,10 +60,6 @@ export function registerInit(): void {
       }
     });
 
-
-
-
-
   init
     .command('github-action')
     .description('Write a GitHub Actions workflow that posts projscan PR evidence')
@@ -60,7 +69,9 @@ export function registerInit(): void {
       maybeCompactBanner();
       const format = assertFormatSupported('init github-action');
       try {
-        const result = await writeGithubActionStarter(getRootPath(), { force: opts.force === true });
+        const result = await writeGithubActionStarter(getRootPath(), {
+          force: opts.force === true,
+        });
         if (format === 'json') {
           console.log(JSON.stringify(result, null, 2));
           return;
@@ -83,7 +94,9 @@ export function registerInit(): void {
       const format = assertFormatSupported('init policy');
       const team = parsePolicyTeam(opts.team);
       try {
-        const result = await writePolicyStarterKit(getRootPath(), team, { force: opts.force === true });
+        const result = await writePolicyStarterKit(getRootPath(), team, {
+          force: opts.force === true,
+        });
         if (format === 'json') {
           console.log(JSON.stringify(result, null, 2));
           return;
@@ -95,10 +108,11 @@ export function registerInit(): void {
       }
     });
 
-
   init
     .command('team')
-    .description('Bootstrap team policy, PR workflow, CODEOWNERS starter, baseline memory, and a start report')
+    .description(
+      'Bootstrap team policy, PR workflow, CODEOWNERS starter, baseline memory, and a start report',
+    )
     .option('--team <team>', `team: ${POLICY_STARTER_TEAMS.join(', ')}`, 'platform')
     .option('--force', 'overwrite existing starter files')
     .action(async (opts: { team?: string; force?: boolean }) => {
@@ -112,7 +126,11 @@ export function registerInit(): void {
         const result = {
           schemaVersion: 1,
           team: await writeTeamStarterKit(rootPath, team, { force: opts.force === true }),
-          start: await computeStartReport(rootPath, { mode: 'before_edit', maxTasks: 5, maxRisks: 5 }),
+          start: await computeStartReport(rootPath, {
+            mode: 'before_edit',
+            maxTasks: 5,
+            maxRisks: 5,
+          }),
           telemetry: {
             status: telemetryStatus,
             prompt: getTelemetryOptInPrompt(),
@@ -173,12 +191,16 @@ async function runInit(rootPath: string, force: boolean): Promise<void> {
   if (exists && !force) {
     console.log('');
     console.log(chalk.yellow('⚠ .projscanrc.json already exists. Refusing to overwrite.'));
-    console.log(chalk.dim('  Pass --force to overwrite, or merge manually with the defaults below:'));
+    console.log(
+      chalk.dim('  Pass --force to overwrite, or merge manually with the defaults below:'),
+    );
     console.log('');
     console.log(prefixIndent(JSON.stringify(DEFAULT_CONFIG, null, 2), '  '));
     console.log('');
     console.log(
-      chalk.dim('  See https://github.com/abhiyoheswaran1/projscan#projscanrc for the field reference.'),
+      chalk.dim(
+        '  See https://github.com/abhiyoheswaran1/projscan#projscanrc for the field reference.',
+      ),
     );
     return;
   }
@@ -193,10 +215,6 @@ async function runInit(rootPath: string, force: boolean): Promise<void> {
   console.log(chalk.dim('  Tune the score threshold, ignore globs, or disabled rules as needed.'));
   console.log(chalk.dim('  Then run `projscan ci --min-score 70` (or whatever you set).'));
 }
-
-
-
-
 
 function printGithubActionStarterResult(result: WriteGithubActionStarterResult): void {
   console.log('');
@@ -237,14 +255,26 @@ function printPolicyStarterResult(result: WritePolicyStarterResult): void {
   console.log(prefixIndent(JSON.stringify(result.config, null, 2), '  '));
 }
 
-
-function printTeamStarterResult(result: { schemaVersion: number; team: TeamStarterKit; start: StartReport; telemetry?: { status: TelemetryStatus; prompt: string } }): void {
+function printTeamStarterResult(result: {
+  schemaVersion: number;
+  team: TeamStarterKit;
+  start: StartReport;
+  telemetry?: { status: TelemetryStatus; prompt: string };
+}): void {
   console.log('');
   console.log(chalk.bold(`Team Bootstrap: ${result.team.team}`));
-  console.log(`  policy       ${result.team.created.policy ? chalk.green('created') : chalk.yellow('kept')}`);
-  console.log(`  PR workflow  ${result.team.created.githubAction ? chalk.green('created') : chalk.yellow('kept')}`);
-  console.log(`  CODEOWNERS   ${result.team.created.codeowners ? chalk.green('created') : chalk.yellow('kept')}`);
-  console.log(`  baseline     ${result.team.created.baseline ? chalk.green('created') : chalk.yellow('kept')}`);
+  console.log(
+    `  policy       ${result.team.created.policy ? chalk.green('created') : chalk.yellow('kept')}`,
+  );
+  console.log(
+    `  PR workflow  ${result.team.created.githubAction ? chalk.green('created') : chalk.yellow('kept')}`,
+  );
+  console.log(
+    `  CODEOWNERS   ${result.team.created.codeowners ? chalk.green('created') : chalk.yellow('kept')}`,
+  );
+  console.log(
+    `  baseline     ${result.team.created.baseline ? chalk.green('created') : chalk.yellow('kept')}`,
+  );
   if (result.team.reasons.length > 0) {
     console.log('');
     for (const reason of result.team.reasons) console.log(chalk.dim(`  ${reason}`));
@@ -265,7 +295,9 @@ function printTeamStarterResult(result: { schemaVersion: number; team: TeamStart
   if (result.telemetry) {
     console.log('');
     console.log(chalk.bold('Telemetry'));
-    console.log(`  ${result.telemetry.status.enabled ? 'enabled' : 'disabled'} (default is off; run projscan telemetry explain)`);
+    console.log(
+      `  ${result.telemetry.status.enabled ? 'enabled' : 'disabled'} (default is off; run projscan telemetry explain)`,
+    );
   }
 }
 
@@ -281,7 +313,11 @@ async function maybePromptTelemetryOptIn(format: string, status: TelemetryStatus
     console.log(chalk.green('Telemetry enabled.'));
   } else {
     await disableTelemetry();
-    console.log(chalk.dim('Telemetry remains disabled. You can enable it later with projscan telemetry enable.'));
+    console.log(
+      chalk.dim(
+        'Telemetry remains disabled. You can enable it later with projscan telemetry enable.',
+      ),
+    );
   }
 }
 

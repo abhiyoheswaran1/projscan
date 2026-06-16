@@ -94,7 +94,11 @@ export function deriveMergeRisk(report: CollisionReport): {
 
   const hotFiles: RiskHotspot[] = [...fileWorktrees.entries()]
     .filter(([, wts]) => wts.size >= 2)
-    .map(([file, wts]) => ({ file, worktrees: [...wts], severity: fileSeverity.get(file) ?? 'medium' }))
+    .map(([file, wts]) => ({
+      file,
+      worktrees: [...wts],
+      severity: fileSeverity.get(file) ?? 'medium',
+    }))
     .sort(
       (a, b) =>
         b.worktrees.length - a.worktrees.length ||

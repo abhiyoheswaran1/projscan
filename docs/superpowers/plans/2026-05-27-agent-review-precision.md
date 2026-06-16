@@ -13,6 +13,7 @@
 ### Task 1: Core Package-Scoped Review
 
 **Files:**
+
 - Modify: `src/core/review.ts`
 - Modify: `src/cli/commands/review.ts`
 - Modify: `src/mcp/tools/review.ts`
@@ -27,6 +28,7 @@
 ### Task 2: Framework Request Sources
 
 **Files:**
+
 - Create: `src/core/frameworkSources.ts`
 - Modify: `src/core/taint.ts`
 - Modify: `src/core/dataflow.ts`
@@ -40,6 +42,7 @@
 ### Task 3: Generated-Code Dataflow Filter
 
 **Files:**
+
 - Create: `src/core/pathClassifiers.ts`
 - Modify: `src/core/dataflowFilters.ts`
 - Modify: `src/core/reviewDataflow.ts`
@@ -55,6 +58,7 @@
 ### Task 4: Package Owner Metadata Fallback
 
 **Files:**
+
 - Modify: `src/core/ownership.ts`
 - Test: `tests/core/ownership.test.ts`
 
@@ -65,6 +69,7 @@
 ### Task 5: CI Runtime Hardening
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Modify: `.github/workflows/release.yml`
 
@@ -75,6 +80,7 @@
 ### Task 6: Docs and Verification
 
 **Files:**
+
 - Modify: `CHANGELOG.md`
 - Modify: `docs/ROADMAP.md`
 - Create: `docs/superpowers/specs/2026-05-27-agent-review-precision-design.md`

@@ -24,7 +24,10 @@ describe('C# end-to-end (graph + coupling)', () => {
     const scan = await scanRepository(FIXTURE_ROOT);
     const graph = await buildCodeGraph(FIXTURE_ROOT, scan.files);
     const userExports =
-      graph.files.get('Models/User.cs')?.exports.map((e) => e.name).sort() ?? [];
+      graph.files
+        .get('Models/User.cs')
+        ?.exports.map((e) => e.name)
+        .sort() ?? [];
     expect(userExports).toContain('User');
     // internal class Hidden — not exported.
     expect(userExports).not.toContain('Hidden');

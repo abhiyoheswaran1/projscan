@@ -31,7 +31,8 @@ export const startTool: McpTool = {
       },
       mission_dir: {
         type: 'string',
-        description: 'Optional saved Mission Control bundle directory. When set, start includes proof outcome from proof-logs/summary.json.',
+        description:
+          'Optional saved Mission Control bundle directory. When set, start includes proof outcome from proof-logs/summary.json.',
       },
       max_tasks: {
         type: 'number',

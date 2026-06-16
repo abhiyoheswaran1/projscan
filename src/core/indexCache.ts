@@ -122,11 +122,7 @@ export async function saveCachedGraph(rootPath: string, graph: CodeGraph): Promi
   };
 
   try {
-    await fs.writeFile(
-      path.join(dir, CACHE_FILE),
-      JSON.stringify(payload),
-      'utf-8',
-    );
+    await fs.writeFile(path.join(dir, CACHE_FILE), JSON.stringify(payload), 'utf-8');
     // Ensure users don't accidentally commit the cache.
     const gitignorePath = path.join(dir, '.gitignore');
     await fs.writeFile(gitignorePath, '*\n', 'utf-8');

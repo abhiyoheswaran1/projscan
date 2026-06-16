@@ -74,7 +74,9 @@ test('lists projscan_start as an MCP tool', () => {
   expect(tool).toBeDefined();
   expect(tool?.inputSchema.properties).toEqual(
     expect.objectContaining({
-      mode: expect.objectContaining({ enum: expect.arrayContaining(['before_edit', 'bug_hunt', 'release']) }),
+      mode: expect.objectContaining({
+        enum: expect.arrayContaining(['before_edit', 'bug_hunt', 'release']),
+      }),
       intent: expect.objectContaining({ type: 'string' }),
       mission_dir: expect.objectContaining({ type: 'string' }),
       include_handoff: expect.objectContaining({ type: 'boolean' }),
@@ -87,12 +89,15 @@ test('projscan_start returns first-run guidance and next actions', async () => {
   const handler = getToolHandler('projscan_start');
   expect(handler).toBeDefined();
 
-  const result = (await handler?.({
-    mode: 'release',
-    max_tasks: 2,
-    include_handoff: true,
-    intent: 'prepare this branch for release',
-  }, tmp)) as {
+  const result = (await handler?.(
+    {
+      mode: 'release',
+      max_tasks: 2,
+      include_handoff: true,
+      intent: 'prepare this branch for release',
+    },
+    tmp,
+  )) as {
     start: {
       schemaVersion: number;
       mode: string;
@@ -104,7 +109,13 @@ test('projscan_start returns first-run guidance and next actions', async () => {
         primaryAction: { command?: string; tool?: string; args?: Record<string, unknown> };
         actionPlan: Array<{ command?: string; tool?: string; args?: Record<string, unknown> }>;
         readyActions: Array<{ command?: string; tool?: string; args?: Record<string, unknown> }>;
-        routedIntent?: { tool: string; cli: string; confidence: string; matchedKeywords: string[]; score: number };
+        routedIntent?: {
+          tool: string;
+          cli: string;
+          confidence: string;
+          matchedKeywords: string[];
+          score: number;
+        };
         successCriteria: string[];
         proofCommands: string[];
       };
@@ -118,7 +129,9 @@ test('projscan_start returns first-run guidance and next actions', async () => {
   expect(result.start.mode).toBe('release');
   expect(result.start.modeSource).toBe('explicit');
   expect(result.start.recommendedWorkflow.id).toBe('release_approval');
-  expect(result.start.recommendedWorkflow.commands).toContain('projscan release-train --format json');
+  expect(result.start.recommendedWorkflow.commands).toContain(
+    'projscan release-train --format json',
+  );
   expect(result.start.missionControl.intent).toBe('prepare this branch for release');
   expect(result.start.missionControl.routedIntent?.tool).toBe('projscan_release_train');
   expect(result.start.missionControl.routedIntent).toEqual(
@@ -128,9 +141,13 @@ test('projscan_start returns first-run guidance and next actions', async () => {
       score: 2,
     }),
   );
-  expect(result.start.missionControl.primaryAction.command).toBe('projscan release-train --format json');
+  expect(result.start.missionControl.primaryAction.command).toBe(
+    'projscan release-train --format json',
+  );
   expect(result.start.missionControl.primaryAction.args).toEqual({});
-  expect(result.start.missionControl.actionPlan[0]?.command).toBe('projscan release-train --format json');
+  expect(result.start.missionControl.actionPlan[0]?.command).toBe(
+    'projscan release-train --format json',
+  );
   expect(result.start.missionControl.actionPlan[0]?.args).toEqual({});
   expect(result.start.missionControl.readyActions[0]).toEqual(
     expect.objectContaining({
@@ -139,8 +156,12 @@ test('projscan_start returns first-run guidance and next actions', async () => {
       args: {},
     }),
   );
-  expect(result.start.missionControl.successCriteria).toContain('Release train readiness has no blockers before packaging or publishing continues.');
-  expect(result.start.missionControl.proofCommands).toContain('projscan preflight --mode before_merge --format json');
+  expect(result.start.missionControl.successCriteria).toContain(
+    'Release train readiness has no blockers before packaging or publishing continues.',
+  );
+  expect(result.start.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_merge --format json',
+  );
   expect(result.start.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
   expect(result.start.nextActions.length).toBeGreaterThan(0);
   expect(result.start.handoff?.next.length).toBeGreaterThan(0);
@@ -150,9 +171,12 @@ test('projscan_start infers mode from safety-gate intent when no mode is supplie
   const handler = getToolHandler('projscan_start');
   expect(handler).toBeDefined();
 
-  const result = (await handler?.({
-    intent: 'is it safe to commit this change',
-  }, tmp)) as {
+  const result = (await handler?.(
+    {
+      intent: 'is it safe to commit this change',
+    },
+    tmp,
+  )) as {
     start: {
       mode: string;
       modeSource: string;
@@ -177,22 +201,34 @@ test('projscan_start infers mode from safety-gate intent when no mode is supplie
       args: { mode: 'before_commit' },
     }),
   );
-  expect(result.start.missionControl.proofCommands).not.toContain('projscan preflight --mode before_edit --format json');
-  expect(result.start.missionControl.successCriteria).toContain('projscan preflight --mode before_commit returns proceed or only documented manual-review items.');
+  expect(result.start.missionControl.proofCommands).not.toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
+  expect(result.start.missionControl.successCriteria).toContain(
+    'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
+  );
 });
 
 test('projscan_start returns MCP-callable args for fuzzy impact intents', async () => {
   const handler = getToolHandler('projscan_start');
   expect(handler).toBeDefined();
 
-  const result = (await handler?.({
-    intent: 'what breaks if I rename the auth token loader',
-  }, tmp)) as {
+  const result = (await handler?.(
+    {
+      intent: 'what breaks if I rename the auth token loader',
+    },
+    tmp,
+  )) as {
     start: {
       missionControl: {
         successCriteria: string[];
         proofSummary: string;
-        unresolvedInputs: Array<{ name: string; placeholder: string; sourceAction: string; instruction: string }>;
+        unresolvedInputs: Array<{
+          name: string;
+          placeholder: string;
+          sourceAction: string;
+          instruction: string;
+        }>;
         actionPlan: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
         readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
         resume: {
@@ -435,7 +471,11 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
           readyActions: Array<{ tool?: string; args?: Record<string, unknown>; command?: string }>;
           needsInput: Array<{ name: string; placeholder: string }>;
           doneWhen: string[];
-          readyProof: { summary: string; commands: string[]; toolCalls?: TestResumeProofToolCall[] };
+          readyProof: {
+            summary: string;
+            commands: string[];
+            toolCalls?: TestResumeProofToolCall[];
+          };
         };
       };
     };
@@ -479,8 +519,12 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       sourceAction: 'Find exact target for impact analysis',
     }),
   ]);
-  expect(result.start.missionControl.proofSummary).toBe('Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
-  expect(result.start.missionControl.successCriteria).toContain('An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.start.missionControl.proofSummary).toBe(
+    'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
+  expect(result.start.missionControl.successCriteria).toContain(
+    'An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(result.start.missionControl.handoff.nextAction).toEqual(
     expect.objectContaining({
       tool: 'projscan_search',
@@ -498,7 +542,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
         args: { query: 'auth token loader' },
       },
       instruction: 'Run projscan search "auth token loader" --format json.',
-      prompt: 'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+      prompt:
+        'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
     }),
   );
   expect(result.start.missionControl.resume.unlocks).toEqual([
@@ -507,7 +552,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       phaseId: 'resolve_inputs',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
       id: 'input-2',
@@ -522,7 +568,8 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       inputId: 'input-1',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
       followUpIds: ['follow-up-1'],
     },
     {
@@ -592,10 +639,13 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       id: 'resume-criterion-1',
       kind: 'confirm_done',
       stepId: 'criterion-1',
-      label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
+      label:
+        'An exact symbol or file path is selected from search results before impact analysis continues.',
     }),
   );
-  expect(result.start.missionControl.proofCommands[0]).toBe('projscan search "auth token loader" --format json');
+  expect(result.start.missionControl.proofCommands[0]).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(result.start.missionControl.resume.remainingProofCommands).toEqual([
     'projscan preflight --mode before_edit --format json',
     'projscan understand --view verify --format json',
@@ -621,7 +671,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       args: {},
     },
   ]);
-  expect(result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
+  expect(
+    result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool),
+  ).not.toContain('projscan_search');
   expect(result.start.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -644,37 +696,78 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       dependsOn: ['ready-1', 'input-2'],
     }),
   ]);
-  expect(result.start.missionControl.handoffPrompt).toContain(result.start.missionControl.resume.prompt);
-  expect(result.start.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
-  expect(result.start.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.start.missionControl.handoffPrompt).toContain(
+    result.start.missionControl.resume.prompt,
+  );
+  expect(result.start.missionControl.handoffPrompt).toContain(
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
+  expect(result.start.missionControl.handoffPrompt).toContain(
+    'Done when: An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(result.start.missionControl.handoffPrompt).toContain(
     'Review gate: Stop after the current Mission Control checklist and proof are complete.',
   );
   expect(result.start.missionControl.handoffPrompt).toContain(
     'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
   );
-  const handoffReadyProof = result.start.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
+  const handoffReadyProof =
+    result.start.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
   expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
   expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');
   expect(result.start.missionControl.handoffPrompt).not.toContain('Next:');
-  expect(result.start.missionControl.handoff.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
+  expect(result.start.missionControl.handoff.currentStep).toEqual(
+    result.start.missionControl.executionPlan.cursor,
+  );
   expect(result.start.missionControl.handoff.resume).toEqual(result.start.missionControl.resume);
-  expect(result.start.missionControl.runbook.resume.toolCall).toEqual(result.start.missionControl.resume.toolCall);
-  expect(result.start.missionControl.runbook.resume.followUps).toEqual(result.start.missionControl.resume.followUps);
-  expect(result.start.missionControl.runbook.resume.inputBindings).toEqual(result.start.missionControl.resume.inputBindings);
-  expect(result.start.missionControl.runbook.resume.checklist).toEqual(result.start.missionControl.resume.checklist);
-  expect(result.start.missionControl.runbook.resume.remainingProofCommands).toEqual(result.start.missionControl.resume.remainingProofCommands);
-  expect(result.start.missionControl.runbook.resume.remainingProofToolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
-  expect(result.start.missionControl.handoff.readyActions).toEqual(result.start.missionControl.readyActions);
-  expect(result.start.missionControl.handoff.needsInput).toEqual(result.start.missionControl.unresolvedInputs);
-  expect(result.start.missionControl.handoff.readyProof.commands.some((command) => command.includes('<'))).toBe(false);
-  expect(result.start.missionControl.handoff.readyProof.commands).toEqual(result.start.missionControl.resume.remainingProofCommands);
-  expect(result.start.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
-  expect(result.start.missionControl.handoff.readyProof.toolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
-  expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
+  expect(result.start.missionControl.runbook.resume.toolCall).toEqual(
+    result.start.missionControl.resume.toolCall,
+  );
+  expect(result.start.missionControl.runbook.resume.followUps).toEqual(
+    result.start.missionControl.resume.followUps,
+  );
+  expect(result.start.missionControl.runbook.resume.inputBindings).toEqual(
+    result.start.missionControl.resume.inputBindings,
+  );
+  expect(result.start.missionControl.runbook.resume.checklist).toEqual(
+    result.start.missionControl.resume.checklist,
+  );
+  expect(result.start.missionControl.runbook.resume.remainingProofCommands).toEqual(
+    result.start.missionControl.resume.remainingProofCommands,
+  );
+  expect(result.start.missionControl.runbook.resume.remainingProofToolCalls).toEqual(
+    result.start.missionControl.resume.remainingProofToolCalls,
+  );
+  expect(result.start.missionControl.handoff.readyActions).toEqual(
+    result.start.missionControl.readyActions,
+  );
+  expect(result.start.missionControl.handoff.needsInput).toEqual(
+    result.start.missionControl.unresolvedInputs,
+  );
+  expect(
+    result.start.missionControl.handoff.readyProof.commands.some((command) =>
+      command.includes('<'),
+    ),
+  ).toBe(false);
+  expect(result.start.missionControl.handoff.readyProof.commands).toEqual(
+    result.start.missionControl.resume.remainingProofCommands,
+  );
+  expect(result.start.missionControl.handoff.readyProof.commands).not.toContain(
+    'projscan search "auth token loader" --format json',
+  );
+  expect(result.start.missionControl.handoff.readyProof.toolCalls).toEqual(
+    result.start.missionControl.resume.remainingProofToolCalls,
+  );
+  expect(
+    result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool),
+  ).not.toContain('projscan_search');
   expect(result.start.missionControl.taskCard.markdown).toContain('# Mission Task Card');
-  expect(result.start.missionControl.taskCard.markdown).toContain('After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
-  expect(result.start.missionControl.taskCard.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
+  expect(result.start.missionControl.taskCard.markdown).toContain(
+    'After inputs, run `projscan impact --symbol <symbol-from-search> --format json`',
+  );
+  expect(result.start.missionControl.taskCard.currentStep).toEqual(
+    result.start.missionControl.executionPlan.cursor,
+  );
   expect(result.start.missionControl.reviewGate).toEqual(
     expect.objectContaining({
       title: 'Mission Review Gate',
@@ -685,34 +778,55 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.reviewGate.policy).toEqual({
     approvalRequired: true,
     blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
+    summary:
+      'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
   });
   expect(result.start.missionControl.reviewGate.markdown).toContain('# Mission Review Gate');
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Review Policy');
-  expect(result.start.missionControl.reviewGate.markdown).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
-  expect(result.start.missionControl.reviewGate.worktree.summary).toContain('Current worktree evidence');
-  expect(result.start.missionControl.reviewGate.proof.commands).toEqual(result.start.missionControl.resume.remainingProofCommands);
-  expect(result.start.missionControl.reviewGate.proof.toolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
-  expect(result.start.missionControl.reviewGate.proof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
+  expect(result.start.missionControl.reviewGate.markdown).toContain(
+    'Stop and ask for approval before starting another slice, release, publish, or deploy.',
+  );
+  expect(result.start.missionControl.reviewGate.worktree.summary).toContain(
+    'Current worktree evidence',
+  );
+  expect(result.start.missionControl.reviewGate.proof.commands).toEqual(
+    result.start.missionControl.resume.remainingProofCommands,
+  );
+  expect(result.start.missionControl.reviewGate.proof.toolCalls).toEqual(
+    result.start.missionControl.resume.remainingProofToolCalls,
+  );
+  expect(result.start.missionControl.reviewGate.proof.items).toEqual(
+    result.start.missionControl.resume.remainingProofItems,
+  );
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Proof Queue');
-  expect(result.start.missionControl.reviewGate.doneWhen).toEqual(result.start.missionControl.successCriteria);
+  expect(result.start.missionControl.reviewGate.doneWhen).toEqual(
+    result.start.missionControl.successCriteria,
+  );
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Done When');
   expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.id)).toEqual([
     'approve_next_slice',
     'request_changes',
     'review_version_candidate',
   ]);
-  expect(result.start.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
-    expectedReviewDecisionReplies,
-  );
+  expect(
+    result.start.missionControl.reviewGate.decisions.map((decision) => decision.reply),
+  ).toEqual(expectedReviewDecisionReplies);
   expect(result.start.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
   expect(result.start.missionControl.reviewGate.markdown).toContain(
     'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
   );
-  expect(result.start.missionControl.handoff.reviewGate).toEqual(result.start.missionControl.reviewGate);
-  expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(result.start.missionControl.reviewGate.worktree);
-  expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(result.start.missionControl.reviewGate.proof);
-  expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(result.start.missionControl.reviewGate.doneWhen);
+  expect(result.start.missionControl.handoff.reviewGate).toEqual(
+    result.start.missionControl.reviewGate,
+  );
+  expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(
+    result.start.missionControl.reviewGate.worktree,
+  );
+  expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(
+    result.start.missionControl.reviewGate.proof,
+  );
+  expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(
+    result.start.missionControl.reviewGate.doneWhen,
+  );
   expect(result.start.missionControl.handoff.reviewGate.decisions).toEqual(
     result.start.missionControl.reviewGate.decisions,
   );
@@ -736,7 +850,9 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
     }),
   );
-  expect(result.start.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
+  expect(
+    result.start.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`),
+  ).toEqual([
     'next_action:ready',
     'ready_now:ready',
     'resolve_inputs:blocked',
@@ -753,22 +869,32 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       command: 'projscan search "auth token loader" --format json',
     }),
   );
-  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')?.steps[0]).toEqual(
+  expect(
+    result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')
+      ?.steps[0],
+  ).toEqual(
     expect.objectContaining({
       kind: 'input',
       status: 'blocked',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
   );
-  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')?.steps[0]).toEqual(
+  expect(
+    result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')
+      ?.steps[0],
+  ).toEqual(
     expect.objectContaining({
       id: 'ready-1',
       unlocks: ['input-1', 'input-2'],
     }),
   );
-  expect(result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')?.steps[0]).toEqual(
+  expect(
+    result.start.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')
+      ?.steps[0],
+  ).toEqual(
     expect.objectContaining({
       id: 'follow-up-1',
       dependsOn: ['ready-1', 'input-1'],
@@ -785,34 +911,72 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
       blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
     }),
   );
-  expect(result.start.missionControl.runbook.currentPhase).toBe(result.start.missionControl.executionPlan.cursor.phaseId);
+  expect(result.start.missionControl.runbook.currentPhase).toBe(
+    result.start.missionControl.executionPlan.cursor.phaseId,
+  );
   expect(result.start.missionControl.runbook.readyCommandBlock).not.toContain('<');
   expect(result.start.missionControl.runbook.markdown).toContain('## Current Cursor');
   expect(result.start.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');
-  expect(result.start.missionControl.runbook.markdown).toContain('- MCP call: projscan_search {"query":"auth token loader"}');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- MCP call: projscan_search {"query":"auth token loader"}',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('- Unlocks: input-1, input-2');
   expect(result.start.missionControl.runbook.markdown).toContain('## Resume');
-  expect(result.start.missionControl.runbook.markdown).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
-  expect(result.start.missionControl.runbook.markdown).toContain('MCP call: projscan_search {"query":"auth token loader"}');
-  expect(result.start.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.start.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '```sh\nprojscan search "auth token loader" --format json\n```',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    'MCP call: projscan_search {"query":"auth token loader"}',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('Template inputs:');
-  expect(result.start.missionControl.runbook.markdown).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.start.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('Resume checklist:');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('Remaining proof:');
-  expect(result.start.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(result.start.missionControl.runbook.markdown).not.toContain(
+    'Remaining proof:\n- `projscan search "auth token loader" --format json`',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('MCP proof calls:');
-  expect(result.start.missionControl.runbook.markdown).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
-  expect(result.start.missionControl.runbook.markdown).toContain('- proof-3: projscan_understand {"view":"verify"}');
-  expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
-  expect(result.start.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- proof-2: projscan_preflight {"mode":"before_edit"}',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- proof-3: projscan_understand {"view":"verify"}',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('## Handoff Prompt');
   expect(result.start.missionControl.runbook.markdown).toContain('## Reviewer Decision');
   expect(result.start.missionControl.runbook.markdown).toContain(
@@ -821,9 +985,13 @@ test('projscan_start returns MCP-callable args for fuzzy impact intents', async 
   expect(result.start.missionControl.runbook.markdown).toContain(
     'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
   );
-  expect(result.start.missionControl.runbook.markdown).toContain(result.start.missionControl.handoffPrompt);
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    result.start.missionControl.handoffPrompt,
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('## Ready Commands');
-  expect(result.start.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- `projscan search "auth token loader" --format json`',
+  );
   expect(result.start.missionControl.runbook.markdown).toContain('## Blocked Inputs');
 });
 
@@ -833,9 +1001,12 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
   recordTouch(session, 'src/index.ts', 'explicit');
   await saveSession(tmp, session);
 
-  const result = (await handler?.({
-    intent: 'give the next agent a handoff',
-  }, tmp)) as {
+  const result = (await handler?.(
+    {
+      intent: 'give the next agent a handoff',
+    },
+    tmp,
+  )) as {
     start: {
       missionControl: {
         resume: {
@@ -859,10 +1030,12 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
   };
 
   expect(result.start.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
-  expect(result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
-  expect(result.start.missionControl.resume.remainingProofItems?.map((item) => item.command)).toEqual(
-    result.start.missionControl.resume.remainingProofCommands,
-  );
+  expect(
+    result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.command),
+  ).not.toContain('projscan handoff');
+  expect(
+    result.start.missionControl.resume.remainingProofItems?.map((item) => item.command),
+  ).toEqual(result.start.missionControl.resume.remainingProofCommands);
   expect(result.start.missionControl.resume.remainingProofItems).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -879,7 +1052,11 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
       }),
     ]),
   );
-  expect(result.start.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(
+    result.start.missionControl.resume.remainingProofItems?.find(
+      (item) => item.command === 'projscan handoff',
+    )?.toolCall,
+  ).toBeUndefined();
   expect(result.start.missionControl.resume.checklist).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -896,24 +1073,39 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
       }),
     ]),
   );
-  const handoffChecklistProof = result.start.missionControl.resume.checklist?.find((item) => item.id === 'resume-proof-6');
+  const handoffChecklistProof = result.start.missionControl.resume.checklist?.find(
+    (item) => item.id === 'resume-proof-6',
+  );
   expect(handoffChecklistProof).not.toHaveProperty('tool');
   expect(handoffChecklistProof).not.toHaveProperty('args');
-  expect(result.start.missionControl.handoff.readyProof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
-  expect(result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
+  expect(result.start.missionControl.handoff.readyProof.items).toEqual(
+    result.start.missionControl.resume.remainingProofItems,
+  );
+  expect(
+    result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command),
+  ).not.toContain('projscan handoff');
   expect(result.start.missionControl.runbook.markdown).toContain('Proof queue:');
-  expect(result.start.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
-  expect(result.start.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(result.start.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-6: projscan handoff (CLI only)',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(result.start.missionControl.runbook.markdown).toContain(
+    '- proof-6: `projscan handoff` (CLI only)',
+  );
 });
 
 test('projscan_start returns alternative routes for mixed intents', async () => {
   const handler = getToolHandler('projscan_start');
   expect(handler).toBeDefined();
 
-  const result = (await handler?.({
-    intent: 'is it safe to commit and what breaks if I rename the auth token loader',
-  }, tmp)) as {
+  const result = (await handler?.(
+    {
+      intent: 'is it safe to commit and what breaks if I rename the auth token loader',
+    },
+    tmp,
+  )) as {
     start: {
       mode: string;
       modeSource: string;
@@ -927,7 +1119,9 @@ test('projscan_start returns alternative routes for mixed intents', async () => 
   expect(result.start.missionControl.routedIntent?.tool).toBe('projscan_impact');
   expect(result.start.mode).toBe('before_commit');
   expect(result.start.modeSource).toBe('intent');
-  expect(result.start.missionControl.alternatives?.map((route) => route.tool)).toContain('projscan_preflight');
+  expect(result.start.missionControl.alternatives?.map((route) => route.tool)).toContain(
+    'projscan_preflight',
+  );
   expect(result.start.missionControl.alternatives?.[0]).toEqual(
     expect.objectContaining({
       tool: 'projscan_preflight',

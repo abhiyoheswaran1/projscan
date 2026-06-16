@@ -54,7 +54,7 @@ export const applyFixTool: McpTool = {
       const rollbackId = typeof args.rollback_id === 'string' ? args.rollback_id : '';
       if (!rollbackId) {
         throw new Error(
-          'rollback action requires `rollback_id` (from a previous apply\'s ApplyResult).',
+          "rollback action requires `rollback_id` (from a previous apply's ApplyResult).",
         );
       }
       return await rollback(rootPath, rollbackId);

@@ -1,7 +1,20 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
-import { addClaim, listClaims, releaseClaim, pruneClaims, isClaimActive, findContendedClaims } from '../../core/claims.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
+import {
+  addClaim,
+  listClaims,
+  releaseClaim,
+  pruneClaims,
+  isClaimActive,
+  findContendedClaims,
+} from '../../core/claims.js';
 
 /**
  * `projscan claim` (4.x) — advisory claims/leases so parallel agents see who
@@ -50,10 +63,14 @@ export function registerClaim(): void {
         console.log(JSON.stringify(result, null, 2));
         return;
       }
-      console.log(`${chalk.green('✓')} claimed ${chalk.bold(result.claim.target)} for ${chalk.bold(result.claim.agent)}`);
+      console.log(
+        `${chalk.green('✓')} claimed ${chalk.bold(result.claim.target)} for ${chalk.bold(result.claim.agent)}`,
+      );
       if (result.contention.length > 0) {
         console.log(
-          chalk.yellow(`  ⚠ contention: also held by ${result.contention.map((c) => `${c.agent} (${c.target})`).join(', ')}`),
+          chalk.yellow(
+            `  ⚠ contention: also held by ${result.contention.map((c) => `${c.agent} (${c.target})`).join(', ')}`,
+          ),
         );
       }
     });
@@ -62,7 +79,7 @@ export function registerClaim(): void {
     .command('release [id]')
     .description('Release a claim by id, or by --target / --agent')
     .option('--target <target>', 'release claims on this target')
-    .option('--agent <name>', 'release this agent\'s claims (or scope --target to it)')
+    .option('--agent <name>', "release this agent's claims (or scope --target to it)")
     .action(async (id: string | undefined, cmdOpts: { target?: string; agent?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -135,13 +152,17 @@ async function runList(): Promise<void> {
         ? chalk.dim(`  ⏱ expires ${c.expiresAt}`)
         : chalk.red('  ⏱ expired')
       : '';
-    console.log(`  ${chalk.bold(c.target)} ${chalk.dim(`— ${c.agent}`)}${c.note ? chalk.dim(`  (${c.note})`) : ''}${lease}`);
+    console.log(
+      `  ${chalk.bold(c.target)} ${chalk.dim(`— ${c.agent}`)}${c.note ? chalk.dim(`  (${c.note})`) : ''}${lease}`,
+    );
     console.log(chalk.dim(`      ${c.id}`));
   }
   // Surface any overlapping holders so contention is visible at a glance.
   const contendedTargets = new Set(findContendedClaims(claims).map((c) => c.target));
   if (contendedTargets.size > 0) {
     console.log('');
-    console.log(chalk.yellow(`  ⚠ ${contendedTargets.size} target(s) claimed by more than one agent`));
+    console.log(
+      chalk.yellow(`  ⚠ ${contendedTargets.size} target(s) claimed by more than one agent`),
+    );
   }
 }

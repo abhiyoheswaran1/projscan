@@ -16,14 +16,16 @@ import type {
   UnderstandRisk,
   UnderstandUnknown,
   UnderstandView,
-} from '../../types.js';
+} from '../../types/understand.js';
 
 const VIEWS: readonly UnderstandView[] = ['map', 'flow', 'contracts', 'change', 'verify'];
 
 export function registerUnderstand(): void {
   program
     .command('understand')
-    .description('Explain the repo map, runtime flows, contracts, change readiness, and verification proof with cited evidence')
+    .description(
+      'Explain the repo map, runtime flows, contracts, change readiness, and verification proof with cited evidence',
+    )
     .option('--view <view>', 'map, flow, contracts, change, or verify', 'map')
     .option('--intent <text>', 'planned change or question to orient change-readiness output')
     .option('--max-items <count>', 'maximum items per section', parsePositiveInt)
@@ -70,7 +72,9 @@ function printUnderstand(report: UnderstandReport): void {
 function printClaims(claims: UnderstandClaim[]): void {
   console.log(chalk.bold('Claims'));
   for (const claim of claims.slice(0, 8)) {
-    const citations = claim.citations.map((cite) => cite.symbol ? `${cite.file}#${cite.symbol}` : cite.file).join(', ');
+    const citations = claim.citations
+      .map((cite) => (cite.symbol ? `${cite.file}#${cite.symbol}` : cite.file))
+      .join(', ');
     console.log(`- ${claim.title} (${claim.confidence})`);
     console.log(`  ${claim.detail}`);
     console.log(`  evidence: ${citations}`);
@@ -120,7 +124,8 @@ function printUnknowns(unknowns: UnderstandUnknown[]): void {
 }
 
 function parseView(value: unknown): UnderstandView {
-  if (typeof value === 'string' && (VIEWS as readonly string[]).includes(value)) return value as UnderstandView;
+  if (typeof value === 'string' && (VIEWS as readonly string[]).includes(value))
+    return value as UnderstandView;
   console.error(chalk.red(`Unsupported --view ${String(value)}.`));
   console.error(chalk.dim('Supported views: map, flow, contracts, change, verify'));
   process.exit(1);

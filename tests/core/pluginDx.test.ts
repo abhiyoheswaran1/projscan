@@ -143,7 +143,9 @@ test('plugin test reports graph context capability requests without execution', 
   expect(result.ok).toBe(true);
   expect(result.execution.executed).toBe(false);
   expect(result.context.requested).toBe(true);
-  expect(result.context.capabilities).toEqual(expect.arrayContaining(['semanticGraph', 'dataflow']));
+  expect(result.context.capabilities).toEqual(
+    expect.arrayContaining(['semanticGraph', 'dataflow']),
+  );
 });
 
 test('plugin test reports missing analyzer exports with structured diagnostics', async () => {

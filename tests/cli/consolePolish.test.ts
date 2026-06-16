@@ -42,6 +42,8 @@ test('preflight console output explains required checks and next command surface
   expect(result.stdout).toContain('For agent workflows');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

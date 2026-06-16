@@ -30,7 +30,15 @@ afterEach(async () => {
 });
 
 test('plugin init and plugin test validate statically through the CLI by default', async () => {
-  const init = await runCli(['plugin', 'init', '--kind', 'analyzer', '--name', 'policy', '--quiet']);
+  const init = await runCli([
+    'plugin',
+    'init',
+    '--kind',
+    'analyzer',
+    '--name',
+    'policy',
+    '--quiet',
+  ]);
 
   expect(init.exitCode).toBe(0);
   expect(init.stdout).toContain('policy.projscan-plugin.json');

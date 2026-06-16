@@ -6,8 +6,12 @@ import fs from 'node:fs/promises';
 vi.mock('node:fs/promises');
 
 function makeFile(relativePath: string): FileEntry {
-  const ext = relativePath.includes('.') ? relativePath.substring(relativePath.lastIndexOf('.')) : '';
-  const dir = relativePath.includes('/') ? relativePath.substring(0, relativePath.lastIndexOf('/')) : '.';
+  const ext = relativePath.includes('.')
+    ? relativePath.substring(relativePath.lastIndexOf('.'))
+    : '';
+  const dir = relativePath.includes('/')
+    ? relativePath.substring(0, relativePath.lastIndexOf('/'))
+    : '.';
   return {
     relativePath,
     absolutePath: `/root/project/${relativePath}`,
@@ -86,11 +90,7 @@ describe('detectFrameworks', () => {
   it('should detect build tools from config files', async () => {
     vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({}));
 
-    const files = [
-      makeFile('package.json'),
-      makeFile('tsconfig.json'),
-      makeFile('Dockerfile'),
-    ];
+    const files = [makeFile('package.json'), makeFile('tsconfig.json'), makeFile('Dockerfile')];
     const result = await detectFrameworks('/root/project', files);
 
     expect(result.buildTools).toContain('TypeScript');

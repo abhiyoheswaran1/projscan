@@ -1,0 +1,667 @@
+# Decisions
+
+This log records reviewer-visible architecture, workflow, and public behavior decisions.
+
+## 2026-06-16: Prepare 4.4.0 release candidate and clear npm audit gate
+
+- Status: accepted
+- Context: Release prep found that `projscan@4.3.1` was already published/tagged and `npm run security:release-gate` failed on npm audit advisories in the dev test chain (`vite`/`esbuild`) and the optional semantic-search test dependency chain (`protobufjs` through `@xenova/transformers`).
+- Decision: Prepare the next candidate as `4.4.0`, refresh release metadata, keep AgentLoopKit and AgentFlight as local dev harness dependencies, update transitive protobuf packages through the lockfile, and upgrade the direct dev dependency `vite` to `^8.0.16`, which is within the existing `vitest@4.1.8` supported peer range.
+- Consequences: The release security gate no longer carries npm audit vulnerabilities, the dev install graph no longer pulls the vulnerable esbuild chain through Vite, and the version candidate cannot be published until the owner approves tag/publish actions.
+- Verification: `npm run security:release-gate`, `npm ls vite esbuild rolldown protobufjs @xenova/transformers onnxruntime-web onnx-proto`, and the full release verification matrix before approval.
+
+## 2026-06-16: Extract dogfood and trial public type modules
+
+- Status: accepted
+- Context: `src/types.ts` still carried the dogfood, feedback, and trial public contracts inline, keeping a high-churn compatibility barrel large after earlier focused type-module extractions.
+- Decision: Move those contracts into `src/types/dogfood.ts` and `src/types/trial.ts`, keep `src/types.ts` as the legacy re-export surface, and keep the package entrypoint covered through its type-only star re-export.
+- Consequences: Core and CLI dogfood/feedback/trial code can import focused public contracts directly, while existing TypeScript users can continue importing the same names from `src/types.js` or the package entrypoint.
+- Verification: `npm run test -- tests/types/public-dogfood-trial-types.test.ts`, `npm run typecheck:public-types`, focused dogfood/feedback/trial core and CLI tests, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, and focused `projscan file` scans.
+
+## 2026-06-16: Extract understand public type module
+
+- Status: accepted
+- Context: `src/types.ts` still carried the `Understand*` public report contracts inline, mixing repo-understanding API shapes into the remaining compatibility barrel.
+- Decision: Move those contracts into `src/types/understand.ts`, keep `src/types.ts` as the legacy re-export surface, and keep package entrypoint compatibility through the type-only star re-export.
+- Consequences: Understand core, CLI, MCP, and start-route code can import focused report contracts directly, while existing TypeScript users can continue importing the same names from `src/types.js` or the package entrypoint.
+- Verification: `npm run test -- tests/types/public-understand-types.test.ts`, `npm run typecheck:public-types`, focused understand core/CLI/MCP tests, start-route tests, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, and focused `projscan file` scans.
+
+## 2026-06-16: Extract review public type module
+
+- Status: accepted
+- Context: `src/types.ts` still carried the `Review*` public report contracts inline after the previous focused type-module extractions.
+- Decision: Move those contracts into `src/types/review.ts`, keep `src/types.ts` as the legacy re-export surface, and keep package entrypoint compatibility through the type-only star re-export.
+- Consequences: Review core logic, intent/preflight helpers, MCP review-watch, and reporters can import focused review contracts directly, while existing TypeScript users can continue importing the same names from `src/types.js` or the package entrypoint.
+- Verification: `npm run test -- tests/types/public-review-types.test.ts`, `npm run typecheck:public-types`, focused review/intent/MCP/reporter tests, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, and focused `projscan file` scans.
+
+## 2026-06-15: Use local AgentLoopKit and AgentFlight for agent work
+
+- Status: accepted
+- Context: Agent work in this repo needs repeatable task contracts, verification evidence, and local handoff artifacts without requiring global npm installs.
+- Decision: Keep AgentLoopKit and AgentFlight as local development dependencies and invoke them through `npm exec agentloop -- ...` and `npm exec agentflight -- ...`.
+- Consequences: AgentLoop task contracts, reports, handoffs, and AgentFlight verification evidence become the normal review trail for agent-authored changes. Runtime evidence stays local unless a reviewer or CI explicitly attaches it.
+- Verification: `npm exec agentloop -- status`, `npm exec agentloop -- check-gates`, and `npm exec agentflight -- verify`.
+
+## 2026-06-15: Keep persona and research guidance in docs
+
+- Status: accepted
+- Context: Agent decisions need explicit team and user personas so prioritization does not rely on hidden assumptions.
+- Decision: Keep team/user personas and current research notes in `docs/PERSONAS.md`.
+- Consequences: Future agent tasks should reference the documented personas when choosing between speed, reviewability, safety, and adoption tradeoffs.
+- Verification: Documentation review plus the task handoff for any persona-driven behavior change.
+
+## 2026-06-15: Treat same-SHA dirty worktrees as reviewable
+
+- Status: accepted
+- Context: `projscan review` could return an empty same-SHA review even when the worktree contained unstaged, staged, or untracked changes.
+- Decision: Only use the same-SHA fast empty review path when the worktree is clean.
+- Consequences: Dirty local work now appears in review and preflight evidence instead of being hidden by matching base/head refs.
+- Verification: `npm run test -- tests/core/review.test.ts -t "reviews dirty worktree changes when base and head resolve to the same commit"` and `npm exec projscan -- preflight --mode before_commit --format json`.
+
+## 2026-06-15: Avoid false direct-test confidence for directory-only changed paths
+
+- Status: accepted
+- Context: `projscan understand --view verify` could treat directory-like changed paths as having direct tests because an empty basename token matched test files.
+- Decision: Direct-test matching now requires a meaningful file token; directory-only paths fall back to a verification gap.
+- Consequences: Agent runtime directories and other non-file paths no longer create false test confidence.
+- Verification: `npm run test -- tests/core/understand.test.ts -t "does not treat directory-only changed paths as directly tested"`.
+
+## 2026-06-15: Add actionable file context to preflight-derived bug-hunt findings
+
+- Status: accepted
+- Context: `projscan bug-hunt --format json` could rank a preflight release signal first while returning `files: []`, even though preflight already carried bounded changed-file evidence.
+- Decision: Preflight-derived bug-hunt findings use bounded preflight changed files when the reason itself has no file. Reason-level `file` attribution remains the highest-confidence source.
+- Consequences: `fixQueue`, `topSuspects`, and `fixFirst` can route preflight findings to changed files without changing the JSON schema.
+- Verification: `npm run test -- tests/core/bugHunt.test.ts` and `npm exec projscan -- bug-hunt --format json`.
+
+## 2026-06-15: Order preflight fallback files for reviewer usefulness
+
+- Status: accepted
+- Context: Fallback changed-file evidence can include local runtime directories before source, tests, package, docs, or config files because git status output is sorted.
+- Decision: Bug-hunt preflight fallback files move local agent runtime directories after reviewable project files and omit projscan self-generated runtime paths when better context exists.
+- Consequences: `fixFirst.files` remains bounded and schema-compatible, but reviewers see project files before local agent runtime directories.
+- Verification: `npm run test -- tests/core/bugHunt.test.ts` and `npm exec projscan -- bug-hunt --format json`.
+
+## 2026-06-15: Label release-scale bug-hunt signals as sign-off actions
+
+- Status: accepted
+- Context: Release-scale preflight findings are actionable review gates, but they are not always concrete code defects. Calling them generic fix targets can mislead reviewers when preflight already says manual sign-off is the expected resolution.
+- Decision: Keep release-scale preflight findings in the bug-hunt action queue, but title them as release sign-off review and summarize release-only queues as manual sign-off actions.
+- Consequences: Existing JSON fields and ordering remain compatible while the wording better matches the underlying release gate.
+- Verification: `npm run test -- tests/core/bugHunt.test.ts -t "bug hunt orders preflight fallback files by review usefulness"`.
+
+## 2026-06-15: Align release evidence with bug-hunt sign-off wording
+
+- Status: accepted
+- Context: Evidence packs reuse bug-hunt output for release approval, but the bug-hunt artifact still described release-scale sign-off entries as generic fix targets.
+- Decision: Derive the bug-hunt artifact queue label from the bug-hunt summary so release-only queues appear as manual sign-off actions.
+- Consequences: Evidence-pack schema, verdicts, and ordering stay unchanged while reviewer-facing wording remains consistent across bug-hunt and release evidence.
+- Verification: `npm run test -- tests/core/releaseEvidence.test.ts -t "evidence pack labels release-scale bug-hunt queues as sign-off actions"`.
+
+## 2026-06-15: Align release-train bug-hunt wording with action queues
+
+- Status: accepted
+- Context: The 2.4.x release train still said bug-hunt output should name the first fix target, but bug-hunt queues can now contain release sign-off actions.
+- Decision: Describe the 2.4.x success criterion as the first prioritized bug-hunt action and proof commands.
+- Consequences: Release-train JSON remains schema-compatible while product planning no longer implies every bug-hunt queue entry is a concrete code fix.
+- Verification: `npm run test -- tests/core/releaseTrain.test.ts -t "release train describes bug-hunt proof as prioritized actions"`.
+
+## 2026-06-15: Align public bug-hunt wording with action queues
+
+- Status: accepted
+- Context: CLI, MCP, route, README, and adoption copy still described bug-hunt as a fix queue even though release-scale entries can be manual sign-off actions.
+- Decision: Describe the public bug-hunt surface as a ranked or prioritized action queue while keeping the `fixQueue` JSON field stable for compatibility.
+- Consequences: Public text no longer implies every queue entry is a code defect, and existing machine consumers do not need a migration.
+- Verification: `npm run test -- tests/mcp/releaseTrainBugHunt.test.ts tests/core/releaseTrain.test.ts tests/core/intentRouter.test.ts tests/cli/releaseTrainBugHunt.test.ts -t "bug_hunt|bug-hunt|prioritized action|release train describes"`.
+
+## 2026-06-15: Prioritize risk-relevant files in bug-hunt sign-off routing
+
+- Status: accepted
+- Context: Release-scale bug-hunt sign-off actions used git-order fallback files, which could place README or local config before package metadata and source changes.
+- Decision: Keep the `fixQueue` schema and ranking stable, but sort fallback context files by review usefulness: package metadata, lockfiles, source, tests, docs, remaining config, then agent runtime paths.
+- Consequences: Reviewers see the files most likely to explain dependency or source risk first while runtime harness directories still trail project files.
+- Verification: `npm run test -- tests/core/bugHunt.test.ts tests/cli/releaseTrainBugHunt.test.ts -t "preflight fallback files"`.
+
+## 2026-06-15: Preserve nested untracked file context for sign-off routing
+
+- Status: accepted
+- Context: Git porcelain output collapsed untracked workspace directories such as `packages/`, which prevented bug-hunt sign-off routing from seeing package metadata inside the directory.
+- Decision: Request full untracked file paths from git status and use data-driven path ranks for package metadata, source, tests, docs, config, and agent runtime paths.
+- Consequences: Monorepo package metadata can be prioritized in release sign-off queues without changing JSON field names or preflight semantics.
+- Verification: `npm run test -- tests/utils/changedFiles.test.ts -t "expands untracked nested directories"` and `npm run test -- tests/core/bugHunt.test.ts tests/cli/releaseTrainBugHunt.test.ts -t "preflight fallback files"`.
+
+## 2026-06-15: Surface local AgentLoop harnesses in start guidance
+
+- Status: accepted
+- Context: Agent-orchestrating engineers need `projscan start` to point at the repo's existing task-contract harness before they edit code.
+- Decision: When `AGENTLOOP.md` or `agentloop.config.json` exists at the repo root, add a read-only coordination hint that tells agents to run `npm exec agentloop -- status`.
+- Consequences: `StartReport.coordinationHints` gains one additive entry in AgentLoop-enabled repos, and existing Mission Control guardrail/proof rendering exposes the same local status command. No AgentLoop command is executed and no runtime dependency is imported.
+- Verification: `npm run test -- tests/core/start.test.ts -t "AgentLoop"` and `npm run test -- tests/cli/start.test.ts -t "AgentLoop"`.
+
+## 2026-06-15: Surface local AgentFlight verification in start guidance
+
+- Status: accepted
+- Context: Platform and release owners need `projscan start` to show the repo's local AgentFlight verification harness when it exists, so proof collection is visible before handoff.
+- Decision: When `.agentflight/config.json` exists at the repo root, add a read-only coordination hint that tells agents to run `npm exec agentflight -- verify`.
+- Consequences: `StartReport.coordinationHints` gains one additive entry in AgentFlight-enabled repos, and existing Mission Control guardrail/proof rendering exposes the same local verification command. No AgentFlight command is executed and no runtime dependency is imported.
+- Verification: `npm run test -- tests/core/start.test.ts -t "AgentFlight"` and `npm run test -- tests/cli/start.test.ts -t "AgentFlight"`.
+
+## 2026-06-15: Keep start harness guidance in a focused helper
+
+- Status: accepted
+- Context: `src/core/start.ts` is a hotspot, and AgentLoop plus AgentFlight guidance added repeated root-file detection and proof-priority rules to it.
+- Decision: Move repo-local harness detection and harness proof prioritization into `src/core/startHarness.ts`.
+- Consequences: `start.ts` keeps Mission Control orchestration while harness-specific rules have focused tests and can evolve without expanding the core start module.
+- Verification: `npm run test -- tests/core/startHarness.test.ts` and `npm run test -- tests/core/start.test.ts -t "AgentLoop|AgentFlight"`.
+
+## 2026-06-15: Limit review export contract changes to public entrypoints
+
+- Status: accepted
+- Context: `projscan review` treated every added or modified module export as a public contract change, which created false public API noise for internal helper modules such as `src/core/startHarness.ts`.
+- Decision: Export-level contract changes are reported only for files reachable from package entrypoints and common source counterparts such as `dist/index.js` to `src/index.ts`; package entrypoint field changes remain reported separately.
+- Consequences: Internal helper exports stay visible through changed-file and risk evidence without being labeled public API changes, while entrypoint exports still produce `contractChanges`.
+- Verification: `npm run test -- tests/core/review.test.ts`.
+
+## 2026-06-15: Treat entrypoint re-exports as public review surface
+
+- Status: accepted
+- Context: A package entrypoint can publish a module by re-exporting it, so limiting `contractChanges` to the entrypoint file alone can miss additive public exports.
+- Decision: Expand the review public-file set by following relative, value re-export edges from package entrypoint source files in the base and head graphs.
+- Consequences: `projscan review` reports added exports in directly or transitively re-exported local modules, while ordinary internal imports and type-only re-exports do not become public contract changes.
+- Verification: `npm run test -- tests/core/review.test.ts`.
+
+## 2026-06-15: Map declaration entrypoints back to TypeScript source
+
+- Status: accepted
+- Context: Packages can expose only a declaration entrypoint such as `dist/index.d.ts`, and `projscan review` needs to connect that public contract back to the source file that emits it.
+- Decision: Treat `.d.ts` entrypoint candidates as public surface matches for the corresponding `.ts` and `.tsx` source files after the existing `dist/` to `src/` mapping.
+- Consequences: Declaration-only packages get additive export contract-change evidence for `src/index.ts`, without adding TypeScript emit analysis or a project resolver.
+- Verification: `npm run test -- tests/core/review.test.ts`.
+
+## 2026-06-15: Keep review public-surface logic in a focused helper
+
+- Status: accepted
+- Context: `src/core/review.ts` already owns verdicting, dependency changes, taint/dataflow signals, and report assembly. Adding entrypoint, declaration, and re-export surface logic there made the review hotspot harder to test directly.
+- Decision: Move public-surface file-set computation to `src/core/reviewPublicSurface.ts` and keep `review.ts` responsible for turning that file set into `contractChanges`.
+- Consequences: Public-surface path rules have focused unit tests, and `review.ts` keeps the higher-level review orchestration boundary.
+- Verification: `npm run test -- tests/core/reviewPublicSurface.test.ts tests/core/review.test.ts`.
+
+## 2026-06-15: Label review release-scale blocks as manual sign-off
+
+- Status: accepted
+- Context: `projscan review` can block on broad release-scale signals such as high changed-file risk while reporting no concrete cycle, risky-function, contract, taint, or dataflow defects. Downstream bug-hunt output already calls this a manual sign-off action, but raw review summaries did not.
+- Decision: Add one review summary line for block verdicts caused by release-scale risk signals only, without changing verdict values, thresholds, schemas, or existing risk/dependency bullets.
+- Consequences: Release owners can distinguish manual approval gates from concrete defects directly in `projscan review`, while machine consumers keep the same fields and verdicts.
+- Verification: `npm run test -- tests/core/review.test.ts -t "labels release-scale review blocks as manual sign-off"` and `npm run test -- tests/core/review.test.ts -t "reports exported symbol contract changes"`.
+
+## 2026-06-15: Prefer task-only AgentLoop verification for focused slices
+
+- Status: accepted
+- Context: `agentloop verify --task-commands` runs configured repo commands as well as task commands. In this repo, that can start the broad `npm run test` suite even when the task contract already lists focused proof commands.
+- Decision: Keep `agentloop.config.json` broad commands intact, but instruct agents to use `--task-commands --only-task-commands` for focused task contracts and reserve plain `--task-commands` for explicit full-suite or release-grade verification.
+- Consequences: AgentLoop reports can stay bounded to the task contract by default while full configured verification remains available when intentionally requested.
+- Verification: `npm exec agentloop -- doctor`, `npm exec agentloop -- status`, and `git diff --check`.
+
+## 2026-06-15: Deduplicate bug-hunt release sign-off wording
+
+- Status: accepted
+- Context: Bug-hunt release sign-off findings embed review summary text. Once review summaries include `Manual release sign-off required`, the preflight release wrapper could repeat the same instruction in the same `why` text.
+- Decision: Preserve release sign-off findings and review summary detail, but omit the extra wrapper sign-off sentence when the embedded review summary already carries manual release sign-off wording.
+- Consequences: `fixQueue`, verdicts, ranking, and file ordering remain stable while release-owner handoffs stay less repetitive.
+- Verification: `npm run test -- tests/core/bugHunt.test.ts -t "orders preflight fallback files by review usefulness"`.
+
+## 2026-06-15: Strengthen product-planning intent routing
+
+- Status: accepted
+- Context: Dogfooding `projscan start --intent "what should we build next"` routed to workplan, but only with medium confidence because the route matched `next` alone.
+- Decision: Add guarded product-planning vocabulary to the deterministic workplan route, requiring a planning signal plus a product/build signal before those terms count.
+- Consequences: Broad product-direction prompts route to high-confidence workplan evidence, while quick-win and low-risk improvement prompts continue to route to bug-hunt.
+- Verification: `npm run test -- tests/core/intentRouter.test.ts -t "product-planning|quick-win"` and `npm run test -- tests/core/start.test.ts -t "product-planning"`.
+
+## 2026-06-15: Infer bug-hunt mode for product-planning workplans
+
+- Status: accepted
+- Context: After product-planning prompts routed to high-confidence workplan, Mission Control still defaulted the workflow mode to `before_edit`, so the primary command asked for a generic orientation workplan.
+- Decision: When the primary route is a high-confidence workplan with both planning and product/build keywords, infer `bug_hunt` mode and pass that resolved mode into the routed workplan action.
+- Consequences: `projscan start --intent "what should we build next"` now returns `projscan workplan --mode bug_hunt --format json`, while impact and feature-placement intents keep their existing mode behavior.
+- Verification: `npm run test -- tests/core/start.test.ts -t "build-next|feature-placement|intent routes but workflow mode defaults"`.
+
+## 2026-06-15: Clarify build-next product-planning criteria
+
+- Status: accepted
+- Context: Build-next Mission Control selected the right `bug_hunt` workplan, but its success criteria still came from generic workplan fallback text.
+- Decision: For high-confidence product-planning workplan routes resolved to `bug_hunt`, add explicit done criteria for selecting a prioritized slice, attaching runnable verification, and deferring other product ideas deliberately.
+- Consequences: Product-planning handoffs tell agents what decision the workplan should produce without changing `StartReport` schema, routing, or workplan generation. Explicit mode overrides keep their resolved workplan mode and do not receive bug-hunt-specific wording.
+- Verification: `npm run test -- tests/core/start.test.ts -t "build-next|feature-placement|intent routes but workflow mode defaults|explicit mode overrides product planning"`.
+
+## 2026-06-15: Route broad improve-next planning to bug-hunt
+
+- Status: accepted
+- Context: Dogfooding `projscan start --intent "what should we improve next"` returned only a medium-confidence `next` workplan match, so Mission Control produced a generic before-edit workplan.
+- Decision: Treat `improve` or `improvement` plus `next` as a guarded bug-hunt opportunity context, but suppress that shortcut and generic `next` planning matches when protected release, dependency, or safety tokens are present.
+- Consequences: Broad improvement planning now returns an actionable `projscan bug-hunt --format json` queue, while explicit technical variants such as tests, performance, release, dependencies, and safety keep their specialized routes.
+- Verification: `npm run test -- tests/core/intentRouter.test.ts -t "improve next|quick-win|product-planning"` and `npm run test -- tests/core/start.test.ts -t "improve next|quick-win|build-next"`.
+
+## 2026-06-15: Honor autonomous continuation intent in Mission Control
+
+- Status: accepted
+- Context: Agent-orchestrating engineers sometimes give an explicit standing instruction to continue bounded implementation work until told to stop. Mission Control previously required reviewer approval before every next slice, even for those intents, while also protecting release and git actions.
+- Decision: Detect autonomous continuation wording in `start --intent` and remove only `next_slice` from the review gate's blocked actions. Release, publish, deploy, push, merge, and version bump still require explicit reviewer approval.
+- Consequences: Autonomous agents can keep moving through bounded, verified implementation slices without changing the `StartReport` schema or relaxing release safety gates. Normal intents keep the conservative next-slice approval gate.
+- Verification: `npm run test -- tests/core/start.test.ts -t "allows autonomous continuation intents to keep bounded slice work unblocked"` and `npm run test -- tests/core/start.test.ts -t "start exposes a Mission Control task card for MCP and JSON clients"`.
+
+## 2026-06-15: Extract Mission Control review gate helper
+
+- Status: accepted
+- Context: `src/core/start.ts` is the top hotspot and owned review-gate policy, review-decision rendering, worktree evidence, runbook generation, task cards, routing, and proof orchestration in one module.
+- Decision: Move review-gate construction, proof shaping, and review-decision formatting into `src/core/startReviewGate.ts`, leaving `start.ts` to orchestrate Mission Control.
+- Consequences: Review-gate behavior has a focused module boundary without changing `StartReport` schema, markdown wording, autonomous policy, or release safety gates.
+- Verification: `npm run test -- tests/core/start.test.ts -t "allows autonomous continuation intents to keep bounded slice work unblocked"` and `npm run test -- tests/core/start.test.ts -t "start exposes a Mission Control task card for MCP and JSON clients"`.
+
+## 2026-06-15: Extract Mission Control runbook rendering
+
+- Status: accepted
+- Context: After review-gate extraction, `src/core/start.ts` still mixed Mission Control orchestration with runbook and task-card Markdown rendering.
+- Decision: Move runbook and task-card construction/rendering into `src/core/startRunbook.ts`, leaving execution-plan and resume state-machine logic in `start.ts`.
+- Consequences: Start orchestration is smaller while runbook/task-card output stays covered by existing Mission Control characterization tests.
+- Verification: `npm run test -- tests/core/start.test.ts -t "start exposes a Mission Control task card for MCP and JSON clients"` and `npm run test -- tests/core/start.test.ts -t "allows autonomous continuation intents to keep bounded slice work unblocked"`.
+
+## 2026-06-15: Extract CLI Mission Control bundle helpers
+
+- Status: accepted
+- Context: `src/cli/commands/start.ts` mixed command option dispatch with Mission Control bundle file manifests, artifact writing, proof-log scaffolding, and shell script generation.
+- Decision: Move Mission Control bundle construction and script rendering into `src/cli/commands/startMissionBundle.ts`, while keeping CLI option registration, shortcut dispatch, and local command selection helpers in `start.ts`.
+- Consequences: The CLI command file is smaller and easier to review, while existing save-mission bundle artifacts, JSON output, script behavior, and shortcut behavior remain covered by characterization tests.
+- Verification: `npm run test -- tests/cli/start.test.ts -t "writes a Mission Control bundle"`, `npm run test -- tests/cli/start.test.ts -t "Mission Control bundle as JSON"`, `npm run test -- tests/cli/start.test.ts`, and `npm run typecheck`.
+
+## 2026-06-15: Extract CLI start console rendering
+
+- Status: accepted
+- Context: After bundle extraction, `src/cli/commands/start.ts` still mixed command dispatch with human console rendering for Mission Control, execution plans, review gates, resume checklists, adoption loops, and risks.
+- Decision: Move human-readable start rendering into `src/cli/commands/startConsole.ts`, with `start.ts` passing the already selected proof commands and reviewer replies into the renderer.
+- Consequences: CLI command dispatch stays in `start.ts`, rendering logic has a focused module boundary, and existing console output remains covered by `tests/cli/start.test.ts`.
+- Verification: `npm run test -- tests/cli/start.test.ts -t "start console"`, `npm run test -- tests/cli/start.test.ts`, and `npm run typecheck`.
+
+## 2026-06-15: Extract CLI start output dispatch
+
+- Status: accepted
+- Context: After console rendering extraction, `src/cli/commands/start.ts` still carried every computed-report output branch for JSON mode, Mission Control shortcuts, bundle writing, and default console output.
+- Decision: Move computed-report output dispatch and shortcut/bundle helper selection into `src/cli/commands/startOutput.ts`, leaving `start.ts` to register flags, parse mode, compute the report, and handle top-level command errors.
+- Consequences: `start.ts` is a small command registration boundary while start output behavior remains covered by focused shortcut/bundle characterization tests and the full start CLI test file.
+- Verification: `npm run test -- tests/cli/start.test.ts -t "next-command|next-tool-call|ready-tool-calls|proof-commands|checklist|resume-json|handoff-json|task-card|review-gate|review-policy|review-replies|runbook|mission-script|shortcuts|Mission Control bundle"`, `npm run test -- tests/cli/start.test.ts`, and `npm run typecheck`.
+
+## 2026-06-15: Extract CLI command registration helper
+
+- Status: accepted
+- Context: `src/cli/index.ts` was a high-churn executable entrypoint that owned every command import and registration call directly.
+- Decision: Move command registrar imports, ordering, and invocation into `src/cli/registerCommands.ts`, leaving `src/cli/index.ts` to call `registerCliCommands()` and `program.parse()`.
+- Consequences: The executable entrypoint is small, the registrar order is explicit and test-covered, and public CLI command behavior remains unchanged.
+- Verification: `npm run test -- tests/cli/registerCommands.test.ts`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/cli/index.ts --format json`.
+
+## 2026-06-16: Extract Mission Control intent target parsing
+
+- Status: accepted
+- Context: `src/core/start.ts` still mixed Mission Control orchestration with natural-language target parsing for search, impact, file, package, issue, claim, and semantic-graph actions.
+- Decision: Move target extraction, search-query normalization, semantic-graph query shaping, placeholder checks, and shell quoting into `src/core/startIntentTargets.ts`.
+- Consequences: `start.ts` stays focused on report orchestration and action-plan assembly, while target parsing has direct characterization tests. The parser module remains large and can be split by domain in a later task.
+- Verification: `npm run test -- tests/core/startIntentTargets.test.ts`, `npm run test -- tests/core/start.test.ts -t "search|impact|semantic graph|package|issue|auth token loader|rate limits|React Query|migrations|env var"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start CLI action handler
+
+- Status: accepted
+- Context: After output-dispatch extraction, `src/cli/commands/start.ts` was small but still owned command action execution, mode parsing, numeric option parsing, report computation wiring, and top-level error handling.
+- Decision: Move start command action execution and option parsing into `src/cli/commands/startAction.ts`, leaving `start.ts` as a flag-registration boundary.
+- Consequences: The high-churn public command file is 34 lines with cyclomatic complexity 1, while action behavior is directly unit-tested and the existing full CLI tests continue to cover public behavior.
+- Verification: `npm run test -- tests/cli/startAction.test.ts`, `npm run test -- tests/cli/start.test.ts`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/cli/commands/start.ts --format json`.
+
+## 2026-06-16: Extract Mission Control success criteria
+
+- Status: accepted
+- Context: `src/core/start.ts` still owned the high-complexity Mission Control success-criteria policy tree used in CLI, JSON, MCP handoff, review-gate, runbook, and task-card output.
+- Decision: Move success-criteria generation and its shared route helpers into `src/core/startSuccessCriteria.ts`, using small resolver functions and rule tables instead of a single branch-heavy function.
+- Consequences: `src/core/start.ts` loses the largest remaining policy tree without changing public `StartReport` schema or success-criteria wording. The new module has direct characterization tests for representative route branches.
+- Verification: `npm run test -- tests/core/startSuccessCriteria.test.ts`, `npm run test -- tests/core/start.test.ts -t "successCriteria|Done When|build-next|auth token loader|npm scripts|local services|regression"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start mode resolution
+
+- Status: accepted
+- Context: `src/core/start.ts` still owned explicit/default workflow selection, routed-intent normalization, and intent-based mode inference for Mission Control.
+- Decision: Move start mode resolution and route-match normalization into `src/core/startMode.ts`, preserving existing `mode`, `modeSource`, `modeReason`, and `StartRoutedIntent` shapes.
+- Consequences: Mode inference has focused characterization tests and no longer adds complexity to the main `start.ts` orchestration file. Action-plan command generation remains in `start.ts` for a later bounded extraction.
+- Verification: `npm run test -- tests/core/startMode.test.ts`, `npm run test -- tests/core/start.test.ts -t "infers|modeSource|modeReason|release workflows|safe to commit|what breaks|build-next|dataflow|regression"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start route action rendering
+
+- Status: accepted
+- Context: After mode extraction, `src/core/start.ts` still owned branch-heavy Mission Control route action args, command rendering, and route-specific follow-up plans.
+- Decision: Move routed action rendering into `src/core/startRouteActions.ts`, with resolver tables for tool args and commands plus focused tests for user-facing command strings.
+- Consequences: `src/core/start.ts` no longer owns routed command rendering, and its largest remaining complexity is Mission Control resume/cursor orchestration. The new helper preserves primary actions, ready actions, proof commands, shell escaping, and MCP args.
+- Verification: `npm run test -- tests/core/startRouteActions.test.ts`, `npm run test -- tests/core/start.test.ts -t "primaryAction|readyActions|proofCommands|auth token loader|rate limits|React Query|migrations|env var|regression|safe to commit|PR comment|claim"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start resume state helpers
+
+- Status: accepted
+- Context: After route-action extraction, `src/core/start.ts` still owned Mission Control resume, checklist, proof-tool-call, follow-up, reference, and execution-cursor state assembly.
+- Decision: Move resume and cursor state helpers into `src/core/startResume.ts`, with rule-table cursor selection and focused characterization tests for resume fields and proof tool-call parsing.
+- Consequences: `src/core/start.ts` is smaller and no longer owns resume/cursor branching. Mission Control resume prompts, checklist entries, input bindings, follow-ups, remaining proof commands, and cursor reasons remain stable.
+- Verification: `npm run test -- tests/core/startResume.test.ts`, `npm run test -- tests/core/start.test.ts -t "resume|checklist|execution|cursor|primaryAction|readyActions|proofCommands"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start execution plan builder
+
+- Status: accepted
+- Context: After resume extraction, `src/core/start.ts` still owned Mission Control execution-plan construction, action-to-step conversion, placeholder dependency wiring, proof-step projection, and summary text.
+- Decision: Move execution-plan construction and action-readiness helpers into `src/core/startExecutionPlan.ts`, leaving `start.ts` to orchestrate Mission Control assembly.
+- Consequences: `src/core/start.ts` no longer owns execution-plan phase construction. Phase order, step IDs, cursor selection, ready/input/follow-up/proof/done_when wiring, tool-call args, and summary text remain covered by focused and integration tests.
+- Verification: `npm run test -- tests/core/startExecutionPlan.test.ts`, `npm run test -- tests/core/start.test.ts -t "executionPlan|resume|handoff|runbook|primaryAction|readyActions|proofCommands"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start mission policy helpers
+
+- Status: accepted
+- Context: After execution-plan extraction, `src/core/start.ts` still owned Mission Control policy helpers for status, why-now text, action-plan fallback, unresolved-input instructions, guardrails, proof commands, workflow selection, risk conversion, and summary text.
+- Decision: Move Mission Control policy helpers into `src/core/startMissionPolicy.ts`, preserving the existing user-facing strings and command ordering.
+- Consequences: `src/core/start.ts` is under 500 lines with no `projscan` potential issues, while policy behavior has focused characterization tests. Mission Control status, headline, whyNow, input instructions, guardrails, proof command ordering, workflow selection, risk conversion, and summary text remain stable.
+- Verification: `npm run test -- tests/core/startMissionPolicy.test.ts`, `npm run test -- tests/core/start.test.ts -t "status|headline|whyNow|primaryAction|readyActions|proofCommands|guardrails|risk|summary"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/core/start.ts --format json`.
+
+## 2026-06-16: Extract start shortcut index helpers
+
+- Status: accepted
+- Context: After the core Mission Control extractions, `src/cli/commands/startOutput.ts` still mixed output dispatch with shortcut index construction, command quoting, ready tool-call compaction, ready proof fallback, and reviewer reply formatting.
+- Decision: Move the shortcut/index helpers into `src/cli/commands/startShortcuts.ts`, keeping `startOutput.ts` focused on output-mode dispatch.
+- Consequences: `src/cli/commands/startOutput.ts` drops from 429 to 284 lines while preserving `projscan start --shortcuts`, `--shortcuts-json`, ready tool calls, proof commands, mission-script context, and reviewer reply output. The extracted helper has focused characterization tests for command order, labels, shell quoting, dedupe, and fallback behavior.
+- Verification: `npm run test -- tests/cli/startShortcuts.test.ts`, `npm run test -- tests/cli/start.test.ts -t "shortcuts|mission script|handoff prompt|ready tool calls"`, `npm run typecheck`, `npm run build`, and `npm exec projscan -- file src/cli/commands/startOutput.ts --format json`.
+
+## 2026-06-16: Extract console review reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` is the top current hotspot and still owned PR review console rendering plus helper output for changed files, cycles, risky functions, dependency changes, verdicts, and unavailable-review messages.
+- Decision: Move PR review console rendering into `src/reporters/consoleReviewReporter.ts` and re-export `reportReview` from `src/reporters/consoleReporter.ts`.
+- Consequences: The public `reportReview` named export is preserved, while `consoleReporter.ts` drops from 1268 to 1162 lines and CC from 302 to 269. Review output behavior has focused characterization tests for verdicts, summaries, truncation, deltas, dependencies, and unavailable reports.
+- Verification: `npm run test -- tests/reporters/consoleReviewReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleReviewReporter.ts --format json`.
+
+## 2026-06-16: Extract console PR diff reporter
+
+- Status: accepted
+- Context: After review rendering moved out, `src/reporters/consoleReporter.ts` still owned PR structural diff console rendering and its modified-file delta helpers.
+- Decision: Move PR structural diff console rendering into `src/reporters/consolePrDiffReporter.ts` and re-export `reportPrDiff` from `src/reporters/consoleReporter.ts`.
+- Consequences: The public `reportPrDiff` named export is preserved, while `consoleReporter.ts` drops from 1162 to 1083 lines and CC from 269 to 249. PR diff output behavior has focused characterization tests for unavailable output, totals, sections, export/import lines, renames, and delta signs.
+- Verification: `npm run test -- tests/reporters/consolePrDiffReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consolePrDiffReporter.ts --format json`.
+
+## 2026-06-16: Extract console fix guidance reporter
+
+- Status: accepted
+- Context: After review and PR diff rendering moved out, `src/reporters/consoleReporter.ts` still owned fix-suggest and explain-issue console rendering plus shared line wrapping.
+- Decision: Move fix guidance console rendering into `src/reporters/consoleFixGuidanceReporter.ts` and re-export `reportFixSuggest` and `reportExplainIssue` from `src/reporters/consoleReporter.ts`.
+- Consequences: The public reporter named exports are preserved, while `consoleReporter.ts` drops from 1083 to 989 lines and CC from 249 to 217. Fix guidance output behavior has focused characterization tests for unmatched suggestions, synthetic suggestions, wrapping, locations, verification, related files, excerpts, related issues, similar fixes, and suggested actions.
+- Verification: `npm run test -- tests/reporters/consoleFixGuidanceReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleFixGuidanceReporter.ts --format json`.
+
+## 2026-06-16: Extract console impact reporter
+
+- Status: accepted
+- Context: After review, PR diff, and fix guidance rendering moved out, `src/reporters/consoleReporter.ts` still owned impact console rendering.
+- Decision: Move impact console rendering into `src/reporters/consoleImpactReporter.ts` and re-export `reportImpact` from `src/reporters/consoleReporter.ts`.
+- Consequences: The public `reportImpact` named export is preserved, while `consoleReporter.ts` drops from 989 to 943 lines and CC from 217 to 207. Impact output behavior has focused characterization tests for unavailable output, symbol details, definition files, reachable grouping, truncation, no-reachable output, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleImpactReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleImpactReporter.ts --format json`.
+
+## 2026-06-16: Extract console health reporter
+
+- Status: accepted
+- Context: After the previous reporter extractions, `src/reporters/consoleReporter.ts` still owned the high-complexity doctor health renderer.
+- Decision: Move `reportHealth` and `ReportHealthOptions` into `src/reporters/consoleHealthReporter.ts` and re-export both from `src/reporters/consoleReporter.ts`.
+- Consequences: The public health reporter import remains stable, while `consoleReporter.ts` drops from 943 to 847 lines and CC from 207 to 186. Health output behavior has focused characterization tests for score, issue summary, scan duration, issue details, suggested actions, recommendations, stable-rule tips, next commands, no-issue output, options-object compatibility, numeric scan-time compatibility, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleHealthReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleHealthReporter.ts --format json`.
+
+## 2026-06-16: Extract console dependency reporter
+
+- Status: accepted
+- Context: After the health extraction, `src/reporters/consoleReporter.ts` still owned the dependency console renderer for package totals, production dependency rows, license summaries, installed sizes, and risks.
+- Decision: Move `reportDependencies` into `src/reporters/consoleDependencyReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public dependency reporter import remains stable, while `consoleReporter.ts` drops from 847 to 795 lines and CC from 186 to 174. Dependency output behavior has focused characterization tests for totals, sorted production dependency rows, truncation, license summaries, installed sizes, risk rows, optional-section omission, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleDependencyReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleDependencyReporter.ts --format json`.
+
+## 2026-06-16: Extract console hotspot reporter
+
+- Status: accepted
+- Context: After dependency rendering moved out, `src/reporters/consoleReporter.ts` still owned the hotspot console renderer for unavailable output, empty output, ranked rows, accepted tags, accepted legend, and drill-down tips.
+- Decision: Move `reportHotspots` into `src/reporters/consoleHotspotReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public hotspot reporter import remains stable, while `consoleReporter.ts` drops from 795 to 742 lines and CC from 174 to 162. Hotspot output behavior has focused characterization tests for unavailable output, empty-state commit wording, ranked rows, reason fallback, accepted tags/legend, drill-down tip, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleHotspotReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleHotspotReporter.ts --format json`.
+
+## 2026-06-16: Extract console upgrade reporter
+
+- Status: accepted
+- Context: After hotspot rendering moved out, `src/reporters/consoleReporter.ts` still owned release-facing upgrade preview rendering for unavailable package checks, declared/installed/drift metadata, breaking markers, direct importers, and changelog excerpts.
+- Decision: Move `reportUpgrade` into `src/reporters/consoleUpgradeReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public upgrade reporter import remains stable, while `consoleReporter.ts` drops from 742 to 694 lines and CC from 162 to 150. Upgrade output behavior has focused characterization tests for unavailable output, drift metadata, breaking markers, clean no-breaking output, importer truncation, no-importer output, changelog truncation, no-changelog output, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleUpgradeReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleUpgradeReporter.ts --format json`.
+
+## 2026-06-16: Extract console outdated reporter
+
+- Status: accepted
+- Context: After upgrade rendering moved out, `src/reporters/consoleReporter.ts` still owned dependency drift rendering for unavailable package checks, declared/drifted/not-installed summaries, semver drift groups, dev dependency tags, and missing package truncation.
+- Decision: Move `reportOutdated` into `src/reporters/consoleOutdatedReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public outdated reporter import remains stable, while `consoleReporter.ts` drops from 694 to 640 lines and CC from 150 to 138. Outdated output behavior has focused characterization tests for unavailable output, clean all-matched output, major/minor/patch groups, dev dependency tags, missing package output, missing package truncation, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleOutdatedReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleOutdatedReporter.ts --format json`.
+
+## 2026-06-16: Extract console coupling reporter
+
+- Status: accepted
+- Context: After outdated rendering moved out, `src/reporters/consoleReporter.ts` still owned the highest-complexity remaining console reporter function for coupling totals, import cycles, cross-package edges, and file fan-in/fan-out tables.
+- Decision: Move `reportCoupling` into `src/reporters/consoleCouplingReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public coupling reporter import remains stable, while `consoleReporter.ts` drops from 640 to 589 lines and CC from 138 to 126. Coupling output behavior has focused characterization tests for no-file warnings, singular/plural totals, cycle rows, cross-package edge truncation, file table rows, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleCouplingReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleCouplingReporter.ts --format json`.
+
+## 2026-06-16: Extract console analysis reporter
+
+- Status: accepted
+- Context: After coupling rendering moved out, `src/reporters/consoleReporter.ts` still owned the project analysis summary renderer for project metadata, language bars, top-level structure, issue rows, and fixable suggestions.
+- Decision: Move `reportAnalysis` into `src/reporters/consoleAnalysisReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public analysis reporter import remains stable, while `consoleReporter.ts` drops from 589 to 511 lines and CC from 126 to 115. Analysis output behavior has focused characterization tests for project metadata, optional line omission, language sorting and truncation, structure truncation, issue rows, fixable suggestions, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleAnalysisReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleAnalysisReporter.ts --format json`.
+
+## 2026-06-16: Extract console diff reporter
+
+- Status: accepted
+- Context: After analysis rendering moved out, `src/reporters/consoleReporter.ts` still owned health diff rendering, including score deltas, resolved/new issue lists, hotspot change sections, and baseline metadata.
+- Decision: Move `reportDiff` into `src/reporters/consoleDiffReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public diff reporter import remains stable, while `consoleReporter.ts` drops from 511 to 427 lines and CC from 115 to 95. Diff output behavior has focused characterization tests for score and grade transitions, no-change issue wording, hotspot rose/appeared/fell/resolved truncation, baseline timestamp, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleDiffReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleDiffReporter.ts --format json`.
+
+## 2026-06-16: Extract Markdown diff reporter
+
+- Status: accepted
+- Context: After console reporter cleanup, `src/reporters/markdownReporter.ts` became the next reporter hotspot and still owned the highest-complexity Markdown renderer for health diff score deltas, issue deltas, and hotspot movement sections.
+- Decision: Move `reportDiffMarkdown` into `src/reporters/markdownDiffReporter.ts` and re-export it from `src/reporters/markdownReporter.ts`.
+- Consequences: The public Markdown diff reporter import remains stable, while `markdownReporter.ts` drops from 858 to 800 lines and CC from 205 to 191. Diff Markdown behavior has focused characterization tests for the metric table, score delta arrows, resolved/new issue sections, hotspot rose/appeared/fell sections, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/markdownDiffReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, and `npm exec projscan -- file src/reporters/markdownDiffReporter.ts --format json`.
+
+## 2026-06-16: Extract console CI reporter
+
+- Status: accepted
+- Context: After console diff rendering moved out, `src/reporters/consoleReporter.ts` still owned the public CI console renderer for score/grade text, pass/fail status, issue count pluralization, threshold display, and failing issue rows.
+- Decision: Move `reportCi` into `src/reporters/consoleCiReporter.ts` and re-export it from `src/reporters/consoleReporter.ts`.
+- Consequences: The public CI reporter import remains stable, while `consoleReporter.ts` drops from 427 to 408 lines and CC from 95 to 87. CI console behavior has focused characterization tests for PASS output, pass-with-issues row suppression, FAIL output with issue rows, score/grade text, count pluralization, threshold display, and re-export compatibility.
+- Verification: `npm run test -- tests/reporters/consoleCiReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, and `npm exec projscan -- file src/reporters/consoleCiReporter.ts --format json`.
+
+## 2026-06-16: Extract start mission control builder
+
+- Status: accepted
+- Context: The quality scorecard ranked `src/core/start.ts` as the highest current hotspot, and the file still owned mission-control orchestration wiring in addition to start report input gathering and assembly.
+- Decision: Move `buildMissionControl` and its private handoff prompt helpers into `src/core/startMissionControl.ts`, then import the builder from `src/core/start.ts`.
+- Consequences: The public `computeStartReport` export and `StartReport.missionControl` shape remain stable, while `start.ts` drops from 442 to 249 lines and CC from 36 to 18. The new module has focused coverage for routed impact intent, handoff/review-gate wiring, handoff prompt propagation, and builder export availability.
+- Verification: `npm run test -- tests/core/startMissionControl.test.ts`, `npm run test -- tests/core/start.test.ts`, `npm run test -- tests/mcp/start.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/core/start.ts --format json`, and `npm exec projscan -- file src/core/startMissionControl.ts --format json`.
+
+## 2026-06-16: Extract start evidence helpers
+
+- Status: accepted
+- Context: After mission-control extraction, `src/core/start.ts` still mixed StartReport assembly with current-worktree/session risk-source IO and coordination hint construction.
+- Decision: Move `buildStartRiskSources` and `buildStartCoordinationHints` into `src/core/startEvidence.ts`, then import both helpers from `src/core/start.ts`.
+- Consequences: The public `computeStartReport` export, `StartReport.evidence.riskSources` shape, and coordination hint wording/order remain stable, while `start.ts` drops from 249 to 182 lines and CC from 18 to 12. The new module has focused coverage for remembered session risk evidence, sorting/tie-break/truncation, current-worktree fallback shape, current-worktree hint construction, exact hint wording, harness hint pass-through, preflight mode command selection, and remembered-session hint presence/omission.
+- Verification: `npm run test -- tests/core/startEvidence.test.ts`, `npm run test -- tests/core/start.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/core/start.ts --format json`, and `npm exec projscan -- file src/core/startEvidence.ts --format json`.
+
+## 2026-06-16: Extract start adoption loop
+
+- Status: accepted
+- Context: After evidence-helper extraction, `src/core/start.ts` still embedded repeat-use adoption-loop product guidance inside the StartReport assembler.
+- Decision: Move `buildAdoptionLoop` into `src/core/startAdoptionLoop.ts`, then import it from `src/core/start.ts`.
+- Consequences: The public `computeStartReport` export and `StartReport.adoptionLoop` shape/content remain stable, while `start.ts` drops from 182 to 141 lines. The new module has focused coverage for cadence, why text, metric ids/labels/targets/commands, next command ordering, dogfood commands, and builder export availability.
+- Verification: `npm run test -- tests/core/startAdoptionLoop.test.ts`, `npm run test -- tests/core/start.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/core/start.ts --format json`, and `npm exec projscan -- file src/core/startAdoptionLoop.ts --format json`.
+
+## 2026-06-16: Extract public type leaf modules
+
+- Status: accepted
+- Context: `src/types.ts` is a high-fan-in public type barrel with more than 2500 lines. The maintainability scorecard ranked it as the top hotspot after the start module extractions, but changing public type names would be high risk.
+- Decision: Move dependency-light type clusters into `src/types/common.ts`, `src/types/hotspots.ts`, `src/types/inspection.ts`, and `src/types/mcp.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports.
+- Consequences: Existing `src/types.ts` imports keep working, leaf modules do not import from the barrel, and `src/types.ts` drops from 2535 to 2384 lines. A compile-only type probe covers both direct leaf imports and compatibility imports from `src/types.ts`.
+- Verification: `npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node tests/types/public-type-modules.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/types.ts --format json`, `npm exec projscan -- file src/types/common.ts --format json`, `npm exec projscan -- file src/types/hotspots.ts --format json`, `npm exec projscan -- file src/types/inspection.ts --format json`, and `npm exec projscan -- file src/types/mcp.ts --format json`.
+
+## 2026-06-16: Extract public scan analysis type modules
+
+- Status: accepted
+- Context: After the first public type extraction, `src/types.ts` remained the top maintainability hotspot. The scan, language, framework, dependency, file explanation, analysis report, architecture layer, and health score contracts are dependency-light enough to move without changing behavior.
+- Decision: Move those contracts into `src/types/scanning.ts` and `src/types/analysis.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports and direct leaf imports for remaining internal references.
+- Consequences: Existing `src/types.ts` imports keep working, leaf modules do not import from the barrel, and `src/types.ts` drops from 2384 to 2243 lines. A compile-only type probe covers direct leaf imports and compatibility imports for every moved type.
+- Verification: `npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node tests/types/public-scan-analysis-types.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/types.ts --format json`, `npm exec projscan -- file src/types/scanning.ts --format json`, and `npm exec projscan -- file src/types/analysis.ts --format json`.
+
+## 2026-06-16: Extract public fix type module
+
+- Status: accepted
+- Context: After scan/analysis type extraction, `src/types.ts` remained the top maintainability hotspot. The fix suggestion, issue explanation, fix, and fix result contracts form a small public cluster consumed by fix commands, reporters, and fix registry types.
+- Decision: Move `FixSuggestion`, `IssueExplanation`, `Fix`, and `FixResult` into `src/types/fixes.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports.
+- Consequences: Existing `src/types.ts` imports keep working, the new leaf module imports only common issue primitives, and `src/types.ts` drops from 2243 to 2182 lines. A compile-only type probe covers direct leaf imports and compatibility imports for every moved fix type.
+- Verification: `npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node tests/types/public-fix-types.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/types.ts --format json`, and `npm exec projscan -- file src/types/fixes.ts --format json`.
+
+## 2026-06-16: Extract public graph dataflow type module
+
+- Status: accepted
+- Context: After fix type extraction, `src/types.ts` remained the top maintainability hotspot. Graph evidence, semantic graph, and dataflow report contracts are public, dependency-light, and consumed by review, agent brief, plugins, issue engine, and CLI code.
+- Decision: Move `GraphEvidenceSummary`, semantic graph types, and dataflow report/risk types into `src/types/graph.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports.
+- Consequences: Existing `src/types.ts` imports keep working, the new leaf module has no imports, and `src/types.ts` drops from 2182 to 2116 lines. A compile-only type probe covers direct leaf imports and compatibility imports for every moved graph/dataflow type.
+- Verification: `npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node tests/types/public-graph-types.test.ts`, `npm run typecheck`, `npm run build`, `npm exec projscan -- file src/types.ts --format json`, and `npm exec projscan -- file src/types/graph.ts --format json`.
+
+## 2026-06-16: Extract public PR diff type module
+
+- Status: accepted
+- Context: After coupling type extraction, `src/types.ts` still carried the PR-native AST diff contracts inline. These types are dependency-light, public, and consumed by PR diff, review, and reporter surfaces.
+- Decision: Move `ExportRename`, `FileAstDiff`, and `PrDiffReport` into `src/types/prDiff.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports and a local type import for `ReviewReport.prDiff`.
+- Consequences: Existing `src/types.ts` imports keep working, PR diff implementation imports these types from the focused module, and `src/types.ts` drops from 1346 to 1308 lines. Public type coverage checks both direct module imports and legacy barrel imports.
+- Verification: `npm run test -- tests/types/public-pr-diff-types.test.ts`, `npm run typecheck:public-types`, `npm run test -- tests/core/prDiff.test.ts`, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, `npm exec projscan -- file src/types.ts --format json`, and `npm exec projscan -- file src/types/prDiff.ts --format json`.
+
+## 2026-06-16: Extract public hotspot report type
+
+- Status: accepted
+- Context: `AuthorShare` and `FileHotspot` already lived in `src/types/hotspots.ts`, but the related `HotspotReport` contract remained inline in `src/types.ts`.
+- Decision: Move `HotspotReport` into the existing `src/types/hotspots.ts` module, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports.
+- Consequences: Existing `src/types.ts` imports keep working, the hotspot type cluster is no longer split, and `src/types.ts` drops from 1308 to 1297 lines. Public type coverage checks direct module imports and legacy barrel imports for `AuthorShare`, `FileHotspot`, and `HotspotReport`.
+- Verification: `npm run typecheck:public-types`, `npm run test -- tests/types/public-hotspot-types.test.ts`, `npm run test -- tests/reporters/consoleHotspotReporter.test.ts`, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, `npm exec projscan -- file src/types.ts --format json`, and `npm exec projscan -- file src/types/hotspots.ts --format json`.
+
+## 2026-06-16: Extract public impact type module
+
+- Status: accepted
+- Context: `src/types.ts` still carried the impact reachability contracts inline even though they form a compact public report cluster consumed by impact computation and reporters.
+- Decision: Move `ImpactNode`, `ImpactBoundarySummary`, and `ImpactReport` into `src/types/impact.ts`, while keeping `src/types.ts` as the compatibility barrel through type-only re-exports and importing impact implementation types from the focused module.
+- Consequences: Existing `src/types.ts` imports keep working, impact runtime behavior remains unchanged, and `src/types.ts` drops from 1297 to 1234 lines. Public type coverage checks direct module imports and legacy barrel imports for all moved impact types.
+- Verification: `npm run test -- tests/types/public-impact-types.test.ts`, `npm run typecheck:public-types`, `npm run test -- tests/core/impact.test.ts`, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, `npm exec projscan -- file src/types.ts --format json`, and `npm exec projscan -- file src/types/impact.ts --format json`.
+
+## 2026-06-16: Extract public start and quality type modules
+
+- Status: accepted
+- Context: `src/types.ts` still carried the Start/Mission Control/Mission Proof and QualityScorecard public contracts inline, even though these contracts form agent-orchestration and quality evidence clusters used by focused implementation modules.
+- Decision: Move the Start/Mission Control/Mission Proof contracts into `src/types/start.ts` and QualityScorecard contracts into `src/types/qualityScorecard.ts`, while keeping `src/types.ts` and `src/index.ts` compatibility through type-only re-exports and updating implementation imports to the focused modules.
+- Consequences: Existing imports from `src/types.ts` and the package entrypoint keep working, runtime behavior remains unchanged, and `src/types.ts` drops from 1234 to 762 lines. `src/types/start.ts` is 486 lines and `src/types/qualityScorecard.ts` is 39 lines. Public type coverage checks direct module imports, legacy barrel imports, and package entrypoint imports.
+- Verification: `npm run test -- tests/types/public-start-quality-types.test.ts`, `npm run typecheck:public-types`, `npm run test -- tests/core/start.test.ts tests/core/startMissionControl.test.ts tests/core/startMissionPolicy.test.ts tests/core/missionProof.test.ts tests/core/qualityScorecard.test.ts`, `npm run test -- tests/cli/start.test.ts tests/cli/missionProof.test.ts tests/cli/qualityScorecard.test.ts`, `npm run test -- tests/mcp/start.test.ts tests/mcp/agentBriefQualityScorecard.test.ts`, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, `npm exec projscan -- file src/types.ts --format json`, `npm exec projscan -- file src/types/start.ts --format json`, and `npm exec projscan -- file src/types/qualityScorecard.ts --format json`.
+
+## 2026-06-16: Collapse package entrypoint type re-export list
+
+- Status: accepted
+- Context: `src/index.ts` manually listed every public type exported from `src/types.ts`. After the public type-module extractions, that list became high-churn public API maintenance work that could drift whenever a new public type is added.
+- Decision: Replace the explicit `export type { ... } from './types.js'` list with `export type * from './types.js'`, while leaving runtime exports and non-`src/types.ts` type exports unchanged. Update the code graph to expand local star re-exports so review contract-change analysis treats preserved type exports as still exported.
+- Consequences: Package entrypoint type imports keep compiling, the entrypoint no longer needs a manual type list for `src/types.ts`, and `src/index.ts` drops from 273 to 137 lines. The public type fixture checks representative package-entrypoint imports and locks in the type-only star export shape. `projscan review` no longer misclassifies the entrypoint type-star refactor as removed `src/index.ts` exports after rebuild.
+- Verification: `npm run test -- tests/types/public-entrypoint-type-star.test.ts`, `npm run test -- tests/core/codeGraph.test.ts -t "expands local type-only star re-exports into exported symbols"`, `npm run typecheck:public-types`, `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, `npm exec agentflight -- verify`, `npm exec projscan -- file src/index.ts --format json`, and `npm exec projscan -- review --format json` with `src/index.ts` export-removed count confirmed as 0.
+
+## 2026-06-16: Refresh incremental star re-export expansion
+
+- Status: accepted
+- Context: `projscan review` flagged `expandLocalStarReexports` as a newly added high-complexity function, and watch-mode incremental updates rebuilt symbol indexes without refreshing star re-exported symbols after a target file changed.
+- Decision: Move local star re-export expansion into `src/core/codeGraphReexports.ts`, keep helper complexity low, and have `incrementallyUpdateGraph` reparse local star-reexport barrel files before re-expanding and rebuilding indexes.
+- Consequences: Full graph builds keep the existing `export *` behavior, incremental graph updates now add and remove re-exported symbols correctly, `src/core/codeGraph.ts` drops below the large-file threshold, and branch review no longer reports the star-reexport helper as a risky function or an import cycle.
+- Verification: `npm run test -- tests/core/codeGraph.test.ts`, `npm run test -- tests/core/codeGraph.incremental.test.ts`, `npm run test -- tests/core/review.test.ts -t "reports exports added in files re-exported by package entrypoints"`, `npm exec projscan -- file src/core/codeGraph.ts --format json`, `npm exec projscan -- file src/core/codeGraphReexports.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract markdown fix guidance reporter
+
+- Status: accepted
+- Context: `src/reporters/markdownReporter.ts` remained the top maintainability hotspot after earlier reporter extractions, and its inline fix-suggest renderer was the highest-CC markdown reporter function.
+- Decision: Move `reportFixSuggestMarkdown` and `reportExplainIssueMarkdown` into `src/reporters/markdownFixGuidanceReporter.ts`, split the new module into low-complexity append helpers, and keep compatibility re-exports from `src/reporters/markdownReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, markdown fix guidance has focused tests matching the existing console fix guidance coverage, `markdownReporter.ts` drops from 584 to 526 lines, and `projscan review` reports no new risky functions or cycles for the slice.
+- Verification: `npm run test -- tests/reporters/markdownFixGuidanceReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownFixGuidanceReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract markdown impact reporter
+
+- Status: accepted
+- Context: `src/reporters/markdownReporter.ts` remained the top maintainability hotspot, and `reportImpactMarkdown` was tied for the highest remaining inline markdown reporter complexity while the console impact renderer already had a focused module.
+- Decision: Move `reportImpactMarkdown` into `src/reporters/markdownImpactReporter.ts`, split the new module into low-complexity append helpers, and keep a compatibility re-export from `src/reporters/markdownReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, markdown impact output has focused coverage for unavailable, symbol, reachable, overflow, and isolated-file cases, and `markdownReporter.ts` drops from 526 to 489 lines and CC 109 to 100.
+- Verification: `npm run test -- tests/reporters/markdownImpactReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownImpactReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract markdown upgrade reporter
+
+- Status: accepted
+- Context: `src/reporters/markdownReporter.ts` remained the top maintainability hotspot, and `reportUpgradeMarkdown` was the highest remaining inline markdown reporter function while the console upgrade renderer already had a focused module.
+- Decision: Move `reportUpgradeMarkdown` into `src/reporters/markdownUpgradeReporter.ts`, split the new module into low-complexity append helpers, and keep a compatibility re-export from `src/reporters/markdownReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, markdown upgrade output has focused coverage for unavailable previews, drift metadata, breaking markers, importers, changelog excerpts, optional-section omission, and compatibility re-export behavior. `markdownReporter.ts` drops from 489 to 451 lines and CC 100 to 91.
+- Verification: `npm run test -- tests/reporters/markdownUpgradeReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownUpgradeReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract console coverage reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` became the top source hotspot after markdown reporter extractions, and `reportCoverage` was tied for the highest remaining inline console reporter complexity.
+- Decision: Move `reportCoverage` and coverage percentage formatting into `src/reporters/consoleCoverageReporter.ts`, split the new module into low-complexity print helpers, and keep a compatibility re-export from `src/reporters/consoleReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, console coverage output has focused coverage for unavailable reports, empty intersections, ranked entries, null coverage, reasons, overflow rows, and compatibility re-export behavior. `consoleReporter.ts` drops from 281 to 237 lines and CC 55 to 44; the new module's top helper is CC 4.
+- Verification: `npm run test -- tests/reporters/consoleCoverageReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, `npm exec projscan -- file src/reporters/consoleCoverageReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract console workspace reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` remained a high-churn/high-complexity hotspot after the coverage extraction, and its inline workspace renderer was a small user-visible function with a clear `WorkspaceInfo` boundary.
+- Decision: Move `reportWorkspaces` into `src/reporters/consoleWorkspaceReporter.ts` and keep a compatibility re-export from `src/reporters/consoleReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, console workspace output has focused coverage for single-package repos, monorepo package rows, missing source fallback, and compatibility re-export behavior. `consoleReporter.ts` drops from 237 to 214 lines and CC 44 to 36; Ponytail review kept the extracted module as one straightforward 29-line function instead of adding single-use helper scaffolding for metric polish.
+- Verification: `npm run test -- tests/reporters/consoleWorkspaceReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, `npm exec projscan -- file src/reporters/consoleWorkspaceReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract console architecture reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` remained a high-churn hotspot after workspace extraction, and its inline project architecture and directory tree renderers shared a clear project-shape reporting boundary.
+- Decision: Move `reportDiagram`, `reportStructure`, and the recursive tree printer into `src/reporters/consoleArchitectureReporter.ts`, while keeping compatibility re-exports from `src/reporters/consoleReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, console architecture output has focused coverage for layered diagrams, unknown technologies, nested directory trees, custom project titles, and compatibility re-export behavior. `consoleReporter.ts` drops from 214 to 159 lines and CC 36 to 23.
+- Verification: `npm run test -- tests/reporters/consoleArchitectureReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, `npm exec projscan -- file src/reporters/consoleArchitectureReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract console explanation reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` still carried file explanation rendering inline after project-shape reporter extraction, while the logic has a clear `FileExplanation` data boundary.
+- Decision: Move `reportExplanation` into `src/reporters/consoleExplanationReporter.ts` and keep a compatibility re-export from `src/reporters/consoleReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, console explanation output has focused coverage for file metadata, package/local dependency labels, key exports, potential issues, and compatibility re-export behavior. `consoleReporter.ts` drops from 159 to 124 lines and CC 23 to 16.
+- Verification: `npm run test -- tests/reporters/consoleExplanationReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, `npm exec projscan -- file src/reporters/consoleExplanationReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract console audit reporter
+
+- Status: accepted
+- Context: `src/reporters/consoleReporter.ts` still carried vulnerability audit rendering inline after prior console reporter extractions, while audit output has a clear `AuditReport` boundary and is security-adjacent user-facing console output.
+- Decision: Move `reportAudit` into `src/reporters/consoleAuditReporter.ts` and keep a compatibility re-export from `src/reporters/consoleReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, console audit output has focused coverage for unavailable audits, clean audits, severity summary rows, finding range/url/fix markers, overflow rows, and compatibility re-export behavior. `consoleReporter.ts` drops from 124 to 74 lines and CC 16 to 9; the new audit module is 56 lines and CC 8.
+- Verification: `npm run test -- tests/reporters/consoleAuditReporter.test.ts`, `npm run test -- tests/reporters/consoleReporter.test.ts`, `npm exec projscan -- file src/reporters/consoleReporter.ts --format json`, `npm exec projscan -- file src/reporters/consoleAuditReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract markdown audit reporter
+
+- Status: accepted
+- Context: `src/reporters/markdownReporter.ts` still carried vulnerability audit markdown rendering inline after prior markdown reporter extractions, while audit output has a clear `AuditReport` boundary and is security-adjacent user-facing markdown output.
+- Decision: Move `reportAuditMarkdown` into `src/reporters/markdownAuditReporter.ts` and keep a compatibility re-export from `src/reporters/markdownReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, markdown audit output has focused coverage for unavailable audits, clean audits, severity summary text, linked and plain finding titles, fix markers, and compatibility re-export behavior. `markdownReporter.ts` drops from 451 to 420 lines and CC 91 to 85; the new audit module is 33 lines and CC 7.
+- Verification: `npm run test -- tests/reporters/markdownAuditReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownAuditReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.
+
+## 2026-06-16: Extract markdown analysis reporter
+
+- Status: accepted
+- Context: `src/reporters/markdownReporter.ts` still carried project analysis markdown rendering inline, and `reportAnalysisMarkdown` was the highest-complexity remaining inline markdown reporter function.
+- Decision: Move `reportAnalysisMarkdown` into `src/reporters/markdownAnalysisReporter.ts` and keep a compatibility re-export from `src/reporters/markdownReporter.ts`.
+- Consequences: Existing CLI and reporter imports keep working, markdown analysis output has focused coverage for project table fields, optional framework/dependency rows, sorted language rows, issue severity icons, omitted empty sections, and compatibility re-export behavior. `markdownReporter.ts` drops from 420 to 373 lines and CC 85 to 77; the new analysis module is 47 lines and CC 9.
+- Verification: `npm run test -- tests/reporters/markdownAnalysisReporter.test.ts`, `npm run test -- tests/reporters/markdownReporter.test.ts`, `npm exec projscan -- file src/reporters/markdownReporter.ts --format json`, `npm exec projscan -- file src/reporters/markdownAnalysisReporter.ts --format json`, `npm exec projscan -- review --format json`, `npm run typecheck`, `npm run lint`, and `git diff --check`.

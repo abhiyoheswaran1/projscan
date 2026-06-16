@@ -93,7 +93,9 @@ describe('projscan_apply_fix MCP tool (1.6+)', () => {
     });
     expect(applied.ok).toBe(true);
     expect(applied.applied).toBe(true);
-    expect(applied.rollbackId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(applied.rollbackId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
     // Dep should be removed.
     let pkg = JSON.parse(await fs.readFile(path.join(tmp, 'package.json'), 'utf-8'));
     expect(pkg.dependencies).not.toHaveProperty('never-imported-pkg');

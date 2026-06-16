@@ -79,7 +79,10 @@ test('GitHub Action starter wires PR comments to projscan evidence', () => {
 test('GitHub Action PR comment validator runs in a real shell', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-action-validator-'));
   try {
-    const script = extractWorkflowRunScript(getGithubActionStarter().workflow, 'Validate PR comment');
+    const script = extractWorkflowRunScript(
+      getGithubActionStarter().workflow,
+      'Validate PR comment',
+    );
     expect(script).toContain("node <<'NODE'");
     expect(script).not.toContain('`(?:projscan');
 
@@ -105,15 +108,18 @@ test('GitHub Action PR comment validator runs in a real shell', async () => {
     );
     await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).resolves.toBeDefined();
 
-    const withoutReviewerDecision = (await fs.readFile(path.join(root, 'projscan-comment.md'), 'utf-8')).replace(
-      '### Reviewer Decision\n',
-      '',
-    );
+    const withoutReviewerDecision = (
+      await fs.readFile(path.join(root, 'projscan-comment.md'), 'utf-8')
+    ).replace('### Reviewer Decision\n', '');
     await fs.writeFile(path.join(root, 'projscan-comment.md'), withoutReviewerDecision);
-    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({ code: 1 });
+    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({
+      code: 1,
+    });
 
     await fs.writeFile(path.join(root, 'projscan-comment.md'), '## projscan approval evidence\n');
-    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({ code: 1 });
+    await expect(execFileAsync('bash', ['-lc', script], { cwd: root })).rejects.toMatchObject({
+      code: 1,
+    });
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -140,11 +146,13 @@ test('workflow recipes include team bootstrap and PR automation paths', () => {
   );
 });
 
-
 test('team starter writes policy workflow codeowners and baseline once', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-team-'));
   try {
-    await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }));
+    await fs.writeFile(
+      path.join(root, 'package.json'),
+      JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }),
+    );
     await fs.mkdir(path.join(root, 'src'), { recursive: true });
     await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
 
@@ -157,9 +165,16 @@ test('team starter writes policy workflow codeowners and baseline once', async (
     expect(created.created.baseline).toBe(true);
     expect(created.nextCommands).toContain('projscan start --mode before_edit --format json');
     expect(created.onboarding.map((step) => step.id)).toEqual(
-      expect.arrayContaining(['review-generated-files', 'verify-mcp-setup', 'open-first-pr', 'tune-after-baseline']),
+      expect.arrayContaining([
+        'review-generated-files',
+        'verify-mcp-setup',
+        'open-first-pr',
+        'tune-after-baseline',
+      ]),
     );
-    expect(created.onboarding.find((step) => step.id === 'open-first-pr')?.command).toContain('projscan evidence-pack --pr-comment');
+    expect(created.onboarding.find((step) => step.id === 'open-first-pr')?.command).toContain(
+      'projscan evidence-pack --pr-comment',
+    );
     expect(refused.created.policy).toBe(false);
     await expect(fs.access(path.join(root, '.projscan-baseline.json'))).resolves.toBeUndefined();
     const codeowners = await fs.readFile(path.join(root, '.github', 'CODEOWNERS'), 'utf-8');
@@ -191,7 +206,10 @@ test('GitHub Action starter writes once and refuses accidental overwrite', async
     expect(created.created).toBe(true);
     expect(refused.created).toBe(false);
     expect(refused.reason).toContain('already exists');
-    const workflow = await fs.readFile(path.join(root, '.github', 'workflows', 'projscan.yml'), 'utf-8');
+    const workflow = await fs.readFile(
+      path.join(root, '.github', 'workflows', 'projscan.yml'),
+      'utf-8',
+    );
     expect(workflow).toContain('Enforce preflight verdict');
     expect(workflow).toContain("r.verdict === 'block'");
     expect(workflow).toContain('npx -y projscan evidence-pack --pr-comment');

@@ -13,6 +13,7 @@
 ### Task 1: Core Understand Report
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Create: `src/core/understand.ts`
 - Test: `tests/core/understand.test.ts`
@@ -20,6 +21,7 @@
 - [x] **Step 1: Write failing core tests**
 
 Create `tests/core/understand.test.ts` with fixtures that prove:
+
 - `computeUnderstandReport(root, { view: 'map' })` returns entrypoints, boundaries, read-first files, risks, and cited claims.
 - `view: 'flow'` returns runtime flow evidence from entrypoints to sinks.
 - `view: 'contracts'` returns public exports, config/env contracts, and breaking-change risks.
@@ -39,6 +41,7 @@ Expected: failure because `src/core/understand.ts` and understand types do not e
 - [x] **Step 3: Implement minimal core**
 
 Implement:
+
 - `UnderstandView = 'map' | 'flow' | 'contracts' | 'change' | 'verify'`
 - `UnderstandReport` with `schemaVersion`, `view`, `summary`, `claims`, `entrypoints`, `boundaries`, `flows`, `contracts`, `changeReadiness`, `verification`, `readFirst`, `risks`, `unknowns`, and `commands`.
 - `computeUnderstandReport(rootPath, options)` that builds evidence from existing repo scan, code graph, semantic graph, dataflow, hotspots, changed files, preflight, and package metadata.
@@ -58,6 +61,7 @@ Expected: core tests pass and TypeScript compiles.
 ### Task 2: CLI and MCP Surface
 
 **Files:**
+
 - Create: `src/cli/commands/understand.ts`
 - Modify: `src/cli/index.ts`
 - Create: `src/mcp/tools/understand.ts`
@@ -69,6 +73,7 @@ Expected: core tests pass and TypeScript compiles.
 - [x] **Step 1: Write failing CLI/MCP tests**
 
 Add tests that prove:
+
 - `projscan understand --view map --format json --quiet` returns the report.
 - `projscan understand --view change --intent "rename auth client" --format json --quiet` preserves the intent and returns change-readiness commands.
 - Console output includes `Read First`, `Claims`, `Unknowns`, and `Next Commands`.
@@ -89,6 +94,7 @@ Expected: build or tests fail because the command/tool are not registered.
 - [x] **Step 3: Implement surfaces**
 
 Add:
+
 - CLI command `understand` with `--view`, `--intent`, `--max-items`, and shared `--format`.
 - MCP tool `projscan_understand` with `view`, `intent`, `max_items`, and `max_tokens`.
 - Format support for console/json/markdown where existing command support allows it; start with console/json if markdown is not locally supported by command metadata.
@@ -107,6 +113,7 @@ Expected: CLI and MCP tests pass.
 ### Task 3: Release Metadata and Docs
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `.github/mcp-registry/server.json`
@@ -122,6 +129,7 @@ Set package, lockfile, and MCP Registry versions to `3.4.0`. Update README relea
 - [x] **Step 2: Exact changelog/docs**
 
 Add a `3.4.0` changelog entry listing what shipped:
+
 - repo map
 - flow map
 - contract map
@@ -139,6 +147,7 @@ Update `docs/WEBSITE-UPDATE-PROMPT.md` to target `projscan 3.4.0` and highlight 
 ### Task 4: Release Verification
 
 **Files:**
+
 - Verify only unless a gate fails.
 
 - [x] **Step 1: Focused verification**

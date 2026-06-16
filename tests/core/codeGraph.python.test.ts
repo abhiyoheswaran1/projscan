@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { buildCodeGraph, exportsOf, importersOf, filesImportingPackage } from '../../src/core/codeGraph.js';
+import {
+  buildCodeGraph,
+  exportsOf,
+  importersOf,
+  filesImportingPackage,
+} from '../../src/core/codeGraph.js';
 import type { FileEntry } from '../../src/types.js';
 
 const FIXTURE_ROOT = path.resolve(__dirname, '..', 'fixtures', 'python-small');
@@ -52,19 +57,25 @@ describe('buildCodeGraph on the python-small fixture', () => {
   it('extracts exports per file', async () => {
     const files = await listFixture();
     const graph = await buildCodeGraph(FIXTURE_ROOT, files);
-    const coreExports = exportsOf(graph, 'pkg/core.py').map((e) => e.name).sort();
+    const coreExports = exportsOf(graph, 'pkg/core.py')
+      .map((e) => e.name)
+      .sort();
     // Exports include `from .utils import PREFIX` and `from .sub.deep import deep_helper`
     // as re-exports, plus the top-level def and assignment. `_internal` filtered.
     expect(coreExports).toEqual(['PREFIX', 'VERSION', 'deep_helper', 'greet']);
 
-    const utilExports = exportsOf(graph, 'pkg/utils.py').map((e) => e.name).sort();
+    const utilExports = exportsOf(graph, 'pkg/utils.py')
+      .map((e) => e.name)
+      .sort();
     expect(utilExports).toEqual(['PREFIX', 'format_line']);
 
     const deepExports = exportsOf(graph, 'pkg/sub/deep.py').map((e) => e.name);
     expect(deepExports).toEqual(['deep_helper']);
 
     // __init__ honors __all__
-    const initExports = exportsOf(graph, 'pkg/__init__.py').map((e) => e.name).sort();
+    const initExports = exportsOf(graph, 'pkg/__init__.py')
+      .map((e) => e.name)
+      .sort();
     expect(initExports).toEqual(['PREFIX', 'greet']);
   });
 
@@ -98,8 +109,8 @@ describe('buildCodeGraph on the python-small fixture', () => {
   it('symbolDefs contains Python function/class names', async () => {
     const files = await listFixture();
     const graph = await buildCodeGraph(FIXTURE_ROOT, files);
-    expect([...graph.symbolDefs.get('greet') ?? []]).toContain('pkg/core.py');
-    expect([...graph.symbolDefs.get('deep_helper') ?? []]).toContain('pkg/sub/deep.py');
+    expect([...(graph.symbolDefs.get('greet') ?? [])]).toContain('pkg/core.py');
+    expect([...(graph.symbolDefs.get('deep_helper') ?? [])]).toContain('pkg/sub/deep.py');
     // Private names NOT indexed.
     expect(graph.symbolDefs.has('_internal')).toBe(false);
   });

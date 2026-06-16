@@ -122,7 +122,9 @@ describe('intent — parseIntent (1.9)', () => {
   });
 
   it('handles multi-line intent input', () => {
-    const intent = parseIntent('feat: add session management\n\nThis PR introduces a new session store for the user API endpoint.\nCloses #123.');
+    const intent = parseIntent(
+      'feat: add session management\n\nThis PR introduces a new session store for the user API endpoint.\nCloses #123.',
+    );
     expect(intent).not.toBeNull();
     expect(intent?.action).toBe('feature');
     expect(intent?.scopeTokens).toContain('session');
@@ -289,9 +291,9 @@ describe('intent — annotateReviewWithIntent (1.9)', () => {
       { files: ['src/users/a.js', 'src/users/b.js'], size: 2, classification: 'new' },
     ];
     const analysis = annotateReviewWithIntent(report, intent!);
-    expect(analysis.totals.expected + analysis.totals.unexpected + analysis.totals['out-of-scope']).toBeGreaterThan(
-      0,
-    );
+    expect(
+      analysis.totals.expected + analysis.totals.unexpected + analysis.totals['out-of-scope'],
+    ).toBeGreaterThan(0);
   });
 
   it('notable is capped to 5 entries', () => {

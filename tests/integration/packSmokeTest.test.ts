@@ -4,7 +4,8 @@ import { mkdtempSync, rmSync, readdirSync, statSync, existsSync } from 'node:fs'
 import path from 'node:path';
 import os from 'node:os';
 
-const maybePackedInstallSmoke = process.env.PROJSCAN_RUN_PACKED_INSTALL_SMOKE === '1' ? it : it.skip;
+const maybePackedInstallSmoke =
+  process.env.PROJSCAN_RUN_PACKED_INSTALL_SMOKE === '1' ? it : it.skip;
 
 /**
  * Verifies that `npm pack` produces a tarball containing the compiled
@@ -54,26 +55,34 @@ describe('npm pack smoke test', () => {
       expect(listing).toContain('package/docs/examples/plugins/team-radar.projscan-plugin.json');
       expect(listing).toContain('package/docs/examples/plugins/team-radar.mjs');
       expect(listing).toContain('package/docs/PLUGIN-GALLERY.md');
-      expect(listing).toContain('package/docs/examples/plugins/security-radar.projscan-plugin.json');
+      expect(listing).toContain(
+        'package/docs/examples/plugins/security-radar.projscan-plugin.json',
+      );
       expect(listing).toContain('package/docs/examples/plugins/security-radar.mjs');
-      expect(listing).toContain('package/docs/examples/plugins/release-readiness.projscan-plugin.json');
+      expect(listing).toContain(
+        'package/docs/examples/plugins/release-readiness.projscan-plugin.json',
+      );
       expect(listing).toContain('package/docs/examples/plugins/release-readiness.mjs');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   }, 60_000);
 
-  maybePackedInstallSmoke('installs the packed tarball into a fresh project and exercises CLI, MCP, and plugins', () => {
-    const repoRoot = path.resolve(__dirname, '..', '..');
-    const script = path.join(repoRoot, 'scripts', 'packed-install-smoke.mjs');
+  maybePackedInstallSmoke(
+    'installs the packed tarball into a fresh project and exercises CLI, MCP, and plugins',
+    () => {
+      const repoRoot = path.resolve(__dirname, '..', '..');
+      const script = path.join(repoRoot, 'scripts', 'packed-install-smoke.mjs');
 
-    const output = execFileSync(process.execPath, [script], {
-      cwd: repoRoot,
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 300_000,
-    });
+      const output = execFileSync(process.execPath, [script], {
+        cwd: repoRoot,
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 300_000,
+      });
 
-    expect(output).toContain('packed-install-smoke: ok');
-  }, 300_000);
+      expect(output).toContain('packed-install-smoke: ok');
+    },
+    300_000,
+  );
 });

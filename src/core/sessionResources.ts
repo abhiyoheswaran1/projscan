@@ -163,7 +163,9 @@ async function loadProjectSignals(
     return {
       issues: [],
       hotspots: null,
-      staleSignals: [`project signals unavailable: ${err instanceof Error ? err.message : String(err)}`],
+      staleSignals: [
+        `project signals unavailable: ${err instanceof Error ? err.message : String(err)}`,
+      ],
     };
   }
 }
@@ -226,7 +228,8 @@ function buildCoordinationHints(
     {
       id: 'current-worktree-check',
       label: 'Separate current worktree evidence from session memory',
-      message: 'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
+      message:
+        'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
       command: 'projscan preflight --mode before_edit --format json',
     },
   ];
@@ -274,6 +277,9 @@ function buildHandoffActions(conflicts: SessionConflict[]): PreflightSuggestedAc
 }
 
 function buildAvoidRepeating(summary: SessionResourceSummary): string[] {
-  if (summary.touchedFiles.length === 0) return ['No touched files have been recorded in this session.'];
-  return summary.touchedFiles.slice(0, 5).map((file) => `Do not re-scan ${file} without a new reason.`);
+  if (summary.touchedFiles.length === 0)
+    return ['No touched files have been recorded in this session.'];
+  return summary.touchedFiles
+    .slice(0, 5)
+    .map((file) => `Do not re-scan ${file} without a new reason.`);
 }

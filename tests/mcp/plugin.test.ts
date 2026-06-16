@@ -16,7 +16,10 @@ beforeEach(async () => {
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
   originalTrustHome = process.env[PLUGIN_TRUST_HOME_ENV];
   process.env[PLUGIN_TRUST_HOME_ENV] = trustHome;
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, '.projscan-plugins'), { recursive: true });
 });
 
@@ -30,7 +33,9 @@ afterEach(async () => {
 });
 
 async function init(server: ReturnType<typeof createMcpServer>): Promise<void> {
-  await server.handleMessage(JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} }));
+  await server.handleMessage(
+    JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} }),
+  );
 }
 
 async function call(
@@ -39,15 +44,24 @@ async function call(
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const raw = await server.handleMessage(
-    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    }),
   );
   if (!raw) throw new Error('no response');
   const env = JSON.parse(raw) as { result: { content: Array<{ text: string }> } };
   return JSON.parse(env.result.content[0].text);
 }
 
-async function listTools(server: ReturnType<typeof createMcpServer>): Promise<Array<Record<string, unknown>>> {
-  const raw = await server.handleMessage(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }));
+async function listTools(
+  server: ReturnType<typeof createMcpServer>,
+): Promise<Array<Record<string, unknown>>> {
+  const raw = await server.handleMessage(
+    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  );
   if (!raw) throw new Error('no response');
   const env = JSON.parse(raw) as { result: { tools: Array<Record<string, unknown>> } };
   return env.result.tools;
@@ -92,8 +106,6 @@ describe('projscan_plugin MCP tool', () => {
     });
     server.close();
   });
-
-
 
   it('rejects absolute manifest paths outside the project plugin directory', async () => {
     const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-outside-'));
@@ -140,7 +152,11 @@ describe('projscan_plugin MCP tool', () => {
   });
 
   it('includes diagnostics in list results', async () => {
-    await fs.writeFile(path.join(tmp, '.projscan-plugins', 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'broken.projscan-plugin.json'),
+      '{ not json',
+      'utf-8',
+    );
     const server = createMcpServer(tmp);
     await init(server);
     const result = await call(server, 'projscan_plugin', { action: 'list' });
@@ -238,7 +254,13 @@ describe('projscan_plugin MCP tool', () => {
     await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
     await fs.writeFile(
       path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
-      JSON.stringify({ schemaVersion: 1, name: 'policy', kind: 'analyzer', module: './policy.mjs', category: 'custom' }),
+      JSON.stringify({
+        schemaVersion: 1,
+        name: 'policy',
+        kind: 'analyzer',
+        module: './policy.mjs',
+        category: 'custom',
+      }),
     );
     await fs.writeFile(
       path.join(tmp, '.projscan-plugins', 'policy.mjs'),
@@ -256,7 +278,13 @@ describe('projscan_plugin MCP tool', () => {
   it('reports per-plugin trust status in the list action', async () => {
     await fs.writeFile(
       path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
-      JSON.stringify({ schemaVersion: 1, name: 'policy', kind: 'analyzer', module: './policy.mjs', category: 'custom' }),
+      JSON.stringify({
+        schemaVersion: 1,
+        name: 'policy',
+        kind: 'analyzer',
+        module: './policy.mjs',
+        category: 'custom',
+      }),
     );
     await fs.writeFile(
       path.join(tmp, '.projscan-plugins', 'policy.mjs'),
@@ -266,13 +294,17 @@ describe('projscan_plugin MCP tool', () => {
     await init(server);
 
     const before = await call(server, 'projscan_plugin', { action: 'list' });
-    const beforePlugin = (before.plugins as Array<{ name?: string; trust?: string }>).find((p) => p.name === 'policy');
+    const beforePlugin = (before.plugins as Array<{ name?: string; trust?: string }>).find(
+      (p) => p.name === 'policy',
+    );
     expect(beforePlugin?.trust).toBe('untrusted');
 
     await trustPlugin(path.join(tmp, '.projscan-plugins', 'policy.mjs'), 'policy');
 
     const after = await call(server, 'projscan_plugin', { action: 'list' });
-    const afterPlugin = (after.plugins as Array<{ name?: string; trust?: string }>).find((p) => p.name === 'policy');
+    const afterPlugin = (after.plugins as Array<{ name?: string; trust?: string }>).find(
+      (p) => p.name === 'policy',
+    );
     expect(afterPlugin?.trust).toBe('trusted');
     server.close();
   });

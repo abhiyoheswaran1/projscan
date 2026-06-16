@@ -17,6 +17,7 @@
 Mirror `reportReviewHtml`. The PR-diff output is simpler — just three lists (added / removed / modified files) and per-file structural changes. Use the existing `htmlShell()`, `escapeHtml()`, and `signed()` helpers.
 
 Layout:
+
 - `<h1>` with the base → head ref summary
 - Stats line: total files changed, breakdown
 - Three sections: Added / Removed / Modified

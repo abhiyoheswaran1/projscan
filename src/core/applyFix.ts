@@ -122,8 +122,7 @@ export async function executePlan(
       };
     }
     const beforeHash = before === null ? null : sha256(before);
-    const afterHash =
-      item.op === 'delete' ? null : sha256(item.content ?? '');
+    const afterHash = item.op === 'delete' ? null : sha256(item.content ?? '');
     changes.push({
       path: item.path,
       op: item.op,
@@ -282,7 +281,10 @@ async function findMissingAncestors(absPath: string, rootPath: string): Promise<
  * file under one of these dirs, the rmdir silently no-ops and the
  * sibling survives.
  */
-async function removeCreatedParentDirs(rootPath: string, rels: string[] | undefined): Promise<void> {
+async function removeCreatedParentDirs(
+  rootPath: string,
+  rels: string[] | undefined,
+): Promise<void> {
   if (!rels || rels.length === 0) return;
   for (const rel of rels) {
     if (!isSafeRelativePath(rel)) continue;

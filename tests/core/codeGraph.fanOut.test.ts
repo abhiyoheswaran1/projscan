@@ -64,10 +64,7 @@ export function caller() {
   });
 
   it('does not count self-recursion as fan-out', async () => {
-    await write(
-      'src/a.ts',
-      `export function recurse() { recurse(); }\n`,
-    );
+    await write('src/a.ts', `export function recurse() { recurse(); }\n`);
     const scan = await scanRepository(tmp);
     const graph = await buildCodeGraph(tmp, scan.files);
     const fn = graph.files.get('src/a.ts')!.functions!.find((f) => f.name === 'recurse');

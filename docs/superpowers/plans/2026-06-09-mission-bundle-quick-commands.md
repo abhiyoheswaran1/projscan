@@ -23,7 +23,7 @@
 
 In `tests/cli/start.test.ts`, inside `start writes a Mission Control bundle when requested`, after the existing current-step assertions, add:
 
-```ts
+````ts
 expect(quickstart).toContain('## Quick Commands');
 expect(quickstart).toContain('```sh\n./mission.sh\n./status.sh\n./review.sh\n```');
 expect(quickstart).toContain('- `./mission.sh` runs the current command and remaining proof.');
@@ -31,7 +31,7 @@ expect(quickstart).toContain('- `./status.sh` prints the latest mission state.')
 expect(quickstart).toContain('- `./review.sh` prints the review packet for approval.');
 expect(quickstart.indexOf('## Quick Commands')).toBeLessThan(quickstart.indexOf('## Run Next'));
 expect(quickstart.indexOf('## Run Next')).toBeLessThan(quickstart.indexOf('## Reviewer Replies'));
-```
+````
 
 - [ ] **Step 2: Run focused test and verify red**
 
@@ -49,7 +49,7 @@ Expected: fail because generated bundle README files do not contain `## Quick Co
 
 In `src/cli/commands/start.ts`, update the `lines` array in `missionBundleReadme()` after the current step metadata and before `## Run Next`:
 
-```ts
+````ts
 '## Quick Commands',
 '',
 '```sh',
@@ -63,7 +63,7 @@ In `src/cli/commands/start.ts`, update the `lines` array in `missionBundleReadme
 '- `./review.sh` prints the review packet for approval.',
 '',
 '## Run Next',
-```
+````
 
 - [ ] **Step 2: Run focused test and verify green**
 

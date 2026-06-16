@@ -17,23 +17,30 @@ export const hotspotsTool: McpTool = {
     properties: {
       limit: {
         type: 'number',
-        description: 'Cap on total hotspots ranked (default 100). For paging the returned set, use `page_size` + `cursor` instead.',
+        description:
+          'Cap on total hotspots ranked (default 100). For paging the returned set, use `page_size` + `cursor` instead.',
       },
       since: {
         type: 'string',
-        description: 'Git history window. Examples: "12 months ago", "2024-01-01". Default: "12 months ago".',
+        description:
+          'Git history window. Examples: "12 months ago", "2024-01-01". Default: "12 months ago".',
       },
-      cursor: { type: 'string', description: 'Opaque cursor from a previous response. Omit for the first page.' },
+      cursor: {
+        type: 'string',
+        description: 'Opaque cursor from a previous response. Omit for the first page.',
+      },
       page_size: { type: 'number', description: 'Items per page (default 50, max 500).' },
       max_tokens: { type: 'number', description: 'Cap response to roughly this many tokens.' },
       package: {
         type: 'string',
-        description: 'Optional. Workspace package name (from projscan_workspaces) to scope hotspots to one package only.',
+        description:
+          'Optional. Workspace package name (from projscan_workspaces) to scope hotspots to one package only.',
       },
       view: {
         type: 'string',
         enum: ['files', 'functions'],
-        description: 'Output shape. "files" (default) returns ranked hotspot files. "functions" returns the top-N individual functions across all hotspots, sorted by per-function CC desc.',
+        description:
+          'Output shape. "files" (default) returns ranked hotspot files. "functions" returns the top-N individual functions across all hotspots, sorted by per-function CC desc.',
       },
     },
   },
@@ -52,7 +59,13 @@ export const hotspotsTool: McpTool = {
     const report = await analyzeHotspots(rootPath, scan.files, issues, { limit, since, graph });
     if (typeof args.package === 'string' && args.package.length > 0) {
       const ws = await detectWorkspaces(rootPath);
-      const allowed = new Set(filterFilesByPackage(ws, args.package, report.hotspots.map((h) => h.relativePath)));
+      const allowed = new Set(
+        filterFilesByPackage(
+          ws,
+          args.package,
+          report.hotspots.map((h) => h.relativePath),
+        ),
+      );
       report.hotspots = report.hotspots.filter((h) => allowed.has(h.relativePath));
     }
 

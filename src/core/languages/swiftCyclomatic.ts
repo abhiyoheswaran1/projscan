@@ -45,7 +45,9 @@ function isDecisionPoint(n: TsNode): boolean {
     case 'switch_entry': {
       // Default arm has no `switch_pattern` / `case_label` child; non-default
       // always does. Structural detection is more reliable than text-regex.
-      const isDefault = !n.namedChildren.some((c) => c.type === 'switch_pattern' || c.type === 'case_label');
+      const isDefault = !n.namedChildren.some(
+        (c) => c.type === 'switch_pattern' || c.type === 'case_label',
+      );
       return !isDefault;
     }
     default:

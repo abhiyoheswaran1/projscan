@@ -35,7 +35,10 @@ describe('splitPep508', () => {
   });
 
   it('strips extras', () => {
-    expect(splitPep508('requests[security,socks]>=2')).toEqual({ name: 'requests', versionSpec: '>=2' });
+    expect(splitPep508('requests[security,socks]>=2')).toEqual({
+      name: 'requests',
+      versionSpec: '>=2',
+    });
   });
 
   it('strips environment markers', () => {
@@ -169,26 +172,23 @@ describe('detectPythonProject', () => {
 
   it('detects poetry.lock as lockfile', async () => {
     await fs.writeFile(path.join(tmp, 'poetry.lock'), '');
-    await fs.writeFile(path.join(tmp, 'pyproject.toml'), '[tool.poetry.dependencies]\nrequests = "^2"\n');
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      '[tool.poetry.dependencies]\nrequests = "^2"\n',
+    );
     const info = await detectPythonProject(tmp, [fileEntry('a.py')]);
     expect(info?.hasLockfile).toBe(true);
   });
 
   it('treats requirements.txt with == pins as a lockfile', async () => {
     await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests==2.31.0\n');
-    const info = await detectPythonProject(tmp, [
-      fileEntry('a.py'),
-      fileEntry('requirements.txt'),
-    ]);
+    const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('requirements.txt')]);
     expect(info?.hasLockfile).toBe(true);
   });
 
   it('no lockfile when requirements are unpinned', async () => {
     await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests\nflask>=2\n');
-    const info = await detectPythonProject(tmp, [
-      fileEntry('a.py'),
-      fileEntry('requirements.txt'),
-    ]);
+    const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('requirements.txt')]);
     expect(info?.hasLockfile).toBe(false);
   });
 

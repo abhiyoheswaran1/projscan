@@ -5,7 +5,10 @@ import path from 'node:path';
 import { createMcpServer } from '../../src/mcp/server.js';
 import { getToolDefinitions } from '../../src/mcp/tools.js';
 
-async function send(server: ReturnType<typeof createMcpServer>, message: unknown): Promise<unknown> {
+async function send(
+  server: ReturnType<typeof createMcpServer>,
+  message: unknown,
+): Promise<unknown> {
   const line = JSON.stringify(message);
   const raw = await server.handleMessage(line);
   return raw === null ? null : JSON.parse(raw);
@@ -13,7 +16,10 @@ async function send(server: ReturnType<typeof createMcpServer>, message: unknown
 
 async function makeFixtureRoot(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-server-'));
-  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
@@ -28,7 +34,10 @@ describe('MCP server', () => {
       id: 1,
       method: 'initialize',
       params: { protocolVersion: '2024-11-05' },
-    })) as { id: number; result: { serverInfo: { name: string }; capabilities: { tools: unknown } } };
+    })) as {
+      id: number;
+      result: { serverInfo: { name: string }; capabilities: { tools: unknown } };
+    };
 
     expect(response.id).toBe(1);
     expect(response.result.serverInfo.name).toBe('projscan');

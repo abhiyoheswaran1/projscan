@@ -6,8 +6,12 @@ import fs from 'node:fs/promises';
 vi.mock('node:fs/promises');
 
 function makeFile(relativePath: string, sizeBytes = 100): FileEntry {
-  const ext = relativePath.includes('.') ? relativePath.substring(relativePath.lastIndexOf('.')) : '';
-  const dir = relativePath.includes('/') ? relativePath.substring(0, relativePath.lastIndexOf('/')) : '.';
+  const ext = relativePath.includes('.')
+    ? relativePath.substring(relativePath.lastIndexOf('.'))
+    : '';
+  const dir = relativePath.includes('/')
+    ? relativePath.substring(0, relativePath.lastIndexOf('/'))
+    : '.';
   return {
     relativePath,
     absolutePath: `/proj/${relativePath}`,
@@ -78,14 +82,11 @@ describe('eslintCheck', () => {
     expect(issues).toHaveLength(0);
   });
 
-  it.each(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'])(
-    'flags for %s files',
-    async (ext) => {
-      mockPackageJson({});
-      const issues = await check('/proj', [makeFile(`src/file${ext}`)]);
-      expect(issues.find((i) => i.id === 'missing-eslint')).toBeDefined();
-    },
-  );
+  it.each(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'])('flags for %s files', async (ext) => {
+    mockPackageJson({});
+    const issues = await check('/proj', [makeFile(`src/file${ext}`)]);
+    expect(issues.find((i) => i.id === 'missing-eslint')).toBeDefined();
+  });
 
   it('handles missing package.json gracefully', async () => {
     mockPackageJson(null);

@@ -4,17 +4,18 @@ import type { McpTool } from './_shared.js';
 export const bugHuntTool: McpTool = {
   name: 'projscan_bug_hunt',
   description:
-    'Run an agent-ready bug hunt. Combines doctor issues, preflight verdict, hotspots, and session coordination into a prioritized fix queue with verification commands.',
+    'Run an agent-ready bug hunt. Combines doctor issues, preflight verdict, hotspots, and session coordination into a prioritized action queue with verification commands.',
   inputSchema: {
     type: 'object',
     properties: {
       max_findings: {
         type: 'number',
-        description: 'Maximum number of fix-queue findings to return. Default: 10, max: 25.',
+        description: 'Maximum number of action-queue entries to return. Default: 10, max: 25.',
       },
       since: {
         type: 'string',
-        description: 'Git history window for hotspot evidence. Examples: "6 months ago", "2024-01-01".',
+        description:
+          'Git history window for hotspot evidence. Examples: "6 months ago", "2024-01-01".',
       },
       max_tokens: {
         type: 'number',

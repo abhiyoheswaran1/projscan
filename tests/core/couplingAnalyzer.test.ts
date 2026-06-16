@@ -56,10 +56,12 @@ describe('computeCoupling: fan-in / fan-out / instability', () => {
   });
 
   it('a -> b: a has fanOut 1, b has fanIn 1', () => {
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts']],
-      ['b.ts', []],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts']],
+        ['b.ts', []],
+      ]),
+    );
     const a = r.files.find((x) => x.relativePath === 'a.ts')!;
     const b = r.files.find((x) => x.relativePath === 'b.ts')!;
     expect(a.fanOut).toBe(1);
@@ -72,11 +74,13 @@ describe('computeCoupling: fan-in / fan-out / instability', () => {
   });
 
   it('balanced in/out gives instability ~0.5', () => {
-    const r = computeCoupling(graph([
-      ['x.ts', ['y.ts']],
-      ['z.ts', ['x.ts']],
-      ['y.ts', []],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['x.ts', ['y.ts']],
+        ['z.ts', ['x.ts']],
+        ['y.ts', []],
+      ]),
+    );
     const x = r.files.find((f) => f.relativePath === 'x.ts')!;
     expect(x.fanIn).toBe(1);
     expect(x.fanOut).toBe(1);
@@ -84,11 +88,13 @@ describe('computeCoupling: fan-in / fan-out / instability', () => {
   });
 
   it('returns 0 cycles on a DAG', () => {
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts', 'c.ts']],
-      ['b.ts', ['c.ts']],
-      ['c.ts', []],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts', 'c.ts']],
+        ['b.ts', ['c.ts']],
+        ['c.ts', []],
+      ]),
+    );
     expect(r.cycles).toEqual([]);
     expect(r.totalCycles).toBe(0);
   });
@@ -96,33 +102,39 @@ describe('computeCoupling: fan-in / fan-out / instability', () => {
 
 describe('computeCoupling: cycle detection (Tarjan SCC)', () => {
   it('detects a 2-file cycle a <-> b', () => {
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts']],
-      ['b.ts', ['a.ts']],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts']],
+        ['b.ts', ['a.ts']],
+      ]),
+    );
     expect(r.cycles).toHaveLength(1);
     expect(r.cycles[0].size).toBe(2);
     expect(r.cycles[0].files.sort()).toEqual(['a.ts', 'b.ts']);
   });
 
   it('detects a 3-file cycle a -> b -> c -> a', () => {
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts']],
-      ['b.ts', ['c.ts']],
-      ['c.ts', ['a.ts']],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts']],
+        ['b.ts', ['c.ts']],
+        ['c.ts', ['a.ts']],
+      ]),
+    );
     expect(r.cycles).toHaveLength(1);
     expect(r.cycles[0].size).toBe(3);
     expect(r.cycles[0].files.sort()).toEqual(['a.ts', 'b.ts', 'c.ts']);
   });
 
   it('detects two disjoint cycles', () => {
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts']],
-      ['b.ts', ['a.ts']],
-      ['c.ts', ['d.ts']],
-      ['d.ts', ['c.ts']],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts']],
+        ['b.ts', ['a.ts']],
+        ['c.ts', ['d.ts']],
+        ['d.ts', ['c.ts']],
+      ]),
+    );
     expect(r.cycles).toHaveLength(2);
     expect(r.totalCycles).toBe(2);
   });
@@ -135,11 +147,13 @@ describe('computeCoupling: cycle detection (Tarjan SCC)', () => {
 
   it('ignores acyclic edges adjacent to a cycle', () => {
     // a -> b -> c -> b (cycle b<->c only). a is not in the cycle.
-    const r = computeCoupling(graph([
-      ['a.ts', ['b.ts']],
-      ['b.ts', ['c.ts']],
-      ['c.ts', ['b.ts']],
-    ]));
+    const r = computeCoupling(
+      graph([
+        ['a.ts', ['b.ts']],
+        ['b.ts', ['c.ts']],
+        ['c.ts', ['b.ts']],
+      ]),
+    );
     expect(r.cycles).toHaveLength(1);
     expect(r.cycles[0].files.sort()).toEqual(['b.ts', 'c.ts']);
   });

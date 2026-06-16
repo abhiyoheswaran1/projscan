@@ -17,8 +17,14 @@ beforeEach(async () => {
   );
   await fs.writeFile(path.join(tmp, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
-  await fs.writeFile(path.join(tmp, 'src', 'db.ts'), 'export async function query(sql: string) { return sql; }\n');
-  await fs.writeFile(path.join(tmp, 'src', 'config.ts'), 'export function loadConfig() { return process.env.API_KEY; }\n');
+  await fs.writeFile(
+    path.join(tmp, 'src', 'db.ts'),
+    'export async function query(sql: string) { return sql; }\n',
+  );
+  await fs.writeFile(
+    path.join(tmp, 'src', 'config.ts'),
+    'export function loadConfig() { return process.env.API_KEY; }\n',
+  );
   await fs.writeFile(
     path.join(tmp, 'src', 'server.ts'),
     'import { query } from "./db"; import { loadConfig } from "./config"; export function createApp() { return query(String(loadConfig())); }\n',
@@ -35,7 +41,9 @@ test('understand renders repo map JSON', async () => {
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
   expect(report.view).toBe('map');
-  expect(report.claims.every((claim: { citations: unknown[] }) => claim.citations.length > 0)).toBe(true);
+  expect(report.claims.every((claim: { citations: unknown[] }) => claim.citations.length > 0)).toBe(
+    true,
+  );
   expect(report.readFirst.length).toBeGreaterThan(0);
 });
 
@@ -55,7 +63,9 @@ test('understand change view preserves intent and returns change commands', asyn
   const report = JSON.parse(result.stdout);
   expect(report.view).toBe('change');
   expect(report.intent).toBe('rename auth client');
-  expect(report.changeReadiness.verificationCommands).toContain('projscan understand --view verify --format json');
+  expect(report.changeReadiness.verificationCommands).toContain(
+    'projscan understand --view verify --format json',
+  );
 });
 
 test('understand console shows claims read-first unknowns and commands', async () => {
@@ -76,6 +86,8 @@ test('understand rejects unsupported formats through shared matrix', async () =>
   expect(result.stderr).toContain('projscan understand does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

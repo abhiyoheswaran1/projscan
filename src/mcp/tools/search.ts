@@ -25,7 +25,8 @@ export const searchTool: McpTool = {
     properties: {
       query: {
         type: 'string',
-        description: 'Search string. Multi-word queries are treated as OR across BM25 terms; semantic mode embeds the full query.',
+        description:
+          'Search string. Multi-word queries are treated as OR across BM25 terms; semantic mode embeds the full query.',
       },
       scope: {
         type: 'string',
@@ -40,7 +41,8 @@ export const searchTool: McpTool = {
       },
       sub_file: {
         type: 'boolean',
-        description: '0.15.0+: when true, build the semantic index per-function instead of per-file (where the language adapter extracted functions). Hits return a `function` field with name + line range. Ignored in lexical mode. Default false.',
+        description:
+          '0.15.0+: when true, build the semantic index per-function instead of per-file (where the language adapter extracted functions). Hits return a `function` field with name + line range. Ignored in lexical mode. Default false.',
       },
       limit: { type: 'number', description: 'Max matches returned (default 30).' },
       max_tokens: { type: 'number', description: 'Cap the response to roughly this many tokens.' },
@@ -72,7 +74,13 @@ export const searchTool: McpTool = {
 
     if (scope === 'symbols') {
       const q = query.toLowerCase();
-      const rawMatches: Array<{ symbol: string; kind: string; file: string; line: number; rank: number }> = [];
+      const rawMatches: Array<{
+        symbol: string;
+        kind: string;
+        file: string;
+        line: number;
+        rank: number;
+      }> = [];
       for (const [file, entry] of graph.files) {
         if (passes && !passes(file)) continue;
         for (const exp of entry.exports) {

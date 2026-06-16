@@ -13,6 +13,7 @@
 ### Task 1: Canonical Roadmap And Release Train
 
 **Files:**
+
 - Create: `src/core/roadmapCatalog.ts`
 - Modify: `src/core/releaseTrain.ts`
 - Modify: `tests/core/releaseTrain.test.ts`
@@ -24,7 +25,16 @@
 Add expectations that current `3.1.0` defaults produce eight explicit lines from `3.2.x` through `3.9.x` with themes matching the eight approved workstreams:
 
 ```ts
-expect(report.plan.lines).toEqual(['3.2.x', '3.3.x', '3.4.x', '3.5.x', '3.6.x', '3.7.x', '3.8.x', '3.9.x']);
+expect(report.plan.lines).toEqual([
+  '3.2.x',
+  '3.3.x',
+  '3.4.x',
+  '3.5.x',
+  '3.6.x',
+  '3.7.x',
+  '3.8.x',
+  '3.9.x',
+]);
 expect(report.tracks.map((track) => track.theme)).toEqual([
   'Roadmap Canonicalization',
   'Adoption Proof Polish',
@@ -56,6 +66,7 @@ Expected: PASS.
 ### Task 2: Adoption Proof Polish
 
 **Files:**
+
 - Modify: `src/core/dogfood.ts`
 - Modify: `src/core/trial.ts`
 - Modify: `tests/core/dogfood.test.ts`
@@ -86,6 +97,7 @@ Expected: PASS.
 ### Task 3: PR Evidence Quality
 
 **Files:**
+
 - Modify: `src/core/releaseEvidence.ts`
 - Modify: `tests/core/releaseEvidence.test.ts`
 - Modify: `tests/core/releaseEvidencePrCommentFixtures.test.ts`
@@ -114,6 +126,7 @@ Expected: PASS.
 ### Task 4: First 10 Minutes UX
 
 **Files:**
+
 - Modify: `src/core/start.ts`
 - Modify: `src/core/adoption.ts`
 - Modify: `tests/core/start.test.ts`
@@ -144,6 +157,7 @@ Expected: PASS.
 ### Task 5: Maintainability Hardening
 
 **Files:**
+
 - Create: `src/core/roadmapCatalog.ts`
 - Create: `src/core/evidenceComment.ts` if PR formatting grows while implementing Task 3
 - Modify: `src/core/releaseTrain.ts`
@@ -167,6 +181,7 @@ Expected: PASS with no public type or import break.
 ### Task 6: Graph And Dataflow Precision
 
 **Files:**
+
 - Modify: `src/core/dataflow.ts`
 - Modify: `src/core/reviewDataflow.ts`
 - Modify: `tests/core/dataflow.test.ts`
@@ -195,6 +210,7 @@ Expected: PASS.
 ### Task 7: Plugin Ecosystem
 
 **Files:**
+
 - Modify: `src/core/pluginDx.ts`
 - Modify: `src/core/plugins.ts`
 - Modify: `tests/core/pluginDx.test.ts`
@@ -225,6 +241,7 @@ Expected: PASS.
 ### Task 8: Multi-Agent Coordination
 
 **Files:**
+
 - Modify: `src/core/sessionResources.ts`
 - Modify: `src/core/agentBrief.ts`
 - Modify: `src/core/start.ts`

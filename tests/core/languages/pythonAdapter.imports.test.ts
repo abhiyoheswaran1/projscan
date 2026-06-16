@@ -15,12 +15,16 @@ describe('pythonAdapter imports extraction', () => {
 
   it('captures dotted import', async () => {
     const r = await imports('import os.path\n');
-    expect(r).toEqual([{ source: 'os.path', kind: 'static', specifiers: [], typeOnly: false, line: 1 }]);
+    expect(r).toEqual([
+      { source: 'os.path', kind: 'static', specifiers: [], typeOnly: false, line: 1 },
+    ]);
   });
 
   it('captures aliased import (alias is discarded)', async () => {
     const r = await imports('import numpy as np\n');
-    expect(r).toEqual([{ source: 'numpy', kind: 'static', specifiers: [], typeOnly: false, line: 1 }]);
+    expect(r).toEqual([
+      { source: 'numpy', kind: 'static', specifiers: [], typeOnly: false, line: 1 },
+    ]);
   });
 
   it('captures multi-module single import', async () => {
@@ -30,7 +34,9 @@ describe('pythonAdapter imports extraction', () => {
 
   it('captures from-import with single name', async () => {
     const r = await imports('from pathlib import Path\n');
-    expect(r).toEqual([{ source: 'pathlib', kind: 'static', specifiers: ['Path'], typeOnly: false, line: 1 }]);
+    expect(r).toEqual([
+      { source: 'pathlib', kind: 'static', specifiers: ['Path'], typeOnly: false, line: 1 },
+    ]);
   });
 
   it('captures from-import with multiple names and aliases', async () => {
@@ -42,7 +48,9 @@ describe('pythonAdapter imports extraction', () => {
 
   it('captures from-import star', async () => {
     const r = await imports('from x import *\n');
-    expect(r).toEqual([{ source: 'x', kind: 'static', specifiers: ['*'], typeOnly: false, line: 1 }]);
+    expect(r).toEqual([
+      { source: 'x', kind: 'static', specifiers: ['*'], typeOnly: false, line: 1 },
+    ]);
   });
 
   it('captures relative import (one dot)', async () => {

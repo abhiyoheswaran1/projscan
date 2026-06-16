@@ -8,11 +8,7 @@ import { extractRubyCyclomatic } from './rubyCyclomatic.js';
 import { extractRubyFunctions } from './rubyFunctions.js';
 import { extractRubyCallSites } from './rubyCallSites.js';
 import { detectRubyProject } from './rubyManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const RUBY_EXTENSIONS = new Set(['.rb']);
 const MAX_RUBY_FILE = 1024 * 1024;
@@ -53,12 +49,8 @@ export const rubyAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractRubyCyclomatic(
         root as Parameters<typeof extractRubyCyclomatic>[0],
       );
-      const callSites = extractRubyCallSites(
-        root as Parameters<typeof extractRubyCallSites>[0],
-      );
-      const functions = extractRubyFunctions(
-        root as Parameters<typeof extractRubyFunctions>[0],
-      );
+      const callSites = extractRubyCallSites(root as Parameters<typeof extractRubyCallSites>[0]);
+      const functions = extractRubyFunctions(root as Parameters<typeof extractRubyFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -101,10 +93,7 @@ export const rubyAdapter: LanguageAdapter = {
     return source.split('/')[0];
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectRubyProject(rootPath, files);
     if (!info) return { packageRoots: [], meta: undefined };
     return {

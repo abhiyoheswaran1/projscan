@@ -20,28 +20,64 @@ import {
 } from '../../core/missionProofBaseline.js';
 import { renderMissionProofMarkdown } from '../../core/missionProofMarkdown.js';
 import { renderMissionProofSummary } from '../../core/missionProofSummary.js';
-import type { MissionProofBaselineRun, MissionProofReport, MissionRunStatus, ReportFormat } from '../../types.js';
+import type { ReportFormat } from '../../types.js';
+import type {
+  MissionProofBaselineRun,
+  MissionProofReport,
+  MissionRunStatus,
+} from '../../types/start.js';
 
 export function registerMissionProof(): void {
   program
     .command('mission-proof')
-    .description('Summarize local Mission Control proof and compare it with optional manual baseline runs')
-    .option('--mission <dir>', 'Mission Control bundle directory, repeatable (default: .projscan/mission)', collectMission, [])
+    .description(
+      'Summarize local Mission Control proof and compare it with optional manual baseline runs',
+    )
+    .option(
+      '--mission <dir>',
+      'Mission Control bundle directory, repeatable (default: .projscan/mission)',
+      collectMission,
+      [],
+    )
     .option('--all', 'discover .projscan/mission and direct child bundles under .projscan/missions')
     .option('--latest', 'select the most recently updated saved mission bundle')
     .option('--list', 'list saved mission bundles and exit')
     .option('--needs-attention', 'filter --list to saved mission bundles that are not passed')
-    .option('--mission-status <status>', 'filter --list by saved mission status: passed, failed, running, not_run, or unknown')
-    .option('--baseline <path>', 'JSON file with manual runs to compare against Mission Control proof')
+    .option(
+      '--mission-status <status>',
+      'filter --list by saved mission status: passed, failed, running, not_run, or unknown',
+    )
+    .option(
+      '--baseline <path>',
+      'JSON file with manual runs to compare against Mission Control proof',
+    )
     .option('--init-baseline <file>', 'write a local manual-baseline JSON template and exit')
-    .option('--add-baseline-run <file>', 'append one measured manual run to a local baseline JSON file')
+    .option(
+      '--add-baseline-run <file>',
+      'append one measured manual run to a local baseline JSON file',
+    )
     .option('--check-baseline <file>', 'validate a local manual-baseline JSON file and exit')
     .option('--id <id>', 'manual baseline run id for --add-baseline-run')
-    .option('--status <status>', 'manual baseline status for --add-baseline-run: passed, failed, running, not_run, or unknown')
-    .option('--minutes-spent <minutes>', 'minutes spent in the manual baseline run', parseNonNegativeNumber)
+    .option(
+      '--status <status>',
+      'manual baseline status for --add-baseline-run: passed, failed, running, not_run, or unknown',
+    )
+    .option(
+      '--minutes-spent <minutes>',
+      'minutes spent in the manual baseline run',
+      parseNonNegativeNumber,
+    )
     .option('--reruns <count>', 'reruns in the manual baseline run', parseNonNegativeNumber)
-    .option('--failed-gates <count>', 'failed gates in the manual baseline run', parseNonNegativeNumber)
-    .option('--reviewer-approvals <count>', 'reviewer approvals in the manual baseline run', parseNonNegativeNumber)
+    .option(
+      '--failed-gates <count>',
+      'failed gates in the manual baseline run',
+      parseNonNegativeNumber,
+    )
+    .option(
+      '--reviewer-approvals <count>',
+      'reviewer approvals in the manual baseline run',
+      parseNonNegativeNumber,
+    )
     .option('--write <file>', 'write a JSON or Markdown mission proof artifact to this path')
     .option('--require-passed', 'exit non-zero unless every selected mission bundle passed proof')
     .option('--summary', 'print one compact Mission Proof status line for terminal logs')
@@ -76,7 +112,12 @@ export function registerMissionProof(): void {
           return;
         }
         const format = assertFormatSupported('mission-proof');
-        const missions = await resolveMissionDirs(rootPath, cmdOpts.mission, cmdOpts.all === true, cmdOpts.latest === true);
+        const missions = await resolveMissionDirs(
+          rootPath,
+          cmdOpts.mission,
+          cmdOpts.all === true,
+          cmdOpts.latest === true,
+        );
         const report = await computeMissionProofReport(rootPath, {
           missions,
           baselineFile: typeof cmdOpts.baseline === 'string' ? cmdOpts.baseline : undefined,
@@ -139,7 +180,9 @@ function parseNonNegativeNumber(value: string): number {
 async function writeBaselineTemplate(rootPath: string, targetPath: string): Promise<string> {
   const target = path.resolve(rootPath, targetPath);
   await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, JSON.stringify(missionProofBaselineTemplate(), null, 2) + '\n', { flag: 'wx' });
+  await fs.writeFile(target, JSON.stringify(missionProofBaselineTemplate(), null, 2) + '\n', {
+    flag: 'wx',
+  });
   return target;
 }
 
@@ -156,8 +199,14 @@ function baselineRunFromOptions(cmdOpts: Record<string, unknown>): MissionProofB
 }
 
 function parseBaselineStatus(value: unknown): MissionRunStatus {
-  if (typeof value === 'string' && MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)) return value as MissionRunStatus;
-  throw new Error('--add-baseline-run requires --status passed, failed, running, not_run, or unknown.');
+  if (
+    typeof value === 'string' &&
+    MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)
+  )
+    return value as MissionRunStatus;
+  throw new Error(
+    '--add-baseline-run requires --status passed, failed, running, not_run, or unknown.',
+  );
 }
 
 function addOptionalNumber(
@@ -181,11 +230,17 @@ async function appendBaselineRun(
   }
   const nextRuns = [...runs, run];
   await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, JSON.stringify({ ...existing, schemaVersion: 1, runs: nextRuns }, null, 2) + '\n');
+  await fs.writeFile(
+    target,
+    JSON.stringify({ ...existing, schemaVersion: 1, runs: nextRuns }, null, 2) + '\n',
+  );
   return { target, runCount: nextRuns.length };
 }
 
-async function readBaselineForAppend(target: string, targetPath: string): Promise<MissionProofBaselineInput> {
+async function readBaselineForAppend(
+  target: string,
+  targetPath: string,
+): Promise<MissionProofBaselineInput> {
   let raw: string;
   try {
     raw = await fs.readFile(target, 'utf8');
@@ -222,7 +277,7 @@ async function resolveLatestMissionDir(rootPath: string): Promise<string> {
   if (candidates.length === 0) {
     throw new Error(
       'No saved mission bundles found under .projscan/mission or .projscan/missions.\n' +
-      'Create one with: projscan start --save-mission .projscan/mission --intent "<goal>"',
+        'Create one with: projscan start --save-mission .projscan/mission --intent "<goal>"',
     );
   }
   return sortSavedMissionBundles(candidates)[0].missionDir;
@@ -234,7 +289,9 @@ async function discoverSavedMissionBundles(rootPath: string): Promise<SavedMissi
   if (current) candidates.push(current);
   let entries: Array<{ name: string; isDirectory(): boolean }>;
   try {
-    entries = await fs.readdir(path.resolve(rootPath, '.projscan/missions'), { withFileTypes: true });
+    entries = await fs.readdir(path.resolve(rootPath, '.projscan/missions'), {
+      withFileTypes: true,
+    });
   } catch {
     return candidates;
   }
@@ -247,7 +304,9 @@ async function discoverSavedMissionBundles(rootPath: string): Promise<SavedMissi
 }
 
 function sortSavedMissionBundles(candidates: SavedMissionBundle[]): SavedMissionBundle[] {
-  return [...candidates].sort((a, b) => b.mtimeMs - a.mtimeMs || a.missionDir.localeCompare(b.missionDir));
+  return [...candidates].sort(
+    (a, b) => b.mtimeMs - a.mtimeMs || a.missionDir.localeCompare(b.missionDir),
+  );
 }
 
 function filterSavedMissionBundles(
@@ -264,13 +323,20 @@ function filterSavedMissionBundles(
 
 function parseOptionalMissionStatus(value: unknown): MissionRunStatus | undefined {
   if (typeof value === 'undefined') return undefined;
-  if (typeof value === 'string' && MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)) {
+  if (
+    typeof value === 'string' &&
+    MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)
+  ) {
     return value as MissionRunStatus;
   }
   throw new Error('--mission-status must be passed, failed, running, not_run, or unknown.');
 }
 
-async function addMissionChildren(rootPath: string, relativeRoot: string, selected: Set<string>): Promise<void> {
+async function addMissionChildren(
+  rootPath: string,
+  relativeRoot: string,
+  selected: Set<string>,
+): Promise<void> {
   let entries: Array<{ name: string; isDirectory(): boolean }>;
   try {
     entries = await fs.readdir(path.resolve(rootPath, relativeRoot), { withFileTypes: true });
@@ -283,7 +349,11 @@ async function addMissionChildren(rootPath: string, relativeRoot: string, select
   }
 }
 
-async function addMissionIfPresent(rootPath: string, missionDir: string, selected: Set<string>): Promise<void> {
+async function addMissionIfPresent(
+  rootPath: string,
+  missionDir: string,
+  selected: Set<string>,
+): Promise<void> {
   if (selected.has(missionDir)) return;
   const mission = await findMissionBundle(rootPath, missionDir);
   if (mission) selected.add(mission.missionDir);
@@ -320,8 +390,9 @@ async function readMissionSummaryStatus(summaryPath: string): Promise<MissionRun
 }
 
 function parseMissionRunStatus(value: unknown): MissionRunStatus {
-  return typeof value === 'string' && MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)
-    ? value as MissionRunStatus
+  return typeof value === 'string' &&
+    MISSION_PROOF_BASELINE_STATUSES.includes(value as MissionRunStatus)
+    ? (value as MissionRunStatus)
     : 'unknown';
 }
 
@@ -332,7 +403,10 @@ function resolveWriteFormat(format: ReportFormat, target: string): 'json' | 'mar
   return 'markdown';
 }
 
-function renderMissionProofForFormat(report: MissionProofReport, format: 'json' | 'markdown'): string {
+function renderMissionProofForFormat(
+  report: MissionProofReport,
+  format: 'json' | 'markdown',
+): string {
   return format === 'json'
     ? JSON.stringify(report, null, 2) + '\n'
     : renderMissionProofMarkdown(report);
@@ -344,13 +418,9 @@ function printBaselineTemplateWrite(target: string, format: ReportFormat): void 
     return;
   }
   if (format === 'markdown') {
-    console.log([
-      '# Mission Proof Baseline',
-      '',
-      `- Template written: ${target}`,
-      '- Runs: 0',
-      '',
-    ].join('\n'));
+    console.log(
+      ['# Mission Proof Baseline', '', `- Template written: ${target}`, '- Runs: 0', ''].join('\n'),
+    );
     return;
   }
   console.log(chalk.green(`Wrote mission proof baseline template to ${target}`));
@@ -362,18 +432,26 @@ function printBaselineRunAppend(
   format: ReportFormat,
 ): void {
   if (format === 'json') {
-    console.log(JSON.stringify({ writtenTo: result.target, addedRun: run, runCount: result.runCount }, null, 2));
+    console.log(
+      JSON.stringify(
+        { writtenTo: result.target, addedRun: run, runCount: result.runCount },
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (format === 'markdown') {
-    console.log([
-      '# Mission Proof Baseline',
-      '',
-      `- Added run: ${run.id}`,
-      `- File: ${result.target}`,
-      `- Runs: ${result.runCount}`,
-      '',
-    ].join('\n'));
+    console.log(
+      [
+        '# Mission Proof Baseline',
+        '',
+        `- Added run: ${run.id}`,
+        `- File: ${result.target}`,
+        `- Runs: ${result.runCount}`,
+        '',
+      ].join('\n'),
+    );
     return;
   }
   console.log(chalk.green(`Added baseline run ${run.id} to ${result.target}`));
@@ -385,29 +463,39 @@ function printBaselineCheck(
   format: ReportFormat,
 ): void {
   if (format === 'json') {
-    console.log(JSON.stringify({
-      valid: true,
-      path: target,
-      runCount: baseline.runs.length,
-      totals: baseline.totals,
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          valid: true,
+          path: target,
+          runCount: baseline.runs.length,
+          totals: baseline.totals,
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
   if (format === 'markdown') {
-    console.log([
-      '# Mission Proof Baseline',
-      '',
-      `- Valid: true`,
-      `- Path: ${target}`,
-      `- Runs: ${baseline.runs.length}`,
-      `- Minutes spent: ${baseline.totals.minutesSpent}`,
-      `- Reruns: ${baseline.totals.reruns}`,
-      `- Failed gates: ${baseline.totals.failedGates}`,
-      '',
-    ].join('\n'));
+    console.log(
+      [
+        '# Mission Proof Baseline',
+        '',
+        `- Valid: true`,
+        `- Path: ${target}`,
+        `- Runs: ${baseline.runs.length}`,
+        `- Minutes spent: ${baseline.totals.minutesSpent}`,
+        `- Reruns: ${baseline.totals.reruns}`,
+        `- Failed gates: ${baseline.totals.failedGates}`,
+        '',
+      ].join('\n'),
+    );
     return;
   }
-  console.log(chalk.green(`Mission proof baseline valid: ${target} (${baseline.runs.length} run(s))`));
+  console.log(
+    chalk.green(`Mission proof baseline valid: ${target} (${baseline.runs.length} run(s))`),
+  );
 }
 
 function printMissionBundleList(missions: SavedMissionBundle[], format: ReportFormat): void {
@@ -528,8 +616,12 @@ function printMissionProof(report: MissionProofReport): void {
   const color = totals.failed > 0 || totals.unavailable > 0 ? chalk.yellow : chalk.green;
   console.log(color(`Mission proof: ${totals.missions} mission bundle(s)`));
   console.log(report.summary);
-  console.log(`Passed: ${totals.passed}; failed: ${totals.failed}; running: ${totals.running}; not run: ${totals.notRun}`);
-  console.log(`Reruns: ${totals.reruns}; failed gates: ${totals.failedGates}; reviewer approvals: ${totals.reviewerApprovals}`);
+  console.log(
+    `Passed: ${totals.passed}; failed: ${totals.failed}; running: ${totals.running}; not run: ${totals.notRun}`,
+  );
+  console.log(
+    `Reruns: ${totals.reruns}; failed gates: ${totals.failedGates}; reviewer approvals: ${totals.reviewerApprovals}`,
+  );
   if (report.comparison) {
     console.log('');
     console.log(chalk.bold('Compared With Baseline'));

@@ -1,4 +1,4 @@
-import type { ReviewReport } from '../types.js';
+import type { ReviewReport } from '../types/review.js';
 
 /**
  * 1.9+ — Intent-grounded review.
@@ -114,9 +114,28 @@ const ACTION_KEYWORDS: Record<Exclude<IntentAction, 'unknown'>, string[]> = {
   docs: ['doc', 'docs', 'documentation', 'readme', 'comment', 'comments', 'changelog', 'guide'],
   chore: ['bump', 'upgrade', 'deps', 'dependencies', 'lint', 'format', 'pin', 'lock', 'chore'],
   remove: ['remove', 'delete', 'deprecate', 'drop', 'retire', 'unused'],
-  perf: ['optimize', 'optimise', 'perf', 'performance', 'faster', 'speed', 'cache', 'memoize', 'parallelize'],
+  perf: [
+    'optimize',
+    'optimise',
+    'perf',
+    'performance',
+    'faster',
+    'speed',
+    'cache',
+    'memoize',
+    'parallelize',
+  ],
   fix: ['fix', 'bug', 'bugfix', 'resolve', 'patch', 'repair', 'correct', 'address', 'hotfix'],
-  refactor: ['refactor', 'rename', 'extract', 'restructure', 'rewrite', 'consolidate', 'tidy', 'cleanup'],
+  refactor: [
+    'refactor',
+    'rename',
+    'extract',
+    'restructure',
+    'rewrite',
+    'consolidate',
+    'tidy',
+    'cleanup',
+  ],
   feature: ['add', 'adding', 'implement', 'introduce', 'support', 'enable', 'create', 'feature'],
 };
 
@@ -126,23 +145,112 @@ const ACTION_KEYWORDS: Record<Exclude<IntentAction, 'unknown'>, string[]> = {
  * action classifier, not the scope).
  */
 const STOPWORDS = new Set<string>([
-  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'when', 'where', 'what',
-  'which', 'their', 'them', 'they', 'have', 'has', 'are', 'was', 'were', 'will',
-  'should', 'would', 'could', 'can', 'not', 'but', 'all', 'any', 'some', 'one',
-  'two', 'three', 'first', 'last', 'before', 'after', 'while', 'over', 'under',
-  'between', 'against', 'across', 'during', 'because', 'about', 'also', 'just',
-  'only', 'than', 'then', 'these', 'those', 'how', 'why', 'who', 'whom',
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'this',
+  'from',
+  'into',
+  'when',
+  'where',
+  'what',
+  'which',
+  'their',
+  'them',
+  'they',
+  'have',
+  'has',
+  'are',
+  'was',
+  'were',
+  'will',
+  'should',
+  'would',
+  'could',
+  'can',
+  'not',
+  'but',
+  'all',
+  'any',
+  'some',
+  'one',
+  'two',
+  'three',
+  'first',
+  'last',
+  'before',
+  'after',
+  'while',
+  'over',
+  'under',
+  'between',
+  'against',
+  'across',
+  'during',
+  'because',
+  'about',
+  'also',
+  'just',
+  'only',
+  'than',
+  'then',
+  'these',
+  'those',
+  'how',
+  'why',
+  'who',
+  'whom',
   // common PR-prose
-  'pr', 'mr', 'feature', 'feat', 'request', 'requested', 'merge', 'pull',
-  'review', 'reviewed', 'change', 'changes', 'changed', 'changing', 'update',
-  'updates', 'updated', 'updating', 'work', 'working', 'wip',
-  'project', 'projscan', 'code', 'codebase', 'repository', 'repo', 'branch',
+  'pr',
+  'mr',
+  'feature',
+  'feat',
+  'request',
+  'requested',
+  'merge',
+  'pull',
+  'review',
+  'reviewed',
+  'change',
+  'changes',
+  'changed',
+  'changing',
+  'update',
+  'updates',
+  'updated',
+  'updating',
+  'work',
+  'working',
+  'wip',
+  'project',
+  'projscan',
+  'code',
+  'codebase',
+  'repository',
+  'repo',
+  'branch',
   // 1.9+ — very generic path-component tokens that match nearly every
   // file. Including these as scope would make almost any change look
   // "in scope," defeating the purpose. The path-boundary regex below
   // already narrows the match shape; this set narrows the token set.
-  'src', 'lib', 'dist', 'build', 'test', 'tests', 'spec', 'specs',
-  'app', 'apps', 'pkg', 'pkgs', 'package', 'packages', 'main', 'index',
+  'src',
+  'lib',
+  'dist',
+  'build',
+  'test',
+  'tests',
+  'spec',
+  'specs',
+  'app',
+  'apps',
+  'pkg',
+  'pkgs',
+  'package',
+  'packages',
+  'main',
+  'index',
 ]);
 
 /**
@@ -254,11 +362,7 @@ const EXPECTATIONS: Record<IntentAction, Set<FindingKind>> = {
     'dep-added',
     'dep-bumped',
   ]),
-  fix: new Set<FindingKind>([
-    'file-modified',
-    'function-jumped',
-    'function-crossed-threshold',
-  ]),
+  fix: new Set<FindingKind>(['file-modified', 'function-jumped', 'function-crossed-threshold']),
   refactor: new Set<FindingKind>([
     'file-added',
     'file-modified',
@@ -275,26 +379,10 @@ const EXPECTATIONS: Record<IntentAction, Set<FindingKind>> = {
     'function-jumped',
     'function-crossed-threshold',
   ]),
-  test: new Set<FindingKind>([
-    'file-added',
-    'file-modified',
-    'file-removed',
-  ]),
-  docs: new Set<FindingKind>([
-    'file-added',
-    'file-modified',
-    'file-removed',
-  ]),
-  chore: new Set<FindingKind>([
-    'dep-added',
-    'dep-removed',
-    'dep-bumped',
-    'file-modified',
-  ]),
-  remove: new Set<FindingKind>([
-    'file-removed',
-    'dep-removed',
-  ]),
+  test: new Set<FindingKind>(['file-added', 'file-modified', 'file-removed']),
+  docs: new Set<FindingKind>(['file-added', 'file-modified', 'file-removed']),
+  chore: new Set<FindingKind>(['dep-added', 'dep-removed', 'dep-bumped', 'file-modified']),
+  remove: new Set<FindingKind>(['file-removed', 'dep-removed']),
   unknown: new Set<FindingKind>(),
 };
 
@@ -306,16 +394,20 @@ const EXPECTATIONS: Record<IntentAction, Set<FindingKind>> = {
  */
 function isTestPath(p: string): boolean {
   const lower = p.toLowerCase();
-  return /(^|\/)(tests?|__tests__|spec|specs)(\/|$)/.test(lower) ||
-    /\.(test|spec)\.[a-z0-9]+$/.test(lower);
+  return (
+    /(^|\/)(tests?|__tests__|spec|specs)(\/|$)/.test(lower) ||
+    /\.(test|spec)\.[a-z0-9]+$/.test(lower)
+  );
 }
 
 function isDocsPath(p: string): boolean {
   const lower = p.toLowerCase();
-  return /(^|\/)docs?(\/|$)/.test(lower) ||
+  return (
+    /(^|\/)docs?(\/|$)/.test(lower) ||
     /\.(md|mdx|rst|txt|adoc)$/.test(lower) ||
     lower.endsWith('readme') ||
-    lower.endsWith('changelog');
+    lower.endsWith('changelog')
+  );
 }
 
 /**
@@ -423,7 +515,11 @@ export function annotateReviewWithIntent(
 
   for (const f of report.changedFiles) {
     const kind: FindingKind =
-      f.status === 'added' ? 'file-added' : f.status === 'removed' ? 'file-removed' : 'file-modified';
+      f.status === 'added'
+        ? 'file-added'
+        : f.status === 'removed'
+          ? 'file-removed'
+          : 'file-modified';
     const inScope = pathMatchesScope(intent.scopeTokens, f.relativePath);
     const alignment = classify(intent, kind, inScope, f.relativePath);
     f.intentAlignment = alignment;
@@ -446,7 +542,8 @@ export function annotateReviewWithIntent(
           ? 'function-jumped'
           : 'function-crossed-threshold';
     const inScope =
-      pathMatchesScope(intent.scopeTokens, fn.file) || symbolMatchesScope(intent.scopeTokens, fn.name);
+      pathMatchesScope(intent.scopeTokens, fn.file) ||
+      symbolMatchesScope(intent.scopeTokens, fn.name);
     const alignment = classify(intent, kind, inScope, fn.file);
     fn.intentAlignment = alignment;
     totals[alignment] += 1;
@@ -567,7 +664,13 @@ function reasonFor(
   switch (kind) {
     case 'cycle-new':
     case 'cycle-expanded':
-      if (action === 'fix' || action === 'docs' || action === 'test' || action === 'chore' || action === 'perf') {
+      if (
+        action === 'fix' ||
+        action === 'docs' ||
+        action === 'test' ||
+        action === 'chore' ||
+        action === 'perf'
+      ) {
         return `intent is "${action}" but a new import cycle was introduced`;
       }
       return '';
@@ -595,10 +698,7 @@ function reasonFor(
  * from computeReview after annotation. Keeps the summary readable —
  * one bullet per high-signal observation.
  */
-export function appendIntentToSummary(
-  summary: string[],
-  analysis: IntentAnalysis,
-): void {
+export function appendIntentToSummary(summary: string[], analysis: IntentAnalysis): void {
   const { intent, totals, notable } = analysis;
   if (intent.action === 'unknown' && intent.scopeTokens.length === 0) return;
   const head =

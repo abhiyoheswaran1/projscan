@@ -40,14 +40,30 @@ test('start prints a shortcut index for the current mission when requested', asy
   expect(result.stdout).toContain('Current command:');
   expect(result.stdout).toContain('projscan search "auth token loader" --format json');
   expect(result.stdout).toContain('Current MCP tool call:');
-  expect(result.stdout).toContain('{"tool":"projscan_search","args":{"query":"auth token loader"}}');
-  expect(result.stdout).toContain("projscan start --next-command --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --checklist --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --runbook --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'");
-  expect(result.stdout).toContain("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(result.stdout).toContain(
+    '{"tool":"projscan_search","args":{"query":"auth token loader"}}',
+  );
+  expect(result.stdout).toContain(
+    "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --next-tool-call --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --proof-commands --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --checklist --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --runbook --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --handoff-prompt --intent 'what breaks if I rename the auth token loader'",
+  );
+  expect(result.stdout).toContain(
+    "projscan start --intent 'what breaks if I rename the auth token loader'",
+  );
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
   expect(result.stdout).not.toContain('Run Cursor');
@@ -73,7 +89,9 @@ test('start JSON keeps the full report when shortcuts index is requested', async
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.resume.toolCall).toEqual({
     tool: 'projscan_search',
     args: { query: 'auth token loader' },

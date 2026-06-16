@@ -14,8 +14,14 @@ beforeEach(async () => {
   );
   await fs.writeFile(path.join(tmp, 'README.md'), '# fixture\n');
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
-  await fs.writeFile(path.join(tmp, 'src', 'config.ts'), 'export function loadConfig() { return process.env.API_KEY; }\n');
-  await fs.writeFile(path.join(tmp, 'src', 'server.ts'), 'import { loadConfig } from "./config"; export function createApp() { return loadConfig(); }\n');
+  await fs.writeFile(
+    path.join(tmp, 'src', 'config.ts'),
+    'export function loadConfig() { return process.env.API_KEY; }\n',
+  );
+  await fs.writeFile(
+    path.join(tmp, 'src', 'server.ts'),
+    'import { loadConfig } from "./config"; export function createApp() { return loadConfig(); }\n',
+  );
 });
 
 afterEach(async () => {
@@ -33,10 +39,16 @@ test('projscan_understand returns the understand report shape', async () => {
   expect(handler).toBeDefined();
 
   const result = (await handler?.({ view: 'contracts', max_items: 5 }, tmp)) as {
-    understand: { view: string; contracts: { configContracts: Array<{ name: string }> }; claims: unknown[] };
+    understand: {
+      view: string;
+      contracts: { configContracts: Array<{ name: string }> };
+      claims: unknown[];
+    };
   };
 
   expect(result.understand.view).toBe('contracts');
   expect(result.understand.claims.length).toBeGreaterThan(0);
-  expect(result.understand.contracts.configContracts.map((entry) => entry.name)).toContain('API_KEY');
+  expect(result.understand.contracts.configContracts.map((entry) => entry.name)).toContain(
+    'API_KEY',
+  );
 });

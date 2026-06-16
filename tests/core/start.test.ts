@@ -1,20 +1,16 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { computeStartReport } from '../../src/core/start.js';
-
-const tempRoots: string[] = [];
-const expectedReviewDecisionReplies = [
-  'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  'Changes requested: address the review feedback first, update proof, then stop for another review.',
-  'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
-];
-
-afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
-});
+import { makeTempProject } from '../helpers/startProject.js';
+import {
+  expectedReviewDecisionIds,
+  expectedReviewDecisionReplies,
+  expectedReviewPolicy,
+  expectedReviewPromptReplies,
+  expectedReviewReplyQuotes,
+} from '../helpers/startReviewGate.js';
 
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
   const root = await makeTempProject();
@@ -26,7 +22,9 @@ test('start report gives a compact first-60-seconds workflow without mutating th
     includeHandoff: true,
   });
 
-  const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf-8')) as { version: string };
+  const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf-8')) as {
+    version: string;
+  };
   expect(pkg.version).toBe('0.0.0');
   expect(report.schemaVersion).toBe(1);
   expect(report.readOnly).toBe(true);
@@ -35,10 +33,19 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   expect(report.modeReason).toContain('before_edit');
   expect(report.summary).toContain('start');
   expect(report.setup.diagnostics.map((diagnostic) => diagnostic.id)).toEqual(
-    expect.arrayContaining(['node', 'package-json', 'git', 'projscan-config', 'plugins', 'mcp-startup']),
+    expect.arrayContaining([
+      'node',
+      'package-json',
+      'git',
+      'projscan-config',
+      'plugins',
+      'mcp-startup',
+    ]),
   );
   expect(report.recommendedWorkflow.id).toBe('before_edit');
-  expect(report.recommendedWorkflow.commands).toContain('projscan preflight --mode before_edit --format json');
+  expect(report.recommendedWorkflow.commands).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
   expect(report.firstTenMinutes.commands.slice(0, 3).map((step) => step.command)).toEqual([
     'projscan privacy-check --offline',
     'projscan start --mode before_edit',
@@ -46,24 +53,158 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   ]);
   expect(report.firstTenMinutes.commands.map((step) => step.id)).toContain('first-pr-evidence');
   expect(report.coordinationHints.map((hint) => hint.id)).toContain('current-worktree-check');
-  expect(report.coordinationHints[0]?.message).toMatch(/Current worktree evidence sees \d+ changed file\(s\)/);
+  expect(report.coordinationHints[0]?.message).toMatch(
+    /Current worktree evidence sees \d+ changed file\(s\)/,
+  );
   expect(report.missionControl.status).toMatch(/ready|needs_setup|needs_attention|blocked/);
   expect(report.missionControl.primaryAction.command).toBeDefined();
   expect(report.missionControl.successCriteria.length).toBeGreaterThan(0);
-  expect(report.missionControl.proofCommands.some((command) => command.startsWith('projscan preflight '))).toBe(true);
-  expect(report.missionControl.handoffPrompt).toContain(report.missionControl.primaryAction.command ?? '');
-  expect(report.missionControl.handoffPrompt).toContain(report.missionControl.successCriteria[0] ?? '');
+  expect(
+    report.missionControl.proofCommands.some((command) =>
+      command.startsWith('projscan preflight '),
+    ),
+  ).toBe(true);
+  expect(report.missionControl.handoffPrompt).toContain(
+    report.missionControl.primaryAction.command ?? '',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    report.missionControl.successCriteria[0] ?? '',
+  );
   expect(report.evidence.workplanVerdict).toMatch(/proceed|caution|block/);
   expect(report.evidence.qualityVerdict).toMatch(/excellent|healthy|needs_attention|blocked/);
   expect(report.topRisks.length).toBeGreaterThan(0);
   expect(report.adoptionLoop?.cadence).toBe('every_pr');
   expect(report.adoptionLoop?.metrics.map((metric) => metric.id)).toEqual(
-    expect.arrayContaining(['first_pr_useful', 'manual_review_rate', 'repeat_use_commands', 'market_validation_feedback']),
+    expect.arrayContaining([
+      'first_pr_useful',
+      'manual_review_rate',
+      'repeat_use_commands',
+      'market_validation_feedback',
+    ]),
   );
   expect(report.adoptionLoop?.nextCommands).toContain('projscan evidence-pack --pr-comment');
-  expect(report.adoptionLoop?.nextCommands).toContain('projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json');
+  expect(report.adoptionLoop?.nextCommands).toContain(
+    'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
+  );
   expect(report.nextActions.length).toBeGreaterThan(0);
   expect(report.handoff?.next.length).toBeGreaterThan(0);
+});
+
+test('start report surfaces a local AgentLoop harness when present', async () => {
+  const root = await makeTempProject();
+  await fs.writeFile(
+    path.join(root, 'AGENTLOOP.md'),
+    '# AgentLoopKit\n\nUse npm exec agentloop -- status.\n',
+  );
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints).toContainEqual(
+    expect.objectContaining({
+      id: 'agentloop-task-contract',
+      label: 'Start with the AgentLoop task contract',
+      command: 'npm exec agentloop -- status',
+    }),
+  );
+  expect(
+    report.coordinationHints.find((hint) => hint.id === 'agentloop-task-contract')?.message,
+  ).toContain('AGENTLOOP.md');
+  expect(report.missionControl.guardrails).toContainEqual(
+    expect.objectContaining({
+      label: 'Start with the AgentLoop task contract',
+      command: 'npm exec agentloop -- status',
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain('npm exec agentloop -- status');
+});
+
+test('start report detects AgentLoop config-only harnesses', async () => {
+  const root = await makeTempProject();
+  await fs.writeFile(path.join(root, 'agentloop.config.json'), '{"version":1}\n');
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints).toContainEqual(
+    expect.objectContaining({
+      id: 'agentloop-task-contract',
+      command: 'npm exec agentloop -- status',
+    }),
+  );
+  expect(
+    report.coordinationHints.find((hint) => hint.id === 'agentloop-task-contract')?.message,
+  ).toContain('agentloop.config.json');
+});
+
+test('start report does not add AgentLoop guidance when the harness is absent', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints.map((hint) => hint.id)).not.toContain('agentloop-task-contract');
+});
+
+test('start report surfaces a local AgentFlight verification harness when present', async () => {
+  const root = await makeTempProject();
+  await fs.mkdir(path.join(root, '.agentflight'), { recursive: true });
+  await fs.writeFile(path.join(root, '.agentflight', 'config.json'), '{"version":1}\n');
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints).toContainEqual(
+    expect.objectContaining({
+      id: 'agentflight-verification',
+      label: 'Run AgentFlight verification evidence',
+      command: 'npm exec agentflight -- verify',
+    }),
+  );
+  expect(
+    report.coordinationHints.find((hint) => hint.id === 'agentflight-verification')?.message,
+  ).toContain('.agentflight/config.json');
+  expect(report.missionControl.guardrails).toContainEqual(
+    expect.objectContaining({
+      label: 'Run AgentFlight verification evidence',
+      command: 'npm exec agentflight -- verify',
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain('npm exec agentflight -- verify');
+});
+
+test('start report keeps both AgentLoop and AgentFlight harness commands in proof', async () => {
+  const root = await makeTempProject();
+  await fs.writeFile(path.join(root, 'AGENTLOOP.md'), '# AgentLoopKit\n');
+  await fs.mkdir(path.join(root, '.agentflight'), { recursive: true });
+  await fs.writeFile(path.join(root, '.agentflight', 'config.json'), '{"version":1}\n');
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints.map((hint) => hint.id)).toEqual([
+    'current-worktree-check',
+    'agentloop-task-contract',
+    'agentflight-verification',
+  ]);
+  expect(report.missionControl.proofCommands).toEqual(
+    expect.arrayContaining(['npm exec agentloop -- status', 'npm exec agentflight -- verify']),
+  );
+});
+
+test('start report does not add AgentFlight guidance when the verification harness is absent', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+  });
+
+  expect(report.coordinationHints.map((hint) => hint.id)).not.toContain('agentflight-verification');
 });
 
 test('start report can resume from a saved mission outcome', async () => {
@@ -77,7 +218,11 @@ test('start report can resume from a saved mission outcome', async () => {
       kind: 'projscan.mission-bundle',
       mode: 'before_edit',
       status: 'ready',
-      currentStep: { phaseId: 'ready_now', stepId: 'ready-1', command: 'projscan search "auth" --format json' },
+      currentStep: {
+        phaseId: 'ready_now',
+        stepId: 'ready-1',
+        command: 'projscan search "auth" --format json',
+      },
     }) + '\n',
   );
   await fs.writeFile(
@@ -94,8 +239,20 @@ test('start report can resume from a saved mission outcome', async () => {
   await fs.writeFile(
     path.join(missionDir, 'proof-logs', 'status.jsonl'),
     [
-      JSON.stringify({ id: 'current-ready-1', label: 'Run current command', log: 'current-ready-1.log', command: 'projscan search "auth" --format json', exitCode: 0 }),
-      JSON.stringify({ id: 'proof-1', label: 'Proof 1', log: 'proof-1.log', command: 'projscan preflight --mode before_edit --format json', exitCode: 0 }),
+      JSON.stringify({
+        id: 'current-ready-1',
+        label: 'Run current command',
+        log: 'current-ready-1.log',
+        command: 'projscan search "auth" --format json',
+        exitCode: 0,
+      }),
+      JSON.stringify({
+        id: 'proof-1',
+        label: 'Proof 1',
+        log: 'proof-1.log',
+        command: 'projscan preflight --mode before_edit --format json',
+        exitCode: 0,
+      }),
     ].join('\n') + '\n',
   );
 
@@ -167,7 +324,8 @@ test('start report routes a plain-language intent into mission control', async (
       name: 'symbol',
       placeholder: '<symbol-from-search>',
       sourceAction: 'Find exact target for impact analysis',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     },
     {
       name: 'file',
@@ -176,31 +334,47 @@ test('start report routes a plain-language intent into mission control', async (
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     },
   ]);
-  expect(report.missionControl.proofCommands[0]).toBe('projscan search "auth token loader" --format json');
-  expect(report.missionControl.proofSummary).toBe('Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+  expect(report.missionControl.proofCommands[0]).toBe(
+    'projscan search "auth token loader" --format json',
+  );
+  expect(report.missionControl.proofSummary).toBe(
+    'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
   expect(report.missionControl.proofCommands.some((command) => command.includes('<'))).toBe(false);
-  expect(report.missionControl.proofCommands).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan impact <file-from-search> --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan impact --symbol buildCodeGraph --format json');
-  expect(report.missionControl.handoffPrompt).toContain('Needs input: symbol=<symbol-from-search>, file=<file-from-search>.');
-  expect(report.missionControl.handoffPrompt).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
-  expect(report.missionControl.handoffPrompt).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
-  expect(report.missionControl.handoffPrompt).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(report.missionControl.handoffPrompt).toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan impact <file-from-search> --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan impact --symbol buildCodeGraph --format json',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Done when: An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(report.missionControl.handoffPrompt).toContain(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.handoffPrompt).toContain(
     'Review gate: Stop after the current Mission Control checklist and proof are complete.',
   );
-  expect(report.missionControl.handoffPrompt).toContain(
-    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  );
-  expect(report.missionControl.handoffPrompt).toContain(
-    'Request changes => Changes requested: address the review feedback first, update proof, then stop for another review.',
-  );
-  expect(report.missionControl.handoffPrompt).toContain(
-    'Review version candidate => Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
-  );
+  for (const reply of expectedReviewPromptReplies) {
+    expect(report.missionControl.handoffPrompt).toContain(reply);
+  }
   expect(report.missionControl.resume.prompt).not.toContain('Review gate:');
-  expect(report.missionControl.handoffPrompt).not.toContain('projscan impact --symbol <symbol-from-search> --format json');
+  expect(report.missionControl.handoffPrompt).not.toContain(
+    'projscan impact --symbol <symbol-from-search> --format json',
+  );
   expect(report.missionControl.handoffPrompt).not.toContain('Next:');
   expect(report.missionControl.handoffPrompt).not.toContain('..');
   expect(report.missionControl.handoff).toEqual(
@@ -220,7 +394,8 @@ test('start report routes a plain-language intent into mission control', async (
       needsInput: report.missionControl.unresolvedInputs,
       doneWhen: report.missionControl.successCriteria,
       readyProof: {
-        summary: 'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+        summary:
+          'Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
         commands: report.missionControl.resume.remainingProofCommands,
         toolCalls: report.missionControl.resume.remainingProofToolCalls,
         items: report.missionControl.resume.remainingProofItems,
@@ -253,6 +428,117 @@ test('start report clarifies when intent routes but workflow mode defaults', asy
   expect(report.missionControl.routedIntent?.tool).toBe('projscan_impact');
 });
 
+test('allows autonomous continuation intents to keep bounded slice work unblocked', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'go autonomously until I tell you',
+  });
+
+  expect(report.missionControl.reviewGate.policy.approvalRequired).toBe(true);
+  expect(report.missionControl.reviewGate.policy.blockedActions).toEqual([
+    'release',
+    'publish',
+    'deploy',
+    'push',
+    'merge',
+    'version_bump',
+  ]);
+  expect(report.missionControl.reviewGate.policy.summary).toBe(
+    'Autonomous bounded implementation slices may continue after proof; explicit reviewer approval is still required before release, publish, deploy, push, merge, or version bump.',
+  );
+  expect(report.missionControl.reviewGate.checklist).toContain(
+    'Continue only with another bounded implementation slice after proof; stop before release, publish, deploy, push, merge, or version bump.',
+  );
+  expect(report.missionControl.reviewGate.markdown).not.toContain(
+    '- Start another implementation slice (`next_slice`)',
+  );
+  expect(report.missionControl.reviewGate.markdown).toContain('- Release (`release`)');
+  expect(report.missionControl.reviewGate.markdown).toContain('- Version bump (`version_bump`)');
+  expect(report.missionControl.handoffPrompt).toContain(
+    'Review gate: Continue with bounded implementation slices after the current Mission Control checklist and proof; stop for approval before release, publish, deploy, push, merge, or version bump.',
+  );
+});
+
+test('start report routes build-next product-planning questions to bug-hunt workplan', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what should we build next',
+  });
+
+  expect(report.mode).toBe('bug_hunt');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain('what should we build next');
+  expect(report.recommendedWorkflow.id).toBe('bug_hunt');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_workplan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['build', 'next']),
+    }),
+  );
+  expect(report.missionControl.routedIntent?.matchedKeywords).not.toEqual(['next']);
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode bug_hunt --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'bug_hunt' },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
+      'The selected slice has a runnable verification command before implementation starts.',
+      'Deferred product ideas have an explicit reason or follow-up instead of staying in the active workplan.',
+    ]),
+  );
+
+  const roadmap = await computeStartReport(root, {
+    intent: 'plan the product roadmap',
+  });
+  expect(roadmap.mode).toBe('bug_hunt');
+  expect(roadmap.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode bug_hunt --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'bug_hunt' },
+    }),
+  );
+  expect(roadmap.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
+      'The selected slice has a runnable verification command before implementation starts.',
+    ]),
+  );
+});
+
+test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    mode: 'before_edit',
+    intent: 'what should we build next',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('explicit');
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode before_edit --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'before_edit' },
+    }),
+  );
+  expect(report.missionControl.successCriteria).not.toEqual(
+    expect.arrayContaining([
+      'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
+      'The selected slice has a runnable verification command before implementation starts.',
+      'Deferred product ideas have an explicit reason or follow-up instead of staying in the active workplan.',
+    ]),
+  );
+});
+
 test('start report routes generic lookup intents to search rather than bug hunt', async () => {
   const root = await makeTempProject();
 
@@ -277,8 +563,12 @@ test('start report routes generic lookup intents to search rather than bug hunt'
       args: { query: 'the PR template' },
     }),
   );
-  expect(report.missionControl.alternatives?.map((route) => route.tool)).toContain('projscan_bug_hunt');
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_bug_hunt')).toEqual(
+  expect(report.missionControl.alternatives?.map((route) => route.tool)).toContain(
+    'projscan_bug_hunt',
+  );
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_bug_hunt'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'low',
       matchedKeywords: ['find', 'pr'],
@@ -312,7 +602,9 @@ test('start report routes trust-boundary questions to privacy-check', async () =
       args: { offline: true },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['read'],
@@ -354,7 +646,9 @@ test('start report turns read-first orientation questions into repo understandin
       args: { view: 'map' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_bug_hunt')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_bug_hunt'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['first'],
@@ -366,7 +660,9 @@ test('start report turns read-first orientation questions into repo understandin
       'The developer has a cited repo map and knows which files to inspect next.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view map --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view map --format json',
+  );
 
   const npmScripts = await computeStartReport(root, {
     intent: 'what npm scripts exist',
@@ -393,7 +689,9 @@ test('start report turns read-first orientation questions into repo understandin
       'The developer knows the package-manager command for the requested script plus any required env or setup preconditions.',
     ]),
   );
-  expect(npmScripts.missionControl.alternatives?.find((route) => route.tool === 'projscan_outdated')).toBeUndefined();
+  expect(
+    npmScripts.missionControl.alternatives?.find((route) => route.tool === 'projscan_outdated'),
+  ).toBeUndefined();
 
   const e2eScript = await computeStartReport(root, {
     intent: 'which script runs e2e tests',
@@ -420,7 +718,11 @@ test('start report turns read-first orientation questions into repo understandin
       'The developer knows the package-manager command for the requested script plus any required env or setup preconditions.',
     ]),
   );
-  expect(e2eScript.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toBeUndefined();
+  expect(
+    e2eScript.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_regression_plan',
+    ),
+  ).toBeUndefined();
 
   const lintCommand = await computeStartReport(root, {
     intent: 'what command runs lint',
@@ -497,7 +799,11 @@ test('start report turns read-first orientation questions into repo understandin
       args: { view: 'contracts' },
     }),
   );
-  expect(cypressCommand.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toBeUndefined();
+  expect(
+    cypressCommand.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_regression_plan',
+    ),
+  ).toBeUndefined();
 
   const failingE2e = await computeStartReport(root, {
     intent: 'e2e tests are failing',
@@ -612,7 +918,9 @@ test('start report turns repo summary questions into cited repo understanding', 
       'The developer has a cited repo map and knows which files to inspect next.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view map --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view map --format json',
+  );
 });
 
 test('start report turns coordination status questions into the one-call swarm report', async () => {
@@ -647,7 +955,9 @@ test('start report turns coordination status questions into the one-call swarm r
       args: {},
     }),
   ]);
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_collision')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_collision'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: expect.arrayContaining(['coordination', 'parallel', 'agents']),
@@ -687,7 +997,9 @@ test('start report turns who-else-is-working questions into the one-call swarm r
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'Coordination readiness, collisions, claims, and merge order are reviewed before parallel work continues.',
@@ -805,9 +1117,13 @@ test('start report turns file claim requests into a safe claim action plan', asy
     ]),
   );
   expect(report.missionControl.proofCommands).toContain('projscan claim list --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan claim add src/core/start.ts --agent <agent-name>');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan claim add src/core/start.ts --agent <agent-name>',
+  );
   expect(report.missionControl.handoffPrompt).toContain('Needs input: agent=<agent-name>.');
-  expect(report.missionControl.handoffPrompt).not.toContain('projscan claim add src/auth.ts --agent me');
+  expect(report.missionControl.handoffPrompt).not.toContain(
+    'projscan claim add src/auth.ts --agent me',
+  );
 });
 
 test('start report makes explicit claim-agent requests immediately runnable', async () => {
@@ -842,7 +1158,9 @@ test('start report makes explicit claim-agent requests immediately runnable', as
     }),
   );
   expect(report.missionControl.unresolvedInputs).toEqual([]);
-  expect(report.missionControl.proofCommands).toContain('projscan claim add src/core/start.ts --agent agent-alpha');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan claim add src/core/start.ts --agent agent-alpha',
+  );
 });
 
 test('start report turns active-claims questions into claim listing', async () => {
@@ -919,7 +1237,9 @@ test('start report turns public contract questions into the contracts understand
       'The developer knows which exported files or symbols need compatibility checks.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view contracts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view contracts --format json',
+  );
 });
 
 test('start report turns API deprecation questions into the contracts understanding view', async () => {
@@ -946,7 +1266,9 @@ test('start report turns API deprecation questions into the contracts understand
       args: { view: 'contracts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: expect.arrayContaining(['api', 'deprecate']),
     }),
@@ -957,7 +1279,9 @@ test('start report turns API deprecation questions into the contracts understand
       'The developer knows which exported files or symbols need compatibility checks.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view contracts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view contracts --format json',
+  );
 });
 
 test('start report searches for an exact target before API breakage impact', async () => {
@@ -986,7 +1310,9 @@ test('start report searches for an exact target before API breakage impact', asy
       args: { query: 'what will this API change break' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: expect.arrayContaining(['api', 'change']),
     }),
@@ -997,7 +1323,9 @@ test('start report searches for an exact target before API breakage impact', asy
       'The impact report is reviewed for direct and transitive dependents before editing starts.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan search "what will this API change break" --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan search "what will this API change break" --format json',
+  );
 });
 
 test('start report turns env-var requirement questions into the contracts understanding view', async () => {
@@ -1024,14 +1352,18 @@ test('start report turns env-var requirement questions into the contracts unders
       args: { view: 'contracts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'Required environment variables and config contracts are identified before setup or runtime troubleshooting continues.',
       'The developer knows which env names, defaults, or config files need local values before running the app.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view contracts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view contracts --format json',
+  );
 });
 
 test('start report turns missing environment variables into contracts', async () => {
@@ -1157,7 +1489,9 @@ test('start report turns local services setup commands into the contracts unders
       args: { view: 'contracts' },
     }),
   );
-  expect(localServices.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots')).toBeUndefined();
+  expect(
+    localServices.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots'),
+  ).toBeUndefined();
   expect(localServices.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'Local service startup scripts, container commands, and required config are reviewed before running dev services.',
@@ -1208,14 +1542,18 @@ test('start report turns project run questions into the repo map instead of hots
       args: { view: 'map' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'Read-first files, entrypoints, boundaries, risks, and unknowns are reviewed before editing starts.',
       'The developer has a cited repo map and knows which files to inspect next.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view map --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view map --format json',
+  );
 });
 
 test('start report turns proactive proof-selection questions into the verification view', async () => {
@@ -1237,7 +1575,8 @@ test('start report turns proactive proof-selection questions into the verificati
   );
   expect(fileProof.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view verify --intent "which tests should I run for src/core/start.ts?" --format json',
+      command:
+        'projscan understand --view verify --intent "which tests should I run for src/core/start.ts?" --format json',
       tool: 'projscan_understand',
       args: { view: 'verify', intent: 'which tests should I run for src/core/start.ts?' },
     }),
@@ -1248,8 +1587,12 @@ test('start report turns proactive proof-selection questions into the verificati
       'The developer has the smallest rerunnable command plus the fallback full gate for the intended change.',
     ]),
   );
-  expect(fileProof.missionControl.proofCommands).toContain('projscan understand --view verify --intent "which tests should I run for src/core/start.ts?" --format json');
-  expect(fileProof.missionControl.alternatives?.find((route) => route.tool === 'projscan_search')).toBeUndefined();
+  expect(fileProof.missionControl.proofCommands).toContain(
+    'projscan understand --view verify --intent "which tests should I run for src/core/start.ts?" --format json',
+  );
+  expect(
+    fileProof.missionControl.alternatives?.find((route) => route.tool === 'projscan_search'),
+  ).toBeUndefined();
 
   const beforePush = await computeStartReport(root, {
     intent: 'what should I test before pushing',
@@ -1257,12 +1600,17 @@ test('start report turns proactive proof-selection questions into the verificati
 
   expect(beforePush.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view verify --intent "what should I test before pushing" --format json',
+      command:
+        'projscan understand --view verify --intent "what should I test before pushing" --format json',
       tool: 'projscan_understand',
       args: { view: 'verify', intent: 'what should I test before pushing' },
     }),
   );
-  expect(beforePush.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toBeUndefined();
+  expect(
+    beforePush.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_regression_plan',
+    ),
+  ).toBeUndefined();
 
   const failingTests = await computeStartReport(root, {
     intent: 'tests are failing',
@@ -1295,12 +1643,15 @@ test('start report turns feature-placement questions into the change-readiness v
   );
   expect(feature.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view change --intent "where should I put this new feature" --format json',
+      command:
+        'projscan understand --view change --intent "where should I put this new feature" --format json',
       tool: 'projscan_understand',
       args: { view: 'change', intent: 'where should I put this new feature' },
     }),
   );
-  expect(feature.missionControl.alternatives?.find((route) => route.tool === 'projscan_search')).toEqual(
+  expect(
+    feature.missionControl.alternatives?.find((route) => route.tool === 'projscan_search'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['where'],
     }),
@@ -1325,12 +1676,15 @@ test('start report turns feature-placement questions into the change-readiness v
   );
   expect(authChange.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view change --intent "what files do I need to change for auth" --format json',
+      command:
+        'projscan understand --view change --intent "what files do I need to change for auth" --format json',
       tool: 'projscan_understand',
       args: { view: 'change', intent: 'what files do I need to change for auth' },
     }),
   );
-  expect(authChange.missionControl.proofCommands).toContain('projscan understand --view change --intent "what files do I need to change for auth" --format json');
+  expect(authChange.missionControl.proofCommands).toContain(
+    'projscan understand --view change --intent "what files do I need to change for auth" --format json',
+  );
 
   const oauth = await computeStartReport(root, {
     intent: 'implement OAuth login',
@@ -1367,7 +1721,8 @@ test('start report turns feature-placement questions into the change-readiness v
   );
   expect(webhook.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view change --intent "add billing webhook support" --format json',
+      command:
+        'projscan understand --view change --intent "add billing webhook support" --format json',
       tool: 'projscan_understand',
       args: { view: 'change', intent: 'add billing webhook support' },
     }),
@@ -1391,10 +1746,13 @@ test('start report turns documentation update planning into the change-readiness
       matchedKeywords: ['change', 'docs', 'update'],
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade'),
+  ).toBeUndefined();
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view change --intent "what docs should I update for this change" --format json',
+      command:
+        'projscan understand --view change --intent "what docs should I update for this change" --format json',
       tool: 'projscan_understand',
       args: { view: 'change', intent: 'what docs should I update for this change' },
     }),
@@ -1426,12 +1784,15 @@ test('start report turns database migration placement into the change-readiness 
   );
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view change --intent "where should I add this database migration" --format json',
+      command:
+        'projscan understand --view change --intent "where should I add this database migration" --format json',
       tool: 'projscan_understand',
       args: { view: 'change', intent: 'where should I add this database migration' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_search')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_search'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['where'],
     }),
@@ -1528,7 +1889,11 @@ test('start report turns risky-file touch questions into hotspots', async () => 
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_quality_scorecard')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_quality_scorecard',
+    ),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['risky'],
@@ -1580,7 +1945,9 @@ test('start report turns complexity and refactor focus questions into hotspots',
       args: {},
     }),
   );
-  expect(refactor.missionControl.alternatives?.find((route) => route.tool === 'projscan_file')).toEqual(
+  expect(
+    refactor.missionControl.alternatives?.find((route) => route.tool === 'projscan_file'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['file'],
     }),
@@ -1694,7 +2061,9 @@ test('start report turns broad safe-delete questions into a doctor cleanup pass'
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact'),
+  ).toBeUndefined();
   expect(report.missionControl.readyActions[0]).toEqual(report.missionControl.primaryAction);
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
@@ -1723,7 +2092,9 @@ test('start report turns broad safe-delete questions into a doctor cleanup pass'
       args: {},
     }),
   );
-  expect(safeRemove.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade')).toBeUndefined();
+  expect(
+    safeRemove.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade'),
+  ).toBeUndefined();
 });
 
 test('start report turns failing CI intent into a focused regression plan', async () => {
@@ -1758,7 +2129,9 @@ test('start report turns failing CI intent into a focused regression plan', asyn
       'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns direct CI fail questions into a focused regression plan', async () => {
@@ -1779,7 +2152,9 @@ test('start report turns direct CI fail questions into a focused regression plan
       matchedKeywords: ['ci', 'fail'],
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['why'],
     }),
@@ -1817,7 +2192,9 @@ test('start report turns GitHub Actions failures into a focused regression plan'
       matchedKeywords: expect.arrayContaining(['github', 'actions', 'failing']),
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['why'],
     }),
@@ -1868,7 +2245,9 @@ test('start report turns slow CI questions into a focused regression plan', asyn
       'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns flaky CI questions into a focused regression plan', async () => {
@@ -1896,7 +2275,9 @@ test('start report turns flaky CI questions into a focused regression plan', asy
       args: { level: 'focused' },
     }),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns flake reproduction questions into a focused regression plan', async () => {
@@ -1943,7 +2324,9 @@ test('start report turns build and lint failures into a focused regression plan'
       matchedKeywords: ['fail', 'build'],
     }),
   );
-  expect(build.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue')).toEqual(
+  expect(
+    build.missionControl.alternatives?.find((route) => route.tool === 'projscan_explain_issue'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['why'],
     }),
@@ -1969,7 +2352,9 @@ test('start report turns build and lint failures into a focused regression plan'
       matchedKeywords: ['failing', 'lint'],
     }),
   );
-  expect(lint.missionControl.alternatives?.find((route) => route.tool === 'projscan_doctor')).toEqual(
+  expect(
+    lint.missionControl.alternatives?.find((route) => route.tool === 'projscan_doctor'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['lint'],
     }),
@@ -2032,7 +2417,9 @@ test('start report turns typecheck install and stack-trace failures into a focus
       matchedKeywords: ['debug', 'stack', 'trace'],
     }),
   );
-  expect(stackTrace.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(stackTrace.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns reviewer PR-comment requests into an evidence pack', async () => {
@@ -2068,7 +2455,9 @@ test('start report turns reviewer PR-comment requests into an evidence pack', as
     ]),
   );
   expect(report.missionControl.proofCommands).toContain('projscan evidence-pack --pr-comment');
-  expect(report.missionControl.proofCommands).toContain('projscan preflight --mode before_commit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_commit --format json',
+  );
 });
 
 test('start report turns PR risk questions into structural review', async () => {
@@ -2156,7 +2545,9 @@ test('start report turns PR description requests into an evidence pack', async (
       args: { pr_comment: true },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'The evidence pack produces a paste-ready PR comment with verdict, top risks, owner routing, and next commands.',
@@ -2223,7 +2614,9 @@ test('start report turns team-facing change summary requests into an evidence pa
       args: { pr_comment: true },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff'),
+  ).toBeUndefined();
   expect(report.missionControl.proofCommands).toContain('projscan evidence-pack --pr-comment');
 });
 
@@ -2245,7 +2638,9 @@ test('start report turns reviewer-routing questions into an evidence pack', asyn
       matchedKeywords: ['who', 'review', 'pr'],
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_review')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_review'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['review', 'pr'],
     }),
@@ -2283,7 +2678,9 @@ test('start report turns changed-file owner questions into an evidence pack', as
       matchedKeywords: ['who', 'owns', 'changed', 'files'],
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['changed'],
     }),
@@ -2365,7 +2762,9 @@ test('start report turns smoke-check intent into a smoke regression plan', async
       'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level smoke --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level smoke --format json',
+  );
 });
 
 test('start report turns test-plan questions into the verification view', async () => {
@@ -2386,14 +2785,17 @@ test('start report turns test-plan questions into the verification view', async 
       matchedKeywords: expect.arrayContaining(['run', 'tests']),
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['changes'],
     }),
   );
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan understand --view verify --intent "what tests should I run for my changes" --format json',
+      command:
+        'projscan understand --view verify --intent "what tests should I run for my changes" --format json',
       tool: 'projscan_understand',
       args: { view: 'verify', intent: 'what tests should I run for my changes' },
     }),
@@ -2404,7 +2806,9 @@ test('start report turns test-plan questions into the verification view', async 
       'The developer has the smallest rerunnable command plus the fallback full gate for the intended change.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan understand --view verify --intent "what tests should I run for my changes" --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan understand --view verify --intent "what tests should I run for my changes" --format json',
+  );
 });
 
 test('start report turns proof-command questions into a focused regression plan', async () => {
@@ -2456,7 +2860,9 @@ test('start report turns proof-command shorthand into a focused regression plan'
       matchedKeywords: ['proof', 'commands'],
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_evidence_pack')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_evidence_pack'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['proof'],
     }),
@@ -2468,7 +2874,9 @@ test('start report turns proof-command shorthand into a focused regression plan'
       args: { level: 'focused' },
     }),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns pre-push command questions into a focused regression plan', async () => {
@@ -2495,7 +2903,9 @@ test('start report turns pre-push command questions into a focused regression pl
       args: { level: 'focused' },
     }),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level focused --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level focused --format json',
+  );
 });
 
 test('start report turns full regression intent into a full before-merge plan', async () => {
@@ -2529,7 +2939,9 @@ test('start report turns full regression intent into a full before-merge plan', 
       'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan regression-plan --level full --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan regression-plan --level full --format json',
+  );
 });
 
 test('start report turns PR change questions into a structural diff action', async () => {
@@ -2611,7 +3023,9 @@ test('start report turns commit-message requests into structural diff evidence',
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'The structural diff is reviewed for changed exports, imports, call sites, and complexity before a full review verdict.',
@@ -2795,7 +3209,9 @@ test('start report turns stack traces into a focused regression plan', async () 
       args: { level: 'focused' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_search')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_search'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['where'],
     }),
@@ -2878,7 +3294,9 @@ test('start report turns source-to-sink security intent into hardening dataflow'
     ]),
   );
   expect(report.missionControl.proofCommands).toContain('projscan dataflow --format json');
-  expect(report.firstTenMinutes.commands[2]?.command).toBe('projscan preflight --mode before_commit --format json');
+  expect(report.firstTenMinutes.commands[2]?.command).toBe(
+    'projscan preflight --mode before_commit --format json',
+  );
 
   const gdpr = await computeStartReport(root, {
     intent: 'GDPR compliance check',
@@ -2975,7 +3393,9 @@ test('start report turns first-fix prioritization into a bug-hunt queue', async 
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_fix_suggest')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_fix_suggest'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'medium',
       matchedKeywords: ['fix'],
@@ -3007,7 +3427,9 @@ test('start report turns fastest safe fix questions into a bug-hunt queue', asyn
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_preflight')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_preflight'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'medium',
       matchedKeywords: ['safe'],
@@ -3030,6 +3452,32 @@ test('start report turns quick-win wording into a bug-hunt queue', async () => {
       tool: 'projscan_bug_hunt',
       confidence: 'high',
       matchedKeywords: ['quick', 'find', 'win'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan bug-hunt --format json',
+      tool: 'projscan_bug_hunt',
+      args: {},
+    }),
+  );
+});
+
+test('start report turns broad improve next wording into a bug-hunt planning queue', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what should we improve next',
+  });
+
+  expect(report.mode).toBe('bug_hunt');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain('what should we improve next');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_bug_hunt',
+      confidence: 'high',
+      matchedKeywords: ['improve'],
     }),
   );
   expect(report.missionControl.primaryAction).toEqual(
@@ -3129,10 +3577,16 @@ test('start report turns handoff requests into an agent brief', async () => {
       'The handoff includes enough proof commands for the next agent to resume without rerunning broad discovery.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan agent-brief --intent next_agent --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan agent-brief --intent next_agent --format json',
+  );
   expect(report.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
-  expect(report.missionControl.resume.remainingProofToolCalls?.map((call) => call.command)).not.toContain('projscan handoff');
-  expect(report.missionControl.resume.remainingProofItems?.map((item) => item.command)).toEqual(report.missionControl.resume.remainingProofCommands);
+  expect(
+    report.missionControl.resume.remainingProofToolCalls?.map((call) => call.command),
+  ).not.toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofItems?.map((item) => item.command)).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
   expect(report.missionControl.resume.remainingProofItems).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -3152,7 +3606,11 @@ test('start report turns handoff requests into an agent brief', async () => {
       }),
     ]),
   );
-  expect(report.missionControl.resume.remainingProofItems?.find((item) => item.command === 'projscan handoff')?.toolCall).toBeUndefined();
+  expect(
+    report.missionControl.resume.remainingProofItems?.find(
+      (item) => item.command === 'projscan handoff',
+    )?.toolCall,
+  ).toBeUndefined();
   expect(report.missionControl.resume.checklist).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -3169,14 +3627,24 @@ test('start report turns handoff requests into an agent brief', async () => {
       }),
     ]),
   );
-  const handoffChecklistProof = report.missionControl.resume.checklist?.find((item) => item.id === 'resume-proof-6');
+  const handoffChecklistProof = report.missionControl.resume.checklist?.find(
+    (item) => item.id === 'resume-proof-6',
+  );
   expect(handoffChecklistProof).not.toHaveProperty('tool');
   expect(handoffChecklistProof).not.toHaveProperty('args');
-  expect(report.missionControl.handoff.readyProof.items).toEqual(report.missionControl.resume.remainingProofItems);
+  expect(report.missionControl.handoff.readyProof.items).toEqual(
+    report.missionControl.resume.remainingProofItems,
+  );
   expect(report.missionControl.runbook.markdown).toContain('Proof queue:');
-  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-6: projscan handoff (CLI only)');
-  expect(report.missionControl.runbook.markdown).toContain('- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(report.missionControl.runbook.markdown).toContain('- proof-6: `projscan handoff` (CLI only)');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-6: projscan handoff (CLI only)',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- proof-6: `projscan handoff` (CLI only)',
+  );
 });
 
 test('start report turns open-ended next-step questions into a workplan', async () => {
@@ -3204,8 +3672,12 @@ test('start report turns open-ended next-step questions into a workplan', async 
     }),
   );
   expect(report.missionControl.readyActions[0]).toEqual(report.missionControl.primaryAction);
-  expect(report.missionControl.proofCommands).toContain('projscan workplan --mode before_edit --format json');
-  expect(report.missionControl.proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan workplan --mode before_edit --format json',
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
 });
 
 test('start report turns session resume questions into touched-file session context', async () => {
@@ -3240,7 +3712,9 @@ test('start report turns session resume questions into touched-file session cont
     ]),
   );
   expect(report.missionControl.proofCommands).toContain('projscan session touched --format json');
-  expect(report.missionControl.proofCommands).toContain('projscan preflight --mode before_edit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
 });
 
 test('start report turns leave-off questions into touched-file session context', async () => {
@@ -3294,7 +3768,9 @@ test('start report turns changed-while-away questions into touched-file session 
       args: { action: 'touched' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['changed'],
@@ -3322,7 +3798,9 @@ test('start report turns changed-while-away questions into touched-file session 
       args: { action: 'touched' },
     }),
   );
-  expect(offline.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check')).toBeUndefined();
+  expect(
+    offline.missionControl.alternatives?.find((route) => route.tool === 'projscan_privacy_check'),
+  ).toBeUndefined();
 });
 
 test('start report turns wake-up questions into touched-file session context', async () => {
@@ -3349,7 +3827,9 @@ test('start report turns wake-up questions into touched-file session context', a
       args: { action: 'touched' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_pr_diff'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['changed'],
@@ -3388,7 +3868,9 @@ test('start report turns last-agent status questions into touched-file session c
       args: { action: 'touched' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_agent_brief')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_agent_brief'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['agent'],
     }),
@@ -3427,7 +3909,9 @@ test('start report turns an issue-fix intent with an id into direct fix-suggest'
       'The suggestion names the file, fix instruction, and verification step before editing starts.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan fix-suggest missing-test-framework --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan fix-suggest missing-test-framework --format json',
+  );
 });
 
 test('start report turns an issue-explanation intent with an id into direct explain-issue', async () => {
@@ -3461,7 +3945,9 @@ test('start report turns an issue-explanation intent with an id into direct expl
       'The explanation identifies surrounding code, related issues, similar fixes, and the next fix prompt before editing starts.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan explain-issue missing-test-framework --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan explain-issue missing-test-framework --format json',
+  );
 });
 
 test('start report asks doctor for issue ids when explain-issue intent lacks one', async () => {
@@ -3497,12 +3983,15 @@ test('start report asks doctor for issue ids when explain-issue intent lacks one
       name: 'issue_id',
       placeholder: '<issue-id-from-doctor>',
       sourceAction: 'Find open issues before explaining one',
-      instruction: 'Replace <issue-id-from-doctor> with an issue id from projscan doctor or projscan analyze.',
+      instruction:
+        'Replace <issue-id-from-doctor> with an issue id from projscan doctor or projscan analyze.',
     },
   ]);
   expect(report.missionControl.whyNow).toContain('run projscan_doctor first');
   expect(report.missionControl.proofCommands).toContain('projscan doctor --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan explain-issue <issue-id-from-doctor> --format json');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan explain-issue <issue-id-from-doctor> --format json',
+  );
 });
 
 test('start report asks doctor for issue ids when fix-suggest intent lacks one', async () => {
@@ -3538,12 +4027,15 @@ test('start report asks doctor for issue ids when fix-suggest intent lacks one',
       name: 'issue_id',
       placeholder: '<issue-id-from-doctor>',
       sourceAction: 'Find open issues before choosing a fix suggestion',
-      instruction: 'Replace <issue-id-from-doctor> with an issue id from projscan doctor or projscan analyze.',
+      instruction:
+        'Replace <issue-id-from-doctor> with an issue id from projscan doctor or projscan analyze.',
     },
   ]);
   expect(report.missionControl.whyNow).toContain('run projscan_doctor first');
   expect(report.missionControl.proofCommands).toContain('projscan doctor --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan fix-suggest <issue-id-from-doctor> --format json');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan fix-suggest <issue-id-from-doctor> --format json',
+  );
 });
 
 test('start report marks default mode when neither mode nor mode-specific intent is supplied', async () => {
@@ -3613,7 +4105,9 @@ test('mission control runs symbol impact directly for usage questions', async ()
       'Affected call sites, tests, or owners are added to the workplan before code changes begin.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan impact --symbol runAudit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan impact --symbol runAudit --format json',
+  );
 });
 
 test('mission control runs file impact directly when the intent names a path', async () => {
@@ -3662,9 +4156,15 @@ test('mission control runs file impact directly for deletion questions', async (
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_start')).toBeUndefined();
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots')).toBeUndefined();
-  expect(report.missionControl.proofCommands).toContain('projscan impact src/core/start.ts --format json');
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_start'),
+  ).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_hotspots'),
+  ).toBeUndefined();
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan impact src/core/start.ts --format json',
+  );
 });
 
 test('mission control runs file impact directly for exact-file rollback questions', async () => {
@@ -3697,7 +4197,9 @@ test('mission control runs file impact directly for exact-file rollback question
       'Affected call sites, tests, or owners are added to the workplan before code changes begin.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan impact src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan impact src/core/start.ts --format json',
+  );
 });
 
 test('mission control searches for a target before generic rollback impact', async () => {
@@ -3736,7 +4238,9 @@ test('mission control searches for a target before generic rollback impact', asy
       'The impact report is reviewed for direct and transitive dependents before editing starts.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan search "how do I revert this change safely" --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan search "how do I revert this change safely" --format json',
+  );
 });
 
 test('mission control searches for a target before schema-drop impact', async () => {
@@ -3769,7 +4273,9 @@ test('mission control searches for a target before schema-drop impact', async ()
     'projscan impact --symbol <symbol-from-search> --format json',
     'projscan impact <file-from-search> --format json',
   ]);
-  expect(report.missionControl.proofCommands).toContain('projscan search "can I drop this column" --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan search "can I drop this column" --format json',
+  );
 });
 
 test('mission control runs file impact directly for dependency questions', async () => {
@@ -3803,7 +4309,9 @@ test('mission control runs file impact directly for dependency questions', async
     'projscan impact src/core/start.ts --format json',
   ]);
   expect(report.missionControl.unresolvedInputs).toEqual([]);
-  expect(report.missionControl.proofCommands).toContain('projscan impact src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan impact src/core/start.ts --format json',
+  );
 });
 
 test('start report turns file explanation intent into direct file inspection', async () => {
@@ -3838,7 +4346,9 @@ test('start report turns file explanation intent into direct file inspection', a
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns exact-file risk questions into direct file inspection', async () => {
@@ -3865,7 +4375,11 @@ test('start report turns exact-file risk questions into direct file inspection',
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_quality_scorecard')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_quality_scorecard',
+    ),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['risky'],
@@ -3879,7 +4393,9 @@ test('start report turns exact-file risk questions into direct file inspection',
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns file ownership questions into direct file inspection', async () => {
@@ -3913,7 +4429,9 @@ test('start report turns file ownership questions into direct file inspection', 
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns exact-file reviewer questions into direct file inspection', async () => {
@@ -3940,7 +4458,9 @@ test('start report turns exact-file reviewer questions into direct file inspecti
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_evidence_pack')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_evidence_pack'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['who', 'review'],
@@ -3954,7 +4474,9 @@ test('start report turns exact-file reviewer questions into direct file inspecti
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns file authorship questions into direct file inspection', async () => {
@@ -3981,7 +4503,9 @@ test('start report turns file authorship questions into direct file inspection',
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_session')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_session'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['touched', 'last'],
@@ -3995,7 +4519,9 @@ test('start report turns file authorship questions into direct file inspection',
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns file importer intent into targeted semantic graph query', async () => {
@@ -4028,7 +4554,9 @@ test('start report turns file importer intent into targeted semantic graph query
       'Any returned files are reviewed before editing the queried file or symbol.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan semantic-graph --query importers --file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan semantic-graph --query importers --file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns test-location questions into a focused search', async () => {
@@ -4055,13 +4583,17 @@ test('start report turns test-location questions into a focused search', async (
       args: { query: 'tests for src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['tests'],
     }),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan search "tests for src/core/start.ts" --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan search "tests for src/core/start.ts" --format json',
+  );
 
   const authTests = await computeStartReport(root, {
     intent: 'where are tests for auth',
@@ -4082,7 +4614,9 @@ test('start report turns test-location questions into a focused search', async (
       args: { query: 'tests for auth' },
     }),
   );
-  expect(authTests.missionControl.proofCommands).toContain('projscan search "tests for auth" --format json');
+  expect(authTests.missionControl.proofCommands).toContain(
+    'projscan search "tests for auth" --format json',
+  );
 });
 
 test('start report turns existing-test coverage lookup into focused search', async () => {
@@ -4110,8 +4644,12 @@ test('start report turns existing-test coverage lookup into focused search', asy
       args: { query: 'tests for auth' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toBeUndefined();
-  expect(report.missionControl.proofCommands).toContain('projscan search "tests for auth" --format json');
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan'),
+  ).toBeUndefined();
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan search "tests for auth" --format json',
+  );
 });
 
 test('start report turns code-location questions into focused search', async () => {
@@ -5572,7 +6110,7 @@ test('start report turns code-location questions into focused search', async () 
       args: { query: 'invoice PDF' },
     }),
   );
-});
+}, 120_000);
 
 test('start report turns exact-file test coverage questions into direct file inspection', async () => {
   const root = await makeTempProject();
@@ -5598,7 +6136,9 @@ test('start report turns exact-file test coverage questions into direct file ins
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['tests'],
@@ -5612,7 +6152,9 @@ test('start report turns exact-file test coverage questions into direct file ins
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns exact-file test-authoring questions into direct file inspection', async () => {
@@ -5639,7 +6181,9 @@ test('start report turns exact-file test-authoring questions into direct file in
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['tests'],
@@ -5653,7 +6197,9 @@ test('start report turns exact-file test-authoring questions into direct file in
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns exact-file read-before-change questions into direct file inspection', async () => {
@@ -5680,7 +6226,9 @@ test('start report turns exact-file read-before-change questions into direct fil
       args: { file: 'src/core/start.ts' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_understand'),
+  ).toEqual(
     expect.objectContaining({
       confidence: 'high',
       matchedKeywords: ['read'],
@@ -5694,7 +6242,9 @@ test('start report turns exact-file read-before-change questions into direct fil
       'Any follow-up impact, owner, or test command from the file report is added to the workplan.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan file src/core/start.ts --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan file src/core/start.ts --format json',
+  );
 });
 
 test('start report turns package importer intent into targeted semantic graph query', async () => {
@@ -5721,7 +6271,9 @@ test('start report turns package importer intent into targeted semantic graph qu
     }),
   );
   expect(report.missionControl.readyActions[0]).toEqual(report.missionControl.primaryAction);
-  expect(report.missionControl.proofCommands).toContain('projscan semantic-graph --query package_importers --symbol chalk --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan semantic-graph --query package_importers --symbol chalk --format json',
+  );
 
   const packageWord = await computeStartReport(root, {
     intent: 'which files import package chalk',
@@ -5740,7 +6292,9 @@ test('start report turns package importer intent into targeted semantic graph qu
       args: { query: { direction: 'package_importers', symbol: 'chalk' } },
     }),
   );
-  expect(packageWord.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade')).toBeUndefined();
+  expect(
+    packageWord.missionControl.alternatives?.find((route) => route.tool === 'projscan_upgrade'),
+  ).toBeUndefined();
 
   const packageUse = await computeStartReport(root, {
     intent: 'who uses lodash',
@@ -5803,7 +6357,9 @@ test('start report turns symbol definition intent into targeted semantic graph q
     }),
   );
   expect(report.missionControl.readyActions[0]).toEqual(report.missionControl.primaryAction);
-  expect(report.missionControl.proofCommands).toContain('projscan semantic-graph --query symbol_defs --symbol runAudit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan semantic-graph --query symbol_defs --symbol runAudit --format json',
+  );
 });
 
 test('start report turns coverage-gap intent into scariest untested files analysis', async () => {
@@ -5857,7 +6413,9 @@ test('start report turns coverage-gap intent into scariest untested files analys
       args: {},
     }),
   );
-  expect(noTests.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan')).toBeUndefined();
+  expect(
+    noTests.missionControl.alternatives?.find((route) => route.tool === 'projscan_regression_plan'),
+  ).toBeUndefined();
 });
 
 test('start report turns package bump intent into direct upgrade preview', async () => {
@@ -5916,7 +6474,9 @@ test('start report turns package update intent into direct upgrade preview', asy
       args: { package: 'react' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['breaks'],
     }),
@@ -5980,7 +6540,9 @@ test('start report turns reversed package removal intent into direct upgrade pre
       args: { package: 'lodash' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_doctor')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_doctor'),
+  ).toBeUndefined();
   expect(report.missionControl.proofCommands).toContain('projscan upgrade lodash --format json');
 });
 
@@ -6014,7 +6576,9 @@ test('start report turns package CVE questions into scoped audit', async () => {
       'Any vulnerable dependency has a fix, upgrade preview, or documented deferral before the branch is trusted.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan audit --package lodash --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan audit --package lodash --format json',
+  );
 });
 
 test('start report turns repo CVE questions into audit', async () => {
@@ -6041,7 +6605,9 @@ test('start report turns repo CVE questions into audit', async () => {
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact')).toEqual(
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_impact'),
+  ).toEqual(
     expect.objectContaining({
       matchedKeywords: ['affect'],
     }),
@@ -6106,7 +6672,9 @@ test('start report turns workspace ownership questions into workspaces', async (
       args: {},
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim'),
+  ).toBeUndefined();
 });
 
 test('start report searches before answering area ownership lookup', async () => {
@@ -6134,7 +6702,9 @@ test('start report searches before answering area ownership lookup', async () =>
       args: { query: 'auth' },
     }),
   );
-  expect(report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim')).toBeUndefined();
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim'),
+  ).toBeUndefined();
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'Search results identify the target files or symbols with enough confidence to choose the next tool.',
@@ -6162,7 +6732,9 @@ test('start report searches before answering area ownership lookup', async () =>
       args: { query: 'auth' },
     }),
   );
-  expect(ask.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim')).toBeUndefined();
+  expect(
+    ask.missionControl.alternatives?.find((route) => route.tool === 'projscan_claim'),
+  ).toBeUndefined();
 });
 
 test('start report lists outdated dependencies before upgrade preview when package is missing', async () => {
@@ -6198,12 +6770,15 @@ test('start report lists outdated dependencies before upgrade preview when packa
       name: 'package',
       placeholder: '<package-from-outdated>',
       sourceAction: 'Find package candidates before previewing an upgrade',
-      instruction: 'Replace <package-from-outdated> with a package name from projscan outdated or projscan dependencies.',
+      instruction:
+        'Replace <package-from-outdated> with a package name from projscan outdated or projscan dependencies.',
     },
   ]);
   expect(report.missionControl.whyNow).toContain('run projscan_outdated first');
   expect(report.missionControl.proofCommands).toContain('projscan outdated --format json');
-  expect(report.missionControl.proofCommands).not.toContain('projscan upgrade <package-from-outdated> --format json');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan upgrade <package-from-outdated> --format json',
+  );
 });
 
 test('start report turns dependency inventory questions into dependency analysis', async () => {
@@ -6337,7 +6912,9 @@ test('start report turns circular dependency questions into cycles-only coupling
       'Every high-coupling or circular-import target has an owner, refactor decision, or verification follow-up before architecture work starts.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan coupling --cycles-only --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan coupling --cycles-only --format json',
+  );
 });
 
 test('start report turns module coupling questions into full coupling analysis', async () => {
@@ -6385,7 +6962,9 @@ test('mission control keeps alternative routes for mixed intents', async () => {
   expect(report.missionControl.routedIntent?.tool).toBe('projscan_impact');
   expect(report.mode).toBe('before_commit');
   expect(report.modeSource).toBe('intent');
-  expect(report.missionControl.alternatives?.map((route) => route.tool)).toContain('projscan_preflight');
+  expect(report.missionControl.alternatives?.map((route) => route.tool)).toContain(
+    'projscan_preflight',
+  );
   expect(report.missionControl.alternatives?.[0]).toEqual(
     expect.objectContaining({
       tool: 'projscan_preflight',
@@ -6412,21 +6991,31 @@ test('mission control does not duplicate preflight proof when intent routes to a
     'projscan start --mode before_commit',
     'projscan preflight --mode before_commit --format json',
   ]);
-  expect(report.coordinationHints[0]?.command).toBe('projscan preflight --mode before_commit --format json');
+  expect(report.coordinationHints[0]?.command).toBe(
+    'projscan preflight --mode before_commit --format json',
+  );
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
       command: 'projscan preflight --mode before_commit --format json',
       tool: 'projscan_preflight',
     }),
   );
-  expect(report.missionControl.proofCommands[0]).toBe('projscan preflight --mode before_commit --format json');
+  expect(report.missionControl.proofCommands[0]).toBe(
+    'projscan preflight --mode before_commit --format json',
+  );
   expect(report.missionControl.primaryAction.args).toEqual({ mode: 'before_commit' });
-  expect(report.missionControl.proofCommands).not.toContain('projscan preflight --mode before_edit --format json');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
   const nextActionCommands = report.nextActions
     .map((action) => action.command)
     .filter((command): command is string => typeof command === 'string');
   expect(nextActionCommands).toEqual([...new Set(nextActionCommands)]);
-  expect(nextActionCommands.filter((command) => command === 'projscan preflight --mode before_commit --format json')).toHaveLength(1);
+  expect(
+    nextActionCommands.filter(
+      (command) => command === 'projscan preflight --mode before_commit --format json',
+    ),
+  ).toHaveLength(1);
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
@@ -6487,7 +7076,9 @@ test('start report routes PR blocker questions to before-commit preflight', asyn
       'Every blocker has an owner, linked file, or follow-up command before the developer continues.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan preflight --mode before_commit --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_commit --format json',
+  );
 });
 
 test('start report routes merge-readiness questions to before-merge preflight', async () => {
@@ -6522,7 +7113,9 @@ test('start report routes merge-readiness questions to before-merge preflight', 
       'Every blocker has an owner, linked file, or follow-up command before the developer continues.',
     ]),
   );
-  expect(report.missionControl.proofCommands).toContain('projscan preflight --mode before_merge --format json');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_merge --format json',
+  );
 });
 
 test('start report recommends the bug-hunt recipe for bug_hunt mode', async () => {
@@ -6551,7 +7144,9 @@ test('start report infers bug-hunt mode from bug-fix intent', async () => {
       args: {},
     }),
   );
-  expect(report.missionControl.readyActions.map((action) => action.command)).toContain('projscan bug-hunt --format json');
+  expect(report.missionControl.readyActions.map((action) => action.command)).toContain(
+    'projscan bug-hunt --format json',
+  );
 });
 
 test('start report infers release mode from release-readiness intent', async () => {
@@ -6570,8 +7165,12 @@ test('start report infers release mode from release-readiness intent', async () 
       args: {},
     }),
   );
-  expect(report.missionControl.readyActions.map((action) => action.command)).toContain('projscan release-train --format json');
-  expect(report.firstTenMinutes.commands[2]?.command).toBe('projscan preflight --mode before_merge --format json');
+  expect(report.missionControl.readyActions.map((action) => action.command)).toContain(
+    'projscan release-train --format json',
+  );
+  expect(report.firstTenMinutes.commands[2]?.command).toBe(
+    'projscan preflight --mode before_merge --format json',
+  );
 
   const deploy = await computeStartReport(root, { intent: 'can I deploy this' });
   expect(deploy.mode).toBe('release');
@@ -6592,7 +7191,9 @@ test('start report infers release mode from release-readiness intent', async () 
     }),
   );
 
-  const deployment = await computeStartReport(root, { intent: 'prepare this branch for deployment' });
+  const deployment = await computeStartReport(root, {
+    intent: 'prepare this branch for deployment',
+  });
   expect(deployment.mode).toBe('release');
   expect(deployment.missionControl.routedIntent).toEqual(
     expect.objectContaining({
@@ -6633,9 +7234,13 @@ test('start report infers release mode from check-before-release phrasing', asyn
       'Changelog, package, SBOM, and provenance evidence are reviewed before a release handoff.',
     ]),
   );
-  expect(report.firstTenMinutes.commands[2]?.command).toBe('projscan preflight --mode before_merge --format json');
+  expect(report.firstTenMinutes.commands[2]?.command).toBe(
+    'projscan preflight --mode before_merge --format json',
+  );
 
-  const deployCheck = await computeStartReport(root, { intent: 'what should I check before deploy' });
+  const deployCheck = await computeStartReport(root, {
+    intent: 'what should I check before deploy',
+  });
   expect(deployCheck.mode).toBe('release');
   expect(deployCheck.missionControl.routedIntent).toEqual(
     expect.objectContaining({
@@ -6649,7 +7254,9 @@ test('start report infers release mode from check-before-release phrasing', asyn
 test('start report routes release-note and changelog requests to release readiness', async () => {
   const root = await makeTempProject();
 
-  const releaseNote = await computeStartReport(root, { intent: 'write a release note for this change' });
+  const releaseNote = await computeStartReport(root, {
+    intent: 'write a release note for this change',
+  });
 
   expect(releaseNote.mode).toBe('release');
   expect(releaseNote.modeSource).toBe('intent');
@@ -6677,7 +7284,9 @@ test('start report routes release-note and changelog requests to release readine
       'Changelog, package, SBOM, and provenance evidence are reviewed before a release handoff.',
     ]),
   );
-  expect(releaseNote.firstTenMinutes.commands[2]?.command).toBe('projscan preflight --mode before_merge --format json');
+  expect(releaseNote.firstTenMinutes.commands[2]?.command).toBe(
+    'projscan preflight --mode before_merge --format json',
+  );
 
   const changelog = await computeStartReport(root, { intent: 'draft changelog entry' });
   expect(changelog.mode).toBe('release');
@@ -6697,7 +7306,9 @@ test('start report routes release-note and changelog requests to release readine
     }),
   );
 
-  const sinceRelease = await computeStartReport(root, { intent: 'what changed since last release' });
+  const sinceRelease = await computeStartReport(root, {
+    intent: 'what changed since last release',
+  });
   expect(sinceRelease.mode).toBe('release');
   expect(sinceRelease.missionControl.routedIntent).toEqual(
     expect.objectContaining({
@@ -6735,8 +7346,12 @@ test('start report separates current worktree context from remembered session co
     }),
   );
   expect(report.coordinationHints.map((hint) => hint.id)).toContain('remembered-session-context');
-  expect(report.coordinationHints.map((hint) => hint.command)).toContain('projscan session touched --format json');
-  expect(report.coordinationHints.find((hint) => hint.id === 'remembered-session-context')?.message).toContain('1 touched file(s)');
+  expect(report.coordinationHints.map((hint) => hint.command)).toContain(
+    'projscan session touched --format json',
+  );
+  expect(
+    report.coordinationHints.find((hint) => hint.id === 'remembered-session-context')?.message,
+  ).toContain('1 touched file(s)');
 });
 
 test('start report exposes a phased execution plan for fuzzy routed intents', async () => {
@@ -6764,7 +7379,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       reason: 'Run this ready command next; it can unlock later inputs or follow-up steps.',
     }),
   );
-  expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
+  expect(
+    report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`),
+  ).toEqual([
     'next_action:ready',
     'ready_now:ready',
     'resolve_inputs:blocked',
@@ -6783,13 +7400,18 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       args: { query: 'auth token loader' },
     }),
   );
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')?.steps[0]).toEqual(
+  expect(
+    report.missionControl.executionPlan.phases.find((phase) => phase.id === 'ready_now')?.steps[0],
+  ).toEqual(
     expect.objectContaining({
       id: 'ready-1',
       unlocks: ['input-1', 'input-2'],
     }),
   );
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')?.steps).toEqual([
+  expect(
+    report.missionControl.executionPlan.phases.find((phase) => phase.id === 'resolve_inputs')
+      ?.steps,
+  ).toEqual([
     expect.objectContaining({
       id: 'input-1',
       kind: 'input',
@@ -6798,7 +7420,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       dependsOn: ['ready-1'],
       unlocks: ['follow-up-1'],
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
       id: 'input-2',
@@ -6811,7 +7434,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       instruction: 'Replace <file-from-search> with a file path returned by the search step.',
     }),
   ]);
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')?.steps).toEqual([
+  expect(
+    report.missionControl.executionPlan.phases.find((phase) => phase.id === 'follow_up')?.steps,
+  ).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
       kind: 'tool',
@@ -6829,7 +7454,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       command: 'projscan impact <file-from-search> --format json',
     }),
   ]);
-  const proofSteps = report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps ?? [];
+  const proofSteps =
+    report.missionControl.executionPlan.phases.find((phase) => phase.id === 'proof')?.steps ?? [];
   expect(proofSteps.map((step) => step.command)).toEqual(report.missionControl.proofCommands);
   expect(proofSteps[0]).toEqual(
     expect.objectContaining({
@@ -6859,7 +7485,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
         args: { query: 'auth token loader' },
       },
       instruction: 'Run projscan search "auth token loader" --format json.',
-      prompt: 'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+      prompt:
+        'Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
     }),
   );
   expect(report.missionControl.resume.unlocks).toEqual([
@@ -6870,7 +7497,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       status: 'blocked',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
     }),
     expect.objectContaining({
       id: 'input-2',
@@ -6887,7 +7515,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       inputId: 'input-1',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
       followUpIds: ['follow-up-1'],
     },
     {
@@ -6929,7 +7558,8 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       status: 'blocked',
       label: 'symbol',
       placeholder: '<symbol-from-search>',
-      instruction: 'Replace <symbol-from-search> with an exported symbol returned by the search step.',
+      instruction:
+        'Replace <symbol-from-search> with an exported symbol returned by the search step.',
       followUpIds: ['follow-up-1'],
     }),
   );
@@ -6971,10 +7601,13 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       phaseId: 'done_when',
       stepId: 'criterion-1',
       status: 'pending',
-      label: 'An exact symbol or file path is selected from search results before impact analysis continues.',
+      label:
+        'An exact symbol or file path is selected from search results before impact analysis continues.',
     }),
   );
-  expect(report.missionControl.proofCommands[0]).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.proofCommands[0]).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.resume.remainingProofCommands).toEqual([
     'projscan preflight --mode before_edit --format json',
     'projscan understand --view verify --format json',
@@ -7000,7 +7633,9 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       args: {},
     },
   ]);
-  expect(report.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
+  expect(
+    report.missionControl.resume.remainingProofToolCalls?.map((call) => call.tool),
+  ).not.toContain('projscan_search');
   expect(report.missionControl.resume.followUps).toEqual([
     expect.objectContaining({
       id: 'follow-up-1',
@@ -7033,18 +7668,26 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.handoffPrompt).toContain(
     'Review gate: Stop after the current Mission Control checklist and proof are complete.',
   );
-  expect(report.missionControl.handoffPrompt).toContain(
-    'Reviewer replies: Approve next slice => Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
-  );
+  expect(report.missionControl.handoffPrompt).toContain(expectedReviewPromptReplies[0]);
   const handoffReadyProof = report.missionControl.handoffPrompt.split('Ready proof: ')[1] ?? '';
   expect(handoffReadyProof).not.toContain('projscan search "auth token loader" --format json');
   expect(handoffReadyProof).toContain('projscan preflight --mode before_edit --format json');
-  expect(report.missionControl.handoff.currentStep).toEqual(report.missionControl.executionPlan.cursor);
+  expect(report.missionControl.handoff.currentStep).toEqual(
+    report.missionControl.executionPlan.cursor,
+  );
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
-  expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
-  expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
-  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
-  expect(report.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool)).not.toContain('projscan_search');
+  expect(report.missionControl.handoff.readyProof.commands).toEqual(
+    report.missionControl.resume.remainingProofCommands,
+  );
+  expect(report.missionControl.handoff.readyProof.commands).not.toContain(
+    'projscan search "auth token loader" --format json',
+  );
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(
+    report.missionControl.resume.remainingProofToolCalls,
+  );
+  expect(
+    report.missionControl.handoff.readyProof.toolCalls?.map((call) => call.tool),
+  ).not.toContain('projscan_search');
   expect(report.missionControl.runbook).toEqual(
     expect.objectContaining({
       title: 'Runbook: Find exact target for impact analysis',
@@ -7056,44 +7699,94 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       blockedInputSummary: 'Needs input: symbol=<symbol-from-search>, file=<file-from-search>.',
     }),
   );
-  expect(report.missionControl.runbook.currentPhase).toBe(report.missionControl.executionPlan.cursor.phaseId);
+  expect(report.missionControl.runbook.currentPhase).toBe(
+    report.missionControl.executionPlan.cursor.phaseId,
+  );
   expect(report.missionControl.runbook.readyCommandBlock).not.toContain('<');
   expect(report.missionControl.runbook.markdown).toContain('# Mission Runbook');
-  expect(report.missionControl.runbook.markdown).toContain('Intent: what breaks if I rename the auth token loader');
+  expect(report.missionControl.runbook.markdown).toContain(
+    'Intent: what breaks if I rename the auth token loader',
+  );
   expect(report.missionControl.runbook.markdown).toContain('## Current Cursor');
   expect(report.missionControl.runbook.markdown).toContain('- Step: ready-1 in ready_now');
-  expect(report.missionControl.runbook.markdown).toContain('- Command: `projscan search "auth token loader" --format json`');
-  expect(report.missionControl.runbook.markdown).toContain('- MCP call: projscan_search {"query":"auth token loader"}');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- Command: `projscan search "auth token loader" --format json`',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- MCP call: projscan_search {"query":"auth token loader"}',
+  );
   expect(report.missionControl.runbook.markdown).toContain('- Unlocks: input-1, input-2');
-  expect(report.missionControl.runbook.markdown).toContain('- Why: Run this ready command next; it can unlock later inputs or follow-up steps.');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- Why: Run this ready command next; it can unlock later inputs or follow-up steps.',
+  );
   expect(report.missionControl.runbook.markdown).toContain('## Resume');
   expect(report.missionControl.runbook.markdown).toContain('Run now:');
-  expect(report.missionControl.runbook.markdown).toContain('```sh\nprojscan search "auth token loader" --format json\n```');
-  expect(report.missionControl.runbook.markdown).toContain('MCP call: projscan_search {"query":"auth token loader"}');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '```sh\nprojscan search "auth token loader" --format json\n```',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    'MCP call: projscan_search {"query":"auth token loader"}',
+  );
   expect(report.missionControl.runbook.markdown).toContain('After running, resolve:');
-  expect(report.missionControl.runbook.markdown).toContain('- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(report.missionControl.runbook.markdown).toContain('- input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(report.missionControl.runbook.markdown).toContain('Template inputs:');
-  expect(report.missionControl.runbook.markdown).toContain('- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(report.missionControl.runbook.markdown).toContain('- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- <symbol-from-search> -> input-1 (symbol): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- <file-from-search> -> input-2 (file): Replace <file-from-search> with a file path returned by the search step.',
+  );
   expect(report.missionControl.runbook.markdown).toContain('Resume checklist:');
-  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json');
-  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})');
-  expect(report.missionControl.runbook.markdown).toContain('- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(report.missionControl.runbook.markdown).toContain('- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})');
-  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json');
-  expect(report.missionControl.runbook.markdown).toContain('- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(report.missionControl.runbook.markdown).toContain('- [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ready] run_current ready-1: projscan search "auth token loader" --format json (MCP: projscan_search {"query":"auth token loader"})',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [blocked] resolve_input input-1: <symbol-from-search> -> Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [blocked] run_follow_up follow-up-1: projscan impact --symbol <symbol-from-search> --format json (MCP: projscan_impact {"symbol":"<symbol-from-search>"})',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [ready] run_proof proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- [pending] confirm_done criterion-1: An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(report.missionControl.runbook.markdown).toContain('Remaining proof:');
-  expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_edit --format json`');
-  expect(report.missionControl.runbook.markdown).not.toContain('Remaining proof:\n- `projscan search "auth token loader" --format json`');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- `projscan preflight --mode before_edit --format json`',
+  );
+  expect(report.missionControl.runbook.markdown).not.toContain(
+    'Remaining proof:\n- `projscan search "auth token loader" --format json`',
+  );
   expect(report.missionControl.runbook.markdown).toContain('MCP proof calls:');
-  expect(report.missionControl.runbook.markdown).toContain('- proof-2: projscan_preflight {"mode":"before_edit"}');
-  expect(report.missionControl.runbook.markdown).toContain('- proof-3: projscan_understand {"view":"verify"}');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- proof-2: projscan_preflight {"mode":"before_edit"}',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- proof-3: projscan_understand {"view":"verify"}',
+  );
   expect(report.missionControl.runbook.markdown).toContain('Then use:');
-  expect(report.missionControl.runbook.markdown).toContain('- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json');
-  expect(report.missionControl.runbook.markdown).toContain('- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json');
-  expect(report.missionControl.runbook.markdown).toContain('Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- follow-up-1 (If search returns an exported symbol): projscan impact --symbol <symbol-from-search> --format json',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- follow-up-2 (If search returns a file path): projscan impact <file-from-search> --format json',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    'Prompt: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`. This can unlock input-1 (symbol), input-2 (file).',
+  );
   expect(report.missionControl.runbook.markdown).toContain('## Handoff Prompt');
   expect(report.missionControl.runbook.markdown).toContain(report.missionControl.handoffPrompt);
   expect(report.missionControl.runbook.markdown.indexOf('## Resume')).toBeLessThan(
@@ -7102,9 +7795,15 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.runbook.markdown.indexOf('## Handoff Prompt')).toBeLessThan(
     report.missionControl.runbook.markdown.indexOf('## Ready Commands'),
   );
-  expect(report.missionControl.runbook.markdown).toContain('- `projscan search "auth token loader" --format json`');
-  expect(report.missionControl.runbook.markdown).toContain('- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.');
-  expect(report.missionControl.runbook.markdown).toContain('- An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- `projscan search "auth token loader" --format json`',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
 });
 
 test('start report escapes shell expansion syntax in routed freeform commands', async () => {
@@ -7115,7 +7814,9 @@ test('start report escapes shell expansion syntax in routed freeform commands', 
   });
 
   const command = report.missionControl.executionPlan.cursor.command;
-  expect(command).toBe('projscan search "\\$(touch /tmp/projscan-quote-pwn) auth \\`token\\` loader" --format json');
+  expect(command).toBe(
+    'projscan search "\\$(touch /tmp/projscan-quote-pwn) auth \\`token\\` loader" --format json',
+  );
   expect(command).not.toContain('"$(touch /tmp/projscan-quote-pwn)');
   expect(command).not.toContain('`token`');
   expect(report.missionControl.proofCommands[0]).toBe(command);
@@ -7137,12 +7838,11 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
       stopCondition: expect.stringContaining('Stop after'),
     }),
   );
-  expect(report.missionControl.reviewGate.commands).toEqual(['git status --short', 'git diff --stat']);
-  expect(report.missionControl.reviewGate.policy).toEqual({
-    approvalRequired: true,
-    blockedActions: ['next_slice', 'release', 'publish', 'deploy', 'push', 'merge', 'version_bump'],
-    summary: 'Explicit reviewer approval is required before another slice, release, publish, deploy, push, merge, or version bump.',
-  });
+  expect(report.missionControl.reviewGate.commands).toEqual([
+    'git status --short',
+    'git diff --stat',
+  ]);
+  expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(report.missionControl.reviewGate.checklist).toEqual(
     expect.arrayContaining([
       'Complete this task card and remaining proof.',
@@ -7165,30 +7865,38 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     }),
   );
   expect(report.missionControl.reviewGate.markdown).toContain('## Worktree Evidence');
-  expect(report.missionControl.reviewGate.markdown).toContain('Current worktree evidence is unavailable: not a git repository.');
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    'Current worktree evidence is unavailable: not a git repository.',
+  );
   expect(report.missionControl.reviewGate.proof).toEqual({
     summary: report.missionControl.proofSummary,
     commands: report.missionControl.resume.remainingProofCommands,
     toolCalls: report.missionControl.resume.remainingProofToolCalls,
     items: report.missionControl.resume.remainingProofItems,
   });
-  expect(report.missionControl.reviewGate.proof.commands).not.toContain('projscan search "auth token loader" --format json');
+  expect(report.missionControl.reviewGate.proof.commands).not.toContain(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.reviewGate.markdown).toContain('## Proof Queue');
-  expect(report.missionControl.reviewGate.markdown).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
   expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
   expect(report.missionControl.reviewGate.markdown).toContain('## Done When');
-  expect(report.missionControl.reviewGate.markdown).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
-  expect(report.missionControl.reviewGate.decisions.map((decision) => decision.id)).toEqual([
-    'approve_next_slice',
-    'request_changes',
-    'review_version_candidate',
-  ]);
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
+  expect(report.missionControl.reviewGate.decisions.map((decision) => decision.id)).toEqual(
+    expectedReviewDecisionIds,
+  );
   expect(report.missionControl.reviewGate.decisions.map((decision) => decision.reply)).toEqual(
     expectedReviewDecisionReplies,
   );
   expect(report.missionControl.reviewGate.markdown).toContain('## Reviewer Decision');
   expect(report.missionControl.reviewGate.markdown).toContain('## Review Policy');
-  expect(report.missionControl.reviewGate.markdown).toContain('- Start another implementation slice (`next_slice`)');
+  expect(report.missionControl.reviewGate.markdown).toContain(
+    '- Start another implementation slice (`next_slice`)',
+  );
   expect(report.missionControl.reviewGate.markdown).toContain('- Version bump (`version_bump`)');
   expect(report.missionControl.reviewGate.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
@@ -7196,15 +7904,23 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
   expect(report.missionControl.reviewGate.markdown).toContain(
     'Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
   );
-  expect(report.missionControl.reviewGate.markdown).toContain(
-    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
-  );
+  expect(report.missionControl.reviewGate.markdown).toContain(expectedReviewReplyQuotes[0]);
   expect(report.missionControl.handoff.reviewGate).toEqual(report.missionControl.reviewGate);
-  expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
-  expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
-  expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(report.missionControl.reviewGate.doneWhen);
-  expect(report.missionControl.handoff.reviewGate.decisions).toEqual(report.missionControl.reviewGate.decisions);
-  expect(report.missionControl.handoff.reviewGate.policy).toEqual(report.missionControl.reviewGate.policy);
+  expect(report.missionControl.handoff.reviewGate.worktree).toEqual(
+    report.missionControl.reviewGate.worktree,
+  );
+  expect(report.missionControl.handoff.reviewGate.proof).toEqual(
+    report.missionControl.reviewGate.proof,
+  );
+  expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(
+    report.missionControl.reviewGate.doneWhen,
+  );
+  expect(report.missionControl.handoff.reviewGate.decisions).toEqual(
+    report.missionControl.reviewGate.decisions,
+  );
+  expect(report.missionControl.handoff.reviewGate.policy).toEqual(
+    report.missionControl.reviewGate.policy,
+  );
   expect(report.missionControl.taskCard).toEqual(
     expect.objectContaining({
       title: 'Mission Task Card',
@@ -7214,29 +7930,33 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     }),
   );
   expect(report.missionControl.taskCard.markdown.startsWith('# Mission Task Card\n')).toBe(true);
-  expect(report.missionControl.taskCard.markdown).toContain('Intent: what breaks if I rename the auth token loader');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain(
+    'Intent: what breaks if I rename the auth token loader',
+  );
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] Run `projscan search "auth token loader" --format json`',
+  );
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`',
+  );
   expect(report.missionControl.taskCard.markdown).toContain('## Proof');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] `projscan preflight --mode before_edit --format json`',
+  );
   expect(report.missionControl.taskCard.markdown).toContain('## Done When');
   expect(report.missionControl.taskCard.markdown).toContain('## Review Gate');
   expect(report.missionControl.taskCard.markdown).toContain('## Reviewer Decision');
   expect(report.missionControl.taskCard.markdown).toContain(
     '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
   );
-  expect(report.missionControl.taskCard.markdown).toContain(
-    'Reply: "Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version."',
-  );
+  expect(report.missionControl.taskCard.markdown).toContain(expectedReviewReplyQuotes[0]);
   expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
   expect(report.missionControl.runbook.markdown).toContain('## Review Gate');
   expect(report.missionControl.runbook.markdown).toContain('## Reviewer Decision');
   expect(report.missionControl.runbook.markdown).toContain(
     '- [ ] Request changes: The agent must address review feedback before starting more scope.',
   );
-  expect(report.missionControl.runbook.markdown).toContain(
-    'Reply: "Changes requested: address the review feedback first, update proof, then stop for another review."',
-  );
+  expect(report.missionControl.runbook.markdown).toContain(expectedReviewReplyQuotes[1]);
   expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
 });
 
@@ -7263,13 +7983,12 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       reason: 'Run this ready command next.',
     }),
   );
-  expect(report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`)).toEqual([
-    'next_action:ready',
-    'ready_now:ready',
-    'proof:ready',
-    'done_when:pending',
-  ]);
-  expect(report.missionControl.executionPlan.phases.some((phase) => phase.id === 'resolve_inputs')).toBe(false);
+  expect(
+    report.missionControl.executionPlan.phases.map((phase) => `${phase.id}:${phase.status}`),
+  ).toEqual(['next_action:ready', 'ready_now:ready', 'proof:ready', 'done_when:pending']);
+  expect(
+    report.missionControl.executionPlan.phases.some((phase) => phase.id === 'resolve_inputs'),
+  ).toBe(false);
   expect(report.missionControl.executionPlan.phases[0]?.steps[0]).toEqual(
     expect.objectContaining({
       kind: 'tool',
@@ -7279,11 +7998,14 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       args: { mode: 'before_commit' },
     }),
   );
-  expect(report.missionControl.executionPlan.phases.find((phase) => phase.id === 'done_when')?.steps[0]).toEqual(
+  expect(
+    report.missionControl.executionPlan.phases.find((phase) => phase.id === 'done_when')?.steps[0],
+  ).toEqual(
     expect.objectContaining({
       kind: 'criterion',
       status: 'pending',
-      label: 'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
+      label:
+        'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
     }),
   );
   expect(report.missionControl.runbook).toEqual(
@@ -7294,18 +8016,12 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       readyCommandBlock: 'projscan preflight --mode before_commit --format json',
     }),
   );
-  expect(report.missionControl.runbook.currentPhase).toBe(report.missionControl.executionPlan.cursor.phaseId);
+  expect(report.missionControl.runbook.currentPhase).toBe(
+    report.missionControl.executionPlan.cursor.phaseId,
+  );
   expect(report.missionControl.runbook.blockedInputSummary).toBeUndefined();
-  expect(report.missionControl.runbook.markdown).toContain('- `projscan preflight --mode before_commit --format json`');
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- `projscan preflight --mode before_commit --format json`',
+  );
   expect(report.missionControl.runbook.markdown).not.toContain('## Blocked Inputs');
 });
-
-async function makeTempProject(): Promise<string> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-start-'));
-  tempRoots.push(root);
-  await fs.writeFile(path.join(root, 'package.json'), `${JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }, null, 2)}\n`);
-  await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
-  await fs.mkdir(path.join(root, 'src'), { recursive: true });
-  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
-  return root;
-}

@@ -61,7 +61,11 @@ export function createReleaseCheckReport(options = {}) {
   }
 
   const nextAction = chooseNextAction(ctx, tag);
-  const status = hasBlocks(ctx) ? 'blocked' : nextAction.kind === 'approve-actions' ? 'needs-action' : 'ready';
+  const status = hasBlocks(ctx)
+    ? 'blocked'
+    : nextAction.kind === 'approve-actions'
+      ? 'needs-action'
+      : 'ready';
 
   return {
     status,
@@ -154,7 +158,14 @@ function readJson(ctx, relativePath) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch (error) {
-    addCheck(ctx, relativePath, relativePath, 'block', `${relativePath} is not valid JSON`, String(error?.message ?? error));
+    addCheck(
+      ctx,
+      relativePath,
+      relativePath,
+      'block',
+      `${relativePath} is not valid JSON`,
+      String(error?.message ?? error),
+    );
     return null;
   }
 }
@@ -166,15 +177,20 @@ function checkVersionSync(ctx, packageJson) {
   const problems = [];
 
   if (!packageVersion) problems.push('package.json#version is missing');
-  if (lock?.version !== packageVersion) problems.push(`package-lock.json#version is ${formatValue(lock?.version)}`);
+  if (lock?.version !== packageVersion)
+    problems.push(`package-lock.json#version is ${formatValue(lock?.version)}`);
   if (lock?.packages?.['']?.version !== packageVersion) {
-    problems.push(`package-lock.json#packages[""].version is ${formatValue(lock?.packages?.['']?.version)}`);
+    problems.push(
+      `package-lock.json#packages[""].version is ${formatValue(lock?.packages?.['']?.version)}`,
+    );
   }
   if (registry?.version !== packageVersion) {
     problems.push(`server.json#version is ${formatValue(registry?.version)}`);
   }
   if (registry?.packages?.[0]?.version !== packageVersion) {
-    problems.push(`server.json#packages[0].version is ${formatValue(registry?.packages?.[0]?.version)}`);
+    problems.push(
+      `server.json#packages[0].version is ${formatValue(registry?.packages?.[0]?.version)}`,
+    );
   }
 
   addCheck(
@@ -182,13 +198,21 @@ function checkVersionSync(ctx, packageJson) {
     'version-sync',
     'Version metadata',
     problems.length === 0 ? 'ok' : 'block',
-    problems.length === 0 ? `All release metadata points at ${packageVersion}` : problems.join('; '),
+    problems.length === 0
+      ? `All release metadata points at ${packageVersion}`
+      : problems.join('; '),
   );
 }
 
 function checkChangelog(ctx, packageVersion) {
   if (!packageVersion) {
-    addCheck(ctx, 'changelog', 'CHANGELOG entry', 'block', 'Cannot check changelog without package.json#version');
+    addCheck(
+      ctx,
+      'changelog',
+      'CHANGELOG entry',
+      'block',
+      'Cannot check changelog without package.json#version',
+    );
     return;
   }
 
@@ -219,7 +243,9 @@ function checkReleaseScripts(ctx, packageJson) {
     problems.push('package.json scripts.release:check must be "node scripts/release-check.mjs"');
   }
   if (scripts['security:release-gate'] !== 'node scripts/release-gate.mjs') {
-    problems.push('package.json scripts.security:release-gate must be "node scripts/release-gate.mjs"');
+    problems.push(
+      'package.json scripts.security:release-gate must be "node scripts/release-gate.mjs"',
+    );
   }
   if (scripts['sbom:generate'] !== 'node scripts/generate-sbom.mjs') {
     problems.push('package.json scripts.sbom:generate must be "node scripts/generate-sbom.mjs"');
@@ -230,7 +256,9 @@ function checkReleaseScripts(ctx, packageJson) {
     'release-scripts',
     'Release scripts',
     problems.length === 0 ? 'ok' : 'block',
-    problems.length === 0 ? 'release:check, security:release-gate, and sbom:generate are wired' : problems.join('; '),
+    problems.length === 0
+      ? 'release:check, security:release-gate, and sbom:generate are wired'
+      : problems.join('; '),
   );
 }
 
@@ -252,7 +280,9 @@ function checkGitState(ctx, releaseTag) {
     ctx.gitState.branch === 'main'
       ? 'Running from main'
       : `Release check is running from ${ctx.gitState.branch ?? 'detached HEAD'}; releases must be tagged from main only.`,
-    ctx.gitState.branch === 'main' ? undefined : 'Merge the release PR first, then switch to clean, current main before tagging.',
+    ctx.gitState.branch === 'main'
+      ? undefined
+      : 'Merge the release PR first, then switch to clean, current main before tagging.',
   );
 
   const status = git(ctx, ['status', '--short']);
@@ -272,7 +302,10 @@ function checkGitState(ctx, releaseTag) {
     ctx.gitState.upstream = upstream.stdout.trim();
     const counts = git(ctx, ['rev-list', '--left-right', '--count', 'HEAD...@{u}']);
     if (counts.ok) {
-      const [ahead, behind] = counts.stdout.trim().split(/\s+/).map((value) => Number.parseInt(value, 10));
+      const [ahead, behind] = counts.stdout
+        .trim()
+        .split(/\s+/)
+        .map((value) => Number.parseInt(value, 10));
       ctx.gitState.ahead = Number.isFinite(ahead) ? ahead : null;
       ctx.gitState.behind = Number.isFinite(behind) ? behind : null;
       addCheck(
@@ -287,15 +320,34 @@ function checkGitState(ctx, releaseTag) {
             : `${ctx.gitState.branch ?? 'HEAD'} matches ${ctx.gitState.upstream}`,
       );
     } else {
-      addCheck(ctx, 'upstream', 'Upstream sync', 'warn', 'Could not compare HEAD with upstream', counts.stderr.trim());
+      addCheck(
+        ctx,
+        'upstream',
+        'Upstream sync',
+        'warn',
+        'Could not compare HEAD with upstream',
+        counts.stderr.trim(),
+      );
     }
   } else {
     addCheck(ctx, 'upstream', 'Upstream sync', 'warn', 'No upstream branch is configured');
   }
 
   if (!releaseTag) {
-    addCheck(ctx, 'local-tag', 'Local tag', 'block', 'Cannot check local tag without package version');
-    addCheck(ctx, 'remote-tag', 'Remote tag', 'block', 'Cannot check remote tag without package version');
+    addCheck(
+      ctx,
+      'local-tag',
+      'Local tag',
+      'block',
+      'Cannot check local tag without package version',
+    );
+    addCheck(
+      ctx,
+      'remote-tag',
+      'Remote tag',
+      'block',
+      'Cannot check remote tag without package version',
+    );
     return;
   }
 
@@ -320,11 +372,22 @@ function checkGitState(ctx, releaseTag) {
     return;
   }
 
-  const remoteTag = git(ctx, ['ls-remote', '--tags', 'origin', `refs/tags/${releaseTag}`, `refs/tags/${releaseTag}^{}`], {
-    timeout: 15000,
-  });
+  const remoteTag = git(
+    ctx,
+    ['ls-remote', '--tags', 'origin', `refs/tags/${releaseTag}`, `refs/tags/${releaseTag}^{}`],
+    {
+      timeout: 15000,
+    },
+  );
   if (!remoteTag.ok) {
-    addCheck(ctx, 'remote-tag', 'Remote tag', 'warn', `Could not check origin/${releaseTag}`, remoteTag.stderr.trim());
+    addCheck(
+      ctx,
+      'remote-tag',
+      'Remote tag',
+      'warn',
+      `Could not check origin/${releaseTag}`,
+      remoteTag.stderr.trim(),
+    );
     return;
   }
 
@@ -388,7 +451,11 @@ function runReleaseGates(ctx) {
 }
 
 function chooseNextAction(ctx, releaseTag) {
-  if (hasCheckBlock(ctx, 'version-sync') || hasCheckBlock(ctx, 'changelog') || hasCheckBlock(ctx, 'release-scripts')) {
+  if (
+    hasCheckBlock(ctx, 'version-sync') ||
+    hasCheckBlock(ctx, 'changelog') ||
+    hasCheckBlock(ctx, 'release-scripts')
+  ) {
     return {
       kind: 'fix-metadata',
       summary: 'Fix release metadata before committing or tagging.',
@@ -510,7 +577,9 @@ function defaultGateRunner(root, command, commandArgs) {
 }
 
 function printHuman(report) {
-  console.log(`Release readiness for projscan@${report.version ?? 'unknown'} (${report.tag ?? 'no tag'})`);
+  console.log(
+    `Release readiness for projscan@${report.version ?? 'unknown'} (${report.tag ?? 'no tag'})`,
+  );
   console.log('');
 
   for (const check of report.checks) {

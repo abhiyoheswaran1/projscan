@@ -13,6 +13,7 @@
 ### Task 1: Dataflow Custom Rule Visibility
 
 **Files:**
+
 - Modify: `src/core/dataflowFilters.ts`
 - Modify: `tests/core/dataflow.test.ts`
 
@@ -24,6 +25,7 @@
 ### Task 2: Release Gate Hardening
 
 **Files:**
+
 - Modify: `scripts/release-check.mjs`
 - Modify: `tests/scripts/releaseCheck.test.ts`
 - Modify: `.github/workflows/ci.yml`
@@ -38,6 +40,7 @@
 ### Task 3: Impact Ownership Metadata
 
 **Files:**
+
 - Create: `src/core/ownership.ts`
 - Modify: `src/core/impact.ts`
 - Modify: `src/mcp/tools/impact.ts`
@@ -51,6 +54,7 @@
 ### Task 4: 3.x Release Train Polish
 
 **Files:**
+
 - Modify: `src/core/releaseTrain.ts`
 - Modify: `tests/core/releaseTrain.test.ts`
 
@@ -61,6 +65,7 @@
 ### Task 5: 3.0.2 Release Metadata
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `.github/mcp-registry/server.json`
@@ -75,6 +80,7 @@
 ### Task 6: Verification and Release
 
 **Files:**
+
 - No code changes expected.
 
 - [ ] Run `npm run build`.

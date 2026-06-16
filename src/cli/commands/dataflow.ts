@@ -32,40 +32,44 @@ export function registerDataflow(): void {
         includeBroadFileIo?: boolean;
         includeGenerated?: boolean;
       }) => {
-      setupLogLevel();
-      maybeCompactBanner();
-      const format = assertFormatSupported('dataflow');
+        setupLogLevel();
+        maybeCompactBanner();
+        const format = assertFormatSupported('dataflow');
 
-      try {
-        const rootPath = getRootPath();
-        const config = await loadProjectConfig();
-        const scan = await scanRepository(rootPath, { ignore: config.ignore });
-        const graph = await buildCodeGraph(rootPath, scan.files);
-        const sources = [...(config.taint?.sources ?? []), ...(cmdOpts.source ?? [])];
-        const sinks = [...(config.taint?.sinks ?? []), ...(cmdOpts.sink ?? [])];
-        const maxRisks = Math.max(1, Math.min(500, cmdOpts.maxRisks ?? 50));
-        const report = computeDataflow(graph, { sources, sinks }, {
-          includeTests: cmdOpts.includeTests === true,
-          includeBroadFileIo: cmdOpts.includeBroadFileIo === true,
-          includeGenerated: cmdOpts.includeGenerated === true,
-        });
-        const shaped = {
-          ...report,
-          risks: report.risks.slice(0, maxRisks),
-          truncated: report.risks.length > maxRisks || report.truncated,
-        };
+        try {
+          const rootPath = getRootPath();
+          const config = await loadProjectConfig();
+          const scan = await scanRepository(rootPath, { ignore: config.ignore });
+          const graph = await buildCodeGraph(rootPath, scan.files);
+          const sources = [...(config.taint?.sources ?? []), ...(cmdOpts.source ?? [])];
+          const sinks = [...(config.taint?.sinks ?? []), ...(cmdOpts.sink ?? [])];
+          const maxRisks = Math.max(1, Math.min(500, cmdOpts.maxRisks ?? 50));
+          const report = computeDataflow(
+            graph,
+            { sources, sinks },
+            {
+              includeTests: cmdOpts.includeTests === true,
+              includeBroadFileIo: cmdOpts.includeBroadFileIo === true,
+              includeGenerated: cmdOpts.includeGenerated === true,
+            },
+          );
+          const shaped = {
+            ...report,
+            risks: report.risks.slice(0, maxRisks),
+            truncated: report.risks.length > maxRisks || report.truncated,
+          };
 
-        if (format === 'json') {
-          console.log(JSON.stringify(shaped, null, 2));
-          return;
+          if (format === 'json') {
+            console.log(JSON.stringify(shaped, null, 2));
+            return;
+          }
+          printDataflow(shaped);
+        } catch (err) {
+          console.error(chalk.red(err instanceof Error ? err.message : String(err)));
+          process.exit(1);
         }
-        printDataflow(shaped);
-      } catch (err) {
-        console.error(chalk.red(err instanceof Error ? err.message : String(err)));
-        process.exit(1);
-      }
-    },
-  );
+      },
+    );
 }
 
 function printDataflow(report: DataflowReport): void {

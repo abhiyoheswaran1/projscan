@@ -20,6 +20,7 @@
 ## Task 1: Red CLI Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Assert saved bundles contain `review-replies.txt`**
@@ -28,7 +29,9 @@ In `start writes a Mission Control bundle when requested`, add stdout, README, f
 
 ```ts
 expect(result.stdout).toContain('review-replies.txt');
-expect(quickstart).toContain('- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.');
+expect(quickstart).toContain(
+  '- `review-replies.txt`: Copy-only reviewer reply choices for approving or redirecting the stopped mission.',
+);
 
 const reviewReplies = await fs.readFile(path.join(bundleDir, 'review-replies.txt'), 'utf-8');
 expect(reviewReplies).toBe(
@@ -96,7 +99,9 @@ test('start prints only reviewer replies when requested', async () => {
 In the shortcut index test, add:
 
 ```ts
-expect(result.stdout).toContain("projscan start --review-replies --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --review-replies --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 5: Run red tests**
@@ -112,6 +117,7 @@ Expected: fail because the flag and `review-replies.txt` do not exist yet.
 ## Task 2: CLI And Bundle Implementation
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add the Commander option**
@@ -196,6 +202,7 @@ Expected: build passes and focused CLI tests pass.
 ## Task 3: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -229,6 +236,7 @@ If PNGs change, inspect the changed image before committing.
 ## Task 4: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run verification**

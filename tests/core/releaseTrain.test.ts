@@ -7,7 +7,9 @@ import { computeReleaseTrain } from '../../src/core/releaseTrain.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('release train plans 2.3.x and 2.4.x without changing package metadata', async () => {
@@ -17,7 +19,9 @@ test('release train plans 2.3.x and 2.4.x without changing package metadata', as
     lines: ['2.3.x', '2.4.x'],
   });
 
-  const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf-8')) as { version: string };
+  const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf-8')) as {
+    version: string;
+  };
   expect(pkg.version).toBe('2.2.0');
   expect(report.schemaVersion).toBe(1);
   expect(report.currentVersion).toBe('2.2.0');
@@ -58,6 +62,25 @@ test('release train defaults to the six-line product plan', async () => {
   );
 });
 
+test('release train describes bug-hunt proof as prioritized actions, not only fix targets', async () => {
+  const root = await makeTempProject('2.2.0');
+
+  const report = await computeReleaseTrain(root, { lines: ['2.4.x'] });
+  const bugHuntTrack = report.tracks[0];
+  const planningText = [
+    bugHuntTrack?.outcome,
+    ...(bugHuntTrack?.scope ?? []),
+    ...(bugHuntTrack?.successCriteria ?? []),
+  ].join('\n');
+
+  expect(bugHuntTrack?.successCriteria).toContain(
+    'bug-hunt output names the first prioritized action and commands to prove it',
+  );
+  expect(planningText).toContain('ranked action queue');
+  expect(planningText).not.toContain('fix queue');
+  expect(planningText).not.toContain('first fix target');
+});
+
 test('release train plans 3.x graph platform lines', async () => {
   const root = await makeTempProject('3.0.1');
 
@@ -66,15 +89,29 @@ test('release train plans 3.x graph platform lines', async () => {
   });
 
   expect(report.plan.lines).toEqual(['3.0.x', '3.1.x']);
-  expect(report.tracks.map((track) => track.theme)).toEqual(['Graph Operations Readiness', 'Graph Intelligence Expansion']);
+  expect(report.tracks.map((track) => track.theme)).toEqual([
+    'Graph Operations Readiness',
+    'Graph Intelligence Expansion',
+  ]);
   expect(report.tracks[0]?.scope).toEqual(
-    expect.arrayContaining(['graph corpus release gate', 'dataflow precision hardening', 'ownership-aware impact']),
+    expect.arrayContaining([
+      'graph corpus release gate',
+      'dataflow precision hardening',
+      'ownership-aware impact',
+    ]),
   );
   expect(report.tracks[1]?.scope).toEqual(
-    expect.arrayContaining(['package-scoped review evidence', 'framework route dataflow precision']),
+    expect.arrayContaining([
+      'package-scoped review evidence',
+      'framework route dataflow precision',
+    ]),
   );
   expect(report.tasks.map((task) => task.id)).toEqual(
-    expect.arrayContaining(['rt-3-0-graph-readiness', 'rt-3-1-graph-expansion', 'rt-plan-readiness']),
+    expect.arrayContaining([
+      'rt-3-0-graph-readiness',
+      'rt-3-1-graph-expansion',
+      'rt-plan-readiness',
+    ]),
   );
 });
 
@@ -83,7 +120,16 @@ test('release train defaults to the eight-item 3.2 roadmap train for 3.1 and new
 
   const report = await computeReleaseTrain(root);
 
-  expect(report.plan.lines).toEqual(['3.2.x', '3.3.x', '3.4.x', '3.5.x', '3.6.x', '3.7.x', '3.8.x', '3.9.x']);
+  expect(report.plan.lines).toEqual([
+    '3.2.x',
+    '3.3.x',
+    '3.4.x',
+    '3.5.x',
+    '3.6.x',
+    '3.7.x',
+    '3.8.x',
+    '3.9.x',
+  ]);
   expect(report.tracks.map((track) => track.theme)).toEqual([
     'Roadmap Canonicalization',
     'Adoption Proof Polish',
@@ -118,7 +164,9 @@ test('release train defaults to repo understanding for 3.4 and newer', async () 
 
   expect(report.plan.lines).toEqual(['3.4.x']);
   expect(report.tracks.map((track) => track.theme)).toEqual(['Repo Understanding']);
-  expect(report.tasks.map((task) => task.id)).toEqual(expect.arrayContaining(['rt-3-4-repo-understanding', 'rt-plan-readiness']));
+  expect(report.tasks.map((task) => task.id)).toEqual(
+    expect.arrayContaining(['rt-3-4-repo-understanding', 'rt-plan-readiness']),
+  );
 });
 
 test('release train marks blockers when preflight blocks', async () => {

@@ -56,17 +56,23 @@ describe('pythonAdapter exports extraction', () => {
   });
 
   it('honors __all__ to include underscored names', async () => {
-    const r = await exportsOf("__all__ = ['_hidden', 'visible']\n\n_hidden = 1\nvisible = 2\nextra = 3\n");
+    const r = await exportsOf(
+      "__all__ = ['_hidden', 'visible']\n\n_hidden = 1\nvisible = 2\nextra = 3\n",
+    );
     expect(r.map((e) => e.name).sort()).toEqual(['_hidden', 'visible']);
   });
 
   it('honors __all__ to exclude otherwise-public names', async () => {
-    const r = await exportsOf("__all__ = ['kept']\n\ndef kept():\n    pass\n\ndef dropped():\n    pass\n");
+    const r = await exportsOf(
+      "__all__ = ['kept']\n\ndef kept():\n    pass\n\ndef dropped():\n    pass\n",
+    );
     expect(r.map((e) => e.name)).toEqual(['kept']);
   });
 
   it('falls back to public-name rule when __all__ is not a literal list', async () => {
-    const r = await exportsOf('__all__ = sorted(dir())\n\ndef public():\n    pass\n\n_private = 1\n');
+    const r = await exportsOf(
+      '__all__ = sorted(dir())\n\ndef public():\n    pass\n\n_private = 1\n',
+    );
     // Non-literal __all__ → treated as absent. The __all__ binding itself
     // starts with an underscore so the public-name rule drops it; same for
     // `_private`. Only `public` survives.
@@ -79,7 +85,16 @@ describe('pythonAdapter exports extraction', () => {
   });
 
   it('records line numbers', async () => {
-    const src = ['# header', '', 'def first():', '    pass', '', 'class Second:', '    pass', ''].join('\n');
+    const src = [
+      '# header',
+      '',
+      'def first():',
+      '    pass',
+      '',
+      'class Second:',
+      '    pass',
+      '',
+    ].join('\n');
     const r = await exportsOf(src);
     const byName = Object.fromEntries(r.map((e) => [e.name, e.line]));
     expect(byName['first']).toBe(3);

@@ -28,7 +28,10 @@ export const explainIssueTool: McpTool = {
     const issues = await collectIssues(rootPath, scan.files);
     const explanation = await explainIssue(rootPath, issues, issueId);
     if (!explanation) {
-      return { matched: false, reason: `No open issue with id "${issueId}" in current doctor run.` };
+      return {
+        matched: false,
+        reason: `No open issue with id "${issueId}" in current doctor run.`,
+      };
     }
     return { matched: true, explanation };
   },

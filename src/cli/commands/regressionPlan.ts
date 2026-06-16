@@ -8,14 +8,23 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeRegressionPlan } from '../../core/regressionPlan.js';
-import type { RegressionPlanLevel, RegressionPlanReport, RegressionPlanTarget } from '../../types.js';
+import type {
+  RegressionPlanLevel,
+  RegressionPlanReport,
+  RegressionPlanTarget,
+} from '../../types.js';
 
 export function registerRegressionPlan(): void {
   program
     .command('regression-plan')
     .description('Build a smoke, focused, or full regression matrix from product risk signals')
     .option('--level <level>', 'smoke, focused, or full', 'focused')
-    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
+    .option(
+      '--line <line>',
+      'product line to include, repeatable (default: next six minor lines)',
+      collectLine,
+      [],
+    )
     .option('--max-targets <count>', 'maximum regression targets to include', parsePositiveInt)
     .action(async (cmdOpts) => {
       setupLogLevel();

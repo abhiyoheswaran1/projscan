@@ -16,12 +16,19 @@ export function registerWorkplan(): void {
   program
     .command('workplan')
     .description('Compose repo signals into an ordered agent execution plan')
-    .option('--mode <mode>', 'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening', 'before_edit')
+    .option(
+      '--mode <mode>',
+      'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening',
+      'before_edit',
+    )
     .option('--base-ref <ref>', 'git base ref for commit/merge/release checks')
     .option('--head-ref <ref>', 'git head ref for merge/release checks')
     .option('--max-changed-files <count>', 'caution threshold for changed files', parsePositiveInt)
     .option('--max-tasks <count>', 'maximum number of tasks to return', parsePositiveInt)
-    .option('--enable-plugins', 'include plugin evidence when PROJSCAN_PLUGINS_PREVIEW=1 is already set')
+    .option(
+      '--enable-plugins',
+      'include plugin evidence when PROJSCAN_PLUGINS_PREVIEW=1 is already set',
+    )
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -94,7 +101,11 @@ export function registerWorkplan(): void {
 function parseMode(value: unknown): WorkplanMode {
   if (typeof value === 'string' && isWorkplanMode(value)) return value;
   console.error(chalk.red(`Unsupported --mode ${String(value)}.`));
-  console.error(chalk.dim('Supported modes: before_edit, before_commit, before_merge, refactor, release, bug_hunt, hardening'));
+  console.error(
+    chalk.dim(
+      'Supported modes: before_edit, before_commit, before_merge, refactor, release, bug_hunt, hardening',
+    ),
+  );
   process.exit(1);
 }
 

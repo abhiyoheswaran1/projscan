@@ -56,7 +56,9 @@ export function registerDiff(): void {
           baseline = await loadBaseline(cmdOpts.baseline, rootPath);
         } catch {
           console.error(chalk.yellow('\n  No baseline found.'));
-          console.error(`  Run ${chalk.bold.cyan('projscan diff --save-baseline')} first to create one.\n`);
+          console.error(
+            `  Run ${chalk.bold.cyan('projscan diff --save-baseline')} first to create one.\n`,
+          );
           process.exit(1);
         }
 

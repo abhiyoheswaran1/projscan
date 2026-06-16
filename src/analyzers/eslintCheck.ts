@@ -18,7 +18,9 @@ const ESLINT_CONFIG_FILES = [
 
 export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
   const rootFiles = new Set(
-    files.filter((f) => !f.directory || f.directory === '.').map((f) => path.basename(f.relativePath)),
+    files
+      .filter((f) => !f.directory || f.directory === '.')
+      .map((f) => path.basename(f.relativePath)),
   );
 
   // Check for config files

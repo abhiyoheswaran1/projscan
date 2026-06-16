@@ -18,7 +18,7 @@ export interface RubyProjectInfo {
  * - **Plain**: any directory with `.rb` files but no manifest. Source root is
  *   the repo root.
  *
- * Returns `null` only when no `.rb` files exist and no manifest is present  - 
+ * Returns `null` only when no `.rb` files exist and no manifest is present  -
  * i.e. this is not a Ruby project.
  */
 export async function detectRubyProject(

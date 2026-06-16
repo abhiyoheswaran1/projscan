@@ -62,7 +62,13 @@ export function registerHotspots(): void {
 
         if (cmdOpts.package) {
           const ws = await detectWorkspaces(rootPath);
-          const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, report.hotspots.map((h) => h.relativePath)));
+          const allowed = new Set(
+            filterFilesByPackage(
+              ws,
+              cmdOpts.package,
+              report.hotspots.map((h) => h.relativePath),
+            ),
+          );
           report.hotspots = report.hotspots.filter((h) => allowed.has(h.relativePath));
         }
 

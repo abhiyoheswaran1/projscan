@@ -22,6 +22,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -43,7 +44,9 @@ expect(report.missionControl.reviewGate.markdown).toContain(
 expect(report.missionControl.reviewGate.markdown).toContain(
   'Consequence: No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
 );
-expect(report.missionControl.handoff.reviewGate.decisions).toEqual(report.missionControl.reviewGate.decisions);
+expect(report.missionControl.handoff.reviewGate.decisions).toEqual(
+  report.missionControl.reviewGate.decisions,
+);
 ```
 
 - [ ] **Step 2: Add CLI failing assertions**
@@ -52,7 +55,9 @@ In `start writes a Mission Control bundle when requested`, after the existing `r
 
 ```ts
 expect(reviewGate).toContain('## Reviewer Decision');
-expect(reviewGate).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
+expect(reviewGate).toContain(
+  '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+);
 expect(reviewGate).toContain('Publishing still requires a separate explicit approval.');
 ```
 
@@ -70,12 +75,12 @@ In `start review-gate shortcut prints the structured review gate markdown`, add:
 
 ```ts
 expect(shortcut.stdout).toContain('## Reviewer Decision');
-expect(shortcut.stdout).toContain('- [ ] Request changes: The agent must address review feedback before starting more scope.');
-expect(report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id)).toEqual([
-  'approve_next_slice',
-  'request_changes',
-  'review_version_candidate',
-]);
+expect(shortcut.stdout).toContain(
+  '- [ ] Request changes: The agent must address review feedback before starting more scope.',
+);
+expect(
+  report.missionControl.reviewGate.decisions.map((decision: { id: string }) => decision.id),
+).toEqual(['approve_next_slice', 'request_changes', 'review_version_candidate']);
 ```
 
 - [ ] **Step 3: Add MCP failing assertions**
@@ -107,6 +112,7 @@ Expected: fail because `reviewGate.decisions` and `## Reviewer Decision` do not 
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -140,7 +146,8 @@ function buildMissionReviewDecisions(): StartMissionReviewDecision[] {
       id: 'approve_next_slice',
       label: 'Approve next slice',
       description: 'The agent may start another bounded implementation slice.',
-      consequence: 'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
+      consequence:
+        'No release, publish, deploy, or version bump is allowed unless the reviewer asks for it.',
     },
     {
       id: 'request_changes',
@@ -151,7 +158,8 @@ function buildMissionReviewDecisions(): StartMissionReviewDecision[] {
     {
       id: 'review_version_candidate',
       label: 'Review version candidate',
-      description: 'The agent may prepare release notes, version rationale, and remaining gates for review.',
+      description:
+        'The agent may prepare release notes, version rationale, and remaining gates for review.',
       consequence: 'Publishing still requires a separate explicit approval.',
     },
   ];
@@ -205,6 +213,7 @@ Expected: build passes and the focused core test passes.
 ## Task 3: CLI, MCP, and Docs
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
 - Modify: `README.md`
@@ -258,6 +267,7 @@ Expected: exits 0. Include screenshot diffs only if the capture source or PNG ou
 ## Task 4: Verification and Commit
 
 **Files:**
+
 - All modified files
 
 - [ ] **Step 1: Run verification**

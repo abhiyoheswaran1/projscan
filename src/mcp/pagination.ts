@@ -29,11 +29,7 @@ const MAX_PAGE_SIZE = 500;
  * captured checksum we treat the page as fresh (offset=0) rather than risk
  * returning stale offsets.
  */
-export function paginate<T>(
-  items: T[],
-  request: PageRequest,
-  checksum: string,
-): Page<T> {
+export function paginate<T>(items: T[], request: PageRequest, checksum: string): Page<T> {
   const size = Math.max(1, Math.min(MAX_PAGE_SIZE, request.pageSize ?? DEFAULT_PAGE_SIZE));
   const decoded = decodeCursor(request.cursor);
   const offset = decoded && decoded.checksum === checksum ? decoded.offset : 0;

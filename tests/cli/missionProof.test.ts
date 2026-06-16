@@ -11,7 +11,10 @@ let tmp: string;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-cli-mission-proof-'));
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }),
+  );
   await fs.writeFile(path.join(tmp, 'README.md'), '# fixture\n');
   await writeMission(tmp, '.projscan/mission', 'passed');
 });
@@ -21,7 +24,14 @@ afterEach(async () => {
 });
 
 test('mission-proof reports local Mission Control adoption evidence as JSON', async () => {
-  const result = await runCli(['mission-proof', '--mission', '.projscan/mission', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mission-proof',
+    '--mission',
+    '.projscan/mission',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
@@ -29,7 +39,9 @@ test('mission-proof reports local Mission Control adoption evidence as JSON', as
   expect(report.readOnly).toBe(true);
   expect(report.missionControl.totals.missions).toBe(1);
   expect(report.missionControl.totals.passed).toBe(1);
-  expect(report.nextActions.map((action: { command?: string }) => action.command)).toContain('projscan start --mission .projscan/mission');
+  expect(report.nextActions.map((action: { command?: string }) => action.command)).toContain(
+    'projscan start --mission .projscan/mission',
+  );
 });
 
 test('mission-proof prints a paste-ready Markdown evidence report', async () => {
@@ -111,7 +123,9 @@ test('mission-proof writes Markdown and JSON reports as local artifacts', async 
   ]);
 
   expect(markdownResult.exitCode).toBe(0);
-  expect(markdownResult.stdout).toContain(`Wrote mission proof report to ${path.join(realTmp, markdown)}`);
+  expect(markdownResult.stdout).toContain(
+    `Wrote mission proof report to ${path.join(realTmp, markdown)}`,
+  );
   expect(markdownResult.stdout).not.toContain('# Mission Proof Report');
   const markdownReport = await fs.readFile(path.join(tmp, markdown), 'utf-8');
   expect(markdownReport).toContain('# Mission Proof Report');
@@ -135,7 +149,9 @@ test('mission-proof discovers saved mission bundles with --all', async () => {
   expect(report.missionControl.totals.missions).toBe(3);
   expect(report.missionControl.totals.passed).toBe(2);
   expect(report.missionControl.totals.failed).toBe(1);
-  expect(report.missionControl.missions.map((mission: { missionDir: string }) => mission.missionDir)).toEqual([
+  expect(
+    report.missionControl.missions.map((mission: { missionDir: string }) => mission.missionDir),
+  ).toEqual([
     '.projscan/mission',
     '.projscan/missions/api-hardening',
     '.projscan/missions/ui-regression',
@@ -165,8 +181,12 @@ test('mission-proof explains when --latest has no saved mission bundles', async 
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('No saved mission bundles found under .projscan/mission or .projscan/missions.');
-  expect(result.stderr).toContain('Create one with: projscan start --save-mission .projscan/mission --intent "<goal>"');
+  expect(result.stderr).toContain(
+    'No saved mission bundles found under .projscan/mission or .projscan/missions.',
+  );
+  expect(result.stderr).toContain(
+    'Create one with: projscan start --save-mission .projscan/mission --intent "<goal>"',
+  );
 });
 
 test('mission-proof can list saved mission bundles for selection', async () => {
@@ -187,14 +207,16 @@ test('mission-proof can list saved mission bundles for selection', async () => {
         status: 'failed',
         updatedAt: '2026-06-10T10:00:00.000Z',
         resumeCommand: 'projscan start --mission .projscan/missions/ui-regression',
-        proofCommand: 'projscan mission-proof --mission .projscan/missions/ui-regression --format markdown',
+        proofCommand:
+          'projscan mission-proof --mission .projscan/missions/ui-regression --format markdown',
       },
       {
         missionDir: '.projscan/missions/api-hardening',
         status: 'passed',
         updatedAt: '2026-06-10T09:00:00.000Z',
         resumeCommand: 'projscan start --mission .projscan/missions/api-hardening',
-        proofCommand: 'projscan mission-proof --mission .projscan/missions/api-hardening --format markdown',
+        proofCommand:
+          'projscan mission-proof --mission .projscan/missions/api-hardening --format markdown',
       },
       {
         missionDir: '.projscan/mission',
@@ -234,8 +256,12 @@ test('mission-proof list markdown includes totals and copyable commands', async 
   expect(result.stdout).toContain('## .projscan/missions/ui-regression');
   expect(result.stdout).toContain('- Status: failed');
   expect(result.stdout).toContain('- Updated: 2026-06-10T10:00:00.000Z');
-  expect(result.stdout).toContain('```bash\nprojscan start --mission .projscan/missions/ui-regression\n```');
-  expect(result.stdout).toContain('```bash\nprojscan mission-proof --mission .projscan/missions/ui-regression --format markdown\n```');
+  expect(result.stdout).toContain(
+    '```bash\nprojscan start --mission .projscan/missions/ui-regression\n```',
+  );
+  expect(result.stdout).toContain(
+    '```bash\nprojscan mission-proof --mission .projscan/missions/ui-regression --format markdown\n```',
+  );
 });
 
 test('mission-proof list handles empty saved mission sets', async () => {
@@ -265,7 +291,14 @@ test('mission-proof list can show only saved missions needing attention', async 
   await touchSummary('.projscan/missions/api-hardening', new Date('2026-06-10T09:00:00.000Z'));
   await touchSummary('.projscan/missions/ui-regression', new Date('2026-06-10T10:00:00.000Z'));
 
-  const result = await runCli(['mission-proof', '--list', '--needs-attention', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mission-proof',
+    '--list',
+    '--needs-attention',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(JSON.parse(result.stdout)).toEqual({
@@ -275,7 +308,8 @@ test('mission-proof list can show only saved missions needing attention', async 
         status: 'failed',
         updatedAt: '2026-06-10T10:00:00.000Z',
         resumeCommand: 'projscan start --mission .projscan/missions/ui-regression',
-        proofCommand: 'projscan mission-proof --mission .projscan/missions/ui-regression --format markdown',
+        proofCommand:
+          'projscan mission-proof --mission .projscan/missions/ui-regression --format markdown',
       },
     ],
     totals: {
@@ -297,7 +331,15 @@ test('mission-proof list can filter saved missions by exact status', async () =>
   await touchSummary('.projscan/missions/api-hardening', new Date('2026-06-10T09:00:00.000Z'));
   await touchSummary('.projscan/missions/ui-regression', new Date('2026-06-10T10:00:00.000Z'));
 
-  const result = await runCli(['mission-proof', '--list', '--mission-status', 'passed', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mission-proof',
+    '--list',
+    '--mission-status',
+    'passed',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(JSON.parse(result.stdout)).toEqual({
@@ -307,7 +349,8 @@ test('mission-proof list can filter saved missions by exact status', async () =>
         status: 'passed',
         updatedAt: '2026-06-10T09:00:00.000Z',
         resumeCommand: 'projscan start --mission .projscan/missions/api-hardening',
-        proofCommand: 'projscan mission-proof --mission .projscan/missions/api-hardening --format markdown',
+        proofCommand:
+          'projscan mission-proof --mission .projscan/missions/api-hardening --format markdown',
       },
       {
         missionDir: '.projscan/mission',
@@ -333,14 +376,31 @@ test('mission-proof can gate automation on all selected bundles passing', async 
   await writeMission(tmp, '.projscan/missions/api-hardening', 'passed');
   await writeMission(tmp, '.projscan/missions/ui-regression', 'failed');
 
-  const failed = await runCli(['mission-proof', '--all', '--require-passed', '--format', 'json', '--quiet']);
-  const passed = await runCli(['mission-proof', '--mission', '.projscan/mission', '--require-passed', '--format', 'json', '--quiet']);
+  const failed = await runCli([
+    'mission-proof',
+    '--all',
+    '--require-passed',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+  const passed = await runCli([
+    'mission-proof',
+    '--mission',
+    '.projscan/mission',
+    '--require-passed',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(failed.exitCode).toBe(1);
   const failedReport = JSON.parse(failed.stdout);
   expect(failedReport.missionControl.totals.missions).toBe(3);
   expect(failedReport.missionControl.totals.failed).toBe(1);
-  expect(failed.stderr).toContain('Mission proof gate failed: 2 of 3 mission bundle(s) passed; 1 failed.');
+  expect(failed.stderr).toContain(
+    'Mission proof gate failed: 2 of 3 mission bundle(s) passed; 1 failed.',
+  );
 
   expect(passed.exitCode).toBe(0);
   const passedReport = JSON.parse(passed.stdout);
@@ -353,8 +413,21 @@ test('mission-proof can print a compact summary for CI logs', async () => {
   await writeMission(tmp, '.projscan/missions/ui-regression', 'failed');
 
   const summary = await runCli(['mission-proof', '--all', '--summary', '--quiet']);
-  const gated = await runCli(['mission-proof', '--all', '--summary', '--require-passed', '--quiet']);
-  const passed = await runCli(['mission-proof', '--mission', '.projscan/mission', '--summary', '--require-passed', '--quiet']);
+  const gated = await runCli([
+    'mission-proof',
+    '--all',
+    '--summary',
+    '--require-passed',
+    '--quiet',
+  ]);
+  const passed = await runCli([
+    'mission-proof',
+    '--mission',
+    '.projscan/mission',
+    '--summary',
+    '--require-passed',
+    '--quiet',
+  ]);
 
   expect(summary.exitCode).toBe(0);
   expect(summary.stdout.trim()).toBe('Mission proof: FAIL (2 of 3 passed; 1 failed).');
@@ -362,7 +435,9 @@ test('mission-proof can print a compact summary for CI logs', async () => {
 
   expect(gated.exitCode).toBe(1);
   expect(gated.stdout.trim()).toBe('Mission proof: FAIL (2 of 3 passed; 1 failed).');
-  expect(gated.stderr).toContain('Mission proof gate failed: 2 of 3 mission bundle(s) passed; 1 failed.');
+  expect(gated.stderr).toContain(
+    'Mission proof gate failed: 2 of 3 mission bundle(s) passed; 1 failed.',
+  );
 
   expect(passed.exitCode).toBe(0);
   expect(passed.stdout.trim()).toBe('Mission proof: PASS (1 of 1 passed).');
@@ -376,7 +451,9 @@ test('mission-proof can write a local manual-baseline template', async () => {
   const result = await runCli(['mission-proof', '--init-baseline', target, '--quiet']);
 
   expect(result.exitCode).toBe(0);
-  expect(result.stdout.trim()).toBe(`Wrote mission proof baseline template to ${path.join(realTmp, target)}`);
+  expect(result.stdout.trim()).toBe(
+    `Wrote mission proof baseline template to ${path.join(realTmp, target)}`,
+  );
   expect(result.stderr).toBe('');
   const template = JSON.parse(await fs.readFile(path.join(tmp, target), 'utf-8'));
   expect(template.schemaVersion).toBe(1);
@@ -395,7 +472,14 @@ test('mission-proof can emit JSON when writing a local manual-baseline template'
   const target = path.join('baselines', 'manual-runs.json');
   const realTmp = await fs.realpath(tmp);
 
-  const result = await runCli(['mission-proof', '--init-baseline', target, '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mission-proof',
+    '--init-baseline',
+    target,
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(result.stderr).toBe('');
@@ -421,7 +505,9 @@ test('mission-proof explains how to create a missing baseline file', async () =>
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
   expect(result.stderr).toContain('Mission proof baseline file not found: missing-baseline.json');
-  expect(result.stderr).toContain('Create one with: projscan mission-proof --init-baseline missing-baseline.json');
+  expect(result.stderr).toContain(
+    'Create one with: projscan mission-proof --init-baseline missing-baseline.json',
+  );
 });
 
 test('mission-proof explains malformed baseline JSON', async () => {
@@ -440,7 +526,9 @@ test('mission-proof explains malformed baseline JSON', async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('Mission proof baseline file is not valid JSON: bad-baseline.json');
+  expect(result.stderr).toContain(
+    'Mission proof baseline file is not valid JSON: bad-baseline.json',
+  );
   expect(result.stderr).toContain('Expected shape: {"schemaVersion":1,"runs":[...]}');
 });
 
@@ -493,7 +581,9 @@ test('mission-proof validates baseline metric fields', async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('Mission proof baseline invalid at runs[0].minutesSpent: expected a non-negative number.');
+  expect(result.stderr).toContain(
+    'Mission proof baseline invalid at runs[0].minutesSpent: expected a non-negative number.',
+  );
 });
 
 test('mission-proof validates baseline run ids', async () => {
@@ -518,7 +608,9 @@ test('mission-proof validates baseline run ids', async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('Mission proof baseline invalid at runs[0].id: expected a non-empty string.');
+  expect(result.stderr).toContain(
+    'Mission proof baseline invalid at runs[0].id: expected a non-empty string.',
+  );
 });
 
 test('mission-proof rejects duplicate baseline run ids', async () => {
@@ -539,7 +631,9 @@ test('mission-proof rejects duplicate baseline run ids', async () => {
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('Mission proof baseline invalid at runs[1].id: duplicate id manual-1.');
+  expect(result.stderr).toContain(
+    'Mission proof baseline invalid at runs[1].id: duplicate id manual-1.',
+  );
 });
 
 test('mission-proof can append a measured manual baseline run', async () => {
@@ -651,7 +745,9 @@ test('mission-proof validates a manual baseline without scanning mission bundles
   const result = await runCli(['mission-proof', '--check-baseline', target, '--quiet']);
 
   expect(result.exitCode).toBe(0);
-  expect(result.stdout.trim()).toBe(`Mission proof baseline valid: ${path.join(realTmp, target)} (2 run(s))`);
+  expect(result.stdout.trim()).toBe(
+    `Mission proof baseline valid: ${path.join(realTmp, target)} (2 run(s))`,
+  );
   expect(result.stderr).toBe('');
 });
 
@@ -671,7 +767,14 @@ test('mission-proof check-baseline can emit JSON for automation', async () => {
     }) + '\n',
   );
 
-  const result = await runCli(['mission-proof', '--check-baseline', target, '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mission-proof',
+    '--check-baseline',
+    target,
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(result.stderr).toBe('');
@@ -712,7 +815,9 @@ test('mission-proof check-baseline reuses baseline validation errors', async () 
 
   expect(result.exitCode).toBe(1);
   expect(result.stdout).toBe('');
-  expect(result.stderr).toContain('Mission proof baseline invalid at runs[0].minutesSpent: expected a non-negative number.');
+  expect(result.stderr).toContain(
+    'Mission proof baseline invalid at runs[0].minutesSpent: expected a non-negative number.',
+  );
   expect(result.stderr).toContain(`File: ${target}`);
 });
 
@@ -726,11 +831,17 @@ test('start --mission includes the saved mission outcome in console output', asy
   expect(result.stdout).toContain('Version candidate: review_candidate');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }
 
-async function writeMission(root: string, relativeDir: string, status: 'passed' | 'failed'): Promise<void> {
+async function writeMission(
+  root: string,
+  relativeDir: string,
+  status: 'passed' | 'failed',
+): Promise<void> {
   const dir = path.join(root, relativeDir);
   const proof = path.join(dir, 'proof-logs');
   await fs.mkdir(proof, { recursive: true });
@@ -741,7 +852,11 @@ async function writeMission(root: string, relativeDir: string, status: 'passed' 
       kind: 'projscan.mission-bundle',
       mode: 'before_edit',
       status: 'ready',
-      currentStep: { phaseId: 'ready_now', stepId: 'ready-1', command: 'projscan search "auth" --format json' },
+      currentStep: {
+        phaseId: 'ready_now',
+        stepId: 'ready-1',
+        command: 'projscan search "auth" --format json',
+      },
     }) + '\n',
   );
   await fs.writeFile(
@@ -750,14 +865,29 @@ async function writeMission(root: string, relativeDir: string, status: 'passed' 
       schemaVersion: 1,
       status,
       totalCommands: 2,
-      nextAction: status === 'passed' ? 'run ./review.sh and choose a reviewer reply.' : 'inspect the failed log, fix the issue, then rerun ./mission.sh.',
+      nextAction:
+        status === 'passed'
+          ? 'run ./review.sh and choose a reviewer reply.'
+          : 'inspect the failed log, fix the issue, then rerun ./mission.sh.',
     }) + '\n',
   );
   await fs.writeFile(
     path.join(proof, 'status.jsonl'),
     [
-      JSON.stringify({ id: 'current-ready-1', label: 'Run current command', log: 'current-ready-1.log', command: 'projscan search "auth" --format json', exitCode: 0 }),
-      JSON.stringify({ id: 'proof-1', label: 'Proof 1', log: 'proof-1.log', command: 'projscan preflight --mode before_edit --format json', exitCode: status === 'passed' ? 0 : 1 }),
+      JSON.stringify({
+        id: 'current-ready-1',
+        label: 'Run current command',
+        log: 'current-ready-1.log',
+        command: 'projscan search "auth" --format json',
+        exitCode: 0,
+      }),
+      JSON.stringify({
+        id: 'proof-1',
+        label: 'Proof 1',
+        log: 'proof-1.log',
+        command: 'projscan preflight --mode before_edit --format json',
+        exitCode: status === 'passed' ? 0 : 1,
+      }),
     ].join('\n') + '\n',
   );
 }

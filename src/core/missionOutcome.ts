@@ -5,7 +5,7 @@ import type {
   MissionProofStatusRow,
   MissionReviewDecisionRecord,
   MissionRunStatus,
-} from '../types.js';
+} from '../types/start.js';
 
 interface RawMissionSummary {
   status?: unknown;
@@ -16,7 +16,10 @@ interface RawMissionSummary {
   log?: unknown;
 }
 
-export async function loadMissionOutcome(rootPath: string, missionDir: string): Promise<MissionOutcome> {
+export async function loadMissionOutcome(
+  rootPath: string,
+  missionDir: string,
+): Promise<MissionOutcome> {
   const resolved = path.resolve(rootPath, missionDir);
   const relativeMissionDir = path.relative(rootPath, resolved) || '.';
   try {
@@ -27,29 +30,43 @@ export async function loadMissionOutcome(rootPath: string, missionDir: string): 
     ]);
     const status = missionStatus(summary.status);
     const failedRows = rows.filter((row) => typeof row.exitCode === 'number' && row.exitCode !== 0);
-    const completedCommands = rows.length > 0
-      ? rows.length
-      : typeof summary.totalCommands === 'number'
-        ? summary.totalCommands
-        : 0;
+    const completedCommands =
+      rows.length > 0
+        ? rows.length
+        : typeof summary.totalCommands === 'number'
+          ? summary.totalCommands
+          : 0;
     const failedStep = stringValue(summary.failedStep) ?? failedRows[0]?.id;
     const failedLog = stringValue(summary.log) ?? failedRows[0]?.log;
     const proof = {
       completedCommands,
       failedCommands: failedRows.length,
       reruns: countReruns(rows),
-      ...(typeof summary.totalCommands === 'number' ? { totalCommands: summary.totalCommands } : {}),
+      ...(typeof summary.totalCommands === 'number'
+        ? { totalCommands: summary.totalCommands }
+        : {}),
       ...(failedStep ? { failedStep } : {}),
       ...(failedLog ? { failedLog } : {}),
       ...(typeof summary.exitCode === 'number' ? { exitCode: summary.exitCode } : {}),
       rows,
     };
     const review = summarizeReview(decisions);
-    const whatChanged = buildWhatChanged(status, proof.completedCommands, proof.failedCommands, proof.reruns, failedStep);
+    const whatChanged = buildWhatChanged(
+      status,
+      proof.completedCommands,
+      proof.failedCommands,
+      proof.reruns,
+      failedStep,
+    );
     const nextAction = stringValue(summary.nextAction);
     const whatRemains = buildWhatRemains(status, nextAction, failedLog, failedStep);
     const versionCandidate = versionCandidateFor(status, proof.failedCommands);
-    const resumePrompt = buildResumePrompt(status, whatChanged, whatRemains, versionCandidate.summary);
+    const resumePrompt = buildResumePrompt(
+      status,
+      whatChanged,
+      whatRemains,
+      versionCandidate.summary,
+    );
     return {
       schemaVersion: 1,
       available: true,
@@ -76,9 +93,11 @@ async function readReviewDecisions(missionDir: string): Promise<MissionReviewDec
   ];
   const all: MissionReviewDecisionRecord[] = [];
   for (const candidate of candidates) {
-    all.push(...await readJsonl<MissionReviewDecisionRecord>(candidate));
+    all.push(...(await readJsonl<MissionReviewDecisionRecord>(candidate)));
   }
-  const single = await readJson<MissionReviewDecisionRecord | null>(path.join(missionDir, 'review-decision.json')).catch(() => null);
+  const single = await readJson<MissionReviewDecisionRecord | null>(
+    path.join(missionDir, 'review-decision.json'),
+  ).catch(() => null);
   if (single && typeof single.decision === 'string') all.push(single);
   return all.filter((record) => typeof record.decision === 'string');
 }
@@ -129,12 +148,18 @@ function countReruns(rows: MissionProofStatusRow[]): number {
 }
 
 function summarizeReview(decisions: MissionReviewDecisionRecord[]): MissionOutcome['review'] {
-  const approvals = decisions.filter((decision) => decision.decision === 'approve_next_slice' || decision.decision === 'review_version_candidate').length;
+  const approvals = decisions.filter(
+    (decision) =>
+      decision.decision === 'approve_next_slice' ||
+      decision.decision === 'review_version_candidate',
+  ).length;
   return {
     decisions,
     approvals,
     changeRequests: decisions.filter((decision) => decision.decision === 'request_changes').length,
-    versionCandidateReviews: decisions.filter((decision) => decision.decision === 'review_version_candidate').length,
+    versionCandidateReviews: decisions.filter(
+      (decision) => decision.decision === 'review_version_candidate',
+    ).length,
   };
 }
 
@@ -168,13 +193,20 @@ function buildWhatRemains(
   failedLog: string | undefined,
   failedStep: string | undefined,
 ): string[] {
-  if (status === 'passed') return [capitalizeAction(nextAction ?? 'run ./review.sh and choose a reviewer reply.')];
+  if (status === 'passed')
+    return [capitalizeAction(nextAction ?? 'run ./review.sh and choose a reviewer reply.')];
   if (status === 'failed') {
     const log = failedLog ?? (failedStep ? `proof-logs/${failedStep}.log` : 'the failed proof log');
     return [`Inspect ${log}, fix the failure, then rerun ./mission.sh.`];
   }
-  if (status === 'running') return [capitalizeAction(nextAction ?? 'wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl.')];
-  if (status === 'not_run') return [capitalizeAction(nextAction ?? 'run ./mission.sh to generate proof.')];
+  if (status === 'running')
+    return [
+      capitalizeAction(
+        nextAction ?? 'wait for ./mission.sh to finish, or inspect proof-logs/status.jsonl.',
+      ),
+    ];
+  if (status === 'not_run')
+    return [capitalizeAction(nextAction ?? 'run ./mission.sh to generate proof.')];
   return ['Inspect proof-logs/summary.json and proof-logs/status.jsonl.'];
 }
 
@@ -189,7 +221,8 @@ function versionCandidateFor(
   if (status === 'passed' && failedCommands === 0) {
     return {
       recommendation: 'review_candidate',
-      summary: 'Mission proof passed; review a version candidate before release, publish, or version bump.',
+      summary:
+        'Mission proof passed; review a version candidate before release, publish, or version bump.',
     };
   }
   if (status === 'failed' || failedCommands > 0) {

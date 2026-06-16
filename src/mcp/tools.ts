@@ -112,7 +112,9 @@ export function getToolDefinitions(): McpToolDefinition[] {
   return tools.map(({ name, description, inputSchema, deprecated }) => {
     const def: McpToolDefinition = {
       name,
-      description: deprecated ? deprecationDescriptionPrefix(deprecated) + description : description,
+      description: deprecated
+        ? deprecationDescriptionPrefix(deprecated) + description
+        : description,
       inputSchema,
     };
     if (deprecated) def.deprecated = deprecated;

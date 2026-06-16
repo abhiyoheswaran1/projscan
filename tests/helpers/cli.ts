@@ -33,7 +33,9 @@ const TRANSIENT_LOADER_CRASH =
   /does not provide an export named|ERR_MODULE_NOT_FOUND|Cannot find (module|package)|ERR_UNKNOWN_FILE_EXTENSION/;
 
 function isTransientLoaderCrash(result: CliResult): boolean {
-  return result.exitCode !== 0 && result.stdout === '' && TRANSIENT_LOADER_CRASH.test(result.stderr);
+  return (
+    result.exitCode !== 0 && result.stdout === '' && TRANSIENT_LOADER_CRASH.test(result.stderr)
+  );
 }
 
 export async function spawnCli(

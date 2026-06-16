@@ -47,7 +47,9 @@ interface ClaimStore {
 
 async function claimStorePath(rootPath: string): Promise<string> {
   try {
-    const { stdout } = await execFileAsync('git', ['rev-parse', '--git-common-dir'], { cwd: rootPath });
+    const { stdout } = await execFileAsync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: rootPath,
+    });
     // --git-common-dir is the SAME directory for every worktree of the repo, so
     // the claim store is shared across the swarm. It may be relative to cwd.
     return path.join(path.resolve(rootPath, stdout.trim()), 'projscan', 'claims.json');
@@ -76,7 +78,10 @@ export function findContendedClaims(claims: Claim[]): Claim[] {
   const contended = new Set<Claim>();
   for (let i = 0; i < claims.length; i++) {
     for (let j = i + 1; j < claims.length; j++) {
-      if (claims[i].agent !== claims[j].agent && claimTargetsOverlap(claims[i].target, claims[j].target)) {
+      if (
+        claims[i].agent !== claims[j].agent &&
+        claimTargetsOverlap(claims[i].target, claims[j].target)
+      ) {
         contended.add(claims[i]);
         contended.add(claims[j]);
       }
@@ -178,7 +183,8 @@ export async function releaseClaim(
   const target = selector.target !== undefined ? normalizeTarget(selector.target) : undefined;
   const matches = (c: Claim): boolean => {
     if (selector.id !== undefined) return c.id === selector.id;
-    if (target !== undefined) return c.target === target && (selector.agent === undefined || c.agent === selector.agent);
+    if (target !== undefined)
+      return c.target === target && (selector.agent === undefined || c.agent === selector.agent);
     if (selector.agent !== undefined) return c.agent === selector.agent;
     return false;
   };

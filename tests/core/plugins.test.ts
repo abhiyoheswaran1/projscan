@@ -364,7 +364,13 @@ describe('plugins — loadPlugins', () => {
     expect(loaded[0].manifest.name).toBe('counter');
 
     const issues = await runAnalyzerPlugins(loaded, tmp, [
-      { relativePath: 'a.ts', absolutePath: '/x/a.ts', directory: '.', extension: '.ts', sizeBytes: 0 },
+      {
+        relativePath: 'a.ts',
+        absolutePath: '/x/a.ts',
+        directory: '.',
+        extension: '.ts',
+        sizeBytes: 0,
+      },
     ]);
     expect(issues).toHaveLength(1);
     // 1.10+ — issue id is prefixed with `plugin:<name>:` so two plugins
@@ -409,7 +415,10 @@ describe('plugins — loadPlugins', () => {
       module: './boom.mjs',
       category: 'custom',
     });
-    await writeModule('boom.mjs', `export default { check: async () => { throw new Error('kaboom'); } }`);
+    await writeModule(
+      'boom.mjs',
+      `export default { check: async () => { throw new Error('kaboom'); } }`,
+    );
     await writeManifest('fine', {
       schemaVersion: 1,
       name: 'fine',
@@ -650,7 +659,10 @@ describe('plugins — reporter runtime', () => {
       module: './thrower.mjs',
       commands: ['doctor'],
     });
-    await writeModule('thrower.mjs', `export default { render: async () => { throw new Error('boom'); } }`);
+    await writeModule(
+      'thrower.mjs',
+      `export default { render: async () => { throw new Error('boom'); } }`,
+    );
     const thrower = await resolveReporterPlugin(tmp, 'thrower', 'doctor');
     expect(thrower.ok).toBe(true);
     if (!thrower.ok) throw new Error(thrower.reason);
@@ -691,17 +703,21 @@ describe('plugins — reporter runtime', () => {
   });
 });
 
-
 describe('packaged real-world plugin examples', () => {
   it('validates API ownership, security-sensitive, and monorepo boundary examples', async () => {
     const root = path.resolve(__dirname, '..', '..');
     const names = ['api-route-ownership', 'security-sensitive-files', 'monorepo-boundary'];
 
     for (const name of names) {
-      const raw = await fs.readFile(path.join(root, 'docs', 'examples', 'plugins', `${name}.projscan-plugin.json`), 'utf-8');
+      const raw = await fs.readFile(
+        path.join(root, 'docs', 'examples', 'plugins', `${name}.projscan-plugin.json`),
+        'utf-8',
+      );
       const manifest = JSON.parse(raw);
       expect(validateManifest(manifest).ok).toBe(true);
-      await expect(fs.access(path.join(root, 'docs', 'examples', 'plugins', `${name}.mjs`))).resolves.toBeUndefined();
+      await expect(
+        fs.access(path.join(root, 'docs', 'examples', 'plugins', `${name}.mjs`)),
+      ).resolves.toBeUndefined();
     }
   });
 });

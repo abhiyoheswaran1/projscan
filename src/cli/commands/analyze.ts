@@ -58,12 +58,24 @@ export function registerAnalyze(): void {
         let issues = await collectIssues(rootPath, scan.files);
         issues = applyConfigToIssues(issues, config);
         if (cmdOpts.changedOnly) {
-          issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+          issues = await filterIssuesByChangedFiles(
+            issues,
+            rootPath,
+            cmdOpts.baseRef ?? config.baseRef,
+          );
         }
         if (cmdOpts.package) {
           const ws = await detectWorkspaces(rootPath);
-          const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, scan.files.map((f) => f.relativePath)));
-          issues = issues.filter((i) => (i.locations ?? []).some((l) => l.file && allowed.has(l.file)));
+          const allowed = new Set(
+            filterFilesByPackage(
+              ws,
+              cmdOpts.package,
+              scan.files.map((f) => f.relativePath),
+            ),
+          );
+          issues = issues.filter((i) =>
+            (i.locations ?? []).some((l) => l.file && allowed.has(l.file)),
+          );
         }
 
         if (spinner) spinner.stop();

@@ -16,7 +16,10 @@ let telemetryHome: string;
 beforeEach(async () => {
   tmp = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-cli-privacy-')));
   telemetryHome = path.join(tmp, 'telemetry-home');
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.writeFile(path.join(tmp, '.gitignore'), '.env\n');
   await fs.writeFile(path.join(tmp, '.env'), 'SECRET=local-only\n');
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
@@ -30,7 +33,9 @@ afterEach(async () => {
 });
 
 test('privacy-check reports the local trust boundary as JSON', async () => {
-  const result = await runCli(['privacy-check', '--format', 'json', '--quiet'], { PROJSCAN_OFFLINE: '1' });
+  const result = await runCli(['privacy-check', '--format', 'json', '--quiet'], {
+    PROJSCAN_OFFLINE: '1',
+  });
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -76,5 +81,8 @@ async function runCli(
   args: string[],
   env: Record<string, string> = {},
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return spawnCli(cliPath, args, { cwd: tmp, env: { ...process.env, PROJSCAN_TELEMETRY_HOME: telemetryHome, ...env } });
+  return spawnCli(cliPath, args, {
+    cwd: tmp,
+    env: { ...process.env, PROJSCAN_TELEMETRY_HOME: telemetryHome, ...env },
+  });
 }

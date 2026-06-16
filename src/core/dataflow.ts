@@ -66,8 +66,7 @@ export function computeDataflow(
   if (index.fns.length === 0 || index.totalCallSites === 0) {
     return {
       available: false,
-      reason:
-        'No functions with callSites in the graph. Dataflow requires per-function callSites.',
+      reason: 'No functions with callSites in the graph. Dataflow requires per-function callSites.',
       riskCount: 0,
       risks: [],
       effectiveSources: [...sources],
@@ -104,19 +103,9 @@ export function computeDataflow(
   const maxDepth = Math.max(1, options.maxDepth ?? DEFAULT_MAX_DEPTH);
   for (const bridge of index.fns) {
     if (bridge.hasSource || bridge.hasSink) continue;
-    const sourcePath = findReachable(
-      bridge,
-      index,
-      (node) => node.hasSource,
-      maxDepth,
-    );
+    const sourcePath = findReachable(bridge, index, (node) => node.hasSource, maxDepth);
     if (!sourcePath) continue;
-    const sinkPath = findReachable(
-      bridge,
-      index,
-      (node) => node.hasSink,
-      maxDepth,
-    );
+    const sinkPath = findReachable(bridge, index, (node) => node.hasSink, maxDepth);
     if (!sinkPath) continue;
     const sourceNode = sourcePath[sourcePath.length - 1];
     const sinkNode = sinkPath[sinkPath.length - 1];
@@ -226,7 +215,16 @@ function functionNode(
       fn.contextualCallSite,
       graphFile.imports,
     ) ?? pickSourceHit(callees, references, sources, customSources);
-  const sink = pickSinkHit(callees, directCallSites, memberCallSites, memberAliases, sinks, customSinks, file, graphFile);
+  const sink = pickSinkHit(
+    callees,
+    directCallSites,
+    memberCallSites,
+    memberAliases,
+    sinks,
+    customSinks,
+    file,
+    graphFile,
+  );
   return {
     id: `${file}::${fn.name}@${fn.line}`,
     qualName: fn.name,
@@ -346,7 +344,6 @@ function pickSourceHit(
   return null;
 }
 
-
 const DEFAULT_DATABASE_SINKS = new Set(['query', 'execute', '$queryRaw', '$executeRaw', 'raw']);
 const DATABASE_RECEIVERS = new Set([
   'db',
@@ -363,7 +360,15 @@ const DATABASE_RECEIVERS = new Set([
   'manager',
   'sql',
 ]);
-const DATABASE_MODULE_NAMES = new Set(['db', 'database', 'sql', 'pool', 'client', 'repository', 'repo']);
+const DATABASE_MODULE_NAMES = new Set([
+  'db',
+  'database',
+  'sql',
+  'pool',
+  'client',
+  'repository',
+  'repo',
+]);
 const KNOWN_DATABASE_PACKAGES = new Set([
   'pg',
   'postgres',
@@ -388,7 +393,18 @@ function pickSinkHit(
 ): string | null {
   for (const callee of callees) {
     if (!sinks.has(callee)) continue;
-    if (isDefaultMisidentifiedDatabaseSink(callee, directCallSites, memberCallSites, memberAliases, customSinks, file, graphFile)) continue;
+    if (
+      isDefaultMisidentifiedDatabaseSink(
+        callee,
+        directCallSites,
+        memberCallSites,
+        memberAliases,
+        customSinks,
+        file,
+        graphFile,
+      )
+    )
+      continue;
     return callee;
   }
   return null;
@@ -407,8 +423,13 @@ function isDefaultMisidentifiedDatabaseSink(
   if (!DEFAULT_DATABASE_SINKS.has(callee)) return false;
   if (!isJavaScriptLikeFile(file, graphFile.adapterId)) return false;
   if (memberCallSites.some((member) => isDatabaseMemberCall(member, callee))) return false;
-  if (directCallSites.includes(callee) && isImportedDatabaseHelper(callee, graphFile.imports)) return false;
-  if (directCallSites.includes(callee) && memberAliases.some((alias) => isDatabaseMemberAlias(alias, callee))) return false;
+  if (directCallSites.includes(callee) && isImportedDatabaseHelper(callee, graphFile.imports))
+    return false;
+  if (
+    directCallSites.includes(callee) &&
+    memberAliases.some((alias) => isDatabaseMemberAlias(alias, callee))
+  )
+    return false;
   return true;
 }
 
@@ -419,7 +440,10 @@ function isDatabaseMemberCall(member: string, callee: string): boolean {
   return DATABASE_RECEIVERS.has(receiver);
 }
 
-function isImportedDatabaseHelper(callee: string, imports: Array<{ source: string; specifiers: string[] }>): boolean {
+function isImportedDatabaseHelper(
+  callee: string,
+  imports: Array<{ source: string; specifiers: string[] }>,
+): boolean {
   return imports.some((imp) => imp.specifiers.includes(callee) && isDatabaseModule(imp.source));
 }
 

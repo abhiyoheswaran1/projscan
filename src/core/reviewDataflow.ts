@@ -33,4 +33,10 @@ function isDefaultGeneratedCodeFlow(
 }
 
 const BROAD_FILE_IO_REVIEW_SOURCES = new Set(['readFile', 'readFileSync']);
-const BROAD_FILE_IO_REVIEW_SINKS = new Set(['writeFile', 'writeFileSync', 'unlink', 'rm', 'rmSync']);
+const BROAD_FILE_IO_REVIEW_SINKS = new Set([
+  'writeFile',
+  'writeFileSync',
+  'unlink',
+  'rm',
+  'rmSync',
+]);

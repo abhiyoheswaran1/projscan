@@ -21,8 +21,8 @@ import type {
   PreflightRequiredCheck,
   PreflightSuggestedAction,
   PreflightVerdict,
-  ReviewReport,
 } from '../types.js';
+import type { ReviewReport } from '../types/review.js';
 
 export interface ComputePreflightOptions {
   mode?: PreflightMode;
@@ -121,7 +121,14 @@ export async function computePreflight(
     summary: '',
     reasons,
     evidence,
-    requiredChecks: buildRequiredChecks(mode, health, changedFiles, review, supplyChain, releaseScale),
+    requiredChecks: buildRequiredChecks(
+      mode,
+      health,
+      changedFiles,
+      review,
+      supplyChain,
+      releaseScale,
+    ),
     suggestedNextActions: buildSuggestedActions(reasons, mode, changedFiles),
     toolCalls: buildToolCalls(reasons, mode, changedFiles),
     ...(truncated ? { truncated: true } : {}),
@@ -252,7 +259,10 @@ async function safeReview(
 }
 
 /** Coordination evidence for preflight; null when no real cross-worktree read. */
-async function safeCoordination(rootPath: string, baseRef?: string): Promise<CoordinationSummary | null> {
+async function safeCoordination(
+  rootPath: string,
+  baseRef?: string,
+): Promise<CoordinationSummary | null> {
   try {
     const summary = await computeCoordination(rootPath, baseRef ? { baseRef } : {});
     return summary.available ? summary : null;
@@ -302,7 +312,9 @@ function buildPreflightReasons(input: {
   }
 
   if (changedOnly) {
-    const changedIssues = input.issues.filter((issue) => issueTouchesChangedFile(issue, changedSet));
+    const changedIssues = input.issues.filter((issue) =>
+      issueTouchesChangedFile(issue, changedSet),
+    );
     const error = changedIssues.find((issue) => issue.severity === 'error');
     const warning = changedIssues.find((issue) => issue.severity === 'warning');
     if (error) {
@@ -390,7 +402,9 @@ function buildPreflightReasons(input: {
   const touched = new Set(input.session.touchedFiles);
   const hotspotTouches =
     input.hotspots?.available === true
-      ? input.hotspots.hotspots.filter((hotspot) => touched.has(hotspot.relativePath) && hotspot.riskScore >= 40)
+      ? input.hotspots.hotspots.filter(
+          (hotspot) => touched.has(hotspot.relativePath) && hotspot.riskScore >= 40,
+        )
       : [];
   for (const hotspot of hotspotTouches.slice(0, 3)) {
     reasons.push({
@@ -416,7 +430,8 @@ function buildPreflightReasons(input: {
   if (input.coordination?.available) {
     const { collisions, claims, worktreeCount, readiness } = input.coordination;
     if (readiness === 'conflicted') {
-      const contended = claims.contendedTargets > 0 ? `, ${claims.contendedTargets} contended claim(s)` : '';
+      const contended =
+        claims.contendedTargets > 0 ? `, ${claims.contendedTargets} contended claim(s)` : '';
       reasons.push({
         severity: 'warning',
         source: 'coordination',
@@ -453,20 +468,28 @@ function buildReleaseScaleEvidence(input: {
 
   const reviewSummary = input.review.summary;
   const changedFileThresholdExceeded = input.changedFiles.count > input.maxChangedFiles;
-  const reviewScaleOnly = input.review.available && input.review.verdict === 'block' && isScaleComplexityReviewBlock(reviewSummary);
+  const reviewScaleOnly =
+    input.review.available &&
+    input.review.verdict === 'block' &&
+    isScaleComplexityReviewBlock(reviewSummary);
   if (!changedFileThresholdExceeded && !reviewScaleOnly) return null;
 
   const triggers = [
     changedFileThresholdExceeded
       ? `${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}`
       : undefined,
-    reviewScaleOnly && reviewSummary ? `review signal: ${trimTrailingSentencePunctuation(reviewSummary)}` : undefined,
+    reviewScaleOnly && reviewSummary
+      ? `review signal: ${trimTrailingSentencePunctuation(reviewSummary)}`
+      : undefined,
   ].filter(Boolean);
 
   const reviewBlocksOnScale = input.review.available && input.review.verdict === 'block';
   const explanationTail = reviewBlocksOnScale
     ? 'Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects.'
     : 'This is a configured scale threshold/manual review signal, not a concrete taint, dataflow, health, plugin, or supply-chain defect.';
+  const signoffTail = reviewSummary?.toLowerCase().includes('manual release sign-off')
+    ? ''
+    : ' Treat this as a manual release sign-off gate.';
 
   return {
     detected: true,
@@ -475,8 +498,7 @@ function buildReleaseScaleEvidence(input: {
     ...(input.review.verdict ? { reviewVerdict: input.review.verdict } : {}),
     ...(reviewSummary ? { reviewSummary } : {}),
     concreteBlockers,
-    explanation:
-      `Large platform release risk: ${triggers.join('; ')}. ${explanationTail} Treat this as a manual release sign-off gate.`,
+    explanation: `Large platform release risk: ${triggers.join('; ')}. ${explanationTail}${signoffTail}`,
   };
 }
 
@@ -498,7 +520,8 @@ function concretePreflightBlockers(input: {
   const blockers: string[] = [];
   if (input.health.errors > 0) blockers.push('health');
   if (input.supplyChain.errorIssues > 0) blockers.push('supply-chain');
-  if (input.issues.some((issue) => issue.id.startsWith('plugin:') && issue.severity === 'error')) blockers.push('plugin');
+  if (input.issues.some((issue) => issue.id.startsWith('plugin:') && issue.severity === 'error'))
+    blockers.push('plugin');
   if ((input.review.newTaintFlows ?? 0) > 0) blockers.push('taint');
   if ((input.review.newDataflowRisks ?? 0) > 0) blockers.push('dataflow');
   return blockers;
@@ -652,7 +675,7 @@ function buildRequiredChecks(
     status: changedFiles.available ? 'pass' : 'unavailable',
     reason: changedFiles.available
       ? `${changedFiles.count} changed file(s)`
-      : changedFiles.reason ?? 'changed-file detection unavailable',
+      : (changedFiles.reason ?? 'changed-file detection unavailable'),
   });
   checks.push({
     name: 'review',
@@ -673,7 +696,7 @@ function buildRequiredChecks(
         ? 'review is not required before edits'
         : review.available
           ? formatReviewCheckReason(review, releaseScale)
-          : review.reason ?? 'review unavailable',
+          : (review.reason ?? 'review unavailable'),
   });
   return checks;
 }
@@ -692,7 +715,14 @@ function buildSuggestedActions(
       tool: 'projscan_review',
     });
   }
-  if (reasons.some((reason) => reason.source === 'doctor' || reason.source === 'plugin' || reason.source === 'supply-chain')) {
+  if (
+    reasons.some(
+      (reason) =>
+        reason.source === 'doctor' ||
+        reason.source === 'plugin' ||
+        reason.source === 'supply-chain',
+    )
+  ) {
     actions.push({
       label: 'Inspect health, plugin policy, and supply-chain findings',
       command: 'projscan doctor --format json',
@@ -740,7 +770,9 @@ function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedA
 }
 
 function issueTouchesChangedFile(issue: Issue, changedFiles: Set<string>): boolean {
-  return (issue.locations ?? []).some((location) => location.file && changedFiles.has(location.file));
+  return (issue.locations ?? []).some(
+    (location) => location.file && changedFiles.has(location.file),
+  );
 }
 
 function firstIssueFile(issue: Issue): string | undefined {

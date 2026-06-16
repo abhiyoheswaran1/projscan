@@ -69,4 +69,6 @@ const outPath = path.join(distDir, 'tool-manifest.json');
 await writeFile(outPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
 
 const { size } = await stat(outPath);
-console.log(`generated tool-manifest.json (${manifest.toolCount} tools, ${(size / 1024).toFixed(1)} KB)`);
+console.log(
+  `generated tool-manifest.json (${manifest.toolCount} tools, ${(size / 1024).toFixed(1)} KB)`,
+);

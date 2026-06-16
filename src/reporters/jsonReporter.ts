@@ -13,13 +13,13 @@ import type {
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
-  ReviewReport,
   FixSuggestion,
   ImpactReport,
   IssueExplanation,
   UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
+import type { ReviewReport } from '../types/review.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
 export const CLI_JSON_SCHEMA_VERSION = 2;
@@ -134,7 +134,12 @@ export function reportReviewJson(report: ReviewReport): void {
   emitJson({ review: report });
 }
 
-export function reportFixSuggestJson(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
+export function reportFixSuggestJson(result: {
+  matched: boolean;
+  fix?: FixSuggestion;
+  reason?: string;
+  synthetic?: boolean;
+}): void {
   emitJson({ fixSuggest: result });
 }
 

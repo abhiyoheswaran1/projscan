@@ -52,7 +52,7 @@ function missionHandoffPrompt(
   unresolvedInputs: StartUnresolvedInput[],
   proofCommands: string[],
   reviewGate: StartMissionReviewGate,
-): string
+): string;
 ```
 
 Add helper formatters:

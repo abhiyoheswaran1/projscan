@@ -24,7 +24,9 @@ afterEach(async () => {
 test('lists evidence pack and regression plan MCP tools', () => {
   const names = getToolDefinitions().map((tool) => tool.name);
 
-  expect(names).toEqual(expect.arrayContaining(['projscan_evidence_pack', 'projscan_regression_plan']));
+  expect(names).toEqual(
+    expect.arrayContaining(['projscan_evidence_pack', 'projscan_regression_plan']),
+  );
 });
 
 test('projscan_evidence_pack returns approval evidence for the product plan', async () => {
@@ -48,10 +50,16 @@ test('projscan_regression_plan returns a risk-based command list', async () => {
   expect(handler).toBeDefined();
 
   const result = (await handler?.({ level: 'full', max_targets: 5 }, tmp)) as {
-    regressionPlan: { level: string; commands: string[]; targets: Array<{ verification: { commands: string[] } }> };
+    regressionPlan: {
+      level: string;
+      commands: string[];
+      targets: Array<{ verification: { commands: string[] } }>;
+    };
   };
 
   expect(result.regressionPlan.level).toBe('full');
-  expect(result.regressionPlan.commands).toEqual(expect.arrayContaining(['npm test', 'npm run build']));
+  expect(result.regressionPlan.commands).toEqual(
+    expect.arrayContaining(['npm test', 'npm run build']),
+  );
   expect(result.regressionPlan.targets.length).toBeGreaterThan(0);
 });

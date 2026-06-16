@@ -48,7 +48,10 @@ export async function computeEvidencePack(
     computeReleaseTrain(rootPath, { lines: options.lines }),
     computeBugHunt(rootPath, { maxFindings: options.maxFindings }),
     computeWorkplan(rootPath, { mode: 'release', maxTasks: 6 }),
-    computePreflight(rootPath, { mode: 'before_merge', maxChangedFiles: options.preflightMaxChangedFiles }),
+    computePreflight(rootPath, {
+      mode: 'before_merge',
+      maxChangedFiles: options.preflightMaxChangedFiles,
+    }),
   ]);
   const artifacts = buildArtifacts(train, bugHunt, workplan, preflight);
   const rawVerdict = packVerdict(artifacts);
@@ -68,7 +71,14 @@ export async function computeEvidencePack(
     safeBaselineTrend(rootPath),
     loadOwnership(rootPath).catch(() => undefined),
   ]);
-  const prSummary = buildPrSummary(workplan, bugHunt, preflight, suggestedNextActions, baselineTrend, ownership);
+  const prSummary = buildPrSummary(
+    workplan,
+    bugHunt,
+    preflight,
+    suggestedNextActions,
+    baselineTrend,
+    ownership,
+  );
   const verdict = calibrateEvidencePackVerdict(rawVerdict, prSummary);
 
   const report: EvidencePackReport = {
@@ -88,15 +98,20 @@ export async function computeEvidencePack(
     },
     artifacts,
     changelogEntries,
-    ...(options.includeWebsitePrompt ? { websitePrompt: buildWebsitePrompt(train, changelogEntries) } : {}),
+    ...(options.includeWebsitePrompt
+      ? { websitePrompt: buildWebsitePrompt(train, changelogEntries) }
+      : {}),
     prSummary,
     suggestedNextActions,
   };
   if (!options.includePrComment) return report;
   const prComment = renderEvidencePackPrComment(report);
-  return { ...report, prComment, prCommentValidation: validateEvidencePackPrComment(prComment, report) };
+  return {
+    ...report,
+    prComment,
+    prCommentValidation: validateEvidencePackPrComment(prComment, report),
+  };
 }
-
 
 async function safeBaselineTrend(rootPath: string): Promise<BaselineTrend | undefined> {
   const baselinePath = path.join(rootPath, '.projscan-baseline.json');
@@ -108,7 +123,10 @@ async function safeBaselineTrend(rootPath: string): Promise<BaselineTrend | unde
   try {
     const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
     const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-    const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+    const issues = applyConfigToIssues(
+      await collectIssues(rootPath, scan.files),
+      configResult.config,
+    );
     const hotspots = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
     const baseline = await loadBaseline(baselinePath, rootPath);
     return computeDiff(baseline, issues, hotspots).trend;
@@ -128,25 +146,28 @@ function buildPrSummary(
   const topRisks = buildPrTopRisks(workplan, bugHunt, ownership);
   const changedFileRoutes = buildChangedFileTeamRoutes(preflight, ownership);
   const teamRoutes = mergeTeamRoutes([...buildTeamRoutes(topRisks), ...changedFileRoutes]);
-  const ownershipSuggestion = teamRoutes.length === 0 ? buildOwnershipSuggestion(preflight) : undefined;
+  const ownershipSuggestion =
+    teamRoutes.length === 0 ? buildOwnershipSuggestion(preflight) : undefined;
   const trust = calibratePreflightTrust(preflight);
   const nextCommands = buildPrNextCommands(nextActions);
   const fixFirst = buildPrFixFirst(topRisks, preflight, changedFileRoutes);
   const concreteBlockers = concreteDefectMessages(preflight);
-  const verdictLabel = concreteBlockers.length > 0
-    ? 'Concrete blocker'
-    : preflight.evidence.releaseScale?.detected
-      ? 'Manual review'
-      : preflight.verdict === 'proceed'
-        ? 'Ready'
-        : 'Needs review';
-  const decision = concreteBlockers.length > 0
-    ? `${concreteBlockers.length} concrete blocker(s) need fixing before approval.`
-    : preflight.evidence.releaseScale?.detected
-      ? 'Scale or complexity needs human sign-off; no concrete taint/dataflow/health/plugin/supply-chain blocker was found.'
-      : preflight.verdict === 'proceed'
-        ? 'No blocking or cautionary preflight signals found.'
-        : 'Review cautions and run the listed next actions before approval.';
+  const verdictLabel =
+    concreteBlockers.length > 0
+      ? 'Concrete blocker'
+      : preflight.evidence.releaseScale?.detected
+        ? 'Manual review'
+        : preflight.verdict === 'proceed'
+          ? 'Ready'
+          : 'Needs review';
+  const decision =
+    concreteBlockers.length > 0
+      ? `${concreteBlockers.length} concrete blocker(s) need fixing before approval.`
+      : preflight.evidence.releaseScale?.detected
+        ? 'Scale or complexity needs human sign-off; no concrete taint/dataflow/health/plugin/supply-chain blocker was found.'
+        : preflight.verdict === 'proceed'
+          ? 'No blocking or cautionary preflight signals found.'
+          : 'Review cautions and run the listed next actions before approval.';
   return {
     verdictLabel,
     decision,
@@ -160,34 +181,44 @@ function buildPrSummary(
   };
 }
 
-
-export function calibratePreflightTrust(preflight: PreflightReport): EvidencePackPrSummary['trust'] {
+export function calibratePreflightTrust(
+  preflight: PreflightReport,
+): EvidencePackPrSummary['trust'] {
   const concreteBlockers = concreteDefectMessages(preflight);
   const warningReasons = preflight.reasons.filter((reason) => reason.severity === 'warning');
   const manualReviewReasons = preflight.reasons.filter(
     (reason) => reason.severity === 'warning' || isReleaseScaleReviewReason(preflight, reason),
   );
   const manualReviewSignals = dedupeStrings([
-    ...(preflight.evidence.releaseScale?.detected ? [preflight.evidence.releaseScale.explanation] : []),
+    ...(preflight.evidence.releaseScale?.detected
+      ? [preflight.evidence.releaseScale.explanation]
+      : []),
     ...manualReviewReasons
-      .filter((reason) => ['changed-files', 'git', 'hotspots', 'release', 'review'].includes(reason.source))
+      .filter((reason) =>
+        ['changed-files', 'git', 'hotspots', 'release', 'review'].includes(reason.source),
+      )
       .map((reason) => reason.message),
   ]).slice(0, 5);
   const watchSignals = dedupeStrings(
     warningReasons
-      .filter((reason) => !['changed-files', 'git', 'hotspots', 'release', 'review'].includes(reason.source))
+      .filter(
+        (reason) =>
+          !['changed-files', 'git', 'hotspots', 'release', 'review'].includes(reason.source),
+      )
       .map((reason) => reason.message),
   ).slice(0, 5);
-  const verdict: EvidencePackPrSummary['trust']['verdict'] = concreteBlockers.length > 0
-    ? 'actual_defect'
-    : manualReviewSignals.length > 0 || watchSignals.length > 0
-      ? 'manual_review'
-      : 'clean';
-  const summary = verdict === 'actual_defect'
-    ? `${concreteBlockers.length} actual defect/blocker signal(s) require fixes.`
-    : verdict === 'manual_review'
-      ? `${manualReviewSignals.length + watchSignals.length} manual review/watch signal(s); no actual defect blocker was found.`
-      : 'clean: no actual defect, manual review, or watch signals found.';
+  const verdict: EvidencePackPrSummary['trust']['verdict'] =
+    concreteBlockers.length > 0
+      ? 'actual_defect'
+      : manualReviewSignals.length > 0 || watchSignals.length > 0
+        ? 'manual_review'
+        : 'clean';
+  const summary =
+    verdict === 'actual_defect'
+      ? `${concreteBlockers.length} actual defect/blocker signal(s) require fixes.`
+      : verdict === 'manual_review'
+        ? `${manualReviewSignals.length + watchSignals.length} manual review/watch signal(s); no actual defect blocker was found.`
+        : 'clean: no actual defect, manual review, or watch signals found.';
   return { verdict, summary, concreteBlockers, manualReviewSignals, watchSignals };
 }
 
@@ -200,23 +231,33 @@ function concreteDefectMessages(preflight: PreflightReport): string[] {
   ]).slice(0, 5);
 }
 
-function isConcreteDefectReason(preflight: PreflightReport, reason: PreflightReport['reasons'][number]): boolean {
+function isConcreteDefectReason(
+  preflight: PreflightReport,
+  reason: PreflightReport['reasons'][number],
+): boolean {
   if (reason.severity !== 'error') return false;
   return !isReleaseScaleReviewReason(preflight, reason);
 }
 
-function isReleaseScaleReviewReason(preflight: PreflightReport, reason: PreflightReport['reasons'][number]): boolean {
+function isReleaseScaleReviewReason(
+  preflight: PreflightReport,
+  reason: PreflightReport['reasons'][number],
+): boolean {
   const releaseScale = preflight.evidence.releaseScale;
-  return releaseScale?.detected === true
-    && releaseScale.concreteBlockers.length === 0
-    && reason.source === 'review'
-    && /scale\/complexity|release-scale|large platform|changed-file risk/i.test(reason.message);
+  return (
+    releaseScale?.detected === true &&
+    releaseScale.concreteBlockers.length === 0 &&
+    reason.source === 'review' &&
+    /scale\/complexity|release-scale|large platform|changed-file risk/i.test(reason.message)
+  );
 }
 
 function buildPrNextCommands(actions: PreflightSuggestedAction[]): string[] {
   return dedupeStrings([
     'projscan preflight --mode before_merge --format json',
-    ...actions.map((action) => action.command ?? (action.tool ? `MCP ${action.tool}` : '')).filter(Boolean),
+    ...actions
+      .map((action) => action.command ?? (action.tool ? `MCP ${action.tool}` : ''))
+      .filter(Boolean),
   ]).slice(0, 6);
 }
 
@@ -246,12 +287,14 @@ function buildPrTopRisks(
     });
   }
   const seen = new Set<string>();
-  return risks.filter((risk) => {
-    const key = `${risk.title}:${risk.files.join(',')}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 3);
+  return risks
+    .filter((risk) => {
+      const key = `${risk.title}:${risk.files.join(',')}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 3);
 }
 
 function buildTeamRoutes(risks: EvidencePackTopRisk[]): EvidencePackTeamRoute[] {
@@ -285,7 +328,6 @@ function toolCommand(tool: string): string {
   return 'projscan preflight --format json';
 }
 
-
 function buildPrFixFirst(
   risks: EvidencePackTopRisk[],
   preflight: PreflightReport,
@@ -302,7 +344,10 @@ function buildPrFixFirst(
 function buildOwnershipSuggestion(preflight: PreflightReport): string | undefined {
   const paths = (preflight.evidence.changedFiles?.files ?? [])
     .map(normalizeChangedFilePath)
-    .filter((file) => file.length > 0 && !file.endsWith('package-lock.json') && !file.startsWith('.projscan-'));
+    .filter(
+      (file) =>
+        file.length > 0 && !file.endsWith('package-lock.json') && !file.startsWith('.projscan-'),
+    );
   if (paths.length === 0) return undefined;
 
   const counts = new Map<string, number>();
@@ -310,7 +355,8 @@ function buildOwnershipSuggestion(preflight: PreflightReport): string | undefine
     const pattern = codeownersPatternForPath(file);
     counts.set(pattern, (counts.get(pattern) ?? 0) + 1);
   }
-  const [pattern] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
+  const [pattern] =
+    [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
   return pattern ? `${pattern} @team-name` : undefined;
 }
 
@@ -360,7 +406,8 @@ function mergeTeamRoutes(routes: EvidencePackTeamRoute[]): EvidencePackTeamRoute
       continue;
     }
     existing.files = [...new Set([...existing.files, ...route.files])].slice(0, 5);
-    if (!existing.reason.includes(route.reason)) existing.reason = `${existing.reason}; ${route.reason}`;
+    if (!existing.reason.includes(route.reason))
+      existing.reason = `${existing.reason}; ${route.reason}`;
   }
   return [...byOwner.values()].slice(0, 5);
 }
@@ -387,11 +434,12 @@ function buildArtifacts(
     {
       id: 'ep-bug-hunt',
       title: 'Bug-hunt queue',
-      status: bugHunt.verdict === 'block' ? 'blocked' : bugHunt.verdict === 'fix' ? 'caution' : 'ready',
+      status:
+        bugHunt.verdict === 'block' ? 'blocked' : bugHunt.verdict === 'fix' ? 'caution' : 'ready',
       summary: bugHunt.summary,
       evidence: [
         `health score ${bugHunt.health.score}`,
-        `${bugHunt.fixQueue.length} fix target(s) in queue`,
+        bugHuntQueueEvidence(bugHunt),
         `preflight evidence during bug hunt: ${bugHunt.evidence.preflightVerdict}`,
       ],
       commands: ['projscan bug-hunt --format json'],
@@ -406,7 +454,10 @@ function buildArtifacts(
         `${workplan.topRisks.length} top risk(s)`,
         workplan.coordination.recommendedNextAgent,
       ],
-      commands: ['projscan workplan --mode release --format json', 'projscan handoff --mode release'],
+      commands: [
+        'projscan workplan --mode release --format json',
+        'projscan handoff --mode release',
+      ],
     },
     {
       id: 'ep-preflight',
@@ -417,6 +468,13 @@ function buildArtifacts(
       commands: ['projscan preflight --mode before_merge --format json'],
     },
   ];
+}
+
+function bugHuntQueueEvidence(bugHunt: BugHuntReport): string {
+  const queueLabel = bugHunt.summary.includes('manual sign-off action')
+    ? 'manual sign-off action(s)'
+    : 'fix target(s)';
+  return `${bugHunt.fixQueue.length} ${queueLabel} in queue`;
 }
 
 function blockingEvidence(
@@ -436,9 +494,7 @@ function blockingEvidence(
           .map((finding) => finding.title)
       : []),
     ...(workplan.verdict === 'block'
-      ? workplan.topRisks
-          .filter((risk) => risk.priority === 'p0')
-          .map((risk) => risk.message)
+      ? workplan.topRisks.filter((risk) => risk.priority === 'p0').map((risk) => risk.message)
       : []),
   ]).slice(0, 10);
 }
@@ -473,7 +529,11 @@ function calibrateEvidencePackVerdict(
   verdict: EvidencePackVerdict,
   prSummary: EvidencePackPrSummary,
 ): EvidencePackVerdict {
-  if (verdict === 'blocked' && prSummary.trust.verdict === 'manual_review' && prSummary.trust.concreteBlockers.length === 0) {
+  if (
+    verdict === 'blocked' &&
+    prSummary.trust.verdict === 'manual_review' &&
+    prSummary.trust.concreteBlockers.length === 0
+  ) {
     return 'caution';
   }
   return verdict;
@@ -495,8 +555,10 @@ function summarize(
 }
 
 function approvalRecommendation(verdict: EvidencePackVerdict): string {
-  if (verdict === 'blocked') return 'Do not approve launch until p0 evidence is cleared or accepted.';
-  if (verdict === 'caution') return 'Review cautions, then approve only after the regression plan passes.';
+  if (verdict === 'blocked')
+    return 'Do not approve launch until p0 evidence is cleared or accepted.';
+  if (verdict === 'caution')
+    return 'Review cautions, then approve only after the regression plan passes.';
   return 'Approval can proceed after the recorded regression commands pass.';
 }
 

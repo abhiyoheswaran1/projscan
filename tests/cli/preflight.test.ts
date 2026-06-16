@@ -25,7 +25,14 @@ afterEach(async () => {
 });
 
 test('preflight renders machine-readable JSON for before_edit', async () => {
-  const result = await runCli(['preflight', '--mode', 'before_edit', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'preflight',
+    '--mode',
+    'before_edit',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
@@ -43,6 +50,8 @@ test('preflight rejects unsupported formats through the shared matrix', async ()
   expect(result.stderr).toContain('projscan preflight does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

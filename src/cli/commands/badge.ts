@@ -35,7 +35,8 @@ export function registerBadge(): void {
 
         spinner.stop();
 
-        const gradeColor = grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
+        const gradeColor =
+          grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
         console.log(`\n  Health Score: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))}\n`);
 
         if (cmdOpts.markdown) {

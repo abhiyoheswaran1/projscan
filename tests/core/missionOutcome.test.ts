@@ -7,7 +7,9 @@ import { loadMissionOutcome } from '../../src/core/missionOutcome.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('mission outcome reads proof summary and recommends review for a passed bundle', async () => {
@@ -16,9 +18,27 @@ test('mission outcome reads proof summary and recommends review for a passed bun
     status: 'passed',
     totalCommands: 3,
     statusRows: [
-      { id: 'current-ready-1', label: 'Run current command', log: 'current-ready-1.log', command: 'projscan search "auth" --format json', exitCode: 0 },
-      { id: 'proof-1', label: 'Proof 1', log: 'proof-1.log', command: 'projscan preflight --mode before_edit --format json', exitCode: 0 },
-      { id: 'proof-2', label: 'Proof 2', log: 'proof-2.log', command: 'projscan understand --view verify --format json', exitCode: 0 },
+      {
+        id: 'current-ready-1',
+        label: 'Run current command',
+        log: 'current-ready-1.log',
+        command: 'projscan search "auth" --format json',
+        exitCode: 0,
+      },
+      {
+        id: 'proof-1',
+        label: 'Proof 1',
+        log: 'proof-1.log',
+        command: 'projscan preflight --mode before_edit --format json',
+        exitCode: 0,
+      },
+      {
+        id: 'proof-2',
+        label: 'Proof 2',
+        log: 'proof-2.log',
+        command: 'projscan understand --view verify --format json',
+        exitCode: 0,
+      },
     ],
   });
 
@@ -43,8 +63,20 @@ test('mission outcome names failed proof and blocks a version candidate', async 
     exitCode: 1,
     log: 'proof-logs/proof-1.log',
     statusRows: [
-      { id: 'current-ready-1', label: 'Run current command', log: 'current-ready-1.log', command: 'projscan search "auth" --format json', exitCode: 0 },
-      { id: 'proof-1', label: 'Proof 1', log: 'proof-1.log', command: 'projscan preflight --mode before_edit --format json', exitCode: 1 },
+      {
+        id: 'current-ready-1',
+        label: 'Run current command',
+        log: 'current-ready-1.log',
+        command: 'projscan search "auth" --format json',
+        exitCode: 0,
+      },
+      {
+        id: 'proof-1',
+        label: 'Proof 1',
+        log: 'proof-1.log',
+        command: 'projscan preflight --mode before_edit --format json',
+        exitCode: 1,
+      },
     ],
   });
 
@@ -54,14 +86,19 @@ test('mission outcome names failed proof and blocks a version candidate', async 
   expect(outcome.proof.completedCommands).toBe(2);
   expect(outcome.proof.failedCommands).toBe(1);
   expect(outcome.proof.failedStep).toBe('proof-1');
-  expect(outcome.whatRemains).toContain('Inspect proof-logs/proof-1.log, fix the failure, then rerun ./mission.sh.');
+  expect(outcome.whatRemains).toContain(
+    'Inspect proof-logs/proof-1.log, fix the failure, then rerun ./mission.sh.',
+  );
   expect(outcome.versionCandidate.recommendation).toBe('do_not_cut');
 });
 
 async function makeTempProject(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-mission-outcome-'));
   tempRoots.push(root);
-  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }));
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }),
+  );
   await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
   return root;
 }
@@ -74,7 +111,13 @@ async function writeMissionBundle(
     failedStep?: string;
     exitCode?: number;
     log?: string;
-    statusRows?: Array<{ id: string; label: string; log: string; command: string; exitCode: number }>;
+    statusRows?: Array<{
+      id: string;
+      label: string;
+      log: string;
+      command: string;
+      exitCode: number;
+    }>;
   },
 ): Promise<void> {
   const missionDir = path.join(root, '.projscan', 'mission');
@@ -87,7 +130,11 @@ async function writeMissionBundle(
       kind: 'projscan.mission-bundle',
       mode: 'before_edit',
       status: 'ready',
-      currentStep: { phaseId: 'ready_now', stepId: 'ready-1', command: 'projscan search "auth" --format json' },
+      currentStep: {
+        phaseId: 'ready_now',
+        stepId: 'ready-1',
+        command: 'projscan search "auth" --format json',
+      },
     }) + '\n',
   );
   await fs.writeFile(
@@ -95,22 +142,38 @@ async function writeMissionBundle(
     JSON.stringify({
       title: 'Mission Review Gate',
       decisions: [
-        { id: 'approve_next_slice', label: 'Approve next slice', reply: 'Approved: start one more bounded implementation slice.' },
-        { id: 'review_version_candidate', label: 'Review version candidate', reply: 'Prepare a version-candidate review only.' },
+        {
+          id: 'approve_next_slice',
+          label: 'Approve next slice',
+          reply: 'Approved: start one more bounded implementation slice.',
+        },
+        {
+          id: 'review_version_candidate',
+          label: 'Review version candidate',
+          reply: 'Prepare a version-candidate review only.',
+        },
       ],
       policy: { approvalRequired: true, blockedActions: ['release', 'publish', 'version_bump'] },
     }) + '\n',
   );
-  await fs.writeFile(path.join(missionDir, 'proof-commands.txt'), 'projscan preflight --mode before_edit --format json\n');
+  await fs.writeFile(
+    path.join(missionDir, 'proof-commands.txt'),
+    'projscan preflight --mode before_edit --format json\n',
+  );
   await fs.writeFile(
     path.join(proofLogs, 'summary.json'),
     JSON.stringify({
       schemaVersion: 1,
       status: options.status,
-      nextAction: options.status === 'passed' ? 'run ./review.sh and choose a reviewer reply.' : 'inspect the failed log, fix the issue, then rerun ./mission.sh.',
+      nextAction:
+        options.status === 'passed'
+          ? 'run ./review.sh and choose a reviewer reply.'
+          : 'inspect the failed log, fix the issue, then rerun ./mission.sh.',
       report: 'proof-logs/run-report.md',
       statusRows: 'proof-logs/status.jsonl',
-      ...(typeof options.totalCommands === 'number' ? { totalCommands: options.totalCommands } : {}),
+      ...(typeof options.totalCommands === 'number'
+        ? { totalCommands: options.totalCommands }
+        : {}),
       ...(options.failedStep ? { failedStep: options.failedStep } : {}),
       ...(typeof options.exitCode === 'number' ? { exitCode: options.exitCode } : {}),
       ...(options.log ? { log: options.log } : {}),

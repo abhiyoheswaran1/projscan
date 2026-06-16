@@ -1,9 +1,5 @@
 import type { CodeGraph, GraphFile } from './codeGraph.js';
-import type {
-  SemanticGraphEdge,
-  SemanticGraphNode,
-  SemanticGraphReport,
-} from '../types.js';
+import type { SemanticGraphEdge, SemanticGraphNode, SemanticGraphReport } from '../types.js';
 
 export interface SemanticGraphOptions {
   maxNodes?: number;
@@ -88,7 +84,9 @@ export function buildSemanticGraph(
     }
   }
 
-  for (const [pkg, importers] of [...graph.packageImporters.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [pkg, importers] of [...graph.packageImporters.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
     const packageId = packageNodeId(pkg);
     addNode({ id: packageId, kind: 'package', label: pkg });
     for (const importer of [...importers].sort()) {
@@ -101,7 +99,9 @@ export function buildSemanticGraph(
     }
   }
 
-  for (const [target, importers] of [...graph.localImporters.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [target, importers] of [...graph.localImporters.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
     for (const importer of [...importers].sort()) {
       addEdge({
         from: fileNodeId(importer),
@@ -112,7 +112,9 @@ export function buildSemanticGraph(
     }
   }
 
-  for (const [symbol, definingFiles] of [...graph.symbolDefs.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [symbol, definingFiles] of [...graph.symbolDefs.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
     const symbolId = symbolNodeId(symbol);
     addNode({ id: symbolId, kind: 'symbol', label: symbol });
     for (const file of [...definingFiles].sort()) {

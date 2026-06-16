@@ -114,7 +114,9 @@ export async function testPlugin(
         message: `plugin execution requires ${PLUGIN_PREVIEW_FLAG}=1 and --execute`,
       },
       guidance,
-      staticExecution(`Set ${PLUGIN_PREVIEW_FLAG}=1 and pass --execute to import and run local plugin code.`),
+      staticExecution(
+        `Set ${PLUGIN_PREVIEW_FLAG}=1 and pass --execute to import and run local plugin code.`,
+      ),
     );
   }
 
@@ -218,11 +220,16 @@ async function testAnalyzerPlugin(
   execution: PluginTestResult['execution'],
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.check !== 'function') {
-    return failResult(manifestPath, {
-      code: 'invalid-analyzer-export',
-      severity: 'error',
-      message: `analyzer plugin "${manifest.name}" missing required export "check"`,
-    }, guidance, execution);
+    return failResult(
+      manifestPath,
+      {
+        code: 'invalid-analyzer-export',
+        severity: 'error',
+        message: `analyzer plugin "${manifest.name}" missing required export "check"`,
+      },
+      guidance,
+      execution,
+    );
   }
   const rootPath = options.fixtureRoot ?? path.dirname(path.dirname(manifestPath));
   const scan = await scanRepository(rootPath);
@@ -230,27 +237,42 @@ async function testAnalyzerPlugin(
   try {
     rawIssues = await (exportsObj.check as PluginAnalyzerExports['check'])(rootPath, scan.files);
   } catch (err) {
-    return failResult(manifestPath, {
-      code: 'analyzer-runtime-error',
-      severity: 'error',
-      message: `analyzer plugin "${manifest.name}" threw: ${err instanceof Error ? err.message : String(err)}`,
-    }, guidance, execution);
+    return failResult(
+      manifestPath,
+      {
+        code: 'analyzer-runtime-error',
+        severity: 'error',
+        message: `analyzer plugin "${manifest.name}" threw: ${err instanceof Error ? err.message : String(err)}`,
+      },
+      guidance,
+      execution,
+    );
   }
   if (!Array.isArray(rawIssues)) {
-    return failResult(manifestPath, {
-      code: 'invalid-analyzer-result',
-      severity: 'error',
-      message: `analyzer plugin "${manifest.name}" returned ${typeof rawIssues}; expected Issue[]`,
-    }, guidance, execution);
+    return failResult(
+      manifestPath,
+      {
+        code: 'invalid-analyzer-result',
+        severity: 'error',
+        message: `analyzer plugin "${manifest.name}" returned ${typeof rawIssues}; expected Issue[]`,
+      },
+      guidance,
+      execution,
+    );
   }
   const issues = rawIssues as Issue[];
   const malformed = issues.find((issue) => !isIssueShape(issue));
   if (malformed) {
-    return failResult(manifestPath, {
-      code: 'invalid-analyzer-issue',
-      severity: 'error',
-      message: `analyzer plugin "${manifest.name}" returned a malformed issue`,
-    }, guidance, execution);
+    return failResult(
+      manifestPath,
+      {
+        code: 'invalid-analyzer-issue',
+        severity: 'error',
+        message: `analyzer plugin "${manifest.name}" returned a malformed issue`,
+      },
+      guidance,
+      execution,
+    );
   }
   return {
     schemaVersion: 1,
@@ -272,11 +294,16 @@ async function testReporterPlugin(
   execution: PluginTestResult['execution'],
 ): Promise<PluginTestResult> {
   if (typeof exportsObj.render !== 'function') {
-    return failResult(manifestPath, {
-      code: 'invalid-reporter-export',
-      severity: 'error',
-      message: `reporter plugin "${manifest.name}" missing required export "render"`,
-    }, guidance, execution);
+    return failResult(
+      manifestPath,
+      {
+        code: 'invalid-reporter-export',
+        severity: 'error',
+        message: `reporter plugin "${manifest.name}" missing required export "render"`,
+      },
+      guidance,
+      execution,
+    );
   }
 
   const rootPath = options.fixtureRoot ?? path.dirname(path.dirname(manifestPath));
@@ -292,18 +319,28 @@ async function testReporterPlugin(
     try {
       text = await (exportsObj.render as PluginReporterExports['render'])(context);
     } catch (err) {
-      return failResult(manifestPath, {
-        code: 'reporter-render-error',
-        severity: 'error',
-        message: `reporter plugin "${manifest.name}" threw for ${command}: ${err instanceof Error ? err.message : String(err)}`,
-      }, guidance, execution);
+      return failResult(
+        manifestPath,
+        {
+          code: 'reporter-render-error',
+          severity: 'error',
+          message: `reporter plugin "${manifest.name}" threw for ${command}: ${err instanceof Error ? err.message : String(err)}`,
+        },
+        guidance,
+        execution,
+      );
     }
     if (typeof text !== 'string') {
-      return failResult(manifestPath, {
-        code: 'reporter-render-error',
-        severity: 'error',
-        message: `reporter plugin "${manifest.name}" returned ${typeof text}; expected string`,
-      }, guidance, execution);
+      return failResult(
+        manifestPath,
+        {
+          code: 'reporter-render-error',
+          severity: 'error',
+          message: `reporter plugin "${manifest.name}" returned ${typeof text}; expected string`,
+        },
+        guidance,
+        execution,
+      );
     }
     outputs.push({ command, text });
   }
@@ -333,12 +370,16 @@ function sampleReporterPayload(command: PluginReporterCommand): unknown {
 
 type PluginResultGuidance = Pick<PluginTestResult, 'trust' | 'commands' | 'context'>;
 
-async function buildPluginTestGuidance(manifestPath: string, modulePath?: string): Promise<PluginResultGuidance> {
+async function buildPluginTestGuidance(
+  manifestPath: string,
+  modulePath?: string,
+): Promise<PluginResultGuidance> {
   const source = modulePath ? await fs.readFile(modulePath, 'utf-8').catch(() => '') : '';
   const capabilities: PluginTestResult['context']['capabilities'] = [];
   if (/getSemanticGraph\s*\(/.test(source)) capabilities.push('semanticGraph');
   if (/getDataflow\s*\(/.test(source)) capabilities.push('dataflow');
-  const requested = capabilities.length > 0 || /check\s*[:=]?\s*(?:async\s*)?\([^)]*context/.test(source);
+  const requested =
+    capabilities.length > 0 || /check\s*[:=]?\s*(?:async\s*)?\([^)]*context/.test(source);
   return {
     trust: {
       localOnly: true,
@@ -377,8 +418,9 @@ function failResult(
   };
 }
 
-
-async function checkModuleReadable(modulePath: string): Promise<{ ok: true } | { ok: false; message: string }> {
+async function checkModuleReadable(
+  modulePath: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     await fs.access(modulePath);
     return { ok: true };
@@ -390,7 +432,9 @@ async function checkModuleReadable(modulePath: string): Promise<{ ok: true } | {
   }
 }
 
-function staticExecution(note = 'Static validation completed without importing or running local plugin code.'): PluginTestResult['execution'] {
+function staticExecution(
+  note = 'Static validation completed without importing or running local plugin code.',
+): PluginTestResult['execution'] {
   return {
     requested: false,
     executed: false,
@@ -462,7 +506,10 @@ function isIssueShape(value: unknown): value is Issue {
 
 function importPluginModule(modulePath: string): Promise<Record<string, unknown>> {
   return dynamicImport(pathToFileURL(modulePath).href).catch(async (err) => {
-    if (!(err instanceof TypeError) || !err.message.includes('dynamic import callback was not specified')) {
+    if (
+      !(err instanceof TypeError) ||
+      !err.message.includes('dynamic import callback was not specified')
+    ) {
       throw err;
     }
     return importPluginModuleFromSource(modulePath);
@@ -483,10 +530,13 @@ async function importPluginModuleFromSource(modulePath: string): Promise<Record<
   }
 
   const names: string[] = [];
-  let transformed = source.replace(/\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g, (_m, kind, name) => {
-    names.push(String(name));
-    return `${kind} ${name}`;
-  });
+  let transformed = source.replace(
+    /\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g,
+    (_m, kind, name) => {
+      names.push(String(name));
+      return `${kind} ${name}`;
+    },
+  );
   transformed = transformed.replace(/\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g, (_m, name) => {
     names.push(String(name));
     return `const ${name} =`;
@@ -494,7 +544,10 @@ async function importPluginModuleFromSource(modulePath: string): Promise<Record<
   if (names.length === 0) {
     throw new Error('unsupported module syntax in Vitest VM fallback');
   }
-  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<string, unknown>;
+  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<
+    string,
+    unknown
+  >;
 }
 
 function stripSupportedImports(source: string): {

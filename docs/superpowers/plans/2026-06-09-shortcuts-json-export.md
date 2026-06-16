@@ -20,6 +20,7 @@
 ## Task 1: Red CLI Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Assert saved bundles contain `shortcuts.json`**
@@ -28,7 +29,9 @@ In `start writes a Mission Control bundle when requested`, add:
 
 ```ts
 expect(result.stdout).toContain('shortcuts.json');
-expect(quickstart).toContain('- `shortcuts.json`: Machine-readable Mission Control shortcut command index.');
+expect(quickstart).toContain(
+  '- `shortcuts.json`: Machine-readable Mission Control shortcut command index.',
+);
 ```
 
 After the `readyToolCalls` assertions, add:
@@ -63,7 +66,9 @@ expect(shortcuts.shortcuts.map((entry: { id: string }) => entry.id)).toEqual([
   'handoff-prompt',
   'start',
 ]);
-expect(shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json')).toBeUndefined();
+expect(
+  shortcuts.shortcuts.find((entry: { id: string }) => entry.id === 'shortcuts-json'),
+).toBeUndefined();
 expect(shortcuts.shortcuts.map((entry: { command: string }) => entry.command)).toContain(
   "projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'",
 );
@@ -102,7 +107,9 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
   });
-  expect(shortcuts.baseCommand).toBe("projscan start --intent 'what breaks if I rename the auth token loader'");
+  expect(shortcuts.baseCommand).toBe(
+    "projscan start --intent 'what breaks if I rename the auth token loader'",
+  );
   expect(shortcuts.shortcuts.map((entry: { id: string }) => entry.id)).toEqual([
     'next-command',
     'next-tool-call',
@@ -124,7 +131,8 @@ test('start prints a shortcut index as compact JSON when requested', async () =>
   expect(shortcuts.shortcuts[0]).toEqual({
     id: 'next-command',
     label: 'Current shell command',
-    command: "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
+    command:
+      "projscan start --next-command --intent 'what breaks if I rename the auth token loader'",
     description: 'Print only the current Mission Control cursor command.',
   });
   expect(shortcuts.shortcuts.at(-1)).toEqual({
@@ -154,7 +162,9 @@ test('start JSON keeps the full report when shortcuts-json index is requested', 
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report.missionControl.executionPlan.cursor.command).toBe('projscan search "auth token loader" --format json');
+  expect(report.missionControl.executionPlan.cursor.command).toBe(
+    'projscan search "auth token loader" --format json',
+  );
   expect(report.missionControl.reviewGate.policy).toEqual(expectedReviewPolicy);
   expect(report.kind).not.toBe('projscan.start-shortcuts');
 });
@@ -173,6 +183,7 @@ Expected: fail because `--shortcuts-json` and `shortcuts.json` do not exist yet.
 ## Task 2: CLI And Bundle Implementation
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add Commander option**
@@ -210,25 +221,118 @@ interface StartShortcutIndex {
 Replace the local `shortcuts` array in `printShortcutsOnly()` with a helper:
 
 ```ts
-function buildShortcutIndex(report: StartReport, options: StartShortcutCommandOptions): StartShortcutIndex {
+function buildShortcutIndex(
+  report: StartReport,
+  options: StartShortcutCommandOptions,
+): StartShortcutIndex {
   const command = report.missionControl.executionPlan.cursor.command;
   const toolCall = nextToolCall(report);
   const entries: StartShortcutEntry[] = [
-    shortcutEntry('next-command', 'Current shell command', '--next-command', 'Print only the current Mission Control cursor command.', options),
-    shortcutEntry('next-tool-call', 'Current MCP tool call', '--next-tool-call', 'Print only the current Mission Control cursor MCP tool call as compact JSON.', options),
-    shortcutEntry('ready-tool-calls', 'Ready MCP calls', '--ready-tool-calls', 'Print the current cursor and remaining MCP-callable proof queue as compact JSON.', options),
-    shortcutEntry('proof-commands', 'Ready proof commands', '--proof-commands', 'Print only ready Mission Control proof commands.', options),
-    shortcutEntry('checklist', 'Resume checklist', '--checklist', 'Print only the Mission Control resume checklist.', options),
-    shortcutEntry('resume-json', 'Resume JSON', '--resume-json', 'Print only the structured Mission Control resume object.', options),
-    shortcutEntry('handoff-json', 'Handoff JSON', '--handoff-json', 'Print only the structured Mission Control handoff object.', options),
-    shortcutEntry('save-mission', 'Save mission bundle', '--save-mission .projscan/mission', 'Write the Mission Control bundle to .projscan/mission.', options),
-    shortcutEntry('task-card', 'Task card', '--task-card', 'Print only the Mission Control Markdown task card.', options),
-    shortcutEntry('review-gate', 'Review gate Markdown', '--review-gate', 'Print only the Mission Control stop-and-review gate.', options),
-    shortcutEntry('review-gate-json', 'Review gate JSON', '--review-gate-json', 'Print only the Mission Control review gate as JSON.', options),
-    shortcutEntry('review-policy', 'Review policy JSON', '--review-policy', 'Print only the Mission Control review policy as JSON.', options),
-    shortcutEntry('review-replies', 'Reviewer replies', '--review-replies', 'Print only copyable Mission Control reviewer replies.', options),
-    shortcutEntry('runbook', 'Mission runbook', '--runbook', 'Print only the Mission Control Markdown runbook.', options),
-    shortcutEntry('handoff-prompt', 'Handoff prompt', '--handoff-prompt', 'Print only the concise Mission Control handoff prompt.', options),
+    shortcutEntry(
+      'next-command',
+      'Current shell command',
+      '--next-command',
+      'Print only the current Mission Control cursor command.',
+      options,
+    ),
+    shortcutEntry(
+      'next-tool-call',
+      'Current MCP tool call',
+      '--next-tool-call',
+      'Print only the current Mission Control cursor MCP tool call as compact JSON.',
+      options,
+    ),
+    shortcutEntry(
+      'ready-tool-calls',
+      'Ready MCP calls',
+      '--ready-tool-calls',
+      'Print the current cursor and remaining MCP-callable proof queue as compact JSON.',
+      options,
+    ),
+    shortcutEntry(
+      'proof-commands',
+      'Ready proof commands',
+      '--proof-commands',
+      'Print only ready Mission Control proof commands.',
+      options,
+    ),
+    shortcutEntry(
+      'checklist',
+      'Resume checklist',
+      '--checklist',
+      'Print only the Mission Control resume checklist.',
+      options,
+    ),
+    shortcutEntry(
+      'resume-json',
+      'Resume JSON',
+      '--resume-json',
+      'Print only the structured Mission Control resume object.',
+      options,
+    ),
+    shortcutEntry(
+      'handoff-json',
+      'Handoff JSON',
+      '--handoff-json',
+      'Print only the structured Mission Control handoff object.',
+      options,
+    ),
+    shortcutEntry(
+      'save-mission',
+      'Save mission bundle',
+      '--save-mission .projscan/mission',
+      'Write the Mission Control bundle to .projscan/mission.',
+      options,
+    ),
+    shortcutEntry(
+      'task-card',
+      'Task card',
+      '--task-card',
+      'Print only the Mission Control Markdown task card.',
+      options,
+    ),
+    shortcutEntry(
+      'review-gate',
+      'Review gate Markdown',
+      '--review-gate',
+      'Print only the Mission Control stop-and-review gate.',
+      options,
+    ),
+    shortcutEntry(
+      'review-gate-json',
+      'Review gate JSON',
+      '--review-gate-json',
+      'Print only the Mission Control review gate as JSON.',
+      options,
+    ),
+    shortcutEntry(
+      'review-policy',
+      'Review policy JSON',
+      '--review-policy',
+      'Print only the Mission Control review policy as JSON.',
+      options,
+    ),
+    shortcutEntry(
+      'review-replies',
+      'Reviewer replies',
+      '--review-replies',
+      'Print only copyable Mission Control reviewer replies.',
+      options,
+    ),
+    shortcutEntry(
+      'runbook',
+      'Mission runbook',
+      '--runbook',
+      'Print only the Mission Control Markdown runbook.',
+      options,
+    ),
+    shortcutEntry(
+      'handoff-prompt',
+      'Handoff prompt',
+      '--handoff-prompt',
+      'Print only the concise Mission Control handoff prompt.',
+      options,
+    ),
     {
       id: 'start',
       label: 'Full start report',
@@ -352,6 +456,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs, Screenshots, And Verification
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -361,7 +466,7 @@ Expected: build and focused tests pass.
 Add `--shortcuts-json` to the Mission Control shortcut block:
 
 ```md
-projscan start --shortcuts-json --intent "<goal>"    # Shortcut menu as JSON
+projscan start --shortcuts-json --intent "<goal>" # Shortcut menu as JSON
 ```
 
 Add `shortcuts.json` to the saved mission bundle file list after `ready-tool-calls.json`.

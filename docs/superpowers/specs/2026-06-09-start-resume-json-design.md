@@ -13,7 +13,7 @@ Add `projscan start --resume-json` so a developer or agent can retrieve only the
 Implement a CLI-only shortcut that prints:
 
 ```ts
-report.missionControl.resume
+report.missionControl.resume;
 ```
 
 as compact JSON. This keeps the output stable because it reuses an existing object. It also keeps the full `projscan start --format json` report unchanged.

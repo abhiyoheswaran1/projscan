@@ -6,7 +6,7 @@ import type {
   MissionProofReport,
   MissionProofTotals,
   MissionRunStatus,
-} from '../types.js';
+} from '../types/start.js';
 
 export interface MissionProofBaselineInput {
   runs?: unknown;
@@ -21,14 +21,22 @@ export const MISSION_PROOF_BASELINE_STATUSES = [
   'unknown',
 ] as const satisfies readonly MissionRunStatus[];
 
-const BASELINE_NUMERIC_FIELDS = ['failedGates', 'reruns', 'minutesSpent', 'reviewerApprovals'] as const;
+const BASELINE_NUMERIC_FIELDS = [
+  'failedGates',
+  'reruns',
+  'minutesSpent',
+  'reviewerApprovals',
+] as const;
 
 export async function loadMissionProofBaseline(
   rootPath: string,
   baselineFile: string,
 ): Promise<NonNullable<MissionProofReport['baseline']>> {
   const resolved = path.resolve(rootPath, baselineFile);
-  const input = parseMissionProofBaselineInput(await readMissionProofBaselineFile(resolved, baselineFile), baselineFile);
+  const input = parseMissionProofBaselineInput(
+    await readMissionProofBaselineFile(resolved, baselineFile),
+    baselineFile,
+  );
   const runs = validateMissionProofBaselineRuns(input, baselineFile);
   const totals = totalsFromBaselineRuns(runs);
   return {
@@ -53,14 +61,17 @@ export function missionProofBaselineTemplate(): Record<string, unknown> {
   };
 }
 
-export function parseMissionProofBaselineInput(raw: string, baselineFile: string): MissionProofBaselineInput {
+export function parseMissionProofBaselineInput(
+  raw: string,
+  baselineFile: string,
+): MissionProofBaselineInput {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
     throw new Error(
       `Mission proof baseline file is not valid JSON: ${baselineFile}\n` +
-      'Expected shape: {"schemaVersion":1,"runs":[...]}',
+        'Expected shape: {"schemaVersion":1,"runs":[...]}',
       { cause: err },
     );
   }
@@ -78,7 +89,9 @@ export function validateMissionProofBaselineRuns(
   if (!Array.isArray(input.runs)) {
     throw baselineValidationError(baselineFile, 'runs', 'expected an array.');
   }
-  const runs = input.runs.map((run, index) => validateMissionProofBaselineRun(run, index, baselineFile));
+  const runs = input.runs.map((run, index) =>
+    validateMissionProofBaselineRun(run, index, baselineFile),
+  );
   validateUniqueBaselineRunIds(runs, baselineFile);
   return runs;
 }
@@ -93,7 +106,11 @@ function validateMissionProofBaselineRun(
   }
   const candidate = run as Partial<MissionProofBaselineRun>;
   if (typeof candidate.id !== 'string' || candidate.id.trim().length === 0) {
-    throw baselineValidationError(baselineFile, `runs[${index}].id`, 'expected a non-empty string.');
+    throw baselineValidationError(
+      baselineFile,
+      `runs[${index}].id`,
+      'expected a non-empty string.',
+    );
   }
   if (!MISSION_PROOF_BASELINE_STATUSES.includes(candidate.status as MissionRunStatus)) {
     throw baselineValidationError(
@@ -104,8 +121,15 @@ function validateMissionProofBaselineRun(
   }
   for (const field of BASELINE_NUMERIC_FIELDS) {
     const value = candidate[field];
-    if (typeof value !== 'undefined' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
-      throw baselineValidationError(baselineFile, `runs[${index}].${field}`, 'expected a non-negative number.');
+    if (
+      typeof value !== 'undefined' &&
+      (typeof value !== 'number' || !Number.isFinite(value) || value < 0)
+    ) {
+      throw baselineValidationError(
+        baselineFile,
+        `runs[${index}].${field}`,
+        'expected a non-negative number.',
+      );
     }
   }
   return candidate as MissionProofBaselineRun;
@@ -121,7 +145,9 @@ function validateUniqueBaselineRunIds(runs: MissionProofBaselineRun[], baselineF
   }
 }
 
-function totalsFromBaselineRuns(runs: MissionProofBaselineRun[]): MissionProofTotals & { minutesSpent: number } {
+function totalsFromBaselineRuns(
+  runs: MissionProofBaselineRun[],
+): MissionProofTotals & { minutesSpent: number } {
   const passed = runs.filter((run) => run.status === 'passed').length;
   return {
     missions: runs.length,
@@ -139,17 +165,23 @@ function totalsFromBaselineRuns(runs: MissionProofBaselineRun[]): MissionProofTo
 }
 
 function sum(values: Array<number | undefined>): number {
-  return values.reduce<number>((total, value) => total + (typeof value === 'number' && Number.isFinite(value) ? value : 0), 0);
+  return values.reduce<number>(
+    (total, value) => total + (typeof value === 'number' && Number.isFinite(value) ? value : 0),
+    0,
+  );
 }
 
-async function readMissionProofBaselineFile(resolved: string, baselineFile: string): Promise<string> {
+async function readMissionProofBaselineFile(
+  resolved: string,
+  baselineFile: string,
+): Promise<string> {
   try {
     return await fs.readFile(resolved, 'utf8');
   } catch (err) {
     if (isNodeError(err) && err.code === 'ENOENT') {
       throw new Error(
         `Mission proof baseline file not found: ${baselineFile}\n` +
-        `Create one with: projscan mission-proof --init-baseline ${shellToken(baselineFile)}`,
+          `Create one with: projscan mission-proof --init-baseline ${shellToken(baselineFile)}`,
         { cause: err },
       );
     }
@@ -158,7 +190,9 @@ async function readMissionProofBaselineFile(resolved: string, baselineFile: stri
 }
 
 function baselineValidationError(baselineFile: string, pathLabel: string, message: string): Error {
-  return new Error(`Mission proof baseline invalid at ${pathLabel}: ${message}\nFile: ${baselineFile}`);
+  return new Error(
+    `Mission proof baseline invalid at ${pathLabel}: ${message}\nFile: ${baselineFile}`,
+  );
 }
 
 function shellToken(value: string): string {

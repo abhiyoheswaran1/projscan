@@ -24,7 +24,10 @@ describe('PHP end-to-end (graph + coupling)', () => {
     const scan = await scanRepository(FIXTURE_ROOT);
     const graph = await buildCodeGraph(FIXTURE_ROOT, scan.files);
     const userExports =
-      graph.files.get('src/Models/User.php')?.exports.map((e) => e.name).sort() ?? [];
+      graph.files
+        .get('src/Models/User.php')
+        ?.exports.map((e) => e.name)
+        .sort() ?? [];
     expect(userExports).toEqual(['User', 'private_helper']);
   });
 

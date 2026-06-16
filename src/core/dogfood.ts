@@ -11,8 +11,8 @@ import type {
   DogfoodRepoResult,
   DogfoodRepoStatus,
   DogfoodRepoValidation,
-  PreflightSuggestedAction,
-} from '../types.js';
+} from '../types/dogfood.js';
+import type { PreflightSuggestedAction } from '../types/preflight.js';
 
 export interface ComputeDogfoodOptions {
   repos?: string[];
@@ -29,8 +29,10 @@ const FEEDBACK_QUESTIONS = [
   'Did projscan prevent a risky edit or missed review step?',
 ] as const;
 const FEEDBACK_INIT_COMMAND = 'projscan feedback init --output .projscan-feedback.json';
-const FEEDBACK_CAPTURE_COMMAND = 'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
-const DOGFOOD_WITH_FEEDBACK_COMMAND = 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
+const FEEDBACK_CAPTURE_COMMAND =
+  'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+const DOGFOOD_WITH_FEEDBACK_COMMAND =
+  'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
 const MIN_USEFUL_REVIEWER_RESPONSES = 3;
 const MIN_AVERAGE_MINUTES_SAVED = 10;
 
@@ -67,8 +69,11 @@ async function evaluateRepo(
   ]);
   const name = path.basename(repoPath) || repoPath;
   const prComment = evidence.prComment ?? '';
-  const prCommentReady = evidence.prCommentValidation?.status === 'pass' && prComment.includes('### Developer Feedback');
-  const repeatUseReady = start.adoptionLoop?.cadence === 'every_pr' && (start.adoptionLoop.nextCommands.length ?? 0) >= 3;
+  const prCommentReady =
+    evidence.prCommentValidation?.status === 'pass' && prComment.includes('### Developer Feedback');
+  const repeatUseReady =
+    start.adoptionLoop?.cadence === 'every_pr' &&
+    (start.adoptionLoop.nextCommands.length ?? 0) >= 3;
   const mcpReady = start.evidence.mcpReady;
   const validation = summarizeRepoFeedback(feedbackForRepo(feedback, repoPath, name));
   const gaps = buildGaps({
@@ -146,7 +151,9 @@ function summarizeRepoFeedback(feedback: DogfoodFeedbackResponse[]): DogfoodRepo
     preventedBadEdits: feedback.filter((response) => response.preventedBadEdit === true).length,
     ownerRoutingClear: feedback.filter((response) => response.ownerRoutingClear === true).length,
     nextCommandClear: feedback.filter((response) => response.nextCommandClear === true).length,
-    falsePositiveRules: cleanSignals(feedback.flatMap((response) => response.falsePositiveRules ?? [])),
+    falsePositiveRules: cleanSignals(
+      feedback.flatMap((response) => response.falsePositiveRules ?? []),
+    ),
     missingSignals: cleanSignals(feedback.flatMap((response) => response.missingSignals ?? [])),
     noisyFindings: cleanSignals(feedback.flatMap((response) => response.noisyFindings ?? [])),
   };
@@ -165,7 +172,9 @@ function buildGaps(input: {
   if (!input.prCommentReady) gaps.push('PR comment is missing required usefulness sections');
   if (!input.repeatUseReady) gaps.push('repeat-use adoption loop is missing');
   if (input.validation.falsePositiveRules.length > 0) {
-    gaps.push('reviewer reported false-positive rule(s): ' + input.validation.falsePositiveRules.join(', '));
+    gaps.push(
+      'reviewer reported false-positive rule(s): ' + input.validation.falsePositiveRules.join(', '),
+    );
   }
   if (input.validation.missingSignals.length > 0) {
     gaps.push('reviewer reported missing signal(s): ' + input.validation.missingSignals.join('; '));
@@ -191,7 +200,10 @@ function summarizeTotals(repos: DogfoodRepoResult[]): DogfoodReport['totals'] {
     usefulFeedback: repos.reduce((sum, repo) => sum + repo.validation.usefulResponses, 0),
     minutesSaved: repos.reduce((sum, repo) => sum + repo.validation.minutesSaved, 0),
     preventedBadEdits: repos.reduce((sum, repo) => sum + repo.validation.preventedBadEdits, 0),
-    falsePositiveReports: repos.reduce((sum, repo) => sum + repo.validation.falsePositiveRules.length, 0),
+    falsePositiveReports: repos.reduce(
+      (sum, repo) => sum + repo.validation.falsePositiveRules.length,
+      0,
+    ),
   };
 }
 
@@ -207,9 +219,18 @@ function buildMarketValidation(
   const nextCommandClear = repos.reduce((sum, repo) => sum + repo.validation.nextCommandClear, 0);
   const falsePositive = {
     totalReports: repos.reduce((sum, repo) => sum + repo.validation.falsePositiveRules.length, 0),
-    noisyRules: countSignals(repos.flatMap((repo) => repo.validation.falsePositiveRules), 'rule'),
-    missingSignals: countSignals(repos.flatMap((repo) => repo.validation.missingSignals), 'signal'),
-    noisyFindings: countSignals(repos.flatMap((repo) => repo.validation.noisyFindings), 'finding'),
+    noisyRules: countSignals(
+      repos.flatMap((repo) => repo.validation.falsePositiveRules),
+      'rule',
+    ),
+    missingSignals: countSignals(
+      repos.flatMap((repo) => repo.validation.missingSignals),
+      'signal',
+    ),
+    noisyFindings: countSignals(
+      repos.flatMap((repo) => repo.validation.noisyFindings),
+      'finding',
+    ),
   };
   const repoCoverage = {
     target: targetRepoCount,
@@ -249,8 +270,22 @@ function buildMarketValidation(
     valueReady: value.ready,
     repeatUseReady: repeatUse.ready,
   });
-  const summary = summarizeMarketValidation(status, repoCoverage.evaluated, targetRepoCount, feedback, falsePositive.totalReports, value, repeatUse);
-  const proofGates = buildProofGates(repoCoverage, feedback, value, repeatUse, falsePositive.totalReports);
+  const summary = summarizeMarketValidation(
+    status,
+    repoCoverage.evaluated,
+    targetRepoCount,
+    feedback,
+    falsePositive.totalReports,
+    value,
+    repeatUse,
+  );
+  const proofGates = buildProofGates(
+    repoCoverage,
+    feedback,
+    value,
+    repeatUse,
+    falsePositive.totalReports,
+  );
   const nextProofStep = nextProofStepFromGates(status, proofGates);
   return {
     status,
@@ -306,17 +341,19 @@ function buildProofGates(
     {
       id: 'reviewer-feedback',
       status: feedback.responses > 0 ? 'pass' : 'fail',
-      summary: feedback.responses > 0
-        ? `${feedback.responses} reviewer response(s) captured.`
-        : 'Capture structured reviewer feedback from the first real PR.',
+      summary:
+        feedback.responses > 0
+          ? `${feedback.responses} reviewer response(s) captured.`
+          : 'Capture structured reviewer feedback from the first real PR.',
       command: FEEDBACK_CAPTURE_COMMAND,
     },
     {
       id: 'useful-feedback',
       status: feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES ? 'pass' : 'fail',
-      summary: feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES
-        ? `${feedback.usefulResponses} useful reviewer response(s) captured.`
-        : `Collect at least ${moreUsefulResponses} more useful reviewer response(s).`,
+      summary:
+        feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES
+          ? `${feedback.usefulResponses} useful reviewer response(s) captured.`
+          : `Collect at least ${moreUsefulResponses} more useful reviewer response(s).`,
       command: FEEDBACK_CAPTURE_COMMAND,
     },
     {
@@ -338,9 +375,10 @@ function buildProofGates(
     {
       id: 'false-positive-balance',
       status: falsePositiveReports <= feedback.usefulResponses ? 'pass' : 'fail',
-      summary: falsePositiveReports <= feedback.usefulResponses
-        ? `${falsePositiveReports} false-positive report(s) do not outnumber ${feedback.usefulResponses} useful response(s).`
-        : 'Tune false-positive reports until they no longer outnumber useful responses.',
+      summary:
+        falsePositiveReports <= feedback.usefulResponses
+          ? `${falsePositiveReports} false-positive report(s) do not outnumber ${feedback.usefulResponses} useful response(s).`
+          : 'Tune false-positive reports until they no longer outnumber useful responses.',
       command: 'projscan memory stable --format json',
     },
   ];
@@ -351,7 +389,10 @@ function nextProofStepFromGates(
   proofGates: DogfoodMarketValidation['proofGates'],
 ): string {
   if (status === 'proven') return 'Adoption proof is ready for public claims.';
-  return proofGates.find((gate) => gate.status === 'fail')?.summary ?? 'Review adoption proof gates before expanding rollout.';
+  return (
+    proofGates.find((gate) => gate.status === 'fail')?.summary ??
+    'Review adoption proof gates before expanding rollout.'
+  );
 }
 
 function summarizeMarketValidation(
@@ -363,7 +404,25 @@ function summarizeMarketValidation(
   value: DogfoodMarketValidation['value'],
   repeatUse: DogfoodMarketValidation['repeatUse'],
 ): string {
-  const base = evaluated + '/' + target + ' repo target; ' + feedback.responses + ' reviewer response(s); ' + feedback.minutesSaved.total + ' minutes saved; avg ' + value.averageMinutesSaved + '/' + value.requiredAverageMinutesSaved + ' min target; ' + feedback.preventedBadEdits + ' risky edit(s) prevented; ' + falsePositiveReports + ' false-positive report(s); ' + repeatUse.repeatedRepos + ' repo(s) with repeat PR feedback';
+  const base =
+    evaluated +
+    '/' +
+    target +
+    ' repo target; ' +
+    feedback.responses +
+    ' reviewer response(s); ' +
+    feedback.minutesSaved.total +
+    ' minutes saved; avg ' +
+    value.averageMinutesSaved +
+    '/' +
+    value.requiredAverageMinutesSaved +
+    ' min target; ' +
+    feedback.preventedBadEdits +
+    ' risky edit(s) prevented; ' +
+    falsePositiveReports +
+    ' false-positive report(s); ' +
+    repeatUse.repeatedRepos +
+    ' repo(s) with repeat PR feedback';
   if (status === 'proven') return 'market validation proven: ' + base;
   if (status === 'needs_more_repos') return 'market validation needs more repos: ' + base;
   if (status === 'needs_feedback') return 'market validation needs reviewer feedback: ' + base;
@@ -413,10 +472,15 @@ function buildWebsiteProof(
   return { headline, metrics, bullets, markdown };
 }
 
-function buildWebsiteProofHeadline(status: DogfoodMarketValidation['status'], repoCount: number): string {
+function buildWebsiteProofHeadline(
+  status: DogfoodMarketValidation['status'],
+  repoCount: number,
+): string {
   if (status === 'proven') return 'projscan proved useful across ' + repoCount + ' real repo(s)';
-  if (status === 'needs_more_repos') return 'projscan needs more real-repo validation before public proof';
-  if (status === 'needs_feedback') return 'projscan needs reviewer feedback before usefulness proof';
+  if (status === 'needs_more_repos')
+    return 'projscan needs more real-repo validation before public proof';
+  if (status === 'needs_feedback')
+    return 'projscan needs reviewer feedback before usefulness proof';
   return 'projscan needs tuning before usefulness proof';
 }
 
@@ -427,7 +491,22 @@ function summarizeDogfood(
   marketValidation: DogfoodMarketValidation,
 ): string {
   const target = reposEvaluated >= targetRepoCount ? 'target met' : 'needs more repos';
-  return 'dogfood: ' + reposEvaluated + ' repo(s) evaluated (' + target + '); ' + totals.prCommentReady + '/' + reposEvaluated + ' PR comments ready; ' + totals.repeatUseReady + '/' + reposEvaluated + ' repeat-use loops ready; validation=' + marketValidation.status;
+  return (
+    'dogfood: ' +
+    reposEvaluated +
+    ' repo(s) evaluated (' +
+    target +
+    '); ' +
+    totals.prCommentReady +
+    '/' +
+    reposEvaluated +
+    ' PR comments ready; ' +
+    totals.repeatUseReady +
+    '/' +
+    reposEvaluated +
+    ' repeat-use loops ready; validation=' +
+    marketValidation.status
+  );
 }
 
 function buildDogfoodActions(
@@ -459,7 +538,10 @@ function buildDogfoodActions(
   ];
   if (reposEvaluated < targetRepoCount) {
     actions.unshift({
-      label: 'Add ' + (targetRepoCount - reposEvaluated) + ' more repo(s) before calling adoption proven',
+      label:
+        'Add ' +
+        (targetRepoCount - reposEvaluated) +
+        ' more repo(s) before calling adoption proven',
       command: 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --format json',
     });
   }

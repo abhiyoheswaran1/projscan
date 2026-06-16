@@ -7,6 +7,7 @@ labels: bug
 ## Security Reports
 
 Do not report vulnerabilities or secrets in public issues. Follow [SECURITY.md](../../SECURITY.md) and email support@baseframelabs.com.
+
 ## Description
 
 A clear description of what the bug is.

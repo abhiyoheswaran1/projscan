@@ -28,7 +28,9 @@ function pythonEntry(): GraphFile {
 function jsEntry(): GraphFile {
   return {
     relativePath: 'src/index.ts',
-    imports: [{ source: 'react', kind: 'static', specifiers: ['default'], typeOnly: false, line: 1 }],
+    imports: [
+      { source: 'react', kind: 'static', specifiers: ['default'], typeOnly: false, line: 1 },
+    ],
     exports: [{ name: 'App', kind: 'function', typeOnly: false, line: 3 }],
     callSites: [],
     lineCount: 8,

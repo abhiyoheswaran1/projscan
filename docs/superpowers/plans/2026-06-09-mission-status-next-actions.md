@@ -38,7 +38,9 @@ In the same test, extend existing status and review runtime checks:
 expect(initialReview.stdout).toContain('Next action: run ./mission.sh to generate proof.');
 expect(initialStatus.stdout).toContain('Next action: run ./mission.sh to generate proof.');
 expect(passedStatus.stdout).toContain('Next action: run ./review.sh and choose a reviewer reply.');
-expect(failedStatus.stdout).toContain('Next action: inspect the failed log, fix the issue, then rerun ./mission.sh.');
+expect(failedStatus.stdout).toContain(
+  'Next action: inspect the failed log, fix the issue, then rerun ./mission.sh.',
+);
 ```
 
 - [ ] **Step 3: Run focused test and verify red**

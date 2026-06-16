@@ -8,7 +8,10 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeQualityScorecard } from '../../core/qualityScorecard.js';
-import type { QualityScorecardDimension, QualityScorecardReport } from '../../types.js';
+import type {
+  QualityScorecardDimension,
+  QualityScorecardReport,
+} from '../../types/qualityScorecard.js';
 
 export function registerQualityScorecard(): void {
   program

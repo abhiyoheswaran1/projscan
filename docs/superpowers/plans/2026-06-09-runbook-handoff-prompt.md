@@ -13,6 +13,7 @@
 ### Task 1: Add Failing Coverage
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -42,6 +43,7 @@ Expected: failing assertions for missing `## Handoff Prompt`.
 ### Task 2: Render The Handoff Prompt
 
 **Files:**
+
 - Modify: `src/core/start.ts`
 
 - [ ] **Step 1: Compute the prompt before runbook construction**
@@ -49,7 +51,13 @@ Expected: failing assertions for missing `## Handoff Prompt`.
 Move the existing `whyNow` calculation above `buildMissionRunbook`, compute:
 
 ```ts
-const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands);
+const handoffPrompt = missionHandoffPrompt(
+  resume,
+  successCriteria,
+  whyNow,
+  unresolvedInputs,
+  proofCommands,
+);
 ```
 
 - [ ] **Step 2: Pass the prompt to runbook rendering**
@@ -79,6 +87,7 @@ Expected: all selected tests pass.
 ### Task 3: Update Product Docs And Verify
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

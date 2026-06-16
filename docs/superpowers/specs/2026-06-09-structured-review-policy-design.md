@@ -59,8 +59,10 @@ In `src/core/start.ts`, build a policy with the fixed blocked-action list. Pass 
 
 ```md
 ## Review Policy
+
 Approval required: yes
 Blocked until approval:
+
 - Start another implementation slice (`next_slice`)
 - Release (`release`)
 - Publish (`publish`)

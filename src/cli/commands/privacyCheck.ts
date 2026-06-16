@@ -46,15 +46,25 @@ function reportPrivacyCheck(report: PrivacyCheckReport): void {
   console.log(chalk.bold('projscan privacy-check'));
   console.log();
   console.log(`${chalk.bold('Telemetry')}: ${report.telemetry.enabled ? 'enabled' : 'disabled'}`);
-  console.log(`${chalk.bold('Offline mode')}: ${report.offline.enabled ? 'enabled' : 'disabled'} (${report.offline.env})`);
+  console.log(
+    `${chalk.bold('Offline mode')}: ${report.offline.enabled ? 'enabled' : 'disabled'} (${report.offline.env})`,
+  );
   console.log(`${chalk.bold('Scan root')}: ${report.scan.rootPath}`);
-  console.log(`${chalk.bold('.gitignore respected')}: ${report.scan.gitignoreRespected ? 'yes' : 'no'}`);
+  console.log(
+    `${chalk.bold('.gitignore respected')}: ${report.scan.gitignoreRespected ? 'yes' : 'no'}`,
+  );
   console.log(`${chalk.bold('File source')}: ${report.scan.source}`);
   console.log(`${chalk.bold('Include ignored')}: ${report.scan.includeIgnored ? 'yes' : 'no'}`);
   console.log(`${chalk.bold('Ignored files hidden')}: ${report.scan.ignoredFileCount}`);
-  console.log(`${chalk.bold('.env content scanning')}: ${report.envContentScanning ? 'enabled' : 'disabled'}`);
-  console.log(`${chalk.bold('Plugin execution')}: ${report.plugins.executionEnabled ? 'enabled' : 'disabled'} (${report.plugins.envFlag}=1)`);
-  console.log(`${chalk.bold('Local plugin code')}: ${report.plugins.localCodeExecution ? 'can run' : 'will not run'}`);
+  console.log(
+    `${chalk.bold('.env content scanning')}: ${report.envContentScanning ? 'enabled' : 'disabled'}`,
+  );
+  console.log(
+    `${chalk.bold('Plugin execution')}: ${report.plugins.executionEnabled ? 'enabled' : 'disabled'} (${report.plugins.envFlag}=1)`,
+  );
+  console.log(
+    `${chalk.bold('Local plugin code')}: ${report.plugins.localCodeExecution ? 'can run' : 'will not run'}`,
+  );
   console.log(chalk.dim(`  ${report.plugins.note}`));
   console.log();
   console.log(chalk.bold('Local write surfaces'));
@@ -71,7 +81,9 @@ function reportPrivacyCheck(report: PrivacyCheckReport): void {
   console.log();
   console.log(chalk.bold('Network endpoints'));
   for (const endpoint of report.network.endpoints) {
-    const blocked = endpoint.blockedByOffline ? 'blocked by offline mode' : 'available only if triggered';
+    const blocked = endpoint.blockedByOffline
+      ? 'blocked by offline mode'
+      : 'available only if triggered';
     console.log(`- ${endpoint.name}: ${endpoint.endpoint} (${blocked})`);
   }
 }

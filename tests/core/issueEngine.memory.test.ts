@@ -5,9 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const memoryState = vi.hoisted(() => {
   let resolveSave: (() => void) | undefined;
-  const makeSavePromise = () => new Promise<void>((resolve) => {
-    resolveSave = resolve;
-  });
+  const makeSavePromise = () =>
+    new Promise<void>((resolve) => {
+      resolveSave = resolve;
+    });
   return {
     saveStarted: false,
     savePromise: makeSavePromise(),
@@ -44,7 +45,10 @@ let tmp: string;
 beforeEach(async () => {
   memoryState.reset();
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-issue-memory-'));
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'index.ts'), 'export const value = 1;\n', 'utf-8');
 });

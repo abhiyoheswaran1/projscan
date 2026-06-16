@@ -7,11 +7,10 @@ import type {
   DogfoodFeedbackInput,
   DogfoodReport,
   FeedbackSummaryReport,
-  PreflightSuggestedAction,
-  StartReport,
-  TrialReport,
-  TrialVerdict,
-} from '../types.js';
+} from '../types/dogfood.js';
+import type { TrialReport, TrialVerdict } from '../types/trial.js';
+import type { PreflightSuggestedAction } from '../types/preflight.js';
+import type { StartReport } from '../types/start.js';
 
 export interface ComputeTrialOptions extends ComputeDogfoodOptions {
   feedbackPath?: string;
@@ -21,16 +20,20 @@ const FEEDBACK_PATH = '.projscan-feedback.json';
 const EVIDENCE_COMMAND = 'projscan evidence-pack --pr-comment';
 const PREFLIGHT_COMMAND = 'projscan preflight --mode before_merge --format json';
 const FEEDBACK_INIT_COMMAND = 'projscan feedback init --output .projscan-feedback.json';
-const FEEDBACK_ADD_COMMAND = 'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
-const FEEDBACK_SUMMARY_COMMAND = 'projscan feedback summary --file .projscan-feedback.json --format json';
-const DOGFOOD_COMMAND = 'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
+const FEEDBACK_ADD_COMMAND =
+  'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+const FEEDBACK_SUMMARY_COMMAND =
+  'projscan feedback summary --file .projscan-feedback.json --format json';
+const DOGFOOD_COMMAND =
+  'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json';
 
 export async function computeTrialReport(
   rootPath: string,
   options: ComputeTrialOptions = {},
 ): Promise<TrialReport> {
   const feedback = normalizeFeedback(options.feedback);
-  const activationRoot = options.repos && options.repos.length > 0 ? path.resolve(rootPath, options.repos[0]) : rootPath;
+  const activationRoot =
+    options.repos && options.repos.length > 0 ? path.resolve(rootPath, options.repos[0]) : rootPath;
   const [start, dogfood] = await Promise.all([
     computeStartReport(activationRoot, { mode: 'before_merge', maxTasks: 4, maxRisks: 5 }),
     computeDogfoodReport(rootPath, options),
@@ -58,14 +61,19 @@ export async function computeTrialReport(
   };
 }
 
-function normalizeFeedback(feedback: DogfoodFeedbackInput | undefined): DogfoodFeedbackInput | undefined {
+function normalizeFeedback(
+  feedback: DogfoodFeedbackInput | undefined,
+): DogfoodFeedbackInput | undefined {
   if (!feedback || !Array.isArray(feedback.responses)) return undefined;
   return feedback;
 }
 
 function buildActivation(start: StartReport, dogfood: DogfoodReport): TrialReport['activation'] {
   const reposEvaluated = Math.max(1, dogfood.totals.reposEvaluated);
-  const healthScore = dogfood.repos.length > 0 ? Math.min(...dogfood.repos.map((repo) => repo.healthScore)) : start.evidence.healthScore;
+  const healthScore =
+    dogfood.repos.length > 0
+      ? Math.min(...dogfood.repos.map((repo) => repo.healthScore))
+      : start.evidence.healthScore;
   const mcpReady = dogfood.totals.mcpReady === reposEvaluated;
   const adoptionLoopReady = dogfood.totals.repeatUseReady === reposEvaluated;
   const status = activationStatus(healthScore, mcpReady, adoptionLoopReady);
@@ -100,11 +108,18 @@ function buildDecision(
   feedback: FeedbackSummaryReport | undefined,
 ): { verdict: TrialVerdict; reasons: string[] } {
   const reasons: string[] = [];
-  if (!dogfood.marketValidation.repoCoverage.targetMet) reasons.push('not enough representative repos evaluated');
-  if (!feedback || feedback.responses === 0) reasons.push('reviewer feedback has not been captured');
-  if (feedback && !dogfood.marketValidation.value.ready) reasons.push('measured value is not proven yet');
-  if (feedback && !dogfood.marketValidation.repeatUse.ready) reasons.push('repeat PR use is not proven yet');
-  if (dogfood.marketValidation.falsePositive.totalReports > dogfood.marketValidation.feedback.usefulResponses) {
+  if (!dogfood.marketValidation.repoCoverage.targetMet)
+    reasons.push('not enough representative repos evaluated');
+  if (!feedback || feedback.responses === 0)
+    reasons.push('reviewer feedback has not been captured');
+  if (feedback && !dogfood.marketValidation.value.ready)
+    reasons.push('measured value is not proven yet');
+  if (feedback && !dogfood.marketValidation.repeatUse.ready)
+    reasons.push('repeat PR use is not proven yet');
+  if (
+    dogfood.marketValidation.falsePositive.totalReports >
+    dogfood.marketValidation.feedback.usefulResponses
+  ) {
     reasons.push('false-positive reports outnumber useful responses');
   }
   if (dogfood.marketValidation.status === 'proven' && reasons.length === 0) {
@@ -115,10 +130,17 @@ function buildDecision(
 }
 
 function summarizeTrial(verdict: TrialVerdict, dogfood: DogfoodReport): string {
-  const base = dogfood.totals.reposEvaluated + ' repo(s), market validation=' + dogfood.marketValidation.status;
+  const base =
+    dogfood.totals.reposEvaluated +
+    ' repo(s), market validation=' +
+    dogfood.marketValidation.status;
   if (verdict === 'adopt') return 'adopt: projscan trial is ready for repeat PR use (' + base + ')';
-  if (verdict === 'setup') return 'setup: fix onboarding or health before trial expansion (' + base + ')';
-  if (verdict === 'tune') return 'tune: measured trial evidence exists but needs trust or repeat-use fixes (' + base + ')';
+  if (verdict === 'setup')
+    return 'setup: fix onboarding or health before trial expansion (' + base + ')';
+  if (verdict === 'tune')
+    return (
+      'tune: measured trial evidence exists but needs trust or repeat-use fixes (' + base + ')'
+    );
   return 'pilot: run more PR feedback before calling the product adopted (' + base + ')';
 }
 
@@ -131,13 +153,23 @@ function buildNextCommands(
     { label: 'Generate the first useful PR comment', command: EVIDENCE_COMMAND },
     { label: 'Run preflight before merge', command: PREFLIGHT_COMMAND },
   ];
-  if (!feedback) actions.push({ label: 'Initialize reviewer feedback capture', command: FEEDBACK_INIT_COMMAND });
-  if (!feedback || feedback.responses === 0) actions.push({ label: 'Capture reviewer feedback', command: FEEDBACK_ADD_COMMAND });
-  if (feedback) actions.push({ label: 'Summarize feedback evidence', command: FEEDBACK_SUMMARY_COMMAND });
-  if (!dogfood.marketValidation.repoCoverage.targetMet || dogfood.marketValidation.status !== 'proven') {
+  if (!feedback)
+    actions.push({ label: 'Initialize reviewer feedback capture', command: FEEDBACK_INIT_COMMAND });
+  if (!feedback || feedback.responses === 0)
+    actions.push({ label: 'Capture reviewer feedback', command: FEEDBACK_ADD_COMMAND });
+  if (feedback)
+    actions.push({ label: 'Summarize feedback evidence', command: FEEDBACK_SUMMARY_COMMAND });
+  if (
+    !dogfood.marketValidation.repoCoverage.targetMet ||
+    dogfood.marketValidation.status !== 'proven'
+  ) {
     actions.push({ label: 'Run the full adoption trial across repos', command: DOGFOOD_COMMAND });
   }
-  if (verdict === 'tune') actions.push({ label: 'Inspect recurring noisy rules', command: 'projscan memory stable --format json' });
+  if (verdict === 'tune')
+    actions.push({
+      label: 'Inspect recurring noisy rules',
+      command: 'projscan memory stable --format json',
+    });
   return dedupeActions(actions);
 }
 

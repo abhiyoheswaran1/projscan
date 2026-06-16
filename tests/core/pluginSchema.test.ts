@@ -16,8 +16,10 @@ function validateAgainstDocumentedSchema(manifest: Manifest): string[] {
   const errors: string[] = [];
   const allowedBase = new Set(['schemaVersion', 'name', 'kind', 'module', 'description']);
   if (manifest.schemaVersion !== 1) errors.push('schemaVersion must be 1');
-  if (typeof manifest.name !== 'string' || manifest.name.length === 0) errors.push('name is required');
-  if (typeof manifest.module !== 'string' || manifest.module.length === 0) errors.push('module is required');
+  if (typeof manifest.name !== 'string' || manifest.name.length === 0)
+    errors.push('name is required');
+  if (typeof manifest.module !== 'string' || manifest.module.length === 0)
+    errors.push('module is required');
   if (manifest.description !== undefined && typeof manifest.description !== 'string') {
     errors.push('description must be a string');
   }
@@ -76,7 +78,9 @@ describe('documented plugin manifest schema', () => {
 
   it('keeps the documented reporter example executable for doctor payloads', async () => {
     const moduleUrl = pathToFileURL(join(root, 'docs/examples/plugins/team-radar.mjs')).href;
-    const mod = (await import(moduleUrl)) as { default: { render: (context: unknown) => Promise<string> } };
+    const mod = (await import(moduleUrl)) as {
+      default: { render: (context: unknown) => Promise<string> };
+    };
 
     const rendered = await mod.default.render({
       command: 'doctor',

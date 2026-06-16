@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.cache/
+.projscan-cache/
+.projscan-memory/
+.bench-cache/
+.worktrees/
+.agentloop/
+.agentflight/current/
+.agentflight/evidence/
+.agentflight/reports/
+.agentflight/sessions/
+*.tgz

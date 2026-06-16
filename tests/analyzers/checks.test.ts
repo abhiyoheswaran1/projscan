@@ -9,8 +9,12 @@ import fs from 'node:fs/promises';
 vi.mock('node:fs/promises');
 
 function makeFile(relativePath: string): FileEntry {
-  const ext = relativePath.includes('.') ? relativePath.substring(relativePath.lastIndexOf('.')) : '';
-  const dir = relativePath.includes('/') ? relativePath.substring(0, relativePath.lastIndexOf('/')) : '.';
+  const ext = relativePath.includes('.')
+    ? relativePath.substring(relativePath.lastIndexOf('.'))
+    : '';
+  const dir = relativePath.includes('/')
+    ? relativePath.substring(0, relativePath.lastIndexOf('/'))
+    : '.';
   return {
     relativePath,
     absolutePath: `/proj/${relativePath}`,

@@ -12,16 +12,27 @@ const execFileAsync = promisify(execFile);
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('team onboarding harness proves init team baseline workflow PR comment preflight and owner routing together', async () => {
   const root = await makeTeamRepo();
   const starter = await writeTeamStarterKit(root, 'security');
 
-  expect(starter.created).toEqual({ policy: true, githubAction: true, codeowners: true, baseline: true });
-  expect(starter.nextCommands).toEqual(expect.arrayContaining(['projscan evidence-pack --pr-comment']));
-  expect(await readRelative(root, '.github/workflows/projscan.yml')).toContain('Validate PR comment');
+  expect(starter.created).toEqual({
+    policy: true,
+    githubAction: true,
+    codeowners: true,
+    baseline: true,
+  });
+  expect(starter.nextCommands).toEqual(
+    expect.arrayContaining(['projscan evidence-pack --pr-comment']),
+  );
+  expect(await readRelative(root, '.github/workflows/projscan.yml')).toContain(
+    'Validate PR comment',
+  );
   expect(await readRelative(root, '.github/CODEOWNERS')).toContain('@security-team');
 
   await git(root, ['add', '.']);
@@ -50,7 +61,10 @@ test('team onboarding harness proves init team baseline workflow PR comment pref
   expect(evidence.prSummary?.baselineTrend).toBeDefined();
   expect(evidence.prSummary?.teamRoutes).toEqual(
     expect.arrayContaining([
-      expect.objectContaining({ owner: '@security-team', files: expect.arrayContaining(['src/api/search.ts']) }),
+      expect.objectContaining({
+        owner: '@security-team',
+        files: expect.arrayContaining(['src/api/search.ts']),
+      }),
     ]),
   );
   expect(evidence.prComment).toContain('### First Fix');
@@ -64,7 +78,15 @@ async function makeTeamRepo(): Promise<string> {
   await git(root, ['init', '-b', 'main']);
   await git(root, ['config', 'user.email', 'projscan@example.com']);
   await git(root, ['config', 'user.name', 'projscan']);
-  await write(root, 'package.json', JSON.stringify({ name: 'team-fixture', version: '0.0.0', type: 'module', scripts: { test: 'node --test' } }, null, 2) + '\n');
+  await write(
+    root,
+    'package.json',
+    JSON.stringify(
+      { name: 'team-fixture', version: '0.0.0', type: 'module', scripts: { test: 'node --test' } },
+      null,
+      2,
+    ) + '\n',
+  );
   await write(root, 'README.md', '# team fixture\n');
   await write(root, 'src/index.ts', 'export const baseline = 1;\n');
   await git(root, ['add', '.']);

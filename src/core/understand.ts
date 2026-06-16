@@ -11,8 +11,6 @@ import { getChangedFiles } from '../utils/changedFiles.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { collectIssues } from './issueEngine.js';
 import type {
-  FileEntry,
-  Issue,
   UnderstandBoundary,
   UnderstandChangeReadiness,
   UnderstandCitation,
@@ -31,7 +29,9 @@ import type {
   UnderstandVerification,
   UnderstandVerificationTier,
   UnderstandView,
-} from '../types.js';
+} from '../types/understand.js';
+import type { Issue } from '../types/common.js';
+import type { FileEntry } from '../types/scanning.js';
 
 export interface ComputeUnderstandOptions {
   view?: UnderstandView;
@@ -41,7 +41,29 @@ export interface ComputeUnderstandOptions {
 }
 
 const DEFAULT_MAX_ITEMS = 8;
-const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.rb', '.go', '.java', '.rs', '.php', '.cs', '.kt', '.kts', '.swift', '.cpp', '.cc', '.c', '.h', '.hpp']);
+const CODE_EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.rb',
+  '.go',
+  '.java',
+  '.rs',
+  '.php',
+  '.cs',
+  '.kt',
+  '.kts',
+  '.swift',
+  '.cpp',
+  '.cc',
+  '.c',
+  '.h',
+  '.hpp',
+]);
 const TEST_PATTERNS = [/\.test\./, /\.spec\./, /(^|\/)(test|tests|__tests__)\//];
 
 export async function computeUnderstandReport(
@@ -52,7 +74,10 @@ export async function computeUnderstandReport(
   const maxItems = normalizeLimit(options.maxItems);
   const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const issues = applyConfigToIssues(
+    await collectIssues(rootPath, scan.files),
+    configResult.config,
+  );
   const graph = await buildCodeGraph(rootPath, scan.files);
   const semantic = buildSemanticGraph(graph, { maxNodes: 10_000, maxEdges: 25_000 });
   const dataflow = computeDataflow(graph, { sources: [], sinks: [] });
@@ -60,14 +85,37 @@ export async function computeUnderstandReport(
 
   const entrypoints = buildEntrypoints(rootPath, scan.files, graph, maxItems);
   const boundaries = buildBoundaries(graph, maxItems);
-  const sideEffects = buildSideEffects(graph, dataflow.risks.flatMap((risk) => risk.files), maxItems);
+  const sideEffects = buildSideEffects(
+    graph,
+    dataflow.risks.flatMap((risk) => risk.files),
+    maxItems,
+  );
   const flows = buildFlows(entrypoints, graph, sideEffects, maxItems);
   const contracts = await buildContracts(rootPath, graph, scan.files, changedFiles, maxItems);
   const readFirst = buildReadFirst(entrypoints, boundaries, graph, maxItems);
-  const risks = await buildRisks(rootPath, scan.files, issues, graph, dataflow.risks.flatMap((risk) => risk.files), maxItems);
-  const verification = buildVerification(scan.files, changedFiles.length > 0 ? changedFiles : readFirst.map((item) => item.file), maxItems);
+  const risks = await buildRisks(
+    rootPath,
+    scan.files,
+    issues,
+    graph,
+    dataflow.risks.flatMap((risk) => risk.files),
+    maxItems,
+  );
+  const verification = buildVerification(
+    scan.files,
+    changedFiles.length > 0 ? changedFiles : readFirst.map((item) => item.file),
+    maxItems,
+  );
   const changeReadiness = buildChangeReadiness(options.intent, changedFiles, graph, verification);
-  const claims = buildClaims(view, entrypoints, boundaries, flows, contracts, verification, readFirst);
+  const claims = buildClaims(
+    view,
+    entrypoints,
+    boundaries,
+    flows,
+    contracts,
+    verification,
+    readFirst,
+  );
   const unknowns = buildUnknowns(view, graph, contracts, verification);
 
   return {
@@ -75,7 +123,13 @@ export async function computeUnderstandReport(
     view,
     rootPath,
     ...(options.intent ? { intent: options.intent } : {}),
-    summary: summarize(view, entrypoints.length, boundaries.length, flows.length, contracts.publicExports.length),
+    summary: summarize(
+      view,
+      entrypoints.length,
+      boundaries.length,
+      flows.length,
+      contracts.publicExports.length,
+    ),
     claims,
     entrypoints,
     boundaries,
@@ -87,12 +141,15 @@ export async function computeUnderstandReport(
     risks,
     unknowns,
     commands: commandsForView(view),
-    ...(semantic.truncated || risks.length >= maxItems || readFirst.length >= maxItems ? { truncated: true } : {}),
+    ...(semantic.truncated || risks.length >= maxItems || readFirst.length >= maxItems
+      ? { truncated: true }
+      : {}),
   };
 }
 
 function normalizeView(value: UnderstandView | undefined): UnderstandView {
-  if (value === 'flow' || value === 'contracts' || value === 'change' || value === 'verify') return value;
+  if (value === 'flow' || value === 'contracts' || value === 'change' || value === 'verify')
+    return value;
   return 'map';
 }
 
@@ -101,9 +158,15 @@ function normalizeLimit(value: number | undefined): number {
   return Math.max(1, Math.min(30, Math.floor(value)));
 }
 
-async function resolveChangedFiles(rootPath: string, explicit: string[] | undefined): Promise<string[]> {
+async function resolveChangedFiles(
+  rootPath: string,
+  explicit: string[] | undefined,
+): Promise<string[]> {
   if (explicit?.length) return unique(explicit);
-  const changed = await getChangedFiles(rootPath).catch(() => ({ available: false, files: [] as string[] }));
+  const changed = await getChangedFiles(rootPath).catch(() => ({
+    available: false,
+    files: [] as string[],
+  }));
   return changed.available ? changed.files : [];
 }
 
@@ -120,19 +183,24 @@ function buildEntrypoints(
       const lower = file.relativePath.toLowerCase();
       const graphFile = graph.files.get(file.relativePath);
       const exports = graphFile?.exports.map((entry) => entry.name).filter(Boolean) ?? [];
-      const kind: UnderstandEntrypoint['kind'] =
-        packageEntrypoints.has(file.relativePath) ? 'package-export'
-          : lower.includes('server') || lower.includes('app') ? 'server'
-            : lower.includes('route') ? 'route'
-              : lower.includes('cli') || lower.includes('bin') ? 'cli'
-                : TEST_PATTERNS.some((pattern) => pattern.test(file.relativePath)) ? 'test'
-                  : lower.endsWith('index.ts') || lower.endsWith('index.js') || exports.length > 0 ? 'module'
-                    : 'module';
+      const kind: UnderstandEntrypoint['kind'] = packageEntrypoints.has(file.relativePath)
+        ? 'package-export'
+        : lower.includes('server') || lower.includes('app')
+          ? 'server'
+          : lower.includes('route')
+            ? 'route'
+            : lower.includes('cli') || lower.includes('bin')
+              ? 'cli'
+              : TEST_PATTERNS.some((pattern) => pattern.test(file.relativePath))
+                ? 'test'
+                : lower.endsWith('index.ts') || lower.endsWith('index.js') || exports.length > 0
+                  ? 'module'
+                  : 'module';
       const score =
-        (kind === 'package-export' ? 50 : 0)
-        + (kind === 'server' || kind === 'cli' || kind === 'route' ? 30 : 0)
-        + exports.length
-        + (graph.localImporters.get(file.relativePath)?.size ?? 0);
+        (kind === 'package-export' ? 50 : 0) +
+        (kind === 'server' || kind === 'cli' || kind === 'route' ? 30 : 0) +
+        exports.length +
+        (graph.localImporters.get(file.relativePath)?.size ?? 0);
       return { file, graphFile, exports, kind, score };
     })
     .filter((entry) => entry.score > 0 || entry.kind !== 'module')
@@ -143,7 +211,14 @@ function buildEntrypoints(
     return files
       .filter((file) => CODE_EXTENSIONS.has(file.extension))
       .slice(0, Math.min(1, maxItems))
-      .map((entry) => entrypoint(entry.relativePath, 'module', [], 'First parseable source file found in the scan.'));
+      .map((entry) =>
+        entrypoint(
+          entry.relativePath,
+          'module',
+          [],
+          'First parseable source file found in the scan.',
+        ),
+      );
   }
 
   return candidates.map((entry) =>
@@ -175,14 +250,21 @@ function packageEntrypointFiles(rootPath: string): Set<string> {
       ...(pkg.bin && typeof pkg.bin === 'object' ? Object.values(pkg.bin) : []),
       ...(typeof pkg.exports === 'string' ? [pkg.exports] : []),
     ];
-    return new Set(values.filter((value): value is string => typeof value === 'string').map(normalizePackagePath));
+    return new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .map(normalizePackagePath),
+    );
   } catch {
     return new Set();
   }
 }
 
 function normalizePackagePath(value: string): string {
-  return value.replace(/^\.\//, '').replace(/^dist\//, 'src/').replace(/\.js$/, '.ts');
+  return value
+    .replace(/^\.\//, '')
+    .replace(/^dist\//, 'src/')
+    .replace(/\.js$/, '.ts');
 }
 
 function entrypoint(
@@ -214,19 +296,34 @@ function buildBoundaries(graph: CodeGraph, maxItems: number): UnderstandBoundary
       const dependsOn = new Set<string>();
       for (const file of files) {
         for (const imp of file.imports) {
-          const local = [...graph.localImporters.entries()].find(([, importers]) => importers.has(file.relativePath))?.[0];
+          const local = [...graph.localImporters.entries()].find(([, importers]) =>
+            importers.has(file.relativePath),
+          )?.[0];
           if (local && !fileNames.has(local)) dependsOn.add(boundaryName(local));
           const source = imp.source.split('/')[0];
           if (source && !imp.source.startsWith('.')) dependsOn.add(source);
         }
       }
-      const publicExports = files.flatMap((file) => file.exports.map((entry) => entry.name).filter(Boolean)).slice(0, 12);
+      const publicExports = files
+        .flatMap((file) => file.exports.map((entry) => entry.name).filter(Boolean))
+        .slice(0, 12);
       return {
         name,
         files: files.length,
         publicExports,
-        dependsOn: [...dependsOn].filter((entry) => entry !== name).sort().slice(0, 12),
-        citations: files.slice(0, 3).map((file) => citation(file.relativePath, publicExports[0], 'Boundary contains parseable source files.')),
+        dependsOn: [...dependsOn]
+          .filter((entry) => entry !== name)
+          .sort()
+          .slice(0, 12),
+        citations: files
+          .slice(0, 3)
+          .map((file) =>
+            citation(
+              file.relativePath,
+              publicExports[0],
+              'Boundary contains parseable source files.',
+            ),
+          ),
       };
     })
     .sort((a, b) => b.files - a.files || a.name.localeCompare(b.name))
@@ -239,7 +336,11 @@ function boundaryName(relativePath: string): string {
   return parts[0] ?? '.';
 }
 
-function buildSideEffects(graph: CodeGraph, dataflowFiles: string[], maxItems: number): UnderstandFlowSideEffect[] {
+function buildSideEffects(
+  graph: CodeGraph,
+  dataflowFiles: string[],
+  maxItems: number,
+): UnderstandFlowSideEffect[] {
   const effects: UnderstandFlowSideEffect[] = [];
   const seen = new Set<string>();
   for (const [file, entry] of graph.files) {
@@ -247,15 +348,26 @@ function buildSideEffects(graph: CodeGraph, dataflowFiles: string[], maxItems: n
     const imports = entry.imports.map((imp) => imp.source).join(' ');
     const text = `${calls} ${imports}`;
     const detected: Array<[UnderstandFlowSideEffect['kind'], RegExp, string]> = [
-      ['database', /\b(query|execute|sql|db|pool|repository)\b/i, 'Database-style query or repository call detected.'],
-      ['filesystem', /\b(readFile|writeFile|fs\.|createReadStream|createWriteStream)\b/i, 'Filesystem read/write call detected.'],
+      [
+        'database',
+        /\b(query|execute|sql|db|pool|repository)\b/i,
+        'Database-style query or repository call detected.',
+      ],
+      [
+        'filesystem',
+        /\b(readFile|writeFile|fs\.|createReadStream|createWriteStream)\b/i,
+        'Filesystem read/write call detected.',
+      ],
       ['network', /\b(fetch|axios|http|https|request)\b/i, 'Network client call detected.'],
       ['process', /\b(spawn|exec|execFile|process\.exit)\b/i, 'Process control call detected.'],
       ['env', /\bprocess\.env\b/i, 'Environment/config read detected.'],
     ];
     for (const [kind, pattern, label] of detected) {
       const key = `${kind}:${file}`;
-      if (!seen.has(key) && (pattern.test(text) || (kind === 'database' && dataflowFiles.includes(file)))) {
+      if (
+        !seen.has(key) &&
+        (pattern.test(text) || (kind === 'database' && dataflowFiles.includes(file)))
+      ) {
         seen.add(key);
         effects.push({ kind, label, files: [file], citations: [citation(file, undefined, label)] });
       }
@@ -271,11 +383,23 @@ function buildFlows(
   maxItems: number,
 ): UnderstandFlow[] {
   const flows = entrypoints
-    .filter((entry) => entry.kind === 'server' || entry.kind === 'route' || entry.kind === 'cli' || entry.kind === 'package-export')
+    .filter(
+      (entry) =>
+        entry.kind === 'server' ||
+        entry.kind === 'route' ||
+        entry.kind === 'cli' ||
+        entry.kind === 'package-export',
+    )
     .map((entry, index): UnderstandFlow => {
       const reachable = reachableFiles(entry.file, graph, 5);
-      const effects = sideEffects.filter((effect) => effect.files.some((file) => reachable.includes(file) || file === entry.file));
-      const pathFiles = unique([entry.file, ...reachable, ...effects.flatMap((effect) => effect.files)]).slice(0, 8);
+      const effects = sideEffects.filter((effect) =>
+        effect.files.some((file) => reachable.includes(file) || file === entry.file),
+      );
+      const pathFiles = unique([
+        entry.file,
+        ...reachable,
+        ...effects.flatMap((effect) => effect.files),
+      ]).slice(0, 8);
       return {
         id: `flow-${index + 1}`,
         label: `${entry.kind} flow from ${entry.file}`,
@@ -283,19 +407,29 @@ function buildFlows(
         path: pathFiles,
         sideEffects: effects.length > 0 ? effects : sideEffects.slice(0, 2),
         confidence: pathFiles.length > 1 ? 'medium' : 'low',
-        citations: pathFiles.slice(0, 4).map((file) => citation(file, undefined, 'Flow path is derived from local import and side-effect evidence.')),
+        citations: pathFiles
+          .slice(0, 4)
+          .map((file) =>
+            citation(
+              file,
+              undefined,
+              'Flow path is derived from local import and side-effect evidence.',
+            ),
+          ),
       };
     })
     .slice(0, maxItems);
-  return flows.length > 0 ? flows : entrypoints.slice(0, 1).map((entry) => ({
-    id: 'flow-1',
-    label: `entry flow from ${entry.file}`,
-    entry,
-    path: [entry.file],
-    sideEffects: sideEffects.slice(0, 2),
-    confidence: 'low',
-    citations: entry.citations,
-  }));
+  return flows.length > 0
+    ? flows
+    : entrypoints.slice(0, 1).map((entry) => ({
+        id: 'flow-1',
+        label: `entry flow from ${entry.file}`,
+        entry,
+        path: [entry.file],
+        sideEffects: sideEffects.slice(0, 2),
+        confidence: 'low',
+        citations: entry.citations,
+      }));
 }
 
 function reachableFiles(entryFile: string, graph: CodeGraph, maxDepth: number): string[] {
@@ -322,7 +456,15 @@ function reachableFiles(entryFile: string, graph: CodeGraph, maxDepth: number): 
 function resolveLocalImport(fromFile: string, source: string, graph: CodeGraph): string | null {
   if (!source.startsWith('.')) return null;
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), source));
-  const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}.js`, `${base}.jsx`, path.posix.join(base, 'index.ts'), path.posix.join(base, 'index.js')];
+  const candidates = [
+    base,
+    `${base}.ts`,
+    `${base}.tsx`,
+    `${base}.js`,
+    `${base}.jsx`,
+    path.posix.join(base, 'index.ts'),
+    path.posix.join(base, 'index.js'),
+  ];
   return candidates.find((candidate) => graph.files.has(candidate)) ?? null;
 }
 
@@ -333,22 +475,42 @@ async function buildContracts(
   changedFiles: string[],
   maxItems: number,
 ): Promise<UnderstandContracts> {
-  const packageExports = [...packageEntrypointFiles(rootPath)].map((file): UnderstandPublicExport => ({
-    name: file,
-    file,
-    kind: 'package',
-    citations: [citation('package.json', file, 'Package metadata exposes this file.')],
-  }));
+  const packageExports = [...packageEntrypointFiles(rootPath)].map(
+    (file): UnderstandPublicExport => ({
+      name: file,
+      file,
+      kind: 'package',
+      citations: [citation('package.json', file, 'Package metadata exposes this file.')],
+    }),
+  );
   const symbolExports = [...graph.files.values()]
-    .flatMap((file) => file.exports.map((entry): UnderstandPublicExport => ({
-      name: entry.name,
-      file: file.relativePath,
-      kind: 'symbol',
-      citations: [citation(file.relativePath, entry.name, 'Exported symbol is part of the code contract.')],
-    })))
+    .flatMap((file) =>
+      file.exports.map(
+        (entry): UnderstandPublicExport => ({
+          name: entry.name,
+          file: file.relativePath,
+          kind: 'symbol',
+          citations: [
+            citation(
+              file.relativePath,
+              entry.name,
+              'Exported symbol is part of the code contract.',
+            ),
+          ],
+        }),
+      ),
+    )
     .filter((entry) => Boolean(entry.name));
   const configContracts = await findConfigContracts(rootPath, files, maxItems);
-  const focusFiles = changedFiles.length > 0 ? changedFiles : [...new Set([...packageExports.map((entry) => entry.file), ...symbolExports.map((entry) => entry.file)])];
+  const focusFiles =
+    changedFiles.length > 0
+      ? changedFiles
+      : [
+          ...new Set([
+            ...packageExports.map((entry) => entry.file),
+            ...symbolExports.map((entry) => entry.file),
+          ]),
+        ];
   const breakingChangeRisks = focusFiles.slice(0, maxItems).map((file, index) => ({
     id: `contract-risk-${index + 1}`,
     title: `Changing ${file} may affect public imports or runtime configuration`,
@@ -357,28 +519,43 @@ async function buildContracts(
     command: `projscan impact ${file} --format json`,
   }));
   return {
-    publicExports: uniqueBy([...packageExports, ...symbolExports], (entry) => `${entry.kind}:${entry.file}:${entry.name}`).slice(0, maxItems),
+    publicExports: uniqueBy(
+      [...packageExports, ...symbolExports],
+      (entry) => `${entry.kind}:${entry.file}:${entry.name}`,
+    ).slice(0, maxItems),
     configContracts,
     breakingChangeRisks,
   };
 }
 
-async function findConfigContracts(rootPath: string, files: FileEntry[], maxItems: number): Promise<UnderstandConfigContract[]> {
+async function findConfigContracts(
+  rootPath: string,
+  files: FileEntry[],
+  maxItems: number,
+): Promise<UnderstandConfigContract[]> {
   const contracts: UnderstandConfigContract[] = [];
-  const relevant = files.filter((file) => CODE_EXTENSIONS.has(file.extension) || file.relativePath === 'package.json').slice(0, 400);
+  const relevant = files
+    .filter((file) => CODE_EXTENSIONS.has(file.extension) || file.relativePath === 'package.json')
+    .slice(0, 400);
   for (const file of relevant) {
     if (contracts.length >= maxItems) break;
     const full = path.join(rootPath, file.relativePath);
     const content = await fs.readFile(full, 'utf8').catch(() => '');
     for (const match of content.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
       const name = match[1];
-      if (!name || contracts.some((entry) => entry.name === name && entry.file === file.relativePath)) continue;
+      if (
+        !name ||
+        contracts.some((entry) => entry.name === name && entry.file === file.relativePath)
+      )
+        continue;
       contracts.push({
         name,
         file: file.relativePath,
         kind: 'env',
         required: false,
-        citations: [citation(file.relativePath, name, 'Environment variable is read by source code.')],
+        citations: [
+          citation(file.relativePath, name, 'Environment variable is read by source code.'),
+        ],
       });
     }
   }
@@ -395,7 +572,9 @@ function buildReadFirst(
     ...entrypoints.map((entry) => entry.file),
     ...boundaries.flatMap((boundary) => boundary.citations.map((cite) => cite.file)),
     ...[...graph.files.values()]
-      .sort((a, b) => (b.exports.length + b.callSites.length) - (a.exports.length + a.callSites.length))
+      .sort(
+        (a, b) => b.exports.length + b.callSites.length - (a.exports.length + a.callSites.length),
+      )
       .map((file) => file.relativePath),
   ]);
   return candidates.slice(0, maxItems).map((file) => ({
@@ -404,7 +583,13 @@ function buildReadFirst(
       ? 'Start here because it is an entrypoint into the repo.'
       : 'Read this early because graph evidence shows exports, calls, or package boundary value.',
     command: `projscan file ${file} --format json`,
-    citations: [citation(file, undefined, 'Read-first recommendation is backed by graph or entrypoint evidence.')],
+    citations: [
+      citation(
+        file,
+        undefined,
+        'Read-first recommendation is backed by graph or entrypoint evidence.',
+      ),
+    ],
   }));
 }
 
@@ -416,34 +601,47 @@ async function buildRisks(
   dataflowFiles: string[],
   maxItems: number,
 ): Promise<UnderstandRisk[]> {
-  const hotspots = await analyzeHotspots(rootPath, files, issues, { limit: maxItems, graph }).catch(() => null);
+  const hotspots = await analyzeHotspots(rootPath, files, issues, { limit: maxItems, graph }).catch(
+    () => null,
+  );
   const fromHotspots = hotspots?.available
-    ? hotspots.hotspots.slice(0, maxItems).map((hotspot): UnderstandRisk => ({
-        id: `understand-hotspot-${slug(hotspot.relativePath)}`,
-        priority: hotspot.riskScore >= 70 ? 'p0' : hotspot.riskScore >= 30 ? 'p1' : 'p2',
-        title: `Hotspot ${hotspot.relativePath}`,
-        files: [hotspot.relativePath],
-        why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)}`,
-        command: `projscan file ${hotspot.relativePath} --format json`,
-      }))
+    ? hotspots.hotspots.slice(0, maxItems).map(
+        (hotspot): UnderstandRisk => ({
+          id: `understand-hotspot-${slug(hotspot.relativePath)}`,
+          priority: hotspot.riskScore >= 70 ? 'p0' : hotspot.riskScore >= 30 ? 'p1' : 'p2',
+          title: `Hotspot ${hotspot.relativePath}`,
+          files: [hotspot.relativePath],
+          why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)}`,
+          command: `projscan file ${hotspot.relativePath} --format json`,
+        }),
+      )
     : [];
-  const fromDataflow = unique(dataflowFiles).slice(0, maxItems).map((file): UnderstandRisk => ({
-    id: `understand-dataflow-${slug(file)}`,
-    priority: 'p1',
-    title: `Review side effects in ${file}`,
-    files: [file],
-    why: 'Dataflow or side-effect evidence touches this file.',
-    command: 'projscan dataflow --format json',
-  }));
-  const fromIssues = issues.slice(0, maxItems).map((issue): UnderstandRisk => ({
-    id: `understand-issue-${issue.id}`,
-    priority: issue.severity === 'error' ? 'p0' : issue.severity === 'warning' ? 'p1' : 'p2',
-    title: issue.title,
-    files: issue.locations?.map((location) => location.file) ?? [],
-    why: issue.description,
-    command: `projscan explain-issue ${issue.id} --format json`,
-  }));
-  return uniqueBy([...fromDataflow, ...fromHotspots, ...fromIssues], (risk) => risk.id).slice(0, maxItems);
+  const fromDataflow = unique(dataflowFiles)
+    .slice(0, maxItems)
+    .map(
+      (file): UnderstandRisk => ({
+        id: `understand-dataflow-${slug(file)}`,
+        priority: 'p1',
+        title: `Review side effects in ${file}`,
+        files: [file],
+        why: 'Dataflow or side-effect evidence touches this file.',
+        command: 'projscan dataflow --format json',
+      }),
+    );
+  const fromIssues = issues.slice(0, maxItems).map(
+    (issue): UnderstandRisk => ({
+      id: `understand-issue-${issue.id}`,
+      priority: issue.severity === 'error' ? 'p0' : issue.severity === 'warning' ? 'p1' : 'p2',
+      title: issue.title,
+      files: issue.locations?.map((location) => location.file) ?? [],
+      why: issue.description,
+      command: `projscan explain-issue ${issue.id} --format json`,
+    }),
+  );
+  return uniqueBy([...fromDataflow, ...fromHotspots, ...fromIssues], (risk) => risk.id).slice(
+    0,
+    maxItems,
+  );
 }
 
 function buildChangeReadiness(
@@ -458,9 +656,10 @@ function buildChangeReadiness(
     return {
       label: `Blast radius for ${file}`,
       files: unique([file, ...importers]),
-      why: importers.length > 0
-        ? 'Local importers depend on this file and should be reviewed before editing.'
-        : 'No local importers were found; inspect the file contract and tests before editing.',
+      why:
+        importers.length > 0
+          ? 'Local importers depend on this file and should be reviewed before editing.'
+          : 'No local importers were found; inspect the file contract and tests before editing.',
       command: `projscan impact ${file} --format json`,
     };
   });
@@ -478,7 +677,8 @@ function buildChangeReadiness(
       {
         owner: 'unassigned',
         files: focusFiles,
-        reason: 'No CODEOWNERS lookup is required for this local understand report; add ownership metadata to improve routing.',
+        reason:
+          'No CODEOWNERS lookup is required for this local understand report; add ownership metadata to improve routing.',
       },
     ],
     rollback: {
@@ -492,15 +692,21 @@ function buildChangeReadiness(
   };
 }
 
-function buildVerification(files: FileEntry[], changedFiles: string[], maxItems: number): UnderstandVerification {
+function buildVerification(
+  files: FileEntry[],
+  changedFiles: string[],
+  maxItems: number,
+): UnderstandVerification {
   const sourceFiles = unique(changedFiles.filter((file) => !isTestFile(file))).slice(0, maxItems);
   const testFiles = files.filter((file) => isTestFile(file.relativePath));
   const directTests: UnderstandDirectTest[] = sourceFiles.map((file) => {
-    const base = path.basename(file).replace(/\.[^.]+$/, '');
-    const tests = testFiles
-      .map((entry) => entry.relativePath)
-      .filter((testFile) => testFile.toLowerCase().includes(base.toLowerCase()))
-      .slice(0, 5);
+    const token = directTestMatchToken(file);
+    const tests = token
+      ? testFiles
+          .map((entry) => entry.relativePath)
+          .filter((testFile) => testFile.toLowerCase().includes(token.toLowerCase()))
+          .slice(0, 5)
+      : [];
     return {
       file,
       tests,
@@ -512,7 +718,7 @@ function buildVerification(files: FileEntry[], changedFiles: string[], maxItems:
     .map((entry) => ({
       file: entry.file,
       reason: 'No direct test file matched by filename.',
-      command: `projscan search ${path.basename(entry.file).replace(/\.[^.]+$/, '')} --format json`,
+      command: `projscan search ${directTestSearchToken(entry.file) ?? entry.file} --format json`,
     }));
   return {
     tiers: verificationTiers(),
@@ -526,7 +732,10 @@ function verificationTiers(): UnderstandVerificationTier[] {
     {
       id: 'minimal',
       label: 'Minimal local proof',
-      commands: ['projscan preflight --mode before_edit --format json', 'projscan understand --view change --format json'],
+      commands: [
+        'projscan preflight --mode before_edit --format json',
+        'projscan understand --view change --format json',
+      ],
       when: 'Before a small edit or exploratory agent pass.',
     },
     {
@@ -583,8 +792,11 @@ function buildClaims(
       id: 'contracts-public-surface',
       title: 'Public exports and config reads define the change contract',
       detail: `${contracts.publicExports.length} export(s), ${contracts.configContracts.length} config contract(s).`,
-      confidence: contracts.publicExports.length > 0 || contracts.configContracts.length > 0 ? 'high' : 'low',
-      citations: [...contracts.publicExports, ...contracts.configContracts].flatMap((entry) => entry.citations).slice(0, 5),
+      confidence:
+        contracts.publicExports.length > 0 || contracts.configContracts.length > 0 ? 'high' : 'low',
+      citations: [...contracts.publicExports, ...contracts.configContracts]
+        .flatMap((entry) => entry.citations)
+        .slice(0, 5),
     });
   }
   if (view === 'verify') {
@@ -618,7 +830,8 @@ function buildUnknowns(
     unknowns.push({
       id: 'config-contracts-unknown',
       question: 'Which environment or config values are required?',
-      whyUnknown: 'No static process.env reads or config files were detected in the sampled source files.',
+      whyUnknown:
+        'No static process.env reads or config files were detected in the sampled source files.',
       command: 'projscan search process.env --format json',
     });
   }
@@ -634,12 +847,14 @@ function buildUnknowns(
 }
 
 function commandsForView(view: UnderstandView): string[] {
-  return unique([
-    `projscan understand --view ${view} --format json`,
-    'projscan start --mode before_edit --format json',
-    'projscan preflight --mode before_edit --format json',
-    view === 'change' ? 'projscan understand --view verify --format json' : undefined,
-  ].filter((command): command is string => Boolean(command)));
+  return unique(
+    [
+      `projscan understand --view ${view} --format json`,
+      'projscan start --mode before_edit --format json',
+      'projscan preflight --mode before_edit --format json',
+      view === 'change' ? 'projscan understand --view verify --format json' : undefined,
+    ].filter((command): command is string => Boolean(command)),
+  );
 }
 
 function summarize(
@@ -649,10 +864,14 @@ function summarize(
   flowCount: number,
   contractCount: number,
 ): string {
-  if (view === 'flow') return `flow map: ${flowCount} runtime path(s), ${entrypointCount} entrypoint(s)`;
-  if (view === 'contracts') return `contract map: ${contractCount} public contract(s), ${boundaryCount} boundary candidate(s)`;
-  if (view === 'change') return `change readiness: ${entrypointCount} entrypoint(s), ${boundaryCount} boundary candidate(s)`;
-  if (view === 'verify') return `verification map: proof tiers and direct-test gaps for likely touched files`;
+  if (view === 'flow')
+    return `flow map: ${flowCount} runtime path(s), ${entrypointCount} entrypoint(s)`;
+  if (view === 'contracts')
+    return `contract map: ${contractCount} public contract(s), ${boundaryCount} boundary candidate(s)`;
+  if (view === 'change')
+    return `change readiness: ${entrypointCount} entrypoint(s), ${boundaryCount} boundary candidate(s)`;
+  if (view === 'verify')
+    return `verification map: proof tiers and direct-test gaps for likely touched files`;
   return `repo map: ${entrypointCount} entrypoint(s), ${boundaryCount} boundary candidate(s)`;
 }
 
@@ -666,6 +885,20 @@ function citation(file: string, symbol: string | undefined, reason: string): Und
 
 function isTestFile(file: string): boolean {
   return TEST_PATTERNS.some((pattern) => pattern.test(file));
+}
+
+function directTestMatchToken(file: string): string | null {
+  if (/[\\/]$/.test(file)) return null;
+  return directTestSearchToken(file);
+}
+
+function directTestSearchToken(file: string): string | null {
+  const basename = path.basename(file.replace(/[\\/]+$/, ''));
+  if (!basename) return null;
+  const extension = path.extname(basename);
+  const token =
+    extension && extension !== basename ? basename.slice(0, -extension.length) : basename;
+  return token.trim() || null;
 }
 
 function unique<T>(values: T[]): T[] {
@@ -683,5 +916,10 @@ function uniqueBy<T>(values: T[], keyFn: (value: T) => string): T[] {
 }
 
 function slug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'item'
+  );
 }

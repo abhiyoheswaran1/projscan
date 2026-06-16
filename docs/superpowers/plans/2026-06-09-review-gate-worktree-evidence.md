@@ -23,6 +23,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -44,8 +45,12 @@ expect(report.missionControl.reviewGate.worktree).toEqual(
   }),
 );
 expect(report.missionControl.reviewGate.markdown).toContain('## Worktree Evidence');
-expect(report.missionControl.reviewGate.markdown).toContain('Current worktree evidence is unavailable: not a git repository.');
-expect(report.missionControl.handoff.reviewGate.worktree).toEqual(report.missionControl.reviewGate.worktree);
+expect(report.missionControl.reviewGate.markdown).toContain(
+  'Current worktree evidence is unavailable: not a git repository.',
+);
+expect(report.missionControl.handoff.reviewGate.worktree).toEqual(
+  report.missionControl.reviewGate.worktree,
+);
 ```
 
 - [ ] **Step 2: Add CLI failing assertions**
@@ -76,8 +81,12 @@ expect(shortcut.stdout).toContain(report.missionControl.reviewGate.worktree.summ
 In `projscan_start returns MCP-callable args for fuzzy impact intents`, add:
 
 ```ts
-expect(result.start.missionControl.reviewGate.worktree.summary).toContain('Current worktree evidence');
-expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(result.start.missionControl.reviewGate.worktree);
+expect(result.start.missionControl.reviewGate.worktree.summary).toContain(
+  'Current worktree evidence',
+);
+expect(result.start.missionControl.handoff.reviewGate.worktree).toEqual(
+  result.start.missionControl.reviewGate.worktree,
+);
 ```
 
 - [ ] **Step 4: Run red tests**
@@ -93,6 +102,7 @@ Expected: fail because `reviewGate.worktree` and Markdown worktree evidence do n
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -166,9 +176,10 @@ function buildMissionReviewWorktree(
     changedFileCount,
     files: currentWorktree.files,
     baseRef,
-    summary: changedFileCount === 0
-      ? 'Current worktree evidence sees no changed files.'
-      : `Current worktree evidence sees ${changedFileCount} changed file(s)${baseRef ? ` against ${baseRef}` : ''}.`,
+    summary:
+      changedFileCount === 0
+        ? 'Current worktree evidence sees no changed files.'
+        : `Current worktree evidence sees ${changedFileCount} changed file(s)${baseRef ? ` against ${baseRef}` : ''}.`,
   };
 }
 ```
@@ -197,6 +208,7 @@ Expected: build passes and focused core test passes.
 ## Task 3: CLI and Docs
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
@@ -227,6 +239,7 @@ Expected: build passes and focused tests pass.
 ## Task 4: Verification and Commit
 
 **Files:**
+
 - All modified files
 
 - [ ] **Step 1: Run verification**

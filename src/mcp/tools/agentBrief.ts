@@ -2,7 +2,13 @@ import { computeAgentBrief } from '../../core/agentBrief.js';
 import type { AgentBriefIntent } from '../../types.js';
 import type { McpTool } from './_shared.js';
 
-const INTENTS: readonly AgentBriefIntent[] = ['next_agent', 'bug_hunt', 'release', 'refactor', 'hardening'];
+const INTENTS: readonly AgentBriefIntent[] = [
+  'next_agent',
+  'bug_hunt',
+  'release',
+  'refactor',
+  'hardening',
+];
 
 export const agentBriefTool: McpTool = {
   name: 'projscan_agent_brief',

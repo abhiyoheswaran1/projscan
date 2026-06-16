@@ -75,15 +75,22 @@ export const workspaceGraphTool: McpTool = {
         return await fileImportersView(workspace, rootPath, file, repo);
       }
       default:
-        throw new Error(
-          `Unknown action "${action}". Valid: list, graph, file_importers.`,
-        );
+        throw new Error(`Unknown action "${action}". Valid: list, graph, file_importers.`);
     }
   },
 };
 
 const MAX_WORKSPACE_GRAPH_FILES = 5000;
-const SKIPPED_WORKSPACE_DIRS = new Set(['.git', '.projscan-cache', 'node_modules', 'dist', 'build', 'coverage', '.next', '.nuxt']);
+const SKIPPED_WORKSPACE_DIRS = new Set([
+  '.git',
+  '.projscan-cache',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.next',
+  '.nuxt',
+]);
 
 interface RepoSummary {
   name: string;

@@ -78,9 +78,11 @@ describe('swiftAdapter cyclomatic complexity', () => {
   });
 
   it('guard adds 1', async () => {
-    expect(await cc(`func f(x: Int?) {
+    expect(
+      await cc(`func f(x: Int?) {
   guard let _ = x else { return }
-}`)).toBe(2);
+}`),
+    ).toBe(2);
   });
 
   it('for and while each add 1', async () => {

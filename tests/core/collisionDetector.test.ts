@@ -24,7 +24,10 @@ beforeEach(async () => {
   await git(root, 'config', 'user.name', 't');
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   // auth.ts imports db.ts → db.ts is in auth.ts's blast radius.
-  await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql; }\n');
+  await fs.writeFile(
+    path.join(root, 'src', 'db.ts'),
+    'export function query(sql: string) { return sql; }\n',
+  );
   await fs.writeFile(
     path.join(root, 'src', 'auth.ts'),
     'import { query } from "./db.js"; export function login() { return query("select 1"); }\n',
@@ -46,7 +49,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   // Remove worktrees first so the main repo dir can be cleaned.
-  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(() => {});
+  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(
+    () => {},
+  );
   await Promise.all(cleanup.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
 });
 
@@ -69,8 +74,14 @@ describe('detectCollisions', () => {
 
   it('flags a same-file collision when two worktrees change the same file', async () => {
     // Agent A (main): uncommitted edit to db.ts. Agent B (sibling): committed edit to db.ts.
-    await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql.trim(); }\n');
-    await fs.writeFile(path.join(sibling, 'src', 'db.ts'), 'export function query(sql: string) { return sql.toUpperCase(); }\n');
+    await fs.writeFile(
+      path.join(root, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.trim(); }\n',
+    );
+    await fs.writeFile(
+      path.join(sibling, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.toUpperCase(); }\n',
+    );
     await git(sibling, 'commit', '-qam', 'b edits db');
 
     const report = await detectCollisions(root);
@@ -82,7 +93,10 @@ describe('detectCollisions', () => {
 
   it('flags a dependency collision when one worktree edits a file the other imports', async () => {
     // Agent A (main): edits db.ts. Agent B (sibling): edits auth.ts, which imports db.ts.
-    await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql.trim(); }\n');
+    await fs.writeFile(
+      path.join(root, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.trim(); }\n',
+    );
     await fs.writeFile(
       path.join(sibling, 'src', 'auth.ts'),
       'import { query } from "./db.js"; export function login() { return query("select 2"); }\n',
@@ -103,7 +117,10 @@ describe('detectCollisions', () => {
   });
 
   it('reports no collision when worktrees touch unrelated files', async () => {
-    await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql.trim(); }\n');
+    await fs.writeFile(
+      path.join(root, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.trim(); }\n',
+    );
     await fs.writeFile(path.join(sibling, 'src', 'unrelated.ts'), 'export const x = 2;\n');
     await git(sibling, 'commit', '-qam', 'b edits unrelated');
 
@@ -118,7 +135,10 @@ describe('detectCollisions — transitive recall (opt-in)', () => {
   beforeEach(async () => {
     // Agent A (main): edit db.ts. Agent B: edit service.ts (service → auth → db,
     // so service is TWO hops from db — invisible to the precise 1-hop default).
-    await fs.writeFile(path.join(root, 'src', 'db.ts'), 'export function query(sql: string) { return sql.trim(); }\n');
+    await fs.writeFile(
+      path.join(root, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.trim(); }\n',
+    );
     await fs.writeFile(
       path.join(sibling, 'src', 'service.ts'),
       'import { login } from "./auth.js"; export function run() { return login() + 1; }\n',
@@ -129,7 +149,8 @@ describe('detectCollisions — transitive recall (opt-in)', () => {
   it('does NOT flag the two-hop dependency by default (precise 1-hop)', async () => {
     const report = await detectCollisions(root);
     const dep = report.collisions.filter(
-      (c) => c.kind === 'dependency' && (c.fileA === 'src/service.ts' || c.fileB === 'src/service.ts'),
+      (c) =>
+        c.kind === 'dependency' && (c.fileA === 'src/service.ts' || c.fileB === 'src/service.ts'),
     );
     expect(dep).toEqual([]);
   });

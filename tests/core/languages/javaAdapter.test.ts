@@ -123,7 +123,8 @@ describe('javaAdapter', () => {
     });
 
     it('counts for / enhanced for / while', async () => {
-      const src = 'public class A { void m(int[] xs) { for(int i=0;i<10;i++){} for(int x: xs){} while(x){} } }';
+      const src =
+        'public class A { void m(int[] xs) { for(int i=0;i<10;i++){} for(int x: xs){} while(x){} } }';
       expect(await cc(src)).toBe(4);
     });
 
@@ -133,7 +134,8 @@ describe('javaAdapter', () => {
     });
 
     it('counts case but not default', async () => {
-      const src = 'public class A { void m(int x) { switch(x) { case 1: break; case 2: break; default: break; } } }';
+      const src =
+        'public class A { void m(int x) { switch(x) { case 1: break; case 2: break; default: break; } } }';
       // 2 case branches → 2 decisions → CC 3.
       expect(await cc(src)).toBe(3);
     });
@@ -194,7 +196,10 @@ describe('javaAdapter', () => {
 
     it('returns null for stdlib imports (no source-root match)', () => {
       const graphFiles = new Map<string, { relativePath: string }>([
-        ['src/main/java/com/foo/Caller.java', { relativePath: 'src/main/java/com/foo/Caller.java' }],
+        [
+          'src/main/java/com/foo/Caller.java',
+          { relativePath: 'src/main/java/com/foo/Caller.java' },
+        ],
       ]);
       const resolved = javaAdapter.resolveImport(
         'src/main/java/com/foo/Caller.java',

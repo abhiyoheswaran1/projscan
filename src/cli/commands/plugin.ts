@@ -1,7 +1,13 @@
 import chalk from 'chalk';
 import path from 'node:path';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import {
   PLUGIN_PREVIEW_FLAG,
   discoverPluginManifests,
@@ -57,7 +63,9 @@ export function registerPlugin(): void {
 
   plugin
     .command('test <manifest>')
-    .description('Validate a local plugin; execution requires --execute and PROJSCAN_PLUGINS_PREVIEW=1')
+    .description(
+      'Validate a local plugin; execution requires --execute and PROJSCAN_PLUGINS_PREVIEW=1',
+    )
     .option('--fixture <path>', 'fixture root for analyzer plugins')
     .option('--execute', 'import and run local plugin code after static validation')
     .option('--confirm-execute', 'alias for --execute; confirms local code execution')
@@ -106,7 +114,9 @@ async function runList(): Promise<void> {
   await Promise.all(
     entries.map(async (e) => {
       if (!e.manifest) return;
-      const status = await getPluginTrustStatus(moduleEntryPath(e as PluginDiscoveryEntry & { manifest: PluginManifest }));
+      const status = await getPluginTrustStatus(
+        moduleEntryPath(e as PluginDiscoveryEntry & { manifest: PluginManifest }),
+      );
       trustByManifest.set(e.manifestPath, status.status);
     }),
   );
@@ -148,7 +158,9 @@ async function runList(): Promise<void> {
         e.manifest.kind === 'analyzer'
           ? `${e.manifest.kind}, ${e.manifest.category}`
           : `${e.manifest.kind}, ${e.manifest.commands.join(', ')}`;
-      console.log(`  ${chalk.green('✓')} ${chalk.bold(e.manifest.name)} ${chalk.dim(`(${detail})`)}`);
+      console.log(
+        `  ${chalk.green('✓')} ${chalk.bold(e.manifest.name)} ${chalk.dim(`(${detail})`)}`,
+      );
       console.log(chalk.dim(`      ${e.manifestPath}`));
       console.log(chalk.dim(`      module: ${e.manifest.module}`));
       const status = trustByManifest.get(e.manifestPath) ?? 'untrusted';
@@ -214,7 +226,11 @@ async function runTrust(name: string | undefined, cmdOpts: { all?: boolean }): P
       const entry = await trustPlugin(modulePath, e.manifest.name);
       results.push({ name: e.manifest.name, ok: true, sha256: entry.sha256 });
     } catch (err) {
-      results.push({ name: e.manifest.name, ok: false, error: err instanceof Error ? err.message : String(err) });
+      results.push({
+        name: e.manifest.name,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -225,7 +241,9 @@ async function runTrust(name: string | undefined, cmdOpts: { all?: boolean }): P
   }
   for (const r of results) {
     if (r.ok) {
-      console.log(`${chalk.green('✓')} trusted ${chalk.bold(r.name)} ${chalk.dim(`(sha256:${r.sha256?.slice(0, 12)}…)`)}`);
+      console.log(
+        `${chalk.green('✓')} trusted ${chalk.bold(r.name)} ${chalk.dim(`(sha256:${r.sha256?.slice(0, 12)}…)`)}`,
+      );
     } else {
       console.error(`${chalk.red('✗')} ${r.name}: ${r.error}`);
     }
@@ -276,7 +294,9 @@ async function runValidate(manifestPath: string): Promise<void> {
   if (format === 'json') {
     console.log(
       JSON.stringify(
-        v.ok ? { ok: true, manifest: v.manifest } : { ok: false, error: v.reason, diagnostic: v.diagnostic },
+        v.ok
+          ? { ok: true, manifest: v.manifest }
+          : { ok: false, error: v.reason, diagnostic: v.diagnostic },
         null,
         2,
       ),
@@ -285,7 +305,9 @@ async function runValidate(manifestPath: string): Promise<void> {
     return;
   }
   if (v.ok) {
-    console.log(chalk.green(`✓ ${manifestPath} validates against schema v${v.manifest.schemaVersion}.`));
+    console.log(
+      chalk.green(`✓ ${manifestPath} validates against schema v${v.manifest.schemaVersion}.`),
+    );
   } else {
     console.error(chalk.red(`✗ ${manifestPath}: ${v.reason}`));
     printDiagnostic(v.diagnostic);
@@ -323,16 +345,17 @@ async function runInit(cmdOpts: { kind?: string; name?: string }): Promise<void>
   }
 }
 
-async function runTest(manifestPath: string, cmdOpts: { fixture?: string; execute?: boolean; confirmExecute?: boolean }): Promise<void> {
+async function runTest(
+  manifestPath: string,
+  cmdOpts: { fixture?: string; execute?: boolean; confirmExecute?: boolean },
+): Promise<void> {
   setupLogLevel();
   maybeCompactBanner();
   const format = assertFormatSupported('plugin test');
   const rootPath = getRootPath();
   const resolvedManifestPath = resolveManifestPath(rootPath, manifestPath);
   const fixtureRoot =
-    typeof cmdOpts.fixture === 'string'
-      ? path.resolve(rootPath, cmdOpts.fixture)
-      : rootPath;
+    typeof cmdOpts.fixture === 'string' ? path.resolve(rootPath, cmdOpts.fixture) : rootPath;
   const execute = cmdOpts.execute === true || cmdOpts.confirmExecute === true;
   const result = await testPlugin(resolvedManifestPath, { fixtureRoot, execute });
   if (format === 'json') {
@@ -343,7 +366,11 @@ async function runTest(manifestPath: string, cmdOpts: { fixture?: string; execut
   if (result.ok) {
     if (!result.execution.executed) {
       console.log(chalk.green(`✓ ${manifestPath} passed static plugin validation.`));
-      console.log(chalk.dim(`  execution skipped. Run ${result.commands.execute} to import and test local code.`));
+      console.log(
+        chalk.dim(
+          `  execution skipped. Run ${result.commands.execute} to import and test local code.`,
+        ),
+      );
       return;
     }
     console.log(chalk.green(`✓ ${manifestPath} loaded and passed plugin test.`));
@@ -351,7 +378,11 @@ async function runTest(manifestPath: string, cmdOpts: { fixture?: string; execut
       console.log(chalk.dim(`  analyzer issues: ${result.analyzer.issues.length}`));
     }
     if (result.reporter) {
-      console.log(chalk.dim(`  reporter commands: ${result.reporter.outputs.map((o) => o.command).join(', ')}`));
+      console.log(
+        chalk.dim(
+          `  reporter commands: ${result.reporter.outputs.map((o) => o.command).join(', ')}`,
+        ),
+      );
     }
     return;
   }

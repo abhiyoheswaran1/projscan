@@ -25,6 +25,7 @@
 ## Task 1: Structured Manifest Diagnostics
 
 **Files:**
+
 - Modify: `src/core/plugins.ts`
 - Modify: `tests/core/plugins.test.ts`
 
@@ -33,39 +34,39 @@
 Add these assertions to `tests/core/plugins.test.ts` inside `describe('plugins - validateManifest', ...)` after the existing invalid tests:
 
 ```ts
-  it('returns structured diagnostics for invalid manifests', () => {
-    const missingName = validateManifest({
-      schemaVersion: 1,
-      kind: 'analyzer',
-      module: './check.mjs',
-      category: 'custom',
-    });
-    expect(missingName.ok).toBe(false);
-    if (!missingName.ok) {
-      expect(missingName.reason).toMatch(/name/);
-      expect(missingName.diagnostic).toMatchObject({
-        code: 'invalid-name',
-        field: 'name',
-      });
-      expect(missingName.diagnostic.hint).toMatch(/1-65/);
-    }
-
-    const wrongVersion = validateManifest({
-      schemaVersion: 2,
-      name: 'p',
-      kind: 'analyzer',
-      module: './check.mjs',
-      category: 'custom',
-    });
-    expect(wrongVersion.ok).toBe(false);
-    if (!wrongVersion.ok) {
-      expect(wrongVersion.diagnostic).toMatchObject({
-        code: 'unsupported-schema-version',
-        field: 'schemaVersion',
-      });
-      expect(wrongVersion.diagnostic.message).toContain('expected 1');
-    }
+it('returns structured diagnostics for invalid manifests', () => {
+  const missingName = validateManifest({
+    schemaVersion: 1,
+    kind: 'analyzer',
+    module: './check.mjs',
+    category: 'custom',
   });
+  expect(missingName.ok).toBe(false);
+  if (!missingName.ok) {
+    expect(missingName.reason).toMatch(/name/);
+    expect(missingName.diagnostic).toMatchObject({
+      code: 'invalid-name',
+      field: 'name',
+    });
+    expect(missingName.diagnostic.hint).toMatch(/1-65/);
+  }
+
+  const wrongVersion = validateManifest({
+    schemaVersion: 2,
+    name: 'p',
+    kind: 'analyzer',
+    module: './check.mjs',
+    category: 'custom',
+  });
+  expect(wrongVersion.ok).toBe(false);
+  if (!wrongVersion.ok) {
+    expect(wrongVersion.diagnostic).toMatchObject({
+      code: 'unsupported-schema-version',
+      field: 'schemaVersion',
+    });
+    expect(wrongVersion.diagnostic.message).toContain('expected 1');
+  }
+});
 ```
 
 - [ ] **Step 2: Run the focused test and verify it fails**
@@ -132,75 +133,75 @@ function failValidation(diagnostic: PluginDiagnostic): ValidationFail {
 In `src/core/plugins.ts`, update every `return { ok: false, reason: ... }` in `validateManifest()` to use `failValidation(...)`. Use these exact diagnostics:
 
 ```ts
-  if (!input || typeof input !== 'object') {
-    return failValidation({
-      code: 'invalid-manifest',
-      message: 'manifest must be a JSON object',
-      hint: 'Use an object with schemaVersion, name, kind, module, and category fields.',
-    });
-  }
+if (!input || typeof input !== 'object') {
+  return failValidation({
+    code: 'invalid-manifest',
+    message: 'manifest must be a JSON object',
+    hint: 'Use an object with schemaVersion, name, kind, module, and category fields.',
+  });
+}
 ```
 
 ```ts
-    return failValidation({
-      code: 'unsupported-schema-version',
-      field: 'schemaVersion',
-      message: `unsupported schemaVersion ${String(obj.schemaVersion)}; expected ${PLUGIN_SCHEMA_VERSION}`,
-      hint: `Set "schemaVersion": ${PLUGIN_SCHEMA_VERSION}.`,
-    });
+return failValidation({
+  code: 'unsupported-schema-version',
+  field: 'schemaVersion',
+  message: `unsupported schemaVersion ${String(obj.schemaVersion)}; expected ${PLUGIN_SCHEMA_VERSION}`,
+  hint: `Set "schemaVersion": ${PLUGIN_SCHEMA_VERSION}.`,
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'invalid-name',
-      field: 'name',
-      message: 'name is required and must be 1-65 chars of [a-z0-9._/-]',
-      hint: 'Use a stable plugin id such as "team/no-console" or "my-plugin".',
-    });
+return failValidation({
+  code: 'invalid-name',
+  field: 'name',
+  message: 'name is required and must be 1-65 chars of [a-z0-9._/-]',
+  hint: 'Use a stable plugin id such as "team/no-console" or "my-plugin".',
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'unsupported-kind',
-      field: 'kind',
-      message: 'only kind:"analyzer" is supported in the plugin preview',
-      hint: 'Set "kind": "analyzer".',
-    });
+return failValidation({
+  code: 'unsupported-kind',
+  field: 'kind',
+  message: 'only kind:"analyzer" is supported in the plugin preview',
+  hint: 'Set "kind": "analyzer".',
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'invalid-module',
-      field: 'module',
-      message: 'module is required and must be a relative path',
-      hint: 'Point to a local module inside the same plugin directory, for example "./check.mjs".',
-    });
+return failValidation({
+  code: 'invalid-module',
+  field: 'module',
+  message: 'module is required and must be a relative path',
+  hint: 'Point to a local module inside the same plugin directory, for example "./check.mjs".',
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'invalid-module',
-      field: 'module',
-      message: 'module must be a relative path inside the plugin dir',
-      hint: 'Do not use absolute paths or any ".." path segment.',
-    });
+return failValidation({
+  code: 'invalid-module',
+  field: 'module',
+  message: 'module must be a relative path inside the plugin dir',
+  hint: 'Do not use absolute paths or any ".." path segment.',
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'invalid-category',
-      field: 'category',
-      message: 'category is required',
-      hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
-    });
+return failValidation({
+  code: 'invalid-category',
+  field: 'category',
+  message: 'category is required',
+  hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
+});
 ```
 
 ```ts
-    return failValidation({
-      code: 'invalid-description',
-      field: 'description',
-      message: 'description must be a string when provided',
-    });
+return failValidation({
+  code: 'invalid-description',
+  field: 'description',
+  message: 'description must be a string when provided',
+});
 ```
 
 - [ ] **Step 5: Run focused test and verify it passes**
@@ -216,6 +217,7 @@ Expected: PASS.
 ## Task 2: Discovery Diagnostics for Read and JSON Failures
 
 **Files:**
+
 - Modify: `src/core/plugins.ts`
 - Modify: `tests/core/plugins.test.ts`
 
@@ -224,39 +226,39 @@ Expected: PASS.
 In `tests/core/plugins.test.ts`, update the existing invalid JSON test to assert diagnostics:
 
 ```ts
-  it('surfaces invalid JSON with structured diagnostics without throwing', async () => {
-    const dir = path.join(tmp, PLUGIN_DIR);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
-    const entries = await discoverPluginManifests(tmp);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].manifest).toBeNull();
-    expect(entries[0].error).toMatch(/invalid JSON/);
-    expect(entries[0].diagnostic).toMatchObject({
-      code: 'invalid-json',
-    });
+it('surfaces invalid JSON with structured diagnostics without throwing', async () => {
+  const dir = path.join(tmp, PLUGIN_DIR);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
+  const entries = await discoverPluginManifests(tmp);
+  expect(entries).toHaveLength(1);
+  expect(entries[0].manifest).toBeNull();
+  expect(entries[0].error).toMatch(/invalid JSON/);
+  expect(entries[0].diagnostic).toMatchObject({
+    code: 'invalid-json',
   });
+});
 ```
 
 Add a second test in `describe('plugins - discoverPluginManifests', ...)`:
 
 ```ts
-  it('surfaces validation diagnostics on discovered manifests', async () => {
-    await writeManifest('bad', {
-      schemaVersion: 1,
-      name: 'bad plugin with spaces',
-      kind: 'analyzer',
-      module: './bad.mjs',
-      category: 'custom',
-    });
-    const entries = await discoverPluginManifests(tmp);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].manifest).toBeNull();
-    expect(entries[0].diagnostic).toMatchObject({
-      code: 'invalid-name',
-      field: 'name',
-    });
+it('surfaces validation diagnostics on discovered manifests', async () => {
+  await writeManifest('bad', {
+    schemaVersion: 1,
+    name: 'bad plugin with spaces',
+    kind: 'analyzer',
+    module: './bad.mjs',
+    category: 'custom',
   });
+  const entries = await discoverPluginManifests(tmp);
+  expect(entries).toHaveLength(1);
+  expect(entries[0].manifest).toBeNull();
+  expect(entries[0].diagnostic).toMatchObject({
+    code: 'invalid-name',
+    field: 'name',
+  });
+});
 ```
 
 - [ ] **Step 2: Run the focused test and verify it fails**
@@ -286,47 +288,47 @@ export interface PluginDiscoveryEntry {
 In `discoverPluginManifests()`, change invalid JSON handling to:
 
 ```ts
-      const message = `invalid JSON: ${err instanceof Error ? err.message : String(err)}`;
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: message,
-        diagnostic: {
-          code: 'invalid-json',
-          message,
-          hint: 'Fix the manifest so it is valid JSON.',
-        },
-      });
+const message = `invalid JSON: ${err instanceof Error ? err.message : String(err)}`;
+out.push({
+  manifestPath,
+  manifest: null,
+  error: message,
+  diagnostic: {
+    code: 'invalid-json',
+    message,
+    hint: 'Fix the manifest so it is valid JSON.',
+  },
+});
 ```
 
 Change read error handling to:
 
 ```ts
-      const message = `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`;
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: message,
-        diagnostic: {
-          code: 'read-error',
-          message,
-          hint: 'Check file permissions and try again.',
-        },
-      });
+const message = `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`;
+out.push({
+  manifestPath,
+  manifest: null,
+  error: message,
+  diagnostic: {
+    code: 'read-error',
+    message,
+    hint: 'Check file permissions and try again.',
+  },
+});
 ```
 
 Change validation failure handling to:
 
 ```ts
-    if (!validation.ok) {
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: validation.reason,
-        diagnostic: validation.diagnostic,
-      });
-      continue;
-    }
+if (!validation.ok) {
+  out.push({
+    manifestPath,
+    manifest: null,
+    error: validation.reason,
+    diagnostic: validation.diagnostic,
+  });
+  continue;
+}
 ```
 
 - [ ] **Step 4: Run focused test and verify it passes**
@@ -342,6 +344,7 @@ Expected: PASS.
 ## Task 3: Shared Manifest File Reader
 
 **Files:**
+
 - Modify: `src/core/plugins.ts`
 - Modify: `tests/core/plugins.test.ts`
 
@@ -408,7 +411,9 @@ export type PluginManifestFileResult =
 Add this function before `discoverPluginManifests()`:
 
 ```ts
-export async function readPluginManifestFile(manifestPath: string): Promise<PluginManifestFileResult> {
+export async function readPluginManifestFile(
+  manifestPath: string,
+): Promise<PluginManifestFileResult> {
   let raw: string;
   try {
     raw = await fs.readFile(manifestPath, 'utf-8');
@@ -453,17 +458,17 @@ export async function readPluginManifestFile(manifestPath: string): Promise<Plug
 Replace the read/parse/validate block inside `discoverPluginManifests()` with:
 
 ```ts
-    const result = await readPluginManifestFile(manifestPath);
-    if (!result.ok) {
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: result.reason,
-        diagnostic: result.diagnostic,
-      });
-      continue;
-    }
-    out.push({ manifestPath, manifest: result.manifest });
+const result = await readPluginManifestFile(manifestPath);
+if (!result.ok) {
+  out.push({
+    manifestPath,
+    manifest: null,
+    error: result.reason,
+    diagnostic: result.diagnostic,
+  });
+  continue;
+}
+out.push({ manifestPath, manifest: result.manifest });
 ```
 
 - [ ] **Step 5: Run focused test and verify it passes**
@@ -479,6 +484,7 @@ Expected: PASS.
 ## Task 4: CLI and MCP Diagnostic Output
 
 **Files:**
+
 - Modify: `src/cli/commands/plugin.ts`
 - Modify: `src/mcp/tools/plugin.ts`
 - Create: `tests/mcp/plugin.test.ts`
@@ -500,7 +506,10 @@ let originalFlag: string | undefined;
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-mcp-'));
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, '.projscan-plugins'), { recursive: true });
 });
 
@@ -511,12 +520,23 @@ afterEach(async () => {
 });
 
 async function init(server: ReturnType<typeof createMcpServer>): Promise<void> {
-  await server.handleMessage(JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} }));
+  await server.handleMessage(
+    JSON.stringify({ jsonrpc: '2.0', id: 0, method: 'initialize', params: {} }),
+  );
 }
 
-async function call(server: ReturnType<typeof createMcpServer>, name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function call(
+  server: ReturnType<typeof createMcpServer>,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const raw = await server.handleMessage(
-    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    }),
   );
   if (!raw) throw new Error('no response');
   const env = JSON.parse(raw) as { result: { content: Array<{ text: string }> } };
@@ -528,7 +548,13 @@ describe('projscan_plugin MCP tool', () => {
     const manifestPath = path.join(tmp, '.projscan-plugins', 'bad.projscan-plugin.json');
     await fs.writeFile(
       manifestPath,
-      JSON.stringify({ schemaVersion: 1, name: 'bad plugin', kind: 'analyzer', module: './check.mjs', category: 'custom' }),
+      JSON.stringify({
+        schemaVersion: 1,
+        name: 'bad plugin',
+        kind: 'analyzer',
+        module: './check.mjs',
+        category: 'custom',
+      }),
     );
     const server = createMcpServer(tmp);
     await init(server);
@@ -547,7 +573,11 @@ describe('projscan_plugin MCP tool', () => {
   });
 
   it('includes diagnostics in list results', async () => {
-    await fs.writeFile(path.join(tmp, '.projscan-plugins', 'broken.projscan-plugin.json'), '{ not json', 'utf-8');
+    await fs.writeFile(
+      path.join(tmp, '.projscan-plugins', 'broken.projscan-plugin.json'),
+      '{ not json',
+      'utf-8',
+    );
     const server = createMcpServer(tmp);
     await init(server);
     const result = await call(server, 'projscan_plugin', { action: 'list' });
@@ -606,36 +636,38 @@ function printDiagnostic(diagnostic: PluginDiagnostic): void {
 In `runList()`, add `diagnostic: e.diagnostic` to each JSON plugin entry. In console mode, replace `console.log(chalk.red(...e.error...))` for invalid entries with:
 
 ```ts
-      if (e.diagnostic) printDiagnostic(e.diagnostic);
-      else console.log(chalk.red(`      ${e.error}`));
+if (e.diagnostic) printDiagnostic(e.diagnostic);
+else console.log(chalk.red(`      ${e.error}`));
 ```
 
 In `runValidate()`, replace manual file read / JSON parse / validate logic with:
 
 ```ts
-  const rootPath = getRootPath();
-  const resolvedManifestPath = resolveManifestPath(rootPath, manifestPath);
-  const result = await readPluginManifestFile(resolvedManifestPath);
-  if (format === 'json') {
-    console.log(
-      JSON.stringify(
-        result.ok
-          ? { ok: true, manifest: result.manifest }
-          : { ok: false, error: result.reason, diagnostic: result.diagnostic },
-        null,
-        2,
-      ),
-    );
-    if (!result.ok) process.exit(1);
-    return;
-  }
-  if (result.ok) {
-    console.log(chalk.green(`✓ ${manifestPath} validates against schema v${result.manifest.schemaVersion}.`));
-  } else {
-    console.error(chalk.red(`✗ ${manifestPath}: ${result.reason}`));
-    printDiagnostic(result.diagnostic);
-    process.exit(1);
-  }
+const rootPath = getRootPath();
+const resolvedManifestPath = resolveManifestPath(rootPath, manifestPath);
+const result = await readPluginManifestFile(resolvedManifestPath);
+if (format === 'json') {
+  console.log(
+    JSON.stringify(
+      result.ok
+        ? { ok: true, manifest: result.manifest }
+        : { ok: false, error: result.reason, diagnostic: result.diagnostic },
+      null,
+      2,
+    ),
+  );
+  if (!result.ok) process.exit(1);
+  return;
+}
+if (result.ok) {
+  console.log(
+    chalk.green(`✓ ${manifestPath} validates against schema v${result.manifest.schemaVersion}.`),
+  );
+} else {
+  console.error(chalk.red(`✗ ${manifestPath}: ${result.reason}`));
+  printDiagnostic(result.diagnostic);
+  process.exit(1);
+}
 ```
 
 - [ ] **Step 4: Update MCP tool to use shared file reader**
@@ -663,11 +695,11 @@ In list output, add `diagnostic: e.diagnostic` for invalid entries:
 In the validate branch, replace manual read/parse/validate with:
 
 ```ts
-        const manifestPath = path.isAbsolute(p) ? p : path.resolve(rootPath, p);
-        const result = await readPluginManifestFile(manifestPath);
-        return result.ok
-          ? { ok: true, manifest: result.manifest }
-          : { ok: false, error: result.reason, diagnostic: result.diagnostic };
+const manifestPath = path.isAbsolute(p) ? p : path.resolve(rootPath, p);
+const result = await readPluginManifestFile(manifestPath);
+return result.ok
+  ? { ok: true, manifest: result.manifest }
+  : { ok: false, error: result.reason, diagnostic: result.diagnostic };
 ```
 
 - [ ] **Step 5: Run focused MCP test and plugin tests**
@@ -683,6 +715,7 @@ Expected: PASS.
 ## Task 5: Full Analyzer Pipeline Proof
 
 **Files:**
+
 - Create: `tests/core/pluginPipeline.test.ts`
 
 - [ ] **Step 1: Write failing pipeline tests**
@@ -704,7 +737,10 @@ let originalFlag: string | undefined;
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-plugin-pipeline-'));
   originalFlag = process.env.PROJSCAN_PLUGINS_PREVIEW;
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
   await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
   await fs.mkdir(path.join(tmp, '.projscan-plugins'), { recursive: true });
@@ -789,23 +825,23 @@ Expected: PASS if current pipeline already works. If it fails because plugin out
 If Task 5 Step 2 passes without exercising MCP code, extend `tests/mcp/plugin.test.ts` with:
 
 ```ts
-  it('enabled plugin issues appear in MCP doctor and analyze output', async () => {
-    process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
-    await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
-    await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
-    await fs.writeFile(
-      path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        name: 'policy',
-        kind: 'analyzer',
-        module: './policy.mjs',
-        category: 'custom',
-      }),
-    );
-    await fs.writeFile(
-      path.join(tmp, '.projscan-plugins', 'policy.mjs'),
-      `export default {
+it('enabled plugin issues appear in MCP doctor and analyze output', async () => {
+  process.env.PROJSCAN_PLUGINS_PREVIEW = '1';
+  await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
+  await fs.writeFile(path.join(tmp, 'src', 'a.ts'), 'export const a = 1;\n');
+  await fs.writeFile(
+    path.join(tmp, '.projscan-plugins', 'policy.projscan-plugin.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      name: 'policy',
+      kind: 'analyzer',
+      module: './policy.mjs',
+      category: 'custom',
+    }),
+  );
+  await fs.writeFile(
+    path.join(tmp, '.projscan-plugins', 'policy.mjs'),
+    `export default {
         check: async () => [{
           id: 'mcp-rule',
           title: 'MCP plugin rule',
@@ -816,17 +852,17 @@ If Task 5 Step 2 passes without exercising MCP code, extend `tests/mcp/plugin.te
           locations: [{ file: 'src/a.ts', line: 1 }],
         }],
       };`,
-    );
-    const server = createMcpServer(tmp);
-    await init(server);
-    const doctor = await call(server, 'projscan_doctor', {});
-    const doctorIssues = doctor.issues as Array<{ id: string }>;
-    expect(doctorIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(true);
-    const analyze = await call(server, 'projscan_analyze', {});
-    const analyzeIssues = analyze.issues as Array<{ id: string }>;
-    expect(analyzeIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(true);
-    server.close();
-  });
+  );
+  const server = createMcpServer(tmp);
+  await init(server);
+  const doctor = await call(server, 'projscan_doctor', {});
+  const doctorIssues = doctor.issues as Array<{ id: string }>;
+  expect(doctorIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(true);
+  const analyze = await call(server, 'projscan_analyze', {});
+  const analyzeIssues = analyze.issues as Array<{ id: string }>;
+  expect(analyzeIssues.some((i) => i.id === 'plugin:policy:mcp-rule')).toBe(true);
+  server.close();
+});
 ```
 
 Run:
@@ -840,6 +876,7 @@ Expected: PASS.
 ## Task 6: Plugin Authoring Documentation
 
 **Files:**
+
 - Create: `docs/PLUGIN-AUTHORING.md`
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
@@ -1003,7 +1040,7 @@ For the analyzer plugin preview, including a minimal manifest and analyzer modul
 In `docs/ROADMAP.md`, under the 2.0 plugin API bullet, add:
 
 ```md
-  The current preview contract and authoring flow are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
+The current preview contract and authoring flow are documented in [Plugin Authoring](PLUGIN-AUTHORING.md).
 ```
 
 - [ ] **Step 5: Run docs-relevant smoke checks**
@@ -1019,6 +1056,7 @@ Expected: the new guide and all three links are present.
 ## Task 7: Stability and Release Guardrails
 
 **Files:**
+
 - Modify only if needed: `docs/superpowers/specs/2026-05-18-plugin-platform-hardening-design.md`
 - Modify only if needed: `docs/superpowers/plans/2026-05-18-plugin-platform-hardening.md`
 
@@ -1056,6 +1094,7 @@ Expected: score remains `100`, grade `A`, and issues remain empty. If plugin doc
 ## Task 8: Full Verification
 
 **Files:**
+
 - No new files expected unless earlier verification reveals a defect.
 
 - [ ] **Step 1: Run all unit and integration tests**

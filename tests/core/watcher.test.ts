@@ -88,7 +88,11 @@ describe('startWatcher', () => {
 
     // Edit something inside node_modules.
     await fs.mkdir(path.join(tmp, 'node_modules/foo'), { recursive: true });
-    await fs.writeFile(path.join(tmp, 'node_modules/foo/index.js'), 'module.exports = 1;\n', 'utf-8');
+    await fs.writeFile(
+      path.join(tmp, 'node_modules/foo/index.js'),
+      'module.exports = 1;\n',
+      'utf-8',
+    );
 
     // Edit something inside .git.
     await fs.mkdir(path.join(tmp, '.git'), { recursive: true });

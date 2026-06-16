@@ -8,11 +8,7 @@ import { extractGoCyclomatic } from './goCyclomatic.js';
 import { extractGoFunctions } from './goFunctions.js';
 import { extractGoCallSites } from './goCallSites.js';
 import { detectGoProject, type GoProjectInfo } from './goManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const GO_EXTENSIONS = new Set(['.go']);
 const MAX_GO_FILE = 1024 * 1024;
@@ -51,7 +47,9 @@ export const goAdapter: LanguageAdapter = {
       const root = tree.rootNode as unknown as Parameters<typeof extractGoImports>[0];
       const imports = extractGoImports(root);
       const exports = extractGoExports(root as Parameters<typeof extractGoExports>[0]);
-      const cyclomaticComplexity = extractGoCyclomatic(root as Parameters<typeof extractGoCyclomatic>[0]);
+      const cyclomaticComplexity = extractGoCyclomatic(
+        root as Parameters<typeof extractGoCyclomatic>[0],
+      );
       const callSites = extractGoCallSites(root as Parameters<typeof extractGoCallSites>[0]);
       const functions = extractGoFunctions(root as Parameters<typeof extractGoFunctions>[0]);
       return {
@@ -96,10 +94,7 @@ export const goAdapter: LanguageAdapter = {
     return source;
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectGoProject(rootPath, files);
     return {
       packageRoots: info ? [path.relative(rootPath, info.moduleRoot) || '.'] : [],
@@ -145,10 +140,7 @@ function resolveGoImport(
  * are directory-scoped - a single file is enough to anchor the edge in the
  * graph. We pick the lexicographically first match for determinism.
  */
-function findPackageDir(
-  relDir: string,
-  graphFiles: Map<string, GraphFileLike>,
-): string | null {
+function findPackageDir(relDir: string, graphFiles: Map<string, GraphFileLike>): string | null {
   const dir = relDir === '' || relDir === '.' ? '' : relDir;
   const prefix = dir ? dir + '/' : '';
   const matches: string[] = [];

@@ -34,7 +34,8 @@ export const pluginTool: McpTool = {
       },
       manifest_path: {
         type: 'string',
-        description: '"validate" only — repo-relative path under .projscan-plugins/ to a *.projscan-plugin.json file.',
+        description:
+          '"validate" only — repo-relative path under .projscan-plugins/ to a *.projscan-plugin.json file.',
       },
     },
   },
@@ -46,7 +47,12 @@ export const pluginTool: McpTool = {
         const plugins = await Promise.all(
           entries.map(async (e) => {
             if (!e.manifest) {
-              return { manifestPath: e.manifestPath, ok: false, error: e.error, diagnostic: e.diagnostic };
+              return {
+                manifestPath: e.manifestPath,
+                ok: false,
+                error: e.error,
+                diagnostic: e.diagnostic,
+              };
             }
             const modulePath = path.resolve(path.dirname(e.manifestPath), e.manifest.module);
             const trust = await getPluginTrustStatus(modulePath);
@@ -89,12 +95,14 @@ export const pluginTool: McpTool = {
   },
 };
 
-
 type ManifestPathResolution =
   | { ok: true; manifestPath: string }
   | { ok: false; failure: Record<string, unknown> };
 
-async function resolveMcpManifestPath(rootPath: string, inputPath: string): Promise<ManifestPathResolution> {
+async function resolveMcpManifestPath(
+  rootPath: string,
+  inputPath: string,
+): Promise<ManifestPathResolution> {
   if (path.isAbsolute(inputPath)) {
     return invalidManifestPath('manifest_path must be relative to the project root');
   }

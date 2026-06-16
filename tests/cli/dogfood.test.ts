@@ -46,9 +46,9 @@ test('dogfood renders multi-repo usefulness evidence as JSON', async () => {
   expect(report.targetRepoCount).toBe(5);
   expect(report.summary).toContain('needs more repos');
   expect(report.totals.prCommentReady).toBe(3);
-  expect(report.suggestedNextActions.map((action: { command?: string }) => action.command)).toContain(
-    'projscan dogfood --repo <path-to-repo> --format json',
-  );
+  expect(
+    report.suggestedNextActions.map((action: { command?: string }) => action.command),
+  ).toContain('projscan dogfood --repo <path-to-repo> --format json');
 });
 
 test('dogfood accepts reviewer feedback and prints market validation JSON', async () => {
@@ -129,6 +129,8 @@ async function makeRepo(name: string): Promise<string> {
   return root;
 }
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

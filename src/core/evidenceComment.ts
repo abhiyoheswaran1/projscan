@@ -10,7 +10,10 @@ import type {
 
 export function renderEvidencePackPrComment(report: EvidencePackReport): string {
   const blockers = report.approval.blockingReasons.slice(0, 5);
-  const commands = dedupeStrings(report.artifacts.flatMap((artifact) => artifact.commands)).slice(0, 8);
+  const commands = dedupeStrings(report.artifacts.flatMap((artifact) => artifact.commands)).slice(
+    0,
+    8,
+  );
   const nextActions = report.suggestedNextActions.slice(0, 5);
   const pr = report.prSummary;
   const blockingReasonLabel = pr?.trust.verdict === 'manual_review' ? 'manual gate' : 'blocker';
@@ -23,22 +26,36 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '',
     '### Verdict',
     `- ${pr?.verdictLabel ?? report.verdict}: ${pr?.decision ?? report.approval.recommendation}`,
-    ...(blockers.length > 0 ? blockers.map((reason) => `- ${blockingReasonLabel}: ${reason}`) : ['- blockers: none recorded']),
+    ...(blockers.length > 0
+      ? blockers.map((reason) => `- ${blockingReasonLabel}: ${reason}`)
+      : ['- blockers: none recorded']),
     '',
     '### Reviewer Decision',
     ...formatReviewerDecision(report),
     '',
     '### Trust Calibration',
-    ...(pr?.trust ? formatTrustCalibration(pr.trust) : ['- Trust signals unavailable; run `projscan preflight --mode before_merge --format json`.']),
+    ...(pr?.trust
+      ? formatTrustCalibration(pr.trust)
+      : [
+          '- Trust signals unavailable; run `projscan preflight --mode before_merge --format json`.',
+        ]),
     '',
     '### Baseline Trend',
-    ...(pr?.baselineTrend ? formatBaselineTrend(pr.baselineTrend) : ['- No local baseline found. Run `projscan diff --save-baseline` after the first clean review.']),
+    ...(pr?.baselineTrend
+      ? formatBaselineTrend(pr.baselineTrend)
+      : [
+          '- No local baseline found. Run `projscan diff --save-baseline` after the first clean review.',
+        ]),
     '',
     '### Top Risks',
     ...(pr?.topRisks.length ? pr.topRisks.map(formatPrRisk) : ['- No prioritized risks recorded.']),
     '',
     '### First Fix',
-    ...(pr?.fixFirst ? formatFixFirst(pr.fixFirst) : ['- No immediate fix-first target. Preserve the baseline and rerun the verification commands.']),
+    ...(pr?.fixFirst
+      ? formatFixFirst(pr.fixFirst)
+      : [
+          '- No immediate fix-first target. Preserve the baseline and rerun the verification commands.',
+        ]),
     '',
     '### Team Routing',
     ...(pr?.teamRoutes.length ? pr.teamRoutes.map(formatTeamRoute) : formatMissingOwnerHint(pr)),
@@ -47,7 +64,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     ...commands.map((command) => `- \`${command}\``),
     '',
     '### Next Commands',
-    ...(pr?.nextCommands.length ? pr.nextCommands.map((command) => `- \`${command}\``) : ['- `projscan preflight --mode before_merge --format json`']),
+    ...(pr?.nextCommands.length
+      ? pr.nextCommands.map((command) => `- \`${command}\``)
+      : ['- `projscan preflight --mode before_merge --format json`']),
     '',
     '### Suggested Next Actions',
     ...(nextActions.length > 0 ? nextActions.map(formatSuggestedAction) : ['- None recorded.']),
@@ -59,8 +78,6 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
   ];
   return `${lines.join('\n')}\n`;
 }
-
-
 
 const REQUIRED_PR_COMMENT_SECTIONS = [
   '## projscan approval evidence',
@@ -83,16 +100,19 @@ export function validateEvidencePackPrComment(
   markdown: string,
   report?: EvidencePackReport,
 ): EvidencePackPrCommentValidation {
-  const missingSections = REQUIRED_PR_COMMENT_SECTIONS.filter((section) => !markdown.includes(section));
+  const missingSections = REQUIRED_PR_COMMENT_SECTIONS.filter(
+    (section) => !markdown.includes(section),
+  );
   const actionableCommand = hasActionableCommand(markdown, report);
   const renderedSanely = !/undefined|\[object Object\]/.test(markdown);
   const checks: EvidencePackPrCommentValidation['checks'] = [
     {
       id: 'required-sections',
       status: missingSections.length > 0 ? 'fail' : 'pass',
-      summary: missingSections.length > 0
-        ? `Missing required PR section(s): ${missingSections.map((section) => section.replace(/^#+\s*/, '')).join(', ')}`
-        : 'All required PR sections are present.',
+      summary:
+        missingSections.length > 0
+          ? `Missing required PR section(s): ${missingSections.map((section) => section.replace(/^#+\s*/, '')).join(', ')}`
+          : 'All required PR sections are present.',
     },
     {
       id: 'github-size',
@@ -137,17 +157,19 @@ function formatApprovalGuidance(report: EvidencePackReport): string {
 function formatReviewerDecision(report: EvidencePackReport): string[] {
   const trust = report.prSummary?.trust;
   const decision = reviewerDecision(report);
-  const firstCommand = report.prSummary?.fixFirst?.commands[0]
-    ?? report.prSummary?.nextCommands[0]
-    ?? report.suggestedNextActions.find((action) => action.command)?.command
-    ?? 'projscan preflight --mode before_merge --format json';
+  const firstCommand =
+    report.prSummary?.fixFirst?.commands[0] ??
+    report.prSummary?.nextCommands[0] ??
+    report.suggestedNextActions.find((action) => action.command)?.command ??
+    'projscan preflight --mode before_merge --format json';
   const routedOwners = report.prSummary?.teamRoutes.map((route) => route.owner) ?? [];
   const ownerState = routedOwners.length > 0 ? routedOwners.join(', ') : 'unassigned';
-  const reason = trust?.verdict === 'actual_defect'
-    ? 'Concrete blockers are present; fix the first item before approval.'
-    : trust?.verdict === 'manual_review'
-      ? 'Manual review or release sign-off is required; no concrete blocker is recorded unless listed above.'
-      : 'No concrete defect or manual-review signal is recorded; preserve the baseline and run verification.';
+  const reason =
+    trust?.verdict === 'actual_defect'
+      ? 'Concrete blockers are present; fix the first item before approval.'
+      : trust?.verdict === 'manual_review'
+        ? 'Manual review or release sign-off is required; no concrete blocker is recorded unless listed above.'
+        : 'No concrete defect or manual-review signal is recorded; preserve the baseline and run verification.';
   return [
     `- decision: ${decision}`,
     `- reason: ${reason}`,
@@ -158,8 +180,10 @@ function formatReviewerDecision(report: EvidencePackReport): string[] {
 
 function reviewerDecision(report: EvidencePackReport): 'ship' | 'review' | 'fix first' {
   const trust = report.prSummary?.trust.verdict;
-  if (trust === 'actual_defect' || report.verdict === 'blocked') return trust === 'manual_review' ? 'review' : 'fix first';
-  if (trust === 'manual_review' || report.verdict === 'caution') return trust === 'clean' ? 'ship' : 'review';
+  if (trust === 'actual_defect' || report.verdict === 'blocked')
+    return trust === 'manual_review' ? 'review' : 'fix first';
+  if (trust === 'manual_review' || report.verdict === 'caution')
+    return trust === 'clean' ? 'ship' : 'review';
   return 'ship';
 }
 
@@ -184,16 +208,21 @@ function formatBaselineTrend(trend: BaselineTrend): string[] {
   const changedSinceBaseline = trend.changedSinceBaseline ?? [];
   const qualityBefore = trend.qualityScoreBefore;
   const qualityAfter = trend.qualityScoreAfter;
-  const quality = typeof qualityBefore === 'number' && typeof qualityAfter === 'number'
-    ? ` (quality ${qualityBefore}->${qualityAfter})`
-    : '';
+  const quality =
+    typeof qualityBefore === 'number' && typeof qualityAfter === 'number'
+      ? ` (quality ${qualityBefore}->${qualityAfter})`
+      : '';
   return [
     `- ${trend.summary}`,
     `- risk from baseline: ${riskDirection}${riskDelta === 0 ? '' : ` ${riskDelta > 0 ? '+' : ''}${riskDelta}`}${quality}`,
-    ...(changedSinceBaseline.length > 0 ? [`- changed since baseline: ${changedSinceBaseline.join('; ')}`] : []),
+    ...(changedSinceBaseline.length > 0
+      ? [`- changed since baseline: ${changedSinceBaseline.join('; ')}`]
+      : []),
     ...(trend.newHotspots.length > 0 ? [`- new hotspots: ${trend.newHotspots.join(', ')}`] : []),
     ...(trend.recurringNoisyRules.length > 0
-      ? [`- recurring noisy rules: ${trend.recurringNoisyRules.map((rule) => `${rule.id} (${rule.before}->${rule.after})`).join(', ')}`]
+      ? [
+          `- recurring noisy rules: ${trend.recurringNoisyRules.map((rule) => `${rule.id} (${rule.before}->${rule.after})`).join(', ')}`,
+        ]
       : []),
   ];
 }
@@ -224,7 +253,6 @@ function formatMissingOwnerHint(pr: EvidencePackPrSummary | undefined): string[]
   return ['- No owner hints found. Add .github/CODEOWNERS or package owner metadata for routing.'];
 }
 
-
 function formatFixFirst(fix: FixFirstRecommendation): string[] {
   return [
     `- **${fix.priority}** ${fix.title}${fix.owner ? ` owner: ${fix.owner}` : ''}`,
@@ -252,7 +280,9 @@ function formatSuggestedAction(action: PreflightSuggestedAction): string {
     action.command ? `\`${action.command}\`` : undefined,
     action.tool ? `MCP \`${action.tool}\`` : undefined,
   ].filter(Boolean);
-  return references.length > 0 ? `- ${action.label}: ${references.join(' / ')}` : `- ${action.label}`;
+  return references.length > 0
+    ? `- ${action.label}: ${references.join(' / ')}`
+    : `- ${action.label}`;
 }
 
 function dedupeStrings(values: string[]): string[] {

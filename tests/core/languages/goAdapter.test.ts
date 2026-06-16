@@ -40,10 +40,7 @@ import (
 
 describe('goAdapter.exports (Go capitalization rule)', () => {
   it('captures exported funcs but not unexported', async () => {
-    const r = await goAdapter.parse(
-      'a.go',
-      `package a\n\nfunc Public() {}\nfunc private() {}\n`,
-    );
+    const r = await goAdapter.parse('a.go', `package a\n\nfunc Public() {}\nfunc private() {}\n`);
     expect(r.exports.map((e) => e.name)).toEqual(['Public']);
   });
 

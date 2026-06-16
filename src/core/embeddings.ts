@@ -21,7 +21,10 @@ export interface EmbedOptions {
 }
 
 interface EmbedderPipeline {
-  (text: string | string[], options?: Record<string, unknown>): Promise<{
+  (
+    text: string | string[],
+    options?: Record<string, unknown>,
+  ): Promise<{
     data: Float32Array | number[];
     dims?: number[];
   }>;
@@ -73,7 +76,9 @@ async function tryLoadTransformers(): Promise<TransformersModule | null> {
       return null;
     }
     // Unexpected load error - treat as unavailable, log to stderr for diagnosis.
-    process.stderr.write(`[projscan] embeddings unavailable: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.stderr.write(
+      `[projscan] embeddings unavailable: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
     cachedModule = null;
     return null;
   }
@@ -88,7 +93,10 @@ export async function isSemanticAvailable(): Promise<boolean> {
   return mod !== null;
 }
 
-async function getPipeline(model: string, onFirstLoad?: (m: string) => void): Promise<EmbedderPipeline | null> {
+async function getPipeline(
+  model: string,
+  onFirstLoad?: (m: string) => void,
+): Promise<EmbedderPipeline | null> {
   const mod = await tryLoadTransformers();
   if (!mod) return null;
 
@@ -176,7 +184,8 @@ export async function embedBatch(
   // [N, EMBEDDING_DIM]. Slice it back into N float32 arrays.
   const output = await pipe(texts, { pooling: 'mean', normalize: true });
   const data = toFloat32Array(output.data);
-  const dim = output.dims && output.dims.length > 0 ? output.dims[output.dims.length - 1] : EMBEDDING_DIM;
+  const dim =
+    output.dims && output.dims.length > 0 ? output.dims[output.dims.length - 1] : EMBEDDING_DIM;
   const results: Float32Array[] = [];
   for (let i = 0; i < texts.length; i++) {
     results.push(data.slice(i * dim, (i + 1) * dim));

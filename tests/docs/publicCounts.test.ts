@@ -3,7 +3,9 @@ import { expect, test } from 'vitest';
 
 test('public copy reconciles AST adapters and named language count', () => {
   const readme = fs.readFileSync('README.md', 'utf8');
-  const registry = JSON.parse(fs.readFileSync('.github/mcp-registry/server.json', 'utf8')) as { description: string };
+  const registry = JSON.parse(fs.readFileSync('.github/mcp-registry/server.json', 'utf8')) as {
+    description: string;
+  };
   const websitePrompt = fs.readFileSync('docs/WEBSITE-UPDATE-PROMPT.md', 'utf8');
 
   expect(readme).toContain('11 AST adapters covering 12 named languages');

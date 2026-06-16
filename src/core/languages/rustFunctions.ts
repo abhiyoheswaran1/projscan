@@ -66,7 +66,9 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
   }
 
   if (node.type === 'function_item' || node.type === 'function_signature_item') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     const baseName = nameNode?.text ?? '<anonymous>';
     const fnName = ownerName ? `${ownerName}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
@@ -113,7 +115,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call_expression') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = rustCalleeName(fn);
       if (name) calls.add(name);
     }

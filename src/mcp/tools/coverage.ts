@@ -19,7 +19,8 @@ export const coverageTool: McpTool = {
       },
       max_tokens: {
         type: 'number',
-        description: 'Cap the response size to roughly this many tokens (~4 chars/token). Truncates the entries array to fit.',
+        description:
+          'Cap the response size to roughly this many tokens (~4 chars/token). Truncates the entries array to fit.',
       },
       package: PACKAGE_ARG_SCHEMA,
     },

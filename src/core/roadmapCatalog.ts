@@ -6,7 +6,16 @@ interface RoadmapCatalogEntry {
   tasks: ReleaseTrainTask[];
 }
 
-export const ROADMAP_3_2_LINES = ['3.2.x', '3.3.x', '3.4.x', '3.5.x', '3.6.x', '3.7.x', '3.8.x', '3.9.x'] as const;
+export const ROADMAP_3_2_LINES = [
+  '3.2.x',
+  '3.3.x',
+  '3.4.x',
+  '3.5.x',
+  '3.6.x',
+  '3.7.x',
+  '3.8.x',
+  '3.9.x',
+] as const;
 export const ROADMAP_3_4_LINES = ['3.4.x'] as const;
 
 const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
@@ -14,10 +23,19 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.2.x',
     track: {
       theme: 'Roadmap Canonicalization',
-      outcome: 'The release-train surface names the real product roadmap instead of generic quality placeholders.',
+      outcome:
+        'The release-train surface names the real product roadmap instead of generic quality placeholders.',
       includedInPlan: true,
-      scope: ['catalog-backed release train', 'roadmap documentation alignment', 'read-only planning evidence'],
-      successCriteria: ['release-train defaults to all eight approved workstreams', 'docs/ROADMAP.md matches the generated plan', 'planning output remains read-only'],
+      scope: [
+        'catalog-backed release train',
+        'roadmap documentation alignment',
+        'read-only planning evidence',
+      ],
+      successCriteria: [
+        'release-train defaults to all eight approved workstreams',
+        'docs/ROADMAP.md matches the generated plan',
+        'planning output remains read-only',
+      ],
     },
     tasks: [
       {
@@ -29,7 +47,8 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         files: ['src/core/roadmapCatalog.ts', 'src/core/releaseTrain.ts', 'docs/ROADMAP.md'],
         verification: {
           commands: ['projscan release-train --format json', 'npm test'],
-          expected: 'Release train returns the eight roadmap workstreams with concrete tasks and stays read-only.',
+          expected:
+            'Release train returns the eight roadmap workstreams with concrete tasks and stays read-only.',
         },
       },
     ],
@@ -40,8 +59,16 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
       theme: 'Adoption Proof Polish',
       outcome: 'Teams can see the next missing proof gate before calling adoption proven.',
       includedInPlan: true,
-      scope: ['proof-gate summaries', 'reviewer feedback prioritization', 'trial verdict explanation'],
-      successCriteria: ['dogfood names the next proof step', 'trial output carries adoption blockers clearly', 'website proof remains measured and provisional until proven'],
+      scope: [
+        'proof-gate summaries',
+        'reviewer feedback prioritization',
+        'trial verdict explanation',
+      ],
+      successCriteria: [
+        'dogfood names the next proof step',
+        'trial output carries adoption blockers clearly',
+        'website proof remains measured and provisional until proven',
+      ],
     },
     tasks: [
       {
@@ -50,10 +77,18 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         title: 'Sharpen adoption proof gates',
         why: 'Adoption validation should explain the one next action that moves a team from setup to proof.',
         track: '3.3.x',
-        files: ['src/core/dogfood.ts', 'src/core/trial.ts', 'docs/ADOPTION-PROOF.md', 'docs/MARKET-VALIDATION.md'],
+        files: [
+          'src/core/dogfood.ts',
+          'src/core/trial.ts',
+          'docs/ADOPTION-PROOF.md',
+          'docs/MARKET-VALIDATION.md',
+        ],
         verification: {
-          commands: ['projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json'],
-          expected: 'Dogfood reports proof gates, the next proof step, reviewer value, repeat use, and false-positive pressure.',
+          commands: [
+            'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
+          ],
+          expected:
+            'Dogfood reports proof gates, the next proof step, reviewer value, repeat use, and false-positive pressure.',
         },
       },
     ],
@@ -62,10 +97,21 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.4.x',
     track: {
       theme: 'Repo Understanding',
-      outcome: 'Working engineers can ask one command for cited map, flow, contracts, change readiness, and verification proof before editing.',
+      outcome:
+        'Working engineers can ask one command for cited map, flow, contracts, change readiness, and verification proof before editing.',
       includedInPlan: true,
-      scope: ['cited repo map', 'runtime flow map', 'contract map', 'change-readiness guidance', 'verification proof tiers'],
-      successCriteria: ['understand exposes map, flow, contracts, change, and verify views', 'MCP and CLI return the same report shape', 'docs and website prompt name all shipped views'],
+      scope: [
+        'cited repo map',
+        'runtime flow map',
+        'contract map',
+        'change-readiness guidance',
+        'verification proof tiers',
+      ],
+      successCriteria: [
+        'understand exposes map, flow, contracts, change, and verify views',
+        'MCP and CLI return the same report shape',
+        'docs and website prompt name all shipped views',
+      ],
     },
     tasks: [
       {
@@ -74,10 +120,21 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         title: 'Ship cited repo understanding',
         why: 'Real engineers need a reliable map of entrypoints, flows, contracts, change blast radius, and proof commands before they trust an agent to edit.',
         track: '3.4.x',
-        files: ['src/core/understand.ts', 'src/cli/commands/understand.ts', 'src/mcp/tools/understand.ts', 'README.md', 'docs/WEBSITE-UPDATE-PROMPT.md'],
+        files: [
+          'src/core/understand.ts',
+          'src/cli/commands/understand.ts',
+          'src/mcp/tools/understand.ts',
+          'README.md',
+          'docs/WEBSITE-UPDATE-PROMPT.md',
+        ],
         verification: {
-          commands: ['projscan understand --view map --format json', 'projscan understand --view verify --format json', 'npm test'],
-          expected: 'Understand returns cited repo, flow, contract, change-readiness, and verification maps through CLI and MCP.',
+          commands: [
+            'projscan understand --view map --format json',
+            'projscan understand --view verify --format json',
+            'npm test',
+          ],
+          expected:
+            'Understand returns cited repo, flow, contract, change-readiness, and verification maps through CLI and MCP.',
         },
       },
     ],
@@ -86,10 +143,19 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.5.x',
     track: {
       theme: 'Plugin Trust',
-      outcome: 'The surfaces that touch untrusted repositories cannot execute their code without explicit approval.',
+      outcome:
+        'The surfaces that touch untrusted repositories cannot execute their code without explicit approval.',
       includedInPlan: true,
-      scope: ['fix-layer --ignore-scripts', 'plugin trust-on-first-use', 'embedding model graceful degradation'],
-      successCriteria: ['projscan fix never runs a scanned repo lifecycle script', 'plugins execute only after projscan plugin trust', 'an embedding model-load failure degrades to BM25 instead of throwing'],
+      scope: [
+        'fix-layer --ignore-scripts',
+        'plugin trust-on-first-use',
+        'embedding model graceful degradation',
+      ],
+      successCriteria: [
+        'projscan fix never runs a scanned repo lifecycle script',
+        'plugins execute only after projscan plugin trust',
+        'an embedding model-load failure degrades to BM25 instead of throwing',
+      ],
     },
     tasks: [
       {
@@ -110,10 +176,19 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.6.x',
     track: {
       theme: 'Swarm Collision Detection',
-      outcome: 'When two in-flight worktrees have overlapping blast radius, an agent learns before the changes collide.',
+      outcome:
+        'When two in-flight worktrees have overlapping blast radius, an agent learns before the changes collide.',
       includedInPlan: true,
-      scope: ['per-worktree changed-symbol blast radius', 'pairwise overlap detection', 'projscan_collision MCP + CLI'],
-      successCriteria: ['collision report names overlapping worktree pairs with the files and symbols at risk', 'blast radius reuses the impact graph', 'stays local-first over sibling git worktrees'],
+      scope: [
+        'per-worktree changed-symbol blast radius',
+        'pairwise overlap detection',
+        'projscan_collision MCP + CLI',
+      ],
+      successCriteria: [
+        'collision report names overlapping worktree pairs with the files and symbols at risk',
+        'blast radius reuses the impact graph',
+        'stays local-first over sibling git worktrees',
+      ],
     },
     tasks: [
       {
@@ -122,7 +197,11 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         title: 'Detect cross-worktree change collisions',
         why: 'Parallel agents editing one repo collide when their blast radii overlap; surfacing that pre-merge is the flagship coordination value.',
         track: '3.6.x',
-        files: ['src/core/collisionDetector.ts', 'src/mcp/tools/collision.ts', 'src/cli/commands/collision.ts'],
+        files: [
+          'src/core/collisionDetector.ts',
+          'src/mcp/tools/collision.ts',
+          'src/cli/commands/collision.ts',
+        ],
         verification: {
           commands: ['projscan collisions --format json'],
           expected: 'Report lists worktree pairs whose changed-symbol blast radii overlap.',
@@ -134,10 +213,19 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.7.x',
     track: {
       theme: 'Claims And Leases',
-      outcome: 'An agent can claim a file, symbol, or subsystem so the swarm sees who owns what and warns on contention.',
+      outcome:
+        'An agent can claim a file, symbol, or subsystem so the swarm sees who owns what and warns on contention.',
       includedInPlan: true,
-      scope: ['local claim store under .projscan-cache', 'contention warnings', 'projscan_claim MCP + CLI'],
-      successCriteria: ['claims persist locally and are scoped to the active repo', 'overlapping claims surface a contention warning', 'claims can be released explicitly'],
+      scope: [
+        'local claim store under .projscan-cache',
+        'contention warnings',
+        'projscan_claim MCP + CLI',
+      ],
+      successCriteria: [
+        'claims persist locally and are scoped to the active repo',
+        'overlapping claims surface a contention warning',
+        'claims can be released explicitly',
+      ],
     },
     tasks: [
       {
@@ -148,7 +236,10 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         track: '3.7.x',
         files: ['src/core/claims.ts', 'src/mcp/tools/claim.ts', 'src/cli/commands/claim.ts'],
         verification: {
-          commands: ['projscan claim add src/auth.ts --agent a', 'projscan claim list --format json'],
+          commands: [
+            'projscan claim add src/auth.ts --agent a',
+            'projscan claim list --format json',
+          ],
           expected: 'Claims persist locally and overlapping claims warn on contention.',
         },
       },
@@ -158,10 +249,15 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.8.x',
     track: {
       theme: 'Merge-Risk Preflight',
-      outcome: 'Given the set of in-flight worktrees, preflight returns the safe integration order and where conflict risk concentrates.',
+      outcome:
+        'Given the set of in-flight worktrees, preflight returns the safe integration order and where conflict risk concentrates.',
       includedInPlan: true,
       scope: ['multi-branch preflight verdict', 'integration order', 'conflict-risk concentration'],
-      successCriteria: ['preflight accepts multiple in-flight worktrees', 'returns a safe integration order', 'flags files where multiple branches and blast radii concentrate'],
+      successCriteria: [
+        'preflight accepts multiple in-flight worktrees',
+        'returns a safe integration order',
+        'flags files where multiple branches and blast radii concentrate',
+      ],
     },
     tasks: [
       {
@@ -173,7 +269,8 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         files: ['src/core/preflight.ts', 'src/core/collisionDetector.ts'],
         verification: {
           commands: ['projscan preflight --mode before_merge --format json'],
-          expected: 'Preflight returns integration order and conflict-risk concentration across in-flight worktrees.',
+          expected:
+            'Preflight returns integration order and conflict-risk concentration across in-flight worktrees.',
         },
       },
     ],
@@ -182,10 +279,19 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
     line: '3.9.x',
     track: {
       theme: 'Agent Ergonomics And Coordination Proof',
-      outcome: 'Agents reach the right capability through one budget-shaped entry point, and the coordination layer is measured for outcome value.',
+      outcome:
+        'Agents reach the right capability through one budget-shaped entry point, and the coordination layer is measured for outcome value.',
       includedInPlan: true,
-      scope: ['adaptive intent router over the tool surface', 'budget-shaped next actions', 'with/without coordination outcome metrics'],
-      successCriteria: ['a single entry tool routes to the right capability', 'router output is budget-shaped and shrinks the tool-list footprint', 'dogfood/trial reports compare task success and token cost with vs without coordination'],
+      scope: [
+        'adaptive intent router over the tool surface',
+        'budget-shaped next actions',
+        'with/without coordination outcome metrics',
+      ],
+      successCriteria: [
+        'a single entry tool routes to the right capability',
+        'router output is budget-shaped and shrinks the tool-list footprint',
+        'dogfood/trial reports compare task success and token cost with vs without coordination',
+      ],
     },
     tasks: [
       {
@@ -197,7 +303,8 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
         files: ['src/mcp/tools', 'src/core/dogfood.ts', 'src/core/trial.ts'],
         verification: {
           commands: ['projscan dogfood --format json'],
-          expected: 'Routing shrinks the tool footprint and proof reports compare with/without coordination.',
+          expected:
+            'Routing shrinks the tool footprint and proof reports compare with/without coordination.',
         },
       },
     ],
@@ -219,5 +326,11 @@ export function roadmapTrackForLine(line: string): ReleaseTrainTrack | undefined
 }
 
 export function roadmapTasksForLine(line: string): ReleaseTrainTask[] {
-  return ROADMAP_3_2_CATALOG[line]?.tasks.map((task) => ({ ...task, files: [...task.files], verification: { ...task.verification, commands: [...task.verification.commands] } })) ?? [];
+  return (
+    ROADMAP_3_2_CATALOG[line]?.tasks.map((task) => ({
+      ...task,
+      files: [...task.files],
+      verification: { ...task.verification, commands: [...task.verification.commands] },
+    })) ?? []
+  );
 }

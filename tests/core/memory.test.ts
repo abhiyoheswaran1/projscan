@@ -50,7 +50,16 @@ describe('loadMemory', () => {
       JSON.stringify({
         schemaVersion: 999,
         lastUpdatedAt: new Date().toISOString(),
-        rules: { foo: { ruleId: 'foo', firstSeenAt: '', lastSeenAt: '', runCount: 1, fixedCount: 0, suppressedInConfig: false } },
+        rules: {
+          foo: {
+            ruleId: 'foo',
+            firstSeenAt: '',
+            lastSeenAt: '',
+            runCount: 1,
+            fixedCount: 0,
+            suppressedInConfig: false,
+          },
+        },
         totalRuns: 5,
       }),
     );
@@ -99,7 +108,9 @@ describe('findStableRules', () => {
   it('surfaces rules that pass the run-count + age threshold without being fixed', async () => {
     const m = await loadMemory(tmp);
     // Simulate `STABLE_RULE_RUN_COUNT` runs over enough time:
-    const longAgo = new Date(Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+    const longAgo = new Date(
+      Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000,
+    ).toISOString();
     m.rules['stable-rule'] = {
       ruleId: 'stable-rule',
       firstSeenAt: longAgo,
@@ -122,7 +133,9 @@ describe('findStableRules', () => {
 
   it('excludes rules already suppressed in config', async () => {
     const m = await loadMemory(tmp);
-    const longAgo = new Date(Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+    const longAgo = new Date(
+      Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000,
+    ).toISOString();
     m.rules['x'] = {
       ruleId: 'x',
       firstSeenAt: longAgo,
@@ -136,7 +149,9 @@ describe('findStableRules', () => {
 
   it('excludes rules with any fix history', async () => {
     const m = await loadMemory(tmp);
-    const longAgo = new Date(Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+    const longAgo = new Date(
+      Date.now() - (STABLE_RULE_DAYS + 1) * 24 * 60 * 60 * 1000,
+    ).toISOString();
     m.rules['x'] = {
       ruleId: 'x',
       firstSeenAt: longAgo,

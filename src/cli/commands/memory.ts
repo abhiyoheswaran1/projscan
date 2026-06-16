@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import {
   findStableRules,
   forgetRule,
@@ -173,7 +179,12 @@ function printStable(m: ProjectMemory, stable: RuleObservation[]): void {
   console.log('');
   console.log(chalk.bold('  Suggested .projscanrc.json:'));
   console.log('');
-  console.log('  ' + JSON.stringify({ disableRules: stable.map((r) => r.ruleId) }, null, 2).split('\n').join('\n  '));
+  console.log(
+    '  ' +
+      JSON.stringify({ disableRules: stable.map((r) => r.ruleId) }, null, 2)
+        .split('\n')
+        .join('\n  '),
+  );
 }
 
 function printRuns(m: ProjectMemory, all: RuleObservation[]): void {
@@ -181,7 +192,9 @@ function printRuns(m: ProjectMemory, all: RuleObservation[]): void {
   console.log(chalk.bold(`Tracked rules (${all.length})`));
   console.log(chalk.dim('────────────────────────────────────────'));
   if (all.length === 0) {
-    console.log(chalk.dim('  No rules tracked yet. Memory begins recording on `projscan doctor` runs.'));
+    console.log(
+      chalk.dim('  No rules tracked yet. Memory begins recording on `projscan doctor` runs.'),
+    );
     return;
   }
   for (const r of all.slice(0, 30)) {

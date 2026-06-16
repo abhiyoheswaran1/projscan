@@ -19,7 +19,15 @@ describe('graph corpus baseline check', () => {
             dataflowRisks: 0,
           },
         ],
-        totals: { files: 1, functions: 2, packages: 0, symbols: 1, importEdges: 0, callEdges: 1, dataflowRisks: 0 },
+        totals: {
+          files: 1,
+          functions: 2,
+          packages: 0,
+          symbols: 1,
+          importEdges: 0,
+          callEdges: 1,
+          dataflowRisks: 0,
+        },
       },
       {
         schemaVersion: 1,
@@ -36,7 +44,15 @@ describe('graph corpus baseline check', () => {
             dataflowRisks: 0,
           },
         ],
-        totals: { files: 1, functions: 3, packages: 0, symbols: 1, importEdges: 0, callEdges: 2, dataflowRisks: 0 },
+        totals: {
+          files: 1,
+          functions: 3,
+          packages: 0,
+          symbols: 1,
+          importEdges: 0,
+          callEdges: 2,
+          dataflowRisks: 0,
+        },
       },
     );
 
@@ -61,7 +77,15 @@ describe('graph corpus baseline check', () => {
             dataflowRisks: 0,
           },
         ],
-        totals: { files: 2, functions: 3, packages: 0, symbols: 2, importEdges: 1, callEdges: 2, dataflowRisks: 0 },
+        totals: {
+          files: 2,
+          functions: 3,
+          packages: 0,
+          symbols: 2,
+          importEdges: 1,
+          callEdges: 2,
+          dataflowRisks: 0,
+        },
       },
       {
         schemaVersion: 1,
@@ -78,11 +102,22 @@ describe('graph corpus baseline check', () => {
             dataflowRisks: 1,
           },
         ],
-        totals: { files: 2, functions: 2, packages: 0, symbols: 2, importEdges: 1, callEdges: 2, dataflowRisks: 1 },
+        totals: {
+          files: 2,
+          functions: 2,
+          packages: 0,
+          symbols: 2,
+          importEdges: 1,
+          callEdges: 2,
+          dataflowRisks: 1,
+        },
       },
     );
 
     expect(report.status).toBe('fail');
-    expect(report.failures.map((failure) => failure.metric)).toEqual(['functions', 'dataflowRisks']);
+    expect(report.failures.map((failure) => failure.metric)).toEqual([
+      'functions',
+      'dataflowRisks',
+    ]);
   });
 });

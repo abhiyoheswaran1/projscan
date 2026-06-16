@@ -44,10 +44,7 @@ describe('analyzeDependencies (single-package)', () => {
   });
 
   it('flags deprecated packages', async () => {
-    await write(
-      'package.json',
-      JSON.stringify({ name: 'x', dependencies: { moment: '^2.0.0' } }),
-    );
+    await write('package.json', JSON.stringify({ name: 'x', dependencies: { moment: '^2.0.0' } }));
     const r = await analyzeDependencies(tmp);
     const moment = r!.risks.find((rk) => rk.name === 'moment');
     expect(moment).toBeDefined();
@@ -69,9 +66,18 @@ describe('analyzeDependencies (single-package)', () => {
         },
       }),
     );
-    await write('node_modules/gpl-lib/package.json', JSON.stringify({ name: 'gpl-lib', version: '1.0.1', license: 'GPL-3.0-only' }));
-    await write('node_modules/mit-lib/package.json', JSON.stringify({ name: 'mit-lib', version: '2.0.1', license: 'MIT' }));
-    await write('node_modules/apache-tool/package.json', JSON.stringify({ name: 'apache-tool', version: '4.0.1', license: 'Apache-2.0' }));
+    await write(
+      'node_modules/gpl-lib/package.json',
+      JSON.stringify({ name: 'gpl-lib', version: '1.0.1', license: 'GPL-3.0-only' }),
+    );
+    await write(
+      'node_modules/mit-lib/package.json',
+      JSON.stringify({ name: 'mit-lib', version: '2.0.1', license: 'MIT' }),
+    );
+    await write(
+      'node_modules/apache-tool/package.json',
+      JSON.stringify({ name: 'apache-tool', version: '4.0.1', license: 'Apache-2.0' }),
+    );
 
     const r = await analyzeDependencies(tmp);
 
@@ -112,11 +118,20 @@ describe('analyzeDependencies (single-package)', () => {
         },
       }),
     );
-    await write('node_modules/big-lib/package.json', JSON.stringify({ name: 'big-lib', version: '1.0.1', license: 'MIT' }));
+    await write(
+      'node_modules/big-lib/package.json',
+      JSON.stringify({ name: 'big-lib', version: '1.0.1', license: 'MIT' }),
+    );
     await write('node_modules/big-lib/dist/big.js', 'x'.repeat(1_100_000));
-    await write('node_modules/tiny-lib/package.json', JSON.stringify({ name: 'tiny-lib', version: '2.0.1', license: 'MIT' }));
+    await write(
+      'node_modules/tiny-lib/package.json',
+      JSON.stringify({ name: 'tiny-lib', version: '2.0.1', license: 'MIT' }),
+    );
     await write('node_modules/tiny-lib/index.js', 'tiny');
-    await write('node_modules/dev-tool/package.json', JSON.stringify({ name: 'dev-tool', version: '4.0.1', license: 'MIT' }));
+    await write(
+      'node_modules/dev-tool/package.json',
+      JSON.stringify({ name: 'dev-tool', version: '4.0.1', license: 'MIT' }),
+    );
     await write('node_modules/dev-tool/index.js', 'dev');
 
     const r = await analyzeDependencies(tmp);

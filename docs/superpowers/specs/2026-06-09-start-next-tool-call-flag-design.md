@@ -19,7 +19,7 @@ projscan start --intent "what breaks if I rename the auth token loader" --next-t
 Expected output:
 
 ```json
-{"tool":"projscan_search","args":{"query":"auth token loader"}}
+{ "tool": "projscan_search", "args": { "query": "auth token loader" } }
 ```
 
 ## Non-Goals

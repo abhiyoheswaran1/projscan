@@ -29,7 +29,10 @@ export function extractCsharpImports(root: TsNode): AstImport[] {
   const imports: AstImport[] = [];
   for (const child of root.namedChildren) {
     if (child.type === 'using_directive') collectUsing(child, imports);
-    else if (child.type === 'file_scoped_namespace_declaration' || child.type === 'namespace_declaration') {
+    else if (
+      child.type === 'file_scoped_namespace_declaration' ||
+      child.type === 'namespace_declaration'
+    ) {
       // Inside a namespace, more usings can appear.
       for (const inner of child.namedChildren) {
         if (inner.type === 'using_directive') collectUsing(inner, imports);

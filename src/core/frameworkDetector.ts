@@ -67,8 +67,8 @@ const BUILD_TOOL_INDICATORS: Record<string, string> = {
   'vite.config.js': 'Vite',
   'vite.config.ts': 'Vite',
   'turbo.json': 'Turborepo',
-  'Makefile': 'Make',
-  'Dockerfile': 'Docker',
+  Makefile: 'Make',
+  Dockerfile: 'Docker',
   'docker-compose.yml': 'Docker Compose',
   'docker-compose.yaml': 'Docker Compose',
 };
@@ -79,7 +79,11 @@ export async function detectFrameworks(
 ): Promise<FrameworkResult> {
   const pkg = await readPackageJson(rootPath);
   const fileNames = new Set(files.map((f) => f.relativePath));
-  const rootFiles = new Set(files.filter((f) => !f.directory || f.directory === '.').map((f) => path.basename(f.relativePath)));
+  const rootFiles = new Set(
+    files
+      .filter((f) => !f.directory || f.directory === '.')
+      .map((f) => path.basename(f.relativePath)),
+  );
 
   const frameworks = new Map<string, DetectedFramework>();
 

@@ -18,7 +18,7 @@ Add a console-only shortcut that prints a compact JSON array:
 Each array item should contain only the callable MCP shape:
 
 ```json
-{"tool":"projscan_search","args":{"query":"auth token loader"}}
+{ "tool": "projscan_search", "args": { "query": "auth token loader" } }
 ```
 
 This keeps the output easy to parse and aligned with `--next-tool-call`. Step ids and CLI commands stay available in the full JSON report, runbook, and proof queue.

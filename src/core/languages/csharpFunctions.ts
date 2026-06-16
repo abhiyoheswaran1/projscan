@@ -110,7 +110,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
 }
 
 function csharpCalleeName(call: TsNode): string | null {
-  const fn = call.childForFieldName ? call.childForFieldName('function') : (call.namedChildren[0] ?? null);
+  const fn = call.childForFieldName
+    ? call.childForFieldName('function')
+    : (call.namedChildren[0] ?? null);
   if (!fn) return null;
   return calleeBareName(fn);
 }

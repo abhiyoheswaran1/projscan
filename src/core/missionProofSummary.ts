@@ -1,4 +1,4 @@
-import type { MissionProofReport, MissionProofTotals } from '../types.js';
+import type { MissionProofReport, MissionProofTotals } from '../types/start.js';
 
 export function renderMissionProofSummary(report: MissionProofReport): string {
   const totals = report.missionControl.totals;

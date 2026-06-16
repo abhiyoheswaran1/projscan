@@ -66,7 +66,8 @@ export function showBanner(): void {
   const dashCount = totalW - title.length;
   const dashLeft = Math.floor(dashCount / 2);
   const dashRight = dashCount - dashLeft;
-  const topLine = dim('  ╭') + dim('╌'.repeat(dashLeft)) + dim(title) + dim('╌'.repeat(dashRight)) + dim('╮');
+  const topLine =
+    dim('  ╭') + dim('╌'.repeat(dashLeft)) + dim(title) + dim('╌'.repeat(dashRight)) + dim('╮');
   const botLine = dim(`  ╰${'─'.repeat(totalW)}╯`);
 
   const rows = Math.max(L.length, R.length);
@@ -77,7 +78,7 @@ export function showBanner(): void {
   for (let i = 0; i < rows; i++) {
     const left = i < L.length ? L[i] : '';
     const right = i < R.length ? R[i] : '';
-    const sep = (i > 0 && i < rows - 1) ? dim('│') : ' ';
+    const sep = i > 0 && i < rows - 1 ? dim('│') : ' ';
     console.log(dim('  │') + padVisual(left, leftW) + sep + padVisual(right, rightW) + dim('│'));
   }
 
@@ -91,9 +92,7 @@ export function showBanner(): void {
 export function showCompactBanner(): void {
   const version = getVersion();
   console.log('');
-  console.log(
-    `  ${chalk.cyan('◆')} ${chalk.white.bold('ProjScan')} ${chalk.dim(`v${version}`)}`,
-  );
+  console.log(`  ${chalk.cyan('◆')} ${chalk.white.bold('ProjScan')} ${chalk.dim(`v${version}`)}`);
 }
 
 /**
@@ -109,32 +108,41 @@ export function showHelp(): void {
   const g = chalk.gray;
 
   const commands = [
-    { cmd: 'projscan',                       desc: 'Full project analysis (default)' },
-    { cmd: 'projscan doctor',                desc: 'Health check - detect issues and score your project' },
-    { cmd: 'projscan hotspots',              desc: 'Rank files by risk - churn × complexity × issues × ownership' },
-    { cmd: 'projscan search <query>',        desc: 'BM25-ranked search across content, symbols, and paths' },
-    { cmd: 'projscan file <path>',           desc: 'Drill into a file - purpose, risk, ownership, issues' },
-    { cmd: 'projscan fix',                   desc: 'Auto-fix detected issues (interactive)' },
-    { cmd: 'projscan fix -y',                desc: 'Auto-fix without prompting' },
-    { cmd: 'projscan ci',                    desc: 'CI gate - exit 1 if score below threshold' },
-    { cmd: 'projscan ci --min-score 80',     desc: 'Set custom minimum score' },
-    { cmd: 'projscan ci --changed-only',     desc: 'Gate only on issues in this PR\'s diff' },
-    { cmd: 'projscan ci --format sarif',     desc: 'Emit SARIF 2.1.0 for GitHub Code Scanning' },
-    { cmd: 'projscan diff',                  desc: 'Compare current health against saved baseline' },
-    { cmd: 'projscan diff --save-baseline',  desc: 'Save current state as baseline' },
-    { cmd: 'projscan explain <file>',        desc: 'Explain a file - purpose, imports, exports' },
-    { cmd: 'projscan diagram',               desc: 'Show architecture layer diagram' },
-    { cmd: 'projscan structure',             desc: 'Show directory structure overview' },
-    { cmd: 'projscan dependencies',          desc: 'Analyze project dependencies' },
-    { cmd: 'projscan outdated',              desc: 'Declared-vs-installed drift (offline)' },
-    { cmd: 'projscan audit',                 desc: 'Run npm audit; SARIF-ready vulnerability report' },
-    { cmd: 'projscan upgrade <pkg>',         desc: 'Preview upgrade impact (CHANGELOG + importers, offline)' },
-    { cmd: 'projscan coverage',              desc: 'Coverage × hotspots - surface scariest untested files' },
-    { cmd: 'projscan badge',                 desc: 'Generate a health badge for your README' },
-    { cmd: 'projscan mcp',                   desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
+    { cmd: 'projscan', desc: 'Full project analysis (default)' },
+    { cmd: 'projscan doctor', desc: 'Health check - detect issues and score your project' },
+    {
+      cmd: 'projscan hotspots',
+      desc: 'Rank files by risk - churn × complexity × issues × ownership',
+    },
+    {
+      cmd: 'projscan search <query>',
+      desc: 'BM25-ranked search across content, symbols, and paths',
+    },
+    { cmd: 'projscan file <path>', desc: 'Drill into a file - purpose, risk, ownership, issues' },
+    { cmd: 'projscan fix', desc: 'Auto-fix detected issues (interactive)' },
+    { cmd: 'projscan fix -y', desc: 'Auto-fix without prompting' },
+    { cmd: 'projscan ci', desc: 'CI gate - exit 1 if score below threshold' },
+    { cmd: 'projscan ci --min-score 80', desc: 'Set custom minimum score' },
+    { cmd: 'projscan ci --changed-only', desc: "Gate only on issues in this PR's diff" },
+    { cmd: 'projscan ci --format sarif', desc: 'Emit SARIF 2.1.0 for GitHub Code Scanning' },
+    { cmd: 'projscan diff', desc: 'Compare current health against saved baseline' },
+    { cmd: 'projscan diff --save-baseline', desc: 'Save current state as baseline' },
+    { cmd: 'projscan explain <file>', desc: 'Explain a file - purpose, imports, exports' },
+    { cmd: 'projscan diagram', desc: 'Show architecture layer diagram' },
+    { cmd: 'projscan structure', desc: 'Show directory structure overview' },
+    { cmd: 'projscan dependencies', desc: 'Analyze project dependencies' },
+    { cmd: 'projscan outdated', desc: 'Declared-vs-installed drift (offline)' },
+    { cmd: 'projscan audit', desc: 'Run npm audit; SARIF-ready vulnerability report' },
+    {
+      cmd: 'projscan upgrade <pkg>',
+      desc: 'Preview upgrade impact (CHANGELOG + importers, offline)',
+    },
+    { cmd: 'projscan coverage', desc: 'Coverage × hotspots - surface scariest untested files' },
+    { cmd: 'projscan badge', desc: 'Generate a health badge for your README' },
+    { cmd: 'projscan mcp', desc: 'Run as MCP server for AI agents (Claude Code, Cursor, …)' },
   ];
 
-  const maxCmd = Math.max(...commands.map(c => c.cmd.length));
+  const maxCmd = Math.max(...commands.map((c) => c.cmd.length));
 
   console.log(`  ${cyan('Usage')}`);
   console.log(dim('  ─'.repeat(20)));
@@ -148,10 +156,16 @@ export function showHelp(): void {
   console.log(`  ${cyan('Global Options')}`);
   console.log(dim('  ─'.repeat(20)));
   console.log('');
-  console.log(`  ${w('--format <type>')}    ${g(`Output format: ${formatList()} (command-dependent)`)}`);
+  console.log(
+    `  ${w('--format <type>')}    ${g(`Output format: ${formatList()} (command-dependent)`)}`,
+  );
   console.log(`  ${w('--config <path>')}    ${g('Path to a .projscanrc config file')}`);
-  console.log(`  ${w('--changed-only')}     ${g('Scope to files changed vs base ref (ci/analyze/doctor)')}`);
-  console.log(`  ${w('--base-ref <ref>')}   ${g('Git base ref for --changed-only (default: origin/main)')}`);
+  console.log(
+    `  ${w('--changed-only')}     ${g('Scope to files changed vs base ref (ci/analyze/doctor)')}`,
+  );
+  console.log(
+    `  ${w('--base-ref <ref>')}   ${g('Git base ref for --changed-only (default: origin/main)')}`,
+  );
   console.log(`  ${w('--verbose')}          ${g('Enable verbose/debug output')}`);
   console.log(`  ${w('--quiet')}            ${g('Suppress non-essential output')}`);
   console.log(`  ${w('--version')}          ${g('Show version number')}`);
@@ -163,7 +177,9 @@ export function showHelp(): void {
   console.log(dim('  ─'.repeat(20)));
   console.log('');
   for (const { command, formats } of rows) {
-    console.log(`  ${w(`projscan ${command}`.padEnd(maxFormatCommand + 2))} ${g(formatList(formats))}`);
+    console.log(
+      `  ${w(`projscan ${command}`.padEnd(maxFormatCommand + 2))} ${g(formatList(formats))}`,
+    );
   }
   console.log('');
 }

@@ -11,7 +11,8 @@ export const reviewTool: McpTool = {
     properties: {
       base: {
         type: 'string',
-        description: 'Base ref (branch, tag, sha). Default: origin/main, falling back to main/master/HEAD~1.',
+        description:
+          'Base ref (branch, tag, sha). Default: origin/main, falling back to main/master/HEAD~1.',
       },
       head: { type: 'string', description: 'Head ref. Default: HEAD.' },
       max_tokens: {
@@ -25,7 +26,8 @@ export const reviewTool: McpTool = {
       },
       package: {
         type: 'string',
-        description: 'Optional. Workspace package name to scope all sections of the review to a single package.',
+        description:
+          'Optional. Workspace package name to scope all sections of the review to a single package.',
       },
       intent: {
         type: 'string',
@@ -40,7 +42,8 @@ export const reviewTool: McpTool = {
     const head = typeof args.head === 'string' ? args.head : undefined;
     const intent = typeof args.intent === 'string' ? args.intent : undefined;
     emitProgress(1, 4, 'building base + head graphs');
-    const packageName = typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
+    const packageName =
+      typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
     if (packageName) emitProgress(2, 4, 'scoping to workspace');
     const report = await computeReview(rootPath, { base, head, intent, package: packageName });
 

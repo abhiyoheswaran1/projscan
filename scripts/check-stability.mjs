@@ -41,13 +41,56 @@ const baselinePath = path.join(root, 'stability-baseline.json');
 // this list ONLY on a major version bump; otherwise additions go through
 // the baseline-diff path automatically.
 const STABLE_CLI_COMMANDS = [
-  'agent-brief', 'analyze', 'apply-fix', 'audit', 'badge', 'bug-hunt', 'ci', 'coupling', 'coverage',
-  'dataflow', 'dependencies', 'diagram', 'diff', 'doctor', 'dogfood', 'evidence-pack', 'explain-issue',
-  'feedback', 'file', 'first-run', 'fix', 'fix-suggest', 'handoff', 'hotspots', 'impact', 'init',
-  'install-hook', 'mcp', 'memory', 'outdated', 'plugin', 'preflight',
-  'pr-diff', 'quality-scorecard', 'recipes', 'release-train', 'regression-plan',
-  'review', 'search', 'semantic-graph', 'session', 'structure', 'taint', 'trial', 'understand', 'upgrade', 'watch',
-  'workplan', 'workspace', 'workspaces',
+  'agent-brief',
+  'analyze',
+  'apply-fix',
+  'audit',
+  'badge',
+  'bug-hunt',
+  'ci',
+  'coupling',
+  'coverage',
+  'dataflow',
+  'dependencies',
+  'diagram',
+  'diff',
+  'doctor',
+  'dogfood',
+  'evidence-pack',
+  'explain-issue',
+  'feedback',
+  'file',
+  'first-run',
+  'fix',
+  'fix-suggest',
+  'handoff',
+  'hotspots',
+  'impact',
+  'init',
+  'install-hook',
+  'mcp',
+  'memory',
+  'outdated',
+  'plugin',
+  'preflight',
+  'pr-diff',
+  'quality-scorecard',
+  'recipes',
+  'release-train',
+  'regression-plan',
+  'review',
+  'search',
+  'semantic-graph',
+  'session',
+  'structure',
+  'taint',
+  'trial',
+  'understand',
+  'upgrade',
+  'watch',
+  'workplan',
+  'workspace',
+  'workspaces',
 ];
 
 const STABLE_EXIT_CODES = {
@@ -94,9 +137,7 @@ for (const tool of manifest.tools) {
 if (updateMode) {
   await writeFile(baselinePath, JSON.stringify(liveSurface, null, 2) + '\n', 'utf-8');
   console.log(`✓ stability baseline updated at ${path.relative(root, baselinePath)}`);
-  console.log(
-    '  Only do this on a deliberate major version bump or when intentionally',
-  );
+  console.log('  Only do this on a deliberate major version bump or when intentionally');
   console.log('  expanding the stable surface (e.g. promoting a tool to GA).');
   process.exit(0);
 }
@@ -148,7 +189,9 @@ for (const name of baselineToolNames) {
   }
   for (const r of baseRequired) {
     if (!liveRequired.has(r)) {
-      issues.push(`required arg ${r} in ${name} is no longer required (allowed but flag for review)`);
+      issues.push(
+        `required arg ${r} in ${name} is no longer required (allowed but flag for review)`,
+      );
     }
   }
 }

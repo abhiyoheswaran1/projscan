@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { createMcpServer } from '../../src/mcp/server.js';
 
-async function roundtrip(server: ReturnType<typeof createMcpServer>, req: object): Promise<Record<string, unknown>> {
+async function roundtrip(
+  server: ReturnType<typeof createMcpServer>,
+  req: object,
+): Promise<Record<string, unknown>> {
   const raw = await server.handleMessage(JSON.stringify(req));
   if (!raw) throw new Error('no response');
   return JSON.parse(raw) as Record<string, unknown>;

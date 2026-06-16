@@ -8,11 +8,7 @@ import { extractPythonCyclomatic } from './pythonCyclomatic.js';
 import { extractPythonFunctions } from './pythonFunctions.js';
 import { extractPythonCallSites } from './pythonCallSites.js';
 import { detectPythonProject } from './pythonManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 // Pinned grammar: tree-sitter-python 0.25.0. See treeSitterLoader.ts.
 
@@ -52,8 +48,12 @@ export const pythonAdapter: LanguageAdapter = {
           functions: [],
         };
       }
-      const imports = extractPythonImports(tree.rootNode as unknown as Parameters<typeof extractPythonImports>[0]);
-      const exports = extractPythonExports(tree.rootNode as unknown as Parameters<typeof extractPythonExports>[0]);
+      const imports = extractPythonImports(
+        tree.rootNode as unknown as Parameters<typeof extractPythonImports>[0],
+      );
+      const exports = extractPythonExports(
+        tree.rootNode as unknown as Parameters<typeof extractPythonExports>[0],
+      );
       const cyclomaticComplexity = extractPythonCyclomatic(
         tree.rootNode as unknown as Parameters<typeof extractPythonCyclomatic>[0],
       );
@@ -103,10 +103,7 @@ export const pythonAdapter: LanguageAdapter = {
     return source.split('.')[0].toLowerCase();
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectPythonProject(rootPath, files);
     return {
       packageRoots: info?.packageRoots ?? [],
@@ -167,10 +164,7 @@ function resolvePythonImport(
   return null;
 }
 
-function probeModuleOrPackage(
-  base: string,
-  graphFiles: Map<string, GraphFileLike>,
-): string | null {
+function probeModuleOrPackage(base: string, graphFiles: Map<string, GraphFileLike>): string | null {
   if (!base) return null;
   // Try `base.py` first (more specific), then `base/__init__.py`.
   const asModule = `${base}.py`;

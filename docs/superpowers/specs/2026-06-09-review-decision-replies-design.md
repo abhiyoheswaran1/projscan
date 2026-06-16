@@ -46,17 +46,20 @@ Use deterministic reply text:
 [
   {
     id: 'approve_next_slice',
-    reply: 'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+    reply:
+      'Approved: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
   },
   {
     id: 'request_changes',
-    reply: 'Changes requested: address the review feedback first, update proof, then stop for another review.',
+    reply:
+      'Changes requested: address the review feedback first, update proof, then stop for another review.',
   },
   {
     id: 'review_version_candidate',
-    reply: 'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
+    reply:
+      'Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
   },
-]
+];
 ```
 
 The formatter becomes:

@@ -6,7 +6,7 @@ import type {
   DogfoodFeedbackResponse,
   FeedbackSummaryReport,
   FeedbackTemplateResult,
-} from '../types.js';
+} from '../types/dogfood.js';
 
 export interface CreateFeedbackTemplateOptions {
   force?: boolean;
@@ -32,7 +32,9 @@ export async function createFeedbackTemplate(
   if (!options.force) {
     try {
       await fs.access(resolved);
-      throw new Error('Feedback file already exists at ' + resolved + '. Pass --force to overwrite it.');
+      throw new Error(
+        'Feedback file already exists at ' + resolved + '. Pass --force to overwrite it.',
+      );
     } catch (error) {
       if (!isNodeErrorCode(error, 'ENOENT')) throw error;
     }
@@ -87,8 +89,12 @@ export function summarizeFeedback(
   const distinctRepos = countDistinct(responses.map((response) => response.repo));
   const distinctPrs = countDistinct(responses.map((response) => response.pr));
   const repeatedRepos = countRepeatedRepos(responses);
-  const falsePositiveRules = cleanSignals(responses.flatMap((response) => response.falsePositiveRules ?? []));
-  const missingSignals = cleanSignals(responses.flatMap((response) => response.missingSignals ?? []));
+  const falsePositiveRules = cleanSignals(
+    responses.flatMap((response) => response.falsePositiveRules ?? []),
+  );
+  const missingSignals = cleanSignals(
+    responses.flatMap((response) => response.missingSignals ?? []),
+  );
   const noisyFindings = cleanSignals(responses.flatMap((response) => response.noisyFindings ?? []));
 
   return {
@@ -149,18 +155,30 @@ function toStoredFeedback(template: FeedbackTemplateResult): DogfoodFeedbackInpu
 
 function normalizeFeedbackInput(input: unknown): DogfoodFeedbackInput {
   if (!input || typeof input !== 'object') {
-    return { schemaVersion: FEEDBACK_ARTIFACT_VERSION, questions: [...FEEDBACK_QUESTIONS], responses: [] };
+    return {
+      schemaVersion: FEEDBACK_ARTIFACT_VERSION,
+      questions: [...FEEDBACK_QUESTIONS],
+      responses: [],
+    };
   }
   const raw = input as DogfoodFeedbackInput;
   return {
-    schemaVersion: raw.schemaVersion === FEEDBACK_ARTIFACT_VERSION ? FEEDBACK_ARTIFACT_VERSION : FEEDBACK_ARTIFACT_VERSION,
-    questions: Array.isArray(raw.questions) ? raw.questions.filter((question) => typeof question === 'string') : [...FEEDBACK_QUESTIONS],
+    schemaVersion:
+      raw.schemaVersion === FEEDBACK_ARTIFACT_VERSION
+        ? FEEDBACK_ARTIFACT_VERSION
+        : FEEDBACK_ARTIFACT_VERSION,
+    questions: Array.isArray(raw.questions)
+      ? raw.questions.filter((question) => typeof question === 'string')
+      : [...FEEDBACK_QUESTIONS],
     responses: Array.isArray(raw.responses) ? raw.responses.map(normalizeFeedbackResponse) : [],
   };
 }
 
-function normalizeFeedbackResponse(response: DogfoodFeedbackResponse | unknown): DogfoodFeedbackResponse {
-  const input = response && typeof response === 'object' ? (response as DogfoodFeedbackResponse) : {};
+function normalizeFeedbackResponse(
+  response: DogfoodFeedbackResponse | unknown,
+): DogfoodFeedbackResponse {
+  const input =
+    response && typeof response === 'object' ? (response as DogfoodFeedbackResponse) : {};
   const normalized: DogfoodFeedbackResponse = {};
   const repo = cleanString(input.repo);
   const pr = cleanString(input.pr);
@@ -170,9 +188,12 @@ function normalizeFeedbackResponse(response: DogfoodFeedbackResponse | unknown):
   if (pr) normalized.pr = pr;
   if (reviewer) normalized.reviewer = reviewer;
   if (typeof input.useful === 'boolean') normalized.useful = input.useful;
-  if (typeof input.preventedBadEdit === 'boolean') normalized.preventedBadEdit = input.preventedBadEdit;
-  if (typeof input.ownerRoutingClear === 'boolean') normalized.ownerRoutingClear = input.ownerRoutingClear;
-  if (typeof input.nextCommandClear === 'boolean') normalized.nextCommandClear = input.nextCommandClear;
+  if (typeof input.preventedBadEdit === 'boolean')
+    normalized.preventedBadEdit = input.preventedBadEdit;
+  if (typeof input.ownerRoutingClear === 'boolean')
+    normalized.ownerRoutingClear = input.ownerRoutingClear;
+  if (typeof input.nextCommandClear === 'boolean')
+    normalized.nextCommandClear = input.nextCommandClear;
   if (note) normalized.note = note;
   normalized.minutesSaved = saneNumber(input.minutesSaved);
   normalized.falsePositiveRules = cleanSignals(input.falsePositiveRules ?? []);
@@ -208,9 +229,13 @@ function countSignals<T extends 'rule' | 'signal' | 'finding'>(
     .map(([value, count]) => ({ [key]: value, count }) as Record<T, string> & { count: number });
 }
 
-
 function isNodeErrorCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === code;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === code
+  );
 }
 
 function cleanSignals(values: string[]): string[] {

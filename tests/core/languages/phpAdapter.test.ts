@@ -28,10 +28,7 @@ describe('phpAdapter.imports', () => {
   });
 
   it('expands a brace-list use', async () => {
-    const r = await phpAdapter.parse(
-      'a.php',
-      `<?php\nuse Foo\\{Bar, Baz, Qux};\n`,
-    );
+    const r = await phpAdapter.parse('a.php', `<?php\nuse Foo\\{Bar, Baz, Qux};\n`);
     const sources = r.imports.map((i) => i.source).sort();
     expect(sources).toEqual(['Foo\\Bar', 'Foo\\Baz', 'Foo\\Qux']);
   });

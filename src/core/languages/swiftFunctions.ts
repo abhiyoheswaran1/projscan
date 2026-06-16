@@ -118,7 +118,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       // The default arm has no value child (no case_label patterns) — non-
       // default arms always carry one or more case_label / case_pattern
       // children. Mirrors the kotlin/cpp structural-detection approach.
-      const isDefault = !n.namedChildren.some((c) => c.type === 'switch_pattern' || c.type === 'case_label');
+      const isDefault = !n.namedChildren.some(
+        (c) => c.type === 'switch_pattern' || c.type === 'case_label',
+      );
       if (!isDefault) count++;
       return;
     }
@@ -127,7 +129,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call_expression') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : n.namedChildren[0] ?? null;
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = bareName(fn);
       if (name) calls.add(name);
     }

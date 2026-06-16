@@ -111,7 +111,9 @@ describe('detectWorkspaces', () => {
   });
 
   it('honors nx.json workspaceLayout (custom appsDir / libsDir)', async () => {
-    await writeJson('nx.json', { workspaceLayout: { appsDir: 'applications', libsDir: 'libraries' } });
+    await writeJson('nx.json', {
+      workspaceLayout: { appsDir: 'applications', libsDir: 'libraries' },
+    });
     await writeJson('applications/portal/project.json', { name: 'portal' });
     await writeJson('libraries/utils/project.json', { name: 'utils' });
     const info = await detectWorkspaces(tmp);

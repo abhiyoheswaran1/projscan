@@ -49,7 +49,9 @@ test('start prints every ready MCP tool call when requested', async () => {
     tool: 'projscan_understand',
     args: { view: 'verify' },
   });
-  expect(calls.some((call: Record<string, unknown>) => 'stepId' in call || 'command' in call)).toBe(false);
+  expect(calls.some((call: Record<string, unknown>) => 'stepId' in call || 'command' in call)).toBe(
+    false,
+  );
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
 });
@@ -77,7 +79,9 @@ test('start JSON keeps the full report when ready tool calls are requested', asy
     tool: 'projscan_search',
     args: { query: 'auth token loader' },
   });
-  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(report.missionControl.resume.remainingProofToolCalls);
+  expect(report.missionControl.handoff.readyProof.toolCalls).toEqual(
+    report.missionControl.resume.remainingProofToolCalls,
+  );
 });
 ```
 
@@ -86,7 +90,9 @@ test('start JSON keeps the full report when ready tool calls are requested', asy
 Add this assertion to `start prints a shortcut index for the current mission when requested`:
 
 ```ts
-expect(result.stdout).toContain("projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --ready-tool-calls --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 4: Run red tests**

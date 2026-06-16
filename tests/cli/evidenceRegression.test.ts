@@ -46,7 +46,9 @@ test('evidence-pack renders JSON and keeps package version unchanged', async () 
   expect(report.readOnly).toBe(true);
   expect(report.train.lines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
   expect(report.websitePrompt).toContain('projscan_evidence_pack');
-  const pkg = JSON.parse(await fs.readFile(path.join(tmp, 'package.json'), 'utf-8')) as { version: string };
+  const pkg = JSON.parse(await fs.readFile(path.join(tmp, 'package.json'), 'utf-8')) as {
+    version: string;
+  };
   expect(pkg.version).toBe('2.2.0');
 });
 
@@ -60,12 +62,21 @@ test('evidence-pack prints a PR comment markdown artifact', async () => {
 });
 
 test('regression-plan renders a full command matrix', async () => {
-  const result = await runCli(['regression-plan', '--level', 'full', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'regression-plan',
+    '--level',
+    'full',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
   expect(report.level).toBe('full');
-  expect(report.commands).toEqual(expect.arrayContaining(['projscan bug-hunt --format json', 'npm test', 'npm run build']));
+  expect(report.commands).toEqual(
+    expect.arrayContaining(['projscan bug-hunt --format json', 'npm test', 'npm run build']),
+  );
 });
 
 test('regression-plan rejects unsupported formats through the shared matrix', async () => {
@@ -76,6 +87,8 @@ test('regression-plan rejects unsupported formats through the shared matrix', as
   expect(result.stderr).toContain('projscan regression-plan does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

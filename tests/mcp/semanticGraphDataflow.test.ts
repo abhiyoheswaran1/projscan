@@ -78,15 +78,18 @@ describe('semantic graph and dataflow MCP tools (3.0)', () => {
     const server = createMcpServer(tmp);
     await init(server);
 
-    const graph = await call(server, 1, 'projscan_semantic_graph', { max_nodes: 200, max_edges: 500 });
+    const graph = await call(server, 1, 'projscan_semantic_graph', {
+      max_nodes: 200,
+      max_edges: 500,
+    });
     expect(graph.schemaVersion).toBe(3);
-    expect((graph.nodes as Array<{ id: string }>).some((node) => node.id === 'file:src/bridge.ts')).toBe(
-      true,
-    );
+    expect(
+      (graph.nodes as Array<{ id: string }>).some((node) => node.id === 'file:src/bridge.ts'),
+    ).toBe(true);
 
     const dataflow = await call(server, 2, 'projscan_dataflow', { max_risks: 20 });
     expect(dataflow.available).toBe(true);
-    expect((dataflow.risks as Array<{ kind: string; bridgeFn?: string }>)).toEqual(
+    expect(dataflow.risks as Array<{ kind: string; bridgeFn?: string }>).toEqual(
       expect.arrayContaining([expect.objectContaining({ kind: 'bridge', bridgeFn: 'bridge' })]),
     );
   });

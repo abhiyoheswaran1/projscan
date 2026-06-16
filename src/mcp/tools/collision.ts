@@ -30,9 +30,13 @@ export const collisionTool: McpTool = {
     },
   },
   handler: async (args, rootPath) => {
-    const baseRef = typeof args.base_ref === 'string' && args.base_ref.length > 0 ? args.base_ref : undefined;
+    const baseRef =
+      typeof args.base_ref === 'string' && args.base_ref.length > 0 ? args.base_ref : undefined;
     const transitive = args.transitive === true;
-    const maxDistance = typeof args.max_distance === 'number' && args.max_distance > 0 ? args.max_distance : undefined;
+    const maxDistance =
+      typeof args.max_distance === 'number' && args.max_distance > 0
+        ? args.max_distance
+        : undefined;
     return detectCollisions(rootPath, {
       ...(baseRef ? { baseRef } : {}),
       ...(transitive ? { transitive: true } : {}),

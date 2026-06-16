@@ -63,15 +63,7 @@ const EXTENSION_MAP: Record<string, string> = {
 };
 
 // Languages excluded from "primary" calculation (config/doc languages)
-const EXCLUDED_FROM_PRIMARY = new Set([
-  'JSON',
-  'YAML',
-  'TOML',
-  'XML',
-  'Markdown',
-  'Text',
-  'MDX',
-]);
+const EXCLUDED_FROM_PRIMARY = new Set(['JSON', 'YAML', 'TOML', 'XML', 'Markdown', 'Text', 'MDX']);
 
 export function detectLanguages(files: FileEntry[]): LanguageBreakdown {
   const langCounts = new Map<string, { count: number; extensions: Set<string> }>();

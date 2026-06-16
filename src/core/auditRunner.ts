@@ -37,10 +37,7 @@ export interface AuditOptions {
  * Yarn/pnpm projects: we don't try to translate; we report "not available"
  * with a hint.
  */
-export async function runAudit(
-  rootPath: string,
-  options: AuditOptions = {},
-): Promise<AuditReport> {
+export async function runAudit(rootPath: string, options: AuditOptions = {}): Promise<AuditReport> {
   if (isOfflineMode()) {
     return unavailable(`${OFFLINE_ENV} is enabled - npm audit network access is blocked`);
   }

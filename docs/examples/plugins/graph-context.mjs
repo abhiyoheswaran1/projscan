@@ -16,8 +16,7 @@ export default {
       {
         id: 'graph-context-summary',
         title: 'Graph context available',
-        description:
-          `Plugin received ${fileCount} file(s), ${functionCount} function(s), ${callEdges} semantic edge(s), and ${dataflow.riskCount} dataflow risk(s).`,
+        description: `Plugin received ${fileCount} file(s), ${functionCount} function(s), ${callEdges} semantic edge(s), and ${dataflow.riskCount} dataflow risk(s).`,
         severity,
         category: 'architecture',
         fixAvailable: false,

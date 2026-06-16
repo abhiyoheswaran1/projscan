@@ -20,6 +20,7 @@
 ## Task 1: Red CLI Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Assert saved bundles contain `review-gate.json`**
@@ -28,13 +29,17 @@ In `start writes a Mission Control bundle when requested`, add:
 
 ```ts
 expect(result.stdout).toContain('review-gate.json');
-expect(quickstart).toContain('- `review-gate.json`: Machine-readable review gate with policy, proof, decisions, and worktree evidence.');
+expect(quickstart).toContain(
+  '- `review-gate.json`: Machine-readable review gate with policy, proof, decisions, and worktree evidence.',
+);
 ```
 
 After parsing `handoff`, add:
 
 ```ts
-const reviewGateJson = JSON.parse(await fs.readFile(path.join(bundleDir, 'review-gate.json'), 'utf-8'));
+const reviewGateJson = JSON.parse(
+  await fs.readFile(path.join(bundleDir, 'review-gate.json'), 'utf-8'),
+);
 expect(reviewGateJson).toEqual(handoff.reviewGate);
 ```
 
@@ -85,7 +90,9 @@ test('start prints only the review gate JSON when requested', async () => {
 In `start prints a shortcut index for the current mission when requested`, add:
 
 ```ts
-expect(result.stdout).toContain("projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "projscan start --review-gate-json --intent 'what breaks if I rename the auth token loader'",
+);
 ```
 
 - [ ] **Step 5: Run red tests**
@@ -101,6 +108,7 @@ Expected: fail because `--review-gate-json` and `review-gate.json` do not exist 
 ## Task 2: CLI And Bundle Implementation
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add Commander option**
@@ -180,6 +188,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs, Screenshots, And Verification
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

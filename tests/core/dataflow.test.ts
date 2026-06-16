@@ -54,7 +54,9 @@ export function bridge() {
     expect(report.risks.some((risk) => risk.kind === 'bridge' && risk.bridgeFn === 'bridge')).toBe(
       true,
     );
-    const bridge = report.risks.find((risk) => risk.kind === 'bridge' && risk.bridgeFn === 'bridge');
+    const bridge = report.risks.find(
+      (risk) => risk.kind === 'bridge' && risk.bridgeFn === 'bridge',
+    );
     expect(bridge).toMatchObject({
       sourceFn: 'readSecret',
       sinkFn: 'runDangerous',
@@ -124,10 +126,15 @@ export async function rewrite() {
     const report = computeDataflow(graph, { sources: [], sinks: [] });
     expect(report.risks).toEqual([]);
 
-    const verbose = computeDataflow(graph, { sources: [], sinks: [] }, { includeBroadFileIo: true });
+    const verbose = computeDataflow(
+      graph,
+      { sources: [], sinks: [] },
+      { includeBroadFileIo: true },
+    );
     expect(
       verbose.risks.some(
-        (risk) => risk.source === 'readFile' && risk.sink === 'writeFile' && risk.sourceFn === 'rewrite',
+        (risk) =>
+          risk.source === 'readFile' && risk.sink === 'writeFile' && risk.sourceFn === 'rewrite',
       ),
     ).toBe(true);
   });
@@ -159,7 +166,6 @@ export async function sendSecret() {
       ),
     ).toBe(true);
   });
-
 
   it('treats Next route request.json as a framework request source', async () => {
     await fs.mkdir(path.join(tmp, 'app', 'api', 'search'), { recursive: true });
@@ -218,7 +224,11 @@ export async function PATCH(request: Request) {
       expect.arrayContaining([
         expect.objectContaining({ sourceFn: 'POST', source: 'request.formData', sink: 'query' }),
         expect.objectContaining({ sourceFn: 'PUT', source: 'request.text', sink: 'query' }),
-        expect.objectContaining({ sourceFn: 'PATCH', source: 'request.arrayBuffer', sink: 'query' }),
+        expect.objectContaining({
+          sourceFn: 'PATCH',
+          source: 'request.arrayBuffer',
+          sink: 'query',
+        }),
       ]),
     );
   });
@@ -306,7 +316,9 @@ export function searchCache() {
 
     const report = computeDataflow(graph, { sources: [], sinks: [] });
 
-    expect(report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query')).toBeUndefined();
+    expect(
+      report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query'),
+    ).toBeUndefined();
   });
 
   it('keeps imported database query helpers as default sinks', async () => {
@@ -330,7 +342,10 @@ export async function POST(request: Request) {
     const report = computeDataflow(graph, { sources: [], sinks: [] });
 
     expect(
-      report.risks.some((risk) => risk.source === 'request.json' && risk.sink === 'query' && risk.sourceFn === 'POST'),
+      report.risks.some(
+        (risk) =>
+          risk.source === 'request.json' && risk.sink === 'query' && risk.sourceFn === 'POST',
+      ),
     ).toBe(true);
   });
 
@@ -385,10 +400,15 @@ export function searchCache(req: { body: { key: string } }) {
 
     expect(
       report.risks.some(
-        (risk) => risk.source === 'express.req.body' && risk.sink === 'query' && risk.files.includes('src/server.ts'),
+        (risk) =>
+          risk.source === 'express.req.body' &&
+          risk.sink === 'query' &&
+          risk.files.includes('src/server.ts'),
       ),
     ).toBe(true);
-    expect(report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query')).toBeUndefined();
+    expect(
+      report.risks.find((risk) => risk.sourceFn === 'searchCache' && risk.sink === 'query'),
+    ).toBeUndefined();
   });
 
   it('does not treat route response helpers as request body sources', async () => {
@@ -411,9 +431,7 @@ export async function POST() {
     expect(
       report.risks.find(
         (risk) =>
-          risk.sourceFn === 'POST' &&
-          risk.source === 'request.json' &&
-          risk.sink === 'query',
+          risk.sourceFn === 'POST' && risk.source === 'request.json' && risk.sink === 'query',
       ),
     ).toBeUndefined();
   });
@@ -435,7 +453,11 @@ export function generatedClient() {
     const report = computeDataflow(graph, { sources: [], sinks: [] });
     expect(report.risks).toEqual([]);
 
-    const withGenerated = computeDataflow(graph, { sources: [], sinks: [] }, { includeGenerated: true });
+    const withGenerated = computeDataflow(
+      graph,
+      { sources: [], sinks: [] },
+      { includeGenerated: true },
+    );
     expect(withGenerated.risks.some((risk) => risk.sourceFn === 'generatedClient')).toBe(true);
   });
 

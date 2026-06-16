@@ -169,7 +169,12 @@ describe('consoleReporter', () => {
 
     it('handles unavailable report', async () => {
       const out = await capturePlain(() =>
-        reportOutdated({ available: false, reason: 'no package.json', totalPackages: 0, packages: [] }),
+        reportOutdated({
+          available: false,
+          reason: 'no package.json',
+          totalPackages: 0,
+          packages: [],
+        }),
       );
       expect(out).toContain('no package.json');
     });
@@ -239,7 +244,9 @@ describe('consoleReporter', () => {
 
   describe('reportDetectedIssues / reportFixResults', () => {
     it('lists detected issues and their matching fixes', async () => {
-      const issues = [makeIssue({ fixAvailable: true, fixId: 'add-readme', title: 'Missing README' })];
+      const issues = [
+        makeIssue({ fixAvailable: true, fixId: 'add-readme', title: 'Missing README' }),
+      ];
       const fixes: Fix[] = [
         {
           id: 'add-readme',

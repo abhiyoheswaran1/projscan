@@ -2,11 +2,7 @@ import { analyzeDependencies } from '../core/dependencyAnalyzer.js';
 import { findDependencyLines } from '../utils/packageJsonLocator.js';
 import type { FileEntry, Issue, IssueLocation } from '../types.js';
 
-const PROJECT_LEVEL_RISKS = new Set([
-  'excessive-dependencies',
-  'many-dependencies',
-  'no-lockfile',
-]);
+const PROJECT_LEVEL_RISKS = new Set(['excessive-dependencies', 'many-dependencies', 'no-lockfile']);
 
 export async function check(rootPath: string, _files: FileEntry[]): Promise<Issue[]> {
   const report = await analyzeDependencies(rootPath);

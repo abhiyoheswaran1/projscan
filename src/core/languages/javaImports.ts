@@ -18,7 +18,7 @@ interface TsNode {
  * The grammar emits `import_declaration` at the top level. The dotted path is
  * captured as `scoped_identifier`; a wildcard appears as an `asterisk` child.
  * We record the package portion (everything before the last segment for type
- * imports, the whole path for wildcards/static imports) as the import source  - 
+ * imports, the whole path for wildcards/static imports) as the import source  -
  * matching how a resolver will look up the target.
  */
 export function extractJavaImports(root: TsNode): AstImport[] {

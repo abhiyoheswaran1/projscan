@@ -23,6 +23,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -41,10 +42,14 @@ In `start console renders a concrete action plan for fuzzy impact intents`, add:
 
 ```ts
 expect(result.stdout).toContain('Review Gate');
-expect(result.stdout).toContain('Stop after the current Mission Control checklist and proof are complete.');
+expect(result.stdout).toContain(
+  'Stop after the current Mission Control checklist and proof are complete.',
+);
 expect(result.stdout).toContain('- git status --short');
 expect(result.stdout).toContain('- git diff --stat');
-expect(result.stdout).toContain('Stop and ask for approval before starting another slice, release, publish, or deploy.');
+expect(result.stdout).toContain(
+  'Stop and ask for approval before starting another slice, release, publish, or deploy.',
+);
 ```
 
 In `start prints only the handoff object as compact JSON when requested`, add:
@@ -74,7 +79,9 @@ expect(handoff.reviewGate).toEqual(
 In `projscan_start returns MCP-callable args for fuzzy impact intents`, add:
 
 ```ts
-expect(result.start.missionControl.handoff.reviewGate).toEqual(result.start.missionControl.reviewGate);
+expect(result.start.missionControl.handoff.reviewGate).toEqual(
+  result.start.missionControl.reviewGate,
+);
 ```
 
 - [ ] **Step 4: Run red tests**
@@ -90,6 +97,7 @@ Expected: fail because `handoff.reviewGate` and default console `Review Gate` do
 ## Task 2: Core Handoff
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -130,7 +138,7 @@ function missionHandoff(
   successCriteria: string[],
   proofCommands: string[],
   reviewGate: StartMissionReviewGate,
-): StartMissionHandoff
+): StartMissionHandoff;
 ```
 
 Return:
@@ -152,6 +160,7 @@ Expected: build passes and focused core test passes.
 ## Task 3: Console Output
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 - Modify: `tests/cli/start.test.ts`
 
@@ -185,6 +194,7 @@ Expected: build passes and focused CLI/MCP tests pass.
 ## Task 4: Docs and Verification
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

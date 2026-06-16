@@ -17,7 +17,7 @@ These are versioned. Removing or breaking anything in this list requires a depre
   - **JSON**: existing report-level `schemaVersion` values remain stable for their report families. The semantic graph contract uses `schemaVersion: 3`; graph-evidence summaries are additive optional fields. Data keys (`issues`, `hotspots`, `coverage`, `nodes`, `edges`, etc.) are stable. New optional fields may be added to objects without a major bump; existing field names and types will not change.
   - **SARIF**: schema is the [SARIF 2.1.0 spec](https://sarifweb.azurewebsites.net/). We are bound by it.
   - **Markdown**: section headings are stable. Whitespace and column widths inside tables are not.
-  - **HTML** *(0.16+)*: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
+  - **HTML** _(0.16+)_: structural section names (`<h1>`, `<h2>` text) are stable. Inline CSS, layout details, and the footer credit string are unstable; do not parse the rendered HTML for data, use `--format json`.
   - **Console**: see "unstable surface" below.
 
 ### MCP server
@@ -61,10 +61,10 @@ Plugin execution is local-only: projscan does not fetch remote plugin code.
 These can change in any release without a major bump.
 
 - **Internal modules** under `src/core/`, `src/analyzers/`, `src/reporters/`, `src/utils/`, `src/cli/`, `src/mcp/` (except where re-exported from `src/index.ts`).
-- **Score magnitudes**: the numeric values of `riskScore` (hotspots), `score` (doctor), `instability` (coupling), and similar derived numbers may shift between releases as the underlying formulas evolve. The *ranking* and *direction* of change are stable; absolute thresholds in your CI may need recalibration after upgrades. (Example: 0.11 swapped LOC for AST cyclomatic complexity in `riskScore`, dropping absolute values without changing the ordering.)
+- **Score magnitudes**: the numeric values of `riskScore` (hotspots), `score` (doctor), `instability` (coupling), and similar derived numbers may shift between releases as the underlying formulas evolve. The _ranking_ and _direction_ of change are stable; absolute thresholds in your CI may need recalibration after upgrades. (Example: 0.11 swapped LOC for AST cyclomatic complexity in `riskScore`, dropping absolute values without changing the ordering.)
 - **Console-format whitespace, colors, ASCII drawings, spinner messages, banner art.** Anything visual in the terminal output is for humans; do not parse it. Use `--format json` or `--format sarif` for programmatic use.
 - **Cache file format** (`.projscan-cache/`). Bumped on schema changes; old caches are discarded silently and rebuilt. Cross-repo workspace registrations live at `.projscan-cache/workspace.json` and are treated as local trust state. Don't commit, share, or parse.
-- **Index cache version, tool-manifest layout details beyond the documented top-level keys, internal vendored wasm grammar versions** (we may upgrade tree-sitter grammars at any time; the *captured* node types and behaviour are what matters).
+- **Index cache version, tool-manifest layout details beyond the documented top-level keys, internal vendored wasm grammar versions** (we may upgrade tree-sitter grammars at any time; the _captured_ node types and behaviour are what matters).
 - **Bundled file paths** under `dist/` not exported via `package.json#exports` or `bin`.
 
 ## Deprecation policy

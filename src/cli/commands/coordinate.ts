@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import {
   computeCoordination,
   coordinationSignature,
@@ -45,7 +51,9 @@ export function registerCoordinate(): void {
 
       const intervalMs = resolveIntervalMs(cmdOpts.interval, format);
       if (format === 'console') {
-        console.log(chalk.dim(`Watching swarm coordination (every ${intervalMs / 1000}s; Ctrl+C to stop)…`));
+        console.log(
+          chalk.dim(`Watching swarm coordination (every ${intervalMs / 1000}s; Ctrl+C to stop)…`),
+        );
       }
       let lastSignature = '';
       const tick = async (): Promise<void> => {
@@ -58,7 +66,9 @@ export function registerCoordinate(): void {
           }
         } catch (err) {
           // Keep watching across transient errors (e.g. mid-rebase git state).
-          process.stderr.write(`[projscan] coordinate watch tick failed: ${err instanceof Error ? err.message : String(err)}\n`);
+          process.stderr.write(
+            `[projscan] coordinate watch tick failed: ${err instanceof Error ? err.message : String(err)}\n`,
+          );
         }
       };
       await tick();
@@ -91,7 +101,9 @@ function render(report: CoordinationSummary, format: string, watch: boolean): vo
     return;
   }
   console.log('');
-  const heading = watch ? `Swarm coordination · ${new Date().toLocaleTimeString()}` : 'Swarm coordination';
+  const heading = watch
+    ? `Swarm coordination · ${new Date().toLocaleTimeString()}`
+    : 'Swarm coordination';
   console.log(chalk.bold(heading));
   console.log(chalk.dim('────────────────────────────────────────'));
   if (!report.available) {

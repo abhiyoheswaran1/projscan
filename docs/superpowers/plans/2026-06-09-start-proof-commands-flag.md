@@ -13,6 +13,7 @@
 ### Task 1: Add Failing CLI Coverage
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add proof-only console test**
@@ -63,8 +64,12 @@ const result = await runCli([
 Parse stdout and assert:
 
 ```ts
-expect(report.missionControl.handoff.readyProof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
-expect(report.missionControl.handoff.readyProof.commands).not.toContain('projscan search "auth token loader" --format json');
+expect(report.missionControl.handoff.readyProof.commands).toEqual(
+  report.missionControl.resume.remainingProofCommands,
+);
+expect(report.missionControl.handoff.readyProof.commands).not.toContain(
+  'projscan search "auth token loader" --format json',
+);
 ```
 
 - [ ] **Step 3: Verify red**
@@ -80,6 +85,7 @@ Expected: Commander rejects unknown option `--proof-commands`.
 ### Task 2: Implement CLI Shortcut
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Register the option**
@@ -136,6 +142,7 @@ Expected: all CLI start tests pass.
 ### Task 3: Update Docs And Verify
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

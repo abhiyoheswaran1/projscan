@@ -177,10 +177,7 @@ describe('buildApplyPlanForIssue (1.6+)', () => {
 
   describe('missing-readme', () => {
     it('uses package.json#name as the heading when package.json is present', async () => {
-      await fs.writeFile(
-        path.join(tmp, 'package.json'),
-        JSON.stringify({ name: 'cool-project' }),
-      );
+      await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'cool-project' }));
       const plan = await buildApplyPlanForIssue(issue('missing-readme'), tmp);
       expect(plan).not.toBeNull();
       expect(plan!.changes[0]).toMatchObject({ path: 'README.md', op: 'create' });

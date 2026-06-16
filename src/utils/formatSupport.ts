@@ -1,6 +1,12 @@
-import type { ReportFormat } from '../types.js';
+import type { ReportFormat } from '../types/config.js';
 
-export const OUTPUT_FORMATS = ['console', 'json', 'markdown', 'sarif', 'html'] as const satisfies readonly ReportFormat[];
+export const OUTPUT_FORMATS = [
+  'console',
+  'json',
+  'markdown',
+  'sarif',
+  'html',
+] as const satisfies readonly ReportFormat[];
 
 export const COMMAND_FORMAT_SUPPORT = {
   'agent-brief': ['console', 'json'],
@@ -105,7 +111,10 @@ export function getCommandFormatSupport(commandName: string): readonly ReportFor
   return (COMMAND_FORMAT_SUPPORT as Record<string, readonly ReportFormat[]>)[commandName];
 }
 
-export function formatSupportRows(): Array<{ command: CommandFormatName; formats: readonly ReportFormat[] }> {
+export function formatSupportRows(): Array<{
+  command: CommandFormatName;
+  formats: readonly ReportFormat[];
+}> {
   return Object.entries(COMMAND_FORMAT_SUPPORT).map(([command, formats]) => ({
     command: command as CommandFormatName,
     formats,

@@ -51,13 +51,13 @@ Record `none` when there is no issue. That matters because repeat clean feedback
 
 Track these locally or in release notes after each adoption run:
 
-| Metric | Target | Command |
-|---|---|---|
-| First PR usefulness | reviewer says useful, time-saving, or risk-finding | `projscan evidence-pack --pr-comment` |
-| Manual review rate | uncertain cases stay caution/manual review; hard blocks stay rare | `projscan preflight --mode before_merge --format json` |
-| Repeat-use commands | every PR has evidence, preflight, and owner routing | `projscan start --mode before_merge --format json` |
-| Feedback artifact | repeatable reviewer evidence exists | `projscan feedback init --output .projscan-feedback.json` + `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10` |
-| Dogfood breadth | at least 3 representative repos evaluated | `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json` |
+| Metric              | Target                                                            | Command                                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| First PR usefulness | reviewer says useful, time-saving, or risk-finding                | `projscan evidence-pack --pr-comment`                                                                                                                                                            |
+| Manual review rate  | uncertain cases stay caution/manual review; hard blocks stay rare | `projscan preflight --mode before_merge --format json`                                                                                                                                           |
+| Repeat-use commands | every PR has evidence, preflight, and owner routing               | `projscan start --mode before_merge --format json`                                                                                                                                               |
+| Feedback artifact   | repeatable reviewer evidence exists                               | `projscan feedback init --output .projscan-feedback.json` + `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10` |
+| Dogfood breadth     | at least 3 representative repos evaluated                         | `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`                                                                              |
 
 ## Tuning Rule
 

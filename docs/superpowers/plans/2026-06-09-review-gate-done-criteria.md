@@ -22,6 +22,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -33,8 +34,12 @@ In `start exposes a Mission Control task card for MCP and JSON clients`, after t
 ```ts
 expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
 expect(report.missionControl.reviewGate.markdown).toContain('## Done When');
-expect(report.missionControl.reviewGate.markdown).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
-expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(report.missionControl.reviewGate.doneWhen);
+expect(report.missionControl.reviewGate.markdown).toContain(
+  '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+);
+expect(report.missionControl.handoff.reviewGate.doneWhen).toEqual(
+  report.missionControl.reviewGate.doneWhen,
+);
 ```
 
 - [ ] **Step 2: Add CLI failing assertions**
@@ -43,7 +48,9 @@ In `start writes a Mission Control bundle when requested`, after the existing re
 
 ```ts
 expect(reviewGate).toContain('## Done When');
-expect(reviewGate).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+expect(reviewGate).toContain(
+  '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+);
 ```
 
 After the existing `handoff.reviewGate.proof.toolCalls` assertion, add:
@@ -56,7 +63,9 @@ In `start review-gate shortcut prints the structured review gate markdown`, add:
 
 ```ts
 expect(shortcut.stdout).toContain('## Done When');
-expect(shortcut.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+expect(shortcut.stdout).toContain(
+  '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+);
 expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.successCriteria);
 ```
 
@@ -65,9 +74,13 @@ expect(report.missionControl.reviewGate.doneWhen).toEqual(report.missionControl.
 In `projscan_start returns MCP-callable args for fuzzy impact intents`, after the existing `reviewGate.proof` assertions, add:
 
 ```ts
-expect(result.start.missionControl.reviewGate.doneWhen).toEqual(result.start.missionControl.successCriteria);
+expect(result.start.missionControl.reviewGate.doneWhen).toEqual(
+  result.start.missionControl.successCriteria,
+);
 expect(result.start.missionControl.reviewGate.markdown).toContain('## Done When');
-expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(result.start.missionControl.reviewGate.doneWhen);
+expect(result.start.missionControl.handoff.reviewGate.doneWhen).toEqual(
+  result.start.missionControl.reviewGate.doneWhen,
+);
 ```
 
 - [ ] **Step 4: Run red tests**
@@ -83,6 +96,7 @@ Expected: fail because `reviewGate.doneWhen` and `## Done When` do not exist yet
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -153,6 +167,7 @@ Expected: build passes and focused core test passes.
 ## Task 3: CLI, MCP, and Docs
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
 - Modify: `README.md`
@@ -206,6 +221,7 @@ Expected: exits 0. Include screenshot diffs only if the capture source or PNG ou
 ## Task 4: Verification and Commit
 
 **Files:**
+
 - All modified files
 
 - [ ] **Step 1: Run verification**

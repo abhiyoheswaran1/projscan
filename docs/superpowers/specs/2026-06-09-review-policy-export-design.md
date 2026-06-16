@@ -56,7 +56,7 @@ console.log(JSON.stringify(report.missionControl.reviewGate.policy));
 Saved bundles should write:
 
 ```ts
-review-policy.json
+review - policy.json;
 ```
 
 with pretty JSON and a trailing newline.

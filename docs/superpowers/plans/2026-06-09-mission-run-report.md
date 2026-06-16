@@ -26,6 +26,7 @@
 ## Task 1: Add Failing Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Update the saved bundle test expectations**
@@ -34,22 +35,31 @@ Add expectations inside `test('start writes a Mission Control bundle when reques
 
 ```ts
 expect(result.stdout).toContain('proof-logs/run-report.md');
-expect(quickstart).toContain('- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.');
+expect(quickstart).toContain(
+  '- `proof-logs/run-report.md`: Human-readable run report refreshed by mission.sh.',
+);
 expect(missionScript).toContain('PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"');
 expect(missionScript).toContain(': > "$PROOF_REPORT_FILE"');
 expect(missionScript).toContain("printf '%s\\n' '# Mission Run Report'");
 expect(missionScript).toContain("printf '%s\\n' '| Step | Label | Exit | Log |'");
 expect(missionScript).toContain('>> "$PROOF_REPORT_FILE"');
-expect(missionScript).toContain("printf '| %s | %s | %s | %s |\\n' 'current-ready-1' 'Run current command' \"$status\" 'proof-logs/current-ready-1.log'");
+expect(missionScript).toContain(
+  "printf '| %s | %s | %s | %s |\\n' 'current-ready-1' 'Run current command' \"$status\" 'proof-logs/current-ready-1.log'",
+);
 expect(missionScript).toContain("printf '%s\\n' 'Mission stopped before completion.'");
 expect(missionScript).toContain("printf '%s\\n' 'Run report: ${PROOF_REPORT_FILE}'");
 expect(missionScript).toContain("printf '%s\\n' '## Review Gate'");
 expect(missionScript).toContain("printf '%s\\n' '- git status --short'");
 expect(missionScript).toContain("printf '%s\\n' '- git diff --stat'");
 
-const proofRunReport = await fs.readFile(path.join(bundleDir, 'proof-logs', 'run-report.md'), 'utf-8');
+const proofRunReport = await fs.readFile(
+  path.join(bundleDir, 'proof-logs', 'run-report.md'),
+  'utf-8',
+);
 expect(proofRunReport).toContain('# Mission Run Report');
-expect(proofRunReport).toContain('Run `./mission.sh` to refresh this report with command exit codes and log links.');
+expect(proofRunReport).toContain(
+  'Run `./mission.sh` to refresh this report with command exit codes and log links.',
+);
 expect(proofRunReport).toContain('Review `status.jsonl` for machine-readable status rows.');
 
 expect(manifest.files.map((file: { name: string }) => file.name)).toEqual([
@@ -108,6 +118,7 @@ Expected: fail because `proof-logs/run-report.md` and `PROOF_REPORT_FILE` do not
 ## Task 2: Implement Bundle Run Report
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Write the initial file**
@@ -115,7 +126,11 @@ Expected: fail because `proof-logs/run-report.md` and `PROOF_REPORT_FILE` do not
 In `writeMissionBundle()`, after writing `status.jsonl`, write:
 
 ```ts
-await fs.writeFile(path.join(targetDir, 'proof-logs', 'run-report.md'), missionInitialRunReport(), 'utf-8');
+await fs.writeFile(
+  path.join(targetDir, 'proof-logs', 'run-report.md'),
+  missionInitialRunReport(),
+  'utf-8',
+);
 ```
 
 - [ ] **Step 2: List the file in the manifest**
@@ -180,7 +195,12 @@ At the end of `buildMissionScript()`, when `proofLogs` is true and all commands 
 
 ```ts
 if (proofLogs) {
-  lines.push(...scriptAppendRunReportReviewGate(mission.reviewGate.stopCondition, mission.reviewGate.commands));
+  lines.push(
+    ...scriptAppendRunReportReviewGate(
+      mission.reviewGate.stopCondition,
+      mission.reviewGate.commands,
+    ),
+  );
 }
 ```
 
@@ -248,6 +268,7 @@ Expected: all `tests/cli/start.test.ts` tests pass.
 ## Task 3: Update Docs
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -289,6 +310,7 @@ Expected: command exits 0. Include any intended screenshot diffs in the implemen
 ## Task 4: Verify and Commit
 
 **Files:**
+
 - Modified implementation, tests, and docs
 
 - [ ] **Step 1: Run full verification**

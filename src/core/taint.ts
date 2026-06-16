@@ -1,5 +1,8 @@
 import type { CodeGraph } from './codeGraph.js';
-import { FRAMEWORK_REQUEST_SOURCES, frameworkRequestSourceForFunction } from './frameworkSources.js';
+import {
+  FRAMEWORK_REQUEST_SOURCES,
+  frameworkRequestSourceForFunction,
+} from './frameworkSources.js';
 
 /**
  * Lightweight taint flow analysis (1.6+).
@@ -111,7 +114,15 @@ const DATABASE_RECEIVERS = new Set([
 ]);
 const CALL_SHAPED_DEFAULT_SOURCES = new Set(['getInput', 'readFile', 'readFileSync', 'stdin']);
 const DEFAULT_HTTP_PROPERTY_SOURCES = new Set(['body', 'query', 'params', 'headers', 'cookies']);
-const DATABASE_MODULE_NAMES = new Set(['db', 'database', 'sql', 'pool', 'client', 'repository', 'repo']);
+const DATABASE_MODULE_NAMES = new Set([
+  'db',
+  'database',
+  'sql',
+  'pool',
+  'client',
+  'repository',
+  'repo',
+]);
 const KNOWN_DATABASE_PACKAGES = new Set([
   'pg',
   'postgres',
@@ -233,7 +244,16 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
           fn.contextualCallSite,
           gf.imports,
         ) ?? pickSourceHit(callees, references, sources, customSources);
-      const sinkHit = pickSinkHit(callees, directCallSites, memberCallSites, memberAliases, sinks, customSinks, file, gf);
+      const sinkHit = pickSinkHit(
+        callees,
+        directCallSites,
+        memberCallSites,
+        memberAliases,
+        sinks,
+        customSinks,
+        file,
+        gf,
+      );
       const hasSource = sourceHit !== null;
       const hasSink = sinkHit !== null;
       const node: FnNode = {
@@ -400,7 +420,18 @@ function pickSinkHit(
   for (const callee of callees) {
     if (!sinks.has(callee)) continue;
     if (isDefaultMisidentifiedJavaScriptShellSink(callee, customSinks, file, graphFile)) continue;
-    if (isDefaultMisidentifiedDatabaseSink(callee, directCallSites, memberCallSites, memberAliases, customSinks, file, graphFile)) continue;
+    if (
+      isDefaultMisidentifiedDatabaseSink(
+        callee,
+        directCallSites,
+        memberCallSites,
+        memberAliases,
+        customSinks,
+        file,
+        graphFile,
+      )
+    )
+      continue;
     return callee;
   }
   return null;
@@ -422,7 +453,6 @@ function isDefaultMisidentifiedJavaScriptShellSink(
   );
 }
 
-
 function isDefaultMisidentifiedDatabaseSink(
   callee: string,
   directCallSites: string[],
@@ -436,8 +466,13 @@ function isDefaultMisidentifiedDatabaseSink(
   if (!DEFAULT_DATABASE_SINKS.has(callee)) return false;
   if (!isJavaScriptLikeFile(file, graphFile.adapterId)) return false;
   if (memberCallSites.some((member) => isDatabaseMemberCall(member, callee))) return false;
-  if (directCallSites.includes(callee) && isImportedDatabaseHelper(callee, graphFile.imports)) return false;
-  if (directCallSites.includes(callee) && memberAliases.some((alias) => isDatabaseMemberAlias(alias, callee))) return false;
+  if (directCallSites.includes(callee) && isImportedDatabaseHelper(callee, graphFile.imports))
+    return false;
+  if (
+    directCallSites.includes(callee) &&
+    memberAliases.some((alias) => isDatabaseMemberAlias(alias, callee))
+  )
+    return false;
   return true;
 }
 
@@ -448,7 +483,10 @@ function isDatabaseMemberCall(member: string, callee: string): boolean {
   return DATABASE_RECEIVERS.has(receiver);
 }
 
-function isImportedDatabaseHelper(callee: string, imports: Array<{ source: string; specifiers: string[] }>): boolean {
+function isImportedDatabaseHelper(
+  callee: string,
+  imports: Array<{ source: string; specifiers: string[] }>,
+): boolean {
   return imports.some((imp) => imp.specifiers.includes(callee) && isDatabaseModule(imp.source));
 }
 

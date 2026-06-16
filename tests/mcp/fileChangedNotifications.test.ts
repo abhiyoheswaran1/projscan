@@ -8,7 +8,15 @@ const watcherState = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/core/watcher.js', () => ({
-  startWatcher: (_rootPath: string, options: { onChange: (event: { paths: string[]; graph: { scannedFiles: number } }) => void | Promise<void> }) => {
+  startWatcher: (
+    _rootPath: string,
+    options: {
+      onChange: (event: {
+        paths: string[];
+        graph: { scannedFiles: number };
+      }) => void | Promise<void>;
+    },
+  ) => {
     const graph = { scannedFiles: 1 };
     let closed = false;
     let deltaTimer: NodeJS.Timeout | null = null;
@@ -18,9 +26,11 @@ vi.mock('../../src/core/watcher.js', () => ({
       deltaTimer = setTimeout(() => {
         if (!closed) {
           watcherState.deltaSettled = false;
-          deltaPromise = Promise.resolve(options.onChange({ paths: ['src/a.ts'], graph })).then(() => {
-            watcherState.deltaSettled = true;
-          });
+          deltaPromise = Promise.resolve(options.onChange({ paths: ['src/a.ts'], graph })).then(
+            () => {
+              watcherState.deltaSettled = true;
+            },
+          );
         }
       }, 10);
     })();

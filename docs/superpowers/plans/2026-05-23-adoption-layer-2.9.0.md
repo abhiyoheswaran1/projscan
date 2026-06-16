@@ -13,6 +13,7 @@
 ### Task 1: Adoption Core And CLI
 
 **Files:**
+
 - Create: `src/core/adoption.ts`
 - Create: `src/cli/commands/recipes.ts`
 - Modify: `src/cli/commands/init.ts`
@@ -30,6 +31,7 @@
 ### Task 2: MCP Adoption Tool
 
 **Files:**
+
 - Create: `src/mcp/tools/adoption.ts`
 - Modify: `src/mcp/tools.ts`
 - Modify: `docs/STABILITY.md`
@@ -43,6 +45,7 @@
 ### Task 3: Plugin Gallery And Docs
 
 **Files:**
+
 - Create: `docs/PLUGIN-GALLERY.md`
 - Create: `docs/examples/plugins/security-radar.projscan-plugin.json`
 - Create: `docs/examples/plugins/security-radar.mjs`
@@ -59,6 +62,7 @@
 ### Task 4: Console Polish
 
 **Files:**
+
 - Modify: `src/reporters/consoleReporter.ts`
 - Modify: `src/cli/commands/preflight.ts`
 - Test: `tests/cli/preflight.test.ts`
@@ -70,6 +74,7 @@
 ### Task 5: Release 2.9.0
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `.github/mcp-registry/server.json`

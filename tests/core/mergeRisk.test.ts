@@ -22,8 +22,24 @@ describe('deriveMergeRisk', () => {
       ],
       collisions: [
         // a <-> b same-file (high, weight 2 each); a <-> c dependency (medium, weight 1 each)
-        { kind: 'same-file', severity: 'high', worktreeA: '/wt/a', fileA: 'x.ts', worktreeB: '/wt/b', fileB: 'x.ts', reason: '' },
-        { kind: 'dependency', severity: 'medium', worktreeA: '/wt/a', fileA: 'y.ts', worktreeB: '/wt/c', fileB: 'z.ts', reason: '' },
+        {
+          kind: 'same-file',
+          severity: 'high',
+          worktreeA: '/wt/a',
+          fileA: 'x.ts',
+          worktreeB: '/wt/b',
+          fileB: 'x.ts',
+          reason: '',
+        },
+        {
+          kind: 'dependency',
+          severity: 'medium',
+          worktreeA: '/wt/a',
+          fileA: 'y.ts',
+          worktreeB: '/wt/c',
+          fileB: 'z.ts',
+          reason: '',
+        },
       ],
     });
 
@@ -42,8 +58,24 @@ describe('deriveMergeRisk', () => {
         { path: '/wt/c', branch: 'c', changedFileCount: 1, baseRef: 'main' },
       ],
       collisions: [
-        { kind: 'same-file', severity: 'high', worktreeA: '/wt/a', fileA: 'hot.ts', worktreeB: '/wt/b', fileB: 'hot.ts', reason: '' },
-        { kind: 'same-file', severity: 'high', worktreeA: '/wt/a', fileA: 'hot.ts', worktreeB: '/wt/c', fileB: 'hot.ts', reason: '' },
+        {
+          kind: 'same-file',
+          severity: 'high',
+          worktreeA: '/wt/a',
+          fileA: 'hot.ts',
+          worktreeB: '/wt/b',
+          fileB: 'hot.ts',
+          reason: '',
+        },
+        {
+          kind: 'same-file',
+          severity: 'high',
+          worktreeA: '/wt/a',
+          fileA: 'hot.ts',
+          worktreeB: '/wt/c',
+          fileB: 'hot.ts',
+          reason: '',
+        },
       ],
     });
 
@@ -60,7 +92,15 @@ describe('deriveMergeRisk', () => {
         { path: '/wt/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
       ],
       collisions: [
-        { kind: 'dependency', severity: 'medium', worktreeA: '/wt/a', fileA: 'db.ts', worktreeB: '/wt/b', fileB: 'auth.ts', reason: '' },
+        {
+          kind: 'dependency',
+          severity: 'medium',
+          worktreeA: '/wt/a',
+          fileA: 'db.ts',
+          worktreeB: '/wt/b',
+          fileB: 'auth.ts',
+          reason: '',
+        },
       ],
     });
 
@@ -71,7 +111,12 @@ describe('deriveMergeRisk', () => {
   });
 
   it('passes through unavailability', () => {
-    const r = report({ available: false, reason: 'only one worktree', worktrees: [], collisions: [] });
+    const r = report({
+      available: false,
+      reason: 'only one worktree',
+      worktrees: [],
+      collisions: [],
+    });
     const out = deriveMergeRisk(r);
     expect(out.integrationOrder).toEqual([]);
     expect(out.hotFiles).toEqual([]);

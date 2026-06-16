@@ -8,11 +8,7 @@ import { extractPhpCyclomatic } from './phpCyclomatic.js';
 import { extractPhpFunctions } from './phpFunctions.js';
 import { extractPhpCallSites } from './phpCallSites.js';
 import { detectPhpProject, type PhpProjectInfo } from './phpManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const PHP_EXTENSIONS = new Set(['.php']);
 const MAX_PHP_FILE = 1024 * 1024;
@@ -53,12 +49,8 @@ export const phpAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractPhpCyclomatic(
         root as Parameters<typeof extractPhpCyclomatic>[0],
       );
-      const callSites = extractPhpCallSites(
-        root as Parameters<typeof extractPhpCallSites>[0],
-      );
-      const functions = extractPhpFunctions(
-        root as Parameters<typeof extractPhpFunctions>[0],
-      );
+      const callSites = extractPhpCallSites(root as Parameters<typeof extractPhpCallSites>[0]);
+      const functions = extractPhpFunctions(root as Parameters<typeof extractPhpFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -102,10 +94,7 @@ export const phpAdapter: LanguageAdapter = {
     return source.split('\\')[0];
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectPhpProject(rootPath, files);
     if (!info) return { packageRoots: [], meta: undefined };
     const projectRel = path.relative(rootPath, info.projectRoot) || '.';
@@ -137,7 +126,12 @@ function resolvePhpImport(
   if (!source) return null;
 
   // Include-path form (literal `.php` filename).
-  if (source.endsWith('.php') || source.startsWith('./') || source.startsWith('../') || source.startsWith('/')) {
+  if (
+    source.endsWith('.php') ||
+    source.startsWith('./') ||
+    source.startsWith('../') ||
+    source.startsWith('/')
+  ) {
     const importingDir = path.posix.dirname(importingFile);
     const stripped = source.startsWith('/') ? source.slice(1) : source;
     const joined = path.posix.normalize(path.posix.join(importingDir, stripped));
@@ -165,7 +159,8 @@ function resolvePhpImport(
       // Build the candidate. The composer root path is relative to the
       // project root; the project root is the first packageRoot.
       const projectRel = (context.packageRoots ?? ['.'])[0] ?? '.';
-      const projectSegs = projectRel === '.' || projectRel === '' ? [] : projectRel.split('/').filter(Boolean);
+      const projectSegs =
+        projectRel === '.' || projectRel === '' ? [] : projectRel.split('/').filter(Boolean);
       const rootSegs = root.split('/').filter(Boolean);
       const candidate = [...projectSegs, ...rootSegs, ...segments].join('/') + '.php';
       if (graphFiles.has(candidate)) return candidate;

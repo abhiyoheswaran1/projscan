@@ -40,13 +40,20 @@ export function registerCi(): void {
         let issues = await collectIssues(rootPath, scan.files);
         issues = applyConfigToIssues(issues, config);
         if (cmdOpts.changedOnly) {
-          issues = await filterIssuesByChangedFiles(issues, rootPath, cmdOpts.baseRef ?? config.baseRef);
+          issues = await filterIssuesByChangedFiles(
+            issues,
+            rootPath,
+            cmdOpts.baseRef ?? config.baseRef,
+          );
         }
 
         const rawThreshold = cmdOpts.minScore ?? config.minScore ?? 70;
         const threshold = Math.max(
           0,
-          Math.min(100, typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold),
+          Math.min(
+            100,
+            typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold,
+          ),
         );
         const { score, grade, errors, warnings, infos } = calculateScore(issues);
         const ci = {

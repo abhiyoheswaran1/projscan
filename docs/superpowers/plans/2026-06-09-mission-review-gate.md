@@ -23,6 +23,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -40,7 +41,10 @@ expect(report.missionControl.reviewGate).toEqual(
     stopCondition: expect.stringContaining('Stop after'),
   }),
 );
-expect(report.missionControl.reviewGate.commands).toEqual(['git status --short', 'git diff --stat']);
+expect(report.missionControl.reviewGate.commands).toEqual([
+  'git status --short',
+  'git diff --stat',
+]);
 expect(report.missionControl.reviewGate.checklist).toEqual(
   expect.arrayContaining([
     'Complete this task card and remaining proof.',
@@ -86,14 +90,18 @@ test('start review-gate shortcut prints the structured review gate markdown', as
 Extend the shortcuts test:
 
 ```ts
-expect(result.stdout).toContain('projscan start --review-gate --intent "what breaks if I rename the auth token loader"');
+expect(result.stdout).toContain(
+  'projscan start --review-gate --intent "what breaks if I rename the auth token loader"',
+);
 ```
 
 Extend the bundle test:
 
 ```ts
 expect(manifest.files.map((file: { name: string }) => file.name)).toContain('review-gate.md');
-expect(await fs.readFile(path.join(bundleDir, 'review-gate.md'), 'utf-8')).toContain('# Mission Review Gate');
+expect(await fs.readFile(path.join(bundleDir, 'review-gate.md'), 'utf-8')).toContain(
+  '# Mission Review Gate',
+);
 ```
 
 - [ ] **Step 3: Add MCP failing assertions**
@@ -124,6 +132,7 @@ Expected: fail because `missionControl.reviewGate` and `--review-gate` do not ex
 ## Task 2: Core Review Gate
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -255,6 +264,7 @@ Expected: build passes and focused core tests pass.
 ## Task 3: CLI, Shortcuts, and Bundle
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 - Modify: `tests/cli/start.test.ts`
 
@@ -325,6 +335,7 @@ Expected: build passes and focused CLI/MCP tests pass.
 ## Task 4: Docs, Screenshots, and Verification
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

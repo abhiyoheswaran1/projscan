@@ -13,8 +13,15 @@ import type { EvidencePackArtifact, EvidencePackReport } from '../../types.js';
 export function registerEvidencePack(): void {
   program
     .command('evidence-pack')
-    .description('Assemble approval evidence from product planning, bug-hunt, workplan, and preflight signals')
-    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
+    .description(
+      'Assemble approval evidence from product planning, bug-hunt, workplan, and preflight signals',
+    )
+    .option(
+      '--line <line>',
+      'product line to include, repeatable (default: next six minor lines)',
+      collectLine,
+      [],
+    )
     .option('--website-prompt', 'include website-update prompt text')
     .option('--pr-comment', 'print a GitHub PR comment markdown artifact')
     .option('--max-findings <count>', 'maximum bug-hunt findings to include', parsePositiveInt)

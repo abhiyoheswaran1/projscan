@@ -14,11 +14,12 @@ export function isGeneratedLikePath(file: string): boolean {
   const normalized = normalizePath(file);
   const segments = normalized.split('/');
   return (
-    segments.some((segment) =>
-      segment === 'generated' ||
-      segment === '__generated__' ||
-      segment === 'codegen' ||
-      segment === '.generated',
+    segments.some(
+      (segment) =>
+        segment === 'generated' ||
+        segment === '__generated__' ||
+        segment === 'codegen' ||
+        segment === '.generated',
     ) ||
     /(?:^|[._-])generated\.[^/]+$/.test(normalized) ||
     /(?:^|[._-])gen\.[^/]+$/.test(normalized)

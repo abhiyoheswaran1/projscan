@@ -35,7 +35,7 @@ const promptDefinitions: McpPromptDefinition[] = [
   {
     name: 'investigate_file',
     description:
-      "Produce a senior-engineer investigation of a specific file, grounded in its churn, ownership, related issues, and structure.",
+      'Produce a senior-engineer investigation of a specific file, grounded in its churn, ownership, related issues, and structure.',
     arguments: [
       {
         name: 'file',
@@ -49,7 +49,11 @@ const promptDefinitions: McpPromptDefinition[] = [
     description:
       'Concrete refactor plan for one specific hotspot file. Pulls the file detail (purpose, risk score, ownership, per-function CC, related issues) and the project-level health context, then asks for a step-by-step refactor with risk acknowledgement.',
     arguments: [
-      { name: 'file', description: 'Path to the hotspot file (relative to project root)', required: true },
+      {
+        name: 'file',
+        description: 'Path to the hotspot file (relative to project root)',
+        required: true,
+      },
     ],
   },
   {
@@ -71,22 +75,30 @@ const promptDefinitions: McpPromptDefinition[] = [
     arguments: [
       { name: 'base', description: 'Base ref. Default: origin/main.', required: false },
       { name: 'head', description: 'Head ref. Default: HEAD.', required: false },
-      { name: 'package', description: 'Optional. Workspace package name to scope the review.', required: false },
+      {
+        name: 'package',
+        description: 'Optional. Workspace package name to scope the review.',
+        required: false,
+      },
     ],
   },
   {
     name: 'safely_rename_symbol',
     description:
-      'A safe-rename plan for an exported symbol. Pulls the symbol\'s definition site(s), every direct caller, and the transitive blast radius via projscan_impact, then asks for an ordered rename + verification checklist.',
+      "A safe-rename plan for an exported symbol. Pulls the symbol's definition site(s), every direct caller, and the transitive blast radius via projscan_impact, then asks for an ordered rename + verification checklist.",
     arguments: [
       { name: 'symbol', description: 'The exported symbol name to rename.', required: true },
-      { name: 'to', description: 'Optional. The new name (used in the generated plan).', required: false },
+      {
+        name: 'to',
+        description: 'Optional. The new name (used in the generated plan).',
+        required: false,
+      },
     ],
   },
   {
     name: 'quiet_the_doctor',
     description:
-      'Propose silencing rules that have been open across many doctor runs without being addressed. Reads Project Memory\'s stable-rule list, frames the .projscanrc snippet, asks the agent to commit it (with a per-rule rationale).',
+      "Propose silencing rules that have been open across many doctor runs without being addressed. Reads Project Memory's stable-rule list, frames the .projscanrc snippet, asks the agent to commit it (with a per-rule rationale).",
     arguments: [],
   },
 ];
@@ -130,17 +142,17 @@ async function prioritizeRefactoringPrompt(
   const hotspots = await analyzeHotspots(rootPath, scan.files, issues, { limit });
   const { score, grade } = calculateScore(issues);
 
-  const hotspotLines = hotspots.available && hotspots.hotspots.length > 0
-    ? hotspots.hotspots
-        .map((h, i) => {
-          const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : 'ranked by risk';
-          const ownership = h.busFactorOne && h.primaryAuthor
-            ? ` [BUS FACTOR 1: ${h.primaryAuthor}]`
-            : '';
-          return `${i + 1}. ${h.relativePath} - risk ${h.riskScore.toFixed(1)} (${reasons})${ownership}`;
-        })
-        .join('\n')
-    : '(no hotspots available - project may not be a git repository)';
+  const hotspotLines =
+    hotspots.available && hotspots.hotspots.length > 0
+      ? hotspots.hotspots
+          .map((h, i) => {
+            const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : 'ranked by risk';
+            const ownership =
+              h.busFactorOne && h.primaryAuthor ? ` [BUS FACTOR 1: ${h.primaryAuthor}]` : '';
+            return `${i + 1}. ${h.relativePath} - risk ${h.riskScore.toFixed(1)} (${reasons})${ownership}`;
+          })
+          .join('\n')
+      : '(no hotspots available - project may not be a git repository)';
 
   const topIssues = issues
     .slice(0, 15)
@@ -168,9 +180,7 @@ async function prioritizeRefactoringPrompt(
 
   return {
     description: 'Prioritized refactoring plan grounded in live project data',
-    messages: [
-      { role: 'user', content: { type: 'text', text } },
-    ],
+    messages: [{ role: 'user', content: { type: 'text', text } }],
   };
 }
 
@@ -186,7 +196,7 @@ async function investigateFilePrompt(
   const text = [
     `You are a senior engineer investigating \`${file}\`.`,
     '',
-    "Here is the file report from projscan (purpose, risk score, ownership, related health issues, imports, exports):",
+    'Here is the file report from projscan (purpose, risk score, ownership, related health issues, imports, exports):',
     '',
     '```json',
     body,
@@ -295,8 +305,8 @@ async function triageDoctorIssuesPrompt(
     '',
     'Output a triage plan in this exact shape:',
     '',
-    '1. **Critical (fix this week)** — list issues that block correctness, security, or shipping. For each: issue id (if any), why it\'s critical, the projscan_fix_suggest call to invoke.',
-    '2. **Important (fix this sprint)** — issues that meaningfully reduce risk but aren\'t blockers.',
+    "1. **Critical (fix this week)** — list issues that block correctness, security, or shipping. For each: issue id (if any), why it's critical, the projscan_fix_suggest call to invoke.",
+    "2. **Important (fix this sprint)** — issues that meaningfully reduce risk but aren't blockers.",
     '3. **Backlog** — defer-able with rationale (e.g. "low signal, will be fixed by an upcoming refactor").',
     '4. **Score impact** — estimate how many points the project would gain by clearing items 1-2.',
     '',
@@ -347,14 +357,14 @@ async function reviewThisPrPrompt(
     '',
     'Produce a PR-comment-ready review in this order:',
     '',
-    '1. **Verdict line** — restate projscan\'s verdict and whether you concur after looking at the structural data.',
+    "1. **Verdict line** — restate projscan's verdict and whether you concur after looking at the structural data.",
     '2. **Security: NEW taint flows** — if `newTaintFlows` is non-empty, this is the lead concern. Name each flow (`source → sink` in `sourceFn`), say what an attacker would need to exploit it, and demand the author either neutralize it or justify why the source is trusted. A new taint flow is presumed `request-changes` unless the author closes the loop.',
     '3. **Must-look-at** — the highest-risk file(s) from `topChangedFiles` and `riskyFunctions`. For each: one sentence on why, and a concrete question to ask the author.',
     '4. **Cycle / coupling concerns** — if `newCycles` is non-empty, name each and propose how to break or document it.',
     '5. **Dependency concerns** — call out anything in `dependencyChanges` that warrants a closer look (major bumps, new deps with unclear purpose).',
     '6. **Approval recommendation** — `approve` / `request-changes` / `comment` with rationale.',
     '',
-    'Stay grounded in the data above. Do not speculate about code you can\'t see; if you need to inspect a file, request `projscan_file <path>` for it.',
+    "Stay grounded in the data above. Do not speculate about code you can't see; if you need to inspect a file, request `projscan_file <path>` for it.",
   ].join('\n');
 
   return {
@@ -437,7 +447,7 @@ async function quietTheDoctorPrompt(rootPath: string): Promise<McpPromptResult> 
       '',
       'A rule becomes "stable" after surfacing in ≥ 3 runs over ≥ 7 days without ever being fixed. None of the tracked rules meet that threshold yet — either the project is being actively cleaned, or memory needs more runs to accumulate signal.',
       '',
-      'Tell the user there\'s nothing to silence and recommend running the doctor a few more times to build memory, OR proposing a sweep of the existing open issues if they\'re willing to work through them.',
+      "Tell the user there's nothing to silence and recommend running the doctor a few more times to build memory, OR proposing a sweep of the existing open issues if they're willing to work through them.",
     ].join('\n');
     return {
       description: 'No stable rules to silence (Project Memory has insufficient signal)',
@@ -454,7 +464,7 @@ async function quietTheDoctorPrompt(rootPath: string): Promise<McpPromptResult> 
     .join('\n');
 
   const text = [
-    'You are silencing analyzer rules that this project has been carrying across many doctor runs without ever fixing — i.e. the user has implicitly accepted them. Project Memory tracked this; here\'s the recommendation.',
+    "You are silencing analyzer rules that this project has been carrying across many doctor runs without ever fixing — i.e. the user has implicitly accepted them. Project Memory tracked this; here's the recommendation.",
     '',
     `**${stable.length} stable rule${stable.length === 1 ? '' : 's'}** (across ${memory.totalRuns} runs):`,
     '',
@@ -473,7 +483,7 @@ async function quietTheDoctorPrompt(rootPath: string): Promise<McpPromptResult> 
     '3. **Verification** — one command the user can run after applying the patch to confirm the doctor is quieter (typically `projscan ci --min-score 90`).',
     '4. **Rollback note** — how to remove a single entry from `disableRules` if the user later wants the rule re-enabled.',
     '',
-    'Tone: matter-of-fact. The user has already implicitly accepted these by not fixing them; you\'re documenting the acceptance, not advocating for it.',
+    "Tone: matter-of-fact. The user has already implicitly accepted these by not fixing them; you're documenting the acceptance, not advocating for it.",
   ].join('\n');
 
   return {

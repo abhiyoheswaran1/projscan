@@ -89,17 +89,40 @@ async function makeRepo(name: string): Promise<string> {
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(
     path.join(root, 'package.json'),
-    JSON.stringify({ name, version: '0.0.0', type: 'module', devDependencies: { eslint: '^9.0.0', prettier: '^3.0.0', vitest: '^3.0.0' } }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        name,
+        version: '0.0.0',
+        type: 'module',
+        devDependencies: { eslint: '^9.0.0', prettier: '^3.0.0', vitest: '^3.0.0' },
+      },
+      null,
+      2,
+    ) + '\n',
   );
-  await fs.writeFile(path.join(root, 'README.md'), '# ' + name + '\n\nA representative trial fixture with setup instructions and usage notes.\n');
-  await fs.writeFile(path.join(root, '.eslintrc.json'), JSON.stringify({ root: true }, null, 2) + '\n');
-  await fs.writeFile(path.join(root, '.prettierrc'), JSON.stringify({ singleQuote: true }, null, 2) + '\n');
-  await fs.writeFile(path.join(root, '.editorconfig'), 'root = true\n[*]\nindent_style = space\nindent_size = 2\n');
+  await fs.writeFile(
+    path.join(root, 'README.md'),
+    '# ' + name + '\n\nA representative trial fixture with setup instructions and usage notes.\n',
+  );
+  await fs.writeFile(
+    path.join(root, '.eslintrc.json'),
+    JSON.stringify({ root: true }, null, 2) + '\n',
+  );
+  await fs.writeFile(
+    path.join(root, '.prettierrc'),
+    JSON.stringify({ singleQuote: true }, null, 2) + '\n',
+  );
+  await fs.writeFile(
+    path.join(root, '.editorconfig'),
+    'root = true\n[*]\nindent_style = space\nindent_size = 2\n',
+  );
   await fs.writeFile(path.join(root, '.gitignore'), 'node_modules/\n.env\n');
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
 }
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

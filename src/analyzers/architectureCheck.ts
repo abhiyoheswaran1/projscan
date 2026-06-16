@@ -65,7 +65,8 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
 
   // Check for missing .editorconfig
   const hasEditorConfig = files.some(
-    (f) => path.basename(f.relativePath) === '.editorconfig' && (!f.directory || f.directory === '.'),
+    (f) =>
+      path.basename(f.relativePath) === '.editorconfig' && (!f.directory || f.directory === '.'),
   );
   if (!hasEditorConfig) {
     issues.push({

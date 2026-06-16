@@ -7,11 +7,7 @@ import { extractCsharpExports } from './csharpExports.js';
 import { extractCsharpCyclomatic } from './csharpCyclomatic.js';
 import { extractCsharpFunctions } from './csharpFunctions.js';
 import { extractCsharpCallSites } from './csharpCallSites.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const CSHARP_EXTENSIONS = new Set(['.cs']);
 const MAX_CSHARP_FILE = 1024 * 1024;
@@ -98,10 +94,7 @@ export const csharpAdapter: LanguageAdapter = {
     return source.split('.')[0];
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     // Find every .csproj file; each defines a project root and a default
     // root namespace (the csproj filename without `.csproj`). When an import
     // starts with that root namespace we strip it before mapping to a path.
@@ -141,7 +134,8 @@ function resolveCsharpImport(
   const baseSegments = source.split('.').filter(Boolean);
   if (baseSegments.length === 0) return null;
 
-  const projects = (context.meta as { csharpProjects?: CsharpProjectInfo[] } | undefined)?.csharpProjects ?? [];
+  const projects =
+    (context.meta as { csharpProjects?: CsharpProjectInfo[] } | undefined)?.csharpProjects ?? [];
   const projectList: Array<{ dir: string; strip: string[] }> =
     projects.length > 0
       ? projects.map((p) => ({ dir: p.dir, strip: p.rootNamespace.split('.').filter(Boolean) }))

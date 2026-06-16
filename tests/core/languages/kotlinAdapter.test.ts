@@ -26,10 +26,7 @@ describe('kotlinAdapter.imports', () => {
   });
 
   it('handles aliased imports', async () => {
-    const r = await kotlinAdapter.parse(
-      'a.kt',
-      `import com.example.Foo as MyFoo\nfun main() {}\n`,
-    );
+    const r = await kotlinAdapter.parse('a.kt', `import com.example.Foo as MyFoo\nfun main() {}\n`);
     expect(r.imports).toHaveLength(1);
     expect(r.imports[0].source).toBe('com.example.Foo');
     expect(r.imports[0].specifiers).toEqual(['MyFoo']);
@@ -38,10 +35,7 @@ describe('kotlinAdapter.imports', () => {
 
 describe('kotlinAdapter.exports (visibility-based)', () => {
   it('captures public fun but not private fun', async () => {
-    const r = await kotlinAdapter.parse(
-      'a.kt',
-      `fun publicFn() {}\nprivate fun privateFn() {}\n`,
-    );
+    const r = await kotlinAdapter.parse('a.kt', `fun publicFn() {}\nprivate fun privateFn() {}\n`);
     const names = r.exports.map((e) => e.name);
     expect(names).toContain('publicFn');
     expect(names).not.toContain('privateFn');

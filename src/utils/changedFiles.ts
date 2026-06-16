@@ -131,7 +131,7 @@ async function diffNames(rootPath: string, baseRef: string): Promise<string[]> {
 async function statusNames(rootPath: string): Promise<string[]> {
   const { stdout } = await execFileAsync(
     'git',
-    ['status', '--porcelain'],
+    ['status', '--porcelain', '--untracked-files=all'],
     { cwd: rootPath, maxBuffer: 10 * 1024 * 1024 },
   );
   const out = new Set<string>();

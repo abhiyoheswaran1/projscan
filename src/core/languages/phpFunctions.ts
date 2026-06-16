@@ -43,9 +43,13 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
     node.type === 'trait_declaration' ||
     node.type === 'enum_declaration'
   ) {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'name');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'name');
     const cls = nameNode?.text ?? ownerName;
-    const body = node.childForFieldName ? node.childForFieldName('body') : findChild(node, 'declaration_list');
+    const body = node.childForFieldName
+      ? node.childForFieldName('body')
+      : findChild(node, 'declaration_list');
     if (body) {
       for (const child of body.namedChildren) walk(child, cls, out);
     }
@@ -63,9 +67,12 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
   }
 
   if (node.type === 'function_definition' || node.type === 'method_declaration') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'name');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'name');
     const baseName = nameNode?.text ?? '<anonymous>';
-    const fnName = ownerName && node.type === 'method_declaration' ? `${ownerName}.${baseName}` : baseName;
+    const fnName =
+      ownerName && node.type === 'method_declaration' ? `${ownerName}.${baseName}` : baseName;
     const line = node.startPosition.row + 1;
     const endLine = node.endPosition.row + 1;
     const { cc, callSites } = analyzeBody(node);
@@ -79,7 +86,9 @@ function walk(node: TsNode, ownerName: string | null, out: FunctionInfo[]): void
 function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
   let count = 0;
   const calls = new Set<string>();
-  const body = fnNode.childForFieldName ? fnNode.childForFieldName('body') : findChild(fnNode, 'compound_statement');
+  const body = fnNode.childForFieldName
+    ? fnNode.childForFieldName('body')
+    : findChild(fnNode, 'compound_statement');
   if (!body) return { cc: 1, callSites: [] };
   walkSkipNested(body, (n) => {
     if (PHP_DECISION_NODES.has(n.type)) {
@@ -116,8 +125,12 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
 function phpCalleeName(callNode: TsNode): string | null {
   const target =
     callNode.type === 'function_call_expression'
-      ? (callNode.childForFieldName ? callNode.childForFieldName('function') : null)
-      : (callNode.childForFieldName ? callNode.childForFieldName('name') : null);
+      ? callNode.childForFieldName
+        ? callNode.childForFieldName('function')
+        : null
+      : callNode.childForFieldName
+        ? callNode.childForFieldName('name')
+        : null;
   if (!target) return null;
   switch (target.type) {
     case 'name':

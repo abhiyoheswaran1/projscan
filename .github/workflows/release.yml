@@ -31,8 +31,8 @@ on:
         required: true
 
 permissions:
-  contents: write   # create the GitHub Release
-  id-token: write   # npm provenance (sigstore)
+  contents: write # create the GitHub Release
+  id-token: write # npm provenance (sigstore)
 
 concurrency:
   # Serialize per-tag so a re-run via workflow_dispatch can't collide with

@@ -63,13 +63,9 @@ export function computeDiff(
   const beforeTitles = new Set(before.issues.map((i) => i.title));
   const afterTitles = new Set(after.issues.map((i) => i.title));
 
-  const newIssues = after.issues
-    .filter((i) => !beforeTitles.has(i.title))
-    .map((i) => i.title);
+  const newIssues = after.issues.filter((i) => !beforeTitles.has(i.title)).map((i) => i.title);
 
-  const resolvedIssues = before.issues
-    .filter((i) => !afterTitles.has(i.title))
-    .map((i) => i.title);
+  const resolvedIssues = before.issues.filter((i) => !afterTitles.has(i.title)).map((i) => i.title);
 
   const hotspotDiff =
     before.hotspots && after.hotspots ? diffHotspots(before.hotspots, after.hotspots) : undefined;
@@ -153,16 +149,26 @@ function buildTrend(
 ): BaselineTrend {
   const roundedDelta = round1(scoreDelta);
   const riskDelta = round1(-scoreDelta);
-  const recurringNoisyRules = recurringRules(before.issueRuleCounts ?? countBaselineIssuesById(before), after.issueRuleCounts ?? countBaselineIssuesById(after));
+  const recurringNoisyRules = recurringRules(
+    before.issueRuleCounts ?? countBaselineIssuesById(before),
+    after.issueRuleCounts ?? countBaselineIssuesById(after),
+  );
   const newHotspots = (hotspotDiff?.appeared ?? []).map((entry) => entry.relativePath).slice(0, 5);
   const scoreDirection = roundedDelta > 0 ? 'up' : roundedDelta < 0 ? 'down' : 'flat';
   const riskDirection = riskDelta > 0 ? 'up' : riskDelta < 0 ? 'down' : 'flat';
-  const changedSinceBaseline = buildChangedSinceBaseline(newIssues, resolvedIssues, newHotspots, recurringNoisyRules);
+  const changedSinceBaseline = buildChangedSinceBaseline(
+    newIssues,
+    resolvedIssues,
+    newHotspots,
+    recurringNoisyRules,
+  );
   const summary = [
     `score ${scoreDirection}${roundedDelta === 0 ? '' : ` ${roundedDelta > 0 ? '+' : ''}${roundedDelta}`}`,
     `risk ${riskDirection}${riskDelta === 0 ? '' : ` ${riskDelta > 0 ? '+' : ''}${riskDelta}`}`,
     newHotspots.length > 0 ? `${newHotspots.length} new hotspot(s)` : 'no new hotspots',
-    recurringNoisyRules.length > 0 ? `${recurringNoisyRules.length} recurring noisy rule(s)` : 'no recurring noisy rules',
+    recurringNoisyRules.length > 0
+      ? `${recurringNoisyRules.length} recurring noisy rule(s)`
+      : 'no recurring noisy rules',
   ].join('; ');
   return {
     scoreDirection,
@@ -187,11 +193,23 @@ function buildChangedSinceBaseline(
   recurringNoisyRules: BaselineTrend['recurringNoisyRules'],
 ): string[] {
   const changes: string[] = [];
-  changes.push(newIssues.length > 0 ? `${newIssues.length} new issue(s): ${newIssues.slice(0, 3).join('; ')}` : '0 new issues');
-  changes.push(resolvedIssues.length > 0 ? `${resolvedIssues.length} resolved issue(s): ${resolvedIssues.slice(0, 3).join('; ')}` : '0 resolved issues');
-  changes.push(newHotspots.length > 0 ? `new hotspot(s): ${newHotspots.join(', ')}` : 'no new hotspots');
+  changes.push(
+    newIssues.length > 0
+      ? `${newIssues.length} new issue(s): ${newIssues.slice(0, 3).join('; ')}`
+      : '0 new issues',
+  );
+  changes.push(
+    resolvedIssues.length > 0
+      ? `${resolvedIssues.length} resolved issue(s): ${resolvedIssues.slice(0, 3).join('; ')}`
+      : '0 resolved issues',
+  );
+  changes.push(
+    newHotspots.length > 0 ? `new hotspot(s): ${newHotspots.join(', ')}` : 'no new hotspots',
+  );
   if (recurringNoisyRules.length > 0) {
-    changes.push(`recurring noisy rule(s): ${recurringNoisyRules.map((rule) => `${rule.id} ${rule.before}->${rule.after}`).join(', ')}`);
+    changes.push(
+      `recurring noisy rule(s): ${recurringNoisyRules.map((rule) => `${rule.id} ${rule.before}->${rule.after}`).join(', ')}`,
+    );
   }
   return changes.slice(0, 5);
 }
@@ -208,7 +226,10 @@ function countBaselineIssuesById(baseline: Baseline): Record<string, number> {
   return counts;
 }
 
-function recurringRules(before: Record<string, number>, after: Record<string, number>): BaselineTrend['recurringNoisyRules'] {
+function recurringRules(
+  before: Record<string, number>,
+  after: Record<string, number>,
+): BaselineTrend['recurringNoisyRules'] {
   return Object.keys(before)
     .filter((id) => before[id] > 0 && (after[id] ?? 0) > 0)
     .map((id) => ({ id, before: before[id], after: after[id] ?? 0 }))

@@ -5,7 +5,11 @@ import { buildSemanticGraph } from './semanticGraph.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
-import { computeCoordination, coordinationHints as toCoordinationHints, type CoordinationSummary } from './coordination.js';
+import {
+  computeCoordination,
+  coordinationHints as toCoordinationHints,
+  type CoordinationSummary,
+} from './coordination.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type {
@@ -38,7 +42,10 @@ export async function computeAgentBrief(
   const maxItems = normalizeMax(options.maxItems);
   const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const issues = applyConfigToIssues(
+    await collectIssues(rootPath, scan.files),
+    configResult.config,
+  );
   const health = calculateScore(issues);
   const [riskNow, hotspots, graphContext, coordination] = await Promise.all([
     safeRiskNow(rootPath),
@@ -71,11 +78,16 @@ export async function computeAgentBrief(
     focus,
     guardrails,
     suggestedNextActions: suggestedActions(focus, guardrails),
-    ...(allFocus.length > focus.length || riskNow.touchedFiles.length > 12 ? { truncated: true } : {}),
+    ...(allFocus.length > focus.length || riskNow.touchedFiles.length > 12
+      ? { truncated: true }
+      : {}),
   };
 }
 
-async function safeGraphContext(rootPath: string, files: FileEntry[]): Promise<GraphEvidenceSummary | undefined> {
+async function safeGraphContext(
+  rootPath: string,
+  files: FileEntry[],
+): Promise<GraphEvidenceSummary | undefined> {
   try {
     const graph = await buildCodeGraph(rootPath, files);
     const semantic = buildSemanticGraph(graph, { maxNodes: 5_000, maxEdges: 10_000 });
@@ -133,7 +145,11 @@ function swarmCoordinationHints(summary: CoordinationSummary | null): Array<{
   ];
 }
 
-async function safeRiskNow(rootPath: string): Promise<Pick<Awaited<ReturnType<typeof buildRiskNow>>, 'touchedFiles' | 'conflicts' | 'coordinationHints'>> {
+async function safeRiskNow(
+  rootPath: string,
+): Promise<
+  Pick<Awaited<ReturnType<typeof buildRiskNow>>, 'touchedFiles' | 'conflicts' | 'coordinationHints'>
+> {
   try {
     return await buildRiskNow(rootPath);
   } catch {
@@ -144,7 +160,8 @@ async function safeRiskNow(rootPath: string): Promise<Pick<Awaited<ReturnType<ty
         {
           id: 'current-worktree-check',
           label: 'Separate current worktree evidence from session memory',
-          message: 'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
+          message:
+            'Run preflight to see current Git/worktree risk; remembered session touches may include older agent context.',
           command: 'projscan preflight --mode before_edit --format json',
         },
       ],
@@ -201,7 +218,10 @@ function hotspotToFocus(hotspot: FileHotspot): AgentBriefItem {
     title: `Inspect hotspot ${hotspot.relativePath}`,
     why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)}`,
     files: [hotspot.relativePath],
-    commands: [`projscan file ${hotspot.relativePath} --format json`, 'projscan hotspots --format json'],
+    commands: [
+      `projscan file ${hotspot.relativePath} --format json`,
+      'projscan hotspots --format json',
+    ],
   };
 }
 
@@ -212,7 +232,10 @@ function baselineFocus(intent: AgentBriefIntent): AgentBriefItem {
     title: 'Keep the clean baseline reproducible',
     why: `No immediate focus targets were found for ${intent}. Preserve the baseline with repeatable checks before handoff.`,
     files: [],
-    commands: ['projscan doctor --format json', 'projscan preflight --mode before_edit --format json'],
+    commands: [
+      'projscan doctor --format json',
+      'projscan preflight --mode before_edit --format json',
+    ],
   };
 }
 
@@ -228,15 +251,19 @@ function buildGuardrails(intent: AgentBriefIntent): AgentBriefGuardrail[] {
       id: 'ab-guardrail-preflight',
       label: 'Preflight check',
       reason: 'Confirm the current session is safe for the selected intent.',
-      command: intent === 'release'
-        ? 'projscan preflight --mode before_merge --format json'
-        : 'projscan preflight --mode before_edit --format json',
+      command:
+        intent === 'release'
+          ? 'projscan preflight --mode before_merge --format json'
+          : 'projscan preflight --mode before_edit --format json',
     },
     {
       id: 'ab-guardrail-tests',
       label: 'Regression check',
       reason: 'Keep the brief tied to repeatable verification.',
-      command: intent === 'release' ? 'projscan regression-plan --level focused --format json' : 'npm test',
+      command:
+        intent === 'release'
+          ? 'projscan regression-plan --level focused --format json'
+          : 'npm test',
     },
   ];
 }
@@ -249,7 +276,9 @@ function rankFocus(items: AgentBriefItem[]): AgentBriefItem[] {
       seen.add(item.id);
       return true;
     })
-    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || a.id.localeCompare(b.id),
+    );
 }
 
 function suggestedActions(
@@ -262,11 +291,17 @@ function suggestedActions(
   ].slice(0, 10);
 }
 
-function summarize(intent: AgentBriefIntent, focus: AgentBriefItem[], health: ReturnType<typeof calculateScore>): string {
+function summarize(
+  intent: AgentBriefIntent,
+  focus: AgentBriefItem[],
+  health: ReturnType<typeof calculateScore>,
+): string {
   return `agent brief: ${intent} has ${focus.length} focus item(s), health ${health.grade} (${health.score})`;
 }
 
-function topDirectories(files: Array<{ directory: string }>): Array<{ directory: string; files: number }> {
+function topDirectories(
+  files: Array<{ directory: string }>,
+): Array<{ directory: string; files: number }> {
   const counts = new Map<string, number>();
   for (const file of files) {
     const dir = file.directory || '.';
@@ -283,7 +318,8 @@ function issueFiles(issue: Issue): string[] {
 }
 
 function normalizeIntent(value: AgentBriefIntent | undefined): AgentBriefIntent {
-  if (value === 'bug_hunt' || value === 'release' || value === 'refactor' || value === 'hardening') return value;
+  if (value === 'bug_hunt' || value === 'release' || value === 'refactor' || value === 'hardening')
+    return value;
   return 'next_agent';
 }
 
@@ -305,5 +341,10 @@ function priorityRank(priority: WorkplanPriority): number {
 }
 
 function slug(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'root';
+  return (
+    value
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'root'
+  );
 }

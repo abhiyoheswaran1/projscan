@@ -54,7 +54,10 @@ export async function inspectFile(
   // implementation silently honored absolute paths. Refusing them removes
   // an attack vector where a hostile MCP client passes /etc/passwd directly.
   if (path.isAbsolute(relOrAbsFile)) {
-    return makeEmpty(relOrAbsFile, 'Absolute paths are not accepted; pass a path relative to the project root.');
+    return makeEmpty(
+      relOrAbsFile,
+      'Absolute paths are not accepted; pass a path relative to the project root.',
+    );
   }
   // Canonicalize BOTH the root and the target via realpath before the
   // inside-root check. macOS's tmpdir lives at `/var/folders/...` which
@@ -233,7 +236,10 @@ function isInsideRoot(absolutePath: string, resolvedRoot: string): boolean {
   return absolutePath === resolvedRoot || absolutePath.startsWith(resolvedRoot + path.sep);
 }
 
-function findHotspotForFile(report: HotspotReport | undefined, relativePath: string): FileHotspot | null {
+function findHotspotForFile(
+  report: HotspotReport | undefined,
+  relativePath: string,
+): FileHotspot | null {
   if (!report || !report.available) return null;
   return report.hotspots.find((h) => h.relativePath === relativePath) ?? null;
 }
@@ -254,10 +260,16 @@ const NAME_RULES: ReadonlyArray<{
   { pred: (n) => n.includes('middleware'), label: 'Middleware handler' },
   { pred: (n) => n.includes('controller'), label: 'Request controller' },
   { pred: (n) => n.includes('service'), label: 'Service layer logic' },
-  { pred: (n) => n.includes('model') || n.includes('schema'), label: 'Data model / schema definition' },
+  {
+    pred: (n) => n.includes('model') || n.includes('schema'),
+    label: 'Data model / schema definition',
+  },
   { pred: (n) => n.includes('util') || n.includes('helper'), label: 'Utility functions' },
   { pred: (n) => n.includes('hook'), label: 'Custom hook' },
-  { pred: (n) => n.includes('context') || n.includes('provider'), label: 'Context / state provider' },
+  {
+    pred: (n) => n.includes('context') || n.includes('provider'),
+    label: 'Context / state provider',
+  },
   { pred: (n) => n.includes('type') || n.includes('interface'), label: 'Type definitions' },
   { pred: (n) => n.includes('constant'), label: 'Constants / configuration' },
   { pred: (n) => n.includes('migration'), label: 'Database migration' },

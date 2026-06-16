@@ -24,7 +24,9 @@ afterEach(async () => {
 test('lists agent brief and quality scorecard MCP tools', () => {
   const names = getToolDefinitions().map((tool) => tool.name);
 
-  expect(names).toEqual(expect.arrayContaining(['projscan_agent_brief', 'projscan_quality_scorecard']));
+  expect(names).toEqual(
+    expect.arrayContaining(['projscan_agent_brief', 'projscan_quality_scorecard']),
+  );
 });
 
 test('projscan_agent_brief returns focus and guardrails', async () => {

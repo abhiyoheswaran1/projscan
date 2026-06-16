@@ -52,7 +52,8 @@ export async function parseCoverage(rootPath: string): Promise<CoverageReport> {
 
   return {
     available: false,
-    reason: 'No coverage file found. Expected one of: coverage/lcov.info, coverage/coverage-final.json, coverage/coverage-summary.json',
+    reason:
+      'No coverage file found. Expected one of: coverage/lcov.info, coverage/coverage-final.json, coverage/coverage-summary.json',
     source: null,
     sourceFile: null,
     totalCoverage: 0,
@@ -153,7 +154,8 @@ function parseCoverageSummary(raw: string, rootPath: string): FileCoverage[] {
 
     const total = e.lines.total ?? 0;
     const covered = e.lines.covered ?? 0;
-    const pct = typeof e.lines.pct === 'number' ? e.lines.pct : total > 0 ? (covered / total) * 100 : 0;
+    const pct =
+      typeof e.lines.pct === 'number' ? e.lines.pct : total > 0 ? (covered / total) * 100 : 0;
 
     files.push({
       relativePath: toRelativePosix(key, rootPath),

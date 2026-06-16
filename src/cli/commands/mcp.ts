@@ -85,7 +85,9 @@ function printMcpDoctor(report: McpSetupDoctorReport): void {
   for (const command of report.nextCommands) console.log(`  ${command}`);
 }
 
-function statusColor(status: McpSetupDoctorReport['status'] | McpSetupDoctorReport['checks'][number]['status']) {
+function statusColor(
+  status: McpSetupDoctorReport['status'] | McpSetupDoctorReport['checks'][number]['status'],
+) {
   if (status === 'pass') return chalk.green;
   if (status === 'fail') return chalk.red;
   if (status === 'warn') return chalk.yellow;

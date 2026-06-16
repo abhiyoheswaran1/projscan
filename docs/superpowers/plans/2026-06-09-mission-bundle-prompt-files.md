@@ -52,8 +52,12 @@ expect(resumePrompt).toBe(
 Add README assertions:
 
 ```ts
-expect(quickstart).toContain('- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.');
-expect(quickstart).toContain('- `resume-prompt.txt`: Focused prompt for resuming the current cursor.');
+expect(quickstart).toContain(
+  '- `handoff-prompt.txt`: Copyable prompt for handing this mission to another agent.',
+);
+expect(quickstart).toContain(
+  '- `resume-prompt.txt`: Focused prompt for resuming the current cursor.',
+);
 ```
 
 Change the manifest expected order to:

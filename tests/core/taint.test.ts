@@ -177,7 +177,10 @@ export function saveSearch(req: { body: { sql: string } }) {
   });
 
   it('keeps imported database query helpers as taint sinks', async () => {
-    await fs.writeFile(path.join(tmp, 'src', 'db.ts'), 'export function query(sql: string) { return sql; }\n');
+    await fs.writeFile(
+      path.join(tmp, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql; }\n',
+    );
     await fs.writeFile(
       path.join(tmp, 'src', 'server.ts'),
       `import express from 'express';
@@ -196,7 +199,9 @@ app.post('/users', (req, res) => {
 
     const report = computeTaint(graph, { sources: [], sinks: [] });
 
-    expect(report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query')).toBe(true);
+    expect(
+      report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query'),
+    ).toBe(true);
   });
 
   it('keeps destructured database query aliases as taint sinks', async () => {
@@ -219,7 +224,9 @@ app.post('/users', (req, res) => {
 
     const report = computeTaint(graph, { sources: [], sinks: [] });
 
-    expect(report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query')).toBe(true);
+    expect(
+      report.flows.some((flow) => flow.source === 'express.req.body' && flow.sink === 'query'),
+    ).toBe(true);
   });
 
   it('does not let DB imports make cache query helpers look like DB sinks', async () => {
@@ -240,7 +247,9 @@ export function searchCache() {
 
     const report = computeTaint(graph, { sources: [], sinks: [] });
 
-    expect(report.flows.find((flow) => flow.sourceFn === 'searchCache' && flow.sink === 'query')).toBeUndefined();
+    expect(
+      report.flows.find((flow) => flow.sourceFn === 'searchCache' && flow.sink === 'query'),
+    ).toBeUndefined();
   });
 
   it('returns available:false when no functions have callSites', async () => {

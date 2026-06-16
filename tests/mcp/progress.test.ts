@@ -15,7 +15,10 @@ async function rpc(
 
 async function makeFixtureRoot(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-progress-'));
-  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;

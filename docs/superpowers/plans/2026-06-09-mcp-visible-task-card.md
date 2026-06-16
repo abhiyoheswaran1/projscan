@@ -26,6 +26,7 @@
 ### Task 1: Red Tests For Core And MCP Payload
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
 
@@ -48,11 +49,19 @@ test('start exposes a Mission Control task card for MCP and JSON clients', async
     }),
   );
   expect(report.missionControl.taskCard.markdown.startsWith('# Mission Task Card\n')).toBe(true);
-  expect(report.missionControl.taskCard.markdown).toContain('Intent: what breaks if I rename the auth token loader');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain(
+    'Intent: what breaks if I rename the auth token loader',
+  );
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] Run `projscan search "auth token loader" --format json`',
+  );
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] After inputs, run `projscan impact --symbol <symbol-from-search> --format json`',
+  );
   expect(report.missionControl.taskCard.markdown).toContain('## Proof');
-  expect(report.missionControl.taskCard.markdown).toContain('- [ ] `projscan preflight --mode before_edit --format json`');
+  expect(report.missionControl.taskCard.markdown).toContain(
+    '- [ ] `projscan preflight --mode before_edit --format json`',
+  );
   expect(report.missionControl.taskCard.markdown).toContain('## Done When');
   expect(report.missionControl.taskCard.markdown).toContain(report.missionControl.handoffPrompt);
   expect(report.missionControl.taskCard.markdown.endsWith('\n')).toBe(true);
@@ -65,8 +74,12 @@ In the MCP Mission Control test for fuzzy impact intents in `tests/mcp/start.tes
 
 ```ts
 expect(result.start.missionControl.taskCard.markdown).toContain('# Mission Task Card');
-expect(result.start.missionControl.taskCard.markdown).toContain('After inputs, run `projscan impact --symbol <symbol-from-search> --format json`');
-expect(result.start.missionControl.taskCard.currentStep).toEqual(result.start.missionControl.executionPlan.cursor);
+expect(result.start.missionControl.taskCard.markdown).toContain(
+  'After inputs, run `projscan impact --symbol <symbol-from-search> --format json`',
+);
+expect(result.start.missionControl.taskCard.currentStep).toEqual(
+  result.start.missionControl.executionPlan.cursor,
+);
 ```
 
 - [ ] **Step 3: Run the red tests**
@@ -84,6 +97,7 @@ Expected: FAIL because `missionControl.taskCard` does not exist.
 ### Task 2: Add Types And Core Renderer
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -191,7 +205,9 @@ function missionTaskCardActionLines(resume: StartMissionResume): string[] {
   const actionLines = checklist
     .filter((item) => item.kind !== 'run_proof' && item.kind !== 'confirm_done')
     .map(formatTaskCardChecklistItem);
-  return actionLines.length > 0 ? actionLines : ['- [ ] Continue from the current Mission Control cursor.'];
+  return actionLines.length > 0
+    ? actionLines
+    : ['- [ ] Continue from the current Mission Control cursor.'];
 }
 
 function missionTaskCardProofLines(resume: StartMissionResume): string[] {
@@ -222,6 +238,7 @@ Expected: PASS.
 ### Task 3: Reuse Core Task Card In CLI And Bundle
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 - Modify: `tests/cli/start.test.ts`
 
@@ -257,14 +274,18 @@ test('start JSON exposes the same task card used by the CLI shortcut', async () 
 In the saved bundle test, after reading `taskCard`, add:
 
 ```ts
-const bundleReport = JSON.parse((await runCli([
-  'start',
-  '--intent',
-  'what breaks if I rename the auth token loader',
-  '--format',
-  'json',
-  '--quiet',
-])).stdout);
+const bundleReport = JSON.parse(
+  (
+    await runCli([
+      'start',
+      '--intent',
+      'what breaks if I rename the auth token loader',
+      '--format',
+      'json',
+      '--quiet',
+    ])
+  ).stdout,
+);
 expect(taskCard).toBe(bundleReport.missionControl.taskCard.markdown);
 ```
 
@@ -303,6 +324,7 @@ Expected: PASS.
 ### Task 4: Docs And Verification
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

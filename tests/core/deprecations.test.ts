@@ -8,7 +8,9 @@ import {
 describe('deprecationDescriptionPrefix', () => {
   it('renders a machine-and-human readable [DEPRECATED ...] prefix with a trailing space', () => {
     const prefix = deprecationDescriptionPrefix({ since: '3.8.0', replacedBy: 'projscan_file' });
-    expect(prefix).toBe(`[DEPRECATED since 3.8.0, removed in ${REMOVAL_VERSION} — use projscan_file] `);
+    expect(prefix).toBe(
+      `[DEPRECATED since 3.8.0, removed in ${REMOVAL_VERSION} — use projscan_file] `,
+    );
     expect(prefix.endsWith(' ')).toBe(true);
   });
 });

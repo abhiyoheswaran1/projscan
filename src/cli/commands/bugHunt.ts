@@ -13,7 +13,9 @@ import type { BugHuntFinding, BugHuntReport } from '../../types.js';
 export function registerBugHunt(): void {
   program
     .command('bug-hunt')
-    .description('Prioritize a bug-hunt fix queue from repo health, hotspots, preflight, and session evidence')
+    .description(
+      'Prioritize a bug-hunt action queue from repo health, hotspots, preflight, and session evidence',
+    )
     .option('--max-findings <count>', 'maximum number of findings to return', parsePositiveInt)
     .option('--since <when>', 'git history window for hotspot evidence')
     .action(async (cmdOpts) => {
@@ -40,11 +42,12 @@ export function registerBugHunt(): void {
 }
 
 function printBugHunt(report: BugHuntReport): void {
-  const color = report.verdict === 'block' ? chalk.red : report.verdict === 'fix' ? chalk.yellow : chalk.green;
+  const color =
+    report.verdict === 'block' ? chalk.red : report.verdict === 'fix' ? chalk.yellow : chalk.green;
   console.log(color(`Bug Hunt: ${report.verdict}`));
   console.log(report.summary);
   console.log('');
-  console.log(chalk.bold('Fix Queue'));
+  console.log(chalk.bold('Action Queue'));
   for (const finding of report.fixQueue) {
     printFinding(finding);
   }

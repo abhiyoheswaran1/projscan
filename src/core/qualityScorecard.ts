@@ -5,18 +5,18 @@ import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
+import type { Issue } from '../types/common.js';
+import type { PreflightSuggestedAction } from '../types/preflight.js';
+import type { FileEntry } from '../types/scanning.js';
+import type { FileHotspot } from '../types/hotspots.js';
 import type {
-  FileEntry,
-  FileHotspot,
-  Issue,
-  PreflightSuggestedAction,
   QualityScorecardDimension,
   QualityScorecardReport,
   QualityScorecardRisk,
   QualityScorecardVerdict,
-  SessionConflict,
-  WorkplanPriority,
-} from '../types.js';
+} from '../types/qualityScorecard.js';
+import type { SessionConflict } from '../types/session.js';
+import type { WorkplanPriority } from '../types/workplan.js';
 
 export interface ComputeQualityScorecardOptions {
   maxRisks?: number;
@@ -31,7 +31,10 @@ export async function computeQualityScorecard(
   const maxRisks = normalizeMax(options.maxRisks);
   const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const issues = applyConfigToIssues(
+    await collectIssues(rootPath, scan.files),
+    configResult.config,
+  );
   const health = calculateScore(issues);
   const [riskNow, hotspots] = await Promise.all([
     safeRiskNow(rootPath),
@@ -62,7 +65,9 @@ export async function computeQualityScorecard(
   };
 }
 
-async function safeRiskNow(rootPath: string): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {
+async function safeRiskNow(
+  rootPath: string,
+): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {
   try {
     return await buildRiskNow(rootPath);
   } catch {
@@ -90,9 +95,15 @@ function buildDimensions(
   hotspots: FileHotspot[],
   conflicts: SessionConflict[],
 ): QualityScorecardDimension[] {
-  const securityIssues = issues.filter((issue) => issue.category === 'security' || issue.category === 'supply-chain');
-  const testIssues = issues.filter((issue) => issue.id.includes('test') || issue.category === 'testing');
-  const maintainabilityIssues = issues.filter((issue) => !securityIssues.includes(issue) && !testIssues.includes(issue));
+  const securityIssues = issues.filter(
+    (issue) => issue.category === 'security' || issue.category === 'supply-chain',
+  );
+  const testIssues = issues.filter(
+    (issue) => issue.id.includes('test') || issue.category === 'testing',
+  );
+  const maintainabilityIssues = issues.filter(
+    (issue) => !securityIssues.includes(issue) && !testIssues.includes(issue),
+  );
   return [
     {
       id: 'health',
@@ -103,25 +114,49 @@ function buildDimensions(
       evidence: [`${issues.length} issue(s)`],
       commands: ['projscan doctor --format json'],
     },
-    issueDimension('security', 'Security posture', securityIssues, ['projscan doctor --format json', 'projscan preflight --mode before_edit --format json']),
-    issueDimension('tests', 'Test readiness', testIssues, ['projscan doctor --format json', 'npm test']),
+    issueDimension('security', 'Security posture', securityIssues, [
+      'projscan doctor --format json',
+      'projscan preflight --mode before_edit --format json',
+    ]),
+    issueDimension('tests', 'Test readiness', testIssues, [
+      'projscan doctor --format json',
+      'npm test',
+    ]),
     {
       id: 'maintainability',
       label: 'Maintainability',
-      status: maintainabilityIssues.some((issue) => issue.severity === 'error') ? 'fail' : hotspots.length > 0 || maintainabilityIssues.length > 0 ? 'watch' : 'pass',
-      score: clampScore(100 - maintainabilityIssues.length * 10 - hotspots.filter((hotspot) => hotspot.riskScore >= 70).length * 12),
+      status: maintainabilityIssues.some((issue) => issue.severity === 'error')
+        ? 'fail'
+        : hotspots.length > 0 || maintainabilityIssues.length > 0
+          ? 'watch'
+          : 'pass',
+      score: clampScore(
+        100 -
+          maintainabilityIssues.length * 10 -
+          hotspots.filter((hotspot) => hotspot.riskScore >= 70).length * 12,
+      ),
       summary: `${maintainabilityIssues.length} maintainability issue(s), ${hotspots.length} hotspot(s)`,
       evidence: [
         ...maintainabilityIssues.slice(0, 3).map((issue) => issue.title),
-        ...hotspots.slice(0, 3).map((hotspot) => `${hotspot.relativePath}: risk ${Math.round(hotspot.riskScore)}`),
+        ...hotspots
+          .slice(0, 3)
+          .map((hotspot) => `${hotspot.relativePath}: risk ${Math.round(hotspot.riskScore)}`),
       ],
       commands: ['projscan hotspots --format json', 'projscan quality-scorecard --format json'],
     },
     {
       id: 'coordination',
       label: 'Coordination',
-      status: conflicts.some((conflict) => conflict.severity === 'error') ? 'fail' : conflicts.length > 0 ? 'watch' : 'pass',
-      score: clampScore(100 - conflicts.filter((conflict) => conflict.severity === 'error').length * 25 - conflicts.filter((conflict) => conflict.severity === 'warning').length * 10),
+      status: conflicts.some((conflict) => conflict.severity === 'error')
+        ? 'fail'
+        : conflicts.length > 0
+          ? 'watch'
+          : 'pass',
+      score: clampScore(
+        100 -
+          conflicts.filter((conflict) => conflict.severity === 'error').length * 25 -
+          conflicts.filter((conflict) => conflict.severity === 'warning').length * 10,
+      ),
       summary: `${conflicts.length} coordination signal(s)`,
       evidence: conflicts.slice(0, 4).map((conflict) => conflict.message),
       commands: ['projscan session touched --format json', 'projscan agent-brief --format json'],
@@ -138,8 +173,17 @@ function issueDimension(
   return {
     id,
     label,
-    status: issues.some((issue) => issue.severity === 'error') ? 'fail' : issues.length > 0 ? 'watch' : 'pass',
-    score: clampScore(100 - issues.filter((issue) => issue.severity === 'error').length * 25 - issues.filter((issue) => issue.severity === 'warning').length * 12 - issues.filter((issue) => issue.severity === 'info').length * 4),
+    status: issues.some((issue) => issue.severity === 'error')
+      ? 'fail'
+      : issues.length > 0
+        ? 'watch'
+        : 'pass',
+    score: clampScore(
+      100 -
+        issues.filter((issue) => issue.severity === 'error').length * 25 -
+        issues.filter((issue) => issue.severity === 'warning').length * 12 -
+        issues.filter((issue) => issue.severity === 'info').length * 4,
+    ),
     summary: issues.length === 0 ? 'No open signals' : `${issues.length} signal(s)`,
     evidence: issues.slice(0, 4).map((issue) => issue.title),
     commands,
@@ -198,7 +242,12 @@ function rankRisks(risks: QualityScorecardRisk[]): QualityScorecardRisk[] {
       seen.add(risk.id);
       return true;
     })
-    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || sourceRank(a.source) - sourceRank(b.source) || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) =>
+        priorityRank(a.priority) - priorityRank(b.priority) ||
+        sourceRank(a.source) - sourceRank(b.source) ||
+        a.id.localeCompare(b.id),
+    );
 }
 
 export function deriveQualityScorecardVerdict(
@@ -206,15 +255,18 @@ export function deriveQualityScorecardVerdict(
   healthScore: number,
 ): QualityScorecardVerdict {
   if (dimensions.some((dimension) => dimension.status === 'fail')) return 'blocked';
-  if (dimensions.some((dimension) => dimension.status === 'watch' && dimension.score < 70)) return 'needs_attention';
-  if (healthScore >= 95 && dimensions.every((dimension) => dimension.status === 'pass')) return 'excellent';
+  if (dimensions.some((dimension) => dimension.status === 'watch' && dimension.score < 70))
+    return 'needs_attention';
+  if (healthScore >= 95 && dimensions.every((dimension) => dimension.status === 'pass'))
+    return 'excellent';
   if (healthScore >= 80) return 'healthy';
   return 'needs_attention';
 }
 
 function buildCommands(verdict: QualityScorecardVerdict): string[] {
   const commands = ['projscan quality-scorecard --format json', 'projscan doctor --format json'];
-  if (verdict === 'blocked' || verdict === 'needs_attention') commands.push('projscan agent-brief --intent bug_hunt --format json');
+  if (verdict === 'blocked' || verdict === 'needs_attention')
+    commands.push('projscan agent-brief --intent bug_hunt --format json');
   commands.push('npm test');
   return [...new Set(commands)];
 }
@@ -268,5 +320,10 @@ function normalizeMax(value: number | undefined): number {
 }
 
 function slug(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'root';
+  return (
+    value
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'root'
+  );
 }

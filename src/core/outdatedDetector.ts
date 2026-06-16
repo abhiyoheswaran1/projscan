@@ -27,8 +27,7 @@ export async function detectOutdated(
   options: OutdatedOptions = {},
 ): Promise<OutdatedReport> {
   const ws = options.workspaces;
-  const isMonorepo =
-    ws !== undefined && ws.kind !== 'none' && ws.packages.length > 1;
+  const isMonorepo = ws !== undefined && ws.kind !== 'none' && ws.packages.length > 1;
 
   if (!isMonorepo) {
     // Single-package path: read root package.json only.
@@ -62,7 +61,11 @@ export async function detectOutdated(
       });
     }
     allPackages.push(...pkgResults);
-    byWorkspace.push({ workspace: wp.name, relativePath: wp.relativePath, total: pkgResults.length });
+    byWorkspace.push({
+      workspace: wp.name,
+      relativePath: wp.relativePath,
+      total: pkgResults.length,
+    });
   }
 
   return {
@@ -134,12 +137,8 @@ function manifestEntriesFromParsed(pkg: Record<string, unknown>): ManifestEntry[
   const dependencies = (pkg.dependencies ?? {}) as Record<string, string>;
   const devDependencies = (pkg.devDependencies ?? {}) as Record<string, string>;
   return [
-    ...Object.entries(dependencies).map(
-      ([n, v]) => [n, v, 'dependency'] as ManifestEntry,
-    ),
-    ...Object.entries(devDependencies).map(
-      ([n, v]) => [n, v, 'devDependency'] as ManifestEntry,
-    ),
+    ...Object.entries(dependencies).map(([n, v]) => [n, v, 'dependency'] as ManifestEntry),
+    ...Object.entries(devDependencies).map(([n, v]) => [n, v, 'devDependency'] as ManifestEntry),
   ];
 }
 

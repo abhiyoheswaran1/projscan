@@ -15,13 +15,15 @@ export const auditTool: McpTool = {
       max_tokens: { type: 'number', description: 'Cap response size.' },
       package: {
         type: 'string',
-        description: 'Optional. Workspace package name to scope audit findings to one workspace only.',
+        description:
+          'Optional. Workspace package name to scope audit findings to one workspace only.',
       },
     },
   },
   handler: async (args, rootPath) => {
     emitProgress(0, 2, 'running npm audit');
-    const filter = typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
+    const filter =
+      typeof args.package === 'string' && args.package.length > 0 ? args.package : undefined;
     const report = await runAudit(rootPath, filter ? { packageFilter: filter } : {});
     if (!report.available) return report;
     emitProgress(1, 2, 'normalizing findings');

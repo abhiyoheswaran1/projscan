@@ -38,7 +38,9 @@ export function extractPythonFunctions(root: TsNode): FunctionInfo[] {
 
 function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void {
   if (PY_FUNCTION_NODES.has(node.type)) {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     const fnName = nameNode?.text ?? '<anonymous>';
     const qualifiedName = className ? `${className}.${fnName}` : fnName;
     const line = node.startPosition.row + 1;
@@ -58,7 +60,9 @@ function walk(node: TsNode, className: string | null, out: FunctionInfo[]): void
   }
 
   if (node.type === 'class_definition') {
-    const nameNode = node.childForFieldName ? node.childForFieldName('name') : findChild(node, 'identifier');
+    const nameNode = node.childForFieldName
+      ? node.childForFieldName('name')
+      : findChild(node, 'identifier');
     const cls = nameNode?.text ?? null;
     const body = node.childForFieldName ? node.childForFieldName('body') : null;
     if (body) {
@@ -87,7 +91,9 @@ function analyzeBody(fnNode: TsNode): { cc: number; callSites: string[] } {
       return;
     }
     if (n.type === 'call') {
-      const fn = n.childForFieldName ? n.childForFieldName('function') : (n.namedChildren[0] ?? null);
+      const fn = n.childForFieldName
+        ? n.childForFieldName('function')
+        : (n.namedChildren[0] ?? null);
       const name = pyCalleeName(fn);
       if (name) calls.add(name);
     }

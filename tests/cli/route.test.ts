@@ -6,7 +6,17 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
 test('route console shows confidence and matched keywords for the best tools', async () => {
-  const result = await spawnCli(cliPath, ['route', 'is', 'it', 'safe', 'to', 'commit', 'this', 'change', '--quiet']);
+  const result = await spawnCli(cliPath, [
+    'route',
+    'is',
+    'it',
+    'safe',
+    'to',
+    'commit',
+    'this',
+    'change',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('projscan_preflight');

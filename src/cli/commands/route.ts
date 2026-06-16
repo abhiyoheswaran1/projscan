@@ -37,20 +37,26 @@ export function registerRoute(): void {
           console.log(`    ${chalk.cyan(m.cli)} ${chalk.dim('—')} ${m.what}`);
         }
         console.log('');
-        console.log(chalk.dim('  Tip: `projscan route <what you want to do>` to jump straight to a tool.'));
+        console.log(
+          chalk.dim('  Tip: `projscan route <what you want to do>` to jump straight to a tool.'),
+        );
         return;
       }
 
       console.log(chalk.bold(`Best tools for: ${chalk.italic(result.intent)}`));
       console.log(chalk.dim('────────────────────────────────────────'));
       if (!result.matched) {
-        console.log(chalk.dim('  No direct match. Run `projscan route` (no args) to see the full catalog.'));
+        console.log(
+          chalk.dim('  No direct match. Run `projscan route` (no args) to see the full catalog.'),
+        );
         return;
       }
       result.matches.slice(0, 3).forEach((m, i) => {
         console.log('');
         console.log(`  ${i + 1}. ${chalk.bold(m.tool)} ${chalk.dim(`(${m.category})`)}`);
-        console.log(`     ${chalk.dim(`confidence: ${m.confidence}; matched: ${m.matchedKeywords.join(', ') || 'none'}`)}`);
+        console.log(
+          `     ${chalk.dim(`confidence: ${m.confidence}; matched: ${m.matchedKeywords.join(', ') || 'none'}`)}`,
+        );
         console.log(`     ${m.why}`);
         console.log(`     ${chalk.cyan(m.example)}`);
       });

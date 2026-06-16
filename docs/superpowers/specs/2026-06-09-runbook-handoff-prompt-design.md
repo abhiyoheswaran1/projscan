@@ -25,6 +25,7 @@ Move `whyNow` calculation before runbook construction in `buildMissionControl`, 
 
 ```markdown
 ## Handoff Prompt
+
 <existing missionControl.handoffPrompt>
 ```
 

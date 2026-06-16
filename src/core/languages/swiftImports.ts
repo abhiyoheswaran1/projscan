@@ -42,10 +42,7 @@ function readImportPath(node: TsNode): string {
   const text = node.text.trim();
   let body = text.replace(/^\s*(@[A-Za-z_][\w]*\s*)+/, '');
   body = body.replace(/^\s*import\b/, '').trim();
-  body = body.replace(
-    /^(typealias|struct|class|enum|protocol|let|var|func)\b\s*/,
-    '',
-  );
+  body = body.replace(/^(typealias|struct|class|enum|protocol|let|var|func)\b\s*/, '');
   const m = /^[A-Za-z_][\w.]*/.exec(body);
   return m ? m[0] : '';
 }

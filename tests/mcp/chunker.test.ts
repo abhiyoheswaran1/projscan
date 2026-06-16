@@ -28,11 +28,17 @@ describe('toContentBlocks', () => {
     expect(header.hotspots).toBeUndefined();
     expect(header.hotspotsPreview).toMatchObject({ totalItems: 55, chunkedInto: 3, chunkSize: 20 });
 
-    const chunk0 = JSON.parse(blocks[1].text) as { hotspots: unknown[]; _chunk: { index: number; offset: number; size: number } };
+    const chunk0 = JSON.parse(blocks[1].text) as {
+      hotspots: unknown[];
+      _chunk: { index: number; offset: number; size: number };
+    };
     expect(chunk0.hotspots).toHaveLength(20);
     expect(chunk0._chunk).toEqual({ index: 0, offset: 0, size: 20 });
 
-    const chunk2 = JSON.parse(blocks[3].text) as { hotspots: unknown[]; _chunk: { index: number; offset: number; size: number } };
+    const chunk2 = JSON.parse(blocks[3].text) as {
+      hotspots: unknown[];
+      _chunk: { index: number; offset: number; size: number };
+    };
     expect(chunk2.hotspots).toHaveLength(15);
     expect(chunk2._chunk).toEqual({ index: 2, offset: 40, size: 15 });
   });

@@ -10,7 +10,9 @@ import { computeWorkplan } from '../../src/core/workplan.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('agent surfaces expose the same explicit fix-first recommendation', async () => {
@@ -39,7 +41,14 @@ test('agent surfaces expose the same explicit fix-first recommendation', async (
 async function makeProjectWithMissingTestScript(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fix-first-'));
   tempRoots.push(root);
-  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module', scripts: { build: 'tsc' } }, null, 2));
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify(
+      { name: 'fixture', version: '0.0.0', type: 'module', scripts: { build: 'tsc' } },
+      null,
+      2,
+    ),
+  );
   await fs.writeFile(path.join(root, '.gitignore'), 'node_modules/\ndist/\n.env\n.env.*\n');
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');

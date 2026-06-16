@@ -46,7 +46,9 @@ export function registerFix(): void {
         reportDetectedIssues(issues, fixes);
 
         if (!cmdOpts.yes) {
-          const proceed = await promptYesNo(`  Apply ${fixes.length} fix${fixes.length > 1 ? 'es' : ''}? (y/n) `);
+          const proceed = await promptYesNo(
+            `  Apply ${fixes.length} fix${fixes.length > 1 ? 'es' : ''}? (y/n) `,
+          );
           if (!proceed) {
             console.log(chalk.dim('\n  Aborted.\n'));
             return;
@@ -72,7 +74,9 @@ export function registerFix(): void {
 
         console.log('');
         if (succeeded > 0) {
-          console.log(`  ${chalk.green('✓')} ${succeeded} fix${succeeded > 1 ? 'es' : ''} applied successfully`);
+          console.log(
+            `  ${chalk.green('✓')} ${succeeded} fix${succeeded > 1 ? 'es' : ''} applied successfully`,
+          );
         }
         if (failed > 0) {
           console.log(`  ${chalk.red('✗')} ${failed} fix${failed > 1 ? 'es' : ''} failed`);

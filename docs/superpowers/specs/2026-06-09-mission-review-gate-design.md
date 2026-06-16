@@ -78,6 +78,7 @@ The task card should include:
 
 ```md
 ## Review Gate
+
 - [ ] Complete this task card and remaining proof.
 - [ ] Capture `git status --short`.
 - [ ] Capture `git diff --stat`.

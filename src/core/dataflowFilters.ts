@@ -12,7 +12,13 @@ export interface DataflowRiskFilterContext {
 }
 
 const BROAD_FILE_IO_DATAFLOW_SOURCES = new Set(['readFile', 'readFileSync']);
-const BROAD_FILE_IO_DATAFLOW_SINKS = new Set(['writeFile', 'writeFileSync', 'unlink', 'rm', 'rmSync']);
+const BROAD_FILE_IO_DATAFLOW_SINKS = new Set([
+  'writeFile',
+  'writeFileSync',
+  'unlink',
+  'rm',
+  'rmSync',
+]);
 const JAVASCRIPT_CHILD_PROCESS_SINKS = new Set(['exec', 'execSync', 'spawn', 'spawnSync']);
 
 export function shouldIncludeDataflowRisk(
@@ -27,7 +33,10 @@ export function shouldIncludeDataflowRisk(
   return true;
 }
 
-function isDefaultGeneratedCodeRisk(risk: DataflowRisk, context: DataflowRiskFilterContext): boolean {
+function isDefaultGeneratedCodeRisk(
+  risk: DataflowRisk,
+  context: DataflowRiskFilterContext,
+): boolean {
   if (!risk.files.some(isGeneratedLikePath)) return false;
   return !context.customSources.has(risk.source) && !context.customSinks.has(risk.sink);
 }
@@ -37,8 +46,7 @@ function isDefaultBroadFileIoRisk(risk: DataflowRisk, context: DataflowRiskFilte
   const defaultSink = !context.customSinks.has(risk.sink);
   if (!defaultSource || !defaultSink) return false;
   return (
-    BROAD_FILE_IO_DATAFLOW_SOURCES.has(risk.source) ||
-    BROAD_FILE_IO_DATAFLOW_SINKS.has(risk.sink)
+    BROAD_FILE_IO_DATAFLOW_SOURCES.has(risk.source) || BROAD_FILE_IO_DATAFLOW_SINKS.has(risk.sink)
   );
 }
 

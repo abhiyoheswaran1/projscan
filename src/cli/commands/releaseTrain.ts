@@ -14,7 +14,12 @@ export function registerReleaseTrain(): void {
   program
     .command('release-train')
     .description('Plan upcoming product lines with readiness evidence')
-    .option('--line <line>', 'product line to include, repeatable (default: next six minor lines)', collectLine, [])
+    .option(
+      '--line <line>',
+      'product line to include, repeatable (default: next six minor lines)',
+      collectLine,
+      [],
+    )
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();

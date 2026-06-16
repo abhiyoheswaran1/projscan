@@ -26,6 +26,7 @@
 ## Task 1: Semantic Graph Contract
 
 **Files:**
+
 - Create: `src/core/semanticGraph.ts`
 - Modify: `src/types.ts`
 - Modify: `src/index.ts`
@@ -37,10 +38,14 @@ Create `tests/core/semanticGraph.test.ts` with tests that build a fixture graph 
 
 ```ts
 expect(report.schemaVersion).toBe(3);
-expect(report.nodes.some((node) => node.id === "file:src/app.ts")).toBe(true);
-expect(report.nodes.some((node) => node.kind === "function" && node.label === "handler")).toBe(true);
-expect(report.edges.some((edge) => edge.kind === "defines" && edge.from === "file:src/app.ts")).toBe(true);
-expect(report.edges.some((edge) => edge.kind === "calls" && edge.label === "run")).toBe(true);
+expect(report.nodes.some((node) => node.id === 'file:src/app.ts')).toBe(true);
+expect(report.nodes.some((node) => node.kind === 'function' && node.label === 'handler')).toBe(
+  true,
+);
+expect(
+  report.edges.some((edge) => edge.kind === 'defines' && edge.from === 'file:src/app.ts'),
+).toBe(true);
+expect(report.edges.some((edge) => edge.kind === 'calls' && edge.label === 'run')).toBe(true);
 expect(report.metrics.totalFiles).toBe(3);
 expect(report.metrics.totalFunctions).toBeGreaterThanOrEqual(3);
 ```
@@ -71,6 +76,7 @@ Expected: pass.
 ## Task 2: Dataflow Risk Engine
 
 **Files:**
+
 - Create: `src/core/dataflow.ts`
 - Modify: `src/types.ts`
 - Modify: `src/index.ts`
@@ -83,19 +89,26 @@ Add tests for:
 ```ts
 const report = computeDataflow(graph);
 expect(report.available).toBe(true);
-expect(report.risks.some((risk) =>
-  risk.kind === "bridge" &&
-  risk.bridgeFn === "bridge" &&
-  risk.sourceFn === "readSecret" &&
-  risk.sinkFn === "runDangerous"
-)).toBe(true);
+expect(
+  report.risks.some(
+    (risk) =>
+      risk.kind === 'bridge' &&
+      risk.bridgeFn === 'bridge' &&
+      risk.sourceFn === 'readSecret' &&
+      risk.sinkFn === 'runDangerous',
+  ),
+).toBe(true);
 ```
 
 The fixture must route source and sink through a wrapper function:
 
 ```ts
-export function readSecret() { return process.env.TOKEN; }
-export function runDangerous(value: string) { exec(value); }
+export function readSecret() {
+  return process.env.TOKEN;
+}
+export function runDangerous(value: string) {
+  exec(value);
+}
 export function bridge() {
   const value = readSecret();
   runDangerous(value);
@@ -119,6 +132,7 @@ Expected: pass.
 ## Task 3: Review Integration
 
 **Files:**
+
 - Modify: `src/core/review.ts`
 - Modify: `src/types.ts`
 - Test: `tests/core/review.test.ts`
@@ -128,8 +142,8 @@ Expected: pass.
 Add a test that compares a clean base to a head that introduces the bridge fixture and asserts:
 
 ```ts
-expect(report.newDataflowRisks.some((risk) => risk.kind === "bridge")).toBe(true);
-expect(report.verdict.decision).toBe("block");
+expect(report.newDataflowRisks.some((risk) => risk.kind === 'bridge')).toBe(true);
+expect(report.verdict.decision).toBe('block');
 ```
 
 - [ ] **Step 2: Run the test and verify RED**
@@ -149,6 +163,7 @@ Expected: pass.
 ## Task 4: CLI and MCP Surfaces
 
 **Files:**
+
 - Create: `src/mcp/tools/semanticGraph.ts`
 - Create: `src/mcp/tools/dataflow.ts`
 - Modify: `src/mcp/tools.ts`
@@ -177,6 +192,7 @@ Expected: pass.
 ## Task 5: Release Metadata, Docs, and Bug Hunt
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `docs/STABILITY.md`

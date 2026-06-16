@@ -12,9 +12,7 @@ export interface PackageJsonLocations {
  * Line numbers are 1-based. Uses regex against the raw text - robust enough
  * for typical formatted package.json files.
  */
-export async function findDependencyLines(
-  rootPath: string,
-): Promise<PackageJsonLocations | null> {
+export async function findDependencyLines(rootPath: string): Promise<PackageJsonLocations | null> {
   const filePath = path.join(rootPath, 'package.json');
   let raw: string;
   try {

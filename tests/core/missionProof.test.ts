@@ -7,7 +7,9 @@ import { computeMissionProofReport } from '../../src/core/missionProof.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('mission proof compares mission control bundles against manual baseline evidence', async () => {
@@ -59,14 +61,21 @@ test('mission proof compares mission control bundles against manual baseline evi
   expect(report.comparison?.rerunsAvoided).toBe(3);
   expect(report.comparison?.failedGatesAvoided).toBe(1);
   expect(report.comparison?.minutesSaved).toBe(70);
-  expect(report.riskAvoided).toContain('1 failed mission gate(s) stopped before release or publish.');
-  expect(report.nextActions.map((action) => action.command)).toContain('projscan start --mission .projscan/mission-a');
+  expect(report.riskAvoided).toContain(
+    '1 failed mission gate(s) stopped before release or publish.',
+  );
+  expect(report.nextActions.map((action) => action.command)).toContain(
+    'projscan start --mission .projscan/mission-a',
+  );
 });
 
 async function makeTempProject(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-mission-proof-'));
   tempRoots.push(root);
-  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }));
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }),
+  );
   await fs.writeFile(path.join(root, 'README.md'), '# fixture\n');
   return root;
 }
@@ -78,7 +87,10 @@ async function writeBundle(
     status: 'passed' | 'failed';
     failedStep?: string;
     rows: Array<{ id: string; exitCode: number }>;
-    decisions: Array<{ decision: 'approve_next_slice' | 'request_changes' | 'review_version_candidate'; reviewer: string }>;
+    decisions: Array<{
+      decision: 'approve_next_slice' | 'request_changes' | 'review_version_candidate';
+      reviewer: string;
+    }>;
   },
 ): Promise<void> {
   const dir = path.join(root, relativeDir);
@@ -91,7 +103,11 @@ async function writeBundle(
       kind: 'projscan.mission-bundle',
       mode: 'before_edit',
       status: 'ready',
-      currentStep: { phaseId: 'ready_now', stepId: 'ready-1', command: 'projscan search "auth" --format json' },
+      currentStep: {
+        phaseId: 'ready_now',
+        stepId: 'ready-1',
+        command: 'projscan search "auth" --format json',
+      },
     }) + '\n',
   );
   await fs.writeFile(
@@ -99,23 +115,29 @@ async function writeBundle(
     JSON.stringify({
       schemaVersion: 1,
       status: options.status,
-      ...(options.failedStep ? { failedStep: options.failedStep, log: 'proof-logs/proof-1.log', exitCode: 1 } : {}),
+      ...(options.failedStep
+        ? { failedStep: options.failedStep, log: 'proof-logs/proof-1.log', exitCode: 1 }
+        : {}),
     }) + '\n',
   );
   await fs.writeFile(
     path.join(proof, 'status.jsonl'),
     options.rows
-      .map((row) => JSON.stringify({
-        id: row.id,
-        label: row.id,
-        log: `${row.id}.log`,
-        command: 'projscan preflight --format json',
-        exitCode: row.exitCode,
-      }))
+      .map((row) =>
+        JSON.stringify({
+          id: row.id,
+          label: row.id,
+          log: `${row.id}.log`,
+          command: 'projscan preflight --format json',
+          exitCode: row.exitCode,
+        }),
+      )
       .join('\n') + '\n',
   );
   await fs.writeFile(
     path.join(proof, 'review-decisions.jsonl'),
-    options.decisions.map((decision) => JSON.stringify({ ...decision, at: '2026-06-10T10:00:00.000Z' })).join('\n') + '\n',
+    options.decisions
+      .map((decision) => JSON.stringify({ ...decision, at: '2026-06-10T10:00:00.000Z' }))
+      .join('\n') + '\n',
   );
 }

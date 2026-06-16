@@ -21,6 +21,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -46,14 +47,18 @@ In `start prints only the mission task card when requested`, after the `## Revie
 
 ```ts
 expect(result.stdout).toContain('## Reviewer Decision');
-expect(result.stdout).toContain('- [ ] Approve next slice: The agent may start another bounded implementation slice.');
+expect(result.stdout).toContain(
+  '- [ ] Approve next slice: The agent may start another bounded implementation slice.',
+);
 ```
 
 In `start prints only the mission runbook when requested`, after the `## Review Gate` assertion, add:
 
 ```ts
 expect(result.stdout).toContain('## Reviewer Decision');
-expect(result.stdout).toContain('- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.');
+expect(result.stdout).toContain(
+  '- [ ] Review version candidate: The agent may prepare release notes, version rationale, and remaining gates for review.',
+);
 ```
 
 In `start JSON keeps the full report when runbook shortcut is requested`, after the `## Review Gate` assertion, add:
@@ -86,6 +91,7 @@ Expected: fail because task-card and runbook Markdown do not render `## Reviewer
 ## Task 2: Markdown Implementation
 
 **Files:**
+
 - Modify: `src/core/start.ts`
 
 - [ ] **Step 1: Add decision section to runbook Markdown**
@@ -145,6 +151,7 @@ Expected: build passes and focused tests pass.
 ## Task 3: Docs and Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -186,6 +193,7 @@ Expected: exits 0. Include screenshot diffs only if the capture source or PNG ou
 ## Task 4: Verification and Commit
 
 **Files:**
+
 - All modified files
 
 - [ ] **Step 1: Run verification**

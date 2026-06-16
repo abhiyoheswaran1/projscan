@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeCoordination, coordinationHints, coordinationSignature } from '../../src/core/coordination.js';
+import {
+  summarizeCoordination,
+  coordinationHints,
+  coordinationSignature,
+} from '../../src/core/coordination.js';
 import type { CollisionReport } from '../../src/core/collisionDetector.js';
 import type { Claim } from '../../src/core/claims.js';
 import type { MergeRiskReport } from '../../src/core/mergeRisk.js';
@@ -8,7 +12,14 @@ function collisionReport(p: Partial<CollisionReport>): CollisionReport {
   return { schemaVersion: 1, available: true, worktrees: [], collisions: [], ...p };
 }
 function mergeRisk(p: Partial<MergeRiskReport>): MergeRiskReport {
-  return { schemaVersion: 1, available: true, integrationOrder: [], hotFiles: [], collisions: [], ...p };
+  return {
+    schemaVersion: 1,
+    available: true,
+    integrationOrder: [],
+    hotFiles: [],
+    collisions: [],
+    ...p,
+  };
 }
 function claim(target: string, agent: string): Claim {
   return { id: `${agent}-${target}`, target, agent, claimedAt: '2026-06-05T00:00:00.000Z' };
@@ -39,11 +50,21 @@ describe('summarizeCoordination', () => {
           { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
         ],
         collisions: [
-          { kind: 'same-file', severity: 'high', worktreeA: '/a', fileA: 'x.ts', worktreeB: '/b', fileB: 'x.ts', reason: '' },
+          {
+            kind: 'same-file',
+            severity: 'high',
+            worktreeA: '/a',
+            fileA: 'x.ts',
+            worktreeB: '/b',
+            fileB: 'x.ts',
+            reason: '',
+          },
         ],
       }),
       claims: [],
-      mergeRisk: mergeRisk({ hotFiles: [{ file: 'x.ts', worktrees: ['/a', '/b'], severity: 'high' }] }),
+      mergeRisk: mergeRisk({
+        hotFiles: [{ file: 'x.ts', worktrees: ['/a', '/b'], severity: 'high' }],
+      }),
     });
     expect(out.readiness).toBe('conflicted');
     expect(out.collisions).toEqual({ total: 1, high: 1, medium: 0 });
@@ -70,7 +91,15 @@ describe('summarizeCoordination', () => {
           { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
         ],
         collisions: [
-          { kind: 'dependency', severity: 'medium', worktreeA: '/a', fileA: 'db.ts', worktreeB: '/b', fileB: 'auth.ts', reason: '' },
+          {
+            kind: 'dependency',
+            severity: 'medium',
+            worktreeA: '/a',
+            fileA: 'db.ts',
+            worktreeB: '/b',
+            fileB: 'auth.ts',
+            reason: '',
+          },
         ],
       }),
       claims: [],
@@ -112,7 +141,17 @@ describe('coordinationSignature', () => {
   it('changes when a collision appears', () => {
     const before = coordinationSignature(base());
     const after = coordinationSignature(
-      base([{ kind: 'same-file', severity: 'high', worktreeA: '/a', fileA: 'x.ts', worktreeB: '/b', fileB: 'x.ts', reason: '' }]),
+      base([
+        {
+          kind: 'same-file',
+          severity: 'high',
+          worktreeA: '/a',
+          fileA: 'x.ts',
+          worktreeB: '/b',
+          fileB: 'x.ts',
+          reason: '',
+        },
+      ]),
     );
     expect(after).not.toBe(before);
   });
@@ -120,11 +159,15 @@ describe('coordinationSignature', () => {
 
 describe('coordinationHints', () => {
   it('returns no hints when coordination is unavailable or clear', () => {
-    expect(coordinationHints(summarizeCoordination({
-      collisionReport: collisionReport({ available: false, reason: 'only one worktree' }),
-      claims: [],
-      mergeRisk: mergeRisk({ available: false }),
-    }))).toEqual([]);
+    expect(
+      coordinationHints(
+        summarizeCoordination({
+          collisionReport: collisionReport({ available: false, reason: 'only one worktree' }),
+          claims: [],
+          mergeRisk: mergeRisk({ available: false }),
+        }),
+      ),
+    ).toEqual([]);
 
     const clear = summarizeCoordination({
       collisionReport: collisionReport({
@@ -147,7 +190,15 @@ describe('coordinationHints', () => {
           { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
         ],
         collisions: [
-          { kind: 'same-file', severity: 'high', worktreeA: '/a', fileA: 'x.ts', worktreeB: '/b', fileB: 'x.ts', reason: '' },
+          {
+            kind: 'same-file',
+            severity: 'high',
+            worktreeA: '/a',
+            fileA: 'x.ts',
+            worktreeB: '/b',
+            fileB: 'x.ts',
+            reason: '',
+          },
         ],
       }),
       claims: [claim('src/auth.ts', 'a'), claim('src/auth.ts', 'b')],

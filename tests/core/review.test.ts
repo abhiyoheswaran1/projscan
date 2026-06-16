@@ -18,9 +18,21 @@ afterEach(async () => {
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
-function git(args: string[], cwd: string = tmp): Promise<{ code: number; stdout: string; stderr: string }> {
+function git(
+  args: string[],
+  cwd: string = tmp,
+): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const c = spawn('git', args, { cwd, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@x', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@x' } });
+    const c = spawn('git', args, {
+      cwd,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 't',
+        GIT_AUTHOR_EMAIL: 't@x',
+        GIT_COMMITTER_NAME: 't',
+        GIT_COMMITTER_EMAIL: 't@x',
+      },
+    });
     let so = '';
     let se = '';
     c.stdout.on('data', (d) => (so += d.toString()));
@@ -93,6 +105,23 @@ describe('computeReview', () => {
     expect(r.changedFiles).toHaveLength(0);
   });
 
+  it('reviews dirty worktree changes when base and head resolve to the same commit', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('src/a.ts', `export const a = 2;\nexport const b = 3;\n`);
+
+    const r = await computeReview(tmp, { base: 'HEAD', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.changedFiles.map((file) => file.relativePath)).toContain('src/a.ts');
+    expect(r.prDiff.totalFilesChanged).toBeGreaterThan(0);
+    expect(r.summary).not.toEqual(['No structural changes detected between base and head.']);
+  });
+
   it('returns unavailable when the base worktree cannot be checked out', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
@@ -118,8 +147,11 @@ describe('computeReview', () => {
   it('does not block on taint or dataflow risks that only touch test files', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
-    await write('src/a.ts', `export const a = 1;
-`);
+    await write(
+      'src/a.ts',
+      `export const a = 1;
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
@@ -160,8 +192,11 @@ export async function direct() {
   it('does not promote broad file-IO bridge dataflow to review blockers', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
-    await write('src/cache.ts', `export function refresh() { return 1; }
-`);
+    await write(
+      'src/cache.ts',
+      `export function refresh() { return 1; }
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
@@ -196,8 +231,11 @@ export async function refresh() {
   it('does not block review on unrelated generic parse/exec dataflow collisions', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
-    await write('src/config.ts', `export function safeParse(raw: string) { return JSON.parse(raw); }
-`);
+    await write(
+      'src/config.ts',
+      `export function safeParse(raw: string) { return JSON.parse(raw); }
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
@@ -387,10 +425,7 @@ export function helper() {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
     // Base has a benign reader.
-    await write(
-      'src/handler.ts',
-      `export function handler() { return 1; }\n`,
-    );
+    await write('src/handler.ts', `export function handler() { return 1; }\n`);
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
 
@@ -535,23 +570,40 @@ export function bridge() {
     expect(r.summary.some((s) => s.includes('dataflow'))).toBe(true);
   });
 
-
   it('scopes taint, dataflow, graph evidence, and verdict to the requested workspace package', async () => {
     await setupRepo();
     await write(
       'package.json',
       JSON.stringify({ name: 'root', private: true, workspaces: ['packages/*'] }, null, 2),
     );
-    await write('packages/api/package.json', JSON.stringify({ name: '@app/api', main: './old.js' }, null, 2));
-    await write('packages/api/src/danger.ts', `export function ok() { return 1; }
-`);
-    await write('packages/api/src/a.ts', `export const a = 1;
-`);
-    await write('packages/api/src/b.ts', `export const b = 1;
-`);
-    await write('packages/ui/package.json', JSON.stringify({ name: '@app/ui' }, null, 2));
-    await write('packages/ui/src/view.ts', `export function view() { return 'old'; }
-`);
+    await write(
+      'packages/api/package.json',
+      JSON.stringify({ name: '@app/api', main: './old.js' }, null, 2),
+    );
+    await write(
+      'packages/api/src/danger.ts',
+      `export function ok() { return 1; }
+`,
+    );
+    await write(
+      'packages/api/src/a.ts',
+      `export const a = 1;
+`,
+    );
+    await write(
+      'packages/api/src/b.ts',
+      `export const b = 1;
+`,
+    );
+    await write(
+      'packages/ui/package.json',
+      JSON.stringify({ name: '@app/ui', main: './src/view.ts' }, null, 2),
+    );
+    await write(
+      'packages/ui/src/view.ts',
+      `export function view() { return 'old'; }
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init monorepo']);
 
@@ -569,15 +621,24 @@ export function runDangerous() {
 }
 `,
     );
-    await write('packages/api/src/a.ts', `import { b } from './b.js';
+    await write(
+      'packages/api/src/a.ts',
+      `import { b } from './b.js';
 export const a = b;
-`);
-    await write('packages/api/src/b.ts', `import { a } from './a.js';
+`,
+    );
+    await write(
+      'packages/api/src/b.ts',
+      `import { a } from './a.js';
 export const b = a;
-`);
-    await write('packages/ui/src/view.ts', `export function view() { return 'new'; }
+`,
+    );
+    await write(
+      'packages/ui/src/view.ts',
+      `export function view() { return 'new'; }
 export function button() { return 'button'; }
-`);
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'change api and ui']);
 
@@ -589,11 +650,15 @@ export function button() { return 'button'; }
     const scoped = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD', package: '@app/ui' });
     expect(scoped.available).toBe(true);
     expect(scoped.verdict).not.toBe('block');
-    expect(scoped.changedFiles.map((file) => file.relativePath)).toEqual(['packages/ui/src/view.ts']);
+    expect(scoped.changedFiles.map((file) => file.relativePath)).toEqual([
+      'packages/ui/src/view.ts',
+    ]);
     expect(scoped.newCycles).toEqual([]);
     expect(scoped.newTaintFlows).toEqual([]);
     expect(scoped.newDataflowRisks).toEqual([]);
-    expect((scoped.contractChanges ?? []).map((change) => change.file)).toEqual(['packages/ui/src/view.ts']);
+    expect((scoped.contractChanges ?? []).map((change) => change.file)).toEqual([
+      'packages/ui/src/view.ts',
+    ]);
     expect(scoped.graphEvidence?.changedFiles).toBe(1);
     expect(scoped.graphEvidence?.totalFunctions).toBe(2);
     expect(scoped.graphEvidence?.totalPackages).toBe(0);
@@ -616,8 +681,11 @@ export function button() { return 'button'; }
       '.projscanrc.json',
       JSON.stringify({ taint: { sources: ['customSource'], sinks: ['customSink'] } }, null, 2),
     );
-    await write('src/__generated__/client.ts', `export function generatedClient() { return 1; }
-`);
+    await write(
+      'src/__generated__/client.ts',
+      `export function generatedClient() { return 1; }
+`,
+    );
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init generated client']);
 
@@ -670,7 +738,9 @@ export function generatedBridge() {
     const customGenerated = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
     expect(customGenerated.available).toBe(true);
     expect(customGenerated.newTaintFlows.some((flow) => flow.source === 'customSource')).toBe(true);
-    expect(customGenerated.newDataflowRisks.some((risk) => risk.source === 'customSource')).toBe(true);
+    expect(customGenerated.newDataflowRisks.some((risk) => risk.source === 'customSource')).toBe(
+      true,
+    );
     expect(customGenerated.verdict).toBe('block');
   });
 
@@ -694,12 +764,54 @@ export function generatedBridge() {
     expect(change.added).toContainEqual({ name: 'axios', version: '^1.0.0', kind: 'dep' });
   });
 
+  it('labels release-scale review blocks as manual sign-off', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', dependencies: {} }, null, 2));
+    await write('src/hot.ts', `export const value = 0;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    for (let i = 1; i <= 5; i++) {
+      await write('src/hot.ts', `export const value = ${i};\n`);
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', `churn ${i}`]);
+    }
+
+    await write(
+      'package.json',
+      JSON.stringify({ name: 'x', dependencies: { axios: '^1.0.0' } }, null, 2),
+    );
+    await write('src/hot.ts', `export const value = 6;\nexport const releaseGate = true;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'release-scale change']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.verdict).toBe('block');
+    expect(r.riskyFunctions).toEqual([]);
+    expect(r.newTaintFlows).toEqual([]);
+    expect(r.newDataflowRisks).toEqual([]);
+    expect(r.contractChanges ?? []).toEqual([]);
+    expect(r.summary.some((line) => line.includes('Maximum changed-file risk score'))).toBe(true);
+    expect(r.summary).toContain('Dependency changes: +1 -0 ~0.');
+    expect(r.summary.some((line) => line.toLowerCase().includes('manual release sign-off'))).toBe(
+      true,
+    );
+  });
+
   it('reports exported symbol contract changes', async () => {
     await setupRepo();
-    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('package.json', JSON.stringify({ name: 'x', main: 'dist/api.js' }));
     await write('src/api.ts', `export function oldApi() { return 1; }\n`);
     await git(['add', '.']);
     await git(['commit', '-q', '-m', 'init']);
+
+    for (let i = 2; i <= 6; i++) {
+      await write('src/api.ts', `export function oldApi() { return ${i}; }\n`);
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', `churn api ${i}`]);
+    }
 
     await write('src/api.ts', `export function newApi() { return 1; }\n`);
     await git(['add', '.']);
@@ -721,6 +833,95 @@ export function generatedBridge() {
       ]),
     );
     expect(r.contractChanges?.[0].why).toMatch(/downstream/i);
+    expect(r.summary.some((line) => line.toLowerCase().includes('manual release sign-off'))).toBe(
+      false,
+    );
+  });
+
+  it('does not report internal helper exports as public contract changes', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', main: './dist/index.js' }));
+    await write('src/index.ts', `export function publicApi() { return 1; }\n`);
+    await write('src/core/helper.ts', `export function existingHelper() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/core/helper.ts',
+      `export function existingHelper() { return 1; }
+export function newHelper() { return 2; }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add internal helper']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges ?? []).toEqual([]);
+  });
+
+  it('reports exports added in files re-exported by package entrypoints', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', main: './dist/index.js' }));
+    await write('src/index.ts', `export * from './api.js';\n`);
+    await write('src/api.ts', `export function oldApi() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/api.ts',
+      `export function oldApi() { return 1; }
+export function newApi() { return 2; }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add reexported api']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'export-added',
+          file: 'src/api.ts',
+          symbol: 'newApi',
+          confidence: 'high',
+        }),
+      ]),
+    );
+  });
+
+  it('reports exports added in source files for declaration entrypoints', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', types: 'dist/index.d.ts' }));
+    await write('src/index.ts', `export function oldApi() { return 1; }\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'src/index.ts',
+      `export function oldApi() { return 1; }
+export function newApi() { return 2; }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'add declaration api']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'export-added',
+          file: 'src/index.ts',
+          symbol: 'newApi',
+          confidence: 'high',
+        }),
+      ]),
+    );
   });
 
   it('reports package entrypoint contract changes', async () => {

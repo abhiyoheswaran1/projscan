@@ -69,7 +69,8 @@ function name(node: TsNode): string | undefined {
 
 function firstIdent(node: TsNode): TsNode | undefined {
   for (const c of node.namedChildren) {
-    if (c.type === 'identifier' || c.type === 'field_identifier' || c.type === 'type_identifier') return c;
+    if (c.type === 'identifier' || c.type === 'field_identifier' || c.type === 'type_identifier')
+      return c;
   }
   return undefined;
 }

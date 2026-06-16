@@ -22,6 +22,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -66,7 +67,9 @@ In `start prints only the concise handoff prompt when requested`, assert stdout 
 In `start writes a Mission Control bundle when requested`, after the existing `handoffPrompt` assertions, add:
 
 ```ts
-expect(handoffPrompt).toContain('Review gate: Stop after the current Mission Control checklist and proof are complete.');
+expect(handoffPrompt).toContain(
+  'Review gate: Stop after the current Mission Control checklist and proof are complete.',
+);
 expect(handoffPrompt).toContain(
   'Review version candidate => Prepare a version-candidate review only. Do not publish, deploy, push, merge, or bump the version.',
 );
@@ -98,6 +101,7 @@ Expected: fail because `missionControl.handoffPrompt` does not include review ga
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/core/start.ts`
 
 - [ ] **Step 1: Move review gate before handoff prompt**
@@ -118,7 +122,14 @@ const reviewGate = buildMissionReviewGate({
 After the `buildMissionReviewGate` call, add:
 
 ```ts
-const handoffPrompt = missionHandoffPrompt(resume, successCriteria, whyNow, unresolvedInputs, proofCommands, reviewGate);
+const handoffPrompt = missionHandoffPrompt(
+  resume,
+  successCriteria,
+  whyNow,
+  unresolvedInputs,
+  proofCommands,
+  reviewGate,
+);
 ```
 
 - [ ] **Step 2: Extend the prompt signature**
@@ -133,7 +144,7 @@ function missionHandoffPrompt(
   unresolvedInputs: StartUnresolvedInput[],
   proofCommands: string[],
   reviewGate: StartMissionReviewGate,
-): string
+): string;
 ```
 
 - [ ] **Step 3: Append review text**
@@ -141,7 +152,7 @@ function missionHandoffPrompt(
 Replace the return statement with:
 
 ```ts
-  return `Resume: ${trimTrailingPunctuation(resume.prompt)}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow}${readyProof}${handoffReviewGatePrompt(reviewGate)}`;
+return `Resume: ${trimTrailingPunctuation(resume.prompt)}. Done when: ${trimTrailingPunctuation(successCriteria[0] ?? 'The proof commands pass')}.${needsInput} Why: ${whyNow}${readyProof}${handoffReviewGatePrompt(reviewGate)}`;
 ```
 
 - [ ] **Step 4: Add review prompt helper**
@@ -171,6 +182,7 @@ Expected: build and focused tests pass.
 ## Task 3: Docs And Screenshots
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -205,6 +217,7 @@ If PNGs change, inspect the changed image before committing.
 ## Task 4: Verification And Commit
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run verification**

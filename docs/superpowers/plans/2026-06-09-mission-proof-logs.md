@@ -27,11 +27,17 @@ In `tests/cli/start.test.ts`, inside `start writes a Mission Control bundle when
 
 ```ts
 expect(result.stdout).toContain('proof-logs/README.md');
-expect(quickstart).toContain('- `proof-logs/README.md`: Proof-log index for output written by mission.sh.');
+expect(quickstart).toContain(
+  '- `proof-logs/README.md`: Proof-log index for output written by mission.sh.',
+);
 const proofLogReadme = await fs.readFile(path.join(bundleDir, 'proof-logs', 'README.md'), 'utf-8');
 expect(proofLogReadme).toContain('# Mission Proof Logs');
-expect(proofLogReadme).toContain('- `current-ready-1.log`: `projscan search "auth token loader" --format json`');
-expect(proofLogReadme).toContain('- `proof-1.log`: `projscan preflight --mode before_edit --format json`');
+expect(proofLogReadme).toContain(
+  '- `current-ready-1.log`: `projscan search "auth token loader" --format json`',
+);
+expect(proofLogReadme).toContain(
+  '- `proof-1.log`: `projscan preflight --mode before_edit --format json`',
+);
 expect(missionScript).toContain('MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)');
 expect(missionScript).toContain('PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"');
 expect(missionScript).toContain('mkdir -p "$PROOF_LOG_DIR"');

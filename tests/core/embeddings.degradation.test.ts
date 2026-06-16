@@ -12,7 +12,10 @@ vi.mock('@xenova/transformers', () => ({
 import { embedText, EMBEDDING_DIM, __resetEmbeddingsCache } from '../../src/core/embeddings.js';
 
 function fakePipeline() {
-  return async () => ({ data: new Float32Array(EMBEDDING_DIM).fill(0.1), dims: [1, EMBEDDING_DIM] });
+  return async () => ({
+    data: new Float32Array(EMBEDDING_DIM).fill(0.1),
+    dims: [1, EMBEDDING_DIM],
+  });
 }
 
 beforeEach(() => {
@@ -22,7 +25,9 @@ beforeEach(() => {
 
 describe('embeddings — graceful degradation on model-load failure', () => {
   it('returns null instead of throwing when the model fails to load (e.g. 429/offline)', async () => {
-    pipelineMock.mockRejectedValueOnce(new Error('Error (429) while loading model from huggingface.co'));
+    pipelineMock.mockRejectedValueOnce(
+      new Error('Error (429) while loading model from huggingface.co'),
+    );
 
     await expect(embedText('hello world')).resolves.toBeNull();
   });

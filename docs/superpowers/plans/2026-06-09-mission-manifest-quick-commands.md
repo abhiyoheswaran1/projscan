@@ -53,11 +53,9 @@ expect(payload.missionBundle.quickCommands.map((entry: { id: string }) => entry.
   'status',
   'review',
 ]);
-expect(payload.missionBundle.quickCommands.map((entry: { command: string }) => entry.command)).toEqual([
-  './mission.sh',
-  './status.sh',
-  './review.sh',
-]);
+expect(
+  payload.missionBundle.quickCommands.map((entry: { command: string }) => entry.command),
+).toEqual(['./mission.sh', './status.sh', './review.sh']);
 ```
 
 - [ ] **Step 3: Run focused test and verify red**

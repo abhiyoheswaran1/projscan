@@ -48,7 +48,9 @@ function visit(node: TsNode, out: AstExport[], depth: number): void {
   // namespace_definition wraps further declarations; descend with the same
   // depth so we still classify its top-level children as exports.
   if (node.type === 'namespace_definition') {
-    const body = node.namedChildren.find((c) => c.type === 'declaration_list' || c.type === 'compound_statement');
+    const body = node.namedChildren.find(
+      (c) => c.type === 'declaration_list' || c.type === 'compound_statement',
+    );
     if (body) {
       for (const c of body.namedChildren) visit(c, out, depth);
     }

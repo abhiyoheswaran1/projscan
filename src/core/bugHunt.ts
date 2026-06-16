@@ -30,10 +30,16 @@ export async function computeBugHunt(
   const maxFindings = normalizeMax(options.maxFindings);
   const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const issues = applyConfigToIssues(
+    await collectIssues(rootPath, scan.files),
+    configResult.config,
+  );
   const health = calculateScore(issues);
   const preflight = await computePreflight(rootPath, { mode: 'before_commit' });
   const actionablePreflightReasons = preflight.reasons.filter(isActionablePreflightReason);
+  const preflightChangedFiles = filesFromPreflightEvidence(
+    preflight.evidence.changedFiles?.files ?? [],
+  );
   const riskNow = await safeRiskNow(rootPath);
   const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
     limit: maxFindings,
@@ -42,15 +48,16 @@ export async function computeBugHunt(
 
   const findings = rankFindings([
     ...issues.map(issueToFinding),
-    ...actionablePreflightReasons.map(preflightReasonToFinding),
+    ...actionablePreflightReasons.map((reason, index) =>
+      preflightReasonToFinding(reason, index, preflightChangedFiles),
+    ),
     ...riskNow.conflicts.map(conflictToFinding),
     ...(hotspots.available ? hotspots.hotspots.map(hotspotToFinding) : []),
   ]);
 
   const immediateFixes = findings.filter(isImmediateFixFinding);
-  const fixQueue = immediateFixes.length > 0
-    ? immediateFixes.slice(0, maxFindings)
-    : [cleanVerificationFinding()];
+  const fixQueue =
+    immediateFixes.length > 0 ? immediateFixes.slice(0, maxFindings) : [cleanVerificationFinding()];
   const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
   const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
   const fixFirst = fixFirstFromBugHuntFinding(fixQueue[0]);
@@ -58,7 +65,7 @@ export async function computeBugHunt(
   return {
     schemaVersion: 1,
     verdict,
-    summary: summarize(verdict, fixQueue.length),
+    summary: summarize(verdict, fixQueue),
     health,
     evidence: {
       issueCounts: {
@@ -75,7 +82,9 @@ export async function computeBugHunt(
     fixQueue,
     ...(fixFirst ? { fixFirst } : {}),
     verificationMatrix: buildVerificationMatrix(verdict),
-    ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length ? { truncated: true } : {}),
+    ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length
+      ? { truncated: true }
+      : {}),
   };
 }
 
@@ -107,30 +116,43 @@ function issueToFinding(issue: Issue): BugHuntFinding {
   };
 }
 
-function preflightReasonToFinding(reason: PreflightReason, index: number): BugHuntFinding {
+function preflightReasonToFinding(
+  reason: PreflightReason,
+  index: number,
+  changedFiles: string[] = [],
+): BugHuntFinding {
+  const files = reason.file ? [reason.file] : changedFiles;
   return {
     id: `bh-preflight-${index + 1}`,
     priority: severityPriority(reason.severity),
     source: 'preflight',
-    title: `Resolve preflight ${reason.source} signal`,
+    title: preflightReasonTitle(reason),
     why: reason.message,
-    files: reason.file ? [reason.file] : [],
+    files,
     evidence: [
       {
         source: reason.source,
         severity: reason.severity,
         message: reason.message,
-        ...(reason.file ? { file: reason.file } : {}),
+        ...(files[0] ? { file: files[0] } : {}),
         ...(reason.issueId ? { issueId: reason.issueId } : {}),
         ...(reason.tool ? { tool: reason.tool } : {}),
       },
     ],
     suggestedTools: ['projscan_preflight', reason.tool ?? 'projscan_doctor'],
     verification: {
-      commands: ['projscan preflight --mode before_commit --format json', 'projscan doctor --format json'],
+      commands: [
+        'projscan preflight --mode before_commit --format json',
+        'projscan doctor --format json',
+      ],
       expected: 'The preflight reason is gone or intentionally documented as accepted risk.',
     },
   };
+}
+
+function preflightReasonTitle(reason: PreflightReason): string {
+  if (reason.source === 'release') return 'Review preflight release sign-off';
+  return `Resolve preflight ${reason.source} signal`;
 }
 
 function conflictToFinding(conflict: SessionConflict, index: number): BugHuntFinding {
@@ -157,15 +179,20 @@ function conflictToFinding(conflict: SessionConflict, index: number): BugHuntFin
   };
 }
 
-function hotspotToFinding(
-  hotspot: { relativePath: string; riskScore: number; reasons: string[]; issueIds: string[] },
-): BugHuntFinding {
+function hotspotToFinding(hotspot: {
+  relativePath: string;
+  riskScore: number;
+  reasons: string[];
+  issueIds: string[];
+}): BugHuntFinding {
   return {
     id: `bh-hotspot-${slug(hotspot.relativePath)}`,
     priority: hotspot.issueIds.length > 0 ? (hotspot.riskScore >= 70 ? 'p1' : 'p2') : 'p2',
     source: 'hotspot',
     title: `${hotspot.issueIds.length > 0 ? 'Inspect' : 'Watch'} risky hotspot ${hotspot.relativePath}`,
-    why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)} combines churn, complexity, and issue density.`,
+    why:
+      hotspot.reasons[0] ??
+      `Risk score ${Math.round(hotspot.riskScore)} combines churn, complexity, and issue density.`,
     files: [hotspot.relativePath],
     evidence: [
       {
@@ -183,7 +210,8 @@ function hotspotToFinding(
     suggestedTools: ['projscan_file', 'projscan_hotspots', 'projscan_impact'],
     verification: {
       commands: [`projscan file ${hotspot.relativePath} --format json`, 'npm test'],
-      expected: 'The hotspot has either lower risk, added regression coverage, or an explicit owner for remaining risk.',
+      expected:
+        'The hotspot has either lower risk, added regression coverage, or an explicit owner for remaining risk.',
     },
   };
 }
@@ -199,7 +227,11 @@ function cleanVerificationFinding(): BugHuntFinding {
     evidence: [{ source: 'verification', message: 'bug hunt found no ranked suspects' }],
     suggestedTools: ['projscan_doctor', 'projscan_preflight', 'projscan_workplan'],
     verification: {
-      commands: ['projscan doctor --format json', 'projscan preflight --mode before_commit --format json', 'npm test'],
+      commands: [
+        'projscan doctor --format json',
+        'projscan preflight --mode before_commit --format json',
+        'npm test',
+      ],
       expected: 'The clean baseline remains reproducible before handoff.',
     },
   };
@@ -230,7 +262,10 @@ function buildVerificationMatrix(verdict: BugHuntVerdict): BugHuntReport['verifi
     {
       command: 'projscan preflight --mode before_commit --format json',
       reason: 'Checks whether an agent can safely hand off or commit.',
-      expected: verdict === 'block' ? 'Verdict improves from block after p0 fixes.' : 'Verdict is proceed or documented caution.',
+      expected:
+        verdict === 'block'
+          ? 'Verdict improves from block after p0 fixes.'
+          : 'Verdict is proceed or documented caution.',
     },
     {
       command: 'npm test',
@@ -243,7 +278,9 @@ function buildVerificationMatrix(verdict: BugHuntVerdict): BugHuntReport['verifi
 function isImmediateFixFinding(finding: BugHuntFinding): boolean {
   if (finding.source === 'verification') return false;
   if (finding.source !== 'hotspot') return true;
-  return finding.evidence.some((entry) => typeof entry.issueId === 'string' && entry.issueId.length > 0);
+  return finding.evidence.some(
+    (entry) => typeof entry.issueId === 'string' && entry.issueId.length > 0,
+  );
 }
 
 function bugHuntVerdict(
@@ -263,14 +300,20 @@ function bugHuntVerdict(
 
 function isActionablePreflightReason(reason: PreflightReason): boolean {
   if (reason.source === 'review' && reason.message.startsWith('Review unavailable:')) return false;
-  if ((reason.source === 'review' || reason.source === 'taint') && !reason.file && !reason.issueId) {
+  if (
+    (reason.source === 'review' || reason.source === 'taint') &&
+    !reason.file &&
+    !reason.issueId
+  ) {
     return false;
   }
   if (reason.severity === 'error') return true;
   return reason.source !== 'git' && reason.source !== 'changed-files';
 }
 
-async function safeRiskNow(rootPath: string): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {
+async function safeRiskNow(
+  rootPath: string,
+): Promise<{ touchedFiles: string[]; conflicts: SessionConflict[] }> {
   try {
     return await buildRiskNow(rootPath);
   } catch {
@@ -278,14 +321,123 @@ async function safeRiskNow(rootPath: string): Promise<{ touchedFiles: string[]; 
   }
 }
 
-function summarize(verdict: BugHuntVerdict, queueLength: number): string {
-  if (verdict === 'clean') return 'clean: bug hunt found no immediate fix targets; verify the baseline';
-  if (verdict === 'block') return `block: bug hunt found ${queueLength} high-priority fix target(s)`;
+function summarize(verdict: BugHuntVerdict, fixQueue: BugHuntFinding[]): string {
+  const queueLength = fixQueue.length;
+  if (verdict === 'clean')
+    return 'clean: bug hunt found no immediate fix targets; verify the baseline';
+  if (verdict === 'block')
+    return `block: bug hunt found ${queueLength} high-priority fix target(s)`;
+  if (fixQueue.every(isReleaseSignoffFinding)) {
+    return `fix: bug hunt found ${queueLength} manual sign-off action(s)`;
+  }
   return `fix: bug hunt found ${queueLength} prioritized fix target(s)`;
+}
+
+function isReleaseSignoffFinding(finding: BugHuntFinding): boolean {
+  return (
+    finding.source === 'preflight' && finding.evidence.some((entry) => entry.source === 'release')
+  );
 }
 
 function filesFromIssue(issue: Issue): string[] {
   return [...new Set((issue.locations ?? []).map((location) => location.file).filter(Boolean))];
+}
+
+function filesFromPreflightEvidence(files: string[]): string[] {
+  const contextFiles = files.filter((file) => !isProjscanRuntimePath(file));
+  if (contextFiles.length === 0) return files;
+
+  const reviewableFiles = sortReviewContextFiles(
+    contextFiles.filter((file) => !isAgentRuntimePath(file)),
+  );
+  if (reviewableFiles.length === 0) return contextFiles;
+
+  const runtimeFiles = contextFiles.filter(isAgentRuntimePath);
+  return [...reviewableFiles, ...runtimeFiles];
+}
+
+function sortReviewContextFiles(files: string[]): string[] {
+  return files
+    .map((file, index) => ({ file, index }))
+    .sort((left, right) => {
+      const byKind = compareRanks(reviewContextRank(left.file), reviewContextRank(right.file));
+      if (byKind) return byKind;
+      const byPackage = compareRanks(
+        packageMetadataRank(left.file),
+        packageMetadataRank(right.file),
+      );
+      if (byPackage) return byPackage;
+      return left.index - right.index;
+    })
+    .map((entry) => entry.file);
+}
+
+const PACKAGE_METADATA_RANKS: Array<{ rank: number; pattern: RegExp }> = [
+  { rank: 0, pattern: /^package\.json$/ },
+  {
+    rank: 1,
+    pattern:
+      /^(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/,
+  },
+  { rank: 2, pattern: /(^|\/)package\.json$/ },
+  {
+    rank: 3,
+    pattern:
+      /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/,
+  },
+];
+
+const REVIEW_CONTEXT_RANKS: Array<{ rank: number; pattern: RegExp; exclude?: RegExp }> = [
+  {
+    rank: 0,
+    pattern:
+      /(^|\/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|bun\.lockb)$/,
+  },
+  { rank: 1, pattern: /^src\//, exclude: /(^|[/.-])(test|spec)\.[cm]?[jt]sx?$/ },
+  { rank: 2, pattern: /(^tests?\/|(^|[/.-])(test|spec)\.[cm]?[jt]sx?$)/ },
+  { rank: 3, pattern: /(^docs\/|(^|\/)(README|CHANGELOG)\.md$|\.md$)/ },
+];
+
+function reviewContextRank(file: string): number {
+  return rankedPatternMatch(normalizeReviewPath(file), REVIEW_CONTEXT_RANKS) ?? 4;
+}
+
+function packageMetadataRank(file: string): number {
+  return rankedPatternMatch(normalizeReviewPath(file), PACKAGE_METADATA_RANKS) ?? 4;
+}
+
+function rankedPatternMatch(
+  path: string,
+  ranks: Array<{ rank: number; pattern: RegExp; exclude?: RegExp }>,
+): number | null {
+  const match = ranks.find((rank) => rank.pattern.test(path) && !rank.exclude?.test(path));
+  return match?.rank ?? null;
+}
+
+function compareRanks(left: number, right: number): number {
+  return left === right ? 0 : left - right;
+}
+
+function normalizeReviewPath(file: string): string {
+  return file.replace(/\\/g, '/');
+}
+
+function isProjscanRuntimePath(file: string): boolean {
+  return (
+    file === '.projscan-cache' ||
+    file.startsWith('.projscan-cache/') ||
+    file === '.projscan-memory' ||
+    file.startsWith('.projscan-memory/')
+  );
+}
+
+function isAgentRuntimePath(file: string): boolean {
+  return (
+    file === '.agentflight' ||
+    file.startsWith('.agentflight/') ||
+    file === '.agentloop' ||
+    file.startsWith('.agentloop/')
+  );
 }
 
 function severityPriority(severity: Issue['severity']): WorkplanPriority {
@@ -314,5 +466,10 @@ function normalizeMax(value: number | undefined): number {
 }
 
 function slug(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'root';
+  return (
+    value
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'root'
+  );
 }

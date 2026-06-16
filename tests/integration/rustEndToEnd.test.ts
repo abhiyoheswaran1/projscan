@@ -23,7 +23,11 @@ describe('Rust end-to-end (graph + coupling)', () => {
   it('exposes only pub items as exports', async () => {
     const scan = await scanRepository(FIXTURE_ROOT);
     const graph = await buildCodeGraph(FIXTURE_ROOT, scan.files);
-    const utilExports = graph.files.get('src/util.rs')?.exports.map((e) => e.name).sort() ?? [];
+    const utilExports =
+      graph.files
+        .get('src/util.rs')
+        ?.exports.map((e) => e.name)
+        .sort() ?? [];
     expect(utilExports).toEqual(['PREFIX', 'classify', 'greet']);
     // private_helper is not pub and should NOT appear.
     expect(utilExports).not.toContain('private_helper');

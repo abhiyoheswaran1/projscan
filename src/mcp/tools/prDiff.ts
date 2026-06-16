@@ -11,7 +11,8 @@ export const prDiffTool: McpTool = {
     properties: {
       base: {
         type: 'string',
-        description: 'Base ref (branch, tag, sha). Default: origin/main, falling back to main/master/HEAD~1.',
+        description:
+          'Base ref (branch, tag, sha). Default: origin/main, falling back to main/master/HEAD~1.',
       },
       head: { type: 'string', description: 'Head ref. Default: HEAD.' },
       max_tokens: { type: 'number', description: 'Cap the response to roughly this many tokens.' },

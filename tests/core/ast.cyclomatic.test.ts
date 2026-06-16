@@ -25,9 +25,9 @@ describe('cyclomatic complexity (JS/TS)', () => {
   });
 
   it('switch with 4 cases (3 case + 1 default) = CC 4 (default does not count)', () => {
-    expect(
-      cc(`switch (x) { case 1: break; case 2: break; case 3: break; default: break; }`),
-    ).toBe(4);
+    expect(cc(`switch (x) { case 1: break; case 2: break; case 3: break; default: break; }`)).toBe(
+      4,
+    );
   });
 
   it('logical && chain — each operator adds 1', () => {

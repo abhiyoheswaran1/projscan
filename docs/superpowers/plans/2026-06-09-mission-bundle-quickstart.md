@@ -36,7 +36,7 @@ expect(result.stdout).toContain('next-tool-call.json');
 
 In the same test, after `const bundleDir = ...`, add:
 
-```ts
+````ts
 const quickstart = await fs.readFile(path.join(bundleDir, 'README.md'), 'utf-8');
 expect(quickstart).toContain('# Mission Bundle');
 expect(quickstart).toContain('Intent: what breaks if I rename the auth token loader');
@@ -49,12 +49,14 @@ expect(quickstart).toContain('- `runbook.md`: Human-readable Mission Control run
 const nextCommand = await fs.readFile(path.join(bundleDir, 'next-command.txt'), 'utf-8');
 expect(nextCommand).toBe('projscan search "auth token loader" --format json\n');
 
-const nextToolCall = JSON.parse(await fs.readFile(path.join(bundleDir, 'next-tool-call.json'), 'utf-8'));
+const nextToolCall = JSON.parse(
+  await fs.readFile(path.join(bundleDir, 'next-tool-call.json'), 'utf-8'),
+);
 expect(nextToolCall).toEqual({
   tool: 'projscan_search',
   args: { query: 'auth token loader' },
 });
-```
+````
 
 - [ ] **Step 3: Update manifest ordering assertion**
 
@@ -102,7 +104,11 @@ In `writeMissionBundle`, after `await fs.mkdir(...)`, write:
 
 ```ts
 await fs.writeFile(path.join(targetDir, 'README.md'), missionBundleReadme(report, files), 'utf-8');
-await fs.writeFile(path.join(targetDir, 'next-command.txt'), missionBundleNextCommand(report), 'utf-8');
+await fs.writeFile(
+  path.join(targetDir, 'next-command.txt'),
+  missionBundleNextCommand(report),
+  'utf-8',
+);
 await fs.writeFile(
   path.join(targetDir, 'next-tool-call.json'),
   JSON.stringify(nextToolCall(report) ?? null) + '\n',
@@ -118,7 +124,7 @@ At the start of `missionBundleFiles`, add entries for `README.md`, `next-command
 
 Add:
 
-```ts
+````ts
 function missionBundleReadme(report: StartReport, files: MissionBundleFile[]): string {
   const mission = report.missionControl;
   const cursor = mission.executionPlan.cursor;
@@ -156,7 +162,7 @@ function missionBundleReadme(report: StartReport, files: MissionBundleFile[]): s
 function missionBundleNextCommand(report: StartReport): string {
   return `${report.missionControl.executionPlan.cursor.command ?? report.missionControl.resume.instruction}\n`;
 }
-```
+````
 
 - [ ] **Step 4: Run the green focused test**
 

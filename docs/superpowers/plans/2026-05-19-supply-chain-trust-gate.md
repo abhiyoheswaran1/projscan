@@ -13,6 +13,7 @@
 ### Task 1: Lock the Desired Behavior With Failing Tests
 
 **Files:**
+
 - Modify: `tests/core/preflight.test.ts`
 - Modify: `tests/mcp/releaseWorkflow.test.ts`
 
@@ -31,6 +32,7 @@ Run `npm test -- tests/core/preflight.test.ts tests/mcp/releaseWorkflow.test.ts`
 ### Task 2: Implement the Analyzer and Preflight Surface
 
 **Files:**
+
 - Create: `src/analyzers/supplyChainCheck.ts`
 - Modify: `src/core/issueEngine.ts`
 - Modify: `src/core/preflight.ts`
@@ -55,6 +57,7 @@ Run `npm test -- tests/core/preflight.test.ts`. Expected: pass.
 ### Task 3: Add the Release Gate Script
 
 **Files:**
+
 - Create: `scripts/release-gate.mjs`
 - Modify: `package.json`
 
@@ -73,6 +76,7 @@ Run `npm run build` and `npm run security:release-gate`. Expected after dependen
 ### Task 4: Wire CI, Release, SBOM, and Audit Fix
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 - Modify: `.github/workflows/release.yml`
 - Modify: `package.json`
@@ -97,6 +101,7 @@ Run `npm test -- tests/mcp/releaseWorkflow.test.ts`. Expected: pass.
 ### Task 5: Full Verification
 
 **Files:**
+
 - No new files.
 
 - [ ] **Step 1: Run focused tests**

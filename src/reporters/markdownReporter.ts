@@ -1,73 +1,28 @@
 import type {
-  AnalysisReport,
-  AuditReport,
   CoverageJoinedReport,
   CouplingReport,
   Issue,
   FileExplanation,
-  FileInspection,
   ArchitectureLayer,
   DirectoryNode,
-  DependencyReport,
-  DiffResult,
   HotspotReport,
   OutdatedReport,
   PrDiffReport,
-  ReviewReport,
-  FixSuggestion,
-  ImpactReport,
-  IssueExplanation,
-  UpgradePreview,
   WorkspaceInfo,
 } from '../types.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
-
-export function reportAnalysisMarkdown(report: AnalysisReport): void {
-  const lines: string[] = [];
-
-  lines.push('# ProjScan Project Report');
-  lines.push('');
-  lines.push('## Project');
-  lines.push('');
-  lines.push(`| Field | Value |`);
-  lines.push(`| --- | --- |`);
-  lines.push(`| Language | ${report.languages.primary} |`);
-
-  const frameworks = report.frameworks.frameworks.map((f) => f.name).join(', ');
-  if (frameworks) lines.push(`| Frameworks | ${frameworks} |`);
-
-  if (report.dependencies) {
-    lines.push(`| Dependencies | ${report.dependencies.totalDependencies} prod, ${report.dependencies.totalDevDependencies} dev |`);
-  }
-  lines.push(`| Files | ${report.scan.totalFiles} |`);
-  lines.push(`| Scan Time | ${report.scan.scanDurationMs.toFixed(0)}ms |`);
-
-  // Languages
-  const langs = Object.values(report.languages.languages).sort((a, b) => b.fileCount - a.fileCount);
-  if (langs.length > 0) {
-    lines.push('');
-    lines.push('## Languages');
-    lines.push('');
-    lines.push('| Language | Files | % |');
-    lines.push('| --- | --- | --- |');
-    for (const lang of langs.slice(0, 10)) {
-      lines.push(`| ${lang.name} | ${lang.fileCount} | ${lang.percentage.toFixed(1)}% |`);
-    }
-  }
-
-  // Issues
-  if (report.issues.length > 0) {
-    lines.push('');
-    lines.push('## Issues');
-    lines.push('');
-    for (const issue of report.issues) {
-      const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}**: ${issue.description}`);
-    }
-  }
-
-  console.log(lines.join('\n'));
-}
+export { reportDiffMarkdown } from './markdownDiffReporter.js';
+export { reportFileMarkdown } from './markdownFileReporter.js';
+export { reportReviewMarkdown } from './markdownReviewReporter.js';
+export { reportDependenciesMarkdown } from './markdownDependencyReporter.js';
+export {
+  reportExplainIssueMarkdown,
+  reportFixSuggestMarkdown,
+} from './markdownFixGuidanceReporter.js';
+export { reportImpactMarkdown } from './markdownImpactReporter.js';
+export { reportUpgradeMarkdown } from './markdownUpgradeReporter.js';
+export { reportAuditMarkdown } from './markdownAuditReporter.js';
+export { reportAnalysisMarkdown } from './markdownAnalysisReporter.js';
 
 export function reportHealthMarkdown(issues: Issue[]): void {
   const { score, grade } = calculateScore(issues);
@@ -87,7 +42,9 @@ export function reportHealthMarkdown(issues: Issue[]): void {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
       lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
       if (issue.suggestedAction) {
-        lines.push(`  - **Action:** ${issue.suggestedAction.summary} _(\`projscan fix-suggest ${issue.id}\`)_`);
+        lines.push(
+          `  - **Action:** ${issue.suggestedAction.summary} _(\`projscan fix-suggest ${issue.id}\`)_`,
+        );
       }
     }
   }
@@ -114,64 +71,6 @@ export function reportCiMarkdown(issues: Issue[], threshold: number): void {
     for (const issue of issues) {
       const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
       lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
-    }
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportDiffMarkdown(diff: DiffResult): void {
-  const delta = diff.scoreDelta > 0 ? `+${diff.scoreDelta}` : String(diff.scoreDelta);
-  const arrow = diff.scoreDelta > 0 ? '↑' : diff.scoreDelta < 0 ? '↓' : '-';
-
-  const lines: string[] = [
-    '# Health Diff',
-    '',
-    '| Metric | Before | After | Delta |',
-    '| --- | --- | --- | --- |',
-    `| Score | ${diff.before.score} | ${diff.after.score} | ${delta} ${arrow} |`,
-    `| Grade | ${diff.before.grade} | ${diff.after.grade} | |`,
-  ];
-
-  if (diff.resolvedIssues.length > 0) {
-    lines.push('', '## Resolved', '');
-    for (const title of diff.resolvedIssues) {
-      lines.push(`- ✅ ${title}`);
-    }
-  }
-
-  if (diff.newIssues.length > 0) {
-    lines.push('', '## New Issues', '');
-    for (const title of diff.newIssues) {
-      lines.push(`- ❌ ${title}`);
-    }
-  }
-
-  if (diff.hotspotDiff) {
-    const hd = diff.hotspotDiff;
-    if (hd.rose.length > 0) {
-      lines.push('', '## Hotspots Worsening', '');
-      lines.push('| File | Before | After | Δ |');
-      lines.push('| --- | ---: | ---: | ---: |');
-      for (const d of hd.rose) {
-        lines.push(`| \`${d.relativePath}\` | ${d.beforeScore?.toFixed(1)} | ${d.afterScore?.toFixed(1)} | +${d.scoreDelta.toFixed(1)} |`);
-      }
-    }
-    if (hd.appeared.length > 0) {
-      lines.push('', '## Newly Risky Files', '');
-      lines.push('| File | Score |');
-      lines.push('| --- | ---: |');
-      for (const d of hd.appeared) {
-        lines.push(`| \`${d.relativePath}\` | ${d.afterScore?.toFixed(1)} |`);
-      }
-    }
-    if (hd.fell.length > 0) {
-      lines.push('', '## Hotspots Improving', '');
-      lines.push('| File | Before | After | Δ |');
-      lines.push('| --- | ---: | ---: | ---: |');
-      for (const d of hd.fell) {
-        lines.push(`| \`${d.relativePath}\` | ${d.beforeScore?.toFixed(1)} | ${d.afterScore?.toFixed(1)} | ${d.scoreDelta.toFixed(1)} |`);
-      }
     }
   }
 
@@ -249,133 +148,6 @@ function buildTreeLines(nodes: DirectoryNode[], indent: string, lines: string[])
   }
 }
 
-export function reportDependenciesMarkdown(report: DependencyReport): void {
-  const lines: string[] = ['# Dependency Report', ''];
-  lines.push(`- Production: **${report.totalDependencies}** packages`);
-  lines.push(`- Development: **${report.totalDevDependencies}** packages`);
-
-  if (report.licenses) {
-    lines.push('');
-    lines.push('## License Summary');
-    lines.push(`- Known: **${report.licenses.packages.length - report.licenses.unknown.length}**`);
-    lines.push(`- Unknown: **${report.licenses.unknown.length}**`);
-    lines.push(`- Copyleft: **${report.licenses.copyleft.length}**`);
-    for (const [license, count] of Object.entries(report.licenses.byLicense)) {
-      lines.push(`- ${license}: ${count}`);
-    }
-  }
-
-  if (report.sizes && report.sizes.largest.length > 0) {
-    lines.push('');
-    lines.push('## Installed Package Sizes');
-    lines.push(`- Total: **${report.sizes.formattedTotal}**`);
-    lines.push(`- Missing: **${report.sizes.missing.length}**`);
-    for (const entry of report.sizes.largest) {
-      lines.push(`- \`${entry.name}\` ${entry.version}: ${entry.formatted} (${entry.scope})`);
-    }
-  }
-
-  if (report.risks.length > 0) {
-    lines.push('');
-    lines.push('## Risks');
-    for (const risk of report.risks) {
-      lines.push(`- **${risk.name}**: ${risk.reason} (${risk.severity})`);
-    }
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportFileMarkdown(insp: FileInspection): void {
-  const lines: string[] = [`# File: ${insp.relativePath}`, ''];
-  if (!insp.exists) {
-    lines.push(`> ${insp.reason ?? 'File unavailable.'}`);
-    console.log(lines.join('\n'));
-    return;
-  }
-  appendFileSummary(lines, insp);
-  appendFileHotspot(lines, insp);
-  appendFileIssues(lines, insp);
-  appendFilePotentialIssues(lines, insp);
-  appendFileImports(lines, insp);
-  appendFileExports(lines, insp);
-  appendFileFunctions(lines, insp);
-  console.log(lines.join('\n'));
-}
-
-function appendFileSummary(lines: string[], insp: FileInspection): void {
-  lines.push(`**Purpose:** ${insp.purpose}`);
-  lines.push(`**Lines:** ${insp.lineCount}  |  **Size:** ${insp.sizeBytes} B`);
-  if (typeof insp.cyclomaticComplexity === 'number') {
-    lines.push(`**Cyclomatic complexity:** ${insp.cyclomaticComplexity}`);
-  }
-  if (typeof insp.fanIn === 'number' || typeof insp.fanOut === 'number') {
-    lines.push(`**Coupling:** fan-in ${insp.fanIn ?? '-'}, fan-out ${insp.fanOut ?? '-'}`);
-  }
-}
-
-function appendFileHotspot(lines: string[], insp: FileInspection): void {
-  if (!insp.hotspot) return;
-  const h = insp.hotspot;
-  lines.push('', '## Risk', '');
-  lines.push(`- **Risk score:** ${h.riskScore.toFixed(1)}`);
-  lines.push(`- **Commits:** ${h.churn}`);
-  const primary = h.primaryAuthor
-    ? ` (primary: ${h.primaryAuthor}, ${Math.round(h.primaryAuthorShare * 100)}%)`
-    : '';
-  lines.push(`- **Authors:** ${h.distinctAuthors}${primary}`);
-  if (h.daysSinceLastChange !== null) {
-    lines.push(`- **Last change:** ${h.daysSinceLastChange} days ago`);
-  }
-  if (h.busFactorOne) lines.push('- ⚠️ **Bus factor 1** - only one author has touched this.');
-  if (h.reasons.length > 0) lines.push(`- ${h.reasons.join(', ')}`);
-}
-
-function appendFileIssues(lines: string[], insp: FileInspection): void {
-  if (insp.issues.length === 0) return;
-  lines.push('', '## Related Issues', '');
-  for (const issue of insp.issues) {
-    const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-    lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
-  }
-}
-
-function appendFilePotentialIssues(lines: string[], insp: FileInspection): void {
-  if (insp.potentialIssues.length === 0) return;
-  lines.push('', '## Potential Issues', '');
-  for (const issue of insp.potentialIssues) lines.push(`- ⚠️ ${issue}`);
-}
-
-function appendFileImports(lines: string[], insp: FileInspection): void {
-  if (insp.imports.length === 0) return;
-  lines.push('', '## Dependencies', '');
-  for (const imp of insp.imports) {
-    lines.push(`- \`${imp.source}\`${imp.isRelative ? ' (local)' : ''}`);
-  }
-}
-
-function appendFileExports(lines: string[], insp: FileInspection): void {
-  if (insp.exports.length === 0) return;
-  lines.push('', '## Exports', '');
-  for (const exp of insp.exports) {
-    lines.push(`- \`${exp.name}\` (${exp.type})`);
-  }
-}
-
-function appendFileFunctions(lines: string[], insp: FileInspection): void {
-  if (!insp.functions || insp.functions.length === 0) return;
-  lines.push('', '## Functions (top by CC)', '');
-  lines.push('| CC | Fan-in | Name | Lines |');
-  lines.push('| ---: | ---: | --- | --- |');
-  for (const fn of insp.functions.slice(0, 20)) {
-    const fi = typeof fn.fanIn === 'number' ? String(fn.fanIn) : '-';
-    lines.push(`| ${fn.cyclomaticComplexity} | ${fi} | \`${fn.name}\` | L${fn.line}-${fn.endLine} |`);
-  }
-  if (insp.functions.length > 20) {
-    lines.push('', `_... and ${insp.functions.length - 20} more_`);
-  }
-}
-
 export function reportHotspotsMarkdown(report: HotspotReport): void {
   const lines: string[] = ['# Project Hotspots', ''];
 
@@ -386,7 +158,9 @@ export function reportHotspotsMarkdown(report: HotspotReport): void {
   }
 
   const { since, commitsScanned } = report.window;
-  lines.push(`_Scanned **${commitsScanned}** commit(s) since **${since}** · ranked **${report.totalFilesRanked}** file(s)_`);
+  lines.push(
+    `_Scanned **${commitsScanned}** commit(s) since **${since}** · ranked **${report.totalFilesRanked}** file(s)_`,
+  );
   lines.push('');
 
   if (report.hotspots.length === 0) {
@@ -430,7 +204,9 @@ export function reportCouplingMarkdown(report: CouplingReport): void {
     lines.push('| From package | From file | To package | To file |');
     lines.push('| --- | --- | --- | --- |');
     for (const e of report.crossPackageEdges) {
-      lines.push(`| \`${e.from.package}\` | \`${e.from.file}\` | \`${e.to.package}\` | \`${e.to.file}\` |`);
+      lines.push(
+        `| \`${e.from.package}\` | \`${e.from.file}\` | \`${e.to.package}\` | \`${e.to.file}\` |`,
+      );
     }
     lines.push('');
   }
@@ -520,195 +296,12 @@ function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
 }
 
-export function reportImpactMarkdown(report: ImpactReport): void {
-  const lines: string[] = [`# Impact: ${report.target.kind} \`${report.target.value}\``, ''];
-  if (!report.available) {
-    lines.push(`> ${report.reason ?? 'Impact unavailable.'}`);
-    console.log(lines.join('\n'));
-    return;
-  }
-  if (report.target.kind === 'symbol') {
-    lines.push(
-      `_definitions: ${report.definitionFiles.length} · direct callers: ${report.directCallers.length}_`,
-      '',
-    );
-    if (report.definitionFiles.length > 0) {
-      lines.push('## Defined in', '');
-      for (const f of report.definitionFiles) lines.push(`- \`${f}\``);
-      lines.push('');
-    }
-  }
-  lines.push(
-    `**${report.totalReachable}** file(s) reachable within distance ${report.maxDistance}${report.truncated ? ' (truncated; more files exist beyond)' : ''}.`,
-    '',
-  );
-  if (report.reachable.length === 0) {
-    lines.push('_No reachable files._');
-    console.log(lines.join('\n'));
-    return;
-  }
-  lines.push('| Distance | File |', '| ---: | --- |');
-  for (const n of report.reachable.slice(0, 200)) {
-    lines.push(`| ${n.distance} | \`${n.file}\` |`);
-  }
-  if (report.reachable.length > 200) {
-    lines.push('', `_... and ${report.reachable.length - 200} more_`);
-  }
-  console.log(lines.join('\n'));
-}
-
-export function reportFixSuggestMarkdown(result: { matched: boolean; fix?: FixSuggestion; reason?: string; synthetic?: boolean }): void {
-  const lines: string[] = ['# Fix Suggestion', ''];
-  if (!result.matched || !result.fix) {
-    lines.push(`> ${result.reason ?? 'No suggestion available.'}`);
-    console.log(lines.join('\n'));
-    return;
-  }
-  const fix = result.fix;
-  lines.push(`**${fix.headline}**`, '');
-  lines.push(`_severity: ${fix.severity} · category: ${fix.category} · issue: \`${fix.issueId}\`${result.synthetic ? ' (synthetic)' : ''}_`, '');
-  lines.push('## Why', '', fix.why, '');
-  if (fix.where.length > 0) {
-    lines.push('## Where', '');
-    for (const w of fix.where) {
-      const loc = w.line ? `${w.file}:${w.line}` : w.file;
-      lines.push(`- \`${loc}\``);
-    }
-    lines.push('');
-  }
-  lines.push('## Action', '', fix.instruction, '');
-  if (fix.suggestedTest) lines.push('## Verify', '', fix.suggestedTest, '');
-  if (fix.relatedFiles && fix.relatedFiles.length > 0) {
-    lines.push('## Related files', '');
-    for (const f of fix.relatedFiles) lines.push(`- \`${f}\``);
-    lines.push('');
-  }
-  if (fix.references && fix.references.length > 0) {
-    lines.push('## References', '');
-    for (const r of fix.references) lines.push(`- ${r}`);
-    lines.push('');
-  }
-  console.log(lines.join('\n'));
-}
-
-export function reportExplainIssueMarkdown(e: IssueExplanation): void {
-  const lines: string[] = [`# Issue: ${e.title}`, ''];
-  lines.push(`_severity: ${e.severity} · category: ${e.category} · id: \`${e.issueId}\`_`, '');
-  lines.push(`**${e.headline}**`, '');
-  if (e.excerpt) {
-    lines.push(`## Code (\`${e.excerpt.file}\` L${e.excerpt.startLine}-${e.excerpt.endLine})`, '', '```');
-    for (const l of e.excerpt.lines) lines.push(l);
-    lines.push('```', '');
-  }
-  if (e.relatedIssues.length > 0) {
-    lines.push('## Related issues in the same area', '');
-    for (const r of e.relatedIssues) lines.push(`- \`${r.id}\`: ${r.title}`);
-    lines.push('');
-  }
-  if (e.similarFixes.length > 0) {
-    lines.push('## Past commits referencing this rule', '');
-    for (const f of e.similarFixes) lines.push(`- ${f.sha.slice(0, 7)} (${f.date}) ${f.subject}`);
-    lines.push('');
-  }
-  if (e.fix) {
-    lines.push('## Suggested action', '', e.fix.instruction, '');
-    if (e.fix.suggestedTest) lines.push('**Verify:** ' + e.fix.suggestedTest, '');
-  }
-  console.log(lines.join('\n'));
-}
-
-export function reportReviewMarkdown(report: ReviewReport): void {
-  const lines: string[] = ['# PR Review', ''];
-  if (!report.available) {
-    lines.push(`> ${report.reason ?? 'Review unavailable.'}`);
-    console.log(lines.join('\n'));
-    return;
-  }
-  appendReviewHeader(lines, report);
-  appendReviewSummary(lines, report);
-  appendReviewChangedFiles(lines, report);
-  appendReviewCycles(lines, report);
-  appendReviewRiskyFunctions(lines, report);
-  appendReviewDependencyChanges(lines, report);
-  console.log(lines.join('\n'));
-}
-
-function appendReviewHeader(lines: string[], report: ReviewReport): void {
-  const verdictBadge =
-    report.verdict === 'block' ? '🚫 BLOCK' : report.verdict === 'review' ? '👀 REVIEW' : '✅ OK';
-  lines.push(
-    `_base **${report.base.ref}** (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head **${report.head.ref}** (${report.head.resolvedSha?.slice(0, 7) ?? '?'})_`,
-    '',
-    `**Verdict:** ${verdictBadge}`,
-    '',
-  );
-}
-
-function appendReviewSummary(lines: string[], report: ReviewReport): void {
-  if (report.summary.length === 0) return;
-  for (const s of report.summary) lines.push(`- ${s}`);
-  lines.push('');
-}
-
-function appendReviewChangedFiles(lines: string[], report: ReviewReport): void {
-  if (report.changedFiles.length === 0) return;
-  lines.push('## Changed files', '');
-  lines.push('| File | Status | Risk | CC | ΔCC |');
-  lines.push('| --- | --- | ---: | ---: | ---: |');
-  for (const f of report.changedFiles.slice(0, 50)) {
-    const risk = f.riskScore !== null ? f.riskScore.toFixed(1) : '-';
-    const cc = f.cyclomaticComplexity !== null ? String(f.cyclomaticComplexity) : '-';
-    const dcc = f.cyclomaticDelta === null ? '-' : signed(f.cyclomaticDelta);
-    lines.push(`| \`${f.relativePath}\` | ${f.status} | ${risk} | ${cc} | ${dcc} |`);
-  }
-  if (report.changedFiles.length > 50) {
-    lines.push('', `_... and ${report.changedFiles.length - 50} more files_`);
-  }
-  lines.push('');
-}
-
-function appendReviewCycles(lines: string[], report: ReviewReport): void {
-  if (report.newCycles.length === 0) return;
-  lines.push('## New / expanded import cycles', '');
-  for (const c of report.newCycles) {
-    lines.push(
-      `- **${c.classification}** (${c.size} files): ${c.files.map((f) => `\`${f}\``).join(' → ')}`,
-    );
-  }
-  lines.push('');
-}
-
-function appendReviewRiskyFunctions(lines: string[], report: ReviewReport): void {
-  if (report.riskyFunctions.length === 0) return;
-  lines.push('## Risky functions', '');
-  lines.push('| Function | File | CC | Reason | Δ from base |');
-  lines.push('| --- | --- | ---: | --- | --- |');
-  for (const fn of report.riskyFunctions.slice(0, 30)) {
-    const baseInfo = fn.baseCc === null ? 'new' : `${fn.baseCc} → ${fn.cyclomaticComplexity}`;
-    lines.push(
-      `| \`${fn.name}\` | \`${fn.file}\`:L${fn.line} | ${fn.cyclomaticComplexity} | ${fn.reason} | ${baseInfo} |`,
-    );
-  }
-  lines.push('');
-}
-
-function appendReviewDependencyChanges(lines: string[], report: ReviewReport): void {
-  if (report.dependencyChanges.length === 0) return;
-  lines.push('## Dependency changes', '');
-  for (const d of report.dependencyChanges) {
-    const wsLabel = d.workspace ? ` (${d.workspace})` : '';
-    lines.push(`### \`${d.manifestFile}\`${wsLabel}`, '');
-    for (const a of d.added) lines.push(`- ➕ \`${a.name}@${a.version}\` (${a.kind})`);
-    for (const r of d.removed) lines.push(`- ➖ \`${r.name}@${r.version}\` (${r.kind})`);
-    for (const b of d.bumped)
-      lines.push(`- 🔄 \`${b.name}\`: \`${b.from}\` → \`${b.to}\` (${b.kind})`);
-    lines.push('');
-  }
-}
-
 export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
   const lines: string[] = ['# Workspaces', ''];
-  lines.push(`_kind: **${info.kind}**${info.source ? ` · source: ${info.source}` : ''} · ${info.packages.length} package(s)_`, '');
+  lines.push(
+    `_kind: **${info.kind}**${info.source ? ` · source: ${info.source}` : ''} · ${info.packages.length} package(s)_`,
+    '',
+  );
   if (info.packages.length === 0) {
     lines.push('No packages detected.');
     console.log(lines.join('\n'));
@@ -717,7 +310,9 @@ export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
   lines.push('| Package | Path | Version | Root |');
   lines.push('| --- | --- | --- | :-: |');
   for (const p of info.packages) {
-    lines.push(`| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`);
+    lines.push(
+      `| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`,
+    );
   }
   console.log(lines.join('\n'));
 }
@@ -748,75 +343,6 @@ export function reportOutdatedMarkdown(report: OutdatedReport): void {
     lines.push(
       `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '-'} | ${p.drift} |`,
     );
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportAuditMarkdown(report: AuditReport): void {
-  const lines: string[] = [];
-  lines.push('# Vulnerability Audit');
-  lines.push('');
-  if (!report.available) {
-    lines.push(`_${report.reason ?? 'audit unavailable'}_`);
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  const s = report.summary;
-  const total = s.critical + s.high + s.moderate + s.low + s.info;
-  lines.push(`**${total}** findings - ${s.critical} critical · ${s.high} high · ${s.moderate} moderate · ${s.low} low · ${s.info} info`);
-  lines.push('');
-
-  if (report.findings.length === 0) {
-    lines.push('_No known vulnerabilities._');
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  lines.push('| Severity | Package | Title | Fix |');
-  lines.push('| --- | --- | --- | --- |');
-  for (const f of report.findings) {
-    const title = f.url ? `[${f.title}](${f.url})` : f.title;
-    lines.push(`| ${f.severity} | \`${f.name}\` | ${title} | ${f.fixAvailable ? 'yes' : 'no'} |`);
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportUpgradeMarkdown(preview: UpgradePreview): void {
-  const lines: string[] = [];
-  lines.push(`# Upgrade Preview - \`${preview.name}\``);
-  lines.push('');
-  if (!preview.available) {
-    lines.push(`_${preview.reason ?? 'unavailable'}_`);
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  lines.push(`- Declared: \`${preview.declared ?? '-'}\``);
-  lines.push(`- Installed: \`${preview.installed ?? '-'}\``);
-  lines.push(`- Drift: **${preview.drift}**`);
-  lines.push('');
-
-  if (preview.breakingMarkers.length > 0) {
-    lines.push('## ⚠ Breaking-change markers');
-    for (const m of preview.breakingMarkers) lines.push(`- ${m}`);
-    lines.push('');
-  }
-
-  if (preview.importers.length > 0) {
-    lines.push(`## Importers (${preview.importers.length})`);
-    for (const file of preview.importers) lines.push(`- \`${file}\``);
-    lines.push('');
-  }
-
-  if (preview.changelogExcerpt) {
-    lines.push('## CHANGELOG excerpt');
-    lines.push('');
-    lines.push('```');
-    lines.push(preview.changelogExcerpt);
-    lines.push('```');
   }
 
   console.log(lines.join('\n'));

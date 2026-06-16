@@ -17,6 +17,7 @@
 Mirror `reportHotspotsHtml`. The coverage output is a list of files annotated with risk × coverage; render as a sortable-looking table (no JS, just `<th>` style hints).
 
 Layout:
+
 - `<h1>` "Coverage × Risk"
 - Stats line: total covered files, average coverage %
 - Table: file, coverage %, risk score, hotspot reasons

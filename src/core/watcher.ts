@@ -9,9 +9,24 @@ const DEBOUNCE_MS = 200;
 const STAT_RETRY_MS = 50;
 
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', '.projscan-cache', '.bench-cache', 'dist', 'build',
-  'coverage', '.cache', '.next', '.nuxt', '.svelte-kit', 'venv', '.venv',
-  '__pycache__', '.tox', '.pytest_cache', '.mypy_cache', '.ruff_cache',
+  'node_modules',
+  '.git',
+  '.projscan-cache',
+  '.bench-cache',
+  'dist',
+  'build',
+  'coverage',
+  '.cache',
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  'venv',
+  '.venv',
+  '__pycache__',
+  '.tox',
+  '.pytest_cache',
+  '.mypy_cache',
+  '.ruff_cache',
   '.eggs',
 ]);
 

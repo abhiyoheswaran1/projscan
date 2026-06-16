@@ -3,7 +3,13 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { walkFiles, getDefaultIgnorePatterns } from '../utils/fileWalker.js';
 import { loadConfig } from '../utils/config.js';
-import type { ScanResult, FileEntry, DirectoryNode, ScanBoundary, ProjscanConfig } from '../types.js';
+import type {
+  ScanResult,
+  FileEntry,
+  DirectoryNode,
+  ScanBoundary,
+  ProjscanConfig,
+} from '../types.js';
 
 const execFileAsync = promisify(execFile);
 const INCLUDE_IGNORED_ENV = 'PROJSCAN_INCLUDE_IGNORED';
@@ -14,11 +20,15 @@ export interface ScanOptions {
   useConfig?: boolean;
 }
 
-export async function scanRepository(rootPath: string, options: ScanOptions = {}): Promise<ScanResult> {
+export async function scanRepository(
+  rootPath: string,
+  options: ScanOptions = {},
+): Promise<ScanResult> {
   const start = performance.now();
-  const config = options.useConfig === false
-    ? {}
-    : (await loadConfig(rootPath).catch(() => ({ config: {} as ProjscanConfig }))).config;
+  const config =
+    options.useConfig === false
+      ? {}
+      : (await loadConfig(rootPath).catch(() => ({ config: {} as ProjscanConfig }))).config;
   const ignore = mergeIgnorePatterns(config.ignore, options.ignore);
   const includeIgnored =
     options.includeIgnored === true ||
@@ -40,7 +50,9 @@ export async function scanRepository(rootPath: string, options: ScanOptions = {}
     const gitBoundary = await listGitVisibleFiles(rootPath);
     if (gitBoundary) {
       const visible = new Set(gitBoundary.files);
-      files = (await walkWithProjscanIgnores(rootPath, ignore)).filter((file) => visible.has(file.relativePath));
+      files = (await walkWithProjscanIgnores(rootPath, ignore)).filter((file) =>
+        visible.has(file.relativePath),
+      );
       scanBoundary = {
         source: 'git',
         gitignoreRespected: true,
@@ -78,8 +90,13 @@ export async function scanRepository(rootPath: string, options: ScanOptions = {}
   };
 }
 
-function mergeIgnorePatterns(configIgnore?: string[], optionIgnore?: string[]): string[] | undefined {
-  const merged = [...(configIgnore ?? []), ...(optionIgnore ?? [])].filter((entry) => entry.length > 0);
+function mergeIgnorePatterns(
+  configIgnore?: string[],
+  optionIgnore?: string[],
+): string[] | undefined {
+  const merged = [...(configIgnore ?? []), ...(optionIgnore ?? [])].filter(
+    (entry) => entry.length > 0,
+  );
   return merged.length > 0 ? [...new Set(merged)] : undefined;
 }
 
@@ -88,7 +105,9 @@ async function walkWithProjscanIgnores(rootPath: string, ignore?: string[]): Pro
   return walkFiles(rootPath, patterns ? { ignore: patterns } : undefined);
 }
 
-async function listGitVisibleFiles(rootPath: string): Promise<{ files: string[]; ignoredFileCount: number } | null> {
+async function listGitVisibleFiles(
+  rootPath: string,
+): Promise<{ files: string[]; ignoredFileCount: number } | null> {
   try {
     await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: rootPath });
     const [{ stdout }, ignoredFileCount] = await Promise.all([
@@ -106,10 +125,14 @@ async function listGitVisibleFiles(rootPath: string): Promise<{ files: string[];
 
 async function countGitIgnoredFiles(rootPath: string): Promise<number> {
   try {
-    const { stdout } = await execFileAsync('git', ['ls-files', '--others', '--ignored', '--exclude-standard'], {
-      cwd: rootPath,
-      maxBuffer: 32 * 1024 * 1024,
-    });
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-files', '--others', '--ignored', '--exclude-standard'],
+      {
+        cwd: rootPath,
+        maxBuffer: 32 * 1024 * 1024,
+      },
+    );
     return parseGitFileList(stdout).length;
   } catch {
     return 0;
@@ -117,9 +140,7 @@ async function countGitIgnoredFiles(rootPath: string): Promise<number> {
 }
 
 function parseGitFileList(stdout: string): string[] {
-  return stdout
-    .split('\n')
-    .filter((line) => line.length > 0);
+  return stdout.split('\n').filter((line) => line.length > 0);
 }
 
 function buildDirectoryTree(files: FileEntry[], rootPath: string): DirectoryNode {

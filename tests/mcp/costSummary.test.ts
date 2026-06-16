@@ -102,7 +102,10 @@ describe('projscan_cost_summary', () => {
     await withTempRepo(async (root) => {
       const events = [];
       for (let i = 0; i < 25; i++) {
-        events.push({ kind: 'tool-call:projscan_doctor', data: { estimatedTokens: 1000 + i * 100 } });
+        events.push({
+          kind: 'tool-call:projscan_doctor',
+          data: { estimatedTokens: 1000 + i * 100 },
+        });
       }
       await plantSession(root, events);
       const result = (await costSummaryTool.handler({}, root)) as Record<string, unknown>;
@@ -172,10 +175,10 @@ describe('projscan_cost_summary', () => {
 
     it('returns registered:false when no notify channel is available', async () => {
       await withTempRepo(async (root) => {
-        const result = (await costSummaryTool.handler(
-          { action: 'start_stream' },
-          root,
-        )) as Record<string, unknown>;
+        const result = (await costSummaryTool.handler({ action: 'start_stream' }, root)) as Record<
+          string,
+          unknown
+        >;
         expect(result.registered).toBe(false);
         expect(result.streamId).toBeNull();
       });
@@ -199,7 +202,11 @@ describe('projscan_cost_summary', () => {
         expect((result.baseline as Record<string, number>).totalCalls).toBe(2);
         expect((result.baseline as Record<string, number>).totalEstimatedTokens).toBe(9000);
         // Stop the stream so the dangling timer doesn't keep the test alive.
-        await costSummaryTool.handler({ action: 'stop_stream', stream_id: result.streamId }, root, ctx);
+        await costSummaryTool.handler(
+          { action: 'stop_stream', stream_id: result.streamId },
+          root,
+          ctx,
+        );
       });
     });
 
@@ -244,7 +251,11 @@ describe('projscan_cost_summary', () => {
         )) as Record<string, unknown>;
         // MIN_STREAM_INTERVAL_S = 2
         expect(result.intervalSeconds).toBe(2);
-        await costSummaryTool.handler({ action: 'stop_stream', stream_id: result.streamId }, root, ctx);
+        await costSummaryTool.handler(
+          { action: 'stop_stream', stream_id: result.streamId },
+          root,
+          ctx,
+        );
       });
     });
 

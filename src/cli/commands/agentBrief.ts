@@ -10,13 +10,23 @@ import {
 import { computeAgentBrief } from '../../core/agentBrief.js';
 import type { AgentBriefIntent, AgentBriefItem, AgentBriefReport } from '../../types.js';
 
-const INTENTS: readonly AgentBriefIntent[] = ['next_agent', 'bug_hunt', 'release', 'refactor', 'hardening'];
+const INTENTS: readonly AgentBriefIntent[] = [
+  'next_agent',
+  'bug_hunt',
+  'release',
+  'refactor',
+  'hardening',
+];
 
 export function registerAgentBrief(): void {
   program
     .command('agent-brief')
     .description('Create a compact next-agent context packet with focus items and guardrails')
-    .option('--intent <intent>', 'next_agent, bug_hunt, release, refactor, or hardening', 'next_agent')
+    .option(
+      '--intent <intent>',
+      'next_agent, bug_hunt, release, refactor, or hardening',
+      'next_agent',
+    )
     .option('--max-items <count>', 'maximum focus items to return', parsePositiveInt)
     .action(async (cmdOpts) => {
       setupLogLevel();

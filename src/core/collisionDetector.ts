@@ -95,7 +95,10 @@ export async function listWorktrees(rootPath: string): Promise<WorktreeRef[]> {
     } else if (current && line.startsWith('HEAD ')) {
       current.head = line.slice('HEAD '.length).trim();
     } else if (current && line.startsWith('branch ')) {
-      current.branch = line.slice('branch '.length).trim().replace(/^refs\/heads\//, '');
+      current.branch = line
+        .slice('branch '.length)
+        .trim()
+        .replace(/^refs\/heads\//, '');
     } else if (current && line.trim() === 'detached') {
       current.branch = null;
     } else if (line.trim() === '') {
@@ -126,7 +129,12 @@ export async function detectCollisions(
         worktrees.length === 0
           ? 'not a git repository, or git worktrees are unavailable'
           : 'only one worktree — collision detection needs at least two in-flight worktrees',
-      worktrees: worktrees.map((w) => ({ path: w.path, branch: w.branch, changedFileCount: 0, baseRef: null })),
+      worktrees: worktrees.map((w) => ({
+        path: w.path,
+        branch: w.branch,
+        changedFileCount: 0,
+        baseRef: null,
+      })),
       collisions: [],
     };
   }
@@ -218,7 +226,8 @@ export async function detectCollisions(
         const maxDistance = options.maxDistance ?? 5;
         for (const file of aFiles) {
           if (bSet.has(file)) continue;
-          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance }).reachable) {
+          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance })
+            .reachable) {
             if (node.distance >= 2 && bSet.has(node.file) && !aSet.has(node.file)) {
               collisions.push({
                 kind: 'dependency',
@@ -235,7 +244,8 @@ export async function detectCollisions(
         }
         for (const file of b.files) {
           if (aSet.has(file)) continue;
-          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance }).reachable) {
+          for (const node of computeImpact(graph, { kind: 'file', value: file }, { maxDistance })
+            .reachable) {
             if (node.distance >= 2 && aSet.has(node.file) && !bSet.has(node.file)) {
               collisions.push({
                 kind: 'dependency',

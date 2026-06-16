@@ -48,6 +48,7 @@
 ## Task 0: Contract Types and Baseline Tests
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/utils/formatSupport.ts`
 - Test: `tests/core/preflight.test.ts`
@@ -141,9 +142,20 @@ export interface PreflightSuggestedAction {
 }
 
 export interface PreflightEvidence {
-  health?: { score: number; grade: HealthScore['grade']; errors: number; warnings: number; infos: number };
+  health?: {
+    score: number;
+    grade: HealthScore['grade'];
+    errors: number;
+    warnings: number;
+    infos: number;
+  };
   changedFiles?: { available: boolean; count: number; files: string[]; reason?: string };
-  review?: { available: boolean; verdict?: ReviewReport['verdict']; summary?: string; reason?: string };
+  review?: {
+    available: boolean;
+    verdict?: ReviewReport['verdict'];
+    summary?: string;
+    reason?: string;
+  };
   session?: { id: string; touchedFiles: string[]; eventCount: number };
   hotspots?: { touched: Array<{ file: string; riskScore: number }> };
   plugins?: { enabled: boolean; errorIssues: number; warningIssues: number };
@@ -166,12 +178,57 @@ export interface PreflightReport {
 Also add coordination resource, plugin-test, and review-contract types as additive interfaces:
 
 ```ts
-export interface SessionResourceSummary { schemaVersion: 1; sessionId: string; touchedFiles: string[]; recentIssues: Issue[]; highRiskTouchedFiles: Array<{ file: string; riskScore: number }>; staleSignals: string[]; truncated?: boolean; }
-export interface SessionConflict { kind: 'same-file' | 'import-related' | 'same-workspace' | 'taint-related' | 'hotspot-overlap'; files: string[]; message: string; severity: 'warning' | 'error'; }
-export interface SessionHandoff { schemaVersion: 1; summary: SessionResourceSummary; remainingRisks: SessionConflict[]; suggestedNextActions: PreflightSuggestedAction[]; avoidRepeating: string[]; }
-export interface RiskNowResource { schemaVersion: 1; conflicts: SessionConflict[]; touchedFiles: string[]; truncated?: boolean; }
-export interface PluginTestResult { schemaVersion: 1; manifestPath: string; ok: boolean; diagnostics: Array<{ code: string; severity: IssueSeverity; message: string }>; analyzer?: { issues: Issue[] }; reporter?: { outputs: Array<{ command: string; text: string }> }; }
-export interface ReviewContractChange { kind: 'export-added' | 'export-removed' | 'export-renamed' | 'entrypoint-changed' | 'public-export-changed' | 'signature-changed'; file: string; symbol?: string; before?: string; after?: string; confidence: 'high' | 'medium' | 'low'; why: string; }
+export interface SessionResourceSummary {
+  schemaVersion: 1;
+  sessionId: string;
+  touchedFiles: string[];
+  recentIssues: Issue[];
+  highRiskTouchedFiles: Array<{ file: string; riskScore: number }>;
+  staleSignals: string[];
+  truncated?: boolean;
+}
+export interface SessionConflict {
+  kind: 'same-file' | 'import-related' | 'same-workspace' | 'taint-related' | 'hotspot-overlap';
+  files: string[];
+  message: string;
+  severity: 'warning' | 'error';
+}
+export interface SessionHandoff {
+  schemaVersion: 1;
+  summary: SessionResourceSummary;
+  remainingRisks: SessionConflict[];
+  suggestedNextActions: PreflightSuggestedAction[];
+  avoidRepeating: string[];
+}
+export interface RiskNowResource {
+  schemaVersion: 1;
+  conflicts: SessionConflict[];
+  touchedFiles: string[];
+  truncated?: boolean;
+}
+export interface PluginTestResult {
+  schemaVersion: 1;
+  manifestPath: string;
+  ok: boolean;
+  diagnostics: Array<{ code: string; severity: IssueSeverity; message: string }>;
+  analyzer?: { issues: Issue[] };
+  reporter?: { outputs: Array<{ command: string; text: string }> };
+}
+export interface ReviewContractChange {
+  kind:
+    | 'export-added'
+    | 'export-removed'
+    | 'export-renamed'
+    | 'entrypoint-changed'
+    | 'public-export-changed'
+    | 'signature-changed';
+  file: string;
+  symbol?: string;
+  before?: string;
+  after?: string;
+  confidence: 'high' | 'medium' | 'low';
+  why: string;
+}
 ```
 
 - [ ] **Step 4: Add minimal core helpers**
@@ -188,7 +245,8 @@ export function decidePreflightVerdict(reasons: PreflightReason[]): PreflightVer
 }
 
 export function summarizePreflight(report: PreflightReport): string {
-  if (report.reasons.length === 0) return `${report.verdict}: no blocking or cautionary signals found`;
+  if (report.reasons.length === 0)
+    return `${report.verdict}: no blocking or cautionary signals found`;
   return `${report.verdict}: ${report.reasons[0].message}`;
 }
 ```
@@ -208,6 +266,7 @@ Check that the new shapes are additive, JSON-compatible, and do not rename exist
 ## Task 1: Agent Safety Gate
 
 **Files:**
+
 - Modify: `src/core/preflight.ts`
 - Create: `src/cli/commands/preflight.ts`
 - Modify: `src/cli/index.ts`
@@ -224,7 +283,13 @@ Extend `tests/core/preflight.test.ts`:
 
 ```ts
 test('before_edit works outside git and returns a complete report', async () => {
-  const root = await makeTempProject({ files: { 'package.json': '{"name":"demo","version":"1.0.0"}', 'README.md': '# demo\n', 'src/index.ts': 'export const ok = 1;\n' } });
+  const root = await makeTempProject({
+    files: {
+      'package.json': '{"name":"demo","version":"1.0.0"}',
+      'README.md': '# demo\n',
+      'src/index.ts': 'export const ok = 1;\n',
+    },
+  });
   const report = await computePreflight(root, { mode: 'before_edit' });
   expect(report.schemaVersion).toBe(1);
   expect(report.mode).toBe('before_edit');
@@ -236,7 +301,9 @@ test('plugin policy errors block preflight', async () => {
   const root = await makeTempProjectWithErrorPlugin();
   const report = await computePreflight(root, { mode: 'before_edit', enablePlugins: true });
   expect(report.verdict).toBe('block');
-  expect(report.reasons.some((reason) => reason.source === 'plugin' && reason.severity === 'error')).toBe(true);
+  expect(
+    report.reasons.some((reason) => reason.source === 'plugin' && reason.severity === 'error'),
+  ).toBe(true);
 });
 ```
 
@@ -259,10 +326,15 @@ export interface ComputePreflightOptions {
   enablePlugins?: boolean;
 }
 
-export async function computePreflight(rootPath: string, options: ComputePreflightOptions = {}): Promise<PreflightReport> {
+export async function computePreflight(
+  rootPath: string,
+  options: ComputePreflightOptions = {},
+): Promise<PreflightReport> {
   const mode = options.mode ?? 'before_edit';
   const scan = await scanRepository(rootPath);
-  const issues = await collectIssues(rootPath, scan.files, { enablePlugins: options.enablePlugins });
+  const issues = await collectIssues(rootPath, scan.files, {
+    enablePlugins: options.enablePlugins,
+  });
   const health = calculateScore(issues);
   const changedFiles = await safeChangedFiles(rootPath, mode, options.baseRef);
   const session = await safeSession(rootPath);
@@ -271,7 +343,16 @@ export async function computePreflight(rootPath: string, options: ComputePreflig
   const review = await safeReview(rootPath, mode, options);
   appendReviewReasons(reasons, review);
   const verdict = decidePreflightVerdict(reasons);
-  const report = buildPreflightReport({ mode, verdict, reasons, health, changedFiles, session, hotspots, review });
+  const report = buildPreflightReport({
+    mode,
+    verdict,
+    reasons,
+    health,
+    changedFiles,
+    session,
+    hotspots,
+    review,
+  });
   return { ...report, summary: summarizePreflight(report) };
 }
 ```
@@ -316,7 +397,9 @@ program
   .option('--base-ref <ref>', 'Base git ref for before_commit/before_merge checks')
   .option('--head-ref <ref>', 'Head git ref for before_merge review checks')
   .option('-f, --format <format>', 'Output format (console, json)', 'console')
-  .action(async (options) => { /* validate format, call computePreflight, render */ });
+  .action(async (options) => {
+    /* validate format, call computePreflight, render */
+  });
 ```
 
 Register it in `src/cli/index.ts`, and add `preflight` to `src/utils/formatSupport.ts` as `console` and `json`.
@@ -346,8 +429,21 @@ Create `src/mcp/tools/preflight.ts` with `preflightTool`:
 export const preflightTool: McpToolDefinition = {
   name: 'projscan_preflight',
   description: 'Answer whether an agent can safely proceed before edits, commit, or merge.',
-  inputSchema: { type: 'object', properties: { mode: { type: 'string', enum: ['before_edit', 'before_commit', 'before_merge'] }, base_ref: { type: 'string' }, head_ref: { type: 'string' } } },
-  handler: async (args, context) => ({ report: await computePreflight(context.rootPath, { mode: args.mode, baseRef: args.base_ref, headRef: args.head_ref }) }),
+  inputSchema: {
+    type: 'object',
+    properties: {
+      mode: { type: 'string', enum: ['before_edit', 'before_commit', 'before_merge'] },
+      base_ref: { type: 'string' },
+      head_ref: { type: 'string' },
+    },
+  },
+  handler: async (args, context) => ({
+    report: await computePreflight(context.rootPath, {
+      mode: args.mode,
+      baseRef: args.base_ref,
+      headRef: args.head_ref,
+    }),
+  }),
 };
 ```
 
@@ -368,6 +464,7 @@ Expected: focused tests pass; stability either passes or clearly lists the new s
 ## Task 2: Multi-Agent Coordination Resources
 
 **Files:**
+
 - Create: `src/core/sessionResources.ts`
 - Modify: `src/mcp/resources.ts`
 - Test: `tests/mcp/sessionResources.test.ts`
@@ -405,10 +502,18 @@ Expected: FAIL because the resources are not listed/readable.
 Create `src/core/sessionResources.ts` with:
 
 ```ts
-export async function buildSessionSummary(rootPath: string): Promise<SessionResourceSummary> { /* load session, scan issues/hotspots, return compact summary */ }
-export async function buildHandoff(rootPath: string): Promise<SessionHandoff> { /* summary + conflicts + next actions */ }
-export async function buildRiskNow(rootPath: string): Promise<RiskNowResource> { /* conflicts from touched files */ }
-export function detectSessionConflicts(files: string[], graph?: CodeGraph): SessionConflict[] { /* same-file, import-related, hotspot-overlap, same-workspace */ }
+export async function buildSessionSummary(rootPath: string): Promise<SessionResourceSummary> {
+  /* load session, scan issues/hotspots, return compact summary */
+}
+export async function buildHandoff(rootPath: string): Promise<SessionHandoff> {
+  /* summary + conflicts + next actions */
+}
+export async function buildRiskNow(rootPath: string): Promise<RiskNowResource> {
+  /* conflicts from touched files */
+}
+export function detectSessionConflicts(files: string[], graph?: CodeGraph): SessionConflict[] {
+  /* same-file, import-related, hotspot-overlap, same-workspace */
+}
 ```
 
 Keep conflict detection deterministic and budget-aware. If graph data is unavailable, return same-file and workspace-level signals only.
@@ -434,6 +539,7 @@ Bug-hunt cases: empty session, one touched file, multiple touched files, reset s
 ## Task 3: Plugin Ecosystem DX
 
 **Files:**
+
 - Create: `src/core/pluginDx.ts`
 - Modify: `src/cli/commands/plugin.ts`
 - Modify: `src/utils/formatSupport.ts`
@@ -456,7 +562,9 @@ test('scaffolds an analyzer plugin that validates and tests cleanly', async () =
 test('plugin test reports missing exports with structured diagnostics', async () => {
   const result = await testPlugin(manifestPath, { fixtureRoot: root });
   expect(result.ok).toBe(false);
-  expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'PLUGIN_EXPORT_MISSING')).toBe(true);
+  expect(result.diagnostics.some((diagnostic) => diagnostic.code === 'PLUGIN_EXPORT_MISSING')).toBe(
+    true,
+  );
 });
 ```
 
@@ -471,8 +579,18 @@ Expected: FAIL because `pluginDx.ts` does not exist.
 Create `src/core/pluginDx.ts`:
 
 ```ts
-export async function initPlugin(rootPath: string, options: { kind: 'analyzer' | 'reporter'; name?: string }): Promise<{ manifestPath: string; modulePath: string }> { /* mkdir .projscan-plugins, refuse overwrite, write manifest + mjs */ }
-export async function testPlugin(manifestPath: string, options: { fixtureRoot?: string }): Promise<PluginTestResult> { /* validate, load with execution enabled, run analyzer/reporter fixture */ }
+export async function initPlugin(
+  rootPath: string,
+  options: { kind: 'analyzer' | 'reporter'; name?: string },
+): Promise<{ manifestPath: string; modulePath: string }> {
+  /* mkdir .projscan-plugins, refuse overwrite, write manifest + mjs */
+}
+export async function testPlugin(
+  manifestPath: string,
+  options: { fixtureRoot?: string },
+): Promise<PluginTestResult> {
+  /* validate, load with execution enabled, run analyzer/reporter fixture */
+}
 ```
 
 Analyzer template should only emit an `info` issue for a marker string such as `PROJSCAN_PLUGIN_EXAMPLE`. Reporter template should return strings for `doctor`, `analyze`, and `ci` payloads.
@@ -485,7 +603,10 @@ Create `tests/cli/pluginDx.test.ts`:
 test('plugin init and plugin test work through the CLI', async () => {
   const init = await runCli(['plugin', 'init', '--kind', 'analyzer', '--name', 'policy'], root);
   expect(init.stdout).toContain('policy.projscan-plugin.json');
-  const test = await runCli(['plugin', 'test', '.projscan-plugins/policy.projscan-plugin.json', '--format', 'json'], root);
+  const test = await runCli(
+    ['plugin', 'test', '.projscan-plugins/policy.projscan-plugin.json', '--format', 'json'],
+    root,
+  );
   expect(JSON.parse(test.stdout).ok).toBe(true);
 });
 ```
@@ -527,6 +648,7 @@ Bug-hunt cases: existing manifest, malformed analyzer issue, reporter throws, un
 ## Task 4: Deeper Review Intelligence
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/review.ts`
 - Optionally modify: `src/core/prDiff.ts`
@@ -551,7 +673,12 @@ test('review reports package entrypoint changes', async () => {
   const review = await computeReview(root, { baseRef, headRef });
   expect(review.contractChanges).toEqual(
     expect.arrayContaining([
-      expect.objectContaining({ kind: 'entrypoint-changed', file: 'package.json', before: './old.js', after: './new.js' }),
+      expect.objectContaining({
+        kind: 'entrypoint-changed',
+        file: 'package.json',
+        before: './old.js',
+        after: './new.js',
+      }),
     ]),
   );
 });
@@ -583,7 +710,7 @@ Map existing `FileAstDiff.exportsAdded`, `exportsRemoved`, and `exportsRenamed` 
 Each contract change must include a short rule-driven `why`, for example:
 
 ```ts
-`Export "${symbol}" was removed from ${file}; downstream imports can fail at runtime or compile time.`
+`Export "${symbol}" was removed from ${file}; downstream imports can fail at runtime or compile time.`;
 ```
 
 - [ ] **Step 5: Focused verification and bug hunt**
@@ -599,6 +726,7 @@ Bug-hunt cases: added export only, removed export only, rename-like change, func
 ## Task 5: Docs, Changelog, and Stability
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `docs/STABILITY.md`
@@ -653,6 +781,7 @@ Bug-hunt cases: command examples match actual CLI flags, registry description re
 ## Task 6: Final Cross-Surface Bug Hunt
 
 **Files:**
+
 - All changed files.
 
 - [ ] **Step 1: Run full verification**

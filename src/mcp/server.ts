@@ -5,9 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { getToolDefinitions, getToolHandler } from './tools.js';
 import { getPromptDefinitions, getPrompt } from './prompts.js';
 import { getResourceDefinitions, readResource } from './resources.js';
-import { applyBudget, attachCostSidecar, estimateTokens } from './tokenBudget.js';
+import { applyToolBudgetAndCost, formatToolContent } from './serverPayload.js';
 import { withProgress, type ProgressEmitter } from './progress.js';
-import { toContentBlocks } from './chunker.js';
 import { startWatcher, type WatchHandle } from '../core/watcher.js';
 import {
   loadSession,
@@ -167,7 +166,10 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     }
   }
 
-  async function handleInitialize(id: string | number | null, rawParams: unknown): Promise<JsonRpcResponse> {
+  async function handleInitialize(
+    id: string | number | null,
+    rawParams: unknown,
+  ): Promise<JsonRpcResponse> {
     const params = (rawParams ?? {}) as { protocolVersion?: string };
     initialized = true;
     const requested = params.protocolVersion;
@@ -213,7 +215,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       const emit = buildProgressEmitter(params._meta?.progressToken);
       const ctx = buildToolContext();
       const result = await withProgress(emit, () => handler(args, rootPath, ctx));
-      const { payload, estimatedTokens } = applyBudgetAndCost(result, args);
+      const { payload, estimatedTokens } = applyToolBudgetAndCost(result, args);
       // Record AFTER budgeting so the cost we log is the cost the
       // agent actually pays, not the pre-truncation payload size.
       await recordSessionTouches(name, result, estimatedTokens);
@@ -348,11 +350,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       if (typeof estimatedTokens === 'number' && Number.isFinite(estimatedTokens)) {
         data.estimatedTokens = estimatedTokens;
       }
-      recordEvent(
-        sess,
-        `tool-call:${name}`,
-        Object.keys(data).length > 0 ? data : undefined,
-      );
+      recordEvent(sess, `tool-call:${name}`, Object.keys(data).length > 0 ? data : undefined);
       sessionDirty = true;
       const paths = extractTouchedPaths(result);
       for (const p of paths) recordTouch(sess, p, 'tool-result');
@@ -360,60 +358,6 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     } catch {
       // Session is best-effort.
     }
-  }
-
-  /**
-   * Apply the agent's `max_tokens` budget (post-hoc truncation) then
-   * attach the `_cost` sidecar (1.5+) reflecting the final payload.
-   * Budget and cost coexist when both fire; both are non-destructive.
-   *
-   * 1.7+ — also returns the final estimatedTokens so the dispatcher can
-   * fold it into the session event log for `projscan_cost_summary`
-   * aggregation.
-   */
-  function applyBudgetAndCost(
-    result: unknown,
-    args: Record<string, unknown>,
-  ): { payload: unknown; estimatedTokens: number } {
-    const rawMaxTokens = args.max_tokens;
-    const maxTokens =
-      typeof rawMaxTokens === 'number' && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
-        ? rawMaxTokens
-        : undefined;
-    const budgeted = applyBudget(result, maxTokens !== undefined ? { maxTokens } : {});
-    const withBudget = budgeted.truncated
-      ? attachBudgetSidecar(budgeted.value, {
-          truncated: true,
-          estimatedTokens: budgeted.estimatedTokens,
-          maxTokens,
-        })
-      : budgeted.value;
-    // Avoid re-stringifying when budget didn't truncate. In that case
-    // `withBudget === budgeted.value`, so `budgeted.estimatedTokens`
-    // (computed once inside applyBudget) is exactly what we'd recompute
-    // here. Only the truncated branch wraps with attachBudgetSidecar,
-    // changing the size — that path keeps the re-stringify. Saves one
-    // full-payload JSON.stringify per non-truncated tool call (the
-    // common case).
-    const finalEstimatedTokens = budgeted.truncated
-      ? estimateTokens(JSON.stringify(withBudget) ?? '')
-      : budgeted.estimatedTokens;
-    return {
-      payload: attachCostSidecar(withBudget, finalEstimatedTokens),
-      estimatedTokens: finalEstimatedTokens,
-    };
-  }
-
-  /**
-   * Format the post-budget payload into MCP content blocks. With
-   * `stream: true` the payload is split into multiple blocks (header
-   * + N record blocks); the default is a single text block for
-   * backwards compatibility.
-   */
-  function formatToolContent(payload: unknown, wantsStreaming: boolean): unknown[] {
-    return wantsStreaming
-      ? toContentBlocks(payload)
-      : [{ type: 'text', text: safeStringify(payload) }];
   }
 
   async function handleMessage(line: string): Promise<string | null> {
@@ -427,8 +371,15 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
       return JSON.stringify(fail(null, JSONRPC_ERROR.ParseError, 'Invalid JSON'));
     }
 
-    if (!request || typeof request !== 'object' || request.jsonrpc !== '2.0' || typeof request.method !== 'string') {
-      return JSON.stringify(fail(request?.id ?? null, JSONRPC_ERROR.InvalidRequest, 'Invalid JSON-RPC request'));
+    if (
+      !request ||
+      typeof request !== 'object' ||
+      request.jsonrpc !== '2.0' ||
+      typeof request.method !== 'string'
+    ) {
+      return JSON.stringify(
+        fail(request?.id ?? null, JSONRPC_ERROR.InvalidRequest, 'Invalid JSON-RPC request'),
+      );
     }
 
     const response = await dispatch(request);
@@ -510,41 +461,17 @@ function ok(id: string | number | null, result: unknown): JsonRpcResponse {
   return { jsonrpc: '2.0', id, result };
 }
 
-function fail(id: string | number | null, code: number, message: string, data?: unknown): JsonRpcResponse {
+function fail(
+  id: string | number | null,
+  code: number,
+  message: string,
+  data?: unknown,
+): JsonRpcResponse {
   return {
     jsonrpc: '2.0',
     id,
     error: { code, message, data },
   };
-}
-
-function safeStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-interface BudgetInfo {
-  truncated: boolean;
-  estimatedTokens: number;
-  maxTokens?: number;
-}
-
-/**
- * Attach a _budget sidecar to the result. Arrays and primitives must be
- * wrapped rather than spread; object spread over an array yields a garbled
- * { "0": ..., "1": ..., _budget } object that breaks downstream consumers.
- */
-function attachBudgetSidecar(value: unknown, info: BudgetInfo): unknown {
-  if (Array.isArray(value)) {
-    return { value, _budget: info };
-  }
-  if (value === null || typeof value !== 'object') {
-    return { value, _budget: info };
-  }
-  return { ...(value as Record<string, unknown>), _budget: info };
 }
 
 export interface RunMcpServerOptions {

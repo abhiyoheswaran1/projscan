@@ -25,7 +25,9 @@ In `tests/cli/start.test.ts`, extend `start writes a Mission Control bundle when
 
 ```ts
 expect(result.stdout).toContain('review.sh');
-expect(quickstart).toContain('- `review.sh`: Shell script that prints status, review evidence, run report, and reviewer replies.');
+expect(quickstart).toContain(
+  '- `review.sh`: Shell script that prints status, review evidence, run report, and reviewer replies.',
+);
 
 const reviewScript = await fs.readFile(path.join(bundleDir, 'review.sh'), 'utf-8');
 expect(reviewScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
@@ -54,7 +56,9 @@ expect(initialReview.stdout).toContain('Evidence commands');
 expect(initialReview.stdout).toContain('- git status --short');
 expect(initialReview.stdout).toContain('- git diff --stat');
 expect(initialReview.stdout).toContain('Reviewer replies:');
-expect(initialReview.stdout).toContain('Approve next slice: Approved: start one more bounded implementation slice.');
+expect(initialReview.stdout).toContain(
+  'Approve next slice: Approved: start one more bounded implementation slice.',
+);
 ```
 
 - [ ] **Step 2: Add manifest and JSON save assertions**

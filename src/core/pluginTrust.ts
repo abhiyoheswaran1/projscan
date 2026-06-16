@@ -89,9 +89,7 @@ async function readStore(): Promise<PluginTrustStore> {
   try {
     const raw = await fs.readFile(trustFilePath(), 'utf-8');
     const parsed = JSON.parse(raw) as Partial<PluginTrustStore>;
-    const entries = Array.isArray(parsed.entries)
-      ? parsed.entries.filter(isWellShapedEntry)
-      : [];
+    const entries = Array.isArray(parsed.entries) ? parsed.entries.filter(isWellShapedEntry) : [];
     return { schemaVersion: SCHEMA_VERSION, entries };
   } catch {
     return { schemaVersion: SCHEMA_VERSION, entries: [] };

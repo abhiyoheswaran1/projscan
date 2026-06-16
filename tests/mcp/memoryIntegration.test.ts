@@ -106,7 +106,9 @@ describe('projscan_memory MCP tool (1.5+)', () => {
       }),
     );
     if (!raw) throw new Error('no response');
-    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    const env = JSON.parse(raw) as {
+      result: { isError: boolean; content: Array<{ text: string }> };
+    };
     expect(env.result.isError).toBe(true);
     expect(env.result.content[0].text).toMatch(/rule/);
     server.close();

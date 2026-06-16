@@ -79,4 +79,3 @@ Owner route: changed package owners from CODEOWNERS.
 Next command: projscan preflight --mode before_merge --format json
 Developer feedback: what was noisy or missing before approval?
 ```
-

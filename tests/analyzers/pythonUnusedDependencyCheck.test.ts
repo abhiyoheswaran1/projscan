@@ -48,11 +48,7 @@ describe('pythonUnusedDependencyCheck', () => {
     const files = [
       await writeFile(tmp, 'pkg/__init__.py', ''),
       await writeFile(tmp, 'pkg/mod.py', 'import requests\n'),
-      await writeFile(
-        tmp,
-        'requirements.txt',
-        'requests==2.31\nunused-pkg==1.0\n',
-      ),
+      await writeFile(tmp, 'requirements.txt', 'requests==2.31\nunused-pkg==1.0\n'),
     ];
     const issues = await check(tmp, files);
     const unused = issues.find((i) => i.id === 'unused-python-dependency-unused-pkg');
@@ -75,11 +71,7 @@ describe('pythonUnusedDependencyCheck', () => {
     const files = [
       await writeFile(tmp, 'pkg/__init__.py', ''),
       await writeFile(tmp, 'pkg/mod.py', 'x = 1\n'),
-      await writeFile(
-        tmp,
-        'requirements.txt',
-        'pytest==7\nruff==0.1\nblack==23.12\nmypy==1.0\n',
-      ),
+      await writeFile(tmp, 'requirements.txt', 'pytest==7\nruff==0.1\nblack==23.12\nmypy==1.0\n'),
     ];
     const issues = await check(tmp, files);
     expect(issues).toEqual([]);

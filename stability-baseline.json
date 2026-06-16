@@ -2,102 +2,51 @@
   "schemaVersion": 1,
   "mcpTools": {
     "projscan_analyze": {
-      "args": [
-        "package"
-      ],
+      "args": ["package"],
       "required": []
     },
     "projscan_doctor": {
-      "args": [
-        "max_cost_tokens",
-        "package"
-      ],
+      "args": ["max_cost_tokens", "package"],
       "required": []
     },
     "projscan_hotspots": {
-      "args": [
-        "cursor",
-        "limit",
-        "max_tokens",
-        "package",
-        "page_size",
-        "since",
-        "view"
-      ],
+      "args": ["cursor", "limit", "max_tokens", "package", "page_size", "since", "view"],
       "required": []
     },
     "projscan_file": {
-      "args": [
-        "file"
-      ],
-      "required": [
-        "file"
-      ]
+      "args": ["file"],
+      "required": ["file"]
     },
     "projscan_structure": {
-      "args": [
-        "package"
-      ],
+      "args": ["package"],
       "required": []
     },
     "projscan_dependencies": {
-      "args": [
-        "package"
-      ],
+      "args": ["package"],
       "required": []
     },
     "projscan_outdated": {
-      "args": [
-        "cursor",
-        "max_tokens",
-        "package",
-        "page_size"
-      ],
+      "args": ["cursor", "max_tokens", "package", "page_size"],
       "required": []
     },
     "projscan_audit": {
-      "args": [
-        "cursor",
-        "max_tokens",
-        "package",
-        "page_size"
-      ],
+      "args": ["cursor", "max_tokens", "package", "page_size"],
       "required": []
     },
     "projscan_upgrade": {
-      "args": [
-        "check_registry",
-        "package"
-      ],
-      "required": [
-        "package"
-      ]
+      "args": ["check_registry", "package"],
+      "required": ["package"]
     },
     "projscan_coverage": {
-      "args": [
-        "limit",
-        "max_tokens",
-        "package"
-      ],
+      "args": ["limit", "max_tokens", "package"],
       "required": []
     },
     "projscan_semantic_graph": {
-      "args": [
-        "max_edges",
-        "max_nodes",
-        "max_tokens",
-        "query"
-      ],
+      "args": ["max_edges", "max_nodes", "max_tokens", "query"],
       "required": []
     },
     "projscan_coupling": {
-      "args": [
-        "direction",
-        "file",
-        "limit",
-        "max_tokens",
-        "package"
-      ],
+      "args": ["direction", "file", "limit", "max_tokens", "package"],
       "required": []
     },
     "projscan_workspaces": {
@@ -105,108 +54,47 @@
       "required": []
     },
     "projscan_pr_diff": {
-      "args": [
-        "base",
-        "head",
-        "max_tokens",
-        "package"
-      ],
+      "args": ["base", "head", "max_tokens", "package"],
       "required": []
     },
     "projscan_review": {
-      "args": [
-        "base",
-        "head",
-        "intent",
-        "max_cost_tokens",
-        "max_tokens",
-        "package"
-      ],
+      "args": ["base", "head", "intent", "max_cost_tokens", "max_tokens", "package"],
       "required": []
     },
     "projscan_fix_suggest": {
-      "args": [
-        "file",
-        "issue_id",
-        "rule",
-        "severity"
-      ],
+      "args": ["file", "issue_id", "rule", "severity"],
       "required": []
     },
     "projscan_explain_issue": {
-      "args": [
-        "issue_id"
-      ],
-      "required": [
-        "issue_id"
-      ]
+      "args": ["issue_id"],
+      "required": ["issue_id"]
     },
     "projscan_impact": {
-      "args": [
-        "cross_repo",
-        "cursor",
-        "file",
-        "max_distance",
-        "max_tokens",
-        "page_size",
-        "symbol"
-      ],
+      "args": ["cross_repo", "cursor", "file", "max_distance", "max_tokens", "page_size", "symbol"],
       "required": []
     },
     "projscan_search": {
-      "args": [
-        "limit",
-        "max_tokens",
-        "mode",
-        "package",
-        "query",
-        "scope",
-        "sub_file"
-      ],
-      "required": [
-        "query"
-      ]
+      "args": ["limit", "max_tokens", "mode", "package", "query", "scope", "sub_file"],
+      "required": ["query"]
     },
     "projscan_session": {
-      "args": [
-        "action",
-        "cursor",
-        "page_size",
-        "source"
-      ],
+      "args": ["action", "cursor", "page_size", "source"],
       "required": []
     },
     "projscan_memory": {
-      "args": [
-        "action",
-        "file",
-        "rule"
-      ],
+      "args": ["action", "file", "rule"],
       "required": []
     },
     "projscan_workspace_graph": {
-      "args": [
-        "action",
-        "file",
-        "repo"
-      ],
+      "args": ["action", "file", "repo"],
       "required": []
     },
     "projscan_apply_fix": {
-      "args": [
-        "action",
-        "confirm",
-        "issue_id",
-        "rollback_id"
-      ],
+      "args": ["action", "confirm", "issue_id", "rollback_id"],
       "required": []
     },
     "projscan_taint": {
-      "args": [
-        "max_flows",
-        "sinks",
-        "sources"
-      ],
+      "args": ["max_flows", "sinks", "sources"],
       "required": []
     },
     "projscan_dataflow": {
@@ -222,38 +110,19 @@
       "required": []
     },
     "projscan_cost_summary": {
-      "args": [
-        "action",
-        "interval_seconds",
-        "stream_id",
-        "top"
-      ],
+      "args": ["action", "interval_seconds", "stream_id", "top"],
       "required": []
     },
     "projscan_review_watch": {
-      "args": [
-        "action",
-        "base",
-        "head",
-        "interval_seconds",
-        "watchId"
-      ],
+      "args": ["action", "base", "head", "interval_seconds", "watchId"],
       "required": []
     },
     "projscan_plugin": {
-      "args": [
-        "action",
-        "manifest_path"
-      ],
+      "args": ["action", "manifest_path"],
       "required": []
     },
     "projscan_preflight": {
-      "args": [
-        "base_ref",
-        "head_ref",
-        "max_changed_files",
-        "mode"
-      ],
+      "args": ["base_ref", "head_ref", "max_changed_files", "mode"],
       "required": []
     },
     "projscan_workplan": {
@@ -269,125 +138,63 @@
       "required": []
     },
     "projscan_release_train": {
-      "args": [
-        "lines",
-        "max_tokens"
-      ],
+      "args": ["lines", "max_tokens"],
       "required": []
     },
     "projscan_bug_hunt": {
-      "args": [
-        "max_findings",
-        "max_tokens",
-        "since"
-      ],
+      "args": ["max_findings", "max_tokens", "since"],
       "required": []
     },
     "projscan_evidence_pack": {
-      "args": [
-        "lines",
-        "max_findings",
-        "max_tokens",
-        "pr_comment",
-        "website_prompt"
-      ],
+      "args": ["lines", "max_findings", "max_tokens", "pr_comment", "website_prompt"],
       "required": []
     },
     "projscan_regression_plan": {
-      "args": [
-        "level",
-        "lines",
-        "max_targets",
-        "max_tokens"
-      ],
+      "args": ["level", "lines", "max_targets", "max_tokens"],
       "required": []
     },
     "projscan_agent_brief": {
-      "args": [
-        "intent",
-        "max_items",
-        "max_tokens"
-      ],
+      "args": ["intent", "max_items", "max_tokens"],
       "required": []
     },
     "projscan_quality_scorecard": {
-      "args": [
-        "max_risks",
-        "max_tokens"
-      ],
+      "args": ["max_risks", "max_tokens"],
       "required": []
     },
     "projscan_adoption": {
-      "args": [
-        "action",
-        "client",
-        "max_tokens"
-      ],
+      "args": ["action", "client", "max_tokens"],
       "required": []
     },
     "projscan_start": {
-      "args": [
-        "include_handoff",
-        "max_risks",
-        "max_tasks",
-        "max_tokens",
-        "mode"
-      ],
+      "args": ["include_handoff", "max_risks", "max_tasks", "max_tokens", "mode"],
       "required": []
     },
     "projscan_understand": {
-      "args": [
-        "intent",
-        "max_items",
-        "max_tokens",
-        "view"
-      ],
+      "args": ["intent", "max_items", "max_tokens", "view"],
       "required": []
     },
     "projscan_collision": {
-      "args": [
-        "base_ref",
-        "max_distance",
-        "transitive"
-      ],
+      "args": ["base_ref", "max_distance", "transitive"],
       "required": []
     },
     "projscan_claim": {
-      "args": [
-        "action",
-        "agent",
-        "id",
-        "note",
-        "target",
-        "ttl_seconds"
-      ],
+      "args": ["action", "agent", "id", "note", "target", "ttl_seconds"],
       "required": []
     },
     "projscan_merge_risk": {
-      "args": [
-        "base_ref"
-      ],
+      "args": ["base_ref"],
       "required": []
     },
     "projscan_route": {
-      "args": [
-        "intent"
-      ],
+      "args": ["intent"],
       "required": []
     },
     "projscan_coordinate": {
-      "args": [
-        "base_ref"
-      ],
+      "args": ["base_ref"],
       "required": []
     },
     "projscan_coordinate_watch": {
-      "args": [
-        "action",
-        "base_ref",
-        "interval_seconds",
-        "watchId"
-      ],
+      "args": ["action", "base_ref", "interval_seconds", "watchId"],
       "required": []
     }
   },

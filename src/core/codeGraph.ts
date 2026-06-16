@@ -5,6 +5,7 @@ import type { AstImport, AstExport, AstResult, FunctionInfo } from './ast.js';
 import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
+import { expandLocalStarReexports, isLocalStarReexport } from './codeGraphReexports.js';
 
 export interface GraphFile {
   relativePath: string;
@@ -59,6 +60,7 @@ export async function buildCodeGraph(
     if (entry) graphFiles.set(file.relativePath, entry);
   });
 
+  expandLocalStarReexports(graphFiles, contextByAdapter);
   const { localImporters, packageImporters, symbolDefs } = rebuildCrossFileIndexes(
     graphFiles,
     contextByAdapter,
@@ -347,15 +349,24 @@ export async function incrementallyUpdateGraph(
   // package roots and mis-resolved that batch's imports until the next
   // tick. Parsing itself doesn't depend on context, so the reorder is safe.
   await Promise.all(changedPaths.map((rel) => processChangedPath(graph, rootPath, rel)));
+  await refreshLocalStarReexporters(graph, rootPath);
   const contextByAdapter = await prepareAdapterContexts(
     rootPath,
     fakeFilesFromGraph(graph, rootPath),
   );
+  expandLocalStarReexports(graph.files, contextByAdapter);
   rebuildIndexesIntoGraph(graph, contextByAdapter);
   computeFanIn(graph.files);
   computeFanOut(graph.files);
   graph.scannedFiles = graph.files.size;
   return graph;
+}
+
+async function refreshLocalStarReexporters(graph: CodeGraph, rootPath: string): Promise<void> {
+  const reexporters = [...graph.files.values()]
+    .filter((entry) => entry.imports.some(isLocalStarReexport))
+    .map((entry) => entry.relativePath);
+  await Promise.all(reexporters.map((rel) => processChangedPath(graph, rootPath, rel)));
 }
 
 /**
@@ -430,7 +441,6 @@ function rebuildIndexesIntoGraph(
   graph.symbolDefs.clear();
   for (const [k, v] of symbolDefs) graph.symbolDefs.set(k, v);
 }
-
 
 // ── Query API ──────────────────────────────────────────────
 

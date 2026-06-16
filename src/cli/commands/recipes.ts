@@ -91,7 +91,9 @@ function printFirstRun(report: FirstRunReport): void {
 
 function printDiagnostic(diagnostic: FirstRunDiagnostic): void {
   const color = colorStatus(diagnostic.status);
-  console.log(`  ${color(symbolForStatus(diagnostic.status))} ${chalk.bold(diagnostic.label)}: ${diagnostic.summary}`);
+  console.log(
+    `  ${color(symbolForStatus(diagnostic.status))} ${chalk.bold(diagnostic.label)}: ${diagnostic.summary}`,
+  );
   if (diagnostic.detail) console.log(chalk.dim(`      ${diagnostic.detail}`));
   if (diagnostic.command) console.log(chalk.dim(`      try: ${diagnostic.command}`));
 }

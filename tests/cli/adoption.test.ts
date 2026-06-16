@@ -25,7 +25,15 @@ afterEach(async () => {
 });
 
 test('init mcp renders ready-to-paste client config as JSON', async () => {
-  const result = await runCli(['init', 'mcp', '--client', 'claude-desktop', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'init',
+    'mcp',
+    '--client',
+    'claude-desktop',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -52,13 +60,15 @@ test('recipes renders the adoption workflow catalog', async () => {
       'pr_automation',
     ]),
   );
-  expect(payload.recipes[0].commands).toContain('projscan preflight --mode before_edit --format json');
-  expect(payload.recipes.find((recipe: { id: string }) => recipe.id === 'bug_hunt').mcpTools).toContain(
-    'projscan_bug_hunt',
+  expect(payload.recipes[0].commands).toContain(
+    'projscan preflight --mode before_edit --format json',
   );
-  expect(payload.recipes.find((recipe: { id: string }) => recipe.id === 'team_bootstrap').commands).toContain(
-    'projscan init team --team platform',
-  );
+  expect(
+    payload.recipes.find((recipe: { id: string }) => recipe.id === 'bug_hunt').mcpTools,
+  ).toContain('projscan_bug_hunt');
+  expect(
+    payload.recipes.find((recipe: { id: string }) => recipe.id === 'team_bootstrap').commands,
+  ).toContain('projscan init team --team platform');
 });
 
 test('first-run reports setup diagnostics without mutating the project', async () => {
@@ -68,22 +78,43 @@ test('first-run reports setup diagnostics without mutating the project', async (
   const payload = JSON.parse(result.stdout);
   expect(payload.schemaVersion).toBe(1);
   expect(payload.diagnostics.map((diagnostic: { id: string }) => diagnostic.id)).toEqual(
-    expect.arrayContaining(['node', 'package-json', 'git', 'projscan-config', 'plugins', 'mcp-startup']),
+    expect.arrayContaining([
+      'node',
+      'package-json',
+      'git',
+      'projscan-config',
+      'plugins',
+      'mcp-startup',
+    ]),
   );
-  expect(payload.firstTenMinutes.commands.map((step: { command: string }) => step.command).slice(0, 3)).toEqual([
+  expect(
+    payload.firstTenMinutes.commands.map((step: { command: string }) => step.command).slice(0, 3),
+  ).toEqual([
     'projscan privacy-check --offline',
     'projscan start --mode before_edit',
     'projscan preflight --mode before_edit --format json',
   ]);
   expect(payload.nextCommands).toEqual(
-    expect.arrayContaining(['projscan privacy-check --offline', 'projscan init mcp --client all', 'projscan recipes']),
+    expect.arrayContaining([
+      'projscan privacy-check --offline',
+      'projscan init mcp --client all',
+      'projscan recipes',
+    ]),
   );
 
   await expect(fs.access(path.join(tmp, '.projscanrc.json'))).rejects.toThrow();
 });
 
 test('init policy writes a team policy starter as JSON', async () => {
-  const result = await runCli(['init', 'policy', '--team', 'security', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'init',
+    'policy',
+    '--team',
+    'security',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -98,7 +129,15 @@ test('init policy writes a team policy starter as JSON', async () => {
 
 test('init policy refuses to overwrite without force', async () => {
   await runCli(['init', 'policy', '--team', 'frontend', '--format', 'json', '--quiet']);
-  const result = await runCli(['init', 'policy', '--team', 'platform', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'init',
+    'policy',
+    '--team',
+    'platform',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -109,7 +148,15 @@ test('init policy refuses to overwrite without force', async () => {
 });
 
 test('init team bootstraps policy workflow ownership baseline and start report', async () => {
-  const result = await runCli(['init', 'team', '--team', 'security', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'init',
+    'team',
+    '--team',
+    'security',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -121,16 +168,24 @@ test('init team bootstraps policy workflow ownership baseline and start report',
   expect(payload.team.onboarding.map((step: { id: string }) => step.id)).toEqual(
     expect.arrayContaining(['verify-mcp-setup', 'open-first-pr']),
   );
-  expect(payload.team.onboarding.find((step: { id: string }) => step.id === 'open-first-pr').command).toContain(
-    'projscan evidence-pack --pr-comment',
-  );
+  expect(
+    payload.team.onboarding.find((step: { id: string }) => step.id === 'open-first-pr').command,
+  ).toContain('projscan evidence-pack --pr-comment');
   expect(payload.start.schemaVersion).toBe(1);
   await expect(fs.access(path.join(tmp, '.projscan-baseline.json'))).resolves.toBeUndefined();
   await expect(fs.access(path.join(tmp, '.github', 'CODEOWNERS'))).resolves.toBeUndefined();
 });
 
 test('mcp doctor verifies setup with paste-ready config', async () => {
-  const result = await runCli(['mcp', 'doctor', '--client', 'codex', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'mcp',
+    'doctor',
+    '--client',
+    'codex',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
@@ -148,7 +203,10 @@ test('init github-action writes a PR workflow as JSON', async () => {
   expect(payload.created).toBe(true);
   expect(payload.target).toContain('.github/workflows/projscan.yml');
   expect(payload.nextCommands).toContain('git add .github/workflows/projscan.yml');
-  const workflow = await fs.readFile(path.join(tmp, '.github', 'workflows', 'projscan.yml'), 'utf-8');
+  const workflow = await fs.readFile(
+    path.join(tmp, '.github', 'workflows', 'projscan.yml'),
+    'utf-8',
+  );
   expect(workflow).toContain('npx -y projscan start --mode before_merge --format json');
   expect(workflow).toContain('Enforce preflight verdict');
   expect(workflow).toContain("r.verdict === 'block'");
@@ -156,6 +214,8 @@ test('init github-action writes a PR workflow as JSON', async () => {
   expect(workflow).toContain('Validate PR comment');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

@@ -1,0 +1,8 @@
+/current/*
+!/current/.gitkeep
+/evidence/*
+!/evidence/.gitkeep
+/reports/*
+!/reports/.gitkeep
+/sessions/*
+!/sessions/.gitkeep

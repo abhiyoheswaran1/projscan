@@ -8,11 +8,7 @@ import { extractJavaCyclomatic } from './javaCyclomatic.js';
 import { extractJavaFunctions } from './javaFunctions.js';
 import { extractJavaCallSites } from './javaCallSites.js';
 import { detectJavaProject, type JavaProjectInfo } from './javaManifests.js';
-import type {
-  GraphFileLike,
-  LanguageAdapter,
-  LanguageResolveContext,
-} from './LanguageAdapter.js';
+import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './LanguageAdapter.js';
 
 const JAVA_EXTENSIONS = new Set(['.java']);
 const MAX_JAVA_FILE = 1024 * 1024;
@@ -54,12 +50,8 @@ export const javaAdapter: LanguageAdapter = {
       const cyclomaticComplexity = extractJavaCyclomatic(
         root as Parameters<typeof extractJavaCyclomatic>[0],
       );
-      const callSites = extractJavaCallSites(
-        root as Parameters<typeof extractJavaCallSites>[0],
-      );
-      const functions = extractJavaFunctions(
-        root as Parameters<typeof extractJavaFunctions>[0],
-      );
+      const callSites = extractJavaCallSites(root as Parameters<typeof extractJavaCallSites>[0]);
+      const functions = extractJavaFunctions(root as Parameters<typeof extractJavaFunctions>[0]);
       return {
         ok: true,
         imports,
@@ -105,10 +97,7 @@ export const javaAdapter: LanguageAdapter = {
     return lastDot > 0 ? base.slice(0, lastDot) : base;
   },
 
-  async preparePackageRoots(
-    rootPath: string,
-    files: FileEntry[],
-  ): Promise<LanguageResolveContext> {
+  async preparePackageRoots(rootPath: string, files: FileEntry[]): Promise<LanguageResolveContext> {
     const info = await detectJavaProject(rootPath, files);
     if (!info) return { packageRoots: [], meta: undefined };
     return {
@@ -134,8 +123,7 @@ function resolveJavaImport(
   context: LanguageResolveContext,
 ): string | null {
   if (!source) return null;
-  const javaProject = (context.meta as { javaProject?: JavaProjectInfo } | undefined)
-    ?.javaProject;
+  const javaProject = (context.meta as { javaProject?: JavaProjectInfo } | undefined)?.javaProject;
   const sourceRootsRel = context.packageRoots ?? [];
   if (sourceRootsRel.length === 0 && !javaProject) return null;
 

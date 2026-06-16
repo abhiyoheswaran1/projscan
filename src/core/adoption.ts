@@ -10,7 +10,8 @@ import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { saveBaseline } from '../utils/baseline.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
-import type { ProjscanConfig, StartFirstTenMinutes } from '../types.js';
+import type { ProjscanConfig } from '../types/config.js';
+import type { StartFirstTenMinutes } from '../types/start.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -107,7 +108,12 @@ export interface WriteGithubActionStarterResult extends GithubActionStarter {
 }
 
 export interface TeamOnboardingStep {
-  id: 'review-generated-files' | 'telemetry-opt-in' | 'verify-mcp-setup' | 'open-first-pr' | 'tune-after-baseline';
+  id:
+    | 'review-generated-files'
+    | 'telemetry-opt-in'
+    | 'verify-mcp-setup'
+    | 'open-first-pr'
+    | 'tune-after-baseline';
   title: string;
   why: string;
   command?: string;
@@ -252,7 +258,9 @@ const CLIENTS: Record<SingleMcpClientId, Omit<McpConfigGuide, 'schemaVersion' | 
     whereToPaste: 'Zed assistant MCP/context server settings.',
     config: { context_servers: { projscan: SERVER } },
     configText: JSON.stringify({ context_servers: { projscan: SERVER } }, null, 2),
-    notes: ['If your Zed build expects `mcpServers`, use the generic MCP JSON from `--client all`.'],
+    notes: [
+      'If your Zed build expects `mcpServers`, use the generic MCP JSON from `--client all`.',
+    ],
   },
   gemini: {
     client: 'gemini',
@@ -296,39 +304,44 @@ export function getWorkflowRecipes(): WorkflowRecipeCatalog {
           'projscan workplan --mode before_edit --format json',
         ],
         mcpTools: ['projscan_preflight', 'projscan_workplan'],
-        handoff: 'If preflight returns caution or block, follow suggestedNextActions before editing.',
+        handoff:
+          'If preflight returns caution or block, follow suggestedNextActions before editing.',
       },
       {
         id: 'team_bootstrap',
         name: 'Team Bootstrap',
         useWhen: 'Adopt projscan for a team or new repository.',
-        outcome: 'A team policy, PR workflow, ownership starter, baseline memory, MCP setup check, and first start report that make adoption repeatable.',
+        outcome:
+          'A team policy, PR workflow, ownership starter, baseline memory, MCP setup check, and first start report that make adoption repeatable.',
         commands: [
           'projscan init team --team platform',
           'projscan start --mode before_edit --format json',
           'projscan mcp doctor --client codex --format json',
         ],
         mcpTools: ['projscan_adoption', 'projscan_start'],
-        handoff: 'Run init team once, commit the generated policy/workflow/ownership/baseline files, then tune thresholds after the first PR.',
+        handoff:
+          'Run init team once, commit the generated policy/workflow/ownership/baseline files, then tune thresholds after the first PR.',
       },
       {
         id: 'pr_automation',
         name: 'PR Automation',
         useWhen: 'Put projscan evidence directly in pull request review.',
-        outcome: 'Pull requests receive an approval comment and fail CI only when preflight returns block.',
+        outcome:
+          'Pull requests receive an approval comment and fail CI only when preflight returns block.',
         commands: [
           'projscan init github-action',
           'projscan preflight --mode before_merge --format json',
           'projscan evidence-pack --pr-comment',
         ],
         mcpTools: ['projscan_preflight', 'projscan_evidence_pack'],
-        handoff: 'Treat block as a hard CI failure; use PR comment next actions for caution-level follow-up.',
+        handoff:
+          'Treat block as a hard CI failure; use PR comment next actions for caution-level follow-up.',
       },
       {
         id: 'bug_hunt',
         name: 'Bug Hunt',
         useWhen: 'Run a focused polish or stabilization pass.',
-        outcome: 'A ranked fix queue with evidence and verification commands.',
+        outcome: 'A ranked action queue with evidence and verification commands.',
         commands: [
           'projscan bug-hunt --format json',
           'projscan quality-scorecard --format json',
@@ -341,14 +354,16 @@ export function getWorkflowRecipes(): WorkflowRecipeCatalog {
         id: 'release_approval',
         name: 'Release Approval',
         useWhen: 'Prepare a maintainer or CI environment approval packet.',
-        outcome: 'Version readiness, risks, regression commands, and website update copy in one loop.',
+        outcome:
+          'Version readiness, risks, regression commands, and website update copy in one loop.',
         commands: [
           'projscan release-train --format json',
           'projscan evidence-pack --website-prompt --format json',
           'projscan regression-plan --level full --format json',
         ],
         mcpTools: ['projscan_release_train', 'projscan_evidence_pack', 'projscan_regression_plan'],
-        handoff: 'Use the evidence pack as the approval artifact; do not skip the full release gate.',
+        handoff:
+          'Use the evidence pack as the approval artifact; do not skip the full release gate.',
       },
       {
         id: 'handoff',
@@ -440,13 +455,17 @@ async function checkPackageJson(rootPath: string): Promise<FirstRunDiagnostic> {
     const raw = await fs.readFile(file, 'utf-8');
     const parsed = JSON.parse(raw) as { name?: unknown; scripts?: unknown };
     const name = typeof parsed.name === 'string' ? parsed.name : path.basename(rootPath);
-    const scripts = parsed.scripts && typeof parsed.scripts === 'object' ? Object.keys(parsed.scripts).length : 0;
+    const scripts =
+      parsed.scripts && typeof parsed.scripts === 'object' ? Object.keys(parsed.scripts).length : 0;
     return {
       id: 'package-json',
       label: 'Package metadata',
       status: 'pass',
       summary: `Found package.json for ${name}.`,
-      detail: scripts > 0 ? `${scripts} npm script(s) detected for release/test recipes.` : 'No npm scripts detected.',
+      detail:
+        scripts > 0
+          ? `${scripts} npm script(s) detected for release/test recipes.`
+          : 'No npm scripts detected.',
     };
   } catch (err) {
     return {
@@ -479,7 +498,10 @@ async function checkGit(rootPath: string): Promise<FirstRunDiagnostic> {
       label: 'Git',
       status: dirty ? 'warn' : 'pass',
       summary: dirty ? 'Git worktree has local changes.' : 'Git worktree detected and clean.',
-      detail: remote.stdout.trim().length > 0 ? `Remotes: ${remote.stdout.trim().split(/\s+/).join(', ')}` : 'No git remote configured.',
+      detail:
+        remote.stdout.trim().length > 0
+          ? `Remotes: ${remote.stdout.trim().split(/\s+/).join(', ')}`
+          : 'No git remote configured.',
     };
   } catch (err) {
     return {
@@ -594,7 +616,6 @@ async function git(rootPath: string, args: string[]): Promise<{ stdout: string; 
   });
 }
 
-
 export function isPolicyStarterTeam(value: unknown): value is PolicyStarterTeam {
   return typeof value === 'string' && (POLICY_STARTER_TEAMS as readonly string[]).includes(value);
 }
@@ -639,7 +660,6 @@ export async function writePolicyStarterKit(
   };
 }
 
-
 export async function writeTeamStarterKit(
   rootPath: string,
   team: PolicyStarterTeam,
@@ -674,7 +694,9 @@ export async function writeTeamStarterKit(
       'Bootstraps policy, PR evidence automation, ownership routing, and baseline memory in one command.',
       'The generated PR workflow posts evidence before enforcing block-only preflight failure.',
     ],
-    reasons: [policy.reason, action.reason, codeowners.reason, baseline.reason].filter((item): item is string => typeof item === 'string'),
+    reasons: [policy.reason, action.reason, codeowners.reason, baseline.reason].filter(
+      (item): item is string => typeof item === 'string',
+    ),
     onboarding: buildTeamOnboarding(team),
   };
 }
@@ -685,8 +707,14 @@ function buildTeamOnboarding(team: PolicyStarterTeam): TeamOnboardingStep[] {
       id: 'review-generated-files',
       title: 'Review generated starter files',
       why: 'Confirm policy thresholds, PR workflow behavior, CODEOWNERS handles, and baseline memory before committing the bootstrap.',
-      command: 'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json',
-      files: ['.projscanrc.json', '.github/workflows/projscan.yml', '.github/CODEOWNERS', '.projscan-baseline.json'],
+      command:
+        'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json',
+      files: [
+        '.projscanrc.json',
+        '.github/workflows/projscan.yml',
+        '.github/CODEOWNERS',
+        '.projscan-baseline.json',
+      ],
     },
     {
       id: 'telemetry-opt-in',
@@ -723,7 +751,12 @@ async function writeCodeownersStarter(
   const target = path.join(rootPath, '.github', 'CODEOWNERS');
   try {
     await fs.access(target);
-    if (options.force !== true) return { target, created: false, reason: '.github/CODEOWNERS already exists; pass --force to overwrite it.' };
+    if (options.force !== true)
+      return {
+        target,
+        created: false,
+        reason: '.github/CODEOWNERS already exists; pass --force to overwrite it.',
+      };
   } catch {
     // file does not exist
   }
@@ -758,13 +791,21 @@ async function writeInitialBaseline(
   const target = path.join(rootPath, '.projscan-baseline.json');
   try {
     await fs.access(target);
-    if (options.force !== true) return { target, created: false, reason: '.projscan-baseline.json already exists; pass --force to overwrite it.' };
+    if (options.force !== true)
+      return {
+        target,
+        created: false,
+        reason: '.projscan-baseline.json already exists; pass --force to overwrite it.',
+      };
   } catch {
     // file does not exist
   }
   const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
   const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(await collectIssues(rootPath, scan.files), configResult.config);
+  const issues = applyConfigToIssues(
+    await collectIssues(rootPath, scan.files),
+    configResult.config,
+  );
   const hotspotReport = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
   await saveBaseline(rootPath, issues, hotspotReport);
   return { target, created: true };
@@ -775,12 +816,12 @@ export async function computeMcpSetupDoctor(
   client: McpClientId = 'all',
 ): Promise<McpSetupDoctorReport> {
   const guide = getMcpConfigGuide(client);
-  const configText = guide.client === 'all'
-    ? guide.configs.map((entry) => `# ${entry.displayName}\n${entry.configText}`).join('\n\n')
-    : guide.configText;
-  const whereToPaste = guide.client === 'all'
-    ? 'Use the matching client-specific config block.'
-    : guide.whereToPaste;
+  const configText =
+    guide.client === 'all'
+      ? guide.configs.map((entry) => `# ${entry.displayName}\n${entry.configText}`).join('\n\n')
+      : guide.configText;
+  const whereToPaste =
+    guide.client === 'all' ? 'Use the matching client-specific config block.' : guide.whereToPaste;
   const checks: McpSetupDoctorCheck[] = [
     checkNodeVersion(),
     {
@@ -797,7 +838,11 @@ export async function computeMcpSetupDoctor(
     },
     await checkProjectMcpConfig(rootPath, client),
   ];
-  const status = checks.some((check) => check.status === 'fail') ? 'fail' : checks.some((check) => check.status === 'warn') ? 'warn' : 'pass';
+  const status = checks.some((check) => check.status === 'fail')
+    ? 'fail'
+    : checks.some((check) => check.status === 'warn')
+      ? 'warn'
+      : 'pass';
   return {
     schemaVersion: 1,
     client,
@@ -811,11 +856,18 @@ export async function computeMcpSetupDoctor(
     whereToPaste,
     configText,
     checks,
-    nextCommands: ['projscan init mcp --client all', `projscan mcp doctor --client ${client} --format json`, 'npx -y projscan mcp'],
+    nextCommands: [
+      'projscan init mcp --client all',
+      `projscan mcp doctor --client ${client} --format json`,
+      'npx -y projscan mcp',
+    ],
   };
 }
 
-async function checkProjectMcpConfig(rootPath: string, client: McpClientId): Promise<McpSetupDoctorCheck> {
+async function checkProjectMcpConfig(
+  rootPath: string,
+  client: McpClientId,
+): Promise<McpSetupDoctorCheck> {
   const candidates = clientConfigCandidates(client);
   for (const candidate of candidates) {
     try {
@@ -823,7 +875,9 @@ async function checkProjectMcpConfig(rootPath: string, client: McpClientId): Pro
       return {
         id: 'project-config',
         status: raw.includes('projscan') ? 'pass' : 'warn',
-        summary: raw.includes('projscan') ? `Found projscan in ${candidate}.` : `Found ${candidate}, but it does not mention projscan.`,
+        summary: raw.includes('projscan')
+          ? `Found projscan in ${candidate}.`
+          : `Found ${candidate}, but it does not mention projscan.`,
         detail: candidate,
       };
     } catch {
@@ -833,7 +887,8 @@ async function checkProjectMcpConfig(rootPath: string, client: McpClientId): Pro
   return {
     id: 'project-config',
     status: 'info',
-    summary: 'No project-local MCP config found; paste the snippet into the client settings if needed.',
+    summary:
+      'No project-local MCP config found; paste the snippet into the client settings if needed.',
   };
 }
 

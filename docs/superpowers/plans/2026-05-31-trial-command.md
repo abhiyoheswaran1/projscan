@@ -13,6 +13,7 @@
 ### Task 1: Core Trial Report
 
 **Files:**
+
 - Create: `src/core/trial.ts`
 - Modify: `src/types.ts`
 - Test: `tests/core/trial.test.ts`
@@ -25,6 +26,7 @@
 ### Task 2: CLI Command
 
 **Files:**
+
 - Create: `src/cli/commands/trial.ts`
 - Modify: `src/cli/index.ts`, `src/utils/formatSupport.ts`, `scripts/check-stability.mjs`, `src/index.ts`
 - Test: `tests/cli/trial.test.ts`
@@ -37,6 +39,7 @@
 ### Task 3: Docs And Verification
 
 **Files:**
+
 - Modify: `README.md`, `docs/GUIDE.md`, `docs/ADOPTION-PROOF.md`, `docs/WEBSITE-UPDATE-PROMPT.md`, `CHANGELOG.md`
 
 - [ ] Document `projscan trial` as the top-level trial/adoption report.

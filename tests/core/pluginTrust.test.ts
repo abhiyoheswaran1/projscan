@@ -48,7 +48,11 @@ describe('pluginTrust', () => {
 
   it("reports a module whose content changed after trust as 'changed'", async () => {
     await trustPlugin(modulePath, 'my-plugin');
-    await fs.writeFile(modulePath, 'export default { check: async () => [{ id: "x" }] };\n', 'utf-8');
+    await fs.writeFile(
+      modulePath,
+      'export default { check: async () => [{ id: "x" }] };\n',
+      'utf-8',
+    );
     const status = await getPluginTrustStatus(modulePath);
     expect(status.status).toBe('changed');
   });

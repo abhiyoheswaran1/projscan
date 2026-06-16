@@ -6,7 +6,10 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 vi.mock('node:child_process', () => ({
   execFile: vi.fn((_cmd, _args, _opts, callback) => {
-    callback(null, { stdout: JSON.stringify({ vulnerabilities: {}, metadata: { vulnerabilities: {} } }), stderr: '' });
+    callback(null, {
+      stdout: JSON.stringify({ vulnerabilities: {}, metadata: { vulnerabilities: {} } }),
+      stderr: '',
+    });
   }),
 }));
 
@@ -16,8 +19,14 @@ let tmp: string;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-audit-offline-'));
-  await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'fixture', version: '0.0.0' }));
-  await fs.writeFile(path.join(tmp, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: {} }));
+  await fs.writeFile(
+    path.join(tmp, 'package.json'),
+    JSON.stringify({ name: 'fixture', version: '0.0.0' }),
+  );
+  await fs.writeFile(
+    path.join(tmp, 'package-lock.json'),
+    JSON.stringify({ lockfileVersion: 3, packages: {} }),
+  );
   vi.mocked(execFile).mockClear();
 });
 

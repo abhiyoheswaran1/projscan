@@ -36,7 +36,11 @@ describe('deadCodeCheck', () => {
 
   it('flags exports that nothing imports', async () => {
     const files = [
-      await writeFile(tmp, 'src/dead.ts', 'export function unused() {}\nexport const alsoUnused = 1;'),
+      await writeFile(
+        tmp,
+        'src/dead.ts',
+        'export function unused() {}\nexport const alsoUnused = 1;',
+      ),
       await writeFile(tmp, 'src/used.ts', 'export function active() {}'),
       await writeFile(tmp, 'src/main.ts', "import { active } from './used.js';\nactive();"),
     ];
@@ -57,9 +61,7 @@ describe('deadCodeCheck', () => {
   });
 
   it('skips test files', async () => {
-    const files = [
-      await writeFile(tmp, 'tests/foo.test.ts', 'export function iso() {}'),
-    ];
+    const files = [await writeFile(tmp, 'tests/foo.test.ts', 'export function iso() {}')];
     await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'x' }));
     const issues = await check(tmp, files);
     expect(issues).toEqual([]);

@@ -14,8 +14,7 @@ export const semanticGraphTool: McpTool = {
     properties: {
       query: {
         type: 'object',
-        description:
-          'Optional. Ask one targeted question instead of returning the whole graph.',
+        description: 'Optional. Ask one targeted question instead of returning the whole graph.',
         properties: {
           direction: {
             type: 'string',
@@ -23,8 +22,14 @@ export const semanticGraphTool: McpTool = {
             description:
               '"imports" (what the file imports), "exports" (what the file exports), "importers" (who imports the file), "symbol_defs" (files defining the symbol), "package_importers" (files importing a package by name).',
           },
-          file: { type: 'string', description: 'Repo-relative file path (for imports/exports/importers).' },
-          symbol: { type: 'string', description: 'Symbol or package name (for symbol_defs/package_importers).' },
+          file: {
+            type: 'string',
+            description: 'Repo-relative file path (for imports/exports/importers).',
+          },
+          symbol: {
+            type: 'string',
+            description: 'Symbol or package name (for symbol_defs/package_importers).',
+          },
           limit: { type: 'number', description: 'Max entries returned (default 50, max 500).' },
         },
         required: ['direction'],

@@ -26,6 +26,7 @@
 ## Task 1: Add Failing Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Update saved bundle output expectations**
@@ -34,8 +35,12 @@ Inside `test('start writes a Mission Control bundle when requested', ...)`, add:
 
 ```ts
 expect(result.stdout).toContain('proof-logs/summary.json');
-expect(quickstart).toContain('- `proof-logs/summary.json`: Machine-readable mission run state refreshed by mission.sh.');
-expect(proofLogReadme).toContain('Read `summary.json` for the latest not_run, running, passed, or failed state.');
+expect(quickstart).toContain(
+  '- `proof-logs/summary.json`: Machine-readable mission run state refreshed by mission.sh.',
+);
+expect(proofLogReadme).toContain(
+  'Read `summary.json` for the latest not_run, running, passed, or failed state.',
+);
 ```
 
 - [ ] **Step 2: Update saved mission script expectations**
@@ -61,7 +66,9 @@ expect(missionScript).toContain('Summary: ${PROOF_SUMMARY_FILE}');
 After reading `proofRunReport`, add:
 
 ```ts
-const proofSummary = JSON.parse(await fs.readFile(path.join(bundleDir, 'proof-logs', 'summary.json'), 'utf-8'));
+const proofSummary = JSON.parse(
+  await fs.readFile(path.join(bundleDir, 'proof-logs', 'summary.json'), 'utf-8'),
+);
 expect(proofSummary).toEqual({
   schemaVersion: 1,
   status: 'not_run',
@@ -101,6 +108,7 @@ Expected: fail because `proof-logs/summary.json` and `PROOF_SUMMARY_FILE` do not
 ## Task 2: Implement Summary JSON
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Create initial summary JSON**
@@ -159,7 +167,8 @@ Place `PROOF_SUMMARY_FILE` next to the other file variables. Place the summary w
 In `buildMissionScript()`, after `const proofCommands = readyProofCommands(report);`, add:
 
 ```ts
-const totalLoggedCommands = typeof cursor.command === 'string' ? 1 + proofCommands.length : proofCommands.length;
+const totalLoggedCommands =
+  typeof cursor.command === 'string' ? 1 + proofCommands.length : proofCommands.length;
 ```
 
 Before appending the review gate report section, add:
@@ -195,7 +204,10 @@ interface MissionRunSummaryOptions {
   logName?: string;
 }
 
-function scriptWriteSummaryJson(status: MissionRunSummaryStatus, options: MissionRunSummaryOptions = {}): string {
+function scriptWriteSummaryJson(
+  status: MissionRunSummaryStatus,
+  options: MissionRunSummaryOptions = {},
+): string {
   const base = {
     schemaVersion: 1,
     status,
@@ -213,9 +225,10 @@ function scriptWriteSummaryJson(status: MissionRunSummaryStatus, options: Missio
 }
 
 function scriptAppendRunReportResult(status: 'passed' | 'failed'): string[] {
-  const message = status === 'passed'
-    ? 'All current and proof commands exited 0.'
-    : 'Mission stopped before completion.';
+  const message =
+    status === 'passed'
+      ? 'All current and proof commands exited 0.'
+      : 'Mission stopped before completion.';
   return [
     '{',
     `  ${scriptPrint('')}`,
@@ -249,6 +262,7 @@ Expected: build exits 0 and all `tests/cli/start.test.ts` tests pass.
 ## Task 3: Update Docs
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -290,6 +304,7 @@ Expected: command exits 0. Include intended PNG diffs if any appear.
 ## Task 4: Verify and Commit
 
 **Files:**
+
 - Modified implementation, tests, and docs
 
 - [ ] **Step 1: Run full verification**

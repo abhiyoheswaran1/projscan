@@ -16,10 +16,11 @@ describe('Swift end-to-end (graph + visibility)', () => {
   it('exposes only non-private declarations as exports', async () => {
     const scan = await scanRepository(FIXTURE_ROOT);
     const graph = await buildCodeGraph(FIXTURE_ROOT, scan.files);
-    const utilExports = graph.files
-      .get('Sources/SwiftSmall/Util.swift')
-      ?.exports.map((e) => e.name)
-      .sort() ?? [];
+    const utilExports =
+      graph.files
+        .get('Sources/SwiftSmall/Util.swift')
+        ?.exports.map((e) => e.name)
+        .sort() ?? [];
     expect(utilExports).toContain('greet');
     expect(utilExports).toContain('classify');
     expect(utilExports).toContain('PREFIX');

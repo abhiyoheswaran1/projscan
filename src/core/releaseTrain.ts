@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { computePreflight } from './preflight.js';
-import { defaultRoadmapLinesForVersion, roadmapTasksForLine, roadmapTrackForLine } from './roadmapCatalog.js';
+import {
+  defaultRoadmapLinesForVersion,
+  roadmapTasksForLine,
+  roadmapTrackForLine,
+} from './roadmapCatalog.js';
 import type {
   PreflightSuggestedAction,
   ReleaseTrainReport,
@@ -26,18 +30,20 @@ export async function computeReleaseTrain(
   const tracks = lines.map(trackForLine);
   const tasks = rankTasks([
     ...(blockers > 0
-      ? [{
-          id: 'rt-blockers-first',
-          priority: 'p0' as const,
-          title: 'Clear readiness blockers',
-          why: 'Product planning should stay anchored to active safety and quality evidence.',
-          track: 'plan',
-          files: filesFromPreflight(preflight.reasons),
-          verification: {
-            commands: ['projscan preflight --mode before_merge --format json'],
-            expected: 'Preflight no longer returns block.',
+      ? [
+          {
+            id: 'rt-blockers-first',
+            priority: 'p0' as const,
+            title: 'Clear readiness blockers',
+            why: 'Product planning should stay anchored to active safety and quality evidence.',
+            track: 'plan',
+            files: filesFromPreflight(preflight.reasons),
+            verification: {
+              commands: ['projscan preflight --mode before_merge --format json'],
+              expected: 'Preflight no longer returns block.',
+            },
           },
-        }]
+        ]
       : []),
     ...tracks.flatMap(tasksForTrack),
     {
@@ -81,7 +87,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Graph Operations Readiness',
-      outcome: 'Agents can trust graph-backed review, impact, dataflow, and release gates during everyday repo work.',
+      outcome:
+        'Agents can trust graph-backed review, impact, dataflow, and release gates during everyday repo work.',
       includedInPlan: true,
       scope: [
         'graph corpus release gate',
@@ -99,7 +106,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Graph Intelligence Expansion',
-      outcome: 'Agents get narrower package-scoped evidence and richer framework-aware dataflow before editing high-risk paths.',
+      outcome:
+        'Agents get narrower package-scoped evidence and richer framework-aware dataflow before editing high-risk paths.',
       includedInPlan: true,
       scope: [
         'package-scoped review evidence',
@@ -117,13 +125,10 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Agent Mission Control',
-      outcome: 'Agents can decide what to do next, hand off safely, and prove readiness without rereading the whole repo.',
+      outcome:
+        'Agents can decide what to do next, hand off safely, and prove readiness without rereading the whole repo.',
       includedInPlan: true,
-      scope: [
-        'prioritized workplans',
-        'handoff-ready next actions',
-        'readiness planning',
-      ],
+      scope: ['prioritized workplans', 'handoff-ready next actions', 'readiness planning'],
       successCriteria: [
         'MCP and CLI expose the same planning contracts',
         'plans include evidence, priority, and verification commands',
@@ -135,15 +140,12 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Autonomous Bug Hunt',
-      outcome: 'Agents get a ranked fix queue that combines health, preflight, hotspots, and coordination evidence.',
+      outcome:
+        'Agents get a ranked action queue that combines health, preflight, hotspots, and coordination evidence.',
       includedInPlan: true,
-      scope: [
-        'bug-hunt fix queue',
-        'verification matrix',
-        'broad test-suite reliability pass',
-      ],
+      scope: ['bug-hunt action queue', 'verification matrix', 'broad test-suite reliability pass'],
       successCriteria: [
-        'bug-hunt output names the first fix target and commands to prove it',
+        'bug-hunt output names the first prioritized action and commands to prove it',
         'clean repos still receive reproducible verification guidance',
         'full project verification passes from the committed tree',
       ],
@@ -153,7 +155,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Release Evidence Pack',
-      outcome: 'Humans and agents get one approval packet that ties product scope, preflight evidence, bug-hunt status, workplan tasks, and website-update copy together.',
+      outcome:
+        'Humans and agents get one approval packet that ties product scope, preflight evidence, bug-hunt status, workplan tasks, and website-update copy together.',
       includedInPlan: true,
       scope: [
         'approval-ready evidence packet',
@@ -171,7 +174,8 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Regression Planning',
-      outcome: 'Agents get a smoke, focused, or full regression matrix that turns product risk into concrete verification commands.',
+      outcome:
+        'Agents get a smoke, focused, or full regression matrix that turns product risk into concrete verification commands.',
       includedInPlan: true,
       scope: [
         'risk-based regression targets',
@@ -189,13 +193,10 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Agent Brief',
-      outcome: 'Agents get a compact context packet with focus items, repo context, guardrails, and suggested next actions.',
+      outcome:
+        'Agents get a compact context packet with focus items, repo context, guardrails, and suggested next actions.',
       includedInPlan: true,
-      scope: [
-        'next-agent focus packet',
-        'guardrail commands',
-        'session and repo context summary',
-      ],
+      scope: ['next-agent focus packet', 'guardrail commands', 'session and repo context summary'],
       successCriteria: [
         'brief includes health, context, focus, guardrails, and next actions',
         'CLI and MCP expose the same schema',
@@ -207,13 +208,10 @@ function trackForLine(line: string): ReleaseTrainTrack {
     return {
       line,
       theme: 'Quality Scorecard',
-      outcome: 'Agents and reviewers get a dimensioned quality view with top risks and verification commands.',
+      outcome:
+        'Agents and reviewers get a dimensioned quality view with top risks and verification commands.',
       includedInPlan: true,
-      scope: [
-        'quality dimensions',
-        'top-risk ranking',
-        'verification command set',
-      ],
+      scope: ['quality dimensions', 'top-risk ranking', 'verification command set'],
       successCriteria: [
         'scorecard reports health, security, tests, maintainability, and coordination',
         'top risks include concrete commands',
@@ -227,7 +225,11 @@ function trackForLine(line: string): ReleaseTrainTrack {
     outcome: 'The line gets explicit readiness checks.',
     includedInPlan: true,
     scope: ['quality fixes', 'documentation alignment', 'readiness checks'],
-    successCriteria: ['all checks pass', 'public surface is documented', 'planning output stays read-only'],
+    successCriteria: [
+      'all checks pass',
+      'public surface is documented',
+      'planning output stays read-only',
+    ],
   };
 }
 
@@ -244,8 +246,13 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         track: track.line,
         files: ['scripts/release-check.mjs', 'src/core/dataflowFilters.ts', 'src/core/impact.ts'],
         verification: {
-          commands: ['npm run release:check', 'npm run check:graph-corpus', 'projscan impact --symbol foo --cross-repo --format json'],
-          expected: 'Release readiness includes graph corpus checks, custom dataflow rules remain visible, and impact reports ownership boundaries.',
+          commands: [
+            'npm run release:check',
+            'npm run check:graph-corpus',
+            'projscan impact --symbol foo --cross-repo --format json',
+          ],
+          expected:
+            'Release readiness includes graph corpus checks, custom dataflow rules remain visible, and impact reports ownership boundaries.',
         },
       },
     ];
@@ -260,8 +267,12 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         track: track.line,
         files: ['src/core/review.ts', 'src/core/dataflow.ts', 'src/core/impact.ts'],
         verification: {
-          commands: ['projscan review --base main --head HEAD --format json', 'projscan dataflow --format json'],
-          expected: 'Review and dataflow evidence are scoped to the relevant package, route, and ownership boundaries.',
+          commands: [
+            'projscan review --base main --head HEAD --format json',
+            'projscan dataflow --format json',
+          ],
+          expected:
+            'Review and dataflow evidence are scoped to the relevant package, route, and ownership boundaries.',
         },
       },
     ];
@@ -274,10 +285,15 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         title: 'Finish agent mission-control readiness',
         why: 'Planning tools only matter if they produce short, ordered, evidence-backed actions that another agent can execute.',
         track: track.line,
-        files: ['src/core/workplan.ts', 'src/cli/commands/workplan.ts', 'src/mcp/tools/workplan.ts'],
+        files: [
+          'src/core/workplan.ts',
+          'src/cli/commands/workplan.ts',
+          'src/mcp/tools/workplan.ts',
+        ],
         verification: {
           commands: ['projscan workplan --mode release --format json', 'projscan handoff'],
-          expected: 'Workplan and handoff both include prioritized tasks and verification commands.',
+          expected:
+            'Workplan and handoff both include prioritized tasks and verification commands.',
         },
       },
     ];
@@ -293,7 +309,7 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         files: ['src/core/bugHunt.ts', 'src/cli/commands/bugHunt.ts', 'src/mcp/tools/bugHunt.ts'],
         verification: {
           commands: ['projscan bug-hunt --format json', 'npm test'],
-          expected: 'Bug hunt returns a prioritized fix queue and the test suite passes.',
+          expected: 'Bug hunt returns a prioritized action queue and the test suite passes.',
         },
       },
     ];
@@ -306,10 +322,17 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         title: 'Assemble the release evidence pack',
         why: 'A larger product update needs one human-readable evidence packet instead of scattered command output.',
         track: track.line,
-        files: ['src/core/releaseEvidence.ts', 'src/cli/commands/evidencePack.ts', 'src/mcp/tools/evidencePack.ts'],
+        files: [
+          'src/core/releaseEvidence.ts',
+          'src/cli/commands/evidencePack.ts',
+          'src/mcp/tools/evidencePack.ts',
+        ],
         verification: {
-          commands: ['projscan evidence-pack --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --line 2.7.x --line 2.8.x --format json'],
-          expected: 'Evidence pack returns all planned lines, approval evidence, and changelog entries.',
+          commands: [
+            'projscan evidence-pack --line 2.3.x --line 2.4.x --line 2.5.x --line 2.6.x --line 2.7.x --line 2.8.x --format json',
+          ],
+          expected:
+            'Evidence pack returns all planned lines, approval evidence, and changelog entries.',
         },
       },
     ];
@@ -322,10 +345,15 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         title: 'Ship the regression planning matrix',
         why: 'A bigger product update should tell agents exactly which smoke, focused, and full checks prove readiness.',
         track: track.line,
-        files: ['src/core/regressionPlan.ts', 'src/cli/commands/regressionPlan.ts', 'src/mcp/tools/regressionPlan.ts'],
+        files: [
+          'src/core/regressionPlan.ts',
+          'src/cli/commands/regressionPlan.ts',
+          'src/mcp/tools/regressionPlan.ts',
+        ],
         verification: {
           commands: ['projscan regression-plan --level full --format json', 'npm test'],
-          expected: 'Regression plan returns a deduplicated command matrix and the project suite passes.',
+          expected:
+            'Regression plan returns a deduplicated command matrix and the project suite passes.',
         },
       },
     ];
@@ -338,7 +366,11 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         title: 'Ship the agent brief',
         why: 'Agents need a compact context packet that can be read quickly before choosing the next action.',
         track: track.line,
-        files: ['src/core/agentBrief.ts', 'src/cli/commands/agentBrief.ts', 'src/mcp/tools/agentBrief.ts'],
+        files: [
+          'src/core/agentBrief.ts',
+          'src/cli/commands/agentBrief.ts',
+          'src/mcp/tools/agentBrief.ts',
+        ],
         verification: {
           commands: ['projscan agent-brief --intent release --format json'],
           expected: 'Agent brief returns focus, context, guardrails, and suggested next actions.',
@@ -354,7 +386,11 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
         title: 'Ship the quality scorecard',
         why: 'Agents and reviewers need a dimensioned quality view before deciding what to polish next.',
         track: track.line,
-        files: ['src/core/qualityScorecard.ts', 'src/cli/commands/qualityScorecard.ts', 'src/mcp/tools/qualityScorecard.ts'],
+        files: [
+          'src/core/qualityScorecard.ts',
+          'src/cli/commands/qualityScorecard.ts',
+          'src/mcp/tools/qualityScorecard.ts',
+        ],
         verification: {
           commands: ['projscan quality-scorecard --format json'],
           expected: 'Quality scorecard returns dimensions, top risks, and verification commands.',
@@ -406,7 +442,9 @@ function normalizeLines(lines: string[] | undefined, currentVersion: string | nu
   if (cleaned.length > 0) return [...new Set(cleaned)];
   const catalogLines = defaultRoadmapLinesForVersion(currentVersion);
   if (catalogLines) return catalogLines;
-  const [major = 0, minor = 0] = (currentVersion ?? '2.2.0').split('.').map((part) => Number.parseInt(part, 10));
+  const [major = 0, minor = 0] = (currentVersion ?? '2.2.0')
+    .split('.')
+    .map((part) => Number.parseInt(part, 10));
   const safeMajor = Number.isFinite(major) ? major : 2;
   const safeMinor = Number.isFinite(minor) ? minor : 2;
   return [
@@ -428,7 +466,13 @@ function rankTasks(tasks: ReleaseTrainTask[]): ReleaseTrainTask[] {
 }
 
 function filesFromPreflight(reasons: Array<{ file?: string }>): string[] {
-  return [...new Set(reasons.map((reason) => reason.file).filter((file): file is string => typeof file === 'string'))];
+  return [
+    ...new Set(
+      reasons
+        .map((reason) => reason.file)
+        .filter((file): file is string => typeof file === 'string'),
+    ),
+  ];
 }
 
 function priorityRank(priority: WorkplanPriority): number {
@@ -442,5 +486,10 @@ function blockerRank(id: string): number {
 }
 
 function slug(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'line';
+  return (
+    value
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'line'
+  );
 }

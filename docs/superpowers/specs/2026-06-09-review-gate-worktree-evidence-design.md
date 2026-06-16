@@ -52,7 +52,9 @@ The Markdown review gate should add:
 
 ```md
 ## Worktree Evidence
+
 Current worktree evidence sees 3 changed file(s) against main.
+
 - `src/a.ts`
 - `tests/a.test.ts`
 ```
@@ -61,6 +63,7 @@ If unavailable:
 
 ```md
 ## Worktree Evidence
+
 Current worktree evidence is unavailable: not a git repository.
 ```
 

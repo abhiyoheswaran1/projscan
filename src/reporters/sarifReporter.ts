@@ -106,9 +106,10 @@ function toRuleName(id: string): string {
 }
 
 function toResult(issue: Issue): SarifResult {
-  const locations = (issue.locations && issue.locations.length > 0
-    ? issue.locations
-    : [{ file: '.' } as IssueLocation]
+  const locations = (
+    issue.locations && issue.locations.length > 0
+      ? issue.locations
+      : [{ file: '.' } as IssueLocation]
   ).map((loc) => ({
     physicalLocation: {
       artifactLocation: { uri: toPosix(loc.file) },

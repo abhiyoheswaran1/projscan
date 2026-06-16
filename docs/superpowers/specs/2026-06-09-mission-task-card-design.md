@@ -34,17 +34,21 @@ Status: needs_attention
 Current step: ready-1 in ready_now
 
 ## Do Next
+
 - [ ] Run `projscan search "auth token loader" --format json`
 - [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.
 
 ## Proof
+
 - [ ] `projscan preflight --mode before_edit --format json`
 - [ ] `projscan understand --view verify --format json`
 
 ## Done When
+
 - [ ] An exact symbol or file path is selected from search results before impact analysis continues.
 
 ## Handoff Prompt
+
 Resume: ...
 ```
 

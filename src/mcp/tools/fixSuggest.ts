@@ -1,10 +1,6 @@
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { collectIssues } from '../../core/issueEngine.js';
-import {
-  findIssue,
-  suggestFixForIssue,
-  syntheticIssue,
-} from '../../core/fixSuggest.js';
+import { findIssue, suggestFixForIssue, syntheticIssue } from '../../core/fixSuggest.js';
 import {
   computeRuleConfidence,
   computeRuleConfidenceScore,
@@ -19,7 +15,10 @@ import type { McpTool } from './_shared.js';
  * deprioritize rules the user has historically ignored. Best-effort —
  * if memory is missing or unreadable, returns "medium".
  */
-async function attachConfidence(rootPath: string, ruleId: string): Promise<{
+async function attachConfidence(
+  rootPath: string,
+  ruleId: string,
+): Promise<{
   level: RuleConfidence;
   score: number;
 }> {
@@ -58,7 +57,8 @@ export const fixSuggestTool: McpTool = {
       severity: {
         type: 'string',
         enum: ['info', 'warning', 'error'],
-        description: 'Optional. When synthesizing via file+rule, sets the severity for the suggestion. Default: warning.',
+        description:
+          'Optional. When synthesizing via file+rule, sets the severity for the suggestion. Default: warning.',
       },
     },
   },
@@ -76,7 +76,10 @@ export const fixSuggestTool: McpTool = {
       const issues = await collectIssues(rootPath, scan.files);
       const found = findIssue(issues, issueId);
       if (!found) {
-        return { matched: false, reason: `No open issue with id "${issueId}" in current doctor run.` };
+        return {
+          matched: false,
+          reason: `No open issue with id "${issueId}" in current doctor run.`,
+        };
       }
       const fix = await suggestFixForIssue(found, rootPath);
       const confidence = await attachConfidence(rootPath, found.id);

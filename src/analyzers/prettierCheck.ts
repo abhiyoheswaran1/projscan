@@ -19,7 +19,9 @@ const PRETTIER_CONFIG_FILES = [
 
 export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
   const rootFiles = new Set(
-    files.filter((f) => !f.directory || f.directory === '.').map((f) => path.basename(f.relativePath)),
+    files
+      .filter((f) => !f.directory || f.directory === '.')
+      .map((f) => path.basename(f.relativePath)),
   );
 
   for (const configFile of PRETTIER_CONFIG_FILES) {
@@ -37,8 +39,19 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
 
   // Only relevant for JS/TS/CSS/HTML projects
   const relevantExtensions = new Set([
-    '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
-    '.css', '.scss', '.less', '.html', '.vue', '.svelte', '.json',
+    '.js',
+    '.jsx',
+    '.ts',
+    '.tsx',
+    '.mjs',
+    '.cjs',
+    '.css',
+    '.scss',
+    '.less',
+    '.html',
+    '.vue',
+    '.svelte',
+    '.json',
   ]);
   const hasRelevantFiles = files.some((f) => relevantExtensions.has(f.extension));
   if (!hasRelevantFiles) return [];

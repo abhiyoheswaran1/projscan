@@ -40,10 +40,7 @@ describe('reciprocalRankFusion', () => {
   });
 
   it('returns exactly the entries that appeared in at least one list', () => {
-    const fused = reciprocalRankFusion([
-      [{ file: 'x' }],
-      [{ file: 'y' }, { file: 'z' }],
-    ]);
+    const fused = reciprocalRankFusion([[{ file: 'x' }], [{ file: 'y' }, { file: 'z' }]]);
     expect(fused.map((f) => f.file).sort()).toEqual(['x', 'y', 'z']);
   });
 });
@@ -58,50 +55,40 @@ describe('buildSemanticIndex + semanticSearch', () => {
     await fs.rm(tmp, { recursive: true, force: true });
   });
 
-  it(
-    'ranks semantically related files above unrelated ones',
-    async (ctx) => {
-      const files = [
-        await writeFile(
-          tmp,
-          'src/auth.ts',
-          'export function login(password: string) { /* verify hashed password against stored digest */ return true; }',
-        ),
-        await writeFile(
-          tmp,
-          'src/mailer.ts',
-          'export async function sendTransactionalEmail(to: string, body: string) { /* SMTP delivery */ }',
-        ),
-      ];
-      const index = await buildSemanticIndex(tmp, files);
-      // Skip when the embedding model is unavailable (offline / HTTP 429 from
-      // the model host); buildSemanticIndex degrades to null in that case.
-      if (index === null) return ctx.skip();
-      const hits = await semanticSearch(index!, 'verifying user credentials', { limit: 2 });
-      expect(hits[0].file).toBe('src/auth.ts');
-    },
-    90_000,
-  );
+  it('ranks semantically related files above unrelated ones', async (ctx) => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/auth.ts',
+        'export function login(password: string) { /* verify hashed password against stored digest */ return true; }',
+      ),
+      await writeFile(
+        tmp,
+        'src/mailer.ts',
+        'export async function sendTransactionalEmail(to: string, body: string) { /* SMTP delivery */ }',
+      ),
+    ];
+    const index = await buildSemanticIndex(tmp, files);
+    // Skip when the embedding model is unavailable (offline / HTTP 429 from
+    // the model host); buildSemanticIndex degrades to null in that case.
+    if (index === null) return ctx.skip();
+    const hits = await semanticSearch(index!, 'verifying user credentials', { limit: 2 });
+    expect(hits[0].file).toBe('src/auth.ts');
+  }, 90_000);
 
-  it(
-    'reuses cached embeddings on the second build',
-    async (ctx) => {
-      const files = [
-        await writeFile(tmp, 'src/a.ts', 'export function something() {}'),
-      ];
-      const t0 = Date.now();
-      const firstIndex = await buildSemanticIndex(tmp, files);
-      if (firstIndex === null) return ctx.skip();
-      const cold = Date.now() - t0;
+  it('reuses cached embeddings on the second build', async (ctx) => {
+    const files = [await writeFile(tmp, 'src/a.ts', 'export function something() {}')];
+    const t0 = Date.now();
+    const firstIndex = await buildSemanticIndex(tmp, files);
+    if (firstIndex === null) return ctx.skip();
+    const cold = Date.now() - t0;
 
-      const t1 = Date.now();
-      await buildSemanticIndex(tmp, files);
-      const warm = Date.now() - t1;
+    const t1 = Date.now();
+    await buildSemanticIndex(tmp, files);
+    const warm = Date.now() - t1;
 
-      // Warm run should be faster; exact threshold is CI-sensitive so we
-      // only require it's at least 2× faster.
-      expect(warm).toBeLessThan(cold / 2);
-    },
-    120_000,
-  );
+    // Warm run should be faster; exact threshold is CI-sensitive so we
+    // only require it's at least 2× faster.
+    expect(warm).toBeLessThan(cold / 2);
+  }, 120_000);
 });

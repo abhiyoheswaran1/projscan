@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { detectWorkspaces } from '../../core/monorepo.js';
 import { reportWorkspaces } from '../../reporters/consoleReporter.js';
 import { reportWorkspacesJson } from '../../reporters/jsonReporter.js';
@@ -9,7 +15,9 @@ import { reportWorkspacesMarkdown } from '../../reporters/markdownReporter.js';
 export function registerWorkspaces(): void {
   program
     .command('workspaces')
-    .description('List monorepo workspace packages (npm/yarn workspaces, pnpm-workspace.yaml, Nx/Turbo/Lerna fallback)')
+    .description(
+      'List monorepo workspace packages (npm/yarn workspaces, pnpm-workspace.yaml, Nx/Turbo/Lerna fallback)',
+    )
     .action(async () => {
       setupLogLevel();
       maybeCompactBanner();

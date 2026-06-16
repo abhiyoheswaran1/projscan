@@ -45,7 +45,10 @@ export function registerCoverage(): void {
         const scan = await scanRepository(rootPath, { ignore: config.ignore });
         const issues = await collectIssues(rootPath, scan.files);
         const limitRaw = cmdOpts.limit ?? 30;
-        const limit = Math.max(1, Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 30 : limitRaw));
+        const limit = Math.max(
+          1,
+          Math.min(200, typeof limitRaw === 'string' ? parseInt(limitRaw, 10) || 30 : limitRaw),
+        );
         const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
           limit,
           coverage: coverage.available ? coverageMap(coverage) : undefined,
@@ -54,7 +57,13 @@ export function registerCoverage(): void {
         const joined = joinCoverageWithHotspots(hotspots, coverage);
         if (cmdOpts.package && joined.available) {
           const ws = await detectWorkspaces(rootPath);
-          const allowed = new Set(filterFilesByPackage(ws, cmdOpts.package, joined.entries.map((e) => e.relativePath)));
+          const allowed = new Set(
+            filterFilesByPackage(
+              ws,
+              cmdOpts.package,
+              joined.entries.map((e) => e.relativePath),
+            ),
+          );
           joined.entries = joined.entries.filter((e) => allowed.has(e.relativePath));
         }
         if (cmdOpts.changedOnly && joined.available) {

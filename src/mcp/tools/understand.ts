@@ -1,5 +1,5 @@
 import { computeUnderstandReport } from '../../core/understand.js';
-import type { UnderstandView } from '../../types.js';
+import type { UnderstandView } from '../../types/understand.js';
 import type { McpTool } from './_shared.js';
 
 const VIEWS: readonly UnderstandView[] = ['map', 'flow', 'contracts', 'change', 'verify'];
@@ -43,6 +43,7 @@ export const understandTool: McpTool = {
 };
 
 function readView(value: unknown): UnderstandView | undefined {
-  if (typeof value === 'string' && (VIEWS as readonly string[]).includes(value)) return value as UnderstandView;
+  if (typeof value === 'string' && (VIEWS as readonly string[]).includes(value))
+    return value as UnderstandView;
   return undefined;
 }

@@ -1,7 +1,14 @@
 import ora from 'ora';
 import chalk from 'chalk';
 
-import { program, pkg, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  pkg,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { runAudit, auditFindingsToIssues } from '../../core/auditRunner.js';
 import { reportAudit } from '../../reporters/consoleReporter.js';
 import { reportAuditJson } from '../../reporters/jsonReporter.js';
@@ -11,7 +18,9 @@ import { issuesToSarif } from '../../reporters/sarifReporter.js';
 export function registerAudit(): void {
   program
     .command('audit')
-    .description('Run npm audit and surface vulnerabilities (SARIF supported; --package scopes findings to a single workspace)')
+    .description(
+      'Run npm audit and surface vulnerabilities (SARIF supported; --package scopes findings to a single workspace)',
+    )
     .option('--timeout <ms>', 'override npm audit timeout (default 60000)')
     .option('--package <name>', 'monorepo: scope findings to direct deps of one workspace package')
     .action(async (cmdOpts: { timeout?: string; package?: string }) => {
@@ -22,7 +31,9 @@ export function registerAudit(): void {
       const spinner = format === 'console' ? ora('Running npm audit...').start() : null;
 
       try {
-        const timeoutMs = cmdOpts.timeout ? Math.max(5_000, parseInt(cmdOpts.timeout, 10)) : undefined;
+        const timeoutMs = cmdOpts.timeout
+          ? Math.max(5_000, parseInt(cmdOpts.timeout, 10))
+          : undefined;
         const auditOpts: import('../../core/auditRunner.js').AuditOptions = {};
         if (timeoutMs !== undefined) auditOpts.timeoutMs = timeoutMs;
         if (cmdOpts.package) auditOpts.packageFilter = cmdOpts.package;
@@ -37,7 +48,9 @@ export function registerAudit(): void {
             reportAuditMarkdown(report);
             break;
           case 'sarif':
-            console.log(JSON.stringify(issuesToSarif(auditFindingsToIssues(report), pkg.version), null, 2));
+            console.log(
+              JSON.stringify(issuesToSarif(auditFindingsToIssues(report), pkg.version), null, 2),
+            );
             break;
           default:
             reportAudit(report);

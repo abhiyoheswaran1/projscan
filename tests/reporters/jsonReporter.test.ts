@@ -33,7 +33,10 @@ describe('jsonReporter', () => {
   describe('reportAnalysisJson', () => {
     it('emits the full AnalysisReport at the top level', async () => {
       const report = makeAnalysisReport();
-      const parsed = (await captureJson(() => reportAnalysisJson(report))) as Record<string, unknown>;
+      const parsed = (await captureJson(() => reportAnalysisJson(report))) as Record<
+        string,
+        unknown
+      >;
       expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toMatchObject({
         projectName: 'test-project',
@@ -163,9 +166,10 @@ describe('jsonReporter', () => {
     });
 
     it('reportExplanationJson emits the explanation at the top level', async () => {
-      const parsed = (await captureJson(() =>
-        reportExplanationJson(makeExplanation()),
-      )) as Record<string, unknown>;
+      const parsed = (await captureJson(() => reportExplanationJson(makeExplanation()))) as Record<
+        string,
+        unknown
+      >;
       expect(parsed.schemaVersion).toBe(2);
       expect(parsed).toMatchObject({ filePath: 'src/index.ts', lineCount: 42 });
     });

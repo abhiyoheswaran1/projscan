@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 describe('MCP Registry descriptor', () => {
   const root = process.cwd();
   const descriptor = JSON.parse(
-    readFileSync(join(root, '.github/mcp-registry/server.json'), 'utf8')
+    readFileSync(join(root, '.github/mcp-registry/server.json'), 'utf8'),
   );
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const readme = readFileSync(join(root, 'README.md'), 'utf8');
@@ -42,7 +42,9 @@ describe('MCP Registry descriptor', () => {
     expect(readme).not.toContain('No `eval`, no `new Function(...)`');
     expect(readme).toContain('Load local plugins');
     expect(readme).toContain('PROJSCAN_PLUGINS_PREVIEW=1');
-    expect(readme).toContain('Run `projscan help` for the generated command-by-command support matrix.');
+    expect(readme).toContain(
+      'Run `projscan help` for the generated command-by-command support matrix.',
+    );
   });
 
   it('keeps website update prompt aligned with staged release metadata', () => {

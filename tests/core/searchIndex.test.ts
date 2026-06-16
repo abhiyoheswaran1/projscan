@@ -71,7 +71,11 @@ describe('buildSearchIndex + search', () => {
   it('ranks files with direct term hits above others', async () => {
     const files = [
       await writeFile(tmp, 'src/auth.ts', 'export function authenticate(token: string) {}'),
-      await writeFile(tmp, 'src/math.ts', 'export function add(a: number, b: number) { return a + b; }'),
+      await writeFile(
+        tmp,
+        'src/math.ts',
+        'export function add(a: number, b: number) { return a + b; }',
+      ),
     ];
     const graph = await buildCodeGraph(tmp, files);
     const index = await buildSearchIndex(tmp, files, graph);
@@ -115,9 +119,7 @@ describe('buildSearchIndex + search', () => {
   });
 
   it('splits camelCase query tokens too', async () => {
-    const files = [
-      await writeFile(tmp, 'src/handler.ts', 'export function onAuthSuccess() {}'),
-    ];
+    const files = [await writeFile(tmp, 'src/handler.ts', 'export function onAuthSuccess() {}')];
     const graph = await buildCodeGraph(tmp, files);
     const index = await buildSearchIndex(tmp, files, graph);
     const hits = search(index, 'authSuccess');

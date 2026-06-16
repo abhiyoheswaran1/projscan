@@ -1,7 +1,13 @@
 import path from 'node:path';
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { computeMergeRisk } from '../../core/mergeRisk.js';
 
 /**
@@ -18,7 +24,10 @@ export function registerMergeRisk(): void {
       maybeCompactBanner();
       const format = assertFormatSupported('merge-risk');
       const rootPath = getRootPath();
-      const report = await computeMergeRisk(rootPath, cmdOpts.baseRef ? { baseRef: cmdOpts.baseRef } : {});
+      const report = await computeMergeRisk(
+        rootPath,
+        cmdOpts.baseRef ? { baseRef: cmdOpts.baseRef } : {},
+      );
 
       if (format === 'json') {
         console.log(JSON.stringify(report, null, 2));

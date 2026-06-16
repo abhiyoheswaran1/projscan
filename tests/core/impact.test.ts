@@ -18,7 +18,12 @@ function file(
       typeOnly: false,
       line: 1,
     })),
-    exports: exportsList.map((name) => ({ name, kind: 'function' as const, typeOnly: false, line: 1 })),
+    exports: exportsList.map((name) => ({
+      name,
+      kind: 'function' as const,
+      typeOnly: false,
+      line: 1,
+    })),
     callSites,
     lineCount: 0,
     cyclomaticComplexity: 1,
@@ -135,10 +140,7 @@ describe('computeImpact (file mode)', () => {
 
   it('does not report truncated when graph is exhausted within maxDistance', () => {
     // chain a -> b. query b with maxDistance=10. truncated = false.
-    const g = makeGraph(
-      [file('src/a.ts'), file('src/b.ts')],
-      [['src/a.ts', 'src/b.ts']],
-    );
+    const g = makeGraph([file('src/a.ts'), file('src/b.ts')], [['src/a.ts', 'src/b.ts']]);
     const r = computeImpact(g, { kind: 'file', value: 'src/b.ts' });
     expect(r.truncated).toBe(false);
   });
@@ -152,11 +154,7 @@ describe('computeImpact (symbol mode)', () => {
   });
 
   it('lists definition files when only definitions exist', () => {
-    const g = makeGraph(
-      [file('src/a.ts', ['foo'])],
-      [],
-      { foo: ['src/a.ts'] },
-    );
+    const g = makeGraph([file('src/a.ts', ['foo'])], [], { foo: ['src/a.ts'] });
     const r = computeImpact(g, { kind: 'symbol', value: 'foo' });
     // Defined but not called - directCallers is empty, definitionFiles populated,
     // overall available because definitions exist.
@@ -224,10 +222,7 @@ describe('computeImpact cross-repo (1.6+)', () => {
   it('annotates each cross-repo file with its repo name', () => {
     // Local repo defines symbol `foo`. Two sibling repos call it.
     const local = makeGraph(
-      [
-        file('src/foo.ts', ['foo']),
-        file('src/uses-foo.ts', [], ['./foo.js'], ['foo']),
-      ],
+      [file('src/foo.ts', ['foo']), file('src/uses-foo.ts', [], ['./foo.js'], ['foo'])],
       [['src/uses-foo.ts', 'src/foo.ts']],
       { foo: ['src/foo.ts'] },
     );
@@ -235,14 +230,16 @@ describe('computeImpact cross-repo (1.6+)', () => {
       [file('lib/sdk-uses.ts', [], [], ['foo']), file('lib/other.ts', [], [], ['unrelated'])],
       [],
     );
-    const consumer = makeGraph(
-      [file('app/handler.ts', [], [], ['foo'])],
-      [],
-    );
+    const consumer = makeGraph([file('app/handler.ts', [], [], ['foo'])], []);
     const r = computeImpact(
       local,
       { kind: 'symbol', value: 'foo' },
-      { crossRepoGraphs: new Map([['sdk', sdk], ['consumer', consumer]]) },
+      {
+        crossRepoGraphs: new Map([
+          ['sdk', sdk],
+          ['consumer', consumer],
+        ]),
+      },
     );
     expect(r.available).toBe(true);
     const crossRepoFiles = r.reachable.filter((n) => n.repo !== undefined);
@@ -255,23 +252,18 @@ describe('computeImpact cross-repo (1.6+)', () => {
   });
 
   it('reports per-repo totals via totalReachableByRepo', () => {
-    const local = makeGraph(
-      [file('src/x.ts', ['x'])],
-      [],
-      { x: ['src/x.ts'] },
-    );
-    const sdk = makeGraph(
-      [file('a.ts', [], [], ['x']), file('b.ts', [], [], ['x'])],
-      [],
-    );
-    const consumer = makeGraph(
-      [file('c.ts', [], [], ['x'])],
-      [],
-    );
+    const local = makeGraph([file('src/x.ts', ['x'])], [], { x: ['src/x.ts'] });
+    const sdk = makeGraph([file('a.ts', [], [], ['x']), file('b.ts', [], [], ['x'])], []);
+    const consumer = makeGraph([file('c.ts', [], [], ['x'])], []);
     const r = computeImpact(
       local,
       { kind: 'symbol', value: 'x' },
-      { crossRepoGraphs: new Map([['sdk', sdk], ['consumer', consumer]]) },
+      {
+        crossRepoGraphs: new Map([
+          ['sdk', sdk],
+          ['consumer', consumer],
+        ]),
+      },
     );
     expect(r.totalReachableByRepo).toBeDefined();
     expect(r.totalReachableByRepo!['sdk']).toBe(2);
@@ -280,11 +272,7 @@ describe('computeImpact cross-repo (1.6+)', () => {
   });
 
   it('omits repos that have zero hits from totalReachableByRepo', () => {
-    const local = makeGraph(
-      [file('src/x.ts', ['x'])],
-      [],
-      { x: ['src/x.ts'] },
-    );
+    const local = makeGraph([file('src/x.ts', ['x'])], [], { x: ['src/x.ts'] });
     const empty = makeGraph([file('a.ts', [], [], ['unrelated'])], []);
     const r = computeImpact(
       local,
@@ -297,11 +285,7 @@ describe('computeImpact cross-repo (1.6+)', () => {
   });
 
   it('summarizes cross-repo package and ownership boundaries', () => {
-    const local = makeGraph(
-      [file('src/foo.ts', ['foo'])],
-      [],
-      { foo: ['src/foo.ts'] },
-    );
+    const local = makeGraph([file('src/foo.ts', ['foo'])], [], { foo: ['src/foo.ts'] });
     const sdk = makeGraph(
       [file('app/use.ts', [], ['@acme/foo'], ['foo']), file('app/other.ts')],
       [],
@@ -326,15 +310,13 @@ describe('computeImpact cross-repo (1.6+)', () => {
     ]);
   });
 
-
   it('uses CODEOWNERS-derived ownership for cross-repo package boundaries', () => {
-    const local = makeGraph(
-      [file('src/foo.ts', ['foo'])],
-      [],
-      { foo: ['src/foo.ts'] },
-    );
+    const local = makeGraph([file('src/foo.ts', ['foo'])], [], { foo: ['src/foo.ts'] });
     const sdk = makeGraph(
-      [file('app/use.ts', [], ['@acme/foo'], ['foo']), file('generated/client.ts', [], ['@acme/foo'])],
+      [
+        file('app/use.ts', [], ['@acme/foo'], ['foo']),
+        file('generated/client.ts', [], ['@acme/foo']),
+      ],
       [],
       {},
       { '@acme/foo': ['app/use.ts', 'generated/client.ts'] },
@@ -364,10 +346,7 @@ describe('computeImpact cross-repo (1.6+)', () => {
   it('file-mode cross-repo annotates totalReachableByRepo with the local count only', () => {
     // File-mode cross-repo isn't a full BFS yet (path resolution is the
     // expensive future work). We at least pass through the local count.
-    const local = makeGraph(
-      [file('src/leaf.ts')],
-      [],
-    );
+    const local = makeGraph([file('src/leaf.ts')], []);
     const sdk = makeGraph([file('a.ts')], []);
     const r = computeImpact(
       local,
@@ -381,11 +360,9 @@ describe('computeImpact cross-repo (1.6+)', () => {
   });
 
   it('passes through unchanged when crossRepoGraphs is undefined or empty', () => {
-    const local = makeGraph(
-      [file('src/x.ts', ['x']), file('src/uses.ts', [], [], ['x'])],
-      [],
-      { x: ['src/x.ts'] },
-    );
+    const local = makeGraph([file('src/x.ts', ['x']), file('src/uses.ts', [], [], ['x'])], [], {
+      x: ['src/x.ts'],
+    });
     const without = computeImpact(local, { kind: 'symbol', value: 'x' });
     const withEmpty = computeImpact(
       local,

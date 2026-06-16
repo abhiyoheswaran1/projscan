@@ -25,7 +25,16 @@ afterEach(async () => {
 });
 
 test('workplan renders machine-readable JSON for bug hunting', async () => {
-  const result = await runCli(['workplan', '--mode', 'bug_hunt', '--max-tasks', '3', '--format', 'json', '--quiet']);
+  const result = await runCli([
+    'workplan',
+    '--mode',
+    'bug_hunt',
+    '--max-tasks',
+    '3',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
@@ -63,6 +72,8 @@ test('workplan rejects unsupported formats through the shared matrix', async () 
   expect(result.stderr).toContain('projscan workplan does not support --format sarif');
 });
 
-async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function runCli(
+  args: string[],
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp });
 }

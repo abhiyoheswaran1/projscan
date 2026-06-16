@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
-import {
-  inspectFile,
-  inferPurpose,
-  detectFileIssues,
-} from '../../src/core/fileInspector.js';
+import { inspectFile, inferPurpose, detectFileIssues } from '../../src/core/fileInspector.js';
 
 describe('deprecated extractor exports', () => {
   it('does not expose the removed regex import/export helpers', async () => {
@@ -111,7 +107,7 @@ describe('inspectFile', () => {
 
   it('returns graph-backed JavaScript imports and exports for a real file', async () => {
     const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
-    await fs.writeFile(path.join(tmpRoot, 'dep.ts'), "export const bar = 1;\n");
+    await fs.writeFile(path.join(tmpRoot, 'dep.ts'), 'export const bar = 1;\n');
     await fs.writeFile(
       path.join(tmpRoot, 'sample.ts'),
       "import { bar } from './dep';\nexport const foo = bar;\n",

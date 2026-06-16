@@ -42,9 +42,22 @@ const MAX_FILE_BYTES_FOR_EMBED = 4 * 1024;
 const MAX_FILE_SIZE = 512 * 1024;
 
 const INDEXABLE_EXTS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts',
-  '.py', '.go', '.rb', '.java', '.rs', '.php',
-  '.md', '.mdx',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.mts',
+  '.cts',
+  '.py',
+  '.go',
+  '.rb',
+  '.java',
+  '.rs',
+  '.php',
+  '.md',
+  '.mdx',
 ]);
 
 export interface SemanticEntry {
@@ -162,7 +175,10 @@ export async function buildChunks(
         for (const fn of fns) {
           const start = Math.max(1, fn.line);
           const end = Math.max(start, fn.endLine);
-          const slice = lines.slice(start - 1, end).join('\n').slice(0, MAX_FILE_BYTES_FOR_EMBED);
+          const slice = lines
+            .slice(start - 1, end)
+            .join('\n')
+            .slice(0, MAX_FILE_BYTES_FOR_EMBED);
           const text = `${file.relativePath}#${fn.name} (lines ${start}-${end})\n\n${slice}`;
           const hash = sha256(text);
           chunks.push({

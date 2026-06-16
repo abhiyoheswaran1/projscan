@@ -43,7 +43,9 @@ expect(result.exitCode).toBe(0);
 expect(result.stderr).toBe('');
 expect(result.stdout.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
 expect(result.stdout).toContain("printf '%s\\n' 'projscan Mission Control'");
-expect(result.stdout).toContain("printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'");
+expect(result.stdout).toContain(
+  "printf '%s\\n' 'Intent: what breaks if I rename the auth token loader'",
+);
 expect(result.stdout).toContain("printf '%s\\n' 'Current step: ready-1 in ready_now'");
 expect(result.stdout).toContain("printf '%s\\n' 'Run current command'");
 expect(result.stdout).toContain('projscan search "auth token loader" --format json');
@@ -61,7 +63,9 @@ In the existing saved mission bundle test, assert:
 
 ```ts
 expect(result.stdout).toContain('mission.sh');
-expect(quickstart).toContain('- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.');
+expect(quickstart).toContain(
+  '- `mission.sh`: Shell script that runs the current cursor command and remaining proof queue.',
+);
 const missionScript = await fs.readFile(path.join(bundleDir, 'mission.sh'), 'utf-8');
 expect(missionScript.startsWith('#!/usr/bin/env sh\nset -eu\n')).toBe(true);
 expect(missionScript).toContain('projscan search "auth token loader" --format json');
@@ -127,7 +131,9 @@ function buildMissionScript(report: StartReport): string {
   ];
   if (!cursor.command) {
     lines.push(
-      'printf %s\\\\n ' + shellQuoteForScript(`Blocked: ${cursor.instruction ?? cursor.label}`) + ' >&2',
+      'printf %s\\\\n ' +
+        shellQuoteForScript(`Blocked: ${cursor.instruction ?? cursor.label}`) +
+        ' >&2',
       'exit 2',
     );
   } else {

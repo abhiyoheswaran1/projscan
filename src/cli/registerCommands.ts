@@ -1,0 +1,130 @@
+import { registerAnalyze } from './commands/analyze.js';
+import { registerDoctor } from './commands/doctor.js';
+import { registerCi } from './commands/ci.js';
+import { registerDiff } from './commands/diff.js';
+import { registerFix } from './commands/fix.js';
+import { registerFile } from './commands/file.js';
+import { registerDiagram } from './commands/diagram.js';
+import { registerStructure } from './commands/structure.js';
+import { registerDependencies } from './commands/dependencies.js';
+import { registerHotspots } from './commands/hotspots.js';
+import { registerCoupling } from './commands/coupling.js';
+import { registerPrDiff } from './commands/prDiff.js';
+import { registerReview } from './commands/review.js';
+import { registerFixSuggest } from './commands/fixSuggest.js';
+import { registerExplainIssue } from './commands/explainIssue.js';
+import { registerImpact } from './commands/impact.js';
+import { registerCollision } from './commands/collision.js';
+import { registerClaim } from './commands/claim.js';
+import { registerMergeRisk } from './commands/mergeRisk.js';
+import { registerRoute } from './commands/route.js';
+import { registerCoordinate } from './commands/coordinate.js';
+import { registerWatch } from './commands/watch.js';
+import { registerWorkspaces } from './commands/workspaces.js';
+import { registerOutdated } from './commands/outdated.js';
+import { registerAudit } from './commands/audit.js';
+import { registerUpgrade } from './commands/upgrade.js';
+import { registerSearch } from './commands/search.js';
+import { registerCoverage } from './commands/coverage.js';
+import { registerSemanticGraph } from './commands/semanticGraph.js';
+import { registerMcp } from './commands/mcp.js';
+import { registerSession } from './commands/session.js';
+import { registerMemory } from './commands/memory.js';
+import { registerWorkspace } from './commands/workspace.js';
+import { registerApplyFix } from './commands/applyFix.js';
+import { registerInit } from './commands/init.js';
+import { registerInstallHook } from './commands/installHook.js';
+import { registerTaint } from './commands/taint.js';
+import { registerDataflow } from './commands/dataflow.js';
+import { registerBadge } from './commands/badge.js';
+import { registerPlugin } from './commands/plugin.js';
+import { registerPreflight } from './commands/preflight.js';
+import { registerWorkplan } from './commands/workplan.js';
+import { registerReleaseTrain } from './commands/releaseTrain.js';
+import { registerBugHunt } from './commands/bugHunt.js';
+import { registerEvidencePack } from './commands/evidencePack.js';
+import { registerDogfood } from './commands/dogfood.js';
+import { registerFeedback } from './commands/feedback.js';
+import { registerRegressionPlan } from './commands/regressionPlan.js';
+import { registerAgentBrief } from './commands/agentBrief.js';
+import { registerQualityScorecard } from './commands/qualityScorecard.js';
+import { registerFirstRun, registerRecipes } from './commands/recipes.js';
+import { registerStart } from './commands/start.js';
+import { registerTrial } from './commands/trial.js';
+import { registerTelemetry } from './commands/telemetry.js';
+import { registerPrivacyCheck } from './commands/privacyCheck.js';
+import { registerHelp } from './commands/help.js';
+import { registerUnderstand } from './commands/understand.js';
+import { registerMissionProof } from './commands/missionProof.js';
+
+export type CommandRegistrar = () => void;
+
+export const CLI_COMMAND_REGISTRARS = [
+  registerAnalyze,
+  registerDoctor,
+  registerCi,
+  registerDiff,
+  registerFix,
+  registerFile,
+  registerDiagram,
+  registerStructure,
+  registerDependencies,
+  registerHotspots,
+  registerCoupling,
+  registerPrDiff,
+  registerReview,
+  registerFixSuggest,
+  registerExplainIssue,
+  registerImpact,
+  registerCollision,
+  registerClaim,
+  registerMergeRisk,
+  registerRoute,
+  registerCoordinate,
+  registerWatch,
+  registerWorkspaces,
+  registerOutdated,
+  registerAudit,
+  registerUpgrade,
+  registerSearch,
+  registerCoverage,
+  registerSemanticGraph,
+  registerMcp,
+  registerSession,
+  registerMemory,
+  registerWorkspace,
+  registerApplyFix,
+  registerInit,
+  registerInstallHook,
+  registerTaint,
+  registerDataflow,
+  registerBadge,
+  registerPlugin,
+  registerPreflight,
+  registerWorkplan,
+  registerReleaseTrain,
+  registerBugHunt,
+  registerEvidencePack,
+  registerDogfood,
+  registerFeedback,
+  registerRegressionPlan,
+  registerAgentBrief,
+  registerQualityScorecard,
+  registerStart,
+  registerTrial,
+  registerTelemetry,
+  registerPrivacyCheck,
+  registerUnderstand,
+  registerMissionProof,
+  registerRecipes,
+  registerFirstRun,
+  registerHelp,
+] satisfies CommandRegistrar[];
+
+export function registerCliCommands(
+  registrars: readonly CommandRegistrar[] = CLI_COMMAND_REGISTRARS,
+): void {
+  for (const registerCommand of registrars) {
+    registerCommand();
+  }
+}

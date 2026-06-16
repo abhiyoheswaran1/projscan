@@ -25,6 +25,7 @@
 ### Task 1: Red Test For `--task-card`
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add the failing shortcut test**
@@ -50,12 +51,20 @@ test('start prints only the mission task card when requested', async () => {
   expect(result.stdout).toContain('## Do Next');
   expect(result.stdout).toContain('- [ ] Run `projscan search "auth token loader" --format json`');
   expect(result.stdout).toContain('(MCP: projscan_search {"query":"auth token loader"})');
-  expect(result.stdout).toContain('- [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.');
+  expect(result.stdout).toContain(
+    '- [ ] Resolve `input-1` (`symbol`): Replace <symbol-from-search> with an exported symbol returned by the search step.',
+  );
   expect(result.stdout).toContain('## Proof');
-  expect(result.stdout).toContain('- [ ] `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-  expect(result.stdout).toContain('- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})');
+  expect(result.stdout).toContain(
+    '- [ ] `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+  );
+  expect(result.stdout).toContain(
+    '- [ ] `projscan understand --view verify --format json` (MCP: projscan_understand {"view":"verify"})',
+  );
   expect(result.stdout).toContain('## Done When');
-  expect(result.stdout).toContain('- [ ] An exact symbol or file path is selected from search results before impact analysis continues.');
+  expect(result.stdout).toContain(
+    '- [ ] An exact symbol or file path is selected from search results before impact analysis continues.',
+  );
   expect(result.stdout).toContain('## Handoff Prompt');
   expect(result.stdout).toContain('Resume: Resume at ready-1 in ready_now');
   expect(result.stdout).not.toContain('Start:');
@@ -78,6 +87,7 @@ Expected: FAIL because Commander does not know `--task-card`, or because output 
 ### Task 2: Red Test For Saved Bundle File
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Extend the saved mission bundle test**
@@ -86,7 +96,9 @@ In `start writes a Mission Control bundle when requested`, add:
 
 ```ts
 expect(result.stdout).toContain('task-card.md');
-expect(quickstart).toContain('- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.');
+expect(quickstart).toContain(
+  '- `task-card.md`: Paste-ready Markdown task card for PRs, issues, and handoffs.',
+);
 
 const taskCard = await fs.readFile(path.join(bundleDir, 'task-card.md'), 'utf-8');
 expect(taskCard.startsWith('# Mission Task Card\n')).toBe(true);
@@ -134,6 +146,7 @@ Expected: FAIL because `task-card.md` is not written or listed yet.
 ### Task 3: Implement Task Card Rendering And CLI Shortcut
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Add the Commander option**
@@ -207,7 +220,9 @@ function missionTaskCardActionLines(report: StartReport): string[] {
   const actionLines = checklist
     .filter((item) => item.kind !== 'run_proof' && item.kind !== 'confirm_done')
     .map(formatTaskCardChecklistItem);
-  return actionLines.length > 0 ? actionLines : ['- [ ] Continue from the current Mission Control cursor.'];
+  return actionLines.length > 0
+    ? actionLines
+    : ['- [ ] Continue from the current Mission Control cursor.'];
 }
 
 function missionTaskCardProofLines(report: StartReport): string[] {
@@ -274,6 +289,7 @@ Expected: PASS.
 ### Task 4: Implement Bundle File
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Write `task-card.md`**
@@ -281,11 +297,7 @@ Expected: PASS.
 In `writeMissionBundle`, after `resume-prompt.txt`, add:
 
 ```ts
-await fs.writeFile(
-  path.join(targetDir, 'task-card.md'),
-  renderMissionTaskCard(report),
-  'utf-8',
-);
+await fs.writeFile(path.join(targetDir, 'task-card.md'), renderMissionTaskCard(report), 'utf-8');
 ```
 
 - [ ] **Step 2: List the file in `missionBundleFiles`**
@@ -315,6 +327,7 @@ Expected: PASS.
 ### Task 5: Documentation And Screenshot
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -326,7 +339,7 @@ Expected: PASS.
 Add:
 
 ```md
-projscan start --task-card --intent "<goal>"       # Paste-ready Markdown task card
+projscan start --task-card --intent "<goal>" # Paste-ready Markdown task card
 ```
 
 Update the saved bundle sentence to include `task-card.md`.
@@ -362,6 +375,7 @@ Expected: exits 0 and updates `docs/projscan-mission-control.png` if demo pixels
 ### Task 6: Verification And Commit
 
 **Files:**
+
 - All modified files from the slice
 
 - [ ] **Step 1: Build**

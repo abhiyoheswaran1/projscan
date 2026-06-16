@@ -13,6 +13,7 @@
 ### Task 1: Add Failing CLI Coverage
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 1: Add prompt-only console test**
@@ -33,9 +34,15 @@ Assert:
 
 ```ts
 expect(result.exitCode).toBe(0);
-expect(result.stdout.trim()).toContain('Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.');
-expect(result.stdout.trim()).toContain('Done when: An exact symbol or file path is selected from search results before impact analysis continues.');
-expect(result.stdout.trim()).toContain('Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.');
+expect(result.stdout.trim()).toContain(
+  'Resume: Resume at ready-1 in ready_now: run `projscan search "auth token loader" --format json`.',
+);
+expect(result.stdout.trim()).toContain(
+  'Done when: An exact symbol or file path is selected from search results before impact analysis continues.',
+);
+expect(result.stdout.trim()).toContain(
+  'Ready proof: Ready-to-run proof commands; placeholder follow-ups are excluded until Needs Input is resolved.',
+);
 expect(result.stdout.trim().split('\n')).toHaveLength(1);
 expect(result.stdout).not.toContain('Start:');
 expect(result.stdout).not.toContain('Mission Control');
@@ -79,6 +86,7 @@ Expected: Commander rejects unknown option `--handoff-prompt`.
 ### Task 2: Implement CLI Shortcut
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Register the option**
@@ -117,6 +125,7 @@ Expected: all CLI start tests pass.
 ### Task 3: Update Docs And Verify
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`

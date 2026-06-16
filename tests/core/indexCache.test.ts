@@ -13,7 +13,9 @@ function fixtureGraph(): CodeGraph {
   const files = new Map();
   files.set('src/a.ts', {
     relativePath: 'src/a.ts',
-    imports: [{ source: 'react', kind: 'static', specifiers: ['default'], typeOnly: false, line: 1 }],
+    imports: [
+      { source: 'react', kind: 'static', specifiers: ['default'], typeOnly: false, line: 1 },
+    ],
     exports: [{ name: 'foo', kind: 'function', typeOnly: false, line: 3 }],
     callSites: ['foo'],
     lineCount: 10,

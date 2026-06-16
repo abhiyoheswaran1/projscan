@@ -63,7 +63,11 @@ function readAlias(node: TsNode): string | null {
   for (const c of node.namedChildren) {
     if (c.type !== 'import_alias') continue;
     for (const sub of c.namedChildren) {
-      if (sub.type === 'type_identifier' || sub.type === 'identifier' || sub.type === 'simple_identifier') {
+      if (
+        sub.type === 'type_identifier' ||
+        sub.type === 'identifier' ||
+        sub.type === 'simple_identifier'
+      ) {
         return sub.text;
       }
     }

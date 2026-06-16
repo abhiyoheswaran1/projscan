@@ -22,6 +22,7 @@
 ## Task 1: Red Tests
 
 **Files:**
+
 - Modify: `tests/core/start.test.ts`
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
@@ -37,10 +38,16 @@ expect(report.missionControl.reviewGate.proof).toEqual({
   toolCalls: report.missionControl.resume.remainingProofToolCalls,
   items: report.missionControl.resume.remainingProofItems,
 });
-expect(report.missionControl.reviewGate.proof.commands).not.toContain('projscan search "auth token loader" --format json');
+expect(report.missionControl.reviewGate.proof.commands).not.toContain(
+  'projscan search "auth token loader" --format json',
+);
 expect(report.missionControl.reviewGate.markdown).toContain('## Proof Queue');
-expect(report.missionControl.reviewGate.markdown).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-expect(report.missionControl.handoff.reviewGate.proof).toEqual(report.missionControl.reviewGate.proof);
+expect(report.missionControl.reviewGate.markdown).toContain(
+  '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+);
+expect(report.missionControl.handoff.reviewGate.proof).toEqual(
+  report.missionControl.reviewGate.proof,
+);
 ```
 
 - [ ] **Step 2: Add CLI failing assertions**
@@ -49,7 +56,9 @@ In `start writes a Mission Control bundle when requested`, after the existing `r
 
 ```ts
 expect(reviewGate).toContain('## Proof Queue');
-expect(reviewGate).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
+expect(reviewGate).toContain(
+  '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+);
 ```
 
 After the existing `handoff.reviewGate.worktree.summary` assertion, add:
@@ -64,8 +73,12 @@ In `start review-gate shortcut prints the structured review gate markdown`, add:
 
 ```ts
 expect(shortcut.stdout).toContain('## Proof Queue');
-expect(shortcut.stdout).toContain('- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})');
-expect(report.missionControl.reviewGate.proof.commands).toEqual(report.missionControl.resume.remainingProofCommands);
+expect(shortcut.stdout).toContain(
+  '- `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+);
+expect(report.missionControl.reviewGate.proof.commands).toEqual(
+  report.missionControl.resume.remainingProofCommands,
+);
 ```
 
 - [ ] **Step 3: Add MCP failing assertions**
@@ -73,11 +86,19 @@ expect(report.missionControl.reviewGate.proof.commands).toEqual(report.missionCo
 In `projscan_start returns MCP-callable args for fuzzy impact intents`, after the existing review-gate worktree assertions, add:
 
 ```ts
-expect(result.start.missionControl.reviewGate.proof.commands).toEqual(result.start.missionControl.resume.remainingProofCommands);
-expect(result.start.missionControl.reviewGate.proof.toolCalls).toEqual(result.start.missionControl.resume.remainingProofToolCalls);
-expect(result.start.missionControl.reviewGate.proof.items).toEqual(result.start.missionControl.resume.remainingProofItems);
+expect(result.start.missionControl.reviewGate.proof.commands).toEqual(
+  result.start.missionControl.resume.remainingProofCommands,
+);
+expect(result.start.missionControl.reviewGate.proof.toolCalls).toEqual(
+  result.start.missionControl.resume.remainingProofToolCalls,
+);
+expect(result.start.missionControl.reviewGate.proof.items).toEqual(
+  result.start.missionControl.resume.remainingProofItems,
+);
 expect(result.start.missionControl.reviewGate.markdown).toContain('## Proof Queue');
-expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(result.start.missionControl.reviewGate.proof);
+expect(result.start.missionControl.handoff.reviewGate.proof).toEqual(
+  result.start.missionControl.reviewGate.proof,
+);
 ```
 
 - [ ] **Step 4: Run red tests**
@@ -93,6 +114,7 @@ Expected: fail because `reviewGate.proof` and `## Proof Queue` do not exist yet.
 ## Task 2: Core Implementation
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/core/start.ts`
 
@@ -215,6 +237,7 @@ Expected: build passes and focused core test passes.
 ## Task 3: CLI, MCP, and Docs
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 - Modify: `tests/mcp/start.test.ts`
 - Modify: `README.md`
@@ -258,6 +281,7 @@ Under Unreleased / Added, add:
 ## Task 4: Verification and Commit
 
 **Files:**
+
 - All modified files
 
 - [ ] **Step 1: Run verification**

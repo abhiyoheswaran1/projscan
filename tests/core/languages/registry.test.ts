@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getAdapterFor, isAdapterParseable, listAdapters } from '../../../src/core/languages/registry.js';
+import {
+  getAdapterFor,
+  isAdapterParseable,
+  listAdapters,
+} from '../../../src/core/languages/registry.js';
 import { BUILTIN_LANGUAGE_IDS } from '../../../src/core/languages/LanguageAdapter.js';
 import type { BuiltinLanguageId, LanguageId } from '../../../src/core/languages/LanguageAdapter.js';
 

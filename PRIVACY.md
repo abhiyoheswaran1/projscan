@@ -24,6 +24,7 @@ Some workflows can involve network access because they call external tooling or 
 - semantic search can download an optional local embedding model when the optional `@xenova/transformers` peer is installed and the user opts into semantic mode
 
 Set `PROJSCAN_OFFLINE=1`, pass `--offline`, or set `scan.offline: true` to block projscan's known network-capable features: telemetry sending, `projscan audit`, registry checks, and optional semantic model loading. This does not prevent npm or npx from contacting the registry before projscan starts.
+
 - local analyzer or reporter plugins can do anything their code does; only enable plugins you trust
 
 ## Environment variables and secrets

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
-import type { WorkspaceInfo, WorkspaceKind, WorkspacePackage } from '../types.js';
+import type { WorkspaceInfo, WorkspaceKind, WorkspacePackage } from '../types/workspace.js';
 
 /**
  * Detect monorepo workspaces. Covers the three setups that account for the
@@ -220,10 +220,9 @@ async function collectNxPackages(
   rootPath: string,
   nxJsonPath: string,
 ): Promise<WorkspacePackage[]> {
-  const layout = (await readJsonField<{ appsDir?: string; libsDir?: string }>(
-    nxJsonPath,
-    'workspaceLayout',
-  )) ?? {};
+  const layout =
+    (await readJsonField<{ appsDir?: string; libsDir?: string }>(nxJsonPath, 'workspaceLayout')) ??
+    {};
   const appsDir = (layout.appsDir ?? 'apps').replace(/\/+$/, '');
   const libsDir = (layout.libsDir ?? 'libs').replace(/\/+$/, '');
 
@@ -246,7 +245,9 @@ async function collectNxPackages(
   });
   for (const rel of matches) {
     const projectJsonPath = path.join(rootPath, rel);
-    const name = (await readJsonField<string>(projectJsonPath, 'name')) ?? path.posix.basename(path.posix.dirname(rel.split(path.sep).join('/')));
+    const name =
+      (await readJsonField<string>(projectJsonPath, 'name')) ??
+      path.posix.basename(path.posix.dirname(rel.split(path.sep).join('/')));
     const dir = path.posix.dirname(rel.split(path.sep).join('/'));
     if (!found.has(dir)) {
       found.set(dir, { name, relativePath: dir, isRoot: false });
@@ -257,7 +258,10 @@ async function collectNxPackages(
   const workspaceJsonPath = path.join(rootPath, 'workspace.json');
   if (await fileExists(workspaceJsonPath)) {
     const projects =
-      (await readJsonField<Record<string, string | { root?: string }>>(workspaceJsonPath, 'projects')) ?? {};
+      (await readJsonField<Record<string, string | { root?: string }>>(
+        workspaceJsonPath,
+        'projects',
+      )) ?? {};
     for (const [name, val] of Object.entries(projects)) {
       const root = typeof val === 'string' ? val : val.root;
       if (!root) continue;

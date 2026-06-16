@@ -2,19 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
 
-const LINTER_CONFIG_FILES = [
-  'ruff.toml',
-  '.ruff.toml',
-  '.flake8',
-  '.pylintrc',
-  'pylintrc',
-];
+const LINTER_CONFIG_FILES = ['ruff.toml', '.ruff.toml', '.flake8', '.pylintrc', 'pylintrc'];
 
-const FORMATTER_CONFIG_FILES = [
-  '.autopep8',
-  '.yapfrc',
-  'yapf.ini',
-];
+const FORMATTER_CONFIG_FILES = ['.autopep8', '.yapfrc', 'yapf.ini'];
 
 async function tryRead(absolutePath: string): Promise<string | null> {
   try {
@@ -68,10 +58,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   }
   if (!hasLinter) {
     for (const name of ['ruff', 'flake8', 'pylint', 'pyflakes']) {
-      const re = new RegExp(
-        `(^|[\\s"'\`\\[\\],={}><~^!;])${name}(\\b|[^a-zA-Z0-9_.-])`,
-        'im',
-      );
+      const re = new RegExp(`(^|[\\s"'\`\\[\\],={}><~^!;])${name}(\\b|[^a-zA-Z0-9_.-])`, 'im');
       if (re.test(manifestHaystack)) {
         hasLinter = true;
         break;
@@ -89,7 +76,11 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
     }
   }
   if (!hasFormatter && pyproject) {
-    if (/\[tool\.black\]|\[tool\.autopep8\]|\[tool\.yapf\]|\[tool\.ruff\.format\]|\[tool\.ruff\]/.test(pyproject)) {
+    if (
+      /\[tool\.black\]|\[tool\.autopep8\]|\[tool\.yapf\]|\[tool\.ruff\.format\]|\[tool\.ruff\]/.test(
+        pyproject,
+      )
+    ) {
       hasFormatter = true;
     }
   }
@@ -98,10 +89,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   }
   if (!hasFormatter) {
     for (const name of ['black', 'ruff', 'autopep8', 'yapf']) {
-      const re = new RegExp(
-        `(^|[\\s"'\`\\[\\],={}><~^!;])${name}(\\b|[^a-zA-Z0-9_.-])`,
-        'im',
-      );
+      const re = new RegExp(`(^|[\\s"'\`\\[\\],={}><~^!;])${name}(\\b|[^a-zA-Z0-9_.-])`, 'im');
       if (re.test(manifestHaystack)) {
         hasFormatter = true;
         break;

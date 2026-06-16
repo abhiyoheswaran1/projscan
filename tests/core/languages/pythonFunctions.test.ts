@@ -16,7 +16,9 @@ describe('per-function CC (Python)', () => {
   });
 
   it('def with one if/elif/else has CC 3', async () => {
-    const out = await fns(`def foo(x):\n    if x:\n        return 1\n    elif x == 2:\n        return 2\n    else:\n        return 3\n`);
+    const out = await fns(
+      `def foo(x):\n    if x:\n        return 1\n    elif x == 2:\n        return 2\n    else:\n        return 3\n`,
+    );
     expect(out[0].cyclomaticComplexity).toBe(3);
   });
 
@@ -28,7 +30,9 @@ describe('per-function CC (Python)', () => {
   });
 
   it('nested def emits two entries', async () => {
-    const out = await fns(`def outer(x):\n    def inner(y):\n        if y:\n            return 1\n        return 0\n    if x:\n        return inner(x)\n    return 0\n`);
+    const out = await fns(
+      `def outer(x):\n    def inner(y):\n        if y:\n            return 1\n        return 0\n    if x:\n        return inner(x)\n    return 0\n`,
+    );
     expect(out).toHaveLength(2);
     const outer = out.find((f) => f.name === 'outer');
     const inner = out.find((f) => f.name === 'inner');

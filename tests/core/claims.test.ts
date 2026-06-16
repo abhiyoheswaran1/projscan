@@ -4,7 +4,13 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { addClaim, listClaims, releaseClaim, isClaimActive, pruneClaims } from '../../src/core/claims.js';
+import {
+  addClaim,
+  listClaims,
+  releaseClaim,
+  isClaimActive,
+  pruneClaims,
+} from '../../src/core/claims.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +37,9 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(() => {});
+  await execFileAsync('git', ['worktree', 'remove', '--force', sibling], { cwd: root }).catch(
+    () => {},
+  );
   await Promise.all(cleanup.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
 });
 
@@ -60,7 +68,10 @@ describe('claims', () => {
 
   it('treats a directory claim as contending with a file under it', async () => {
     await addClaim(root, { target: 'src/auth', agent: 'agent-a' });
-    const { contention } = await addClaim(sibling, { target: 'src/auth/login.ts', agent: 'agent-b' });
+    const { contention } = await addClaim(sibling, {
+      target: 'src/auth/login.ts',
+      agent: 'agent-b',
+    });
     expect(contention.map((c) => c.target)).toContain('src/auth');
   });
 
@@ -99,22 +110,38 @@ describe('claim leases (TTL / staleness)', () => {
   const D = (iso: string) => new Date(iso);
 
   it('sets expiresAt when a ttl is given', async () => {
-    const { claim } = await addClaim(root, { target: 'src/a.ts', agent: 'a', ttlSeconds: 600 }, thunk(T0));
+    const { claim } = await addClaim(
+      root,
+      { target: 'src/a.ts', agent: 'a', ttlSeconds: 600 },
+      thunk(T0),
+    );
     expect(claim.expiresAt).toBe('2026-06-05T00:10:00.000Z');
   });
 
   it('isClaimActive reflects expiry; no ttl never expires', async () => {
-    const { claim } = await addClaim(root, { target: 'src/a.ts', agent: 'a', ttlSeconds: 600 }, thunk(T0));
+    const { claim } = await addClaim(
+      root,
+      { target: 'src/a.ts', agent: 'a', ttlSeconds: 600 },
+      thunk(T0),
+    );
     expect(isClaimActive(claim, D(T0))).toBe(true);
     expect(isClaimActive(claim, D('2026-06-05T00:10:01.000Z'))).toBe(false);
-    const { claim: permanent } = await addClaim(root, { target: 'src/b.ts', agent: 'a' }, thunk(T0));
+    const { claim: permanent } = await addClaim(
+      root,
+      { target: 'src/b.ts', agent: 'a' },
+      thunk(T0),
+    );
     expect(isClaimActive(permanent, D('2030-01-01T00:00:00.000Z'))).toBe(true);
   });
 
   it('an expired claim does not cause contention', async () => {
     await addClaim(root, { target: 'src/auth.ts', agent: 'a', ttlSeconds: 60 }, thunk(T0));
     // Another agent claims the same target two minutes later — the first lease has expired.
-    const { contention } = await addClaim(sibling, { target: 'src/auth.ts', agent: 'b' }, thunk('2026-06-05T00:02:00.000Z'));
+    const { contention } = await addClaim(
+      sibling,
+      { target: 'src/auth.ts', agent: 'b' },
+      thunk('2026-06-05T00:02:00.000Z'),
+    );
     expect(contention).toEqual([]);
   });
 
@@ -124,6 +151,9 @@ describe('claim leases (TTL / staleness)', () => {
     await addClaim(root, { target: 'src/forever.ts', agent: 'a' }, thunk(T0));
     const pruned = await pruneClaims(root, D('2026-06-05T00:02:00.000Z'));
     expect(pruned.map((c) => c.target)).toEqual(['src/old.ts']);
-    expect((await listClaims(root)).map((c) => c.target).sort()).toEqual(['src/forever.ts', 'src/live.ts']);
+    expect((await listClaims(root)).map((c) => c.target).sort()).toEqual([
+      'src/forever.ts',
+      'src/live.ts',
+    ]);
   });
 });

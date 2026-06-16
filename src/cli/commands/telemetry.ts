@@ -74,7 +74,11 @@ async function runEnable(endpoint: string | undefined): Promise<void> {
     }
     console.log('');
     console.log(chalk.green('Telemetry enabled.'));
-    console.log(chalk.dim('Anonymous product-health events may now be sent; source code, paths, repo names, package names, and raw findings are never collected.'));
+    console.log(
+      chalk.dim(
+        'Anonymous product-health events may now be sent; source code, paths, repo names, package names, and raw findings are never collected.',
+      ),
+    );
     console.log(chalk.dim('Endpoint: ' + status.endpoint));
     console.log(chalk.dim('Disable any time with: projscan telemetry disable'));
   } catch (error) {
@@ -125,8 +129,15 @@ async function runExplain(): Promise<void> {
 
 function printStatus(status: Awaited<ReturnType<typeof getTelemetryStatus>>): void {
   console.log('');
-  console.log(chalk.bold('Telemetry: ') + (status.enabled ? chalk.green('enabled') : chalk.yellow('disabled')));
-  console.log(chalk.dim('Default is off. No code, paths, repo names, package names, raw findings, secrets, usernames, or emails are collected.'));
+  console.log(
+    chalk.bold('Telemetry: ') +
+      (status.enabled ? chalk.green('enabled') : chalk.yellow('disabled')),
+  );
+  console.log(
+    chalk.dim(
+      'Default is off. No code, paths, repo names, package names, raw findings, secrets, usernames, or emails are collected.',
+    ),
+  );
   console.log(chalk.dim('Endpoint: ' + status.endpoint));
   console.log(chalk.dim('Queued events: ' + status.queueLength));
   console.log('');

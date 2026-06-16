@@ -19,12 +19,11 @@ import {
   type PluginDiagnostic,
   type PluginReporterCommand,
 } from '../core/plugins.js';
+import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type {
   ArchitectureLayer,
   FileExplanation,
   Issue,
-  ProjscanConfig,
-  ReportFormat,
   FileEntry,
   DirectoryNode,
 } from '../types.js';
@@ -57,7 +56,10 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
 });
 
 program.hook('postAction', async (_thisCommand, actionCommand) => {
-  const run = activeTelemetryRun ?? { commandName: commandPath(actionCommand), startedAt: Date.now() };
+  const run = activeTelemetryRun ?? {
+    commandName: commandPath(actionCommand),
+    startedAt: Date.now(),
+  };
   activeTelemetryRun = null;
   await recordCommandTelemetry({
     commandName: run.commandName,
@@ -92,7 +94,9 @@ export function assertFormatSupported(commandName: string): ReportFormat {
   const format = getFormat();
   const supported = getCommandFormatSupport(commandName);
   if (!supported) {
-    console.error(chalk.red(`Internal error: no --format support metadata for projscan ${commandName}.`));
+    console.error(
+      chalk.red(`Internal error: no --format support metadata for projscan ${commandName}.`),
+    );
     process.exit(1);
   }
   if (supported.includes(format)) return format;
@@ -132,12 +136,18 @@ export async function filterIssuesByChangedFiles(
   const result = await getChangedFiles(rootPath, baseRef);
   if (!result.available) {
     if (getFormat() === 'console' && !program.opts().quiet) {
-      console.error(chalk.yellow(`  [--changed-only: ${result.reason ?? 'unavailable'} - reporting all issues]`));
+      console.error(
+        chalk.yellow(
+          `  [--changed-only: ${result.reason ?? 'unavailable'} - reporting all issues]`,
+        ),
+      );
     }
     return issues;
   }
   if (getFormat() === 'console' && !program.opts().quiet) {
-    console.error(chalk.dim(`  [--changed-only: base=${result.baseRef}, ${result.files.length} file(s)]`));
+    console.error(
+      chalk.dim(`  [--changed-only: base=${result.baseRef}, ${result.files.length} file(s)]`),
+    );
   }
   const set = new Set(result.files);
   const filtered = issues.filter((issue) => {
@@ -174,7 +184,9 @@ export function maybeBanner(): void {
     try {
       showBanner();
     } catch (err) {
-      console.error(chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`));
+      console.error(
+        chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`),
+      );
     }
   }
 }
@@ -185,7 +197,9 @@ export function maybeCompactBanner(): void {
     try {
       showCompactBanner();
     } catch (err) {
-      console.error(chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`));
+      console.error(
+        chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`),
+      );
     }
   }
 }
@@ -242,14 +256,26 @@ export async function analyzeFile(filePath: string): Promise<FileExplanation> {
   return await explainProjectFile(rootPath, path.relative(rootPath, filePath));
 }
 
-export function buildArchitectureLayers(files: FileEntry[], frameworkNames: string[]): ArchitectureLayer[] {
+export function buildArchitectureLayers(
+  files: FileEntry[],
+  frameworkNames: string[],
+): ArchitectureLayer[] {
   const layers: ArchitectureLayer[] = [];
   const dirs = new Set(files.map((f) => f.directory.split(path.sep)[0]).filter(Boolean));
 
   const frontendDirs = ['pages', 'components', 'views', 'layouts', 'public', 'app', 'styles'];
   const frontendMatches = frontendDirs.filter((d) => dirs.has(d) || dirs.has(`src/${d}`));
   const frontendFrameworks = frameworkNames.filter((f) =>
-    ['React', 'Next.js', 'Vue.js', 'Nuxt.js', 'Svelte', 'SvelteKit', 'Angular', 'Solid.js'].includes(f),
+    [
+      'React',
+      'Next.js',
+      'Vue.js',
+      'Nuxt.js',
+      'Svelte',
+      'SvelteKit',
+      'Angular',
+      'Solid.js',
+    ].includes(f),
   );
   if (frontendMatches.length > 0 || frontendFrameworks.length > 0) {
     layers.push({

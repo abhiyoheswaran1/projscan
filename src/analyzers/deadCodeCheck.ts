@@ -5,8 +5,16 @@ import { buildCodeGraph } from '../core/codeGraph.js';
 import { getAdapterFor } from '../core/languages/registry.js';
 
 const SOURCE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts',
-  '.py', '.pyw',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.mts',
+  '.cts',
+  '.py',
+  '.pyw',
 ]);
 
 // Never flag these - they're public API by definition (JS convention).
@@ -72,7 +80,9 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
       description: `${namedExports.length} named ${kindLabel}${namedExports.length === 1 ? '' : 's'} (${namedExports
         .slice(0, 5)
         .map((e) => e.name)
-        .join(', ')}${namedExports.length > 5 ? `, … +${namedExports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?`,
+        .join(
+          ', ',
+        )}${namedExports.length > 5 ? `, … +${namedExports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?`,
       severity: 'info',
       category: 'architecture',
       fixAvailable: false,

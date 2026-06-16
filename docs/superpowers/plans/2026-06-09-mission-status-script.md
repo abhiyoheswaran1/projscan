@@ -26,6 +26,7 @@
 ## Task 1: Add Failing Tests
 
 **Files:**
+
 - Modify: `tests/cli/start.test.ts`
 
 - [ ] **Step 0: Import direct process execution**
@@ -49,7 +50,9 @@ Inside `test('start writes a Mission Control bundle when requested', ...)`, add:
 
 ```ts
 expect(result.stdout).toContain('status.sh');
-expect(quickstart).toContain('- `status.sh`: Shell script that prints the latest mission run state from summary.json.');
+expect(quickstart).toContain(
+  '- `status.sh`: Shell script that prints the latest mission run state from summary.json.',
+);
 ```
 
 - [ ] **Step 2: Read and assert script content**
@@ -67,7 +70,9 @@ expect(statusScript).toContain('Status rows:');
 expect(statusScript).toContain('Failed step:');
 expect(statusScript).toContain('Exit code:');
 expect(statusScript).toContain('Log:');
-expect(statusScript).toContain('process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;');
+expect(statusScript).toContain(
+  'process.exitCode = status === "passed" ? 0 : status === "failed" ? 1 : 2;',
+);
 ```
 
 - [ ] **Step 3: Assert executable mode**
@@ -168,6 +173,7 @@ Expected: fail because `status.sh` is not generated yet.
 ## Task 2: Implement `status.sh`
 
 **Files:**
+
 - Modify: `src/cli/commands/start.ts`
 
 - [ ] **Step 1: Write and chmod status script**
@@ -250,6 +256,7 @@ Expected: build exits 0 and all start tests pass.
 ## Task 3: Update Docs
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/GUIDE.md`
 - Modify: `CHANGELOG.md`
@@ -291,6 +298,7 @@ Expected: command exits 0. Include intended PNG diffs if any appear.
 ## Task 4: Verify and Commit
 
 **Files:**
+
 - Modified implementation, tests, and docs
 
 - [ ] **Step 1: Run verification**

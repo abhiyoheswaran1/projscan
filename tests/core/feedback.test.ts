@@ -2,7 +2,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { addFeedbackResponse, createFeedbackTemplate, readFeedbackFile, summarizeFeedbackFile } from '../../src/index.js';
+import {
+  addFeedbackResponse,
+  createFeedbackTemplate,
+  readFeedbackFile,
+  summarizeFeedbackFile,
+} from '../../src/index.js';
 
 let tmp: string;
 
@@ -32,7 +37,9 @@ test('feedback template writes the repeat-use evidence questions and refuses acc
   expect(saved.questions).toContain('How many minutes did projscan save on this PR?');
 
   await expect(createFeedbackTemplate(file)).rejects.toThrow(/already exists/);
-  await expect(createFeedbackTemplate(file, { force: true })).resolves.toMatchObject({ path: file });
+  await expect(createFeedbackTemplate(file, { force: true })).resolves.toMatchObject({
+    path: file,
+  });
 });
 
 test('feedback add and summary track minutes saved, prevented bad edits, false positives, and repeat use', async () => {

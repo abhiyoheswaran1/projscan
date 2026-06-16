@@ -61,14 +61,21 @@ describe('runGraphQuery', () => {
   });
 
   it('package_importers: returns files importing a package', async () => {
-    const out = runGraphQuery(await graph(), { direction: 'package_importers', symbol: 'chalk' }) as {
+    const out = runGraphQuery(await graph(), {
+      direction: 'package_importers',
+      symbol: 'chalk',
+    }) as {
       importers: string[];
     };
     expect(out.importers.some((f) => /app/.test(f))).toBe(true);
   });
 
   it('respects limit', async () => {
-    const out = runGraphQuery(await graph(), { direction: 'exports', file: 'src/util.ts', limit: 1 }) as {
+    const out = runGraphQuery(await graph(), {
+      direction: 'exports',
+      file: 'src/util.ts',
+      limit: 1,
+    }) as {
       exports: unknown[];
     };
     expect(out.exports.length).toBe(1);
@@ -76,8 +83,8 @@ describe('runGraphQuery', () => {
 
   it('throws a helpful error when the required arg is missing', () => {
     // graph is unused here; the guard fires before any lookup.
-    expect(() => runGraphQuery({ nodes: [], edges: [] } as never, { direction: 'imports' })).toThrow(
-      /requires a `file`/,
-    );
+    expect(() =>
+      runGraphQuery({ nodes: [], edges: [] } as never, { direction: 'imports' }),
+    ).toThrow(/requires a `file`/);
   });
 });

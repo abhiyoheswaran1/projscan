@@ -13,7 +13,9 @@ describe('release workflow metadata', () => {
     version: string;
     packages?: Record<string, { version?: string }>;
   };
-  const registry = JSON.parse(readFileSync(join(root, '.github/mcp-registry/server.json'), 'utf8')) as {
+  const registry = JSON.parse(
+    readFileSync(join(root, '.github/mcp-registry/server.json'), 'utf8'),
+  ) as {
     version: string;
     packages: Array<{ version: string }>;
   };
@@ -67,7 +69,9 @@ describe('release workflow metadata', () => {
     expect(workflow).toContain('registry.modelcontextprotocol.io/v0/servers?search=projscan');
     expect(workflow).toContain('already_published=');
     expect(workflow).toContain('Install mcp-publisher');
-    expect(workflow).toContain('modelcontextprotocol/registry/releases/latest/download/mcp-publisher_');
+    expect(workflow).toContain(
+      'modelcontextprotocol/registry/releases/latest/download/mcp-publisher_',
+    );
     expect(workflow).toContain('./mcp-publisher login github-oidc');
     expect(workflow).toContain('./mcp-publisher publish .github/mcp-registry/server.json');
     expect(workflow).not.toContain('Manual follow-up:** republish to the MCP Registry');

@@ -24,19 +24,13 @@ beforeEach(async () => {
     JSON.stringify({ name: 'workspace-root' }),
   );
   // SDK repo with a shared symbol "auth" exported.
-  await fs.writeFile(
-    path.join(sdkRepo, 'package.json'),
-    JSON.stringify({ name: 'sdk' }),
-  );
+  await fs.writeFile(path.join(sdkRepo, 'package.json'), JSON.stringify({ name: 'sdk' }));
   await fs.writeFile(
     path.join(sdkRepo, 'src', 'auth.ts'),
     `export function auth() { return 1; }\nexport const VERSION = '1.0';\n`,
   );
   // Consumer repo also exports an "auth" symbol — so "graph" view picks it up.
-  await fs.writeFile(
-    path.join(consumerRepo, 'package.json'),
-    JSON.stringify({ name: 'consumer' }),
-  );
+  await fs.writeFile(path.join(consumerRepo, 'package.json'), JSON.stringify({ name: 'consumer' }));
   await fs.writeFile(
     path.join(consumerRepo, 'src', 'index.ts'),
     `export function auth() { return 2; }\nexport const greet = () => 'hi';\n`,
@@ -112,8 +106,6 @@ describe('projscan_workspace_graph (1.6+)', () => {
     server.close();
   });
 
-
-
   it('ignores checked-in project workspace files before scanning registered paths', async () => {
     const fresh = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-ws-untrusted-'));
     const root = path.join(fresh, 'root');
@@ -172,7 +164,9 @@ describe('projscan_workspace_graph (1.6+)', () => {
       }),
     );
     if (!raw) throw new Error('no response');
-    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    const env = JSON.parse(raw) as {
+      result: { isError: boolean; content: Array<{ text: string }> };
+    };
     expect(env.result.isError).toBe(true);
     expect(env.result.content[0].text).toMatch(/Unknown action/);
     server.close();
@@ -219,7 +213,9 @@ export function callAuth() { return auth(); }
       }),
     );
     if (!raw) throw new Error('no response');
-    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    const env = JSON.parse(raw) as {
+      result: { isError: boolean; content: Array<{ text: string }> };
+    };
     expect(env.result.isError).toBe(true);
     expect(env.result.content[0].text).toMatch(/file_importers requires/);
     server.close();
@@ -240,7 +236,9 @@ export function callAuth() { return auth(); }
       }),
     );
     if (!raw) throw new Error('no response');
-    const env = JSON.parse(raw) as { result: { isError: boolean; content: Array<{ text: string }> } };
+    const env = JSON.parse(raw) as {
+      result: { isError: boolean; content: Array<{ text: string }> };
+    };
     expect(env.result.isError).toBe(true);
     expect(env.result.content[0].text).toMatch(/not registered/);
     server.close();

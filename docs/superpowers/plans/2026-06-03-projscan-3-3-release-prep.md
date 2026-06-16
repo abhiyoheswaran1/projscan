@@ -13,6 +13,7 @@
 ### Task 1: Close Roadmap Audit Gaps
 
 **Files:**
+
 - Modify: `tests/core/adoption.test.ts`
 - Modify: `src/core/adoption.ts`
 - Modify: `tests/core/start.test.ts`
@@ -25,6 +26,7 @@
 - [ ] **Step 1: Write failing tests**
 
 Add tests that prove:
+
 - Generated GitHub Action PR-comment validation requires `### Reviewer Decision`.
 - `computeStartReport()` exposes `coordinationHints` with current-worktree and remembered-session commands.
 - Human `projscan start` console output shows the full first-ten-minutes path and coordination hints.
@@ -60,6 +62,7 @@ Expected: focused tests pass and generated CLI artifacts reflect the start outpu
 ### Task 2: Prepare 3.3.0 Release Metadata
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `.github/mcp-registry/server.json`
@@ -92,6 +95,7 @@ Expected: dist metadata reflects `3.3.0` and current source.
 ### Task 3: Release Verification
 
 **Files:**
+
 - Verify only unless a gate fails.
 
 - [ ] **Step 1: Focused verification**

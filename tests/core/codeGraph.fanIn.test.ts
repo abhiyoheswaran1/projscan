@@ -38,10 +38,7 @@ describe('per-function fan-in (computed in buildCodeGraph)', () => {
   });
 
   it('does not count a self-call from within the defining file', async () => {
-    await write(
-      'src/a.ts',
-      `export function foo() { foo(); /* recursive self-call */ }\n`,
-    );
+    await write('src/a.ts', `export function foo() { foo(); /* recursive self-call */ }\n`);
     const scan = await scanRepository(tmp);
     const graph = await buildCodeGraph(tmp, scan.files);
     const foo = graph.files.get('src/a.ts')!.functions!.find((f) => f.name === 'foo');
@@ -49,14 +46,8 @@ describe('per-function fan-in (computed in buildCodeGraph)', () => {
   });
 
   it('uses the bare name for class methods (Class.method matches bare callSite)', async () => {
-    await write(
-      'src/a.ts',
-      `export class A {\n  m() { return 1; }\n}\n`,
-    );
-    await write(
-      'src/b.ts',
-      `import { A } from './a.js';\nconst a = new A();\na.m();\n`,
-    );
+    await write('src/a.ts', `export class A {\n  m() { return 1; }\n}\n`);
+    await write('src/b.ts', `import { A } from './a.js';\nconst a = new A();\na.m();\n`);
     const scan = await scanRepository(tmp);
     const graph = await buildCodeGraph(tmp, scan.files);
     const m = graph.files.get('src/a.ts')!.functions!.find((f) => f.name === 'A.m');

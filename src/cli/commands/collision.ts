@@ -1,7 +1,13 @@
 import path from 'node:path';
 import chalk from 'chalk';
 
-import { program, getRootPath, setupLogLevel, maybeCompactBanner, assertFormatSupported } from '../_shared.js';
+import {
+  program,
+  getRootPath,
+  setupLogLevel,
+  maybeCompactBanner,
+  assertFormatSupported,
+} from '../_shared.js';
 import { detectCollisions } from '../../core/collisionDetector.js';
 
 /**
@@ -20,11 +26,14 @@ export function registerCollision(): void {
       maybeCompactBanner();
       const format = assertFormatSupported('collisions');
       const rootPath = getRootPath();
-      const maxDistance = cmdOpts.maxDistance !== undefined ? Number.parseInt(cmdOpts.maxDistance, 10) : undefined;
+      const maxDistance =
+        cmdOpts.maxDistance !== undefined ? Number.parseInt(cmdOpts.maxDistance, 10) : undefined;
       const report = await detectCollisions(rootPath, {
         ...(cmdOpts.baseRef ? { baseRef: cmdOpts.baseRef } : {}),
         ...(cmdOpts.transitive ? { transitive: true } : {}),
-        ...(maxDistance !== undefined && Number.isFinite(maxDistance) && maxDistance > 0 ? { maxDistance } : {}),
+        ...(maxDistance !== undefined && Number.isFinite(maxDistance) && maxDistance > 0
+          ? { maxDistance }
+          : {}),
       });
 
       if (format === 'json') {
@@ -48,7 +57,10 @@ export function registerCollision(): void {
 
       console.log(
         `  ${report.worktrees.length} worktree(s): ${report.worktrees
-          .map((w) => `${chalk.bold(w.branch ?? '(detached)')} ${chalk.dim(`(${w.changedFileCount} changed)`)}`)
+          .map(
+            (w) =>
+              `${chalk.bold(w.branch ?? '(detached)')} ${chalk.dim(`(${w.changedFileCount} changed)`)}`,
+          )
           .join(', ')}`,
       );
 
@@ -66,8 +78,7 @@ export function registerCollision(): void {
       );
       console.log('');
       for (const c of report.collisions) {
-        const tag =
-          c.severity === 'high' ? chalk.red('● same-file') : chalk.yellow('● dependency');
+        const tag = c.severity === 'high' ? chalk.red('● same-file') : chalk.yellow('● dependency');
         console.log(`  ${tag}  ${chalk.dim(`[${rel(c.worktreeA)} ↔ ${rel(c.worktreeB)}]`)}`);
         console.log(`      ${c.reason}`);
       }

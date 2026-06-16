@@ -14,11 +14,17 @@ import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
 import { isReviewBlockingDataflowRisk, isReviewBlockingFlow } from './reviewDataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
+import {
+  buildPublicExportFileSet,
+  readEntrypointFiles,
+  type ReviewPublicSurfaceManifest,
+} from './reviewPublicSurface.js';
 import { loadConfig } from '../utils/config.js';
+import type { GraphEvidenceSummary } from '../types/graph.js';
+import type { PrDiffReport } from '../types/prDiff.js';
+import type { ReviewContractChange } from '../types/reviewContract.js';
 import type {
-  GraphEvidenceSummary,
   ReviewCycle,
-  ReviewContractChange,
   ReviewDataflowRisk,
   ReviewDependencyChange,
   ReviewFile,
@@ -26,8 +32,7 @@ import type {
   ReviewReport,
   ReviewTaintFlow,
   ReviewTier,
-  PrDiffReport,
-} from '../types.js';
+} from '../types/review.js';
 
 export interface ReviewOptions {
   /** Base ref. Default: origin/main → main → origin/master → master → HEAD~1. */
@@ -79,9 +84,15 @@ export async function computeReview(
   const headSha = await resolveSha(rootPath, headRef);
   const baseSha = await resolveSha(rootPath, baseRef);
   if (!baseSha) {
-    return unavailable(`Could not resolve base ref "${baseRef}".`, options, baseRef, headRef, headSha);
+    return unavailable(
+      `Could not resolve base ref "${baseRef}".`,
+      options,
+      baseRef,
+      headRef,
+      headSha,
+    );
   }
-  if (headSha && headSha === baseSha) {
+  if (headSha && headSha === baseSha && (await isWorktreeClean(rootPath))) {
     const report: ReviewReport = {
       available: true,
       base: { ref: baseRef, resolvedSha: baseSha },
@@ -246,7 +257,12 @@ export async function computeReview(
     ...prDiff.filesModified.map((f) => f.relativePath),
   ]);
   const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
-  const newDataflowRisks = await computeNewDataflowRisks(rootPath, baseGraph, headGraph, touchedFiles);
+  const newDataflowRisks = await computeNewDataflowRisks(
+    rootPath,
+    baseGraph,
+    headGraph,
+    touchedFiles,
+  );
   const graphEvidence = buildReviewGraphEvidence(
     headGraph,
     touchedFiles,
@@ -260,6 +276,7 @@ export async function computeReview(
     newCycles,
     riskyFunctions,
     dependencyChanges,
+    contractChanges,
     newTaintFlows,
     newDataflowRisks,
   );
@@ -290,7 +307,6 @@ export async function computeReview(
   return report;
 }
 
-
 async function resolvePackageScopeFiles(
   rootPath: string,
   graph: CodeGraph,
@@ -317,7 +333,8 @@ async function scopePrDiffToPackage(
   prDiff.filesAdded = prDiff.filesAdded.filter((file) => allowed.has(file));
   prDiff.filesRemoved = prDiff.filesRemoved.filter((file) => allowed.has(file));
   prDiff.filesModified = prDiff.filesModified.filter((file) => allowed.has(file.relativePath));
-  prDiff.totalFilesChanged = prDiff.filesAdded.length + prDiff.filesRemoved.length + prDiff.filesModified.length;
+  prDiff.totalFilesChanged =
+    prDiff.filesAdded.length + prDiff.filesRemoved.length + prDiff.filesModified.length;
 }
 
 function scopeDependencyChanges(
@@ -440,7 +457,10 @@ function scopeGraphToFiles(graph: CodeGraph, files: Set<string>): CodeGraph {
   };
 }
 
-function filterImporterMap(source: Map<string, Set<string>>, files: Set<string>): Map<string, Set<string>> {
+function filterImporterMap(
+  source: Map<string, Set<string>>,
+  files: Set<string>,
+): Map<string, Set<string>> {
   const filtered = new Map<string, Set<string>>();
   for (const [name, importers] of source) {
     const scopedImporters = new Set([...importers].filter((file) => files.has(file)));
@@ -503,7 +523,6 @@ async function computeNewDataflowRisks(
   });
   return out;
 }
-
 
 function reviewDataflowRiskKey(risk: {
   kind: string;
@@ -644,10 +663,7 @@ function findRiskyFunctions(
       }
       const baseCc = candidates[0];
       // Existed: flag if it newly crossed the threshold.
-      if (
-        baseCc < HIGH_CC_THRESHOLD &&
-        fn.cyclomaticComplexity >= HIGH_CC_THRESHOLD
-      ) {
+      if (baseCc < HIGH_CC_THRESHOLD && fn.cyclomaticComplexity >= HIGH_CC_THRESHOLD) {
         out.push({
           file: f.relativePath,
           name: fn.name,
@@ -680,7 +696,7 @@ function findRiskyFunctions(
 
 // ── manifest diffing ──────────────────────────────────────
 
-interface ManifestSnapshot {
+interface ManifestSnapshot extends ReviewPublicSurfaceManifest {
   workspace: string;
   manifestFile: string;
   dependencies: Record<string, string>;
@@ -734,12 +750,14 @@ async function readOneManifest(
   } catch {
     return null;
   }
+  const entrypoints = readEntrypoints(parsed);
   return {
     workspace: workspaceName,
     manifestFile,
     dependencies: parsed.dependencies ?? {},
     devDependencies: parsed.devDependencies ?? {},
-    entrypoints: readEntrypoints(parsed),
+    entrypoints,
+    entrypointFiles: readEntrypointFiles(parsed),
   };
 }
 
@@ -791,19 +809,30 @@ function buildContractChanges(
   packageName?: string,
 ): ReviewContractChange[] {
   const changes: ReviewContractChange[] = [];
+  const scopedBaseManifests = scopeManifestsByPackage(baseManifests, packageName);
+  const scopedHeadManifests = scopeManifestsByPackage(headManifests, packageName);
+  const publicExportFiles = buildPublicExportFileSet(
+    scopedBaseManifests.values(),
+    scopedHeadManifests.values(),
+    baseGraph,
+    headGraph,
+  );
   for (const file of prDiff.filesAdded) {
+    if (!publicExportFiles.has(file)) continue;
     const entry = headGraph.files.get(file);
     for (const exp of entry?.exports ?? []) {
       changes.push(exportContractChange('export-added', file, exp.name));
     }
   }
   for (const file of prDiff.filesRemoved) {
+    if (!publicExportFiles.has(file)) continue;
     const entry = baseGraph.files.get(file);
     for (const exp of entry?.exports ?? []) {
       changes.push(exportContractChange('export-removed', file, exp.name));
     }
   }
   for (const file of prDiff.filesModified) {
+    if (!publicExportFiles.has(file.relativePath)) continue;
     for (const symbol of file.exportsAdded) {
       changes.push(exportContractChange('export-added', file.relativePath, symbol));
     }
@@ -823,12 +852,7 @@ function buildContractChanges(
     }
   }
 
-  changes.push(
-    ...entrypointContractChanges(
-      scopeManifestsByPackage(baseManifests, packageName),
-      scopeManifestsByPackage(headManifests, packageName),
-    ),
-  );
+  changes.push(...entrypointContractChanges(scopedBaseManifests, scopedHeadManifests));
   return changes;
 }
 
@@ -866,7 +890,10 @@ function entrypointContractChanges(
   for (const manifestFile of allManifests) {
     const baseEntrypoints = base.get(manifestFile)?.entrypoints ?? {};
     const headEntrypoints = head.get(manifestFile)?.entrypoints ?? {};
-    const fields = new Set<string>([...Object.keys(baseEntrypoints), ...Object.keys(headEntrypoints)]);
+    const fields = new Set<string>([
+      ...Object.keys(baseEntrypoints),
+      ...Object.keys(headEntrypoints),
+    ]);
     for (const field of fields) {
       const before = baseEntrypoints[field];
       const after = headEntrypoints[field];
@@ -886,7 +913,9 @@ function entrypointContractChanges(
       });
     }
   }
-  return out.sort((a, b) => `${a.file}:${a.symbol ?? ''}`.localeCompare(`${b.file}:${b.symbol ?? ''}`));
+  return out.sort((a, b) =>
+    `${a.file}:${a.symbol ?? ''}`.localeCompare(`${b.file}:${b.symbol ?? ''}`),
+  );
 }
 
 function diffOneManifest(
@@ -906,14 +935,16 @@ function diffOneManifest(
 
   for (const [name, version] of Object.entries(headDeps)) {
     if (!(name in baseDeps)) added.push({ name, version, kind: 'dep' });
-    else if (baseDeps[name] !== version) bumped.push({ name, from: baseDeps[name], to: version, kind: 'dep' });
+    else if (baseDeps[name] !== version)
+      bumped.push({ name, from: baseDeps[name], to: version, kind: 'dep' });
   }
   for (const [name, version] of Object.entries(baseDeps)) {
     if (!(name in headDeps)) removed.push({ name, version, kind: 'dep' });
   }
   for (const [name, version] of Object.entries(headDev)) {
     if (!(name in baseDev)) added.push({ name, version, kind: 'dev' });
-    else if (baseDev[name] !== version) bumped.push({ name, from: baseDev[name], to: version, kind: 'dev' });
+    else if (baseDev[name] !== version)
+      bumped.push({ name, from: baseDev[name], to: version, kind: 'dev' });
   }
   for (const [name, version] of Object.entries(baseDev)) {
     if (!(name in headDev)) removed.push({ name, version, kind: 'dev' });
@@ -933,6 +964,7 @@ function decideVerdict(
   newCycles: ReviewCycle[],
   riskyFunctions: ReviewFunction[],
   depChanges: ReviewDependencyChange[],
+  contractChanges: ReviewContractChange[],
   newTaintFlows: ReviewTaintFlow[],
   newDataflowRisks: ReviewDataflowRisk[],
 ): { verdict: ReviewReport['verdict']; summary: string[] } {
@@ -942,10 +974,14 @@ function decideVerdict(
   const maxRisk = Math.max(0, ...changedFiles.map((f) => f.riskScore ?? 0));
   if (maxRisk >= RISK_VERDICT_BLOCK_SCORE) {
     verdict = 'block';
-    summary.push(`Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_BLOCK_SCORE}).`);
+    summary.push(
+      `Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_BLOCK_SCORE}).`,
+    );
   } else if (maxRisk >= RISK_VERDICT_REVIEW_SCORE) {
     verdict = bumpTo(verdict, 'review');
-    summary.push(`Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_REVIEW_SCORE}).`);
+    summary.push(
+      `Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_REVIEW_SCORE}).`,
+    );
   }
 
   if (newCycles.length > 0) {
@@ -997,10 +1033,24 @@ function decideVerdict(
       { added: 0, removed: 0, bumped: 0 },
     );
     if (totals.added + totals.removed + totals.bumped > 0) {
-      summary.push(
-        `Dependency changes: +${totals.added} -${totals.removed} ~${totals.bumped}.`,
-      );
+      summary.push(`Dependency changes: +${totals.added} -${totals.removed} ~${totals.bumped}.`);
     }
+  }
+
+  if (
+    isManualReleaseSignOffBlock(
+      verdict,
+      maxRisk,
+      newCycles,
+      riskyFunctions,
+      contractChanges,
+      newTaintFlows,
+      newDataflowRisks,
+    )
+  ) {
+    summary.push(
+      'Manual release sign-off required: review blocks on release-scale risk signals, not concrete cycle, risky-function, contract, taint, or dataflow defects.',
+    );
   }
 
   if (changedFiles.length === 0 && summary.length === 0) {
@@ -1012,7 +1062,33 @@ function decideVerdict(
   return { verdict, summary };
 }
 
-function bumpTo(current: ReviewReport['verdict'], target: ReviewReport['verdict']): ReviewReport['verdict'] {
+function isManualReleaseSignOffBlock(
+  verdict: ReviewReport['verdict'],
+  maxRisk: number,
+  newCycles: ReviewCycle[],
+  riskyFunctions: ReviewFunction[],
+  contractChanges: ReviewContractChange[],
+  newTaintFlows: ReviewTaintFlow[],
+  newDataflowRisks: ReviewDataflowRisk[],
+): boolean {
+  const concreteSignals = [
+    newCycles,
+    riskyFunctions,
+    contractChanges,
+    newTaintFlows,
+    newDataflowRisks,
+  ];
+  return (
+    verdict === 'block' &&
+    maxRisk >= RISK_VERDICT_BLOCK_SCORE &&
+    concreteSignals.every((signals) => signals.length === 0)
+  );
+}
+
+function bumpTo(
+  current: ReviewReport['verdict'],
+  target: ReviewReport['verdict'],
+): ReviewReport['verdict'] {
   const order: Record<ReviewReport['verdict'], number> = { ok: 0, review: 1, block: 2 };
   return order[target] > order[current] ? target : current;
 }
@@ -1061,10 +1137,45 @@ async function isGitRepository(rootPath: string): Promise<boolean> {
   return code === 0;
 }
 
-async function resolveSha(rootPath: string, ref: string): Promise<string | null> {
-  const { code, stdout } = await runGit(rootPath, ['rev-parse', '--verify', `${ref}^{commit}`]).catch(
-    () => ({ code: 1, stdout: '', stderr: '' }),
+async function isWorktreeClean(rootPath: string): Promise<boolean> {
+  const unstaged = await runGit(rootPath, ['diff', '--quiet', '--ignore-submodules', '--']).catch(
+    () => ({
+      code: 1,
+      stdout: '',
+      stderr: '',
+    }),
   );
+  if (unstaged.code !== 0) return false;
+
+  const staged = await runGit(rootPath, [
+    'diff',
+    '--cached',
+    '--quiet',
+    '--ignore-submodules',
+    '--',
+  ]).catch(() => ({
+    code: 1,
+    stdout: '',
+    stderr: '',
+  }));
+  if (staged.code !== 0) return false;
+
+  const untracked = await runGit(rootPath, ['ls-files', '--others', '--exclude-standard']).catch(
+    () => ({
+      code: 1,
+      stdout: '',
+      stderr: '',
+    }),
+  );
+  return untracked.code === 0 && untracked.stdout.trim().length === 0;
+}
+
+async function resolveSha(rootPath: string, ref: string): Promise<string | null> {
+  const { code, stdout } = await runGit(rootPath, [
+    'rev-parse',
+    '--verify',
+    `${ref}^{commit}`,
+  ]).catch(() => ({ code: 1, stdout: '', stderr: '' }));
   if (code !== 0) return null;
   const sha = stdout.trim();
   return sha || null;
@@ -1086,7 +1197,6 @@ interface GitResult {
   stdout: string;
   stderr: string;
 }
-
 
 function gitFailureSummary(result: GitResult): string {
   const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');

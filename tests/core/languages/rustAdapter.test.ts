@@ -49,11 +49,7 @@ describe('rustAdapter.imports', () => {
       `use crate::foo::Bar;\nuse self::sibling::Baz;\nuse super::parent::Qux;\nfn main() {}\n`,
     );
     const sources = r.imports.map((i) => i.source).sort();
-    expect(sources).toEqual([
-      'crate::foo::Bar',
-      'self::sibling::Baz',
-      'super::parent::Qux',
-    ]);
+    expect(sources).toEqual(['crate::foo::Bar', 'self::sibling::Baz', 'super::parent::Qux']);
   });
 
   it('marks pub use as a re-export', async () => {
@@ -71,10 +67,7 @@ describe('rustAdapter.imports', () => {
 
 describe('rustAdapter.exports (visibility-based)', () => {
   it('captures pub fn but not bare fn', async () => {
-    const r = await rustAdapter.parse(
-      'a.rs',
-      `pub fn public() {}\nfn private() {}\n`,
-    );
+    const r = await rustAdapter.parse('a.rs', `pub fn public() {}\nfn private() {}\n`);
     const names = r.exports.map((e) => e.name);
     expect(names).toContain('public');
     expect(names).not.toContain('private');

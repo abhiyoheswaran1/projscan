@@ -39,11 +39,7 @@ describe('calculateScore', () => {
   });
 
   it('returns F for many issues', () => {
-    const issues = [
-      makeIssue('error'),
-      makeIssue('error'),
-      makeIssue('error'),
-    ];
+    const issues = [makeIssue('error'), makeIssue('error'), makeIssue('error')];
     const result = calculateScore(issues);
     expect(result.score).toBe(40);
     expect(result.grade).toBe('F');
@@ -65,7 +61,12 @@ describe('calculateScore', () => {
   });
 
   it('returns C for 3 warnings and 1 info', () => {
-    const issues = [makeIssue('warning'), makeIssue('warning'), makeIssue('warning'), makeIssue('info')];
+    const issues = [
+      makeIssue('warning'),
+      makeIssue('warning'),
+      makeIssue('warning'),
+      makeIssue('info'),
+    ];
     const result = calculateScore(issues);
     expect(result.score).toBe(67);
     expect(result.grade).toBe('D');

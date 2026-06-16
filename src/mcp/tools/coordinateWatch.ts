@@ -34,16 +34,20 @@ const MAX_INTERVAL_S = 600;
 export const coordinateWatchTool: McpTool = {
   name: 'projscan_coordinate_watch',
   description:
-    "Long-running swarm coordination watch across the repo's in-flight git worktrees. Polls on an interval and emits a `notifications/projscan/coordination_changed` notification whenever the coordination state changes — readiness (clear/caution/conflicted), collision counts, contended claims, or merge hotspots. Pairs with projscan_coordinate (one-shot): use this when an agent wants to react to other agents' changes without re-asking. Local-first. Actions: \"start\" (returns the initial summary + a watchId), \"stop\" (by watchId), \"list\".",
+    'Long-running swarm coordination watch across the repo\'s in-flight git worktrees. Polls on an interval and emits a `notifications/projscan/coordination_changed` notification whenever the coordination state changes — readiness (clear/caution/conflicted), collision counts, contended claims, or merge hotspots. Pairs with projscan_coordinate (one-shot): use this when an agent wants to react to other agents\' changes without re-asking. Local-first. Actions: "start" (returns the initial summary + a watchId), "stop" (by watchId), "list".',
   inputSchema: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
         enum: ['start', 'stop', 'list'],
-        description: '"start" begins polling (returns initial summary + watchId). "stop" cancels by id. "list" enumerates active watches.',
+        description:
+          '"start" begins polling (returns initial summary + watchId). "stop" cancels by id. "list" enumerates active watches.',
       },
-      base_ref: { type: 'string', description: 'Base ref each worktree is diffed against. (start only)' },
+      base_ref: {
+        type: 'string',
+        description: 'Base ref each worktree is diffed against. (start only)',
+      },
       interval_seconds: {
         type: 'number',
         description: `Poll interval in seconds. Default ${DEFAULT_INTERVAL_S}, min ${MIN_INTERVAL_S}, max ${MAX_INTERVAL_S}. (start only)`,
@@ -107,7 +111,10 @@ async function startWatch(
     inFlight: false,
     timer: null,
   };
-  state.timer = setInterval(() => void runTick(watchId, rootPath, detectOptions, context), intervalMs);
+  state.timer = setInterval(
+    () => void runTick(watchId, rootPath, detectOptions, context),
+    intervalMs,
+  );
   watches.set(watchId, state);
 
   return { action: 'start', watchId, registered: true, intervalSeconds, report: initial };

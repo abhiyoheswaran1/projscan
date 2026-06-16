@@ -7,7 +7,9 @@ import { computeRegressionPlan } from '../../src/core/regressionPlan.js';
 const tempRoots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
 });
 
 test('regression plan builds a full verification matrix for the product plan', async () => {
@@ -25,10 +27,18 @@ test('regression plan builds a full verification matrix for the product plan', a
   expect(report.releaseLines).toEqual(['2.3.x', '2.4.x', '2.5.x', '2.6.x']);
   expect(report.targets.length).toBeGreaterThan(0);
   expect(report.targets.length).toBeLessThanOrEqual(6);
-  expect(report.targets.map((target) => target.id)).toEqual(expect.arrayContaining(['rp-bug-hunt-top']));
-  expect(report.commands).toEqual(expect.arrayContaining(['projscan bug-hunt --format json', 'npm test', 'npm run build']));
+  expect(report.targets.map((target) => target.id)).toEqual(
+    expect.arrayContaining(['rp-bug-hunt-top']),
+  );
+  expect(report.commands).toEqual(
+    expect.arrayContaining(['projscan bug-hunt --format json', 'npm test', 'npm run build']),
+  );
   expect(report.commands.every((command) => !command.startsWith('projscan_'))).toBe(true);
-  expect(report.targets.flatMap((target) => target.verification.commands).every((command) => !command.startsWith('projscan_'))).toBe(true);
+  expect(
+    report.targets
+      .flatMap((target) => target.verification.commands)
+      .every((command) => !command.startsWith('projscan_')),
+  ).toBe(true);
   expect(new Set(report.commands).size).toBe(report.commands.length);
   expect(report.evidence.bugHuntVerdict).toMatch(/^(clean|fix|block)$/);
 });
@@ -39,7 +49,12 @@ test('regression plan keeps smoke mode small and reproducible', async () => {
   const report = await computeRegressionPlan(root, { level: 'smoke', maxTargets: 4 });
 
   expect(report.level).toBe('smoke');
-  expect(report.commands).toEqual(expect.arrayContaining(['projscan doctor --format json', 'projscan preflight --mode before_commit --format json']));
+  expect(report.commands).toEqual(
+    expect.arrayContaining([
+      'projscan doctor --format json',
+      'projscan preflight --mode before_commit --format json',
+    ]),
+  );
   expect(report.commands).not.toContain('npm run release:check');
   expect(report.targets.map((target) => target.source)).toContain('baseline');
 });
