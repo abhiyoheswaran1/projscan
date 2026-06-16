@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import {
   reportAnalysisMarkdown,
   reportHealthMarkdown,
@@ -23,6 +27,34 @@ import {
   makeOutdatedReport,
   makeUpgradePreview,
 } from './fixtures.js';
+import type { FileEntry } from '../../src/types.js';
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
+describe('markdownReporter maintainability', () => {
+  it('keeps PR diff rendering helpers out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'appendPrDiffModifiedEntry')).toBe(false);
+
+    const prDiffReporter = await inspectRepoSourceFile('src/reporters/markdownPrDiffReporter.ts');
+    const renderer = prDiffReporter.functions?.find((fn) => fn.name === 'reportPrDiffMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+});
 
 describe('markdownReporter', () => {
   describe('reportAnalysisMarkdown', () => {
