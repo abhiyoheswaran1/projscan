@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Python pyproject dependency parser
+
+- Status: accepted
+- Context: `pythonManifests.ts` remained a high-complexity hotspot after project-evidence, requirements, and root inference extraction because it still owned PEP 621, Poetry, dependency-groups, and pyproject list parsing.
+- Decision: Move pyproject dependency parsing into `src/core/languages/pythonPyproject.ts`, move shared line/list text helpers into `src/core/languages/pythonManifestText.ts`, and keep `parsePyproject` re-exported from `pythonManifests.ts`.
+- Consequences: Python manifest detection, pyproject dependency output, line numbers, and public imports stay unchanged, while future pyproject parser fixes can be reviewed separately from project detection and setup parsing.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "pyproject dependency parsing|parsePyproject"` and focused Python manifest/upgrade verification.
+
 ## 2026-06-16: Extract review cycle classification
 
 - Status: accepted

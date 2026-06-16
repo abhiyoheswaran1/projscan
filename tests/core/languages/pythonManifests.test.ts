@@ -146,6 +146,34 @@ describe('python manifest maintainability', () => {
     expect(inferRootsFromInitFiles).toBeDefined();
     expect(inferRootsFromInitFiles!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
+
+  it('keeps pyproject dependency parsing out of the manifest detector', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('export function parsePyproject');
+    expect(manifestSource).not.toContain('function appendDependencyGroups');
+    expect(manifestSource).not.toContain('function parsePoetryKv');
+
+    const pyprojectSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonPyproject.ts'),
+      'utf8',
+    );
+    expect(pyprojectSource).not.toContain("from './pythonManifests.js'");
+
+    const manifestInspection = await inspectRepoSourceFile('src/core/languages/pythonManifests.ts');
+    expect(manifestInspection.cyclomaticComplexity).toBeLessThanOrEqual(40);
+
+    const pyprojectInspection = await inspectRepoSourceFile(
+      'src/core/languages/pythonPyproject.ts',
+    );
+    const parsePyproject = pyprojectInspection.functions?.find(
+      (fn) => fn.name === 'parsePyproject',
+    );
+    expect(parsePyproject).toBeDefined();
+    expect(parsePyproject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
+  });
 });
 
 describe('splitPep508', () => {

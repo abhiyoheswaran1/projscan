@@ -2975,3 +2975,53 @@ files should remain first in the review list.
 Kept change: one focused review cycle module, one maintainability regression,
 existing review behavior coverage, this persona note, and no public schema
 change.
+
+## Seventy-First Slice Decision
+
+Selected persona: Maintainer Reviewing Python Upgrade Evidence.
+
+Reason: pyproject parsing is the highest-risk remaining part of Python
+manifest detection. It interprets PEP 621 dependencies, optional dependency
+groups, Poetry dependencies, and PEP 735 dependency groups that feed upgrade
+preview evidence.
+
+Smallest fix: move pyproject dependency parsing into `pythonPyproject.ts`,
+move shared list/line helpers into `pythonManifestText.ts`, and keep
+`parsePyproject` re-exported from `pythonManifests.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "pyproject dependency parsing"
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonPyproject.ts --format json
+npm exec projscan -- file src/core/languages/pythonManifestText.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts tests/reporters/markdownUpgradeReporter.test.ts tests/reporters/consoleUpgradeReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: Python Pyproject Parser Extraction
+
+Delete-list after this slice:
+
+- Do not change pyproject dependency semantics, emitted source names, scopes,
+  line numbers, upgrade preview fields, or public imports.
+- Do not add TOML dependencies, Python runtime execution, PyPI/network lookup,
+  package metadata changes, release actions, or version numbers.
+- Do not remove the compatibility re-export from `pythonManifests.ts`.
+
+Reviewer edge case: PEP 621 dependencies, optional dependencies, Poetry main
+and group dependencies, legacy Poetry dev-dependencies, and PEP 735
+dependency-groups should keep the same parsed names, scopes, version specs, and
+line numbers.
+
+Kept change: one focused pyproject parser module, one shared text-helper
+module, one maintainability regression, existing Python parser coverage, this
+persona note, and no public schema change.
