@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Surface report controls in HTML artifacts
+
+- Status: accepted
+- Context: Scoped/redacted issue data flowed into `analyze --format html` and `doctor --format html`, but those HTML artifacts did not state that report controls were active. Reviewers could not distinguish intentionally scoped or redacted HTML from ordinary HTML output.
+- Decision: Add a path-safe report-controls card to HTML analyze and doctor output when `--report-policy`, `--report-scope`, or `--redact-paths` activates export controls.
+- Consequences: HTML artifacts can prove scope/redaction was applied without exposing requested scope paths. JSON/SARIF metadata and Markdown banners remain unchanged.
+- Verification: `npm run test -- tests/reporters/htmlReporter.test.ts -t "report controls"` and `npm run test -- tests/cli/formatHandling.test.ts -t "analyze HTML output"`.
+
 ## 2026-06-16: Split JavaScript function collection into private traversal helpers
 
 - Status: accepted

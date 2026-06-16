@@ -69,6 +69,21 @@ describe('reportHealthHtml', () => {
     const out = captured(() => reportHealthHtml([]));
     expect(out).toContain('No issues detected');
   });
+
+  it('surfaces active report controls without raw scope paths', () => {
+    const out = captured(() =>
+      reportHealthHtml([], {
+        active: true,
+        scopeCount: 1,
+        redactPaths: true,
+        pathLabelFormat: 'redacted-path-N',
+      }),
+    );
+
+    expect(out).toContain('Report controls');
+    expect(out).toContain('scopes: 1');
+    expect(out).toContain('path redaction: redacted-path-N');
+  });
 });
 
 describe('reportHotspotsHtml', () => {

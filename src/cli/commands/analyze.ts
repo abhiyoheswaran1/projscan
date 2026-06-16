@@ -122,7 +122,7 @@ export function registerAnalyze(): void {
             reportAnalysisSarif(report.issues, pkg.version, reportControlsInfo);
             break;
           case 'html':
-            reportAnalysisHtml(report);
+            reportAnalysisHtml(report, reportControlsInfo);
             break;
           default:
             reportAnalysis(report);

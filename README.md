@@ -711,7 +711,7 @@ Formats: `console` (default), `json`, `markdown`, `sarif`, `html`
 `--report-scope <paths>`, and `--redact-paths` for shareable evidence artifacts.
 Scope is comma-separated and repo-relative; redaction replaces file paths with
 stable labels. JSON/SARIF include path-safe `reportControls` metadata, and
-Markdown prints a path-safe controls banner. Direct `--report-scope` and
+Markdown/HTML print path-safe controls banners. Direct `--report-scope` and
 `--redact-paths` flags override the selected preset for a single run.
 
 Run `projscan help` for the generated command-by-command support matrix.

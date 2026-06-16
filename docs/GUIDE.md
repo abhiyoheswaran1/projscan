@@ -910,6 +910,8 @@ projscan doctor --format html > HEALTH.html
 ```
 
 Supported on `analyze`, `doctor`, `hotspots`, `coupling`, `pr-diff`, `review`, `impact`, and `coverage`.
+For `analyze` and `doctor`, scoped/redacted report controls also appear as a
+path-safe controls card when active.
 
 ### SARIF
 
@@ -931,8 +933,8 @@ For shareable evidence artifacts, `analyze`, `doctor`, and `ci` accept
 `--report-policy <name>`, `--report-scope <paths>`, and `--redact-paths`. Scope
 is comma-separated and repo-relative. Redaction replaces file paths with stable
 labels while preserving correlation across issues and files in the same report.
-JSON/SARIF include path-safe `reportControls` metadata, and Markdown prints a
-path-safe controls banner. Direct `--report-scope` and `--redact-paths` flags
+JSON/SARIF include path-safe `reportControls` metadata, and Markdown/HTML print
+path-safe controls banners. Direct `--report-scope` and `--redact-paths` flags
 override the selected preset for a single run.
 - `properties.fixAvailable` - whether `projscan fix` can remediate it
 

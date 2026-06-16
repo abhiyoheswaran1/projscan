@@ -145,6 +145,24 @@ describe('CLI format handling', () => {
     );
   });
 
+  it('surfaces scoped and redacted report controls in analyze HTML output', async () => {
+    const result = await runCli([
+      'analyze',
+      '--report-scope',
+      'src',
+      '--redact-paths',
+      '--format',
+      'html',
+      '--quiet',
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/^<!DOCTYPE html>/);
+    expect(result.stdout).toContain('Report controls');
+    expect(result.stdout).toContain('scopes: 1');
+    expect(result.stdout).toContain('path redaction: redacted-path-N');
+  });
+
   it('rejects unsupported command formats instead of falling back to console output', async () => {
     const result = await runCli(['structure', '--format', 'sarif', '--quiet']);
 

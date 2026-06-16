@@ -98,7 +98,7 @@ export function registerDoctor(): void {
             reportHealthSarif(issues, pkg.version, reportControlsInfo);
             break;
           case 'html':
-            reportHealthHtml(issues);
+            reportHealthHtml(issues, reportControlsInfo);
             break;
           default: {
             // 1.5+ — surface a Project Memory tip when stable rules

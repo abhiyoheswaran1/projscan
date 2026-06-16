@@ -77,8 +77,9 @@ Report redaction and scoping:
 - Redaction replaces paths with stable per-report labels such as
   `redacted-path-1`; the same source path maps to the same label inside one
   report.
-- JSON/SARIF artifacts carry path-safe `reportControls` metadata, and Markdown
-  artifacts carry the same active/scope-count/redaction signal as a banner.
+- JSON/SARIF artifacts carry path-safe `reportControls` metadata, and
+  Markdown/HTML artifacts carry the same active/scope-count/redaction signal as
+  path-safe banners.
 - Residual risk: redacted reports preserve issue count, file count, extension,
   size, and same-report correlation. That is intentional evidence utility, but
   it is not anonymity against a reviewer who already knows the repo shape.
