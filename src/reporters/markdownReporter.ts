@@ -4,7 +4,6 @@ import type {
   ArchitectureLayer,
   DirectoryNode,
   HotspotReport,
-  OutdatedReport,
   WorkspaceInfo,
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
@@ -24,6 +23,7 @@ export { reportAnalysisMarkdown } from './markdownAnalysisReporter.js';
 export { reportPrDiffMarkdown } from './markdownPrDiffReporter.js';
 export { reportCoverageMarkdown } from './markdownCoverageReporter.js';
 export { reportCouplingMarkdown } from './markdownCouplingReporter.js';
+export { reportOutdatedMarkdown } from './markdownOutdatedReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -221,36 +221,5 @@ export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
       `| \`${p.name}\` | \`${p.relativePath || '.'}\` | ${p.version ?? '-'} | ${p.isRoot ? '✓' : ''} |`,
     );
   }
-  console.log(lines.join('\n'));
-}
-
-export function reportOutdatedMarkdown(report: OutdatedReport): void {
-  const lines: string[] = [];
-  lines.push('# Outdated Packages');
-  lines.push('');
-  if (!report.available) {
-    lines.push(`_${report.reason ?? 'unavailable'}_`);
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  const drifting = report.packages.filter((p) => p.drift !== 'same' && p.drift !== 'unknown');
-  lines.push(`**${report.totalPackages}** declared · **${drifting.length}** drifted`);
-  lines.push('');
-
-  if (drifting.length === 0) {
-    lines.push('_All declared packages match installed versions._');
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  lines.push('| Package | Scope | Declared | Installed | Drift |');
-  lines.push('| --- | --- | --- | --- | --- |');
-  for (const p of drifting) {
-    lines.push(
-      `| \`${p.name}\` | ${p.scope === 'devDependency' ? 'dev' : 'prod'} | ${p.declared} | ${p.installed ?? '-'} | ${p.drift} |`,
-    );
-  }
-
   console.log(lines.join('\n'));
 }

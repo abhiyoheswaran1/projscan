@@ -74,6 +74,16 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps outdated package rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportOutdatedMarkdown')).toBe(false);
+
+    const outdatedReporter = await inspectRepoSourceFile('src/reporters/markdownOutdatedReporter.ts');
+    const renderer = outdatedReporter.functions?.find((fn) => fn.name === 'reportOutdatedMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {
