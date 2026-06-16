@@ -929,3 +929,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Suppress default `env` source matches only when the same function pairs an exact `process.env` member reference with a default child-process sink and no specific `process.env.X` reads or custom source/sink overrides are present.
 - Consequences: `spawn('git', args, { env: process.env })` no longer reports as an env-command flow, while direct and multi-hop `process.env.X` command flows remain covered.
 - Verification: `npm run test -- tests/core/taint.test.ts -t "env passthrough"` and `npm run test -- tests/core/dataflow.test.ts -t "env passthrough"` failed before the change, then those tests plus `npm run test -- tests/core/taint.test.ts -t "same-function flow"`, `npm run test -- tests/core/taint.test.ts -t "multi-hop flow"`, `npm run test -- tests/core/dataflow.test.ts -t "RegExp.exec"`, and `npm run test -- tests/core/taint.test.ts tests/core/dataflow.test.ts` passed after the change.
+
+## 2026-06-16: Extract AST parser orchestration helpers
+
+- Status: accepted
+- Context: `src/core/ast.ts` remained the top hotspot, and `parseSource` still mixed parser option setup, parse-error handling, call/import extraction, and decision-point traversal in one high-review-risk function.
+- Decision: Move Babel parser setup, parse-error handling, and file-level call/import signal collection into named helpers while keeping the exported `parseSource` shape unchanged.
+- Consequences: `parseSource` drops from CC 12 to CC 5, `src/core/ast.ts` drops from CC 205 to CC 197, and dynamic import, CommonJS require, call-site, member-reference, and cyclomatic behavior stay covered.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration"` failed before the extraction, then `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration"`, `npm run test -- tests/core/ast.test.ts`, `npm run test -- tests/core/ast.functions.test.ts -t "switch cases logical operators"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, and `npm exec projscan -- file src/core/ast.ts --format json` passed after the extraction.

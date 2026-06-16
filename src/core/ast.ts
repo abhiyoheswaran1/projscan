@@ -136,6 +136,8 @@ const EMPTY: AstResult = {
 };
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
+const TYPESCRIPT_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
+const JSX_EXTENSIONS = new Set(['.tsx', '.jsx']);
 
 /** Is this a file we should try to AST-parse at all? */
 export function isParseable(filePath: string): boolean {
@@ -156,80 +158,19 @@ export function parseSource(filePath: string, content: string): AstResult {
     return { ...EMPTY, reason: 'non-source extension' };
   }
 
-  const ext = path.extname(filePath).toLowerCase();
-  const isTypeScript = ext === '.ts' || ext === '.tsx' || ext === '.mts' || ext === '.cts';
-  const isJSX = ext === '.tsx' || ext === '.jsx';
-
-  const plugins: ParserOptions['plugins'] = [];
-  if (isTypeScript) plugins.push('typescript');
-  if (isJSX) plugins.push('jsx');
-  plugins.push('decorators-legacy', 'dynamicImport', 'topLevelAwait');
-
-  let ast: File;
-  try {
-    ast = parse(content, {
-      sourceType: 'module',
-      allowImportExportEverywhere: true,
-      allowAwaitOutsideFunction: true,
-      allowReturnOutsideFunction: true,
-      allowSuperOutsideMethod: true,
-      errorRecovery: true,
-      plugins,
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ...EMPTY, reason: `parse error: ${msg.slice(0, 120)}` };
-  }
+  const parsed = parseBabelFile(content, parserPluginsForFile(filePath));
+  if (!parsed.ok) return { ...EMPTY, reason: parsed.reason };
+  const ast = parsed.ast;
 
   const imports: AstImport[] = [];
   const exports: AstExport[] = [];
   const callSites: string[] = [];
-  let decisionPoints = 0;
 
   for (const node of ast.program.body) {
     visitTopLevel(node, imports, exports);
   }
 
-  // Second pass: extract dynamic imports + call sites + cyclomatic decision
-  // points. Walk the whole tree (cheap - we already have the AST in memory).
-  walk(ast.program, (n) => {
-    if (n.type === 'CallExpression') {
-      const callee = n.callee;
-      if (callee.type === 'Identifier') {
-        callSites.push(callee.name);
-      } else if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier') {
-        callSites.push(callee.property.name);
-      } else if (
-        callee.type === 'Import' &&
-        n.arguments[0] &&
-        n.arguments[0].type === 'StringLiteral'
-      ) {
-        imports.push({
-          source: n.arguments[0].value,
-          kind: 'dynamic',
-          specifiers: [],
-          typeOnly: false,
-          line: n.loc?.start.line ?? 0,
-        });
-      }
-      // CommonJS require()
-      if (
-        callee.type === 'Identifier' &&
-        callee.name === 'require' &&
-        n.arguments[0] &&
-        n.arguments[0].type === 'StringLiteral'
-      ) {
-        imports.push({
-          source: n.arguments[0].value,
-          kind: 'require',
-          specifiers: [],
-          typeOnly: false,
-          line: n.loc?.start.line ?? 0,
-        });
-      }
-    }
-    if (isDecisionPoint(n)) decisionPoints++;
-  });
+  const decisionPoints = collectProgramSignals(ast.program, imports, callSites);
 
   const functions = extractFunctionsFromBabel(ast.program);
 
@@ -241,6 +182,95 @@ export function parseSource(filePath: string, content: string): AstResult {
     lineCount: content ? content.split('\n').length : 0,
     cyclomaticComplexity: decisionPoints + 1,
     functions,
+  };
+}
+
+type ParseBabelResult = { ok: true; ast: File } | { ok: false; reason: string };
+
+function parserPluginsForFile(filePath: string): ParserOptions['plugins'] {
+  const ext = path.extname(filePath).toLowerCase();
+  const plugins: ParserOptions['plugins'] = [];
+  if (TYPESCRIPT_EXTENSIONS.has(ext)) plugins.push('typescript');
+  if (JSX_EXTENSIONS.has(ext)) plugins.push('jsx');
+  plugins.push('decorators-legacy', 'dynamicImport', 'topLevelAwait');
+  return plugins;
+}
+
+function parseBabelFile(content: string, plugins: ParserOptions['plugins']): ParseBabelResult {
+  try {
+    const ast = parse(content, {
+      sourceType: 'module',
+      allowImportExportEverywhere: true,
+      allowAwaitOutsideFunction: true,
+      allowReturnOutsideFunction: true,
+      allowSuperOutsideMethod: true,
+      errorRecovery: true,
+      plugins,
+    });
+    return { ok: true, ast };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: `parse error: ${msg.slice(0, 120)}` };
+  }
+}
+
+function collectProgramSignals(
+  program: Node,
+  imports: AstImport[],
+  callSites: string[],
+): number {
+  let decisionPoints = 0;
+  walk(program, (node) => {
+    collectCallExpressionSignals(node, imports, callSites);
+    if (isDecisionPoint(node)) decisionPoints++;
+  });
+  return decisionPoints;
+}
+
+function collectCallExpressionSignals(
+  node: Node,
+  imports: AstImport[],
+  callSites: string[],
+): void {
+  if (node.type !== 'CallExpression') return;
+  const callee = (node as { callee?: Node }).callee;
+  const name = babelCalleeName(callee);
+  if (name) callSites.push(name);
+  collectCallExpressionImport(node, callee, imports);
+}
+
+function collectCallExpressionImport(
+  node: Node,
+  callee: Node | undefined,
+  imports: AstImport[],
+): void {
+  const source = firstStringLiteralArgument(node);
+  if (!source) return;
+  if (callee?.type === 'Import') {
+    imports.push(importFromCallExpression(source, 'dynamic', node));
+    return;
+  }
+  if (callee?.type === 'Identifier' && callee.name === 'require') {
+    imports.push(importFromCallExpression(source, 'require', node));
+  }
+}
+
+function firstStringLiteralArgument(node: Node): string | null {
+  const arg = (node as { arguments?: Node[] }).arguments?.[0];
+  return arg?.type === 'StringLiteral' ? (arg as StringLiteral).value : null;
+}
+
+function importFromCallExpression(
+  source: string,
+  kind: 'dynamic' | 'require',
+  node: Node,
+): AstImport {
+  return {
+    source,
+    kind,
+    specifiers: [],
+    typeOnly: false,
+    line: (node as NodeWithLoc).loc?.start.line ?? 0,
   };
 }
 

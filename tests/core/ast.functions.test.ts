@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseSource } from '../../src/core/ast.js';
 import type { FunctionInfo } from '../../src/core/ast.js';
 
@@ -9,6 +11,15 @@ function fns(code: string, file = 'src/test.ts'): FunctionInfo[] {
 }
 
 describe('per-function CC (JS/TS)', () => {
+  it('keeps parseSource orchestration below the hotspot review budget', () => {
+    const source = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const out = fns(source, 'src/core/ast.ts');
+    const parser = out.find((fn) => fn.name === 'parseSource');
+
+    expect(parser).toBeDefined();
+    expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
