@@ -91,6 +91,8 @@ Python lockfile parsing:
 
 - Trust boundary: local manifests/lockfiles only. The Python path does not query
   PyPI and does not add a package install/execution path.
+- Declared dependency evidence covers PEP 621 and Poetry dependency tables,
+  including legacy `tool.poetry.dev-dependencies` as dev scope.
 - Supported current-version evidence is intentionally narrow: Poetry/uv/PDM
   package blocks, Conda lockfile package entries, Pipfile exact versions, and
   pinned root requirements.

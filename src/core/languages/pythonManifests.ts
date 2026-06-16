@@ -171,8 +171,19 @@ export function parsePyproject(content: string): PythonDeclaredDep[] {
       out.push({ name, versionSpec, source: 'pyproject.toml', line, scope: 'dev' });
     }
   }
+  appendLegacyPoetryDevDependencies(out, content);
 
   return out;
+}
+
+function appendLegacyPoetryDevDependencies(out: PythonDeclaredDep[], content: string): void {
+  const legacyDevRe = /\[tool\.poetry\.dev-dependencies\]([\s\S]*?)(?=\n\[|$)/;
+  const legacyDevMatch = legacyDevRe.exec(content);
+  if (!legacyDevMatch) return;
+  const offset = offsetToLine(content, legacyDevMatch.index);
+  for (const { name, versionSpec, line } of parsePoetryKv(legacyDevMatch[1], offset)) {
+    out.push({ name, versionSpec, source: 'pyproject.toml', line, scope: 'dev' });
+  }
 }
 
 function extractPyprojectRoots(content: string): string[] {

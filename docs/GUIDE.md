@@ -701,7 +701,7 @@ Preview the impact of upgrading a package. The default path is fully offline; pa
 - Breaking-change markers found in the CHANGELOG: scans for `BREAKING CHANGE`, `deprecated`, `removed support`, `no longer supported`, and section headers containing "breaking"
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
 - Importer list - every file in your source tree that imports the package (direct or sub-path)
-- Python manifest evidence for packages declared in `pyproject.toml`, `setup.cfg`, `setup.py`, or root `requirements*.txt`
+- Python manifest evidence for packages declared in `pyproject.toml` (including Poetry dependency groups and legacy `tool.poetry.dev-dependencies`), `setup.cfg`, `setup.py`, or root `requirements*.txt`
 - Python current-version evidence from `poetry.lock` / `uv.lock` / `pdm.lock` package blocks, `conda-lock.yml` / `conda-lock.yaml` package entries, `Pipfile.lock` exact versions, pinned root `requirements*.txt`, or pinned root `constraints*.txt` entries
 
 **Example:**

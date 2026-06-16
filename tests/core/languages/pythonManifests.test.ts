@@ -289,6 +289,25 @@ describe('parsePyproject (PEP 621)', () => {
     expect(deps.every((d) => d.scope === 'dev')).toBe(true);
     expect(deps.map((d) => d.name).sort()).toEqual(['black', 'pytest']);
   });
+
+  it('reads legacy poetry dev-dependencies as dev scope', () => {
+    const toml = [
+      '[tool.poetry.dependencies]',
+      'requests = "^2"',
+      '[tool.poetry.dev-dependencies]',
+      'pytest = "^7"',
+      'ruff = "^0.4"',
+    ].join('\n');
+
+    const deps = parsePyproject(toml);
+    const scopes = Object.fromEntries(deps.map((d) => [d.name, d.scope]));
+
+    expect(scopes).toMatchObject({
+      requests: 'main',
+      pytest: 'dev',
+      ruff: 'dev',
+    });
+  });
 });
 
 describe('detectPythonProject', () => {
