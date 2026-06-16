@@ -1,17 +1,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Issue, IssueSeverity } from '../types/common.js';
+import type { Issue } from '../types/common.js';
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
 import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
 import { applyScan } from './configScan.js';
+import { applySeverityOverrides } from './configSeverity.js';
 import { applyTaint } from './configTaint.js';
 
 const CONFIG_CANDIDATES = ['.projscanrc.json', '.projscanrc'];
 const PKG_KEY = 'projscan';
-
-const VALID_SEVERITIES: IssueSeverity[] = ['info', 'warning', 'error'];
 
 export async function loadConfig(rootPath: string, explicitPath?: string): Promise<LoadedConfig> {
   if (explicitPath) {
@@ -100,18 +99,6 @@ function applyDisableRules(obj: Record<string, unknown>, out: ProjscanConfig): v
   out.disableRules = obj.disableRules.filter(
     (v): v is string => typeof v === 'string' && v.length > 0,
   );
-}
-
-function applySeverityOverrides(obj: Record<string, unknown>, out: ProjscanConfig): void {
-  if (!obj.severityOverrides || typeof obj.severityOverrides !== 'object') return;
-  const raw = obj.severityOverrides as Record<string, unknown>;
-  const overrides: Record<string, IssueSeverity> = {};
-  for (const [key, val] of Object.entries(raw)) {
-    if (typeof val === 'string' && (VALID_SEVERITIES as string[]).includes(val)) {
-      overrides[key] = val as IssueSeverity;
-    }
-  }
-  if (Object.keys(overrides).length) out.severityOverrides = overrides;
 }
 
 /**

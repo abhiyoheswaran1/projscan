@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract severity override config normalization
+
+- Status: accepted
+- Context: `src/utils/config.ts` still owned severity override parsing and the valid-severity allow-list, keeping issue remapping policy mixed with unrelated config branches.
+- Decision: Move severity override normalization into `src/utils/configSeverity.ts` and import `applySeverityOverrides` from the main config normalizer.
+- Consequences: Invalid severity overrides continue to be dropped, while severity remapping config review can focus on one helper module.
+- Verification: `npm run test -- tests/utils/config.test.ts -t "severity override normalization"` and focused config/issue-mapping verification.
+
 ## 2026-06-16: Extract hotspot config normalization
 
 - Status: accepted

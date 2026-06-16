@@ -185,6 +185,18 @@ describe('loadConfig', () => {
     expect(result.config.severityOverrides).toEqual({ 'missing-prettier': 'info' });
   });
 
+  it('keeps severity override normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applySeverityOverrides');
+    expect(configSource).not.toContain('VALID_SEVERITIES');
+
+    const severitySource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configSeverity.ts'),
+      'utf8',
+    );
+    expect(severitySource).not.toContain("from './config.js'");
+  });
+
   it('throws with a helpful message on malformed JSON', async () => {
     await fs.writeFile(path.join(tmp, '.projscanrc.json'), '{ not valid }');
     await expect(loadConfig(tmp)).rejects.toThrow(/Invalid JSON/);

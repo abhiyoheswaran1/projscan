@@ -3504,3 +3504,53 @@ and clamped to 1..100, and blank `since` strings should still be ignored.
 Kept change: one focused hotspot config module, one maintainability regression,
 existing config/hotspot coverage, this persona note, and no public schema
 change.
+
+## Eighty-Second Slice Decision
+
+Selected persona: Platform / Release Owner.
+
+Reason: severity overrides influence release and review evidence by remapping
+issue severities. Keeping the allow-list and override parsing outside the
+general loader makes that behavior easier to audit without changing issue
+schemas or verdict logic.
+
+Smallest fix: move severity override normalization into `configSeverity.ts` and
+import `applySeverityOverrides` from `config.ts`. Preserve the accepted
+severity set of `info`, `warning`, and `error`, and continue dropping invalid
+override values.
+
+Proof commands:
+
+```bash
+npm run test -- tests/utils/config.test.ts -t "severity override normalization"
+npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/utils/config.ts --format json
+npm exec projscan -- file src/utils/configSeverity.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/utils/config.test.ts tests/types/public-config-types.test.ts tests/core/issueEngine.trustConfig.test.ts
+git diff --check
+```
+
+## Review Guardrails: Severity Config Extraction
+
+Delete-list after this slice:
+
+- Do not change the public config schema, accepted severity names, or invalid
+  override dropping behavior.
+- Do not change disable-rule filtering, issue IDs, verdict logic, report
+  output, or release-train wording.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+
+Reviewer edge case: `severityOverrides` entries with values other than
+`info`, `warning`, or `error` should still be ignored, and valid exact issue-id
+matches should still remap issue severity later in `applyConfigToIssues`.
+
+Kept change: one focused severity config module, one maintainability
+regression, existing config/issue-trust coverage, this persona note, and no
+public schema change.
