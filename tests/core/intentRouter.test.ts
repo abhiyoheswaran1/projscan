@@ -3044,6 +3044,26 @@ describe('routeIntent', () => {
     );
   });
 
+  it('does not treat prohibited release actions as the requested route', () => {
+    const result = routeIntent(
+      'continue autonomous no-release roadmap validation implementation; do not release publish tag push merge deploy or bump version',
+    );
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['do', 'roadmap']),
+      }),
+    );
+    expect(result.matches.slice(0, 3).map((match) => match.tool)).not.toContain(
+      'projscan_release_train',
+    );
+    expect(result.matches.slice(0, 3).map((match) => match.tool)).not.toContain(
+      'projscan_upgrade',
+    );
+  });
+
   it('routes product-planning wording to high-confidence workplan', () => {
     const buildNext = routeIntent('what should we build next');
 

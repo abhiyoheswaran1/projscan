@@ -1763,6 +1763,67 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
 
+function hasProhibitedReleaseWorkflowAction(intent: string): boolean {
+  return (
+    /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
+      intent,
+    ) ||
+    /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
+      intent,
+    ) ||
+    /\bwithout\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
+      intent,
+    )
+  );
+}
+
+function hasProhibitedVersionBumpAction(intent: string): boolean {
+  return (
+    /\bno[-\s]+(?:version[-\s]+)?(?:bump|cut)\b/i.test(intent) ||
+    /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:bump(?:ing)?(?:\s+the)?\s+version|version\s+bump|cut(?:ting)?(?:\s+a)?\s+version)\b/i.test(
+      intent,
+    ) ||
+    /\bwithout\b[^.?!\n]*(?:bump(?:ing)?(?:\s+the)?\s+version|version\s+bump|cut(?:ting)?(?:\s+a)?\s+version)\b/i.test(
+      intent,
+    )
+  );
+}
+
+function isReleaseWorkflowActionKeyword(keyword: string): boolean {
+  return [
+    'release',
+    'releasing',
+    'deploy',
+    'deploying',
+    'deployed',
+    'deployment',
+    'ship',
+    'shipping',
+    'publish',
+    'tag',
+  ].includes(keyword);
+}
+
+function isVersionBumpActionKeyword(keyword: string): boolean {
+  return ['bump', 'version'].includes(keyword);
+}
+
+function prohibitedWorkflowKeywordMatches(
+  entry: RouteEntry,
+  keyword: string,
+  hasProhibitedReleaseAction: boolean,
+  hasProhibitedVersionBump: boolean,
+): boolean {
+  return (
+    (entry.tool === 'projscan_release_train' &&
+      hasProhibitedReleaseAction &&
+      isReleaseWorkflowActionKeyword(keyword)) ||
+    (entry.tool === 'projscan_upgrade' &&
+      hasProhibitedVersionBump &&
+      isVersionBumpActionKeyword(keyword))
+  );
+}
+
 /**
  * Map a stated intent to the best-matching projscan tool(s). With no intent,
  * returns the full catalog grouped by category. Ranking is keyword overlap;
@@ -1784,19 +1845,31 @@ export function routeIntent(intent: string | undefined): RouteResult {
   const hasPackageChange = !hasFilePath && hasPackageChangeTarget(intent);
   const hasEnvVar = hasEnvVarTarget(intent);
   const hasQuotedText = hasQuotedTextTarget(intent);
+  const hasProhibitedReleaseAction = hasProhibitedReleaseWorkflowAction(intent);
+  const hasProhibitedVersionBump = hasProhibitedVersionBumpAction(intent);
   const scored = ROUTE_CATALOG.map((entry, index) => {
-    const matchedKeywords = entry.keywords.filter((kw) =>
-      routeKeywordMatches(
-        entry,
-        kw,
-        tokens,
-        hasFilePath,
-        hasPackageRemoval,
-        hasPackageChange,
-        hasEnvVar,
-        hasQuotedText,
-      ),
-    );
+    const matchedKeywords = entry.keywords
+      .filter(
+        (kw) =>
+          !prohibitedWorkflowKeywordMatches(
+            entry,
+            kw,
+            hasProhibitedReleaseAction,
+            hasProhibitedVersionBump,
+          ),
+      )
+      .filter((kw) =>
+        routeKeywordMatches(
+          entry,
+          kw,
+          tokens,
+          hasFilePath,
+          hasPackageRemoval,
+          hasPackageChange,
+          hasEnvVar,
+          hasQuotedText,
+        ),
+      );
     return { entry, score: routeScore(entry, matchedKeywords), matchedKeywords, index };
   })
     .filter((s) => s.score > 0)

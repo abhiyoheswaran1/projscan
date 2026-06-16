@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Ignore prohibited release actions when routing autonomous work
+
+- Status: accepted
+- Context: A no-release autonomous roadmap instruction such as `do not release publish tag push merge deploy or bump version` was routed to `projscan_release_train` because the intent router counted prohibited action words as positive release intent.
+- Decision: Detect prohibited release/publish/deploy/tag wording and prohibited version-bump wording before route scoring. Suppress only the affected release-train and upgrade keywords, preserving affirmative release-readiness and package-upgrade prompts.
+- Consequences: Mission Control keeps no-release autonomous implementation loops on workplan/preflight paths while release, publish, deploy, push, merge, and version-bump actions remain blocked by the review gate.
+- Verification: `npm run test -- tests/core/intentRouter.test.ts -t "prohibited release actions|improve next|product-planning|release readiness|release train|package upgrade"`, `npm run test -- tests/core/start.test.ts -t "no-release autonomous roadmap intents|autonomous continuation|infers bug-hunt and release workflows|build-next|improve next|product-planning|explicit mode overrides"`, `npm run typecheck`, `npm run build`, `npm exec projscan -- start --intent "continue autonomous no-release roadmap validation implementation; do not release publish tag push merge deploy or bump version" --format json`, and `npm exec projscan -- bug-hunt --format json`.
+
 ## 2026-06-16: Track qualified member reads for Koa dataflow precision
 
 - Status: accepted

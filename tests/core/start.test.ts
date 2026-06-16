@@ -470,6 +470,36 @@ test('allows autonomous continuation intents to keep bounded slice work unblocke
   );
 });
 
+test('start report keeps no-release autonomous roadmap intents out of release workflow', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent:
+      'continue autonomous no-release roadmap validation implementation; do not release publish tag push merge deploy or bump version',
+  });
+
+  expect(report.mode).not.toBe('release');
+  expect(report.recommendedWorkflow.id).not.toBe('release_approval');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_workplan',
+      matchedKeywords: expect.arrayContaining(['do', 'roadmap']),
+    }),
+  );
+  expect(report.missionControl.primaryAction.tool).toBe('projscan_workplan');
+  expect(report.missionControl.primaryAction.command).not.toBe(
+    'projscan release-train --format json',
+  );
+  expect(report.missionControl.reviewGate.policy.blockedActions).toEqual([
+    'release',
+    'publish',
+    'deploy',
+    'push',
+    'merge',
+    'version_bump',
+  ]);
+});
+
 test('start report routes build-next product-planning questions to bug-hunt workplan', async () => {
   const root = await makeTempProject();
 
