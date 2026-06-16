@@ -794,75 +794,90 @@ function collectNamedExport(
   exports: AstExport[],
   imports: AstImport[],
 ): void {
-  // Re-export: export { X } from 'source'
-  if (node.source) {
-    imports.push({
-      source: (node.source as StringLiteral).value,
-      kind: 'reexport',
-      specifiers: node.specifiers
-        .map((s) => {
-          if (s.type === 'ExportSpecifier') {
-            const exported = s.exported;
-            return exported.type === 'Identifier'
-              ? exported.name
-              : (exported as StringLiteral).value;
-          }
-          return '';
-        })
-        .filter(Boolean),
-      typeOnly: node.exportKind === 'type',
-      line: node.loc?.start.line ?? 0,
-    });
-  }
+  const reexport = namedReexportImport(node);
+  if (reexport) imports.push(reexport);
 
-  // Inline declaration: export function foo() {} / export const x = ... / etc.
   if (node.declaration) {
     const typeOnly = node.exportKind === 'type';
     const line = node.declaration.loc?.start.line ?? node.loc?.start.line ?? 0;
-    switch (node.declaration.type) {
-      case 'FunctionDeclaration': {
-        const name = (node.declaration as FunctionDeclaration).id?.name;
-        if (name) exports.push({ name, kind: 'function', typeOnly, line });
-        return;
-      }
-      case 'ClassDeclaration': {
-        const name = (node.declaration as ClassDeclaration).id?.name;
-        if (name) exports.push({ name, kind: 'class', typeOnly, line });
-        return;
-      }
-      case 'VariableDeclaration': {
-        for (const decl of (node.declaration as VariableDeclaration).declarations) {
-          if (decl.id.type === 'Identifier') {
-            exports.push({ name: (decl.id as Identifier).name, kind: 'variable', typeOnly, line });
-          }
-        }
-        return;
-      }
-      case 'TSInterfaceDeclaration': {
-        const name = (node.declaration as TSInterfaceDeclaration).id.name;
-        exports.push({ name, kind: 'interface', typeOnly: true, line });
-        return;
-      }
-      case 'TSTypeAliasDeclaration': {
-        const name = (node.declaration as TSTypeAliasDeclaration).id.name;
-        exports.push({ name, kind: 'type', typeOnly: true, line });
-        return;
-      }
-      case 'TSEnumDeclaration': {
-        const name = (node.declaration as TSEnumDeclaration).id.name;
-        exports.push({ name, kind: 'enum', typeOnly, line });
-        return;
-      }
-      default:
-        return;
-    }
+    collectInlineExportDeclaration(node.declaration, exports, typeOnly, line);
+    return;
   }
 
-  // Named re-export of local symbols: export { foo, bar }
+  collectLocalExportSpecifiers(node, exports);
+}
+
+function namedReexportImport(node: ExportNamedDeclaration): AstImport | null {
+  if (!node.source) return null;
+  return {
+    source: (node.source as StringLiteral).value,
+    kind: 'reexport',
+    specifiers: exportSpecifierNames(node.specifiers),
+    typeOnly: node.exportKind === 'type',
+    line: node.loc?.start.line ?? 0,
+  };
+}
+
+function exportSpecifierNames(specifiers: ExportNamedDeclaration['specifiers']): string[] {
+  return specifiers.flatMap((specifier) => {
+    const name = exportSpecifierName(specifier);
+    return name ? [name] : [];
+  });
+}
+
+function exportSpecifierName(specifier: ExportNamedDeclaration['specifiers'][number]): string | null {
+  if (specifier.type !== 'ExportSpecifier') return null;
+  const exported = specifier.exported;
+  return exported.type === 'Identifier' ? exported.name : (exported as StringLiteral).value;
+}
+
+function collectInlineExportDeclaration(
+  declaration: NonNullable<ExportNamedDeclaration['declaration']>,
+  exports: AstExport[],
+  typeOnly: boolean,
+  line: number,
+): void {
+  switch (declaration.type) {
+    case 'FunctionDeclaration':
+      pushIdExport(exports, (declaration as FunctionDeclaration).id?.name, 'function', typeOnly, line);
+      return;
+    case 'ClassDeclaration':
+      pushIdExport(exports, (declaration as ClassDeclaration).id?.name, 'class', typeOnly, line);
+      return;
+    case 'VariableDeclaration':
+      collectVariableExports(declaration as VariableDeclaration, exports, typeOnly, line);
+      return;
+    case 'TSInterfaceDeclaration':
+      pushIdExport(exports, (declaration as TSInterfaceDeclaration).id.name, 'interface', true, line);
+      return;
+    case 'TSTypeAliasDeclaration':
+      pushIdExport(exports, (declaration as TSTypeAliasDeclaration).id.name, 'type', true, line);
+      return;
+    case 'TSEnumDeclaration':
+      pushIdExport(exports, (declaration as TSEnumDeclaration).id.name, 'enum', typeOnly, line);
+      return;
+    default:
+      return;
+  }
+}
+
+function collectVariableExports(
+  declaration: VariableDeclaration,
+  exports: AstExport[],
+  typeOnly: boolean,
+  line: number,
+): void {
+  for (const decl of declaration.declarations) {
+    if (decl.id.type === 'Identifier') {
+      pushIdExport(exports, (decl.id as Identifier).name, 'variable', typeOnly, line);
+    }
+  }
+}
+
+function collectLocalExportSpecifiers(node: ExportNamedDeclaration, exports: AstExport[]): void {
   for (const spec of node.specifiers) {
-    if (spec.type !== 'ExportSpecifier') continue;
-    const exported = spec.exported;
-    const name = exported.type === 'Identifier' ? exported.name : (exported as StringLiteral).value;
+    const name = exportSpecifierName(spec);
+    if (!name) continue;
     exports.push({
       name,
       kind: 'unknown',
@@ -870,6 +885,16 @@ function collectNamedExport(
       line: spec.loc?.start.line ?? node.loc?.start.line ?? 0,
     });
   }
+}
+
+function pushIdExport(
+  exports: AstExport[],
+  name: string | undefined,
+  kind: SymbolKind,
+  typeOnly: boolean,
+  line: number,
+): void {
+  if (name) exports.push({ name, kind, typeOnly, line });
 }
 
 /**

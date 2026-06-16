@@ -73,6 +73,15 @@ describe('parseSource', () => {
     expect(names).toContain('VERSION');
   });
 
+  it('extracts local named export specifier aliases', () => {
+    const r = parseSource('a.ts', 'const foo = 1;\nexport { foo as bar };');
+    expect(r.exports).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'bar', kind: 'unknown', typeOnly: false }),
+      ]),
+    );
+  });
+
   it('extracts interface / type / enum exports (TypeScript)', () => {
     const r = parseSource(
       'a.ts',

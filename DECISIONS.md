@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Split JavaScript named-export collection into private helpers
+
+- Status: accepted
+- Context: After function traversal extraction, `src/core/ast.ts` still had `collectNamedExport` as a high-complexity hotspot mixing re-export imports, inline declaration exports, variable declarations, and local specifier aliases.
+- Decision: Keep `parseSource` export behavior unchanged, but move re-export import construction, inline declaration handling, variable export emission, local specifier handling, and shared named-export pushing into private helpers.
+- Consequences: Named export parsing remains schema-compatible while future changes to TypeScript declaration exports or re-export handling can be reviewed in smaller helpers.
+- Verification: `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts`.
+
 ## 2026-06-16: Surface report controls in HTML artifacts
 
 - Status: accepted
