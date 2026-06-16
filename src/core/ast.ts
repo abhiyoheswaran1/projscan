@@ -574,57 +574,87 @@ function analyzeBabelBody(fnNode: Node): {
       memberReferences: [],
       references: [],
     };
-  let decisions = 0;
-  const calls = new Set<string>();
-  const directCalls = new Set<string>();
-  const memberCalls = new Set<string>();
-  const aliases = new Set<string>();
-  const memberRefs = new Set<string>();
-  const refs = new Set<string>();
-  // MemberExpression nodes that ARE in callee position get their rightmost
-  // identifier added to callSites instead of references — track them here so
-  // we can skip them during the read walk.
-  const calleeMembers = new Set<Node>();
-  walkSkippingNestedFunctions(body, (n) => {
-    if (isDecisionPoint(n)) {
-      decisions++;
-      return;
-    }
-    if (
-      n.type === 'CallExpression' ||
-      n.type === 'OptionalCallExpression' ||
-      n.type === 'NewExpression'
-    ) {
-      const callee = (n as { callee?: Node }).callee;
-      const name = babelCalleeName(callee);
-      if (name) calls.add(name);
-      if (name && callee?.type === 'Identifier') directCalls.add(name);
-      const memberName = babelQualifiedMemberName(callee);
-      if (memberName) memberCalls.add(memberName);
-      if (
-        callee &&
-        (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression')
-      ) {
-        calleeMembers.add(callee);
-      }
-    }
-    if (n.type === 'VariableDeclarator') collectMemberAliases(n, aliases);
-    if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') {
-      if (calleeMembers.has(n)) return;
-      const qualified = babelQualifiedMemberName(n);
-      if (qualified) memberRefs.add(qualified);
-      collectMemberReadIdents(n, refs);
-    }
-  });
+  const signals = createBabelBodySignals();
+  walkSkippingNestedFunctions(body, (node) => collectBabelBodySignal(node, signals));
   return {
-    cc: decisions + 1,
-    callSites: [...calls],
-    memberCallSites: [...memberCalls],
-    directCallSites: [...directCalls],
-    memberAliases: [...aliases],
-    memberReferences: [...memberRefs],
-    references: [...refs],
+    cc: signals.decisions + 1,
+    callSites: [...signals.calls],
+    memberCallSites: [...signals.memberCalls],
+    directCallSites: [...signals.directCalls],
+    memberAliases: [...signals.aliases],
+    memberReferences: [...signals.memberRefs],
+    references: [...signals.refs],
   };
+}
+
+interface BabelBodySignals {
+  decisions: number;
+  calls: Set<string>;
+  directCalls: Set<string>;
+  memberCalls: Set<string>;
+  aliases: Set<string>;
+  memberRefs: Set<string>;
+  refs: Set<string>;
+  /** MemberExpression nodes in callee position belong to callSites, not references. */
+  calleeMembers: Set<Node>;
+}
+
+function createBabelBodySignals(): BabelBodySignals {
+  return {
+    decisions: 0,
+    calls: new Set<string>(),
+    directCalls: new Set<string>(),
+    memberCalls: new Set<string>(),
+    aliases: new Set<string>(),
+    memberRefs: new Set<string>(),
+    refs: new Set<string>(),
+    calleeMembers: new Set<Node>(),
+  };
+}
+
+function collectBabelBodySignal(node: Node, signals: BabelBodySignals): void {
+  if (isDecisionPoint(node)) {
+    signals.decisions++;
+    return;
+  }
+  collectBabelBodyCallSignal(node, signals);
+  collectBabelBodyAliasSignal(node, signals);
+  collectBabelBodyReferenceSignal(node, signals);
+}
+
+function collectBabelBodyCallSignal(node: Node, signals: BabelBodySignals): void {
+  if (!isCallLikeNode(node)) return;
+  const callee = (node as { callee?: Node }).callee;
+  const name = babelCalleeName(callee);
+  if (name) signals.calls.add(name);
+  if (name && callee?.type === 'Identifier') signals.directCalls.add(name);
+  const memberName = babelQualifiedMemberName(callee);
+  if (memberName) signals.memberCalls.add(memberName);
+  if (callee && isMemberExpressionNode(callee)) signals.calleeMembers.add(callee);
+}
+
+function collectBabelBodyAliasSignal(node: Node, signals: BabelBodySignals): void {
+  if (node.type === 'VariableDeclarator') collectMemberAliases(node, signals.aliases);
+}
+
+function collectBabelBodyReferenceSignal(node: Node, signals: BabelBodySignals): void {
+  if (!isMemberExpressionNode(node)) return;
+  if (signals.calleeMembers.has(node)) return;
+  const qualified = babelQualifiedMemberName(node);
+  if (qualified) signals.memberRefs.add(qualified);
+  collectMemberReadIdents(node, signals.refs);
+}
+
+function isCallLikeNode(node: Node): boolean {
+  return (
+    node.type === 'CallExpression' ||
+    node.type === 'OptionalCallExpression' ||
+    node.type === 'NewExpression'
+  );
+}
+
+function isMemberExpressionNode(node: Node): boolean {
+  return node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression';
 }
 
 function functionParamNames(fnNode: Node): string[] {

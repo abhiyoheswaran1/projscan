@@ -20,6 +20,16 @@ describe('per-function CC (JS/TS)', () => {
     expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps high-complexity AST traversal logic out of anonymous callbacks', () => {
+    const source = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const out = fns(source, 'src/core/ast.ts');
+    const anonymousHotspots = out.filter(
+      (fn) => fn.name === '<anonymous>' && fn.cyclomaticComplexity >= 15,
+    );
+
+    expect(anonymousHotspots).toEqual([]);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });

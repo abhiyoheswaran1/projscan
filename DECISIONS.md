@@ -937,3 +937,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move Babel parser setup, parse-error handling, and file-level call/import signal collection into named helpers while keeping the exported `parseSource` shape unchanged.
 - Consequences: `parseSource` drops from CC 12 to CC 5, `src/core/ast.ts` drops from CC 205 to CC 197, and dynamic import, CommonJS require, call-site, member-reference, and cyclomatic behavior stay covered.
 - Verification: `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration"` failed before the extraction, then `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration"`, `npm run test -- tests/core/ast.test.ts`, `npm run test -- tests/core/ast.functions.test.ts -t "switch cases logical operators"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, and `npm exec projscan -- file src/core/ast.ts --format json` passed after the extraction.
+
+## 2026-06-16: Name AST body traversal signal collection
+
+- Status: accepted
+- Context: After extracting parser orchestration, `src/core/ast.ts` still reported a CC 17 `<anonymous>` callback in the per-function body walker, hiding the riskiest AST reference/call-site collection logic from review output.
+- Decision: Replace the inline `walkSkippingNestedFunctions` callback with named body-signal collectors for decision points, calls, member aliases, and member references.
+- Consequences: `analyzeBabelBody` becomes orchestration-only, the highest remaining anonymous AST callback is below the review threshold, and `src/core/ast.ts` drops from CC 197 to CC 196.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "anonymous callbacks"` failed before the change, then `npm run test -- tests/core/ast.functions.test.ts -t "anonymous callbacks"`, `npm run test -- tests/core/ast.references.test.ts`, `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration|nested functions"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, and `npm exec projscan -- file src/core/ast.ts --format json` passed after the change.
