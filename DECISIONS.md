@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract MCP JSON-RPC message parsing
+
+- Status: accepted
+- Context: `src/mcp/server.ts` still parsed and validated raw JSON-RPC lines inline, keeping protocol syntax checks inside the server orchestration and dispatch flow.
+- Decision: Move raw line trimming, JSON parse errors, request validation, and invalid-request id preservation into `src/mcp/serverMessage.ts`.
+- Consequences: MCP parse-error and invalid-request responses stay unchanged, while `server.ts` focuses on handler wiring, dispatch, watcher lifecycle, and transport close behavior.
+- Verification: `npm run test -- tests/mcp/server.test.ts -t "message parsing"` and focused MCP server/payload/notification verification.
+
 ## 2026-06-16: Extract start adoption-gap shaping
 
 - Status: accepted

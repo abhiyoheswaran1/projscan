@@ -107,6 +107,17 @@ describe('MCP server maintainability', () => {
     expect(recordFileWatch!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps JSON-RPC message parsing out of server orchestration', async () => {
+    const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
+    expect(serverSource).not.toContain('JSON.parse(trimmed)');
+    expect(serverSource).not.toContain('Invalid JSON-RPC request');
+
+    const messageModule = await inspectRepoSourceFile('src/mcp/serverMessage.ts');
+    const parser = messageModule.functions?.find((fn) => fn.name === 'parseJsonRpcMessage');
+    expect(parser).toBeDefined();
+    expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const source = await fs.readFile(path.join(process.cwd(), 'tests/mcp/server.test.ts'), 'utf-8');
     const serverSuite = source.slice(source.indexOf("\ndescribe('MCP server'"));
@@ -189,6 +200,18 @@ describe('MCP server', () => {
     const raw = await server.handleMessage(JSON.stringify({ id: 1, method: 'ping' }));
     expect(raw).not.toBeNull();
     const response = JSON.parse(raw as string) as { error: { code: number } };
+    expect(response.error.code).toBe(-32600);
+  });
+
+  it('preserves message parser edge cases', async () => {
+    const server = createMcpServer(process.cwd());
+
+    await expect(server.handleMessage('   ')).resolves.toBeNull();
+
+    const raw = await server.handleMessage(JSON.stringify({ id: 'bad-request', method: 'ping' }));
+    expect(raw).not.toBeNull();
+    const response = JSON.parse(raw as string) as { id: string; error: { code: number } };
+    expect(response.id).toBe('bad-request');
     expect(response.error.code).toBe(-32600);
   });
 

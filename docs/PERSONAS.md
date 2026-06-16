@@ -3704,3 +3704,55 @@ remain unchanged.
 Kept change: one focused start evidence projection module, one maintainability
 regression, existing start core/CLI coverage, this persona note, and no public
 schema change.
+
+## Eighty-Sixth Slice Decision
+
+Selected persona: Security-Conscious Reviewer.
+
+Reason: MCP message parsing is protocol boundary code. Isolating raw line
+trimming, JSON parse failure handling, and JSON-RPC request validation makes the
+public server surface easier to audit without changing tool dispatch,
+notifications, session recording, or transport behavior.
+
+Smallest fix: move raw JSON-RPC message parsing into `serverMessage.ts` and
+have `server.ts` dispatch only validated requests or return the parser's
+error response. Preserve parse-error code `-32700`, invalid-request code
+`-32600`, empty-line null responses, and request-id preservation for invalid
+requests.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "message parsing"
+npm run test -- tests/mcp/server.test.ts tests/mcp/serverBudget.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/crossCutting.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/sessionIntegration.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverMessage.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/mcp/server.test.ts tests/mcp/serverBudget.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/crossCutting.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/sessionIntegration.test.ts
+git diff --check
+```
+
+## Review Guardrails: MCP Message Parsing Extraction
+
+Delete-list after this slice:
+
+- Do not change MCP method names, tool/prompt/resource schemas, JSON-RPC error
+  codes, response envelopes, notification behavior, watcher behavior, session
+  recording, budget/cost sidecars, or stdout/stderr transport behavior.
+- Do not add dependencies, network calls, telemetry, package metadata changes,
+  release actions, or version numbers.
+- Do not read or print secret values.
+
+Reviewer edge case: blank lines should still return no response, malformed JSON
+should still return `ParseError`, invalid JSON-RPC objects should still return
+`InvalidRequest`, and initialized notifications should still be ignored by
+dispatch.
+
+Kept change: one focused message parser module, one maintainability regression,
+existing MCP server coverage, this persona note, and no public MCP contract
+change.

@@ -11,10 +11,10 @@ import {
   fail,
   JSONRPC_ERROR,
   ok,
-  type JsonRpcRequest,
   type JsonRpcResponse,
   type McpDispatchHandlers,
 } from './serverDispatch.js';
+import { parseJsonRpcMessage } from './serverMessage.js';
 import { withProgress } from './progress.js';
 import { buildProgressEmitter, createToolContext } from './serverContext.js';
 import { createServerSessionRecorder } from './serverSession.js';
@@ -175,28 +175,11 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   };
 
   async function handleMessage(line: string): Promise<string | null> {
-    const trimmed = line.trim();
-    if (!trimmed) return null;
+    const parsed = parseJsonRpcMessage(line);
+    if (parsed.kind === 'empty') return null;
+    if (parsed.kind === 'error') return JSON.stringify(parsed.response);
 
-    let request: JsonRpcRequest;
-    try {
-      request = JSON.parse(trimmed) as JsonRpcRequest;
-    } catch {
-      return JSON.stringify(fail(null, JSONRPC_ERROR.ParseError, 'Invalid JSON'));
-    }
-
-    if (
-      !request ||
-      typeof request !== 'object' ||
-      request.jsonrpc !== '2.0' ||
-      typeof request.method !== 'string'
-    ) {
-      return JSON.stringify(
-        fail(request?.id ?? null, JSONRPC_ERROR.InvalidRequest, 'Invalid JSON-RPC request'),
-      );
-    }
-
-    const response = await dispatchMcpRequest(request, dispatchHandlers);
+    const response = await dispatchMcpRequest(parsed.request, dispatchHandlers);
     if (!response) return null;
     return JSON.stringify(response);
   }
