@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Use uv.lock as Python upgrade current-version evidence
+
+- Status: accepted
+- Context: `uv.lock` was already recognized as a Python lockfile presence signal, but upgrade previews did not parse resolved versions from it. uv projects therefore had weaker offline evidence than Poetry and Pipenv projects.
+- Decision: Parse `uv.lock` `[[package]]` blocks with the same local TOML package-block parser used for Poetry and feed those versions into Python upgrade preview current-version fields.
+- Consequences: `projscan upgrade <python-package>` can report `installed`, `latest`, `drift`, and `installedSource: "uv.lock"` for uv-managed projects without querying PyPI, changing npm registry behavior, or adding a TOML dependency.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/upgradePreview.test.ts -t "uv\\.lock|parseUvLock"`.
+
 ## 2026-06-16: Treat Koa header accessors as gated request sources
 
 - Status: accepted

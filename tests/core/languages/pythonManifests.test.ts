@@ -8,6 +8,7 @@ import {
   parsePoetryLock,
   parsePyproject,
   parseRequirements,
+  parseUvLock,
   splitPep508,
 } from '../../../src/core/languages/pythonManifests.js';
 import type { FileEntry } from '../../../src/types.js';
@@ -121,6 +122,26 @@ describe('parsePipfileLock', () => {
 
   it('returns no locked dependencies for malformed Pipfile.lock JSON', () => {
     expect(parsePipfileLock('{not json', 'Pipfile.lock')).toEqual([]);
+  });
+});
+
+describe('parseUvLock', () => {
+  it('reads package versions from uv.lock package blocks', () => {
+    const lock = [
+      'version = 1',
+      '[[package]]',
+      'name = "requests"',
+      'version = "2.31.0"',
+      'source = { registry = "https://pypi.org/simple" }',
+      '[[package]]',
+      'name = "Django"',
+      'version = "4.2.1"',
+    ].join('\n');
+
+    expect(parseUvLock(lock, 'uv.lock')).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'uv.lock', line: 4 },
+      { name: 'Django', version: '4.2.1', source: 'uv.lock', line: 8 },
+    ]);
   });
 });
 
@@ -247,6 +268,23 @@ describe('detectPythonProject', () => {
     expect(info?.hasLockfile).toBe(true);
     expect(info?.locked).toEqual([
       { name: 'requests', version: '2.31.0', source: 'Pipfile.lock', line: 0 },
+    ]);
+  });
+
+  it('uses uv.lock package versions as lockfile evidence', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'uv.lock'),
+      ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests>=2\n');
+    const info = await detectPythonProject(tmp, [
+      fileEntry('a.py'),
+      fileEntry('requirements.txt'),
+      fileEntry('uv.lock'),
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'uv.lock', line: 3 },
     ]);
   });
 

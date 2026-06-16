@@ -119,6 +119,7 @@ export async function detectPythonProject(
       hasLockfile = true;
       if (name === 'poetry.lock') locked.unshift(...parsePoetryLock(content, name));
       if (name === 'Pipfile.lock') locked.unshift(...parsePipfileLock(content, name));
+      if (name === 'uv.lock') locked.unshift(...parseUvLock(content, name));
       break;
     }
   }
@@ -361,6 +362,14 @@ export function parseRequirements(
 }
 
 export function parsePoetryLock(content: string, sourceFile: string): PythonLockedDep[] {
+  return parseTomlPackageLock(content, sourceFile);
+}
+
+export function parseUvLock(content: string, sourceFile: string): PythonLockedDep[] {
+  return parseTomlPackageLock(content, sourceFile);
+}
+
+function parseTomlPackageLock(content: string, sourceFile: string): PythonLockedDep[] {
   const out: PythonLockedDep[] = [];
   const blockRe = /\[\[package\]\]([\s\S]*?)(?=\n\[\[package\]\]|$)/g;
   let block: RegExpExecArray | null;

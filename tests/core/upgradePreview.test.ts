@@ -200,6 +200,26 @@ describe('previewUpgrade', () => {
     expect(preview.installedSource).toBe('Pipfile.lock');
     expect(preview.importers).toEqual(['app/client.py']);
   });
+
+  it('uses uv.lock as Python current-version evidence', async () => {
+    const uvLock = ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n');
+    const files = [
+      await writeFile(tmp, 'requirements.txt', 'requests==2.30.0\n'),
+      await writeFile(tmp, 'uv.lock', uvLock),
+      await writeFile(tmp, 'app/client.py', 'import requests\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.installed).toBe('2.31.0');
+    expect(preview.latest).toBe('2.31.0');
+    expect(preview.drift).toBe('minor');
+    expect(preview.installedSource).toBe('uv.lock');
+    expect(preview.installedLine).toBe(3);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
 });
 
 describe('isValidPackageName (path-traversal guard)', () => {
