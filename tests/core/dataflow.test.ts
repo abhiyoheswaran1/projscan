@@ -484,6 +484,38 @@ export function helper(req: { get(name: string): string }) {
     expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Express param accessor calls as framework request sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'express-param.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/users/:id', (req) => {
+  const id = req.param('id');
+  return db.query(String(id));
+});
+
+export function helper(req: { param(name: string): string }) {
+  return cache.query(req.param('cache-key'));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const expressRisks = report.risks.filter((risk) => risk.files.includes('src/express-param.ts'));
+
+    expect(expressRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'express.req.param', sink: 'query' }),
+      ]),
+    );
+    expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Express request IP as a framework source without helper lookalikes', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'express-ip.ts'),

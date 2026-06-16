@@ -27,6 +27,7 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
 const EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
   ['get', 'express.req.get'],
   ['header', 'express.req.header'],
+  ['param', 'express.req.param'],
 ]);
 
 const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([

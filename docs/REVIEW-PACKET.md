@@ -108,10 +108,10 @@ Hono/Express/Koa/Fastify dataflow:
   framework imports and handler call context.
 - Hono uses gated `memberCallSites`, so `c.req.valid(...)` can be detected
   without treating helper `c.req.valid(...)` calls as request input.
-- Express uses gated `memberCallSites`, so `req.get(...)` and
-  `request.header(...)` can be detected, and gated request references cover
-  `req.ip`, without treating helper `req.get(...)` or `.ip` calls as request
-  input.
+- Express uses gated `memberCallSites`, so `req.get(...)`,
+  `request.header(...)`, and `req.param(...)` can be detected, and gated
+  request references cover `req.ip`, without treating helper `req.get(...)`,
+  `req.param(...)`, or `.ip` calls as request input.
 - Koa uses qualified `memberReferences` and gated `memberCallSites`, so
   `ctx.request.body`, `ctx.query`, `ctx.params`, headers, `ctx.ip`,
   `ctx.request.ip`, `ctx.get(...)`, and `ctx.request.get(...)` can be detected
