@@ -210,4 +210,23 @@ describe('reportScope', () => {
     expect(serialized).not.toContain('C:\\Users\\Alice');
     expect(serialized).not.toContain('src/private');
   });
+
+  it('redacts sibling path tokens without partially replacing shared prefixes', () => {
+    const scoped = applyReportControlsToIssues(
+      [
+        {
+          ...issue('siblings', ['src/private/a.ts', 'src/private/a.tsx']),
+          title: 'Compare src/private/a.ts and src/private/a.tsx',
+          description:
+            'Both /tmp/review/src/private/a.ts and /tmp/review/src/private/a.tsx need review.',
+        },
+      ],
+      { scopes: ['src/private'], redactPaths: true },
+    );
+
+    expect(scoped[0].title).toBe('Compare redacted-path-1 and redacted-path-2');
+    expect(scoped[0].description).toBe(
+      'Both redacted-path-1 and redacted-path-2 need review.',
+    );
+  });
 });

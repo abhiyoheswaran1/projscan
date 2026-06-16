@@ -945,3 +945,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace the inline `walkSkippingNestedFunctions` callback with named body-signal collectors for decision points, calls, member aliases, and member references.
 - Consequences: `analyzeBabelBody` becomes orchestration-only, the highest remaining anonymous AST callback is below the review threshold, and `src/core/ast.ts` drops from CC 197 to CC 196.
 - Verification: `npm run test -- tests/core/ast.functions.test.ts -t "anonymous callbacks"` failed before the change, then `npm run test -- tests/core/ast.functions.test.ts -t "anonymous callbacks"`, `npm run test -- tests/core/ast.references.test.ts`, `npm run test -- tests/core/ast.functions.test.ts -t "parseSource orchestration|nested functions"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, and `npm exec projscan -- file src/core/ast.ts --format json` passed after the change.
+
+## 2026-06-16: Preserve sibling path labels during report redaction
+
+- Status: accepted
+- Context: Scoped evidence redaction could partially replace a longer path token when another scoped location was its prefix, such as turning `src/private/a.tsx` into `redacted-path-1x` after replacing `src/private/a.ts`.
+- Decision: Apply path replacements from longest to shortest and require a path-token boundary after each matched reference.
+- Consequences: Sibling files with shared prefixes receive distinct stable labels in issue text, while absolute path-prefix redaction and existing scoped JSON/SARIF metadata behavior remain intact.
+- Verification: `npm run test -- tests/core/reportScope.test.ts -t "sibling path"` failed before the change, then `npm run test -- tests/core/reportScope.test.ts -t "sibling path"`, `npm run test -- tests/core/reportScope.test.ts -t "absolute path prefixes"`, `npm run test -- tests/core/reportScope.test.ts -t "file paths embedded"`, `npm run test -- tests/core/reportScope.test.ts tests/cli/formatHandling.test.ts tests/reporters/sarifReporter.test.ts tests/reporters/jsonReporter.test.ts`, `npm exec projscan -- doctor --report-scope src --redact-paths --format json`, and `npm exec projscan -- analyze --report-scope src --redact-paths --format sarif` passed after the change.
