@@ -35,4 +35,19 @@ describe('framework source maintainability', () => {
     expect(matcher).toBeDefined();
     expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
+
+  it('keeps Koa source matching out of the shared framework source orchestrator', async () => {
+    const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
+    const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));
+
+    expect(sharedFunctions.has('koaRequestSource')).toBe(false);
+    expect(sharedFunctions.has('koaMemberReferenceSource')).toBe(false);
+    expect(sharedFunctions.has('koaMemberCallSource')).toBe(false);
+
+    const koa = await inspectRepoSourceFile('src/core/frameworkKoaSources.ts');
+    const matcher = koa.functions?.find((fn) => fn.name === 'koaRequestSource');
+
+    expect(matcher).toBeDefined();
+    expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  });
 });

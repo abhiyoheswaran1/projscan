@@ -2690,3 +2690,50 @@ package roots.
 Kept change: one focused root-inference module, one maintainability regression,
 existing Python behavior coverage, this persona note, and no public schema
 change.
+
+## Sixty-Fifth Slice Decision
+
+Selected persona: Security-Conscious Framework Reviewer.
+
+Reason: Koa request-source matching is security-sensitive but cohesive: it has
+its own import gate, handler-call gate, context parameter names, member
+references, and member-call accessors. Keeping it in the shared framework
+orchestrator makes unrelated framework changes harder to review.
+
+Smallest fix: move Koa source maps and matching helpers into
+`frameworkKoaSources.ts`, then import only the source list and matcher from the
+shared orchestrator. Preserve all Koa source names and gating behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts -t "Koa source matching"
+npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts -t "Koa|framework source|dataflow"
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkKoaSources.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts -t "Koa|framework source|dataflow"
+git diff --check
+```
+
+## Review Guardrails: Koa Source Matcher Extraction
+
+Delete-list after this slice:
+
+- Do not change Koa source names, handler gating, source enablement,
+  dataflow output fields, or default sink behavior.
+- Do not broaden Koa matching to helper lookalikes or non-Koa imports.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: Koa body/query/header/IP fixtures and header/cookie accessor
+fixtures should behave the same after extraction, while non-handler lookalikes
+stay quiet.
+
+Kept change: one focused Koa matcher module, one maintainability regression,
+existing Koa dataflow coverage, this persona note, and no public schema change.

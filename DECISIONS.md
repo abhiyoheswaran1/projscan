@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Koa framework request source matcher
+
+- Status: accepted
+- Context: `frameworkSources.ts` still owned all Koa request-source maps, handler gating, member-reference matching, and member-call matching after the Next route extraction, keeping the shared framework source orchestrator broad.
+- Decision: Move Koa request-source matching into `src/core/frameworkKoaSources.ts` and have the shared orchestrator import `KOA_REQUEST_SOURCES` plus `koaRequestSource`.
+- Consequences: Koa dataflow source names, handler gating, and false-positive behavior stay unchanged, while future Koa source changes can be reviewed separately from Express, Fastify, Hono, and Next.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Koa source matching"` and focused framework/dataflow verification.
+
 ## 2026-06-16: Extract Python package root inference
 
 - Status: accepted
