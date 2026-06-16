@@ -30,6 +30,23 @@ describe('per-function CC (JS/TS)', () => {
     expect(anonymousHotspots).toEqual([]);
   });
 
+  it('keeps member-expression helpers out of the AST orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'collectMemberReadIdents')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'babelQualifiedMemberName')).toBe(false);
+
+    const memberSource = readFileSync(join(process.cwd(), 'src/core/astMembers.ts'), 'utf8');
+    const memberFns = fns(memberSource, 'src/core/astMembers.ts');
+    const helpers = ['collectMemberReadIdents', 'babelQualifiedMemberName'];
+
+    for (const helper of helpers) {
+      const fn = memberFns.find((candidate) => candidate.name === helper);
+      expect(fn).toBeDefined();
+      expect(fn!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    }
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });

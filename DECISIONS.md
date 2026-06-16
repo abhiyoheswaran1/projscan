@@ -969,3 +969,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move verdict scoring and summary assembly into `src/core/reviewVerdict.ts`, keeping `computeReview` as the orchestration boundary and preserving the existing `ReviewReport` schema.
 - Consequences: `src/core/review.ts` drops from 1285 lines / CC 183 to 1147 lines / CC 161, while the new `decideVerdict` boundary is CC 1 and the highest helper in the new module is CC 5.
 - Verification: `npm run test -- tests/core/review.test.ts -t "verdict assembly"` failed before the extraction, then `npm run test -- tests/core/review.test.ts -t "verdict assembly"`, `npm run test -- tests/core/review.test.ts -t "labels release-scale|NEW taint flow|NEW bridge dataflow|Dependency changes|ok verdict"`, `npm run test -- tests/core/review.test.ts`, `npm exec projscan -- file src/core/review.ts --format json`, and `npm exec projscan -- file src/core/reviewVerdict.ts --format json` passed after the change.
+
+## 2026-06-16: Extract AST member-expression helpers
+
+- Status: accepted
+- Context: `src/core/ast.ts` remained the top bug-hunt hotspot, and member-expression reference/alias helpers were branch-heavy inside the parser module after earlier parser and body-walk extractions.
+- Decision: Move member-expression name, read-reference, and destructured-alias helpers into `src/core/astMembers.ts`, while keeping `parseSource` and `FunctionInfo` output unchanged.
+- Consequences: `src/core/ast.ts` drops from 970 lines / CC 196 to 886 lines / CC 146, and `collectMemberReadIdents` plus `babelQualifiedMemberName` are no longer part of the AST orchestrator hotspot.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "member-expression helpers"` failed before the extraction, then `npm run test -- tests/core/ast.functions.test.ts -t "member-expression helpers"`, `npm run test -- tests/core/ast.references.test.ts`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, `npm exec projscan -- file src/core/ast.ts --format json`, and `npm exec projscan -- file src/core/astMembers.ts --format json` passed after the change.
