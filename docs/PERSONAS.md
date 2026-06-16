@@ -2784,3 +2784,51 @@ non-handler lookalikes stay quiet.
 Kept change: one focused Express matcher module, one maintainability
 regression, existing Express dataflow coverage, this persona note, and no
 public schema change.
+
+## Sixty-Seventh Slice Decision
+
+Selected persona: Security-Conscious Framework Reviewer.
+
+Reason: Fastify request-source matching covers both common request fields and
+Fastify-specific host/raw metadata. Keeping that matcher isolated makes it
+clear which sources are framework-gated and prevents unrelated Hono or Express
+edits from obscuring Fastify behavior.
+
+Smallest fix: move Fastify source maps and matching helpers into
+`frameworkFastifySources.ts`, then import only the source list and matcher from
+the shared orchestrator. Preserve all Fastify source names and gating behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts -t "Fastify source matching"
+npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkFastifySources.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflow.test.ts tests/core/taint.test.ts
+git diff --check
+```
+
+## Review Guardrails: Fastify Source Matcher Extraction
+
+Delete-list after this slice:
+
+- Do not change Fastify source names, handler gating, source enablement,
+  dataflow output fields, or default sink behavior.
+- Do not broaden Fastify matching to helper lookalikes or non-Fastify imports.
+- Do not add dependencies, package metadata changes, release actions, or
+  version numbers.
+
+Reviewer edge case: Fastify body/query/params/header/cookie/IP fixtures and
+raw/host metadata fixtures should behave the same after extraction, including
+object-option route handlers.
+
+Kept change: one focused Fastify matcher module, one maintainability
+regression, existing Fastify dataflow coverage, this persona note, and no
+public schema change.

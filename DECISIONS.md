@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract Fastify framework request source matcher
+
+- Status: accepted
+- Context: After Koa and Express extraction, `frameworkSources.ts` still owned Fastify request-source maps, handler gating, request parameter selection, bare reference matching, and member-reference matching.
+- Decision: Move Fastify request-source matching into `src/core/frameworkFastifySources.ts` and have the shared orchestrator import `FASTIFY_REQUEST_SOURCES` plus `fastifyRequestSource`.
+- Consequences: Fastify dataflow source names, handler gating, and false-positive behavior stay unchanged, while future Fastify source changes can be reviewed separately from Hono, Express, Koa, and Next.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "Fastify source matching"` and focused framework/dataflow verification.
+
 ## 2026-06-16: Extract Express framework request source matcher
 
 - Status: accepted

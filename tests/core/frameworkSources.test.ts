@@ -65,4 +65,19 @@ describe('framework source maintainability', () => {
     expect(matcher).toBeDefined();
     expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
   });
+
+  it('keeps Fastify source matching out of the shared framework source orchestrator', async () => {
+    const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
+    const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));
+
+    expect(sharedFunctions.has('fastifyRequestSource')).toBe(false);
+    expect(sharedFunctions.has('fastifyReferenceSource')).toBe(false);
+    expect(sharedFunctions.has('fastifyMemberReferenceSource')).toBe(false);
+
+    const fastify = await inspectRepoSourceFile('src/core/frameworkFastifySources.ts');
+    const matcher = fastify.functions?.find((fn) => fn.name === 'fastifyRequestSource');
+
+    expect(matcher).toBeDefined();
+    expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  });
 });
