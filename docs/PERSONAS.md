@@ -3756,3 +3756,45 @@ dispatch.
 Kept change: one focused message parser module, one maintainability regression,
 existing MCP server coverage, this persona note, and no public MCP contract
 change.
+
+## Eighty-Seventh Slice Decision
+
+Selected persona: Test Hygiene Reviewer.
+
+Reason: The MCP budget sidecar test exercised `projscan_search` against the real
+repository root, which records durable session touches and makes bug-hunt report
+coordination conflicts unrelated to the implementation under review.
+
+Smallest fix: run the truncation test against a temporary fixture repository,
+generate enough matching files there to exercise the search result path, close
+the MCP server on every exit path, and expand the maintainability guard so
+real-root MCP tests cannot call session-recording tools including
+`projscan_search`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "session-recording tool tests"
+npm run test -- tests/mcp/server.test.ts tests/mcp/serverBudget.test.ts
+npm exec projscan -- session reset
+npm run test -- tests/mcp/server.test.ts tests/mcp/serverBudget.test.ts tests/mcp/costSidecarIntegration.test.ts tests/mcp/crossCutting.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/sessionIntegration.test.ts
+npm exec projscan -- session touched --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: MCP Test Session Hygiene
+
+Delete-list after this slice:
+
+- Do not change MCP runtime behavior, search ranking, budget sidecar shape,
+  session recording semantics, or public JSON-RPC responses.
+- Do not add dependencies, release actions, package metadata changes, or
+  version numbers.
+
+Reviewer edge case: tests may still call non-session tools against the real
+repository root when they are only checking protocol envelopes, but any test
+that calls `projscan_search`, `projscan_structure`, or `projscan_file` must use
+a fixture root so durable session evidence stays reviewable.
+
+Kept change: one fixture-root test cleanup, one expanded maintainability guard,
+this persona note, and no product runtime behavior change.

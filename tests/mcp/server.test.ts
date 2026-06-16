@@ -119,16 +119,24 @@ describe('MCP server maintainability', () => {
   });
 
   it('keeps session-recording tool tests off the real repository root', async () => {
-    const source = await fs.readFile(path.join(process.cwd(), 'tests/mcp/server.test.ts'), 'utf-8');
-    const serverSuite = source.slice(source.indexOf("\ndescribe('MCP server'"));
-    const repoRootToolTests = serverSuite
-      .split(/\n  it\(/)
-      .filter(
-        (block) =>
-          block.includes('createMcpServer(process.cwd())') &&
-          (block.includes("name: 'projscan_structure'") ||
-            block.includes("name: 'projscan_file'")),
-      );
+    const testsRoot = path.join(process.cwd(), 'tests/mcp');
+    const sessionRecordingTools = ['projscan_structure', 'projscan_file', 'projscan_search'];
+    const repoRootToolTests: string[] = [];
+
+    for (const fileName of await fs.readdir(testsRoot)) {
+      if (!fileName.endsWith('.test.ts')) continue;
+      const source = await fs.readFile(path.join(testsRoot, fileName), 'utf-8');
+      const blocks = source.split(/\n\s+it\(/).slice(1);
+      for (const block of blocks) {
+        const usesRepoRoot = block.includes('createMcpServer(process.cwd())');
+        const sessionTool = sessionRecordingTools.find((tool) =>
+          block.includes(`name: '${tool}'`) || block.includes(`name: "${tool}"`),
+        );
+        if (usesRepoRoot && sessionTool) {
+          repoRootToolTests.push(`${fileName}: ${sessionTool}`);
+        }
+      }
+    }
 
     expect(repoRootToolTests).toEqual([]);
   });
