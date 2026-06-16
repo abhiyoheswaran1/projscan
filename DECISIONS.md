@@ -865,3 +865,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add `koa.ctx.cookies.get` as a Koa request-source pattern behind the existing Koa import and route-handler gating.
 - Consequences: Dataflow now reports Koa cookie values flowing into database sinks while ordinary helpers with `cookies.get(...)` stay quiet.
 - Verification: `npm run test -- tests/core/dataflow.test.ts -t "Koa cookie accessor"`, `npm run test -- tests/core/dataflow.test.ts`, `npm exec projscan -- dataflow --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Reduce AST decision-point hotspot complexity
+
+- Status: accepted
+- Context: `src/core/ast.ts` remained the highest hotspot after earlier AST helper extractions, with `isDecisionPoint` still carrying branch-heavy switch logic and member-alias extraction lacking coverage for defaulted destructuring.
+- Decision: Replace the decision-point switch with table-driven node/operator sets and split member-alias extraction into context and property helpers.
+- Consequences: `src/core/ast.ts` aggregate cyclomatic complexity drops from 212 to 205, `isDecisionPoint` leaves the top-risk function list, and destructured member-alias behavior is pinned for default values and computed-property skips.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "switch cases logical operators"`, `npm run test -- tests/core/ast.references.test.ts -t "defaulted destructured member aliases"`, `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts`, `npm run test -- tests/core/dataflow.test.ts`, `npm exec projscan -- file src/core/ast.ts --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

@@ -27,6 +27,20 @@ describe('per-function CC (JS/TS)', () => {
     expect(out[0].cyclomaticComplexity).toBe(2);
   });
 
+  it('counts switch cases logical operators and conditionals as decision points', () => {
+    const out = fns(`function foo(x) {
+      switch (x.kind) {
+        case 'a':
+          return x.a && x.b ? 1 : 2;
+        default:
+          return x.c ?? 0;
+      }
+    }`);
+
+    expect(out).toHaveLength(1);
+    expect(out[0].cyclomaticComplexity).toBe(5);
+  });
+
   it('arrow assigned to const is named after the binding', () => {
     const out = fns(`const foo = (x) => x ? 1 : 0;`);
     expect(out).toHaveLength(1);

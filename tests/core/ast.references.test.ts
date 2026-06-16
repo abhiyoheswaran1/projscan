@@ -104,6 +104,22 @@ describe('FunctionInfo.references (1.6+)', () => {
     expect(out[0].memberAliases).toEqual(['runQuery=pool.query']);
   });
 
+  it('tracks defaulted destructured member aliases and skips computed properties', () => {
+    const out = fns(`function f(dynamic, fallback) {
+  const { query = fallback, [dynamic]: skipped, run: execute } = pool;
+  query('select 1');
+  execute('select 2');
+}`);
+
+    expect(out).toHaveLength(1);
+    expect(out[0].memberAliases).toEqual(
+      expect.arrayContaining(['query=pool.query', 'execute=pool.run']),
+    );
+    expect(out[0].memberAliases ?? []).not.toEqual(
+      expect.arrayContaining(['skipped=pool.dynamic']),
+    );
+  });
+
   it('captures reads inside arrow callbacks (the taint default-source case)', () => {
     // The most common real-world pattern: a route handler reads
     // process.env inside an inline arrow.

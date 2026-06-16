@@ -638,19 +638,29 @@ function collectMemberReadIdents(node: Node, out: Set<string>): void {
 }
 
 function collectMemberAliases(node: Node, out: Set<string>): void {
-  const decl = node as { id?: Node; init?: Node | null };
-  if (!decl.id || decl.id.type !== 'ObjectPattern' || !decl.init) return;
-  const objectName = babelQualifiedMemberName(decl.init) ?? babelCalleeName(decl.init);
-  if (!objectName) return;
-  const properties = (decl.id as { properties?: Node[] }).properties ?? [];
-  for (const property of properties) {
-    if (!property || property.type !== 'ObjectProperty') continue;
-    const prop = property as { key?: Node; value?: Node; computed?: boolean };
-    if (prop.computed || !prop.key || !prop.value) continue;
-    const keyName = babelMemberPropertyName(prop.key);
-    const aliasName = bindingIdentifierName(prop.value);
-    if (keyName && aliasName) out.add(aliasName + '=' + objectName + '.' + keyName);
+  const context = memberAliasContext(node);
+  if (!context) return;
+  for (const property of context.properties) {
+    const alias = memberAliasFromObjectProperty(property, context.objectName);
+    if (alias) out.add(alias);
   }
+}
+
+function memberAliasContext(node: Node): { objectName: string; properties: Node[] } | null {
+  const decl = node as { id?: Node; init?: Node | null };
+  if (!decl.id || decl.id.type !== 'ObjectPattern' || !decl.init) return null;
+  const objectName = babelQualifiedMemberName(decl.init) ?? babelCalleeName(decl.init);
+  if (!objectName) return null;
+  return { objectName, properties: (decl.id as { properties?: Node[] }).properties ?? [] };
+}
+
+function memberAliasFromObjectProperty(property: Node, objectName: string): string | null {
+  if (!property || property.type !== 'ObjectProperty') return null;
+  const prop = property as { key?: Node; value?: Node; computed?: boolean };
+  if (prop.computed || !prop.key || !prop.value) return null;
+  const keyName = babelMemberPropertyName(prop.key);
+  const aliasName = bindingIdentifierName(prop.value);
+  return keyName && aliasName ? aliasName + '=' + objectName + '.' + keyName : null;
 }
 
 function babelCalleeName(node: Node | null | undefined): string | null {
@@ -698,6 +708,18 @@ function walkSkippingNestedFunctions(node: Node, visit: (n: Node) => void): void
   }
 }
 
+const DECISION_NODE_TYPES = new Set([
+  'IfStatement',
+  'ConditionalExpression',
+  'ForStatement',
+  'ForInStatement',
+  'ForOfStatement',
+  'WhileStatement',
+  'DoWhileStatement',
+  'CatchClause',
+]);
+const DECISION_LOGICAL_OPERATORS = new Set(['&&', '||', '??']);
+
 /**
  * McCabe decision points for JavaScript/TypeScript. Default switch cases and
  * optional-chaining do NOT count - this matches eslint's `complexity` rule
@@ -705,26 +727,11 @@ function walkSkippingNestedFunctions(node: Node, visit: (n: Node) => void): void
  * (module + all nested functions) and offset by +1 in the caller.
  */
 function isDecisionPoint(n: Node): boolean {
-  switch (n.type) {
-    case 'IfStatement':
-    case 'ConditionalExpression':
-    case 'ForStatement':
-    case 'ForInStatement':
-    case 'ForOfStatement':
-    case 'WhileStatement':
-    case 'DoWhileStatement':
-    case 'CatchClause':
-      return true;
-    case 'SwitchCase':
-      // Default case is the fall-through path, not a branch.
-      return (n as { test: unknown }).test !== null;
-    case 'LogicalExpression': {
-      const op = (n as { operator: string }).operator;
-      return op === '&&' || op === '||' || op === '??';
-    }
-    default:
-      return false;
-  }
+  if (DECISION_NODE_TYPES.has(n.type)) return true;
+  // Default case is the fall-through path, not a branch.
+  if (n.type === 'SwitchCase') return (n as { test: unknown }).test !== null;
+  if (n.type !== 'LogicalExpression') return false;
+  return DECISION_LOGICAL_OPERATORS.has((n as { operator: string }).operator);
 }
 
 function visitTopLevel(node: Statement, imports: AstImport[], exports: AstExport[]): void {
