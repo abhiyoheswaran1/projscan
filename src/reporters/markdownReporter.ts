@@ -1,10 +1,4 @@
-import type {
-  Issue,
-  ArchitectureLayer,
-  DirectoryNode,
-} from '../types.js';
-import type { ReportControlsMetadata } from '../core/reportScope.js';
-import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
+import type { ArchitectureLayer, DirectoryNode } from '../types.js';
 export { reportDiffMarkdown } from './markdownDiffReporter.js';
 export { reportFileMarkdown } from './markdownFileReporter.js';
 export { reportReviewMarkdown } from './markdownReviewReporter.js';
@@ -24,78 +18,7 @@ export { reportOutdatedMarkdown } from './markdownOutdatedReporter.js';
 export { reportHotspotsMarkdown } from './markdownHotspotReporter.js';
 export { reportWorkspacesMarkdown } from './markdownWorkspaceReporter.js';
 export { reportExplanationMarkdown } from './markdownExplanationReporter.js';
-
-export function reportHealthMarkdown(
-  issues: Issue[],
-  reportControls?: ReportControlsMetadata,
-): void {
-  const { score, grade } = calculateScore(issues);
-  const lines: string[] = ['# Project Health Report', ''];
-
-  appendReportControlsMarkdown(lines, reportControls);
-  lines.push(`**Health Score: ${grade} (${score}/100)**`);
-  lines.push('');
-  lines.push(badgeMarkdown(grade));
-  lines.push('');
-
-  if (issues.length === 0) {
-    lines.push('No issues detected. Project looks healthy!');
-  } else {
-    lines.push(`Found **${issues.length}** issue(s).`);
-    lines.push('');
-    for (const issue of issues) {
-      const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
-      if (issue.suggestedAction) {
-        lines.push(
-          `  - **Action:** ${issue.suggestedAction.summary} _(\`projscan fix-suggest ${issue.id}\`)_`,
-        );
-      }
-    }
-  }
-
-  console.log(lines.join('\n'));
-}
-
-export function reportCiMarkdown(
-  issues: Issue[],
-  threshold: number,
-  reportControls?: ReportControlsMetadata,
-): void {
-  const { score, grade } = calculateScore(issues);
-  const pass = score >= threshold;
-  const lines: string[] = [`# Projscan CI - ${pass ? 'PASS' : 'FAIL'}`, ''];
-  appendReportControlsMarkdown(lines, reportControls);
-  lines.push(
-    `| Metric | Value |`,
-    `| --- | --- |`,
-    `| Score | **${score}/100** |`,
-    `| Grade | **${grade}** |`,
-    `| Threshold | ${threshold} |`,
-    `| Result | ${pass ? '✅ Pass' : '❌ Fail'} |`,
-  );
-
-  if (issues.length > 0) {
-    lines.push('', '## Issues', '');
-    for (const issue of issues) {
-      const icon = issue.severity === 'error' ? '❌' : issue.severity === 'warning' ? '⚠️' : 'ℹ️';
-      lines.push(`- ${icon} **${issue.title}** - ${issue.description}`);
-    }
-  }
-
-  console.log(lines.join('\n'));
-}
-
-function appendReportControlsMarkdown(
-  lines: string[],
-  reportControls: ReportControlsMetadata | undefined,
-): void {
-  if (!reportControls) return;
-  lines.push(
-    `> Report controls: active; scopes: ${reportControls.scopeCount}; path redaction: ${reportControls.redactPaths ? (reportControls.pathLabelFormat ?? 'enabled') : 'disabled'}.`,
-  );
-  lines.push('');
-}
+export { reportHealthMarkdown, reportCiMarkdown } from './markdownHealthReporter.js';
 
 export function reportDiagramMarkdown(layers: ArchitectureLayer[]): void {
   const lines: string[] = ['# Project Architecture', '', '```'];

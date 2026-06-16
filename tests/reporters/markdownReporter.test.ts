@@ -118,6 +118,20 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps health and CI rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportHealthMarkdown')).toBe(false);
+    expect(reporter.functions?.some((fn) => fn.name === 'reportCiMarkdown')).toBe(false);
+
+    const healthReporter = await inspectRepoSourceFile('src/reporters/markdownHealthReporter.ts');
+    const healthRenderer = healthReporter.functions?.find((fn) => fn.name === 'reportHealthMarkdown');
+    const ciRenderer = healthReporter.functions?.find((fn) => fn.name === 'reportCiMarkdown');
+    expect(healthRenderer).toBeDefined();
+    expect(healthRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(ciRenderer).toBeDefined();
+    expect(ciRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {
