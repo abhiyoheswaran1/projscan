@@ -20,6 +20,7 @@ import {
   type ReviewPublicSurfaceManifest,
 } from './reviewPublicSurface.js';
 import { findRiskyFunctions } from './reviewRiskyFunctions.js';
+import { decideVerdict } from './reviewVerdict.js';
 import { loadConfig } from '../utils/config.js';
 import type { GraphEvidenceSummary } from '../types/graph.js';
 import type { PrDiffReport } from '../types/prDiff.js';
@@ -29,7 +30,6 @@ import type {
   ReviewDataflowRisk,
   ReviewDependencyChange,
   ReviewFile,
-  ReviewFunction,
   ReviewReport,
   ReviewTaintFlow,
   ReviewTier,
@@ -51,9 +51,6 @@ export interface ReviewOptions {
   /** Optional workspace package name used to scope every review section before verdicting. */
   package?: string;
 }
-
-const RISK_VERDICT_BLOCK_SCORE = 80;
-const RISK_VERDICT_REVIEW_SCORE = 40;
 
 /**
  * Compose a one-shot PR review. Builds head + base graphs (worktree dance),
@@ -886,142 +883,6 @@ function diffOneManifest(
   bumped.sort((a, b) => a.name.localeCompare(b.name));
 
   return { workspace, manifestFile, added, removed, bumped };
-}
-
-// ── verdict ───────────────────────────────────────────────
-
-function decideVerdict(
-  changedFiles: ReviewFile[],
-  newCycles: ReviewCycle[],
-  riskyFunctions: ReviewFunction[],
-  depChanges: ReviewDependencyChange[],
-  contractChanges: ReviewContractChange[],
-  newTaintFlows: ReviewTaintFlow[],
-  newDataflowRisks: ReviewDataflowRisk[],
-): { verdict: ReviewReport['verdict']; summary: string[] } {
-  const summary: string[] = [];
-  let verdict: ReviewReport['verdict'] = 'ok';
-
-  const maxRisk = Math.max(0, ...changedFiles.map((f) => f.riskScore ?? 0));
-  if (maxRisk >= RISK_VERDICT_BLOCK_SCORE) {
-    verdict = 'block';
-    summary.push(
-      `Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_BLOCK_SCORE}).`,
-    );
-  } else if (maxRisk >= RISK_VERDICT_REVIEW_SCORE) {
-    verdict = bumpTo(verdict, 'review');
-    summary.push(
-      `Maximum changed-file risk score is ${maxRisk.toFixed(1)} (>= ${RISK_VERDICT_REVIEW_SCORE}).`,
-    );
-  }
-
-  if (newCycles.length > 0) {
-    const newOnly = newCycles.filter((c) => c.classification === 'new');
-    if (newOnly.length > 0) {
-      verdict = 'block';
-      summary.push(`${newOnly.length} new import cycle(s) introduced.`);
-    } else {
-      verdict = bumpTo(verdict, 'review');
-      summary.push(`${newCycles.length} cycle(s) expanded.`);
-    }
-  }
-
-  if (riskyFunctions.length > 0) {
-    verdict = bumpTo(verdict, 'review');
-    summary.push(`${riskyFunctions.length} function(s) flagged: high CC added or jumped.`);
-  }
-
-  if (newTaintFlows.length > 0) {
-    verdict = 'block';
-    const sample = newTaintFlows
-      .slice(0, 3)
-      .map((f) => `${f.source}→${f.sink} (${f.sourceFn}${f.pathLength > 1 ? '…' : ''})`)
-      .join(', ');
-    summary.push(
-      `${newTaintFlows.length} new taint flow(s) detected: ${sample}${newTaintFlows.length > 3 ? ', …' : ''}.`,
-    );
-  }
-
-  if (newDataflowRisks.length > 0) {
-    verdict = 'block';
-    const sample = newDataflowRisks
-      .slice(0, 3)
-      .map((risk) => `${risk.source}→${risk.sink} (${risk.bridgeFn ?? risk.sourceFn})`)
-      .join(', ');
-    summary.push(
-      `${newDataflowRisks.length} new dataflow risk(s) detected: ${sample}${newDataflowRisks.length > 3 ? ', …' : ''}.`,
-    );
-  }
-
-  if (depChanges.length > 0) {
-    const totals = depChanges.reduce(
-      (acc, d) => {
-        acc.added += d.added.length;
-        acc.removed += d.removed.length;
-        acc.bumped += d.bumped.length;
-        return acc;
-      },
-      { added: 0, removed: 0, bumped: 0 },
-    );
-    if (totals.added + totals.removed + totals.bumped > 0) {
-      summary.push(`Dependency changes: +${totals.added} -${totals.removed} ~${totals.bumped}.`);
-    }
-  }
-
-  if (
-    isManualReleaseSignOffBlock(
-      verdict,
-      maxRisk,
-      newCycles,
-      riskyFunctions,
-      contractChanges,
-      newTaintFlows,
-      newDataflowRisks,
-    )
-  ) {
-    summary.push(
-      'Manual release sign-off required: review blocks on release-scale risk signals, not concrete cycle, risky-function, contract, taint, or dataflow defects.',
-    );
-  }
-
-  if (changedFiles.length === 0 && summary.length === 0) {
-    summary.push('No structural changes detected between base and head.');
-  } else if (verdict === 'ok' && summary.length === 0) {
-    summary.push(`${changedFiles.length} file(s) changed; no risk signals.`);
-  }
-
-  return { verdict, summary };
-}
-
-function isManualReleaseSignOffBlock(
-  verdict: ReviewReport['verdict'],
-  maxRisk: number,
-  newCycles: ReviewCycle[],
-  riskyFunctions: ReviewFunction[],
-  contractChanges: ReviewContractChange[],
-  newTaintFlows: ReviewTaintFlow[],
-  newDataflowRisks: ReviewDataflowRisk[],
-): boolean {
-  const concreteSignals = [
-    newCycles,
-    riskyFunctions,
-    contractChanges,
-    newTaintFlows,
-    newDataflowRisks,
-  ];
-  return (
-    verdict === 'block' &&
-    maxRisk >= RISK_VERDICT_BLOCK_SCORE &&
-    concreteSignals.every((signals) => signals.length === 0)
-  );
-}
-
-function bumpTo(
-  current: ReviewReport['verdict'],
-  target: ReviewReport['verdict'],
-): ReviewReport['verdict'] {
-  const order: Record<ReviewReport['verdict'], number> = { ok: 0, review: 1, block: 2 };
-  return order[target] > order[current] ? target : current;
 }
 
 // ── git helpers (mirror prDiff.ts; kept private to keep coupling low) ──

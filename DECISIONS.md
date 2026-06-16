@@ -961,3 +961,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add receiver-sensitive Koa member-reference sources for `ctx.ip` and `ctx.request.ip`, using the existing Koa import and handler-context gates.
 - Consequences: Dataflow reports `koa.ctx.ip` and `koa.ctx.request.ip` into database sinks while helper functions with the same `ctx` shape remain quiet.
 - Verification: `npm run test -- tests/core/dataflow.test.ts -t "Koa request IP"` failed before the change, then `npm run test -- tests/core/dataflow.test.ts -t "Koa request IP"` and `npm run test -- tests/core/dataflow.test.ts -t "Koa request fields|Koa query params|Koa header accessor|Koa cookie accessor|Koa response-body|Fastify request IP"` passed after the change.
+
+## 2026-06-16: Extract review verdict assembly
+
+- Status: accepted
+- Context: `src/core/review.ts` remained a bug-hunt hotspot, and `decideVerdict` combined risk thresholds, cycles, risky functions, taint/dataflow summaries, dependency summaries, and manual release sign-off wording in one CC 17 function.
+- Decision: Move verdict scoring and summary assembly into `src/core/reviewVerdict.ts`, keeping `computeReview` as the orchestration boundary and preserving the existing `ReviewReport` schema.
+- Consequences: `src/core/review.ts` drops from 1285 lines / CC 183 to 1147 lines / CC 161, while the new `decideVerdict` boundary is CC 1 and the highest helper in the new module is CC 5.
+- Verification: `npm run test -- tests/core/review.test.ts -t "verdict assembly"` failed before the extraction, then `npm run test -- tests/core/review.test.ts -t "verdict assembly"`, `npm run test -- tests/core/review.test.ts -t "labels release-scale|NEW taint flow|NEW bridge dataflow|Dependency changes|ok verdict"`, `npm run test -- tests/core/review.test.ts`, `npm exec projscan -- file src/core/review.ts --format json`, and `npm exec projscan -- file src/core/reviewVerdict.ts --format json` passed after the change.

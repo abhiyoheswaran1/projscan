@@ -115,6 +115,17 @@ describe('computeReview', () => {
     expect(matcher!.cyclomaticComplexity).toBeLessThanOrEqual(12);
   });
 
+  it('keeps verdict assembly isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    expect(review.functions?.some((fn) => fn.name === 'decideVerdict')).toBe(false);
+
+    const verdictModule = await inspectRepoSourceFile('src/core/reviewVerdict.ts');
+    const decide = verdictModule.functions?.find((fn) => fn.name === 'decideVerdict');
+
+    expect(decide).toBeDefined();
+    expect(decide!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
