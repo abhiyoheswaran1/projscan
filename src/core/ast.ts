@@ -687,40 +687,14 @@ function babelMemberPropertyName(node: Node): string | null {
 
 function walkChildren(node: Node, visit: (n: Node) => void): void {
   if (!node || typeof node !== 'object') return;
-  for (const key of Object.keys(node)) {
-    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments')
-      continue;
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (!child) continue;
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) visit(item as Node);
-      }
-    } else if (typeof child === 'object' && 'type' in child) {
-      visit(child as Node);
-    }
-  }
+  for (const child of childAstNodes(node)) visit(child);
 }
 
 function walkSkippingNestedFunctions(node: Node, visit: (n: Node) => void): void {
   if (!node || typeof node !== 'object') return;
   visit(node);
-  for (const key of Object.keys(node)) {
-    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments')
-      continue;
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (!child) continue;
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) {
-          if (isFunctionNode(item as Node)) continue;
-          walkSkippingNestedFunctions(item as Node, visit);
-        }
-      }
-    } else if (typeof child === 'object' && 'type' in child) {
-      if (isFunctionNode(child as Node)) continue;
-      walkSkippingNestedFunctions(child as Node, visit);
-    }
+  for (const child of childAstNodes(node)) {
+    if (!isFunctionNode(child)) walkSkippingNestedFunctions(child, visit);
   }
 }
 
@@ -924,19 +898,5 @@ function pushIdExport(
 function walk(node: Node, visit: (n: Node) => void): void {
   if (!node || typeof node !== 'object') return;
   visit(node);
-  for (const key of Object.keys(node)) {
-    if (key === 'loc' || key === 'range' || key === 'leadingComments' || key === 'trailingComments')
-      continue;
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (!child) continue;
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) {
-          walk(item as Node, visit);
-        }
-      }
-    } else if (typeof child === 'object' && 'type' in child) {
-      walk(child as Node, visit);
-    }
-  }
+  for (const child of childAstNodes(node)) walk(child, visit);
 }

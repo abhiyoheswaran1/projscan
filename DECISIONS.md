@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Reuse shared AST child traversal in JavaScript walkers
+
+- Status: accepted
+- Context: `walk`, `walkChildren`, and `walkSkippingNestedFunctions` duplicated object-key traversal logic that was already isolated in `childAstNodes` during earlier AST hotspot cleanup.
+- Decision: Route the generic JavaScript AST walkers through `childAstNodes` while preserving nested-function skipping behavior where required.
+- Consequences: Function and call-site extraction behavior remains unchanged, but future traversal key filtering changes now have one private helper to review.
+- Verification: `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/dataflow.test.ts`.
+
 ## 2026-06-16: Treat Express and Fastify request IP metadata as gated sources
 
 - Status: accepted
