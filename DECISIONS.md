@@ -1097,3 +1097,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move program signal collection and shared traversal/decision helpers into `src/core/astProgramSignals.ts`; keep `ast.ts` importing the helpers it still needs for function body analysis.
 - Consequences: `src/core/ast.ts` drops from 691 lines / CC 113 to 575 lines / CC 91, while `src/core/astProgramSignals.ts` scans as a non-hotspot module with no issues.
 - Verification: `npm run test -- tests/core/ast.functions.test.ts -t "program signal traversal"` failed before the extraction, then `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- file src/core/ast.ts --format json`, `npm exec projscan -- file src/core/astProgramSignals.ts --format json`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed after the change.
+
+## 2026-06-16: Extract AST function naming helpers
+
+- Status: accepted
+- Context: `src/core/ast.ts` still carried function name recovery for declarations, assignments, methods, private names, and anonymous fallbacks. This logic is independent from traversal and function body analysis.
+- Decision: Move function-name recovery into `src/core/astFunctionNames.ts` and keep `ast.ts` depending on the single `nameForFunctionNode` boundary.
+- Consequences: `src/core/ast.ts` drops from 575 lines / CC 91 to 520 lines / CC 71, while `src/core/astFunctionNames.ts` scans as a non-hotspot module with no issues.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "function naming helpers"` failed before the extraction, then `npm run test -- tests/core/ast.test.ts tests/core/ast.functions.test.ts tests/core/ast.references.test.ts tests/core/ast.cyclomatic.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- file src/core/ast.ts --format json`, `npm exec projscan -- file src/core/astFunctionNames.ts --format json`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed after the change.

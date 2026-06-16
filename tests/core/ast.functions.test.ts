@@ -74,6 +74,19 @@ describe('per-function CC (JS/TS)', () => {
     expect(collector!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps function naming helpers out of the AST orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'nameForFunctionNode')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'methodKeyName')).toBe(false);
+
+    const namingSource = readFileSync(join(process.cwd(), 'src/core/astFunctionNames.ts'), 'utf8');
+    const namingFns = fns(namingSource, 'src/core/astFunctionNames.ts');
+    const namer = namingFns.find((fn) => fn.name === 'nameForFunctionNode');
+    expect(namer).toBeDefined();
+    expect(namer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
