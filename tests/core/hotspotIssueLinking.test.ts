@@ -4,6 +4,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import { analyzeHotspots } from '../../src/core/hotspotAnalyzer.js';
 import type { FileEntry, Issue } from '../../src/types.js';
 
@@ -33,6 +35,31 @@ async function commitFile(dir: string, rel: string, content: string): Promise<Fi
     directory: path.dirname(rel) || '.',
   };
 }
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
+describe('hotspotAnalyzer maintainability', () => {
+  it('keeps legacy path-boundary detection out of the high-complexity list', async () => {
+    const inspection = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    const boundaryHelper = inspection.functions?.find((fn) => fn.name === 'isPathBoundary');
+
+    expect(boundaryHelper).toBeDefined();
+    expect(boundaryHelper!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+});
 
 describe('hotspot ↔ issue linking', () => {
   let dir: string;
@@ -89,5 +116,33 @@ describe('hotspot ↔ issue linking', () => {
     const report = await analyzeHotspots(dir, files, issues, { limit: 10 });
     const a = report.hotspots.find((h) => h.relativePath === 'src/a.ts');
     expect(a?.issueIds ?? []).not.toContain('issue-x');
+  });
+
+  it('accepts common punctuation boundaries but rejects path-like neighbors', async () => {
+    const files = [await commitFile(dir, 'src/a.ts', 'export const a = 1;')];
+    const issues: Issue[] = [
+      {
+        id: 'issue-punctuation',
+        title: 'problem',
+        description: 'review (`src/a.ts`), [src/a.ts]; <src/a.ts>.',
+        severity: 'warning',
+        category: 'test',
+        fixAvailable: false,
+      },
+      {
+        id: 'issue-neighbor',
+        title: 'problem',
+        description: 'see prefixsrc/a.ts and src/a.tsx for details',
+        severity: 'warning',
+        category: 'test',
+        fixAvailable: false,
+      },
+    ];
+
+    const report = await analyzeHotspots(dir, files, issues, { limit: 10 });
+    const a = report.hotspots.find((h) => h.relativePath === 'src/a.ts');
+
+    expect(a?.issueIds ?? []).toContain('issue-punctuation');
+    expect(a?.issueIds ?? []).not.toContain('issue-neighbor');
   });
 });

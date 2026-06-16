@@ -897,3 +897,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Parse root `constraints*.txt` as lock/current-version evidence only, using the existing exact-pin conversion and not adding constraints entries to declared direct dependencies.
 - Consequences: Offline Python previews and dependency-risk checks can use pinned constraints as reproducibility evidence without treating constraint-only packages as declared dependencies.
 - Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "constraints.txt pins"`, `npm run test -- tests/core/upgradePreview.test.ts -t "pinned constraints"`, `npm run test -- tests/core/languages/pythonManifests.test.ts`, `npm run test -- tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts`, `npm run test -- tests/analyzers/pythonDependencyRiskCheck.test.ts`, `npm run typecheck:public-types`, `npm exec projscan -- hotspots --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Table-drive hotspot path-boundary detection
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` remained a top hotspot, and `isPathBoundary` carried a long boolean chain that inflated per-function and file-level cyclomatic complexity without encoding real control-flow.
+- Decision: Replace the branch chain with a named set of accepted boundary character codes and keep the legacy issue-linking fallback behavior pinned with punctuation and path-neighbor tests.
+- Consequences: `isPathBoundary` drops from CC 22 to CC 2, `src/core/hotspotAnalyzer.ts` drops from CC 132 to CC 112, and legacy issue text still links file paths only when surrounded by safe boundaries.
+- Verification: `npm run test -- tests/core/hotspotIssueLinking.test.ts -t "legacy path-boundary"` failed before the change with CC 22, then `npm run test -- tests/core/hotspotIssueLinking.test.ts`, `npm run test -- tests/core/hotspotAnalyzer.test.ts tests/core/hotspotIssueLinking.test.ts`, and `npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json` passed after the change.

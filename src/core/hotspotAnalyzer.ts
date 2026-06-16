@@ -481,33 +481,32 @@ function hasPathBoundaries(haystack: string, filePath: string): boolean {
   return false;
 }
 
+const PATH_BOUNDARY_CODES = new Set<number>([
+  0x20, // space
+  0x09, // tab
+  0x0a, // \n
+  0x0d, // \r
+  0x22, // "
+  0x27, // '
+  0x60, // `
+  0x28, // (
+  0x29, // )
+  0x5b, // [
+  0x5d, // ]
+  0x7b, // {
+  0x7d, // }
+  0x3a, // :
+  0x2c, // ,
+  0x3b, // ;
+  0x2e, // . (e.g., "src/a.ts." end of sentence)
+  0x3f, // ?
+  0x21, // !
+  0x3e, // >
+  0x3c, // <
+]);
+
 function isPathBoundary(code: number): boolean {
-  if (code === -1) return true; // string boundary
-  // Safe neighbors: whitespace, quotes, parens, brackets, braces, punctuation
-  // commonly adjacent to paths (colon, comma, period, question/exclamation/>/<).
-  return (
-    code === 0x20 /* space */ ||
-    code === 0x09 /* tab */ ||
-    code === 0x0a /* \n */ ||
-    code === 0x0d /* \r */ ||
-    code === 0x22 /* " */ ||
-    code === 0x27 /* ' */ ||
-    code === 0x60 /* ` */ ||
-    code === 0x28 /* ( */ ||
-    code === 0x29 /* ) */ ||
-    code === 0x5b /* [ */ ||
-    code === 0x5d /* ] */ ||
-    code === 0x7b /* { */ ||
-    code === 0x7d /* } */ ||
-    code === 0x3a /* : */ ||
-    code === 0x2c /* , */ ||
-    code === 0x3b /* ; */ ||
-    code === 0x2e /* . (e.g., "src/a.ts." end of sentence) */ ||
-    code === 0x3f /* ? */ ||
-    code === 0x21 /* ! */ ||
-    code === 0x3e /* > */ ||
-    code === 0x3c /* < */
-  );
+  return code === -1 || PATH_BOUNDARY_CODES.has(code);
 }
 
 // ── Risk Scoring ──────────────────────────────────────────
