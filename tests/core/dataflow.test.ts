@@ -802,6 +802,45 @@ export function helper(ctx: { get(name: string): string }) {
     expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Koa cookie accessor calls as framework request sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-cookies.ts'),
+      `import Koa from 'koa';
+import Router from '@koa/router';
+
+const app = new Koa();
+const router = new Router();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.use((ctx) => {
+  const sid = ctx.cookies.get('sid');
+  return db.query(String(sid));
+});
+
+router.get('/cookie', (context) => {
+  const tenant = context.cookies.get('tenant');
+  return db.query(String(tenant));
+});
+
+export function helper(ctx: { cookies: { get(name: string): string } }) {
+  return cache.query(ctx.cookies.get('x-cache-key'));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const koaRisks = report.risks.filter((risk) => risk.files.includes('src/koa-cookies.ts'));
+
+    expect(koaRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'koa.ctx.cookies.get', sink: 'query' }),
+      ]),
+    );
+    expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat Koa response-body writes as request body sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'koa-response.ts'),

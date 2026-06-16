@@ -857,3 +857,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Render a dedicated `Coordination` section in the console output when coordination hints are present, preserving the existing JSON schema.
 - Consequences: Console agent briefs now show hint labels, commands, and messages for remembered session context, current worktree checks, and swarm coordination without adding noise when no hints exist.
 - Verification: `npm run test -- tests/cli/agentBriefQualityScorecard.test.ts -t "coordination hints"`, `npm run test -- tests/core/agentBrief.test.ts tests/cli/agentBriefQualityScorecard.test.ts`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Detect Koa cookie accessors as request dataflow sources
+
+- Status: accepted
+- Context: The framework dataflow track already handled Koa body, query, params, headers, and header accessor calls, but missed `ctx.cookies.get(...)`, a common request-data path for sessions and tenancy.
+- Decision: Add `koa.ctx.cookies.get` as a Koa request-source pattern behind the existing Koa import and route-handler gating.
+- Consequences: Dataflow now reports Koa cookie values flowing into database sinks while ordinary helpers with `cookies.get(...)` stay quiet.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Koa cookie accessor"`, `npm run test -- tests/core/dataflow.test.ts`, `npm exec projscan -- dataflow --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

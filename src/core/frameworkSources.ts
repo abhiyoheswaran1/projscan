@@ -50,6 +50,7 @@ const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
 const KOA_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
   ['get', 'koa.ctx.get'],
   ['request.get', 'koa.ctx.request.get'],
+  ['cookies.get', 'koa.ctx.cookies.get'],
 ]);
 
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
