@@ -1129,3 +1129,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move manifest reading, dependency diffing, and package-scoped dependency filtering into `src/core/reviewManifests.ts`; keep `computeReview` importing the same boundaries and preserve the review report schema.
 - Consequences: `src/core/review.ts` drops from CC 161 to CC 125 in the review pass. The first extraction added `diffOneManifest` at CC 17, so the bug pass blocked it as a risky function; splitting dependency diff buckets keeps the helper under the review threshold.
 - Verification: `npm run test -- tests/core/review.test.ts -t "package manifest diffing"` failed before extraction, then failed again on the risky `diffOneManifest` helper before the bucket split. After the fix, `npm run test -- tests/core/review.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.
+
+## 2026-06-16: Extract review contract changes
+
+- Status: accepted
+- Context: `src/core/review.ts` still owned public contract-change detection for exported symbols and package entrypoints. That logic is a release-review concern and was keeping the review orchestrator responsible for detailed public-surface comparisons.
+- Decision: Move contract-change detection into `src/core/reviewContractChanges.ts`, keep `computeReview` calling a single `buildContractChanges` boundary, and split export/entrypoint helpers so moved functions stay below risky-function thresholds.
+- Consequences: `src/core/review.ts` drops from CC 125 to CC 97 in the review pass and no longer appears as the top changed-file risk. The review schema, package scoping, export-change wording, and entrypoint-change wording stay unchanged.
+- Verification: `npm run test -- tests/core/review.test.ts -t "public contract change detection"` failed before extraction, then `npm run test -- tests/core/review.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm exec projscan -- release-train --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, and `git diff --check` passed with only the expected manual release sign-off gate remaining.

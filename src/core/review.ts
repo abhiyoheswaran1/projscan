@@ -14,9 +14,9 @@ import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
 import { isReviewBlockingDataflowRisk, isReviewBlockingFlow } from './reviewDataflow.js';
 import { buildSemanticGraph } from './semanticGraph.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
-import { buildPublicExportFileSet } from './reviewPublicSurface.js';
 import { findRiskyFunctions } from './reviewRiskyFunctions.js';
 import { decideVerdict } from './reviewVerdict.js';
+import { buildContractChanges } from './reviewContractChanges.js';
 import {
   diffManifests,
   readManifests,
@@ -26,7 +26,6 @@ import {
 import { loadConfig } from '../utils/config.js';
 import type { GraphEvidenceSummary } from '../types/graph.js';
 import type { PrDiffReport } from '../types/prDiff.js';
-import type { ReviewContractChange } from '../types/reviewContract.js';
 import type {
   ReviewCycle,
   ReviewDataflowRisk,
@@ -613,124 +612,6 @@ function classifyNewCycles(
     return b.size - a.size;
   });
   return out;
-}
-
-function buildContractChanges(
-  prDiff: PrDiffReport,
-  baseGraph: CodeGraph,
-  headGraph: CodeGraph,
-  baseManifests: Map<string, ManifestSnapshot>,
-  headManifests: Map<string, ManifestSnapshot>,
-  packageName?: string,
-): ReviewContractChange[] {
-  const changes: ReviewContractChange[] = [];
-  const scopedBaseManifests = scopeManifestsByPackage(baseManifests, packageName);
-  const scopedHeadManifests = scopeManifestsByPackage(headManifests, packageName);
-  const publicExportFiles = buildPublicExportFileSet(
-    scopedBaseManifests.values(),
-    scopedHeadManifests.values(),
-    baseGraph,
-    headGraph,
-  );
-  for (const file of prDiff.filesAdded) {
-    if (!publicExportFiles.has(file)) continue;
-    const entry = headGraph.files.get(file);
-    for (const exp of entry?.exports ?? []) {
-      changes.push(exportContractChange('export-added', file, exp.name));
-    }
-  }
-  for (const file of prDiff.filesRemoved) {
-    if (!publicExportFiles.has(file)) continue;
-    const entry = baseGraph.files.get(file);
-    for (const exp of entry?.exports ?? []) {
-      changes.push(exportContractChange('export-removed', file, exp.name));
-    }
-  }
-  for (const file of prDiff.filesModified) {
-    if (!publicExportFiles.has(file.relativePath)) continue;
-    for (const symbol of file.exportsAdded) {
-      changes.push(exportContractChange('export-added', file.relativePath, symbol));
-    }
-    for (const symbol of file.exportsRemoved) {
-      changes.push(exportContractChange('export-removed', file.relativePath, symbol));
-    }
-    for (const rename of file.exportsRenamed) {
-      changes.push({
-        kind: 'export-renamed',
-        file: file.relativePath,
-        symbol: rename.to,
-        before: rename.from,
-        after: rename.to,
-        confidence: 'high',
-        why: `Export "${rename.from}" was renamed to "${rename.to}" in ${file.relativePath}; downstream imports of the old name can fail at compile time or runtime.`,
-      });
-    }
-  }
-
-  changes.push(...entrypointContractChanges(scopedBaseManifests, scopedHeadManifests));
-  return changes;
-}
-
-function scopeManifestsByPackage(
-  manifests: Map<string, ManifestSnapshot>,
-  packageName?: string,
-): Map<string, ManifestSnapshot> {
-  if (!packageName) return manifests;
-  return new Map([...manifests].filter(([, manifest]) => manifest.workspace === packageName));
-}
-
-function exportContractChange(
-  kind: 'export-added' | 'export-removed',
-  file: string,
-  symbol: string,
-): ReviewContractChange {
-  return {
-    kind,
-    file,
-    symbol,
-    confidence: 'high',
-    why:
-      kind === 'export-added'
-        ? `Export "${symbol}" was added in ${file}; downstream code may start depending on a new public API.`
-        : `Export "${symbol}" was removed from ${file}; downstream imports can fail at compile time or runtime.`,
-  };
-}
-
-function entrypointContractChanges(
-  base: Map<string, ManifestSnapshot>,
-  head: Map<string, ManifestSnapshot>,
-): ReviewContractChange[] {
-  const out: ReviewContractChange[] = [];
-  const allManifests = new Set<string>([...base.keys(), ...head.keys()]);
-  for (const manifestFile of allManifests) {
-    const baseEntrypoints = base.get(manifestFile)?.entrypoints ?? {};
-    const headEntrypoints = head.get(manifestFile)?.entrypoints ?? {};
-    const fields = new Set<string>([
-      ...Object.keys(baseEntrypoints),
-      ...Object.keys(headEntrypoints),
-    ]);
-    for (const field of fields) {
-      const before = baseEntrypoints[field];
-      const after = headEntrypoints[field];
-      if (before === after) continue;
-      const kind = field === 'exports' ? 'public-export-changed' : 'entrypoint-changed';
-      out.push({
-        kind,
-        file: manifestFile,
-        symbol: field,
-        ...(before !== undefined ? { before } : {}),
-        ...(after !== undefined ? { after } : {}),
-        confidence: 'high',
-        why:
-          kind === 'public-export-changed'
-            ? `${manifestFile} package "exports" changed; consumers may resolve different public modules.`
-            : `${manifestFile} package "${field}" changed from ${before ?? '<unset>'} to ${after ?? '<unset>'}; package consumers may load a different entrypoint.`,
-      });
-    }
-  }
-  return out.sort((a, b) =>
-    `${a.file}:${a.symbol ?? ''}`.localeCompare(`${b.file}:${b.symbol ?? ''}`),
-  );
 }
 
 // ── git helpers (mirror prDiff.ts; kept private to keep coupling low) ──
