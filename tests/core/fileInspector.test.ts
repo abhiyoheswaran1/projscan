@@ -52,6 +52,21 @@ describe('deprecated extractor exports', () => {
     const issueSource = readFileSync(path.join(process.cwd(), 'src/core/fileIssues.ts'), 'utf8');
     expect(issueSource).not.toContain("from './fileInspector.js'");
   });
+
+  it('keeps graph metric shaping out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('for (const importers of graph.localImporters.values())');
+    expect(inspectorSource).not.toContain('b.cyclomaticComplexity - a.cyclomaticComplexity');
+
+    const metricsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileGraphMetrics.ts'),
+      'utf8',
+    );
+    expect(metricsSource).not.toContain("from './fileInspector.js'");
+  });
 });
 
 describe('inferPurpose', () => {

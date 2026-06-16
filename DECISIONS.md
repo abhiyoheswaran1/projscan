@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Extract file graph metric shaping
+
+- Status: accepted
+- Context: `inspectFile` still owned graph-derived complexity, fan-in, fan-out, and function-summary shaping, keeping metric-specific loops inside the path-safety and payload orchestration flow.
+- Decision: Move graph metric shaping into `src/core/fileGraphMetrics.ts` and have `inspectFile` call `deriveFileGraphMetrics`.
+- Consequences: File-inspection metric fields, function sorting, and missing/parse-failed graph behavior stay unchanged, while future graph metric adjustments can be reviewed separately from file access, issue collection, and import/export mapping.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "graph metric shaping"` and focused file-inspector verification.
+
 ## 2026-06-16: Extract file issue detection
 
 - Status: accepted

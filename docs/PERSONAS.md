@@ -3166,3 +3166,53 @@ still emit the same labels.
 Kept change: one focused file-issue module, one maintainability regression,
 existing file-inspector coverage, this persona note, and no public schema
 change.
+
+## Seventy-Fifth Slice Decision
+
+Selected persona: Agent-Orchestrating Engineer.
+
+Reason: graph-derived complexity, fan-in, fan-out, and function summaries are
+important for agents triaging files, but metric shaping is separate from
+file-access safety and payload orchestration. Isolating it keeps future metric
+changes reviewable without rereading the full inspector.
+
+Smallest fix: move graph metric shaping into `fileGraphMetrics.ts` and call
+`deriveFileGraphMetrics` from `fileInspector.ts`. Preserve null behavior for
+missing graph entries, parse-failed complexity, fan-in/fan-out counts, and
+function sorting by descending cyclomatic complexity.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "graph metric shaping"
+npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileGraphMetrics.ts --format json
+npm exec projscan -- release-train --format json
+npm exec projscan -- review --format json
+npm exec projscan -- bug-hunt --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/fileInspector.test.ts tests/mcp/server.test.ts tests/reporters/markdownReporter.test.ts
+git diff --check
+```
+
+## Review Guardrails: File Graph Metric Extraction
+
+Delete-list after this slice:
+
+- Do not change `cyclomaticComplexity`, `fanIn`, `fanOut`, `language`, or
+  `functions` field semantics; do not change function summary shape, sorting
+  order, or missing-graph null behavior.
+- Do not change graph construction, cache behavior, path-safety behavior,
+  issue detection, import/export mapping, dependencies, package metadata,
+  release actions, or version numbers.
+
+Reviewer edge case: unparsed graph entries should still report null
+cyclomatic complexity, files absent from the graph should still report null
+metrics, and function summaries should remain sorted by descending CC.
+
+Kept change: one focused graph-metric module, one maintainability regression,
+existing file-inspector and reporter coverage, this persona note, and no public
+schema change.

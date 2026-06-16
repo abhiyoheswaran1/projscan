@@ -17,6 +17,7 @@ import { getAdapterFor } from './languages/registry.js';
 import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
 import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
 import { mapExportType } from './fileExportTypes.js';
+import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
 import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
 
@@ -158,34 +159,7 @@ export async function inspectFile(
     (issue.title + '\n' + issue.description).includes(relativePath),
   );
 
-  // Coupling: fan-in is direct from the graph; fan-out scans localImporters
-  // for entries where this file is the importer. O(N) over local edges, fine
-  // for a single-file inspection.
-  let cyclomaticComplexity: number | null = null;
-  let fanIn: number | null = null;
-  let fanOut: number | null = null;
-  let functions: FileInspection['functions'];
-  const graphFileEntry = graph.files.get(relativePath);
-  if (graphFileEntry) {
-    cyclomaticComplexity = graphFileEntry.parseOk ? graphFileEntry.cyclomaticComplexity : null;
-    fanIn = graph.localImporters.get(relativePath)?.size ?? 0;
-    let fo = 0;
-    for (const importers of graph.localImporters.values()) {
-      if (importers.has(relativePath)) fo++;
-    }
-    fanOut = fo;
-    if (graphFileEntry.functions && graphFileEntry.functions.length > 0) {
-      functions = [...graphFileEntry.functions]
-        .sort((a, b) => b.cyclomaticComplexity - a.cyclomaticComplexity)
-        .map((f) => ({
-          name: f.name,
-          line: f.line,
-          endLine: f.endLine,
-          cyclomaticComplexity: f.cyclomaticComplexity,
-          fanIn: f.fanIn,
-        }));
-    }
-  }
+  const graphMetrics = deriveFileGraphMetrics(graph, relativePath);
 
   return {
     relativePath,
@@ -198,11 +172,11 @@ export async function inspectFile(
     potentialIssues,
     hotspot,
     issues: relatedIssues,
-    cyclomaticComplexity,
-    fanIn,
-    fanOut,
+    cyclomaticComplexity: graphMetrics.cyclomaticComplexity,
+    fanIn: graphMetrics.fanIn,
+    fanOut: graphMetrics.fanOut,
     language,
-    functions,
+    functions: graphMetrics.functions,
   };
 }
 
