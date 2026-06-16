@@ -44,10 +44,17 @@ async function inspectRepoSourceFile(rel: string) {
   return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
 }
 
+function hasFunction(
+  inspection: Awaited<ReturnType<typeof inspectRepoSourceFile>>,
+  functionName: string,
+): boolean {
+  return inspection.functions?.some((fn) => fn.name === functionName) ?? false;
+}
+
 describe('markdownReporter maintainability', () => {
   it('keeps PR diff rendering helpers out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'appendPrDiffModifiedEntry')).toBe(false);
+    expect(hasFunction(reporter, 'appendPrDiffModifiedEntry')).toBe(false);
 
     const prDiffReporter = await inspectRepoSourceFile('src/reporters/markdownPrDiffReporter.ts');
     const renderer = prDiffReporter.functions?.find((fn) => fn.name === 'reportPrDiffMarkdown');
@@ -57,7 +64,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps coverage rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportCoverageMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportCoverageMarkdown')).toBe(false);
 
     const coverageReporter = await inspectRepoSourceFile('src/reporters/markdownCoverageReporter.ts');
     const renderer = coverageReporter.functions?.find((fn) => fn.name === 'reportCoverageMarkdown');
@@ -67,7 +74,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps coupling rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportCouplingMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportCouplingMarkdown')).toBe(false);
 
     const couplingReporter = await inspectRepoSourceFile('src/reporters/markdownCouplingReporter.ts');
     const renderer = couplingReporter.functions?.find((fn) => fn.name === 'reportCouplingMarkdown');
@@ -77,7 +84,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps outdated package rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportOutdatedMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportOutdatedMarkdown')).toBe(false);
 
     const outdatedReporter = await inspectRepoSourceFile('src/reporters/markdownOutdatedReporter.ts');
     const renderer = outdatedReporter.functions?.find((fn) => fn.name === 'reportOutdatedMarkdown');
@@ -87,7 +94,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps hotspot rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportHotspotsMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportHotspotsMarkdown')).toBe(false);
 
     const hotspotReporter = await inspectRepoSourceFile('src/reporters/markdownHotspotReporter.ts');
     const renderer = hotspotReporter.functions?.find((fn) => fn.name === 'reportHotspotsMarkdown');
@@ -97,7 +104,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps workspace rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportWorkspacesMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportWorkspacesMarkdown')).toBe(false);
 
     const workspaceReporter = await inspectRepoSourceFile('src/reporters/markdownWorkspaceReporter.ts');
     const renderer = workspaceReporter.functions?.find((fn) => fn.name === 'reportWorkspacesMarkdown');
@@ -107,7 +114,7 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps file explanation rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportExplanationMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportExplanationMarkdown')).toBe(false);
 
     const explanationReporter = await inspectRepoSourceFile(
       'src/reporters/markdownExplanationReporter.ts',
@@ -121,8 +128,8 @@ describe('markdownReporter maintainability', () => {
 
   it('keeps health and CI rendering out of the markdown reporter barrel', async () => {
     const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
-    expect(reporter.functions?.some((fn) => fn.name === 'reportHealthMarkdown')).toBe(false);
-    expect(reporter.functions?.some((fn) => fn.name === 'reportCiMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportHealthMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportCiMarkdown')).toBe(false);
 
     const healthReporter = await inspectRepoSourceFile('src/reporters/markdownHealthReporter.ts');
     const healthRenderer = healthReporter.functions?.find((fn) => fn.name === 'reportHealthMarkdown');
@@ -131,6 +138,26 @@ describe('markdownReporter maintainability', () => {
     expect(healthRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
     expect(ciRenderer).toBeDefined();
     expect(ciRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
+  it('keeps architecture rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(hasFunction(reporter, 'reportDiagramMarkdown')).toBe(false);
+    expect(hasFunction(reporter, 'reportStructureMarkdown')).toBe(false);
+
+    const architectureReporter = await inspectRepoSourceFile(
+      'src/reporters/markdownArchitectureReporter.ts',
+    );
+    const diagramRenderer = architectureReporter.functions?.find(
+      (fn) => fn.name === 'reportDiagramMarkdown',
+    );
+    const structureRenderer = architectureReporter.functions?.find(
+      (fn) => fn.name === 'reportStructureMarkdown',
+    );
+    expect(diagramRenderer).toBeDefined();
+    expect(diagramRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(structureRenderer).toBeDefined();
+    expect(structureRenderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 });
 
