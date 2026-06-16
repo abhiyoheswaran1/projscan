@@ -84,6 +84,16 @@ describe('markdownReporter maintainability', () => {
     expect(renderer).toBeDefined();
     expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps hotspot rendering out of the markdown reporter barrel', async () => {
+    const reporter = await inspectRepoSourceFile('src/reporters/markdownReporter.ts');
+    expect(reporter.functions?.some((fn) => fn.name === 'reportHotspotsMarkdown')).toBe(false);
+
+    const hotspotReporter = await inspectRepoSourceFile('src/reporters/markdownHotspotReporter.ts');
+    const renderer = hotspotReporter.functions?.find((fn) => fn.name === 'reportHotspotsMarkdown');
+    expect(renderer).toBeDefined();
+    expect(renderer!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 describe('markdownReporter', () => {

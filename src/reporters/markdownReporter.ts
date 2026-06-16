@@ -3,7 +3,6 @@ import type {
   FileExplanation,
   ArchitectureLayer,
   DirectoryNode,
-  HotspotReport,
   WorkspaceInfo,
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
@@ -24,6 +23,7 @@ export { reportPrDiffMarkdown } from './markdownPrDiffReporter.js';
 export { reportCoverageMarkdown } from './markdownCoverageReporter.js';
 export { reportCouplingMarkdown } from './markdownCouplingReporter.js';
 export { reportOutdatedMarkdown } from './markdownOutdatedReporter.js';
+export { reportHotspotsMarkdown } from './markdownHotspotReporter.js';
 
 export function reportHealthMarkdown(
   issues: Issue[],
@@ -166,41 +166,6 @@ function buildTreeLines(nodes: DirectoryNode[], indent: string, lines: string[])
       buildTreeLines(node.children, indent + childIndent, lines);
     }
   }
-}
-
-export function reportHotspotsMarkdown(report: HotspotReport): void {
-  const lines: string[] = ['# Project Hotspots', ''];
-
-  if (!report.available) {
-    lines.push(`> ${report.reason ?? 'Hotspot analysis unavailable.'}`);
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  const { since, commitsScanned } = report.window;
-  lines.push(
-    `_Scanned **${commitsScanned}** commit(s) since **${since}** · ranked **${report.totalFilesRanked}** file(s)_`,
-  );
-  lines.push('');
-
-  if (report.hotspots.length === 0) {
-    lines.push('No hotspots detected.');
-    console.log(lines.join('\n'));
-    return;
-  }
-
-  lines.push('| # | Score | File | Churn | CC | Lines | Issues | Reasons |');
-  lines.push('| --- | ---: | --- | ---: | ---: | ---: | ---: | --- |');
-  for (let i = 0; i < report.hotspots.length; i++) {
-    const h = report.hotspots[i];
-    const reasons = h.reasons.length > 0 ? h.reasons.join(', ') : '-';
-    const cc = typeof h.cyclomaticComplexity === 'number' ? String(h.cyclomaticComplexity) : '-';
-    lines.push(
-      `| ${i + 1} | ${h.riskScore.toFixed(1)} | \`${h.relativePath}\` | ${h.churn} | ${cc} | ${h.lineCount} | ${h.issueCount} | ${reasons} |`,
-    );
-  }
-
-  console.log(lines.join('\n'));
 }
 
 export function reportWorkspacesMarkdown(info: WorkspaceInfo): void {
