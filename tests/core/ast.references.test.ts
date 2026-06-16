@@ -115,4 +115,16 @@ describe('FunctionInfo.references (1.6+)', () => {
     expect(arrow).toBeDefined();
     expect(arrow!.references).toEqual(expect.arrayContaining(['env', 'SECRET']));
   });
+
+  it('keeps call context for functions nested inside object arguments', () => {
+    const out = fns(`app.route({
+  method: 'POST',
+  handler: async (request) => {
+    return request.body;
+  },
+});`);
+    const handler = out.find((f) => f.parameters?.includes('request'));
+    expect(handler).toBeDefined();
+    expect(handler!.contextualCallSite).toBe('app.route');
+  });
 });

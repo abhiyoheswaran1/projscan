@@ -333,7 +333,7 @@ function collectFunctions(
     const id = (node as { id?: { type: string; name?: string } }).id;
     const init = (node as { init?: Node | null }).init;
     const name = id && id.type === 'Identifier' ? (id.name ?? null) : null;
-    if (init) collectFunctions(init, parentClassName, name, out, null);
+    if (init) collectFunctions(init, parentClassName, name, out, contextualCallSite);
     return;
   }
 
@@ -341,7 +341,7 @@ function collectFunctions(
     const left = (node as { left?: { type: string; name?: string } }).left;
     const right = (node as { right?: Node }).right;
     const name = left && left.type === 'Identifier' ? (left.name ?? null) : null;
-    if (right) collectFunctions(right, parentClassName, name, out, null);
+    if (right) collectFunctions(right, parentClassName, name, out, contextualCallSite);
     return;
   }
 
@@ -370,11 +370,11 @@ function collectFunctions(
     if (Array.isArray(child)) {
       for (const item of child) {
         if (item && typeof item === 'object' && 'type' in item) {
-          collectFunctions(item as Node, parentClassName, null, out, null);
+          collectFunctions(item as Node, parentClassName, null, out, contextualCallSite);
         }
       }
     } else if (typeof child === 'object' && 'type' in child) {
-      collectFunctions(child as Node, parentClassName, null, out, null);
+      collectFunctions(child as Node, parentClassName, null, out, contextualCallSite);
     }
   }
 }

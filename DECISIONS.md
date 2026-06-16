@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-16: Preserve object-argument route context for Fastify dataflow
+
+- Status: accepted
+- Context: Fastify `app.route({ handler })` handlers are common route definitions, but the AST collector only attached `contextualCallSite` to direct callback arguments. Functions nested inside object arguments lost the `app.route` context, so framework source detection stayed quiet even when `request.body` reached a database sink.
+- Decision: Propagate an already-known call context through argument-container children, add Fastify route-option dataflow coverage, and bump the graph cache version so stale cached function metadata is rebuilt.
+- Consequences: `projscan dataflow` detects Fastify object-option route handlers with the same receiver-gated source rules as shorthand handlers, while arbitrary object functions outside route calls remain unclassified.
+- Verification: `npm run test -- tests/core/ast.references.test.ts tests/core/dataflow.test.ts tests/core/indexCache.test.ts tests/core/indexCache.python.test.ts`, `npm run lint`, and `npm run typecheck`.
+
 ## 2026-06-16: Add coordination evidence blocks to swarm reports
 
 - Status: accepted

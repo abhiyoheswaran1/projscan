@@ -20,7 +20,9 @@ const CACHE_FILE = 'graph.json';
 // v8: added `directCallSites` and `memberAliases` so bare imported DB
 // helpers stay visible without treating cache.query() as a raw SQL sink.
 // v9: added `memberReferences` for precise qualified framework request reads.
-const CACHE_VERSION = 9;
+// v10: preserves `contextualCallSite` through object-argument handlers such
+// as Fastify `app.route({ handler })`.
+const CACHE_VERSION = 10;
 
 interface SerializedGraph {
   version: number;
