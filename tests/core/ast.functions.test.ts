@@ -47,6 +47,19 @@ describe('per-function CC (JS/TS)', () => {
     }
   });
 
+  it('keeps module import/export collection out of the AST orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astFns.some((fn) => fn.name === 'collectInlineExportDeclaration')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'collectNamedExport')).toBe(false);
+
+    const moduleSource = readFileSync(join(process.cwd(), 'src/core/astModuleSignals.ts'), 'utf8');
+    const moduleFns = fns(moduleSource, 'src/core/astModuleSignals.ts');
+    const visitor = moduleFns.find((fn) => fn.name === 'visitTopLevel');
+    expect(visitor).toBeDefined();
+    expect(visitor!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
