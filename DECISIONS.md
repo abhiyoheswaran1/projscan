@@ -881,3 +881,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Redact the full path-like token ending in a scoped file path, supporting both POSIX and Windows separators, while keeping stable `redacted-path-N` labels.
 - Consequences: Issue titles, descriptions, and suggested actions no longer leak local checkout prefixes when they contain absolute paths to scoped files.
 - Verification: `npm run test -- tests/core/reportScope.test.ts -t "absolute path prefixes"`, `npm run test -- tests/core/reportScope.test.ts`, `npm run test -- tests/cli/formatHandling.test.ts`, `npm exec projscan -- doctor --report-scope src --redact-paths --format json`, `npm exec projscan -- analyze --report-scope src --redact-paths --format sarif`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+## 2026-06-16: Surface coordinate evidence in console output
+
+- Status: accepted
+- Context: `projscan coordinate --format json` exposed local-only coordination evidence, active signal sources, and validation commands, but the default console output only showed readiness and summary lines.
+- Decision: Print a compact `Evidence` section in the coordinate console renderer for both available and unavailable reports.
+- Consequences: Human users see the same local-only proof path, worktree count, current worktree, signal sources, and validation workflow without switching to JSON, while the JSON schema stays unchanged.
+- Verification: `npm run test -- tests/cli/coordinate.test.ts`, `npm run test -- tests/core/coordination.test.ts tests/core/collisionDetector.test.ts`, `npm exec projscan -- coordinate --quiet`, `npm exec projscan -- coordinate --format json`, `npm exec projscan -- review --format json`, `npm exec projscan -- bug-hunt --format json`, `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`.

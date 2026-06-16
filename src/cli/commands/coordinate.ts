@@ -108,11 +108,36 @@ function render(report: CoordinationSummary, format: string, watch: boolean): vo
   console.log(chalk.dim('────────────────────────────────────────'));
   if (!report.available) {
     console.log(chalk.dim(`  ${report.reason}`));
+    printEvidence(report);
     return;
   }
   console.log(`  Readiness: ${VERDICT_COLOR[report.readiness](report.readiness.toUpperCase())}`);
   console.log('');
   for (const line of report.summary) {
     console.log(`  • ${line}`);
+  }
+  printEvidence(report);
+}
+
+function printEvidence(report: CoordinationSummary): void {
+  const evidence = report.evidence;
+  if (!evidence) return;
+  console.log('');
+  console.log(chalk.bold('Evidence'));
+  console.log(`  ${evidence.localOnly ? 'local-only' : 'external'}: ${evidence.command}`);
+  console.log(`  Worktrees: ${evidence.worktreeCount}`);
+  if (evidence.currentWorktree) {
+    const branch = evidence.currentWorktree.branch ?? 'detached';
+    console.log(
+      `  Current: ${evidence.currentWorktree.path} (${branch}, ${evidence.currentWorktree.changedFileCount} changed)`,
+    );
+  }
+  console.log('  Signals:');
+  for (const signal of evidence.activeSignals) {
+    console.log(`  - ${signal.commandPath}: ${signal.source}`);
+  }
+  console.log('  Validate:');
+  for (const step of evidence.validationWorkflow) {
+    console.log(`  - ${step.command}`);
   }
 }
