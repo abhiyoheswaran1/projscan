@@ -174,6 +174,31 @@ describe('computeReview', () => {
     expect(entrypointContractChanges!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps changed-file assembly isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const changedFileFunctions = new Set([
+      'indexHotspotRisk',
+      'buildReviewChangedFiles',
+      'appendAddedReviewFiles',
+      'appendRemovedReviewFiles',
+      'appendModifiedReviewFiles',
+    ]);
+    expect(review.functions?.some((fn) => changedFileFunctions.has(fn.name))).toBe(false);
+
+    const changedFileModule = await inspectRepoSourceFile('src/core/reviewChangedFiles.ts');
+    const buildReviewChangedFiles = changedFileModule.functions?.find(
+      (fn) => fn.name === 'buildReviewChangedFiles',
+    );
+    const indexHotspotRisk = changedFileModule.functions?.find(
+      (fn) => fn.name === 'indexHotspotRisk',
+    );
+
+    expect(buildReviewChangedFiles).toBeDefined();
+    expect(buildReviewChangedFiles!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(indexHotspotRisk).toBeDefined();
+    expect(indexHotspotRisk!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
