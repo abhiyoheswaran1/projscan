@@ -2161,3 +2161,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Extract the runtime flush guard into `flushBlockedResult` and sender execution plus queue cleanup into `sendQueuedTelemetry`, leaving `flushTelemetry` as the public orchestration boundary.
 - Consequences: Telemetry opt-in, no-network behavior, queue handling, sender behavior, failure shaping, event fields, and public telemetry exports remain unchanged. `flushTelemetry` is now guarded by the telemetry architecture test alongside command categorization.
 - Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the refactor at cyclomatic complexity 11 for `flushTelemetry`, then passed after the helper extraction.
+
+## 2026-06-17: Clear release readiness blockers
+
+- Status: accepted
+- Context: Full-suite release-readiness checks still had stale expectations for build-next intent routing, and preflight review reported a new telemetry taint flow from `recordCommandTelemetry` to queue cleanup after the flush helper extraction.
+- Decision: Align the legacy intent-router tests with the accepted release-train roadmap route for build-next prompts, and route the telemetry no-network env read through `isTelemetryNetworkDisabled` so the command-recording function no longer owns both env access and a path to queue deletion.
+- Consequences: Intent routing behavior, telemetry opt-in, no-network behavior, queue handling, sender behavior, event fields, and public telemetry exports remain unchanged. Review no longer reports the telemetry env-to-rm taint flow.
+- Verification: `npm run test` and `projscan preflight --mode before_commit --format json` exposed the blockers before the fix. Focused intent-router tests, telemetry tests, and `projscan review --format json` passed after the fix with no new taint flows.

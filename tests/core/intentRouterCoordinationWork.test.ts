@@ -329,14 +329,14 @@ describe('routeIntent coordination and work routing', () => {
     );
   });
 
-  it('routes product-planning wording to high-confidence workplan', () => {
+  it('routes product-planning wording to high-confidence release-train planning', () => {
     const buildNext = routeIntent('what should we build next');
 
     expect(buildNext.matches[0]).toEqual(
       expect.objectContaining({
-        category: 'Agent planning',
-        tool: 'projscan_workplan',
-        cli: 'projscan workplan',
+        category: 'Release',
+        tool: 'projscan_release_train',
+        cli: 'projscan release-train',
         confidence: 'high',
         matchedKeywords: expect.arrayContaining(['build', 'next']),
       }),
@@ -346,7 +346,7 @@ describe('routeIntent coordination and work routing', () => {
     const roadmap = routeIntent('plan the product roadmap');
     expect(roadmap.matches[0]).toEqual(
       expect.objectContaining({
-        tool: 'projscan_workplan',
+        tool: 'projscan_release_train',
         confidence: 'high',
         matchedKeywords: expect.arrayContaining(['plan', 'product', 'roadmap']),
       }),

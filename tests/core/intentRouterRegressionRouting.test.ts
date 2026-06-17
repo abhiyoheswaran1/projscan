@@ -130,7 +130,7 @@ describe('routeIntent regression routing', () => {
     const planning = routeIntent('what should we build next with agentloop');
     expect(planning.matches[0]).toEqual(
       expect.objectContaining({
-        tool: 'projscan_workplan',
+        tool: 'projscan_release_train',
         matchedKeywords: expect.arrayContaining(['next', 'build']),
       }),
     );

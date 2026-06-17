@@ -292,7 +292,7 @@ export async function recordCommandTelemetry(
   const event = await buildCommandEvent(input, config, options.now);
   await appendQueue(paths.queuePath, event);
 
-  if (options.flush === false || process.env[TELEMETRY_NO_NETWORK_ENV] === '1') {
+  if (options.flush === false || isTelemetryNetworkDisabled()) {
     return { status: 'queued', queued: await countQueue(paths.queuePath) };
   }
 
@@ -336,8 +336,7 @@ export async function flushTelemetry(
 function flushBlockedResult(): RecordTelemetryResult | null {
   if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
   if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
-  if (process.env[TELEMETRY_NO_NETWORK_ENV] === '1')
-    return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
+  if (isTelemetryNetworkDisabled()) return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
   return null;
 }
 
@@ -662,6 +661,10 @@ function isOfflineMode(): boolean {
 function isRuntimeTelemetryDisabled(): boolean {
   const value = process.env[TELEMETRY_DISABLED_ENV];
   return value === '1' || value === 'true';
+}
+
+function isTelemetryNetworkDisabled(): boolean {
+  return process.env[TELEMETRY_NO_NETWORK_ENV] === '1';
 }
 
 function toIso(value: Date | undefined): string {
