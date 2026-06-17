@@ -4677,3 +4677,50 @@ avoid leaking both scoped raw paths and out-of-scope raw paths.
 
 Kept change: two CLI regression tests, a shared scoped-cycle fixture for the
 format-handling suite, this persona note, and no public behavior change.
+
+## Ninety-Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: preflight evidence is what agents and reviewers inspect to distinguish
+current worktree risk from remembered session context, release-scale risk,
+coordination overlap, and policy findings. Keeping all evidence shaping in the
+main preflight module kept a high-change gate difficult to review.
+
+Smallest fix: move health, changed-file, review, session, risk-source, hotspot,
+plugin, supply-chain, release-scale, and coordination evidence shaping into
+`preflightEvidence.ts`; export one shared evidence truncation limit so the main
+report-level truncation flag stays aligned with evidence payload truncation.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "evidence shaping isolated"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightEvidence.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight evidence field names, remembered-session wording,
+  current-worktree/session-memory split, truncation limit, or report schema.
+- Do not change reason ordering, verdict logic, required checks, report
+  controls, review computation, coordination computation, or plugin execution.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: large remembered sessions should still set truncated
+session evidence; current Git/worktree evidence and remembered session context
+should remain separate risk sources.
+
+Kept change: one preflight evidence helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

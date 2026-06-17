@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight evidence shaping
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned health, changed-file, review, session, risk-source, hotspot, plugin, supply-chain, release-scale, and coordination evidence shaping after reason and required-check extraction.
+- Decision: Move preflight evidence shaping into `src/core/preflightEvidence.ts` and export the shared evidence truncation limit.
+- Consequences: Preflight evidence fields, remembered-session wording, truncation behavior, risk-source split, and report schema stay unchanged, while `src/core/preflight.ts` drops from 522 lines / CC 66 to 423 lines / CC 56.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "evidence shaping isolated"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight review reasons
 
 - Status: accepted

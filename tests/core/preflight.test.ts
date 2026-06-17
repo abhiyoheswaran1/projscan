@@ -202,6 +202,27 @@ test('preflight keeps review reason formatting isolated from the reason orchestr
   expect(unavailableReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps evidence shaping isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('function buildEvidence');
+  expect(preflightSource).not.toContain('remembered session context comes from previous projscan');
+
+  const evidence = await inspectRepoSourceFile('src/core/preflightEvidence.ts');
+  const entrypoint = evidence.functions?.find((fn) => fn.name === 'buildEvidence');
+  const sessionEvidence = evidence.functions?.find((fn) => fn.name === 'sessionEvidence');
+  const riskSources = evidence.functions?.find((fn) => fn.name === 'riskSourcesEvidence');
+  const coordination = evidence.functions?.find((fn) => fn.name === 'coordinationEvidence');
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(sessionEvidence).toBeDefined();
+  expect(sessionEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(riskSources).toBeDefined();
+  expect(riskSources!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(coordination).toBeDefined();
+  expect(coordination!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

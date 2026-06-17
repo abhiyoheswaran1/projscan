@@ -10,6 +10,7 @@ import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
 import { reviewReasons } from './preflightReviewReasons.js';
+import { buildEvidence, MAX_PREFLIGHT_EVIDENCE_FILES } from './preflightEvidence.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -18,7 +19,6 @@ import type {
   HealthScore,
   HotspotReport,
   Issue,
-  PreflightEvidence,
   PreflightMode,
   PreflightReason,
   PreflightReleaseScaleEvidence,
@@ -60,7 +60,6 @@ interface PreflightReviewEvidence {
 }
 
 const DEFAULT_MAX_CHANGED_FILES = 50;
-const MAX_EVIDENCE_FILES = 40;
 
 export async function computePreflight(
   rootPath: string,
@@ -116,8 +115,8 @@ export async function computePreflight(
   });
   const truncated =
     evidence.session?.truncated === true ||
-    changedFiles.files.length > MAX_EVIDENCE_FILES ||
-    (evidence.hotspots?.touched.length ?? 0) > MAX_EVIDENCE_FILES;
+    changedFiles.files.length > MAX_PREFLIGHT_EVIDENCE_FILES ||
+    (evidence.hotspots?.touched.length ?? 0) > MAX_PREFLIGHT_EVIDENCE_FILES;
   const report: PreflightReport = {
     schemaVersion: 1,
     mode,
@@ -352,104 +351,6 @@ function buildPreflightReasons(input: {
   }
 
   return reasons;
-}
-
-function buildEvidence(input: {
-  health: HealthScore;
-  changedFiles: PreflightChangedFiles;
-  session: PreflightSessionEvidence;
-  hotspots: HotspotReport | null;
-  issues: Issue[];
-  pluginsEnabledForRun: boolean;
-  review: PreflightReviewEvidence;
-  releaseScale: PreflightReleaseScaleEvidence | null;
-  coordination: CoordinationSummary | null;
-}): PreflightEvidence {
-  const pluginIssues = input.issues.filter((issue) => issue.id.startsWith('plugin:'));
-  const supplyChainIssues = input.issues.filter((issue) => issue.category === 'supply-chain');
-  const touched =
-    input.hotspots?.available === true
-      ? input.hotspots.hotspots
-          .filter((hotspot) => input.session.touchedFiles.includes(hotspot.relativePath))
-          .slice(0, MAX_EVIDENCE_FILES)
-          .map((hotspot) => ({ file: hotspot.relativePath, riskScore: hotspot.riskScore }))
-      : [];
-  const sessionTouchedFiles = input.session.touchedFiles.slice(0, MAX_EVIDENCE_FILES);
-  const changedEvidenceFiles = input.changedFiles.files.slice(0, MAX_EVIDENCE_FILES);
-  return {
-    health: {
-      score: input.health.score,
-      grade: input.health.grade,
-      errors: input.health.errors,
-      warnings: input.health.warnings,
-      infos: input.health.infos,
-    },
-    changedFiles: {
-      available: input.changedFiles.available,
-      count: input.changedFiles.count,
-      files: changedEvidenceFiles,
-      ...(input.changedFiles.reason ? { reason: input.changedFiles.reason } : {}),
-    },
-    review: {
-      available: input.review.available,
-      ...(input.review.verdict ? { verdict: input.review.verdict } : {}),
-      ...(input.review.summary ? { summary: input.review.summary } : {}),
-      ...(input.review.reason ? { reason: input.review.reason } : {}),
-    },
-    session: {
-      kind: 'remembered-session',
-      id: input.session.id,
-      touchedFiles: sessionTouchedFiles,
-      totalTouchedFiles: input.session.touchedFiles.length,
-      eventCount: input.session.eventCount,
-      note: 'remembered session context comes from previous projscan tool results, explicit touches, and MCP file-watch events. It is not the same as current Git/worktree changes.',
-      ...(input.session.touchedFiles.length > MAX_EVIDENCE_FILES ? { truncated: true } : {}),
-    },
-    riskSources: {
-      currentWorktree: {
-        kind: 'current-worktree',
-        available: input.changedFiles.available,
-        count: input.changedFiles.count,
-        files: changedEvidenceFiles,
-        baseRef: input.changedFiles.baseRef,
-        ...(input.changedFiles.reason ? { reason: input.changedFiles.reason } : {}),
-      },
-      sessionMemory: {
-        kind: 'remembered-session',
-        id: input.session.id,
-        touchedFiles: sessionTouchedFiles,
-        totalTouchedFiles: input.session.touchedFiles.length,
-        eventCount: input.session.eventCount,
-        note: 'remembered session context is useful for agent handoff, but it may include older files that are not part of the current Git/worktree diff.',
-        ...(input.session.touchedFiles.length > MAX_EVIDENCE_FILES ? { truncated: true } : {}),
-      },
-    },
-    hotspots: { touched },
-    plugins: {
-      enabled: input.pluginsEnabledForRun,
-      errorIssues: pluginIssues.filter((issue) => issue.severity === 'error').length,
-      warningIssues: pluginIssues.filter((issue) => issue.severity === 'warning').length,
-    },
-    supplyChain: {
-      errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
-      warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
-    },
-    ...(input.releaseScale ? { releaseScale: input.releaseScale } : {}),
-    ...(input.coordination
-      ? {
-          coordination: {
-            available: true,
-            readiness: input.coordination.readiness,
-            worktreeCount: input.coordination.worktreeCount,
-            collisions: {
-              high: input.coordination.collisions.high,
-              medium: input.coordination.collisions.medium,
-            },
-            contendedClaims: input.coordination.claims.contendedTargets,
-          },
-        }
-      : {}),
-  };
 }
 
 function buildSuggestedActions(
