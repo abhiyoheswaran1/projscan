@@ -409,6 +409,21 @@ describe('routeIntent', () => {
     expect(understandSignalsSource).toContain('export function understandKeywordMatches');
   });
 
+  it('keeps keyword scoring isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterKeywordWeights.js'");
+    expect(routerSource).not.toContain('function keywordWeight');
+
+    const keywordWeightsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterKeywordWeights.ts'),
+      'utf8',
+    );
+    expect(keywordWeightsSource).toContain('export function keywordWeight');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
