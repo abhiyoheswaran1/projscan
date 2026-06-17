@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { explainFile as explainProjectFile } from '../core/fileInspector.js';
 import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
-import { loadConfig } from '../utils/config.js';
 import { recordCommandTelemetry } from '../core/telemetry.js';
 import { enableOfflineMode } from '../core/privacy.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
@@ -25,6 +24,7 @@ import {
   changedIssueFilterMessage,
   filterIssuesToChangedFiles,
 } from './changedIssueFilter.js';
+import { loadCliProjectConfig } from './projectConfig.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
 
@@ -113,21 +113,12 @@ export function getRootPath(): string {
 
 export async function loadProjectConfig(): Promise<ProjscanConfig> {
   const opts = program.opts();
-  const explicit = typeof opts.config === 'string' ? (opts.config as string) : undefined;
-  try {
-    const { config, source } = await loadConfig(getRootPath(), explicit);
-    if (config.scan?.offline) enableOfflineMode();
-    if (config.scan?.includeIgnored) process.env.PROJSCAN_INCLUDE_IGNORED = '1';
-    if (config.scan?.scanEnvValues) process.env.PROJSCAN_SCAN_ENV_VALUES = '1';
-    if (source && !opts.quiet && getFormat() === 'console') {
-      console.error(chalk.dim(`  [config: ${path.relative(getRootPath(), source) || source}]`));
-    }
-    return config;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`  Config error: ${msg}`));
-    process.exit(1);
-  }
+  return await loadCliProjectConfig({
+    rootPath: getRootPath(),
+    configOption: opts.config,
+    quiet: Boolean(opts.quiet),
+    format: getFormat(),
+  });
 }
 
 export async function filterIssuesByChangedFiles(
