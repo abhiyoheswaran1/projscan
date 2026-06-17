@@ -105,6 +105,11 @@ describe('inferPurpose', () => {
     expect(inferPurpose('/p/foo.spec.ts', [])).toBe('Test file');
   });
 
+  it('does not treat words containing spec as test files', () => {
+    expect(inferPurpose('/p/src/core/fileInspector.ts', [])).toBe('Source module');
+    expect(inferPurpose('/p/src/analyzers/testCheck.ts', [])).toBe('Source module');
+  });
+
   it('recognizes index as barrel', () => {
     expect(inferPurpose('/p/index.ts', [])).toBe('Module entry point / barrel file');
   });

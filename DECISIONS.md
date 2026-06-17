@@ -2025,3 +2025,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add `request.nextUrl.searchParams` as a Next route request source only for exported HTTP method handlers in `app/**/route.*`, reusing the existing qualified member-reference gate.
 - Consequences: `projscan dataflow` can report one additional additive source value for Next route handlers. Helper functions with a `request.nextUrl.searchParams`-shaped argument remain quiet because source detection is still route-file and HTTP-handler scoped.
 - Verification: `npm run test -- tests/core/dataflowFrameworkNextHono.test.ts -t "nextUrl search params"` failed before the source-map change, then passed.
+
+## 2026-06-17: Narrow file purpose test-name detection
+
+- Status: accepted
+- Context: `projscan file src/core/fileInspector.ts --format json` classified the source file as `Test file` because the purpose matcher treated any basename containing `spec` as a test, so words like `inspector` were false positives.
+- Decision: Replace broad `test`/`spec` substring matching with separator-aware filename tokens: `test`, `tests`, `spec`, and `specs`.
+- Consequences: Real `*.test.*` and `*.spec.*` files still classify as test files, while source files such as `fileInspector.ts` and `testCheck.ts` fall back to normal purpose inference.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "words containing spec"` failed before the matcher change, then passed. A rebuilt `projscan file src/core/fileInspector.ts --format json` smoke reported `purpose: "Source module"`.

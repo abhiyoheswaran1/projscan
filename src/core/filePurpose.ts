@@ -9,7 +9,7 @@ const NAME_RULES: ReadonlyArray<{
   pred: (name: string) => boolean;
   label: string;
 }> = [
-  { pred: (name) => name.includes('test') || name.includes('spec'), label: 'Test file' },
+  { pred: isTestFileName, label: 'Test file' },
   { pred: (name) => name.includes('config') || name.includes('rc'), label: 'Configuration file' },
   { pred: (name) => name === 'index', label: 'Module entry point / barrel file' },
   { pred: (name) => name === 'main' || name === 'app', label: 'Application entry point' },
@@ -35,6 +35,8 @@ const NAME_RULES: ReadonlyArray<{
   { pred: (name) => name.includes('api'), label: 'API endpoint handler' },
 ];
 
+const TEST_NAME_TOKENS = new Set(['test', 'tests', 'spec', 'specs']);
+
 const DIR_RULES: ReadonlyArray<{
   pred: (dir: string) => boolean;
   label: string;
@@ -51,6 +53,10 @@ export function inferPurpose(filePath: string, exports: ExportInfo[]): string {
   for (const rule of NAME_RULES) if (rule.pred(name)) return rule.label;
   for (const rule of DIR_RULES) if (rule.pred(dir)) return rule.label;
   return inferPurposeFromExports(exports);
+}
+
+function isTestFileName(name: string): boolean {
+  return name.split(/[\W_]+/).some((part) => TEST_NAME_TOKENS.has(part));
 }
 
 function inferPurposeFromExports(exports: ExportInfo[]): string {
