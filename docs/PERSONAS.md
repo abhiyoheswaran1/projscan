@@ -4491,3 +4491,50 @@ release-scale evidence.
 Kept change: one preflight changed-file reason helper module, one
 maintainability regression, existing preflight behavior coverage, this persona
 note, and no public schema change.
+
+## Ninety-Fourth Slice Decision
+
+Selected personas: Platform/Release Owner and Security-Conscious Reviewer.
+
+Reason: required checks are the reviewer-facing explanation of whether health,
+supply-chain, changed-file, and review gates pass, warn, fail, or are
+unavailable. Keeping that formatting inside the main preflight module made the
+release/review gate harder to audit after the reason-formatting extractions.
+
+Smallest fix: move required-check assembly into
+`preflightRequiredChecks.ts`; keep preflight orchestration responsible for
+collecting evidence and passing the same health, changed-file, review,
+supply-chain, and release-scale inputs.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "required check formatting"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightRequiredChecks.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Required-Check Extraction
+
+Delete-list after this slice:
+
+- Do not change required-check names, statuses, reason text, order, or
+  release-scale downgrade behavior.
+- Do not change preflight reason ordering, verdict logic, evidence shape,
+  changed-file detection, review computation, policy issue formatting, or
+  public report schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: scale-only review blocks should still report the review
+required check as `warn`; concrete review blocks should still report `fail`;
+before-edit review should remain `unavailable`.
+
+Kept change: one preflight required-check helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

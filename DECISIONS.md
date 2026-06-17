@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight required checks
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned required-check status and reason formatting for health, supply-chain, changed files, and review after preflight reason formatting had been partly isolated.
+- Decision: Move required-check assembly into `src/core/preflightRequiredChecks.ts`.
+- Consequences: Preflight required-check names, statuses, reasons, release-scale downgrade behavior, and report schema stay unchanged, while `src/core/preflight.ts` drops from 703 lines / CC 124 to 637 lines / CC 100.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "required check formatting"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight changed-file reasons
 
 - Status: accepted

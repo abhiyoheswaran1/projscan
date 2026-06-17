@@ -129,6 +129,34 @@ test('preflight keeps changed-file reason formatting isolated from the reason or
   expect(thresholdReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps required check formatting isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('function buildRequiredChecks');
+  expect(preflightSource).not.toContain('function formatReviewCheckReason');
+
+  const requiredChecks = await inspectRepoSourceFile('src/core/preflightRequiredChecks.ts');
+  const entrypoint = requiredChecks.functions?.find((fn) => fn.name === 'buildRequiredChecks');
+  const healthCheck = requiredChecks.functions?.find((fn) => fn.name === 'healthRequiredCheck');
+  const supplyChainCheck = requiredChecks.functions?.find(
+    (fn) => fn.name === 'supplyChainRequiredCheck',
+  );
+  const reviewStatus = requiredChecks.functions?.find((fn) => fn.name === 'reviewCheckStatus');
+  const reviewReason = requiredChecks.functions?.find(
+    (fn) => fn.name === 'formatReviewCheckReason',
+  );
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(healthCheck).toBeDefined();
+  expect(healthCheck!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(supplyChainCheck).toBeDefined();
+  expect(supplyChainCheck!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(reviewStatus).toBeDefined();
+  expect(reviewStatus!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  expect(reviewReason).toBeDefined();
+  expect(reviewReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

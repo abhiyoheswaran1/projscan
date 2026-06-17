@@ -7,6 +7,7 @@ import { pluginsEnabled } from './plugins.js';
 import { computeCoordination, type CoordinationSummary } from './coordination.js';
 import { policyIssueReasons } from './preflightIssueReasons.js';
 import { changedFileReasons } from './preflightChangedFileReasons.js';
+import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -20,7 +21,6 @@ import type {
   PreflightReason,
   PreflightReleaseScaleEvidence,
   PreflightReport,
-  PreflightRequiredCheck,
   PreflightSuggestedAction,
   PreflightVerdict,
 } from '../types.js';
@@ -123,14 +123,14 @@ export async function computePreflight(
     summary: '',
     reasons,
     evidence,
-    requiredChecks: buildRequiredChecks(
+    requiredChecks: buildRequiredChecks({
       mode,
       health,
       changedFiles,
       review,
       supplyChain,
       releaseScale,
-    ),
+    }),
     suggestedNextActions: buildSuggestedActions(reasons, mode, changedFiles),
     toolCalls: buildToolCalls(reasons, mode, changedFiles),
     ...(truncated ? { truncated: true } : {}),
@@ -469,16 +469,6 @@ function formatReviewBlockMessage(
   return 'Review verdict is block';
 }
 
-function formatReviewCheckReason(
-  review: PreflightReviewEvidence,
-  releaseScale?: PreflightReleaseScaleEvidence | null,
-): string {
-  if (review.verdict === 'block' && releaseScale?.detected) {
-    return `scale/complexity: ${review.summary ?? review.verdict}`;
-  }
-  return review.summary ?? review.verdict ?? 'review unavailable';
-}
-
 function buildEvidence(input: {
   health: HealthScore;
   changedFiles: PreflightChangedFiles;
@@ -575,62 +565,6 @@ function buildEvidence(input: {
         }
       : {}),
   };
-}
-
-function buildRequiredChecks(
-  mode: PreflightMode,
-  health: HealthScore,
-  changedFiles: PreflightChangedFiles,
-  review: PreflightReviewEvidence,
-  supplyChain?: { errorIssues: number; warningIssues: number },
-  releaseScale?: PreflightReleaseScaleEvidence | null,
-): PreflightRequiredCheck[] {
-  const checks: PreflightRequiredCheck[] = [
-    {
-      name: 'health',
-      status: health.errors > 0 ? 'fail' : health.warnings > 0 ? 'warn' : 'pass',
-      reason: `${health.errors} error(s), ${health.warnings} warning(s), ${health.infos} info`,
-    },
-  ];
-  checks.push({
-    name: 'supply-chain',
-    status:
-      (supplyChain?.errorIssues ?? 0) > 0
-        ? 'fail'
-        : (supplyChain?.warningIssues ?? 0) > 0
-          ? 'warn'
-          : 'pass',
-    reason: `${supplyChain?.errorIssues ?? 0} error(s), ${supplyChain?.warningIssues ?? 0} warning(s)`,
-  });
-  checks.push({
-    name: 'changed-files',
-    status: changedFiles.available ? 'pass' : 'unavailable',
-    reason: changedFiles.available
-      ? `${changedFiles.count} changed file(s)`
-      : (changedFiles.reason ?? 'changed-file detection unavailable'),
-  });
-  checks.push({
-    name: 'review',
-    status:
-      mode === 'before_edit'
-        ? 'unavailable'
-        : !review.available
-          ? 'unavailable'
-          : review.verdict === 'block'
-            ? releaseScale?.detected
-              ? 'warn'
-              : 'fail'
-            : review.verdict === 'review'
-              ? 'warn'
-              : 'pass',
-    reason:
-      mode === 'before_edit'
-        ? 'review is not required before edits'
-        : review.available
-          ? formatReviewCheckReason(review, releaseScale)
-          : (review.reason ?? 'review unavailable'),
-  });
-  return checks;
 }
 
 function buildSuggestedActions(
