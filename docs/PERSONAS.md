@@ -4208,3 +4208,49 @@ preflight blockers should still inject `rt-blockers-first` ahead of plan tasks.
 Kept change: one fallback catalog module, one source-boundary regression,
 existing release-train behavior coverage, this persona note, and no public
 schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Security-Conscious Reviewer and OSS Maintainer.
+
+Reason: review git/ref state checks are small but security-sensitive: they
+shell out to git, control the clean-worktree fast path, and decide which base
+ref gets compared. Keeping that logic inside `computeReview` made the review
+orchestrator harder to audit next to graph and verdict assembly.
+
+Smallest fix: move repository detection, clean-worktree checks, commit SHA
+resolution, and default-base selection into `reviewRefs.ts`; keep the existing
+review-local git runner and timeout behavior unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "git ref and worktree state"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewRefs.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Git/Ref State Extraction
+
+Delete-list after this slice:
+
+- Do not change default base order, commit resolution syntax, clean-worktree
+  semantics, no-change fast path, unavailable-review wording, or review schema.
+- Do not remove the shared git timeout, stdin detachment, or local-only git
+  behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: non-git roots should still return unavailable; invalid
+base refs should still return unavailable; identical clean refs should still
+use the no-change report; dirty worktrees at identical refs should still be
+reviewed instead of fast-pathed.
+
+Kept change: one git/ref state helper module, one maintainability regression,
+existing review behavior coverage, this persona note, and no public schema
+change.

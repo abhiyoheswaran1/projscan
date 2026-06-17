@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract review git/ref state checks
+
+- Status: accepted
+- Context: `src/core/review.ts` still owned git repository detection, worktree clean checks, SHA resolution, and default-base selection even after base snapshot and package-scope extraction.
+- Decision: Move review git/ref state checks into `src/core/reviewRefs.ts`.
+- Consequences: Review behavior and git timeout behavior stay unchanged, while `src/core/review.ts` drops to 240 lines and git/ref state logic is easier to audit independently.
+- Verification: `npm run test -- tests/core/review.test.ts -t "git ref and worktree state"` plus focused review tests.
+
 ## 2026-06-17: Extract release-train fallback catalog
 
 - Status: accepted

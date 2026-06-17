@@ -346,6 +346,30 @@ describe('computeReview', () => {
     expect(scopePrDiffToPackage!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps git ref and worktree state checks isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const reviewFunctions = new Set(review.functions?.map((fn) => fn.name));
+    expect(reviewFunctions.has('isGitRepository')).toBe(false);
+    expect(reviewFunctions.has('isWorktreeClean')).toBe(false);
+    expect(reviewFunctions.has('resolveSha')).toBe(false);
+    expect(reviewFunctions.has('pickDefaultBase')).toBe(false);
+
+    const refs = await inspectRepoSourceFile('src/core/reviewRefs.ts');
+    const isGitRepository = refs.functions?.find((fn) => fn.name === 'isGitRepository');
+    const isWorktreeClean = refs.functions?.find((fn) => fn.name === 'isWorktreeClean');
+    const resolveSha = refs.functions?.find((fn) => fn.name === 'resolveSha');
+    const pickDefaultBase = refs.functions?.find((fn) => fn.name === 'pickDefaultBase');
+
+    expect(isGitRepository).toBeDefined();
+    expect(isGitRepository!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+    expect(isWorktreeClean).toBeDefined();
+    expect(isWorktreeClean!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+    expect(resolveSha).toBeDefined();
+    expect(resolveSha!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(pickDefaultBase).toBeDefined();
+    expect(pickDefaultBase!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
