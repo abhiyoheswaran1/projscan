@@ -157,4 +157,60 @@ export function helper(request: { nextUrl: { searchParams: URLSearchParams } }) 
       ),
     ).toBeUndefined();
   });
+
+  it('treats Next route request headers and cookies as framework request sources without flagging helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'identity'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'identity', 'route.ts'),
+      `import type { NextRequest } from 'next/server';
+
+declare const db: { query(sql: string): unknown };
+declare const cache: { query(key: string): unknown };
+
+export async function GET(request: NextRequest) {
+  const tenant = request.headers.get('x-tenant');
+  return db.query(String(tenant));
+}
+
+export async function POST(request: NextRequest) {
+  const headers = request.headers;
+  return db.query(String(headers.get('authorization')));
+}
+
+export async function PUT(request: NextRequest) {
+  const session = request.cookies.get('session');
+  return db.query(String(session?.value));
+}
+
+export async function PATCH(request: NextRequest) {
+  const cohorts = request.cookies.getAll('cohort');
+  return db.query(String(cohorts.map((cookie) => cookie.value).join(',')));
+}
+
+export function helper(request: {
+  headers: Headers,
+  cookies: { get(name: string): { value: string } | undefined, getAll(name: string): Array<{ value: string }> }
+}) {
+  return cache.query(
+    String(request.headers.get('x-cache-key')) +
+      String(request.cookies.get('cache')?.value) +
+      String(request.cookies.getAll('cache').length),
+  );
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceFn: 'GET', source: 'request.headers', sink: 'query' }),
+        expect.objectContaining({ sourceFn: 'POST', source: 'request.headers', sink: 'query' }),
+        expect.objectContaining({ sourceFn: 'PUT', source: 'request.cookies', sink: 'query' }),
+        expect.objectContaining({ sourceFn: 'PATCH', source: 'request.cookies', sink: 'query' }),
+      ]),
+    );
+    expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
 });

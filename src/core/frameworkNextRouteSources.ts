@@ -3,10 +3,15 @@ const NEXT_ROUTE_SOURCE_BY_CALLEE = new Map<string, string>([
   ['formData', 'request.formData'],
   ['text', 'request.text'],
   ['arrayBuffer', 'request.arrayBuffer'],
+  ['headers.get', 'request.headers'],
+  ['cookies.get', 'request.cookies'],
+  ['cookies.getAll', 'request.cookies'],
 ]);
 
 const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['url', 'request.url'],
+  ['headers', 'request.headers'],
+  ['cookies', 'request.cookies'],
   ['nextUrl.searchParams', 'request.nextUrl.searchParams'],
 ]);
 
