@@ -7327,3 +7327,54 @@ should remain quiet for infra artifact search contexts.
 Kept change: one tool-guard module, one architecture-boundary regression,
 existing full intent-router behavior coverage, this persona note, and no release
 action.
+
+## One Hundred Fifty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `projscan hotspots --format json` still ranks
+`src/core/upgradePreview.ts` as a current hotspot because Python upgrade helpers
+were mixed into the npm preview flow. The behavior is now broadly covered, so
+the useful next step is shrinking ownership boundaries without changing output.
+
+Smallest fix: move Python-specific upgrade preview helpers into
+`src/core/upgradePreviewPython.ts` and keep `previewUpgrade()` responsible for
+npm validation, registry opt-in, npm package evidence, changelog slicing, and
+fallback orchestration. Keep public exports, output fields, registry behavior,
+offline defaults, package-name validation, and Python importer evidence
+unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/upgradePreviewArchitecture.test.ts
+npm run test -- tests/core/upgradePreviewArchitecture.test.ts tests/core/upgradePreview.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/mcp/pythonUpgradeFallback.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/upgradePreviewArchitecture.test.ts tests/core/upgradePreview.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/mcp/pythonUpgradeFallback.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/upgradePreview.ts --format json
+npm exec projscan -- file src/core/upgradePreviewPython.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Python Upgrade Preview Module
+
+Delete-list after this slice:
+
+- Do not change Python manifest detection, lockfile parsing, importer matching,
+  semver drift calculation, unavailable-preview reasons, output fields, or
+  line/source metadata.
+- Do not change npm package validation, registry opt-in behavior, offline
+  defaults, changelog slicing, breaking-marker detection, or public exports.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: an npm declaration without an installed npm package should
+still fall back to Python evidence when matching Python manifests exist, while a
+missing Python package should keep returning an unavailable Python preview.
+
+Kept change: one Python upgrade preview module, one architecture-boundary
+regression, existing upgrade behavior coverage, this persona note, and no
+release action.
