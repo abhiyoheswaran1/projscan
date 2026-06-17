@@ -67,6 +67,9 @@ const BUG_HUNT_OPPORTUNITY_KEYWORDS = keywordList(
   'small low lowest improve improvement useful easy beginner starter intern interns task tasks five minutes today win wins',
 );
 const MERGE_KEYWORDS = keywordList('merge merged merging');
+const REPORT_CONTROL_CONTEXT_KEYWORDS = keywordList(
+  'redact redacted redaction scoped scope partner vendor external artifact artifacts export exports paths report reports',
+);
 
 export function routeKeywordToolGuardDecision(
   context: KeywordMatchContext,
@@ -213,7 +216,13 @@ const TOOL_KEYWORD_REJECTORS: readonly ToolKeywordRejector[] = [
     entry.tool === 'projscan_regression_plan' &&
     !regressionKeywordMatches(keyword, tokens, hasQuotedText),
   ({ entry, tokens }) =>
+    entry.tool === 'projscan_analyze' && !reportControlContextMatches(tokens),
+  ({ entry, tokens }) =>
     entry.tool === 'projscan_release_train' && searchInfraArtifactContextMatches(tokens),
   ({ entry, keyword, tokens }) =>
     entry.tool === 'projscan_release_train' && !releaseTrainKeywordMatches(keyword, tokens),
 ];
+
+function reportControlContextMatches(tokens: Set<string>): boolean {
+  return REPORT_CONTROL_CONTEXT_KEYWORDS.some((token) => tokens.has(token));
+}

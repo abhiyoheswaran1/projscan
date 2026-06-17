@@ -100,6 +100,10 @@ const FIXED_ROUTE_CRITERIA: Record<string, string[]> = {
     'The evidence pack produces a paste-ready PR comment with verdict, top risks, owner routing, and next commands.',
     'The reviewer-facing comment is validated before it is shared or used for approval.',
   ],
+  projscan_analyze: [
+    'The scoped analysis, health, and CI artifacts are generated with path redaction enabled before sharing outside the repo.',
+    'The reviewer can correlate redacted-path-N labels without seeing raw repo structure.',
+  ],
   projscan_doctor: [
     'Dead code, unused exports, lint, dependency, security, and config issues are reviewed before cleanup starts.',
     'Any issue chosen for cleanup has a fix-suggest, impact, or verification follow-up before files are deleted.',

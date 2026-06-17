@@ -205,6 +205,31 @@ describe('routeIntent review and release routing', () => {
     );
   });
 
+  it('routes shareable redacted evidence requests before generic repo understanding', () => {
+    const result = routeIntent('share redacted evidence for src/api with a partner');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Review',
+        tool: 'projscan_analyze',
+        cli: 'projscan analyze',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining([
+          'share',
+          'redacted',
+          'evidence',
+          'partner',
+        ]),
+      }),
+    );
+    expect(result.matches.find((match) => match.tool === 'projscan_understand')).toEqual(
+      expect.objectContaining({
+        confidence: 'high',
+        matchedKeywords: ['api'],
+      }),
+    );
+  });
+
   it('routes PR narrative requests to evidence pack without hijacking repo summaries', () => {
     const description = routeIntent('write a PR description');
 

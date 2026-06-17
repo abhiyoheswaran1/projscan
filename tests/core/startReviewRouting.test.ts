@@ -312,6 +312,65 @@ test('start report turns PR-readiness questions into an evidence pack', async ()
   );
 });
 
+test('start report turns shareable redacted evidence requests into scoped report controls', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'share redacted evidence for src/api with a partner',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain('share redacted evidence for src/api with a partner');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Review',
+      tool: 'projscan_analyze',
+      cli: 'projscan analyze',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['share', 'redacted', 'evidence', 'partner']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan analyze --report-scope src/api --redact-paths --format json',
+      tool: 'projscan_analyze',
+      args: { report_scope: 'src/api', redact_paths: true },
+    }),
+  );
+  expect(report.missionControl.readyActions.map((action) => action.command)).toEqual([
+    'projscan analyze --report-scope src/api --redact-paths --format json',
+    'projscan doctor --report-scope src/api --redact-paths --format markdown',
+    'projscan ci --report-scope src/api --redact-paths --format sarif',
+  ]);
+  expect(report.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'The scoped analysis, health, and CI artifacts are generated with path redaction enabled before sharing outside the repo.',
+      'The reviewer can correlate redacted-path-N labels without seeing raw repo structure.',
+    ]),
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan ci --report-scope src/api --redact-paths --format sarif',
+  );
+
+  const noScope = await computeStartReport(root, {
+    intent: 'share redacted evidence',
+  });
+  expect(noScope.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan analyze --report-scope <report-scope> --redact-paths --format json',
+      args: { report_scope: '<report-scope>', redact_paths: true },
+    }),
+  );
+  expect(noScope.missionControl.unresolvedInputs).toContainEqual(
+    expect.objectContaining({
+      name: 'report_scope',
+      instruction:
+        'Replace <report-scope> with one or more comma-separated repo-relative paths to include in the shared evidence.',
+    }),
+  );
+});
+
 test('start report turns PR change questions into a structural diff action', async () => {
   const root = await makeTempProject();
 

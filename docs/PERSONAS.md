@@ -9603,3 +9603,48 @@ nonzero `changedFileCount` and `0` uncommitted files.
 Kept change: one additive evidence field, focused collision and agent-brief
 regressions, docs for how to read the two counts, this persona note, and no
 release action in this slice.
+
+## Two Hundred Second Slice Decision
+
+Selected personas: Security-Conscious Reviewer, Platform And Release Owner,
+and OSS Maintainer Evaluating MCP Adoption.
+
+Reason: scoped/redacted report controls already existed, but a reviewer asking
+`projscan start --intent "share redacted evidence for src/api with a partner"`
+was routed to generic repo understanding because `api` outweighed the evidence
+sharing words. That made the first useful command harder to discover for a
+partner, security, or release handoff.
+
+Smallest fix: add a specific shareable-evidence route to Mission Control and
+return the existing `analyze`, `doctor`, and `ci` report-control commands as
+ready actions. Preserve the lower-level report-scope/redaction mechanics and
+keep generic PR-comment requests on `evidence-pack`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startReviewRouting.test.ts tests/core/intentRouterReviewRelease.test.ts
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Review Guardrails: Shareable Evidence Routing
+
+Delete-list after this slice:
+
+- Do not change report filtering, path redaction, reporter output schemas,
+  package metadata, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not route ordinary PR descriptions, PR checklists, or team summaries away
+  from `projscan evidence-pack --pr-comment`.
+- Do not add dependencies, network calls, telemetry, secret reads, or a new CLI
+  command.
+
+Reviewer edge case: the plain-language route should extract a concrete scope
+such as `src/api` when present; otherwise the returned commands use a visible
+`<report-scope>` placeholder instead of guessing a private path.
+
+Kept change: one guarded start route, one three-command action plan, focused
+routing regressions, docs for the adoption workflow, this persona note, and no
+release action in this slice.

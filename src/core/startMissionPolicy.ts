@@ -120,6 +120,8 @@ function placeholderInstruction(name: string, placeholder: string): string {
   if (name === 'target')
     return `Replace ${placeholder} with the file, directory, or symbol to claim.`;
   if (name === 'agent') return `Replace ${placeholder} with the agent name holding the claim.`;
+  if (name === 'report_scope')
+    return `Replace ${placeholder} with one or more comma-separated repo-relative paths to include in the shared evidence.`;
   return `Replace ${placeholder} with the ${name} value produced by the previous step.`;
 }
 

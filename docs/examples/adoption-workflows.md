@@ -93,6 +93,15 @@ Decision loop:
 Use this when a team wants to share a health or CI artifact without exposing
 repo layout or sensitive paths.
 
+Start from Mission Control when the reviewer asks in plain language:
+
+```bash
+projscan start --intent "share redacted evidence for src/api with a partner" --format json
+```
+
+The routed start output returns the three artifact commands below as ready
+actions, using the requested scope when one is present in the intent.
+
 ```bash
 projscan analyze --report-scope src/api --redact-paths --format json > reports/api-analysis.json
 projscan doctor --report-scope src/api --redact-paths --format markdown > reports/api-health.md

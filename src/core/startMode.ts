@@ -137,7 +137,9 @@ function hardeningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | un
 }
 
 function evidencePackMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
-  return primaryRoute?.tool === 'projscan_evidence_pack' ? 'before_commit' : undefined;
+  return primaryRoute?.tool === 'projscan_evidence_pack' || primaryRoute?.tool === 'projscan_analyze'
+    ? 'before_commit'
+    : undefined;
 }
 
 function reviewMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {

@@ -64,6 +64,7 @@ const ROUTE_ARG_BUILDERS: Record<string, RouteArgBuilder> = {
   projscan_claim: ({ intent }) => claimArgsFromIntent(intent),
   projscan_regression_plan: ({ intent }) => ({ level: regressionLevelFromIntent(intent) }),
   projscan_evidence_pack: () => ({ pr_comment: true }),
+  projscan_analyze: ({ intent }) => reportControlArgsFromIntent(intent),
 };
 
 const ROUTE_COMMAND_BUILDERS: Record<string, RouteCommandBuilder> = {
@@ -87,6 +88,7 @@ const ROUTE_COMMAND_BUILDERS: Record<string, RouteCommandBuilder> = {
   projscan_regression_plan: ({ args }) =>
     `projscan regression-plan --level ${String(args.level)} --format json`,
   projscan_evidence_pack: () => 'projscan evidence-pack --pr-comment',
+  projscan_analyze: ({ args }) => reportControlCommand('analyze', 'json', args),
 };
 
 const UNDERSTAND_VIEW_RULES: readonly UnderstandViewRule[] = [
@@ -155,6 +157,7 @@ export function actionPlanFromRoute(
   if (route.tool === 'projscan_semantic_graph') return semanticGraphActionPlan(intent, route);
   if (route.tool === 'projscan_coupling') return couplingActionPlan(intent, route);
   if (route.tool === 'projscan_claim') return claimActionPlan(intent, route);
+  if (route.tool === 'projscan_analyze') return reportControlActionPlan(intent, route);
   return [actionFromRoute(mode, intent, route)];
 }
 
@@ -425,6 +428,50 @@ function claimAddAction(
     tool: route.tool,
     args: { action: 'add', target, agent },
   };
+}
+
+function reportControlActionPlan(
+  intent: string,
+  route: StartRoutedIntent,
+): PreflightSuggestedAction[] {
+  const args = reportControlArgsFromIntent(intent);
+  const scope = String(args.report_scope);
+  return [
+    {
+      label: `Generate scoped analysis evidence for ${scope}`,
+      command: reportControlCommand('analyze', 'json', args),
+      tool: route.tool,
+      args,
+    },
+    {
+      label: `Generate scoped health evidence for ${scope}`,
+      command: reportControlCommand('doctor', 'markdown', args),
+      tool: 'projscan_doctor',
+      args,
+    },
+    {
+      label: `Generate scoped CI evidence for ${scope}`,
+      command: reportControlCommand('ci', 'sarif', args),
+      tool: 'projscan_ci',
+      args,
+    },
+  ];
+}
+
+function reportControlArgsFromIntent(intent: string): Record<string, unknown> {
+  return {
+    report_scope: extractFileTarget(intent) ?? '<report-scope>',
+    redact_paths: true,
+  };
+}
+
+function reportControlCommand(
+  command: 'analyze' | 'doctor' | 'ci',
+  format: 'json' | 'markdown' | 'sarif',
+  args: Record<string, unknown>,
+): string {
+  const scope = String(args.report_scope);
+  return `projscan ${command} --report-scope ${quoteShellArgOrPlaceholder(scope)} --redact-paths --format ${format}`;
 }
 
 function auditArgsFromIntent(intent: string): Record<string, unknown> {

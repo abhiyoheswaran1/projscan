@@ -1118,6 +1118,30 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     if (keyword === 'active') return 0.5;
     if (['claim', 'claims', 'lease', 'leases', 'reserve', 'lock'].includes(keyword)) return 2;
   }
+  if (entry.tool === 'projscan_analyze') {
+    if (['redact', 'redacted', 'redaction', 'scoped', 'scope'].includes(keyword)) return 3;
+    if (
+      [
+        'share',
+        'shared',
+        'shareable',
+        'sharing',
+        'evidence',
+        'artifact',
+        'artifacts',
+        'export',
+        'exports',
+        'external',
+        'partner',
+        'vendor',
+        'security',
+        'paths',
+        'report',
+        'reports',
+      ].includes(keyword)
+    )
+      return 2;
+  }
   if (entry.tool === 'projscan_evidence_pack') {
     if (keyword === 'pr') return 0.25;
     if (['changed', 'file', 'files'].includes(keyword)) return 1;

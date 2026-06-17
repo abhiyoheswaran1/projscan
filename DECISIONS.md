@@ -2185,3 +2185,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add `uncommittedChangedFileCount` to coordination worktree summaries and evidence while preserving `changedFileCount` as the branch/base delta field.
 - Consequences: `projscan collisions`, `projscan coordinate`, and agent-brief coordination hints can now distinguish committed local work from dirty files without removing or renaming existing JSON fields.
 - Verification: `npm run test -- tests/core/collisionDetector.test.ts tests/core/agentBrief.test.ts` failed before the additive field and hint wording, then passed after the change.
+
+## 2026-06-18: Route shareable evidence prompts to report-control commands
+
+- Status: accepted
+- Context: Scoped/redacted report controls were available on `analyze`, `doctor`, and `ci`, but `projscan start --intent "share redacted evidence for src/api with a partner"` routed to generic repo understanding because `api` matched the understand route. That hid the path-safe artifact workflow from security reviewers and partner handoffs.
+- Decision: Add a guarded `projscan_analyze` intent route for shareable scoped/redacted evidence, infer the before-commit workflow for that route, and return ready analyze, doctor, and CI commands with `--report-scope` and `--redact-paths`.
+- Consequences: Mission Control now exposes the existing path-safe artifact workflow from natural-language prompts. Generic PR comment, PR description, checklist, and team-summary prompts still route to `projscan evidence-pack --pr-comment`. Report filtering, redaction, and output schemas are unchanged.
+- Verification: `npm run test -- tests/core/startReviewRouting.test.ts tests/core/intentRouterReviewRelease.test.ts` failed before the route/action-plan change, then passed after it.
