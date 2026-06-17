@@ -9694,3 +9694,48 @@ return the same `reportReviewHtml` function that the focused module exports.
 Kept change: one focused HTML review renderer module, one shared HTML helper
 module to avoid cycles, compatibility re-exports, focused characterization
 tests, this persona note, and no release action in this slice.
+
+## Two Hundred Fourth Slice Decision
+
+Selected personas: Staff Reviewer and Maintainer Preparing Review.
+
+Reason: HTML PR structural diff output is reviewer evidence for API/import and
+complexity movement. After the review renderer extraction,
+`src/reporters/htmlReporter.ts` still carried the PR diff renderer at
+cyclomatic complexity 9 beside unrelated HTML formats.
+
+Smallest fix: move `reportPrDiffHtml` into
+`src/reporters/htmlPrDiffReporter.ts`, reuse `src/reporters/htmlShared.ts`, and
+re-export `reportPrDiffHtml` from `src/reporters/htmlReporter.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/reporters/htmlPrDiffReporter.test.ts
+npm run test -- tests/reporters/htmlReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/reporters/htmlReporter.ts --format json
+npm exec projscan -- file src/reporters/htmlPrDiffReporter.ts --format json
+```
+
+## Review Guardrails: HTML PR Diff Reporter Extraction
+
+Delete-list after this slice:
+
+- Do not change `PrDiffReport`, CLI flags, JSON/Markdown/console reporters,
+  package exports, dependencies, lockfiles, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not change PR Structural Diff headings, unavailable output, base/head ref
+  text, added/removed/modified section order, export/import labels, rename
+  formatting, delta sign formatting, truncation behavior, or HTML shell output.
+- Do not split every HTML renderer, introduce templates/classes, or create a
+  broad HTML rendering framework.
+
+Reviewer edge case: imports from `src/reporters/htmlReporter.js` must still
+return the same `reportPrDiffHtml` function that the focused module exports.
+
+Kept change: one focused HTML PR diff renderer module, compatibility re-export,
+focused characterization tests, this persona note, and no release action in
+this slice.

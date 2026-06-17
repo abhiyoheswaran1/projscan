@@ -5,13 +5,13 @@ import type {
   HotspotReport,
   ImpactReport,
   Issue,
-  PrDiffReport,
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
-import { escapeHtml, htmlShell, severityIcon, signed } from './htmlShared.js';
+import { escapeHtml, htmlShell, severityIcon } from './htmlShared.js';
 
 export { htmlShell } from './htmlShared.js';
+export { reportPrDiffHtml } from './htmlPrDiffReporter.js';
 export { reportReviewHtml } from './htmlReviewReporter.js';
 
 /**
@@ -229,82 +229,6 @@ ${cyclesHtml}
 </table>
 `;
   console.log(htmlShell('Coupling', body));
-}
-
-export function reportPrDiffHtml(report: PrDiffReport): void {
-  if (!report.available) {
-    console.log(
-      htmlShell(
-        'PR Diff — unavailable',
-        `<h1>PR Structural Diff</h1><p class="muted">${escapeHtml(report.reason ?? 'PR diff unavailable.')}</p>`,
-      ),
-    );
-    return;
-  }
-
-  const addedHtml =
-    report.filesAdded.length === 0
-      ? ''
-      : `<h2>Added (${report.filesAdded.length})</h2>
-<ul>${report.filesAdded.map((f) => `<li><code>${escapeHtml(f)}</code></li>`).join('\n')}</ul>`;
-
-  const removedHtml =
-    report.filesRemoved.length === 0
-      ? ''
-      : `<h2>Removed (${report.filesRemoved.length})</h2>
-<ul>${report.filesRemoved.map((f) => `<li><code>${escapeHtml(f)}</code></li>`).join('\n')}</ul>`;
-
-  const modifiedHtml =
-    report.filesModified.length === 0
-      ? ''
-      : `<h2>Modified (${report.filesModified.length})</h2>
-${report.filesModified
-  .slice(0, 100)
-  .map((m) => {
-    const dCC = m.cyclomaticDelta === null ? '' : ` · ΔCC ${signed(m.cyclomaticDelta)}`;
-    const dFI =
-      m.fanInDelta === null || m.fanInDelta === 0 ? '' : ` · Δfan-in ${signed(m.fanInDelta)}`;
-    const lines: string[] = [];
-    if (m.exportsAdded.length > 0)
-      lines.push(
-        `<li><strong class="severity-info">+exports:</strong> ${m.exportsAdded.map((s) => `<code>${escapeHtml(s)}</code>`).join(', ')}</li>`,
-      );
-    if (m.exportsRemoved.length > 0)
-      lines.push(
-        `<li><strong class="severity-error">−exports:</strong> ${m.exportsRemoved.map((s) => `<code>${escapeHtml(s)}</code>`).join(', ')}</li>`,
-      );
-    if (m.exportsRenamed.length > 0) {
-      const pairs = m.exportsRenamed
-        .map((r) => `<code>${escapeHtml(r.from)}</code> → <code>${escapeHtml(r.to)}</code>`)
-        .join(', ');
-      lines.push(`<li><strong class="severity-warning">~exports:</strong> ${pairs}</li>`);
-    }
-    if (m.importsAdded.length > 0)
-      lines.push(
-        `<li><strong class="severity-info">+imports:</strong> ${m.importsAdded.map((s) => `<code>${escapeHtml(s)}</code>`).join(', ')}</li>`,
-      );
-    if (m.importsRemoved.length > 0)
-      lines.push(
-        `<li><strong class="severity-error">−imports:</strong> ${m.importsRemoved.map((s) => `<code>${escapeHtml(s)}</code>`).join(', ')}</li>`,
-      );
-    const inner =
-      lines.length === 0
-        ? '<p class="muted">No structural change beyond CC / fan-in.</p>'
-        : `<ul>${lines.join('\n')}</ul>`;
-    return `<h3><code>${escapeHtml(m.relativePath)}</code><span class="muted">${dCC}${dFI}</span></h3>\n${inner}`;
-  })
-  .join('\n')}
-${report.filesModified.length > 100 ? `<p class="muted">… and ${report.filesModified.length - 100} more</p>` : ''}`;
-
-  const body = `
-<h1>PR Structural Diff</h1>
-<p class="muted">base <code>${escapeHtml(report.base.ref)}</code> (${report.base.resolvedSha?.slice(0, 7) ?? '?'}) → head <code>${escapeHtml(report.head.ref)}</code> (${report.head.resolvedSha?.slice(0, 7) ?? '?'})</p>
-<p><strong>${report.totalFilesChanged}</strong> file(s) changed: <span class="severity-info">+${report.filesAdded.length}</span> added, <span class="severity-error">−${report.filesRemoved.length}</span> removed, <span class="severity-warning">~${report.filesModified.length}</span> modified.</p>
-${addedHtml}
-${removedHtml}
-${modifiedHtml}
-`;
-  console.log(htmlShell('PR Structural Diff', body));
 }
 
 export function reportCoverageHtml(report: CoverageJoinedReport): void {

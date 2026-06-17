@@ -2249,3 +2249,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move `reportReviewHtml` into `src/reporters/htmlReviewReporter.ts`, move shared HTML shell/escaping/sign helpers into `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
 - Consequences: Review HTML artifact wording and import compatibility stay stable while the main HTML reporter sheds review-only rendering logic without introducing an import cycle.
 - Verification: `npm run test -- tests/reporters/htmlReviewReporter.test.ts` failed before the extracted module existed, then passed after the extraction. A bug-pass review then flagged the moved renderer as a new high-CC function, so `tests/reporters/htmlReviewReporter.test.ts` now also guards the renderer entrypoint complexity; the full task verification passed after the helper split.
+
+## 2026-06-18: Extract HTML PR diff reporter
+
+- Status: accepted
+- Context: `src/reporters/htmlReporter.ts` still owned the PR structural diff HTML renderer at cyclomatic complexity 9 after the review renderer extraction.
+- Decision: Move `reportPrDiffHtml` into `src/reporters/htmlPrDiffReporter.ts`, reuse `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
+- Consequences: PR diff HTML artifact wording and import compatibility stay stable while the main HTML reporter sheds another review-only renderer.
+- Verification: `npm run test -- tests/reporters/htmlPrDiffReporter.test.ts` failed before the extracted module existed, then passed after the extraction. Existing HTML reporter coverage and `npm run typecheck` also passed.
