@@ -45,6 +45,24 @@ export interface RouteResult {
   matches: RouteMatch[];
 }
 
+interface IntentSignals {
+  tokens: Set<string>;
+  hasFilePath: boolean;
+  hasPackageRemoval: boolean;
+  hasPackageChange: boolean;
+  hasEnvVar: boolean;
+  hasQuotedText: boolean;
+  hasProhibitedReleaseAction: boolean;
+  hasProhibitedVersionBump: boolean;
+}
+
+interface ScoredRoute {
+  entry: RouteEntry;
+  score: number;
+  matchedKeywords: string[];
+  index: number;
+}
+
 const STOPWORDS = new Set([
   'the',
   'a',
@@ -97,39 +115,8 @@ export function routeIntent(intent: string | undefined): RouteResult {
     };
   }
 
-  const tokens = new Set(tokenize(intent));
-  const hasFilePath = hasFilePathTarget(intent);
-  const hasPackageRemoval = !hasFilePath && hasPackageRemovalTarget(intent);
-  const hasPackageChange = !hasFilePath && hasPackageChangeTarget(intent);
-  const hasEnvVar = hasEnvVarTarget(intent);
-  const hasQuotedText = hasQuotedTextTarget(intent);
-  const hasProhibitedReleaseAction = hasProhibitedReleaseWorkflowAction(intent);
-  const hasProhibitedVersionBump = hasProhibitedVersionBumpAction(intent);
-  const scored = ROUTE_CATALOG.map((entry, index) => {
-    const matchedKeywords = entry.keywords
-      .filter(
-        (kw) =>
-          !prohibitedWorkflowKeywordMatches(
-            entry,
-            kw,
-            hasProhibitedReleaseAction,
-            hasProhibitedVersionBump,
-          ),
-      )
-      .filter((kw) =>
-        routeKeywordMatches(
-          entry,
-          kw,
-          tokens,
-          hasFilePath,
-          hasPackageRemoval,
-          hasPackageChange,
-          hasEnvVar,
-          hasQuotedText,
-        ),
-      );
-    return { entry, score: routeScore(entry, matchedKeywords), matchedKeywords, index };
-  })
+  const signals = intentSignals(intent);
+  const scored = ROUTE_CATALOG.map((entry, index) => scoreRouteEntry(entry, index, signals))
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
@@ -138,6 +125,57 @@ export function routeIntent(intent: string | undefined): RouteResult {
     matched: scored.length > 0,
     matches: scored.map((s, index) => routeMatch(s.entry, index + 1, s.matchedKeywords)),
   };
+}
+
+function intentSignals(intent: string): IntentSignals {
+  const tokens = new Set(tokenize(intent));
+  const hasFilePath = hasFilePathTarget(intent);
+
+  return {
+    tokens,
+    hasFilePath,
+    hasPackageRemoval: !hasFilePath && hasPackageRemovalTarget(intent),
+    hasPackageChange: !hasFilePath && hasPackageChangeTarget(intent),
+    hasEnvVar: hasEnvVarTarget(intent),
+    hasQuotedText: hasQuotedTextTarget(intent),
+    hasProhibitedReleaseAction: hasProhibitedReleaseWorkflowAction(intent),
+    hasProhibitedVersionBump: hasProhibitedVersionBumpAction(intent),
+  };
+}
+
+function scoreRouteEntry(entry: RouteEntry, index: number, signals: IntentSignals): ScoredRoute {
+  const matchedKeywords = matchedEntryKeywords(entry, signals);
+  return { entry, score: routeScore(entry, matchedKeywords), matchedKeywords, index };
+}
+
+function matchedEntryKeywords(entry: RouteEntry, signals: IntentSignals): string[] {
+  return entry.keywords
+    .filter((keyword) => workflowKeywordAllowed(entry, keyword, signals))
+    .filter((keyword) =>
+      routeKeywordMatches(
+        entry,
+        keyword,
+        signals.tokens,
+        signals.hasFilePath,
+        signals.hasPackageRemoval,
+        signals.hasPackageChange,
+        signals.hasEnvVar,
+        signals.hasQuotedText,
+      ),
+    );
+}
+
+function workflowKeywordAllowed(
+  entry: RouteEntry,
+  keyword: string,
+  signals: IntentSignals,
+): boolean {
+  return !prohibitedWorkflowKeywordMatches(
+    entry,
+    keyword,
+    signals.hasProhibitedReleaseAction,
+    signals.hasProhibitedVersionBump,
+  );
 }
 
 function routeMatch(entry: RouteEntry, rank: number, matchedKeywords: string[]): RouteMatch {
