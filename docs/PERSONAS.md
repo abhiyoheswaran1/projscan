@@ -9648,3 +9648,49 @@ such as `src/api` when present; otherwise the returned commands use a visible
 Kept change: one guarded start route, one three-command action plan, focused
 routing regressions, docs for the adoption workflow, this persona note, and no
 release action in this slice.
+
+## Two Hundred Third Slice Decision
+
+Selected personas: Staff Reviewer and Maintainer Preparing Review.
+
+Reason: HTML PR review artifacts are reviewer-facing evidence, and
+`src/reporters/htmlReporter.ts` still carried the review renderer beside
+unrelated HTML formats. The extraction reduces reviewer load without changing
+the artifact wording or the existing `htmlReporter` import boundary.
+
+Smallest fix: move `reportReviewHtml` into
+`src/reporters/htmlReviewReporter.ts`, move the shared HTML shell and escaping
+helpers into `src/reporters/htmlShared.ts`, and re-export `reportReviewHtml`
+and `htmlShell` from `src/reporters/htmlReporter.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/reporters/htmlReviewReporter.test.ts
+npm run test -- tests/reporters/htmlReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/reporters/htmlReporter.ts --format json
+npm exec projscan -- file src/reporters/htmlReviewReporter.ts --format json
+```
+
+## Review Guardrails: HTML Review Reporter Extraction
+
+Delete-list after this slice:
+
+- Do not change `ReviewReport`, CLI flags, JSON/Markdown/console reporters,
+  package exports, dependencies, lockfiles, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not change PR Review headings, unavailable output, verdict labels,
+  summary bullets, changed-file rows, cycle rows, risky-function rows,
+  dependency-change rows, or HTML shell output.
+- Do not split every HTML renderer, introduce templates/classes, or create a
+  broad HTML rendering framework.
+
+Reviewer edge case: imports from `src/reporters/htmlReporter.js` must still
+return the same `reportReviewHtml` function that the focused module exports.
+
+Kept change: one focused HTML review renderer module, one shared HTML helper
+module to avoid cycles, compatibility re-exports, focused characterization
+tests, this persona note, and no release action in this slice.

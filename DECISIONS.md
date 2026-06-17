@@ -2241,3 +2241,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Keep `src/index.ts` as the package entrypoint, but move grouped value re-exports into internal `publicCore`, `publicAgent`, `publicMcp`, and `publicLanguages` entry modules while preserving the type-only public type barrel export. Treat re-export regrouping as neutral in review-contract evidence when the symbol was already public before and remains public after.
 - Consequences: Public names remain available from `src/index.ts`, but future public-surface edits can land in narrower grouped files. Stability-sensitive aliases, type specifiers, and review-contract noise from neutral regrouping stay covered by focused tests and the stable-surface gate.
 - Verification: `npm run test -- tests/types/public-entrypoint-type-star.test.ts` failed before the grouped modules existed, then passed after the refactor. `npm run test -- tests/core/reviewContract.test.ts -t "neutral public re-export grouping"` failed before the contract evidence filter, then passed after the fix.
+
+## 2026-06-18: Extract HTML review reporter
+
+- Status: accepted
+- Context: `src/reporters/htmlReporter.ts` still owned the PR review HTML renderer beside unrelated HTML formats, keeping a reviewer-facing artifact surface in one larger file.
+- Decision: Move `reportReviewHtml` into `src/reporters/htmlReviewReporter.ts`, move shared HTML shell/escaping/sign helpers into `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
+- Consequences: Review HTML artifact wording and import compatibility stay stable while the main HTML reporter sheds review-only rendering logic without introducing an import cycle.
+- Verification: `npm run test -- tests/reporters/htmlReviewReporter.test.ts` failed before the extracted module existed, then passed after the extraction. A bug-pass review then flagged the moved renderer as a new high-CC function, so `tests/reporters/htmlReviewReporter.test.ts` now also guards the renderer entrypoint complexity; the full task verification passed after the helper split.
