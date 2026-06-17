@@ -49,7 +49,7 @@ describe('parseRequirements', () => {
     expect(out.map((d) => d.name)).toEqual(['requests', 'flask']);
   });
 
-  it('skips -r / -e / -c directives', () => {
+  it('skips requirements directives without declaring them as packages', () => {
     const txt = '-r other.txt\nrequests\n-e git+https://example.com/x.git#egg=x\n';
     const out = parseRequirements(txt, 'requirements.txt', 'main');
     expect(out.map((d) => d.name)).toEqual(['requests']);

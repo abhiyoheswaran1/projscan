@@ -21,6 +21,9 @@ them as a review tool, not a replacement for measured feedback from real PRs.
 - DevOps.com coverage of Sonar survey data reports daily AI coding tool usage,
   low trust in generated code, security concerns, and review burden. Source:
   https://devops.com/survey-sees-wider-adoption-of-ai-coding-tools-creating-more-devops-challenges/
+- pip's requirements file format documents `-r` requirement includes and `-c`
+  constraint includes as supported syntax. Source:
+  https://pip.pypa.io/en/stable/reference/requirements-file-format/
 
 ## Personas
 
@@ -9292,3 +9295,48 @@ history, but it must not be described as the current active validation train.
 
 Kept change: one roadmap planning cleanup, this persona note, and no release
 action in this slice.
+
+## One Hundred Ninety Fifth Slice Decision
+
+Selected personas: Release Steward, Security-Conscious Reviewer, and OSS
+Maintainer.
+
+Reason: Python upgrade previews already read root requirements and constraints,
+but official pip requirements files support `-r` requirement includes and `-c`
+constraint includes. Real split-requirements layouts can hide the dependency or
+pin evidence a release steward needs before approving an upgrade.
+
+Smallest fix: follow local, repo-contained `-r` and `-c` includes from scanned
+requirements files. Requirement includes add declaration evidence; constraint
+includes add pinned current-version evidence. Unsafe absolute, URL-like, null,
+outside-root, and unscanned include paths stay ignored.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/upgradePreview.test.ts -t "included requirements|included constraints"
+npm run test -- tests/core/languages/pythonProjectDetection.test.ts -t "included requirements|unsafe requirement include"
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "requirements directives"
+```
+
+## Review Guardrails: Python Requirement Include Evidence
+
+Delete-list after this slice:
+
+- Do not implement full pip installation semantics, environment-variable
+  expansion, remote requirement files, editable/VCS parsing, or package
+  installation behavior.
+- Do not read files outside the scan root or outside the scanned file set.
+- Do not add dependencies, registry lookups, telemetry, network calls, package
+  metadata changes, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not change upgrade preview schemas, Python import graph behavior, or
+  semver drift rules.
+
+Reviewer edge case: exact pins in included requirement files may still act as
+lockfile evidence, matching existing root `requirements.txt` behavior; included
+constraints are most useful when the requirement declaration is a range.
+
+Kept change: local-only include traversal in the Python requirements evidence
+reader, focused upgrade/project-detection regressions, this persona note, and
+no release action in this slice.

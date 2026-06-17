@@ -241,6 +241,58 @@ describe('detectPythonProject', () => {
     expect(info?.declared.find((dep) => dep.name === 'django')?.versionSpec).toBe('==4.2.0');
   });
 
+  it('reads included requirements and included constraints from root requirements files', async () => {
+    await fs.mkdir(path.join(tmp, 'requirements'), { recursive: true });
+    await fs.mkdir(path.join(tmp, 'constraints'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'requirements.txt'),
+      ['-r requirements/base.txt', '-c constraints/prod.txt'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements/base.txt'), 'httpx>=0.27\n');
+    await fs.writeFile(path.join(tmp, 'constraints/prod.txt'), 'httpx==0.27.2\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('requirements.txt'),
+      fileEntry('requirements/base.txt', 'requirements'),
+      fileEntry('constraints/prod.txt', 'constraints'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.manifestFiles).toEqual(['requirements.txt', 'requirements/base.txt']);
+    expect(info?.declared).toEqual([
+      {
+        name: 'httpx',
+        versionSpec: '>=0.27',
+        source: 'requirements/base.txt',
+        line: 1,
+        scope: 'main',
+      },
+    ]);
+    expect(info?.locked).toEqual([
+      { name: 'httpx', version: '0.27.2', source: 'constraints/prod.txt', line: 1 },
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+  });
+
+  it('ignores unsafe requirement include paths outside the repo root', async () => {
+    await fs.mkdir(path.join(tmp, 'requirements'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'requirements.txt'),
+      ['-r requirements/base.txt', '-r ../outside.txt'].join('\n'),
+    );
+    await fs.writeFile(path.join(tmp, 'requirements/base.txt'), 'requests>=2\n');
+    await fs.writeFile(path.join(tmp, '..', 'outside.txt'), 'leaked-package==1.0.0\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('requirements.txt'),
+      fileEntry('requirements/base.txt', 'requirements'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.declared.map((dep) => dep.name)).toEqual(['requests']);
+    expect(info?.manifestFiles).toEqual(['requirements.txt', 'requirements/base.txt']);
+  });
+
   it('reads prefixed dev requirements as root Python project evidence', async () => {
     await fs.writeFile(path.join(tmp, 'dev-requirements.txt'), 'pytest\n');
     await fs.writeFile(path.join(tmp, 'test-requirements.txt'), 'tox\n');

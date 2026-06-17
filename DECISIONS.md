@@ -2097,3 +2097,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace the shared dispatcher body with an ordered resolver pipeline that preserves Next, Remix, Hono, Express, Fastify, and Koa precedence while keeping `FrameworkRequestSourceContext` as the caller contract.
 - Consequences: The dispatcher is a lower-complexity orchestrator and individual framework matchers remain isolated. Dataflow and taint callers keep the same API and request-source labels.
 - Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "low-complexity orchestrator"` failed before the resolver-pipeline refactor, then passed. The full framework dataflow fixture set also passed.
+
+## 2026-06-17: Follow local Python requirement includes for upgrade evidence
+
+- Status: accepted
+- Context: Python upgrade previews read root requirements and constraints, but split pip requirements layouts can place declarations behind `-r` includes and pins behind `-c` includes.
+- Decision: Follow local, repo-contained requirement and constraint includes from scanned requirements files. Included requirements add declaration evidence, included constraints add pinned current-version evidence, and unsafe or unscanned include paths are ignored.
+- Consequences: `projscan upgrade <python-package>` can now preview split-requirements projects without installing packages, reading outside the scanned file set, adding network calls, or changing the upgrade schema. Exact pins in included requirements keep the existing behavior of acting as lockfile evidence.
+- Verification: `npm run test -- tests/core/upgradePreview.test.ts -t "included requirements|included constraints"` and the adjacent Python project-detection/manifest suites failed before the include traversal, then passed. The complexity regression for the requirements include helpers also passed after refactor.

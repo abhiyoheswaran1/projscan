@@ -241,6 +241,47 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual(['app/main.py']);
   });
 
+  it('previews packages declared by included requirements files', async () => {
+    const files = [
+      await writeFile(tmp, 'requirements.txt', '-r requirements/base.txt\n'),
+      await writeFile(tmp, 'requirements/base.txt', 'httpx>=0.27\n'),
+      await writeFile(tmp, 'app/client.py', 'import httpx\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'httpx', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.27');
+    expect(preview.declaredSource).toBe('requirements/base.txt');
+    expect(preview.declaredLine).toBe(1);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
+
+  it('uses included constraints as Python current-version evidence', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'requirements.txt',
+        ['httpx>=0.27.0', '-c constraints/prod.txt'].join('\n'),
+      ),
+      await writeFile(tmp, 'constraints/prod.txt', 'httpx==0.27.2\n'),
+      await writeFile(tmp, 'app/client.py', 'import httpx\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'httpx', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.27.0');
+    expect(preview.installed).toBe('0.27.2');
+    expect(preview.latest).toBe('0.27.2');
+    expect(preview.drift).toBe('patch');
+    expect(preview.installedSource).toBe('constraints/prod.txt');
+    expect(preview.installedLine).toBe(1);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
+
   it('uses pinned root requirements as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),

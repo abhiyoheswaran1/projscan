@@ -93,6 +93,15 @@ describe('python manifest maintainability', () => {
     );
     expect(detectPythonProject).toBeDefined();
     expect(detectPythonProject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
+
+    const requirementsInspection = await inspectRepoSourceFile(
+      'src/core/languages/pythonRequirements.ts',
+    );
+    for (const name of ['safeRequirementInclude', 'directiveTarget']) {
+      const fn = requirementsInspection.functions?.find((candidate) => candidate.name === name);
+      expect(fn).toBeDefined();
+      expect(fn!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+    }
   });
 
   it('keeps Python package root inference out of the manifest parser', async () => {
