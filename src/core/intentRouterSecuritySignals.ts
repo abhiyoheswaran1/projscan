@@ -142,6 +142,60 @@ export function privacyCheckKeywordMatches(keyword: string, tokens: Set<string>)
   return matcher ? matcher.matches() : true;
 }
 
+export function explicitDataflowContextMatches(tokens: Set<string>): boolean {
+  return [
+    'dataflow',
+    'taint',
+    'source',
+    'sink',
+    'sinks',
+    'reach',
+    'reaches',
+    'request',
+    'exec',
+    'injection',
+    'sql',
+    'xss',
+    'sanitize',
+    'sanitized',
+    'security',
+    'vulnerability',
+    'bypass',
+  ].some((token) => tokens.has(token));
+}
+
+export function explicitDataflowRiskContextMatches(tokens: Set<string>): boolean {
+  return [
+    'dataflow',
+    'taint',
+    'source',
+    'sink',
+    'sinks',
+    'reach',
+    'reaches',
+    'exec',
+    'injection',
+    'sql',
+    'xss',
+    'sanitize',
+    'sanitized',
+    'security',
+    'vulnerability',
+    'bypass',
+    'secret',
+    'secrets',
+    'expose',
+    'exposes',
+    'exposed',
+    'pii',
+    'gdpr',
+    'token',
+    'tokens',
+    'leak',
+    'leaks',
+  ].some((token) => tokens.has(token));
+}
+
 function dataflowPrivacySubjectMatches(tokens: Set<string>): boolean {
   return hasAnyToken(tokens, DATAFLOW_PRIVACY_SUBJECT_KEYWORDS);
 }

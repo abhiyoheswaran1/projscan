@@ -98,6 +98,8 @@ import {
 } from './intentRouterRiskSignals.js';
 import {
   dataflowKeywordMatches,
+  explicitDataflowContextMatches,
+  explicitDataflowRiskContextMatches,
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
@@ -3554,60 +3556,6 @@ function understandKeywordMatches(keyword: string, tokens: Set<string>): boolean
     return featurePlacementContextMatches(tokens);
   }
   return true;
-}
-
-function explicitDataflowContextMatches(tokens: Set<string>): boolean {
-  return [
-    'dataflow',
-    'taint',
-    'source',
-    'sink',
-    'sinks',
-    'reach',
-    'reaches',
-    'request',
-    'exec',
-    'injection',
-    'sql',
-    'xss',
-    'sanitize',
-    'sanitized',
-    'security',
-    'vulnerability',
-    'bypass',
-  ].some((token) => tokens.has(token));
-}
-
-function explicitDataflowRiskContextMatches(tokens: Set<string>): boolean {
-  return [
-    'dataflow',
-    'taint',
-    'source',
-    'sink',
-    'sinks',
-    'reach',
-    'reaches',
-    'exec',
-    'injection',
-    'sql',
-    'xss',
-    'sanitize',
-    'sanitized',
-    'security',
-    'vulnerability',
-    'bypass',
-    'secret',
-    'secrets',
-    'expose',
-    'exposes',
-    'exposed',
-    'pii',
-    'gdpr',
-    'token',
-    'tokens',
-    'leak',
-    'leaks',
-  ].some((token) => tokens.has(token));
 }
 
 function routeMatch(entry: RouteEntry, rank: number, matchedKeywords: string[]): RouteMatch {

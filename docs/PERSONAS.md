@@ -6924,3 +6924,51 @@ next in performance" should stay protected from generic bug-hunt routing.
 Kept change: one workplan/bug-hunt route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Forty Fifth Slice Decision
+
+Selected personas: Security Reviewer and Agent-Orchestrating Engineer.
+
+Reason: explicit dataflow and dataflow-risk routing is how agents ask whether
+taint, sources, sinks, injection, secrets, PII, or leaks are involved without
+turning those questions into generic search or planning routes. Security
+reviewers need the context checks next to the keyword checks they govern.
+
+Smallest fix: move `explicitDataflowContextMatches` and
+`explicitDataflowRiskContextMatches` into `intentRouterSecuritySignals.ts`;
+leave route catalog data, route scoring, confidence, start-mode handling, and
+dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "dataflow and privacy keyword routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSecuritySignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Explicit Dataflow Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, dataflow route entries, privacy route entries,
+  route confidence scoring, `routeIntent`, start-mode behavior, or public route
+  result shape.
+- Do not change dataflow, taint, source, sink, injection, SQL, XSS, sanitize,
+  secret, PII, GDPR, token, leak, or privacy keyword semantics except by moving
+  the existing helper pair into `intentRouterSecuritySignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: dataflow and privacy questions should still route to the
+security surfaces, and plain planning/search questions should not be pulled into
+security merely because the helper code moved.
+
+Kept change: expanded security route-signal helper module, one router boundary
+regression update, existing route/start behavior coverage, this persona note,
+and no public API change.

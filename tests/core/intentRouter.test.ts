@@ -381,6 +381,8 @@ describe('routeIntent', () => {
     expect(routerSource).toContain("from './intentRouterSecuritySignals.js'");
     expect(routerSource).not.toContain('function dataflowKeywordMatches');
     expect(routerSource).not.toContain('function privacyCheckKeywordMatches');
+    expect(routerSource).not.toContain('function explicitDataflowContextMatches');
+    expect(routerSource).not.toContain('function explicitDataflowRiskContextMatches');
 
     const securitySignalsSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouterSecuritySignals.ts'),
@@ -388,6 +390,8 @@ describe('routeIntent', () => {
     );
     expect(securitySignalsSource).toContain('export function dataflowKeywordMatches');
     expect(securitySignalsSource).toContain('export function privacyCheckKeywordMatches');
+    expect(securitySignalsSource).toContain('export function explicitDataflowContextMatches');
+    expect(securitySignalsSource).toContain('export function explicitDataflowRiskContextMatches');
   });
 
   it('keeps infra artifact search routing isolated from the main router', () => {
