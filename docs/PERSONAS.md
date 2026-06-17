@@ -4349,3 +4349,46 @@ should still be excluded from ranked output.
 Kept change: one hotspot candidate helper module, one maintainability
 regression, existing hotspot behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Security-Conscious Reviewer and OSS Maintainer.
+
+Reason: framework dataflow should deepen only where a request value can be
+identified precisely and proven against a sink. Express `req.originalUrl` is a
+request-controlled URL surface that can matter in SQL/log/search flows, but it
+should not make every variable named `originalUrl` look dangerous.
+
+Smallest fix: add `express.req.originalUrl` through request-parameter
+member-reference matching, not broad bare-reference matching. Keep route-local
+variables named `originalUrl` and non-route helpers quiet.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/dataflow.test.ts -t "Express originalUrl"
+npm run test -- tests/core/dataflow.test.ts tests/core/frameworkSources.test.ts tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkExpressSources.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Express Original URL Dataflow
+
+Delete-list after this slice:
+
+- Do not broaden Express source matching to bare `originalUrl` references.
+- Do not change existing Express body/query/params/header/cookie/IP or accessor
+  source labels, sink detection, bridge risk logic, or dataflow schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: `req.originalUrl` inside an Express route should surface
+when it reaches a sink; a local variable named `originalUrl` inside a route and
+a helper parameter with `originalUrl` outside a route should stay quiet.
+
+Kept change: one additive Express source label, one positive dataflow fixture,
+lookalike guards, existing framework/dataflow coverage, this persona note, and
+no breaking schema change.

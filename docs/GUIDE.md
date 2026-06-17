@@ -438,7 +438,7 @@ Framework request-source detection covers narrow tested patterns for Next.js, Ho
 Express, Fastify, and Koa handlers, including Hono validator output,
 Express/Fastify/Koa request IP metadata, Fastify host/hostname and raw
 URL/header evidence, and Express/Koa header accessors plus Express
-`req.param(...)`, while
+`req.param(...)` and `req.originalUrl`, while
 keeping lookalike helpers quiet.
 
 For release hardening, `npm run check:graph-corpus` compares bundled fixture metrics against `docs/graph-corpus-baseline.json`. The gate fails only when graph coverage drops below the baseline or dataflow risks rise above it.

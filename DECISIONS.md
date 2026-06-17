@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Add Express originalUrl dataflow source
+
+- Status: accepted
+- Context: framework dataflow already covered narrow Express body/query/params/header/cookie/IP and accessor patterns, but Express route URL evidence via `req.originalUrl` was not surfaced as a request source.
+- Decision: Add `express.req.originalUrl` through request-parameter member-reference matching in `src/core/frameworkExpressSources.ts`.
+- Consequences: `projscan dataflow` can report Express original URL values flowing into sinks, while route-local variables named `originalUrl` and non-route helper lookalikes stay quiet.
+- Verification: `npm run test -- tests/core/dataflow.test.ts -t "Express originalUrl"` plus focused framework/dataflow tests.
+
 ## 2026-06-17: Extract hotspot candidate selection
 
 - Status: accepted

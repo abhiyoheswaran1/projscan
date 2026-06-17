@@ -578,6 +578,46 @@ export function helper(req: { ip: string }) {
     expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Express originalUrl as a request source without local-variable lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'express-original-url.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/lookup', (req) => {
+  const raw = req.originalUrl;
+  return db.query(raw);
+});
+
+app.get('/safe', (req) => {
+  const originalUrl = 'select 1';
+  return db.query(originalUrl);
+});
+
+export function helper(req: { originalUrl: string }) {
+  return cache.query(req.originalUrl);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const expressRisks = report.risks.filter((risk) =>
+      risk.files.includes('src/express-original-url.ts'),
+    );
+    const originalUrlRisks = expressRisks.filter(
+      (risk) => risk.source === 'express.req.originalUrl',
+    );
+
+    expect(originalUrlRisks).toEqual([
+      expect.objectContaining({ source: 'express.req.originalUrl', sink: 'query' }),
+    ]);
+    expect(originalUrlRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('treats Fastify request fields as framework sources without flagging lookalike helpers', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'fastify.ts'),

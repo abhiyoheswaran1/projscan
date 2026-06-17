@@ -47,6 +47,7 @@ export function frameworkRequestSourceForFunction(
     expressRequestSource(
       parameters,
       references,
+      memberReferences,
       memberCallSites,
       enabledSources,
       contextualCallSite,

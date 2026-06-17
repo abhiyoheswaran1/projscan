@@ -7,6 +7,10 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['ip', 'express.req.ip'],
 ]);
 
+const EXPRESS_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
+  ['originalUrl', 'express.req.originalUrl'],
+]);
+
 const EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
   ['get', 'express.req.get'],
   ['header', 'express.req.header'],
@@ -28,12 +32,14 @@ const EXPRESS_HANDLER_METHODS = new Set([
 
 export const EXPRESS_REQUEST_SOURCES = [
   ...EXPRESS_REQUEST_SOURCE_BY_REFERENCE.values(),
+  ...EXPRESS_REQUEST_SOURCE_BY_MEMBER.values(),
   ...EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL.values(),
 ];
 
 export function expressRequestSource(
   parameters: string[],
   references: string[],
+  memberReferences: string[],
   memberCallSites: string[],
   enabledSources: Set<string>,
   contextualCallSite: string | undefined,
@@ -41,9 +47,24 @@ export function expressRequestSource(
 ): string | null {
   if (!isExpressFile(imports)) return null;
   if (!isExpressHandlerCall(contextualCallSite)) return null;
-  const requestParams = parameters.filter((parameter) => EXPRESS_REQUEST_PARAM_NAMES.has(parameter));
+  const requestParams = expressRequestParams(parameters);
   if (requestParams.length === 0) return null;
+  return expressMatchedSource(requestParams, references, memberReferences, memberCallSites, enabledSources);
+}
+
+function expressRequestParams(parameters: string[]): string[] {
+  return parameters.filter((parameter) => EXPRESS_REQUEST_PARAM_NAMES.has(parameter));
+}
+
+function expressMatchedSource(
+  requestParams: string[],
+  references: string[],
+  memberReferences: string[],
+  memberCallSites: string[],
+  enabledSources: Set<string>,
+): string | null {
   return (
+    expressMemberReferenceSource(requestParams, memberReferences, enabledSources) ??
     expressReferenceSource(references, enabledSources) ??
     expressMemberCallSource(requestParams, memberCallSites, enabledSources)
   );
@@ -53,6 +74,20 @@ function expressReferenceSource(references: string[], enabledSources: Set<string
   const refs = new Set(references);
   for (const [reference, source] of EXPRESS_REQUEST_SOURCE_BY_REFERENCE) {
     if (enabledSources.has(source) && refs.has(reference)) return source;
+  }
+  return null;
+}
+
+function expressMemberReferenceSource(
+  requestParams: string[],
+  memberReferences: string[],
+  enabledSources: Set<string>,
+): string | null {
+  const members = new Set(memberReferences);
+  for (const parameter of requestParams) {
+    for (const [member, source] of EXPRESS_REQUEST_SOURCE_BY_MEMBER) {
+      if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
+    }
   }
   return null;
 }
