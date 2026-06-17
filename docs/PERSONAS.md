@@ -7897,3 +7897,45 @@ for `./serverStdio.js` and a single import edge for `./serverTypes.js`.
 
 Kept change: one local type re-export cleanup, one architecture-boundary
 regression, this persona note, and no release action.
+
+## One Hundred Sixty Fifth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, Public API
+Steward, and OSS Maintainer.
+
+Reason: `src/index.ts` is the package entrypoint and a quality-scorecard
+hotspot. It had several duplicate module edges where runtime exports and
+type-only exports referenced the same source separately. That made the public
+surface look noisier in graph inspection without changing what consumers can
+import.
+
+Smallest fix: keep the same public exports but fold type specifiers into the
+existing export blocks for `ast`, `watcher`, `semanticSearch`, `adoption`, and
+`LanguageAdapter`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/types/public-entrypoint-type-star.test.ts
+npm run test -- tests/types/public-entrypoint-type-star.test.ts tests/types/public-graph-types.test.ts tests/types/public-review-types.test.ts tests/types/public-start-quality-types.test.ts
+```
+
+## Review Guardrails: Package Entrypoint Export Edges
+
+Delete-list after this slice:
+
+- Do not remove public exports from `src/index.ts`.
+- Do not move package entrypoint types into the legacy `src/types.ts` barrel
+  unless a separate public API task requires it.
+- Do not change runtime behavior, CLI behavior, MCP behavior, package version,
+  release artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+
+Reviewer edge case: imports such as `parseSource`, `type FunctionInfo`,
+`startWatcher`, `type WatchHandle`, `buildChunks`, `type SemanticChunk`,
+adoption types, and language adapter types should still compile from
+`src/index.ts`, while `projscan file src/index.ts --format json` should no
+longer show duplicate import edges for those source modules.
+
+Kept change: one package entrypoint export-edge cleanup, one public type source
+regression, this persona note, and no release action.

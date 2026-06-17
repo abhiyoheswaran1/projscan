@@ -16,8 +16,7 @@ export { runAudit, auditFindingsToIssues } from './core/auditRunner.js';
 export { previewUpgrade, isValidPackageName } from './core/upgradePreview.js';
 export { parseCoverage, coverageMap } from './core/coverageParser.js';
 export { joinCoverageWithHotspots } from './core/coverageJoin.js';
-export { parseSource, isParseable } from './core/ast.js';
-export type { FunctionInfo } from './core/ast.js';
+export { parseSource, isParseable, type FunctionInfo } from './core/ast.js';
 export {
   buildCodeGraph,
   incrementallyUpdateGraph,
@@ -30,8 +29,7 @@ export {
   type CodeGraph,
   type GraphFile,
 } from './core/codeGraph.js';
-export { startWatcher } from './core/watcher.js';
-export type { WatchEvent, WatchOptions, WatchHandle } from './core/watcher.js';
+export { startWatcher, type WatchEvent, type WatchOptions, type WatchHandle } from './core/watcher.js';
 export { loadCachedGraph, saveCachedGraph, invalidateCache } from './core/indexCache.js';
 export { applyBudget, estimateTokens } from './mcp/tokenBudget.js';
 export {
@@ -58,7 +56,13 @@ export {
   DEFAULT_MODEL,
   EMBEDDING_DIM,
 } from './core/embeddings.js';
-export { buildSemanticIndex, semanticSearch, reciprocalRankFusion } from './core/semanticSearch.js';
+export {
+  buildSemanticIndex,
+  semanticSearch,
+  reciprocalRankFusion,
+  buildChunks,
+  type SemanticChunk,
+} from './core/semanticSearch.js';
 export { findDependencyLines } from './utils/packageJsonLocator.js';
 export {
   parse as parseSemver,
@@ -125,24 +129,22 @@ export {
   writeGithubActionStarter,
   writePolicyStarterKit,
   writeTeamStarterKit,
-} from './core/adoption.js';
-export type {
-  AgentWorkflowRecipe,
-  FirstRunDiagnostic,
-  FirstRunReport,
-  McpConfigCatalog,
-  McpConfigGuide,
-  McpClientId,
-  McpSetupDoctorCheck,
-  McpSetupDoctorReport,
-  TeamStarterKit,
-  TeamOnboardingStep,
-  WorkflowRecipeCatalog,
-  GithubActionStarter,
-  PolicyStarterKit,
-  PolicyStarterTeam,
-  WriteGithubActionStarterResult,
-  WritePolicyStarterResult,
+  type AgentWorkflowRecipe,
+  type FirstRunDiagnostic,
+  type FirstRunReport,
+  type McpConfigCatalog,
+  type McpConfigGuide,
+  type McpClientId,
+  type McpSetupDoctorCheck,
+  type McpSetupDoctorReport,
+  type TeamStarterKit,
+  type TeamOnboardingStep,
+  type WorkflowRecipeCatalog,
+  type GithubActionStarter,
+  type PolicyStarterKit,
+  type PolicyStarterTeam,
+  type WriteGithubActionStarterResult,
+  type WritePolicyStarterResult,
 } from './core/adoption.js';
 export {
   suggestFixForIssue,
@@ -152,17 +154,15 @@ export {
 } from './core/fixSuggest.js';
 export { explainIssue } from './core/explainIssue.js';
 export { computeImpact } from './core/impact.js';
-export { buildChunks } from './core/semanticSearch.js';
-export type { SemanticChunk } from './core/semanticSearch.js';
 export { createMcpServer, runMcpServer } from './mcp/server.js';
 export { getToolDefinitions } from './mcp/tools.js';
 export { getPromptDefinitions } from './mcp/prompts.js';
 export { getResourceDefinitions } from './mcp/resources.js';
-export { BUILTIN_LANGUAGE_IDS } from './core/languages/LanguageAdapter.js';
-export type {
-  BuiltinLanguageId,
-  LanguageId,
-  LanguageAdapter,
+export {
+  BUILTIN_LANGUAGE_IDS,
+  type BuiltinLanguageId,
+  type LanguageId,
+  type LanguageAdapter,
 } from './core/languages/LanguageAdapter.js';
 
 export type * from './types.js';

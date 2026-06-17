@@ -47,3 +47,21 @@ test('legacy public type barrel re-exports focused modules through type-only sta
   expect(typesSource).toContain("export type * from './types/start.js';");
   expect(typesSource).not.toContain('export type {\n  ExportInfo,');
 });
+
+test('package entrypoint keeps type specifiers on existing export edges', () => {
+  const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
+
+  for (const source of [
+    './core/ast.js',
+    './core/watcher.js',
+    './core/semanticSearch.js',
+    './core/adoption.js',
+    './core/languages/LanguageAdapter.js',
+  ]) {
+    expect(moduleSpecifierCount(indexSource, source)).toBe(1);
+  }
+});
+
+function moduleSpecifierCount(source: string, moduleSpecifier: string): number {
+  return source.split(`from '${moduleSpecifier}'`).length - 1;
+}
