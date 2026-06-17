@@ -39,3 +39,11 @@ test('package entrypoint re-exports public types through a type-only star export
   expect(indexSource).toContain("export type * from './types.js';");
   expect(indexSource).not.toContain('export type {\n  ScanResult,');
 });
+
+test('legacy public type barrel re-exports focused modules through type-only stars', () => {
+  const typesSource = readFileSync(new URL('../../src/types.ts', import.meta.url), 'utf-8');
+
+  expect(typesSource).toContain("export type * from './types/common.js';");
+  expect(typesSource).toContain("export type * from './types/start.js';");
+  expect(typesSource).not.toContain('export type {\n  ExportInfo,');
+});
