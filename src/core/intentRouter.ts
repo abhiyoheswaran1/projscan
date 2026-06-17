@@ -32,6 +32,7 @@ import {
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
+import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchStyleSystemContextMatches } from './intentRouterSearchStyleSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
@@ -4646,88 +4647,6 @@ function searchDataAccessContextMatches(tokens: Set<string>): boolean {
     ) ||
     tokens.size >= 3
   );
-}
-
-function searchIntegrationContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    tokens.has('github') &&
-    ['action', 'actions', 'workflow', 'workflows', 'job', 'jobs', 'ci'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup'].some((token) =>
-    tokens.has(token),
-  );
-  const namedService = [
-    'stripe',
-    'sendgrid',
-    's3',
-    'github',
-    'graphql',
-    'websocket',
-    'websockets',
-    'socket',
-    'sockets',
-    'axios',
-  ].some((token) => tokens.has(token));
-  const genericService = [
-    'integration',
-    'integrations',
-    'external',
-    'service',
-    'services',
-    'client',
-    'clients',
-    'sdk',
-    'sdks',
-    'api',
-    'apis',
-  ].some((token) => tokens.has(token));
-  const transportSubject = ['fetch', 'http', 'rest'].some((token) => tokens.has(token));
-  const callAction = [
-    'call',
-    'calls',
-    'called',
-    'send',
-    'sends',
-    'sent',
-    'upload',
-    'uploads',
-    'uploaded',
-  ].some((token) => tokens.has(token));
-  const emailProviderSubject =
-    tokens.has('email') &&
-    (tokens.has('sendgrid') ||
-      ['send', 'sends', 'sent', 'through'].some((token) => tokens.has(token)));
-  const storageSubject =
-    tokens.has('s3') &&
-    ['upload', 'uploads', 'uploaded', 'client', 'sdk', 'bucket'].some((token) => tokens.has(token));
-  const graphSubject =
-    tokens.has('graphql') &&
-    ['query', 'queries', 'client', 'api'].some((token) => tokens.has(token));
-  const socketSubject =
-    ['websocket', 'websockets', 'socket', 'sockets'].some((token) => tokens.has(token)) &&
-    ['connection', 'connections', 'opened', 'client'].some((token) => tokens.has(token));
-  const apiClientSubject =
-    namedService &&
-    ['api', 'apis', 'client', 'clients', 'sdk', 'sdks'].some((token) => tokens.has(token));
-  const subject =
-    emailProviderSubject ||
-    storageSubject ||
-    graphSubject ||
-    socketSubject ||
-    apiClientSubject ||
-    (namedService && (callAction || locator || genericService)) ||
-    ((genericService || transportSubject) && callAction);
-  if (!subject) return false;
-  return locator || callAction || tokens.size >= 3;
 }
 
 function searchApiContractContextMatches(tokens: Set<string>): boolean {

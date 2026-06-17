@@ -5810,3 +5810,49 @@ use the existing regression failure path rather than the style search matcher.
 Kept change: one style-system search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Platform/Release Owner.
+
+Reason: integration lookup routing helps agents find existing external-service,
+SDK/API client, HTTP/fetch, email, S3, GraphQL, and websocket behavior without
+creating implementation work. Platform owners also need GitHub workflow language
+to stay out of this matcher so CI/deployment lookup routing remains distinct.
+
+Smallest fix: move integration search matching into
+`intentRouterSearchIntegrationSignals.ts`; leave route catalog data, route
+scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "integration search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchIntegrationSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Integration Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, GitHub workflow lookup
+  routing, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change integration keyword semantics except by moving the existing
+  cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "find the Stripe webhook handler" should
+still route as code search, while GitHub Actions/workflow lookup language should
+remain outside the integration search matcher.
+
+Kept change: one integration search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
