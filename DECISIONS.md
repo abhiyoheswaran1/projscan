@@ -2049,3 +2049,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Treat guarded "keep going", "continue", and implementation-roadmap wording as workplan intent, suppress release-train and package-upgrade routes whenever the corresponding action is explicitly prohibited, and require real regression context before the standalone `full` keyword routes to regression planning.
 - Consequences: No-release continuation prompts now route to `projscan_workplan` instead of release or upgrade workflows. Positive release-readiness prompts still route to release-train, and explicit full-regression prompts still route to regression planning.
 - Verification: `npm run test -- tests/core/intentRouterCoordinationWork.test.ts` failed before the routing change, then passed. The adjacent router suites also passed: `tests/core/intentRouterCoordinationWork.test.ts`, `tests/core/intentRouterReviewRelease.test.ts`, `tests/core/intentRouterRegressionSecurity.test.ts`, and `tests/core/intentRouter.test.ts`.
+
+## 2026-06-17: Ignore all JSON-RPC notifications in the MCP dispatcher
+
+- Status: accepted
+- Context: The MCP dispatcher detected notification-shaped requests (`id` omitted or `null`) but still dispatched known methods such as `ping` and `tools/list`, returning responses with `id: null`. JSON-RPC notifications must not produce responses.
+- Decision: Return `null` for any notification before method dispatch, while preserving the existing initialized-notification behavior and normal request handling for messages with an id.
+- Consequences: Inbound notification-shaped `ping`, `tools/list`, and other known methods no longer emit responses or perform tool-side work. Standard request/response calls with ids are unchanged, and outbound server notifications still use the existing `notify` path.
+- Verification: `npm run test -- tests/mcp/server.test.ts` failed before the dispatcher change, then passed. Adjacent MCP server, file-change notification, progress, and cross-cutting suites passed together.

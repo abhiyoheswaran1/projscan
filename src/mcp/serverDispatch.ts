@@ -72,6 +72,7 @@ async function runDispatch(
   handlers: McpDispatchHandlers,
 ): Promise<JsonRpcResponse | null> {
   if (isInitializedNotification(context.method)) return null;
+  if (context.isNotification) return null;
   const handler = dispatchTable(handlers)[context.method];
   if (!handler) return methodNotFound(context);
   return await handler(context.id, context.params);

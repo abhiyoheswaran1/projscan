@@ -270,6 +270,23 @@ describe('MCP server', () => {
     expect(response).toBeNull();
   });
 
+  it('ignores request notifications for known methods', async () => {
+    const server = createMcpServer(process.cwd());
+
+    await expect(
+      send(server, {
+        jsonrpc: '2.0',
+        method: 'ping',
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      send(server, {
+        jsonrpc: '2.0',
+        method: 'tools/list',
+      }),
+    ).resolves.toBeNull();
+  });
+
   it('returns tool definitions on tools/list', async () => {
     const server = createMcpServer(process.cwd());
     const response = (await send(server, {

@@ -7778,3 +7778,44 @@ to `projscan_release_train`.
 
 Kept change: one guarded router behavior fix, one focused regression expansion,
 one public-behavior decision note, this persona note, and no release action.
+
+## One Hundred Sixty Second Slice Decision
+
+Selected personas: Protocol-Minded Integration Engineer, Agent-Orchestrating
+Senior Engineer, and OSS Maintainer.
+
+Reason: the MCP server is a high-churn integration surface. JSON-RPC
+notification messages omit `id` and must not receive responses, but known
+methods such as `ping` and `tools/list` were still dispatched and returned
+`id: null` responses. That creates avoidable client confusion and can trigger
+tool-side work for one-way messages.
+
+Smallest fix: make `serverDispatch` return `null` for any notification before
+method dispatch, preserving normal request/response calls with ids and the
+existing initialized-notification behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts
+npm run test -- tests/mcp/server.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/crossCutting.test.ts
+```
+
+## Review Guardrails: MCP Notification Dispatch
+
+Delete-list after this slice:
+
+- Do not change request handling for `initialize`, `ping`, `tools/list`, or
+  `tools/call` when a JSON-RPC `id` is present.
+- Do not remove outbound server notifications such as progress or file-change
+  notifications.
+- Do not change tool definitions, tool schemas, package version, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+
+Reviewer edge case: `{ "jsonrpc": "2.0", "method": "tools/list" }` should
+return no response, while `{ "jsonrpc": "2.0", "id": 2, "method": "tools/list"
+}` should still return the tool catalog.
+
+Kept change: one MCP dispatcher protocol fix, one focused regression, one
+public-behavior decision note, this persona note, and no release action.
