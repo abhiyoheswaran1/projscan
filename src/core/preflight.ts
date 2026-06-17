@@ -11,6 +11,10 @@ import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
 import { reviewReasons } from './preflightReviewReasons.js';
 import { buildEvidence, MAX_PREFLIGHT_EVIDENCE_FILES } from './preflightEvidence.js';
+import {
+  buildSuggestedActions,
+  buildToolCalls,
+} from './preflightSuggestedActions.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -23,7 +27,6 @@ import type {
   PreflightReason,
   PreflightReleaseScaleEvidence,
   PreflightReport,
-  PreflightSuggestedAction,
   PreflightVerdict,
 } from '../types.js';
 import type { ReviewReport } from '../types/review.js';
@@ -132,8 +135,8 @@ export async function computePreflight(
       supplyChain,
       releaseScale,
     }),
-    suggestedNextActions: buildSuggestedActions(reasons, mode, changedFiles),
-    toolCalls: buildToolCalls(reasons, mode, changedFiles),
+    suggestedNextActions: buildSuggestedActions({ reasons, mode, changedFiles }),
+    toolCalls: buildToolCalls({ reasons, mode, changedFiles }),
     ...(truncated ? { truncated: true } : {}),
   };
   return { ...report, summary: summarizePreflight(report) };
@@ -351,72 +354,4 @@ function buildPreflightReasons(input: {
   }
 
   return reasons;
-}
-
-function buildSuggestedActions(
-  reasons: PreflightReason[],
-  mode: PreflightMode,
-  changedFiles: PreflightChangedFiles,
-): PreflightSuggestedAction[] {
-  if (reasons.length === 0) return [];
-  const actions: PreflightSuggestedAction[] = [];
-  if (reasons.some((reason) => reason.source === 'review' || reason.source === 'taint')) {
-    actions.push({
-      label: 'Inspect the full review before continuing',
-      command: 'projscan review --format json',
-      tool: 'projscan_review',
-    });
-  }
-  if (
-    reasons.some(
-      (reason) =>
-        reason.source === 'doctor' ||
-        reason.source === 'plugin' ||
-        reason.source === 'supply-chain',
-    )
-  ) {
-    actions.push({
-      label: 'Inspect health, plugin policy, and supply-chain findings',
-      command: 'projscan doctor --format json',
-      tool: 'projscan_doctor',
-    });
-  }
-  if (reasons.some((reason) => reason.source === 'hotspots' || reason.source === 'session')) {
-    actions.push({
-      label: 'Inspect remembered session hotspots',
-      command: 'projscan session touched --format json',
-      tool: 'projscan_session',
-    });
-  }
-  if (mode !== 'before_edit' && !changedFiles.available) {
-    actions.push({
-      label: 'Run preflight with an explicit base ref',
-      command: 'projscan preflight --base-ref main --format json',
-    });
-  }
-  return dedupeActions(actions);
-}
-
-function buildToolCalls(
-  reasons: PreflightReason[],
-  mode: PreflightMode,
-  changedFiles: PreflightChangedFiles,
-): PreflightSuggestedAction[] {
-  return buildSuggestedActions(reasons, mode, changedFiles).map((action) => ({
-    label: action.label,
-    ...(action.tool ? { tool: action.tool } : {}),
-    ...(action.args ? { args: action.args } : {}),
-  }));
-}
-
-function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedAction[] {
-  const seen = new Set<string>();
-  const out: PreflightSuggestedAction[] = [];
-  for (const action of actions) {
-    const key = `${action.label}:${action.command ?? action.tool ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(action);
-  }
-  return out;
 }

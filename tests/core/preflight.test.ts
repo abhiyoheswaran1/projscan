@@ -223,6 +223,30 @@ test('preflight keeps evidence shaping isolated from the main preflight module',
   expect(coordination!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps suggested action shaping isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('function buildSuggestedActions');
+  expect(preflightSource).not.toContain('function buildToolCalls');
+  expect(preflightSource).not.toContain('Inspect the full review before continuing');
+
+  const suggestedActions = await inspectRepoSourceFile('src/core/preflightSuggestedActions.ts');
+  const entrypoint = suggestedActions.functions?.find((fn) => fn.name === 'buildSuggestedActions');
+  const toolCalls = suggestedActions.functions?.find((fn) => fn.name === 'buildToolCalls');
+  const actionsForReasons = suggestedActions.functions?.find(
+    (fn) => fn.name === 'actionsForReasons',
+  );
+  const dedupe = suggestedActions.functions?.find((fn) => fn.name === 'dedupeActions');
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(toolCalls).toBeDefined();
+  expect(toolCalls!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(actionsForReasons).toBeDefined();
+  expect(actionsForReasons!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(dedupe).toBeDefined();
+  expect(dedupe!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

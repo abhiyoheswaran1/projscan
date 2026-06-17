@@ -4724,3 +4724,50 @@ should remain separate risk sources.
 Kept change: one preflight evidence helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: suggested next actions and tool-call hints are the handoff bridge from
+preflight findings to the next safe local command. Keeping that projection in
+the main preflight module made the gate harder to audit after evidence and
+reason shaping were isolated.
+
+Smallest fix: move suggested-action construction, deduping, and tool-call
+projection into `preflightSuggestedActions.ts`; keep `computePreflight`
+responsible for passing the current reasons, mode, and changed-file availability.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "suggested action shaping"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightSuggestedActions.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Suggested-Action Extraction
+
+Delete-list after this slice:
+
+- Do not change suggested action labels, commands, tool names, order, deduping,
+  tool-call projection, or preflight report schema.
+- Do not change reason generation, verdict logic, required checks, evidence
+  shaping, coordination behavior, or release-scale sign-off behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: review/taint reasons should still suggest full review;
+doctor/plugin/supply-chain reasons should still suggest doctor; unavailable
+changed-file evidence outside before-edit should still suggest an explicit base
+ref.
+
+Kept change: one preflight suggested-action helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

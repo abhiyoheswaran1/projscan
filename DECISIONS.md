@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight suggested actions
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned suggested next-action and tool-call shaping after reason, evidence, required-check, and release-scale extraction.
+- Decision: Move suggested-action and tool-call projection into `src/core/preflightSuggestedActions.ts`.
+- Consequences: Suggested action labels, commands, tools, deduping, tool-call projection, and preflight report schema stay unchanged, while `src/core/preflight.ts` drops from 423 lines / CC 56 to 358 lines / CC 40.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "suggested action shaping"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight evidence shaping
 
 - Status: accepted
