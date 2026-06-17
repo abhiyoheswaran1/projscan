@@ -1873,3 +1873,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move navigation layout search matching into `src/core/intentRouterSearchNavigationSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7175 lines / CC 1141 to 7140 lines / CC 1124. The extracted helper has no hotspot history, max function CC 5, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "navigation layout search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract PR diff route signals
+
+- Status: accepted
+- Context: PR-diff keyword routing for commit-message prompts, change summaries, PR size, branch freshness, and branch comparison was another cohesive matcher inside the intent-router hotspot.
+- Decision: Move PR-diff keyword matching into `src/core/intentRouterPrDiffSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7140 lines / CC 1124 to 7086 lines / CC 1102. The extracted helper has no hotspot history, preserves the existing PR-diff matcher semantics, and does not change the public route schema.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "PR diff keyword routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

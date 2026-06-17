@@ -40,6 +40,21 @@ describe('routeIntent', () => {
     expect(reviewSignalsSource).toContain('export function reviewKeywordMatches');
   });
 
+  it('keeps PR diff keyword routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterPrDiffSignals.js'");
+    expect(routerSource).not.toContain('function prDiffKeywordMatches');
+
+    const prDiffSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterPrDiffSignals.ts'),
+      'utf8',
+    );
+    expect(prDiffSignalsSource).toContain('export function prDiffKeywordMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

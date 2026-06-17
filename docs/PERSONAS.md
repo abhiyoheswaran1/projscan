@@ -6186,3 +6186,51 @@ planning.
 Kept change: one navigation layout search route-signal helper module, one
 router boundary regression, existing route/start behavior coverage, this
 persona note, and no public API change.
+
+## One Hundred Thirtieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: PR-diff routing helps agents answer commit-message, change summary, PR
+size, branch freshness, and branch comparison questions from structural diff
+evidence without sending every PR-related phrase to full review. Maintainers need
+the matcher isolated because it has several overlap guards with evidence-pack,
+dependency-bloat, branch sync, collision, and session-context routing.
+
+Smallest fix: move PR-diff keyword matching into
+`intentRouterPrDiffSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "PR diff keyword routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterPrDiffSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: PR Diff Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, PR-diff route entries, evidence-pack routing,
+  review routing, dependency-bloat routing, branch-sync routing, route
+  confidence scoring, `routeIntent`, or public route result shape.
+- Do not change PR-diff keyword semantics except by moving the existing matcher
+  and its private PR-size/branch-sync guards into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "write a commit message for these changes" should still
+route to `projscan_pr_diff`, while "what should I tell my team about this
+change" should stay with evidence-pack routing and "what changed while I was
+away" should stay led by session context.
+
+Kept change: one PR-diff route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.
