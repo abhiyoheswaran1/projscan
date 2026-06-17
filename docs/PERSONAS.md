@@ -8268,3 +8268,47 @@ across `tests/cli/start.test.ts`, `tests/cli/startConsoleGuidance.test.ts`, and
 while reducing the original hotspot file.
 
 Kept change: one CLI start test split, this persona note, and no release action.
+
+## One Hundred Seventy Third Slice Decision
+
+Selected personas: Platform And Release Owner, API Stability Reviewer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: `src/core/releaseEvidence.ts` remained a runtime hotspot with moderate
+complexity and a duplicate module edge to `./evidenceComment.js`: one import for
+runtime use and one re-export for public API compatibility. The exported
+symbols were already imported locally, so the second edge added graph noise
+without improving readability.
+
+Smallest fix: keep the runtime import and re-export the already imported
+`renderEvidencePackPrComment` and `validateEvidencePackPrComment` symbols
+locally. Add an architecture guard so future edits preserve one
+`evidenceComment` module edge while keeping the public exports available.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/releaseEvidenceArchitecture.test.ts -t "keeps evidence comment exports on the existing runtime import edge"
+npm run test -- tests/core/releaseEvidenceArchitecture.test.ts tests/core/releaseEvidence.test.ts tests/types/public-evidence-pack-types.test.ts
+npm exec projscan -- file src/core/releaseEvidence.ts --format json
+```
+
+## Review Guardrails: Release Evidence Export Edge Cleanup
+
+Delete-list after this slice:
+
+- Do not change evidence-pack behavior, PR comment rendering, PR comment
+  validation, public export names, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not move `evidenceComment` implementation into `releaseEvidence.ts`; keep
+  comment rendering isolated.
+- Do not broaden this into release approval semantics or verdict calibration.
+
+Reviewer edge case: imports from `../../src/core/releaseEvidence.js` should still
+compile for `renderEvidencePackPrComment`,
+`validateEvidencePackPrComment`, `calibratePreflightTrust`, and
+`computeEvidencePack`, while `src/core/releaseEvidence.ts` contains only one
+`from './evidenceComment.js'` edge.
+
+Kept change: one public-export-preserving runtime edge cleanup, one architecture
+guard, this persona note, and no release action.

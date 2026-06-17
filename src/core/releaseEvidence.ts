@@ -1,6 +1,6 @@
 import { computeBugHunt } from './bugHunt.js';
 import { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
-export { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
+export { renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
 import {

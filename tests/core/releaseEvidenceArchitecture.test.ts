@@ -23,4 +23,17 @@ describe('release evidence architecture', () => {
     expect(baselineSource).toContain('loadBaseline');
     expect(baselineSource).toContain('scanRepository');
   });
+
+  it('keeps evidence comment exports on the existing runtime import edge', () => {
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidence.ts'),
+      'utf8',
+    );
+
+    const evidenceCommentEdges = evidenceSource.match(/from '\.\/evidenceComment\.js'/g) ?? [];
+    expect(evidenceCommentEdges).toHaveLength(1);
+    expect(evidenceSource).toContain(
+      'export { renderEvidencePackPrComment, validateEvidencePackPrComment };',
+    );
+  });
 });
