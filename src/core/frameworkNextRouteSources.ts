@@ -5,7 +5,10 @@ const NEXT_ROUTE_SOURCE_BY_CALLEE = new Map<string, string>([
   ['arrayBuffer', 'request.arrayBuffer'],
 ]);
 
-const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([['url', 'request.url']]);
+const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([
+  ['url', 'request.url'],
+  ['nextUrl.searchParams', 'request.nextUrl.searchParams'],
+]);
 
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 

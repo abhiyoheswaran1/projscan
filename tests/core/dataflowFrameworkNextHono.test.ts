@@ -122,6 +122,42 @@ export function helper(request: { url: string }) {
     ).toBeUndefined();
   });
 
+  it('treats Next route nextUrl search params as framework request sources without flagging helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'search-params'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'search-params', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function GET(request: Request & { nextUrl: URL }) {
+  const term = request.nextUrl.searchParams.get('q');
+  return db.query(String(term));
+}
+
+export function helper(request: { nextUrl: { searchParams: URLSearchParams } }) {
+  return db.query(String(request.nextUrl.searchParams.get('q')));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFn: 'GET',
+          source: 'request.nextUrl.searchParams',
+          sink: 'query',
+        }),
+      ]),
+    );
+    expect(
+      report.risks.find(
+        (risk) => risk.sourceFn === 'helper' && risk.source === 'request.nextUrl.searchParams',
+      ),
+    ).toBeUndefined();
+  });
+
   it('treats Hono route context request JSON as a framework request source', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'hono.ts'),

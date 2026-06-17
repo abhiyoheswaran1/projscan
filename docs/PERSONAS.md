@@ -7072,3 +7072,51 @@ should remain blocked from generic understand routing.
 Kept change: one understand route-signal helper module, one router boundary
 regression, stale-import lint cleanup, existing route/start behavior coverage,
 this persona note, and no public API change.
+
+## One Hundred Forty Eighth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and OSS Maintainer Evaluating MCP
+Adoption.
+
+Reason: Next route query parameters are user-controlled request input, and
+maintainers expect `projscan dataflow` to catch a query value reaching a database
+sink without learning internal source names. The existing Next route source list
+covered body readers and `request.url`, but not the common
+`request.nextUrl.searchParams` accessor documented by Next.js.
+Source: https://nextjs.org/docs/app/api-reference/functions/next-request
+
+Smallest fix: add `request.nextUrl.searchParams` to the existing Next route
+qualified-reference source map, preserving the `app/**/route.*` and exported HTTP
+method gates. Add a helper lookalike fixture in the same route file to prove the
+pattern does not become a broad `nextUrl` or `searchParams` name match.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/dataflowFrameworkNextHono.test.ts -t "nextUrl search params"
+npm exec agentflight -- verify npm run test -- tests/core/dataflowFrameworkNextHono.test.ts tests/core/dataflowFrameworkExpress.test.ts tests/core/dataflowFrameworkFastify.test.ts tests/core/dataflowFrameworkKoa.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/frameworkNextRouteSources.ts --format json
+npm exec projscan -- file tests/core/dataflowFrameworkNextHono.test.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Next nextUrl Search Params
+
+Delete-list after this slice:
+
+- Do not treat arbitrary `.nextUrl`, `.searchParams`, or helper-shaped
+  `request.nextUrl.searchParams` reads as request input.
+- Do not add broad URL/query dataflow sources outside Next route handlers.
+- Do not change `DataflowReport` schema, release readiness, dependencies,
+  network behavior, telemetry, daemon behavior, or secret-reading behavior.
+
+Reviewer edge case: `app/**/route.ts` HTTP handlers should report
+`request.nextUrl.searchParams` reaching database sinks, while helper functions in
+the same file should remain quiet.
+
+Kept change: one additive framework source value, one false-positive fixture,
+one review-packet note, one architecture decision, this persona note, and no
+release action.

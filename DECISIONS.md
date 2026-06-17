@@ -2017,3 +2017,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the understand helper into `src/core/intentRouterUnderstandSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 4830 lines / CC 686 to 4630 lines / CC 654. The extracted helper imports existing planning, repo, and verification signal modules, has no hotspot history, preserves existing understand keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "understand keyword routing"` failed before extraction, then passed. Full slice verification caught stale router imports via lint; those imports were removed and the fixed state passed.
+
+## 2026-06-17: Add Next route nextUrl dataflow source
+
+- Status: accepted
+- Context: Next route handlers commonly read query parameters through `request.nextUrl.searchParams`, which is user-controlled request input. Existing framework dataflow covered Next body readers and `request.url`, but missed this precise query-param accessor.
+- Decision: Add `request.nextUrl.searchParams` as a Next route request source only for exported HTTP method handlers in `app/**/route.*`, reusing the existing qualified member-reference gate.
+- Consequences: `projscan dataflow` can report one additional additive source value for Next route handlers. Helper functions with a `request.nextUrl.searchParams`-shaped argument remain quiet because source detection is still route-file and HTTP-handler scoped.
+- Verification: `npm run test -- tests/core/dataflowFrameworkNextHono.test.ts -t "nextUrl search params"` failed before the source-map change, then passed.

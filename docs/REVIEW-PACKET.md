@@ -115,8 +115,9 @@ Next/Hono/Express/Koa/Fastify dataflow:
 - Trust boundary: request sources are not broad name matches. They require
   route-file or framework-specific handler evidence.
 - Next route handlers require an `app/**/route.*` file and an exported HTTP
-  method. Body-reader calls and qualified `request.url` reads are detected
-  without treating helper functions in the route file as request input.
+  method. Body-reader calls, qualified `request.url` reads, and
+  `request.nextUrl.searchParams` reads are detected without treating helper
+  functions in the route file as request input.
 - Hono uses gated `memberCallSites`, so `c.req.valid(...)` can be detected
   without treating helper `c.req.valid(...)` calls as request input.
 - Express uses gated `memberCallSites`, so `req.get(...)`,
