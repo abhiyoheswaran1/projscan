@@ -8777,3 +8777,51 @@ report three tests, and the combined start/regression-routing run should report
 
 Kept change: one production/setup regression-routing start test split, this
 persona note, and no release action.
+
+## One Hundred Eighty Fourth Slice Decision
+
+Selected personas: Security Reviewer, Privacy-Conscious Maintainer,
+Agent-Orchestrating Engineer, and Maintainability-Focused Platform Engineer.
+
+Reason: after the regression split, `tests/core/start.test.ts` still mixed
+general start routing with trust-boundary privacy checks, source-to-sink
+security routing, and secure-change review routing. These cases share one
+behavior surface: security and trust wording should select the correct local
+evidence path before broader implementation work begins.
+
+Smallest fix: move the three security/trust routing scenarios into a new
+`tests/core/startSecurityRouting.test.ts` file and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 1,864 lines to 1,710 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "trust-boundary questions|source-to-sink security intent|secure-change wording"
+npm run test -- tests/core/startSecurityRouting.test.ts -t "trust-boundary questions|source-to-sink security intent|secure-change wording"
+npm run test -- tests/core/start.test.ts tests/core/startSecurityRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startSecurityRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Security Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan privacy-check`, `projscan dataflow`,
+  `projscan review`, hardening mode inference, privacy success criteria,
+  source-to-sink success criteria, secure-change review routing, package
+  version, release artifacts, publish behavior, deploy behavior, push behavior,
+  or merge behavior.
+- Do not weaken coverage for `.env` trust-boundary prompts, SQL sink prompts,
+  GDPR compliance prompts, secret exposure prompts, or secure-change prompts.
+- Do not broaden this into taint-analysis, privacy-check, or review-scoring
+  behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused security/trust run should still report three
+tests, and the combined start/security-routing run should report 50 tests
+across `tests/core/start.test.ts` and
+`tests/core/startSecurityRouting.test.ts`.
+
+Kept change: one security/trust start test split, this persona note, and no
+release action.
