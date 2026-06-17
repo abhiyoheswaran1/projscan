@@ -224,7 +224,10 @@ describe('coordinationHints', () => {
       mergeRisk: mergeRisk({}),
     });
     expect(coordinationHints(clear)).toEqual([
-      'Swarm readiness: clear across 2 worktrees - rerun `projscan coordinate` before parallel edits continue.',
+      'Swarm readiness: clear across 2 worktrees - ' +
+        'validate locally with `projscan coordinate --format json`, ' +
+        '`projscan coordinate --watch --interval 5 --format json`, then ' +
+        '`projscan agent-brief --format json` before parallel edits continue.',
     ]);
   });
 
@@ -260,6 +263,8 @@ describe('coordinationHints', () => {
     expect(hints.join(' ')).toMatch(/conflicted/i);
     expect(hints.join(' ')).toMatch(/collision/i);
     expect(hints.join(' ')).toMatch(/contend/i);
+    expect(hints.join(' ')).toContain('projscan coordinate --watch --interval 5 --format json');
+    expect(hints.join(' ')).toContain('projscan agent-brief --format json');
     // every hint is a non-empty string
     expect(hints.every((h) => typeof h === 'string' && h.length > 0)).toBe(true);
   });

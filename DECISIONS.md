@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Surface coordination validation workflow in hints
+
+- Status: accepted
+- Context: `projscan coordinate` already exposed detailed local-only evidence, but compact coordination hints only told agents to rerun `projscan coordinate`.
+- Decision: Build compact coordination hints from the existing validation workflow and include `coordinate`, `coordinate --watch`, and `agent-brief` proof commands.
+- Consequences: Agent-facing handoffs carry the same local validation workflow as the detailed evidence object without adding schema fields, daemon requirements, network calls, or release behavior.
+- Verification: `npm run test -- tests/core/coordination.test.ts`.
+
 ## 2026-06-16: Extract MCP server lifecycle
 
 - Status: accepted

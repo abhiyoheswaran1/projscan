@@ -4026,3 +4026,50 @@ and flush the session, and tool-side watches should still be cancelled on close.
 Kept change: one focused lifecycle helper, one maintainability regression,
 existing MCP watcher/session coverage, this persona note, and no public MCP
 schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Platform/Release Owner.
+
+Reason: the 4.6 swarm-validation roadmap line asks teams to prove which
+coordination commands agents actually use. The detailed `coordinate` evidence
+already listed the local workflow, but compact handoff hints did not carry that
+proof path into the surfaces agents read while handing work to the next agent.
+
+Smallest fix: derive coordination hint wording from the existing evidence
+workflow and name the three local proof commands:
+
+- `projscan coordinate --format json`
+- `projscan coordinate --watch --interval 5 --format json`
+- `projscan agent-brief --format json`
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/coordination.test.ts
+npm run test -- tests/core/coordination.test.ts tests/core/agentBrief.test.ts tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- coordinate --format json
+npm exec projscan -- agent-brief --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Coordination Validation Hints
+
+Delete-list after this slice:
+
+- Do not add a daemon, cloud service, telemetry, lockfile write, dependency,
+  version change, or release action.
+- Do not add new public JSON fields when existing `evidence.validationWorkflow`
+  can drive the compact hint.
+- Do not mix remembered session context with current Git/worktree evidence.
+
+Reviewer edge case: unavailable single-worktree coordination should still return
+no swarm hint; multi-worktree clear/conflicted hints should name the local
+validation workflow; `agent-brief` should carry the hint as a compact message
+without changing the structured report schema.
+
+Kept change: one hint helper, one behavior test, one docs example update, this
+persona note, and no schema change.

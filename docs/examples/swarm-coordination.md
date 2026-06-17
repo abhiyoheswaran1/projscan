@@ -58,7 +58,9 @@ from current Git/worktree evidence. The default `coordinate` console view prints
 the same session-boundary reminder inside its `Evidence` section.
 When multiple worktrees are present, `agent-brief` also carries a
 `context.coordinationHints` entry even for a clear swarm, so the next agent knows
-to rerun `projscan coordinate` before continuing parallel edits.
+to validate locally with `projscan coordinate --format json`,
+`projscan coordinate --watch --interval 5 --format json`, and
+`projscan agent-brief --format json` before continuing parallel edits.
 
 For MCP clients that support long-running notifications, use the watch tool:
 

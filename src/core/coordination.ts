@@ -116,16 +116,17 @@ export function summarizeCoordination(inputs: CoordinationInputs): CoordinationS
  */
 export function coordinationHints(summary: CoordinationSummary): string[] {
   if (!summary.available) return [];
+  const validation = coordinationValidationWorkflow(summary);
   if (summary.readiness === 'clear') {
     return summary.worktreeCount > 1
       ? [
           `Swarm readiness: clear across ${summary.worktreeCount} worktrees - ` +
-            'rerun `projscan coordinate` before parallel edits continue.',
+            `${validation} before parallel edits continue.`,
         ]
       : [];
   }
   const hints: string[] = [
-    `Swarm readiness: ${summary.readiness} — run \`projscan coordinate\` for details.`,
+    `Swarm readiness: ${summary.readiness} - ${validation}.`,
   ];
   if (summary.collisions.high > 0) {
     hints.push(
@@ -141,6 +142,20 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
   const first = summary.mergeRisk.integrationOrder[0];
   if (first) hints.push(`Merge ${first.branch ?? first.worktree} first (lowest risk).`);
   return hints;
+}
+
+function coordinationValidationWorkflow(summary: CoordinationSummary): string {
+  const commands = summary.evidence?.validationWorkflow.map((step) => step.command) ?? [];
+  const coordinate = commands.find((command) => command === 'projscan coordinate --format json');
+  const watch = commands.find((command) => command.startsWith('projscan coordinate --watch'));
+  const agentBrief = commands.find((command) => command === 'projscan agent-brief --format json');
+
+  return (
+    'validate locally with ' +
+    `\`${coordinate ?? 'projscan coordinate --format json'}\`, ` +
+    `\`${watch ?? 'projscan coordinate --watch --interval 5 --format json'}\`, then ` +
+    `\`${agentBrief ?? 'projscan agent-brief --format json'}\``
+  );
 }
 
 /**
