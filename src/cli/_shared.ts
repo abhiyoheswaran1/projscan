@@ -19,6 +19,12 @@ import {
   type PluginDiagnostic,
   type PluginReporterCommand,
 } from '../core/plugins.js';
+import {
+  changedFilesAvailableMessage,
+  changedFilesUnavailableMessage,
+  changedIssueFilterMessage,
+  filterIssuesToChangedFiles,
+} from './changedIssueFilter.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
 
@@ -130,42 +136,36 @@ export async function filterIssuesByChangedFiles(
   baseRef?: string,
 ): Promise<Issue[]> {
   const result = await getChangedFiles(rootPath, baseRef);
+  const format = getFormat();
+  const quiet = Boolean(program.opts().quiet);
   if (!result.available) {
-    if (getFormat() === 'console' && !program.opts().quiet) {
-      console.error(
-        chalk.yellow(
-          `  [--changed-only: ${result.reason ?? 'unavailable'} - reporting all issues]`,
-        ),
-      );
-    }
+    writeChangedOnlyNotice(changedFilesUnavailableMessage(result.reason), format, quiet, 'warning');
     return issues;
   }
-  if (getFormat() === 'console' && !program.opts().quiet) {
-    console.error(
-      chalk.dim(`  [--changed-only: base=${result.baseRef}, ${result.files.length} file(s)]`),
-    );
-  }
-  const set = new Set(result.files);
-  const filtered = issues.filter((issue) => {
-    if (!issue.locations || issue.locations.length === 0) return false;
-    return issue.locations.some((loc) => set.has(loc.file));
-  });
+  writeChangedOnlyNotice(
+    changedFilesAvailableMessage(result.baseRef, result.files.length),
+    format,
+    quiet,
+    'dim',
+  );
+  const filtered = filterIssuesToChangedFiles(issues, result.files);
+  const filterMessage = changedIssueFilterMessage(filtered);
+  if (filterMessage) writeChangedOnlyNotice(filterMessage, format, quiet, 'dim');
+  return filtered.issues;
+}
 
-  const dropped = issues.length - filtered.length;
-  if (dropped > 0 && !program.opts().quiet) {
-    const unlocated = issues.filter((i) => !i.locations || i.locations.length === 0).length;
-    const message =
-      unlocated > 0
-        ? `  [--changed-only: ${dropped} issue(s) filtered out; ${unlocated} had no file location]`
-        : `  [--changed-only: ${dropped} issue(s) outside the changed-file set]`;
-    if (getFormat() === 'console') {
-      console.error(chalk.dim(message));
-    } else {
-      console.error(message.trim());
-    }
+function writeChangedOnlyNotice(
+  message: string,
+  format: ReportFormat,
+  quiet: boolean,
+  style: 'dim' | 'warning',
+): void {
+  if (quiet) return;
+  if (format !== 'console') {
+    console.error(message.trim());
+    return;
   }
-
-  return filtered;
+  console.error(style === 'warning' ? chalk.yellow(message) : chalk.dim(message));
 }
 
 export function setupLogLevel(): void {
