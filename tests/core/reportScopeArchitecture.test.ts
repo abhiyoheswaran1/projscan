@@ -45,4 +45,32 @@ describe('report scope maintainability', () => {
     const redactionInspection = await inspectRepoSourceFile('src/core/reportPathRedaction.ts');
     expect(redactionInspection.issues).toEqual([]);
   });
+
+  it('keeps scope filtering and report-entry shaping out of the report scope orchestrator', async () => {
+    const reportScopeSource = readFileSync(
+      path.join(process.cwd(), 'src/core/reportScope.ts'),
+      'utf8',
+    );
+    expect(reportScopeSource).not.toContain('function applyReportControlsToDependencies');
+    expect(reportScopeSource).not.toContain('function dependencyWorkspaceInScope');
+    expect(reportScopeSource).not.toContain('function isInScope');
+    expect(reportScopeSource).not.toContain('function filterLocationsByScope');
+    expect(reportScopeSource).not.toContain('function filterFilesByScope');
+    expect(reportScopeSource).not.toContain('function redactIssue');
+    expect(reportScopeSource).not.toContain('function redactFileEntry');
+    expect(reportScopeSource).not.toContain('function countDirectories');
+    expect(reportScopeSource).not.toContain('function buildDirectoryTree');
+
+    const filteringSource = readFileSync(
+      path.join(process.cwd(), 'src/core/reportScopeFiltering.ts'),
+      'utf8',
+    );
+    expect(filteringSource).not.toContain("from './reportScope.js'");
+
+    const reportScopeInspection = await inspectRepoSourceFile('src/core/reportScope.ts');
+    expect(reportScopeInspection.cyclomaticComplexity).toBeLessThanOrEqual(30);
+
+    const filteringInspection = await inspectRepoSourceFile('src/core/reportScopeFiltering.ts');
+    expect(filteringInspection.issues).toEqual([]);
+  });
 });
