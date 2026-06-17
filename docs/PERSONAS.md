@@ -5856,3 +5856,50 @@ remain outside the integration search matcher.
 Kept change: one integration search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: API contract lookup routing helps agents find existing OpenAPI,
+Swagger, tRPC, GraphQL, protobuf, and gRPC surfaces without changing public
+contracts or creating implementation work. Maintainers need this route logic
+separate from the main hotspot because contract language is easy to confuse with
+public API review.
+
+Smallest fix: move API contract search matching into
+`intentRouterSearchApiSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "API contract search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchApiSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: API Contract Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, public contract review
+  routing, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change API contract keyword semantics except by moving the existing
+  cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is OpenAPI spec defined" should still
+route as code search, while "what are the public contracts" should continue to
+use the public-contract understanding path.
+
+Kept change: one API contract search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

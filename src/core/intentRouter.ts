@@ -31,6 +31,7 @@ import {
   dataflowKeywordMatches,
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
+import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
@@ -4647,46 +4648,6 @@ function searchDataAccessContextMatches(tokens: Set<string>): boolean {
     ) ||
     tokens.size >= 3
   );
-}
-
-function searchApiContractContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (tokens.has('public') && (tokens.has('contract') || tokens.has('contracts'))) return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const artifactAction = [
-    'defined',
-    'defines',
-    'configured',
-    'generated',
-    'handles',
-    'handled',
-  ].some((token) => tokens.has(token));
-  const openApiSubject =
-    tokens.has('openapi') ||
-    tokens.has('swagger') ||
-    ((tokens.has('api') || tokens.has('apis')) &&
-      (tokens.has('spec') || tokens.has('specs') || tokens.has('docs')));
-  const trpcSubject =
-    tokens.has('trpc') && (tokens.has('router') || tokens.has('routers') || locator);
-  const graphqlSubject =
-    tokens.has('graphql') &&
-    ['schema', 'schemas', 'resolver', 'resolvers', 'query', 'queries'].some((token) =>
-      tokens.has(token),
-    );
-  const protoSubject =
-    ['protobuf', 'proto', 'protos'].some((token) => tokens.has(token)) ||
-    (tokens.has('grpc') &&
-      ['service', 'services', 'client', 'clients'].some((token) => tokens.has(token)));
-  const subject = openApiSubject || trpcSubject || graphqlSubject || protoSubject;
-  if (!subject) return false;
-  return locator || artifactAction || tokens.size >= 3;
 }
 
 function searchDomainWorkflowContextMatches(tokens: Set<string>): boolean {
