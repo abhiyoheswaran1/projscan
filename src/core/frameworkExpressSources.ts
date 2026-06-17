@@ -1,3 +1,10 @@
+import {
+  isKnownHandlerCall,
+  matchingParameters,
+  sourceFromExactMembers,
+  sourceFromPrefixedMembers,
+} from './frameworkSourceMatching.js';
+
 const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['body', 'express.req.body'],
   ['query', 'express.req.query'],
@@ -55,7 +62,7 @@ export function expressRequestSource(
 }
 
 function expressRequestParams(parameters: string[]): string[] {
-  return parameters.filter((parameter) => EXPRESS_REQUEST_PARAM_NAMES.has(parameter));
+  return matchingParameters(parameters, EXPRESS_REQUEST_PARAM_NAMES);
 }
 
 function expressMatchedSource(
@@ -73,11 +80,7 @@ function expressMatchedSource(
 }
 
 function expressReferenceSource(references: string[], enabledSources: Set<string>): string | null {
-  const refs = new Set(references);
-  for (const [reference, source] of EXPRESS_REQUEST_SOURCE_BY_REFERENCE) {
-    if (enabledSources.has(source) && refs.has(reference)) return source;
-  }
-  return null;
+  return sourceFromExactMembers(references, EXPRESS_REQUEST_SOURCE_BY_REFERENCE, enabledSources);
 }
 
 function expressMemberReferenceSource(
@@ -85,13 +88,12 @@ function expressMemberReferenceSource(
   memberReferences: string[],
   enabledSources: Set<string>,
 ): string | null {
-  const members = new Set(memberReferences);
-  for (const parameter of requestParams) {
-    for (const [member, source] of EXPRESS_REQUEST_SOURCE_BY_MEMBER) {
-      if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
-    }
-  }
-  return null;
+  return sourceFromPrefixedMembers(
+    requestParams.map((parameter) => `${parameter}.`),
+    memberReferences,
+    EXPRESS_REQUEST_SOURCE_BY_MEMBER,
+    enabledSources,
+  );
 }
 
 function expressMemberCallSource(
@@ -99,13 +101,12 @@ function expressMemberCallSource(
   memberCallSites: string[],
   enabledSources: Set<string>,
 ): string | null {
-  const calls = new Set(memberCallSites);
-  for (const parameter of requestParams) {
-    for (const [member, source] of EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL) {
-      if (enabledSources.has(source) && calls.has(`${parameter}.${member}`)) return source;
-    }
-  }
-  return null;
+  return sourceFromPrefixedMembers(
+    requestParams.map((parameter) => `${parameter}.`),
+    memberCallSites,
+    EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL,
+    enabledSources,
+  );
 }
 
 function isExpressFile(imports: Array<{ source: string }>): boolean {
@@ -113,12 +114,5 @@ function isExpressFile(imports: Array<{ source: string }>): boolean {
 }
 
 function isExpressHandlerCall(contextualCallSite: string | undefined): boolean {
-  if (!contextualCallSite) return false;
-  const method = bareName(contextualCallSite);
-  return EXPRESS_HANDLER_METHODS.has(method);
-}
-
-function bareName(qualified: string): string {
-  const dot = qualified.lastIndexOf('.');
-  return dot < 0 ? qualified : qualified.slice(dot + 1);
+  return isKnownHandlerCall(contextualCallSite, EXPRESS_HANDLER_METHODS);
 }

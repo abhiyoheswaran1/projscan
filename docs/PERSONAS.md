@@ -9512,3 +9512,50 @@ dynamic import path.
 
 Kept change: one manifest-validation module extraction, one maintainability
 regression test, this persona note, and no release action in this slice.
+
+## Two Hundredth Slice Decision
+
+Selected personas: Static-Analysis Maintainer, Security Reviewer, and
+Agent-Orchestrating Senior Engineer.
+
+Reason: `src/core/frameworkSources.ts` and the framework-specific source
+adapters are high-churn dataflow surfaces. The shared dispatcher was already
+small, but the handler-based adapters still repeated member-reference,
+member-call, handler-method, and parameter matching loops. That duplication
+makes framework dataflow reviews harder when agents add new request-source
+patterns.
+
+Smallest fix: extract shared framework source matching helpers into
+`src/core/frameworkSourceMatching.ts` and wire Hono, Express, Fastify, and Koa
+adapters through them. Preserve framework gating, source labels, and
+false-positive suppression. Leave Next and Remix route-file matchers for a
+separate smaller pass because the bug pass flags that path as higher release
+sign-off risk.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts tests/core/dataflowFrameworkNext.test.ts tests/core/dataflowFrameworkRemix.test.ts tests/core/dataflowFrameworkHono.test.ts tests/core/dataflowFrameworkExpress.test.ts tests/core/dataflowFrameworkFastify.test.ts tests/core/dataflowFrameworkKoa.test.ts
+npm run typecheck
+npm run lint
+```
+
+## Review Guardrails: Framework Source Matching Extraction
+
+Delete-list after this slice:
+
+- Do not add framework request-source labels, sinks, schemas, package metadata,
+  release artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken framework file/import/handler gating or lookalike suppression.
+- Do not add dependencies, network calls, telemetry, or runtime plugin paths.
+- Do not treat this as release preparation; the release slot has already been
+  used for 4.7.0.
+
+Reviewer edge case: imported Next `headers` and `cookies` helpers still require
+real `next/headers` static imports, while same-shaped local helper calls remain
+quiet.
+
+Kept change: one shared matcher module for handler-based adapters, a structural
+guard test, focused framework dataflow regressions, this persona note, and no
+release action in this slice.

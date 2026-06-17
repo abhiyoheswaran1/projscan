@@ -21,6 +21,32 @@ async function inspectRepoSourceFile(rel: string) {
 }
 
 describe('framework source maintainability', () => {
+  it('keeps repeated framework member matching in shared helpers', async () => {
+    const helper = await fs.readFile(
+      path.join(process.cwd(), 'src/core/frameworkSourceMatching.ts'),
+      'utf-8',
+    );
+    const adapterFiles = [
+      'src/core/frameworkHonoSources.ts',
+      'src/core/frameworkExpressSources.ts',
+      'src/core/frameworkFastifySources.ts',
+      'src/core/frameworkKoaSources.ts',
+    ];
+
+    expect(helper).toContain('sourceFromPrefixedMembers');
+    expect(helper).toContain('sourceFromExactMembers');
+    expect(helper).toContain('isKnownHandlerCall');
+    expect(helper).toContain('bareCallName');
+
+    for (const rel of adapterFiles) {
+      const adapter = await fs.readFile(path.join(process.cwd(), rel), 'utf-8');
+
+      expect(adapter).toContain("from './frameworkSourceMatching.js'");
+      expect(adapter).not.toContain('function bareName(');
+      expect(adapter).not.toMatch(/new Set\((?:references|memberReferences|memberCallSites)\)/);
+    }
+  });
+
   it('uses a named context object for shared framework source dispatch', async () => {
     const shared = await fs.readFile(
       path.join(process.cwd(), 'src/core/frameworkSources.ts'),

@@ -1,3 +1,9 @@
+import {
+  isKnownHandlerCall,
+  matchingParameters,
+  sourceFromPrefixedMembers,
+} from './frameworkSourceMatching.js';
+
 const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['request.body', 'koa.ctx.request.body'],
   ['request.query', 'koa.ctx.request.query'],
@@ -49,7 +55,7 @@ export function koaRequestSource(
 ): string | null {
   if (!isKoaFile(imports)) return null;
   if (!isKoaHandlerCall(contextualCallSite)) return null;
-  const contextParams = parameters.filter((parameter) => KOA_CONTEXT_PARAM_NAMES.has(parameter));
+  const contextParams = matchingParameters(parameters, KOA_CONTEXT_PARAM_NAMES);
   if (contextParams.length === 0) return null;
   return (
     koaMemberReferenceSource(contextParams, memberReferences, enabledSources) ??
@@ -62,13 +68,12 @@ function koaMemberReferenceSource(
   memberReferences: string[],
   enabledSources: Set<string>,
 ): string | null {
-  const members = new Set(memberReferences);
-  for (const parameter of contextParams) {
-    for (const [member, source] of KOA_REQUEST_SOURCE_BY_MEMBER) {
-      if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
-    }
-  }
-  return null;
+  return sourceFromPrefixedMembers(
+    contextParams.map((parameter) => `${parameter}.`),
+    memberReferences,
+    KOA_REQUEST_SOURCE_BY_MEMBER,
+    enabledSources,
+  );
 }
 
 function koaMemberCallSource(
@@ -76,13 +81,12 @@ function koaMemberCallSource(
   memberCallSites: string[],
   enabledSources: Set<string>,
 ): string | null {
-  const calls = new Set(memberCallSites);
-  for (const parameter of contextParams) {
-    for (const [member, source] of KOA_REQUEST_SOURCE_BY_MEMBER_CALL) {
-      if (enabledSources.has(source) && calls.has(`${parameter}.${member}`)) return source;
-    }
-  }
-  return null;
+  return sourceFromPrefixedMembers(
+    contextParams.map((parameter) => `${parameter}.`),
+    memberCallSites,
+    KOA_REQUEST_SOURCE_BY_MEMBER_CALL,
+    enabledSources,
+  );
 }
 
 function isKoaFile(imports: Array<{ source: string }>): boolean {
@@ -92,11 +96,5 @@ function isKoaFile(imports: Array<{ source: string }>): boolean {
 }
 
 function isKoaHandlerCall(contextualCallSite: string | undefined): boolean {
-  if (!contextualCallSite) return false;
-  return KOA_HANDLER_METHODS.has(bareName(contextualCallSite));
-}
-
-function bareName(qualified: string): string {
-  const dot = qualified.lastIndexOf('.');
-  return dot < 0 ? qualified : qualified.slice(dot + 1);
+  return isKnownHandlerCall(contextualCallSite, KOA_HANDLER_METHODS);
 }

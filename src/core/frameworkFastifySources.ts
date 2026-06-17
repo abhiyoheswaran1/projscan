@@ -1,3 +1,10 @@
+import {
+  isKnownHandlerCall,
+  matchingParameters,
+  sourceFromExactMembers,
+  sourceFromPrefixedMembers,
+} from './frameworkSourceMatching.js';
+
 const FASTIFY_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['body', 'fastify.request.body'],
   ['query', 'fastify.request.query'],
@@ -44,7 +51,7 @@ export function fastifyRequestSource(
 ): string | null {
   if (!isFastifyFile(imports)) return null;
   if (!isFastifyHandlerCall(contextualCallSite)) return null;
-  const requestParams = parameters.filter((parameter) => FASTIFY_REQUEST_PARAM_NAMES.has(parameter));
+  const requestParams = matchingParameters(parameters, FASTIFY_REQUEST_PARAM_NAMES);
   if (requestParams.length === 0) return null;
   return (
     fastifyMemberReferenceSource(requestParams, memberReferences, enabledSources) ??
@@ -53,11 +60,7 @@ export function fastifyRequestSource(
 }
 
 function fastifyReferenceSource(references: string[], enabledSources: Set<string>): string | null {
-  const refs = new Set(references);
-  for (const [reference, source] of FASTIFY_REQUEST_SOURCE_BY_REFERENCE) {
-    if (enabledSources.has(source) && refs.has(reference)) return source;
-  }
-  return null;
+  return sourceFromExactMembers(references, FASTIFY_REQUEST_SOURCE_BY_REFERENCE, enabledSources);
 }
 
 function fastifyMemberReferenceSource(
@@ -65,13 +68,12 @@ function fastifyMemberReferenceSource(
   memberReferences: string[],
   enabledSources: Set<string>,
 ): string | null {
-  const members = new Set(memberReferences);
-  for (const parameter of requestParams) {
-    for (const [member, source] of FASTIFY_REQUEST_SOURCE_BY_MEMBER) {
-      if (enabledSources.has(source) && members.has(`${parameter}.${member}`)) return source;
-    }
-  }
-  return null;
+  return sourceFromPrefixedMembers(
+    requestParams.map((parameter) => `${parameter}.`),
+    memberReferences,
+    FASTIFY_REQUEST_SOURCE_BY_MEMBER,
+    enabledSources,
+  );
 }
 
 function isFastifyFile(imports: Array<{ source: string }>): boolean {
@@ -79,11 +81,5 @@ function isFastifyFile(imports: Array<{ source: string }>): boolean {
 }
 
 function isFastifyHandlerCall(contextualCallSite: string | undefined): boolean {
-  if (!contextualCallSite) return false;
-  return FASTIFY_HANDLER_METHODS.has(bareName(contextualCallSite));
-}
-
-function bareName(qualified: string): string {
-  const dot = qualified.lastIndexOf('.');
-  return dot < 0 ? qualified : qualified.slice(dot + 1);
+  return isKnownHandlerCall(contextualCallSite, FASTIFY_HANDLER_METHODS);
 }

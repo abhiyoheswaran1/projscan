@@ -2169,3 +2169,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Align the legacy intent-router tests with the accepted release-train roadmap route for build-next prompts, and route the telemetry no-network env read through `isTelemetryNetworkDisabled` so the command-recording function no longer owns both env access and a path to queue deletion.
 - Consequences: Intent routing behavior, telemetry opt-in, no-network behavior, queue handling, sender behavior, event fields, and public telemetry exports remain unchanged. Review no longer reports the telemetry env-to-rm taint flow.
 - Verification: `npm run test` and `projscan preflight --mode before_commit --format json` exposed the blockers before the fix. Focused intent-router tests, telemetry tests, and `projscan review --format json` passed after the fix with no new taint flows.
+
+## 2026-06-18: Extract handler framework source matching helpers
+
+- Status: accepted
+- Context: Handler-based framework dataflow adapters repeated the same enabled-source, member-reference, member-call, route-handler, and known-parameter matching loops across Hono, Express, Fastify, and Koa.
+- Decision: Add `src/core/frameworkSourceMatching.ts` for shared source matching primitives and route the handler-based framework adapters through it while preserving the existing framework-specific gating and source labels.
+- Consequences: Dataflow request-source behavior remains unchanged, but future handler-based framework additions now review against one matching helper instead of several duplicated loops. The framework adapter guard prevents reintroducing per-adapter `bareName` and member-set loops in those adapters.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "shared helpers"` failed before the helper existed, then passed. The full framework source and framework dataflow suites passed after extraction.
