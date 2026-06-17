@@ -2009,3 +2009,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the target detection helper group into `src/core/intentRouterTargetSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 4909 lines / CC 690 to 4830 lines / CC 686. The extracted helper has no imports, no hotspot history, preserves existing target-detection semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "intent target detection"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract understand keyword route signals
+
+- Status: accepted
+- Context: `understandKeywordMatches` remained as a large route-specific helper inside the intent-router hotspot and carried repo, setup, verification, documentation, database, API, and feature-placement routing gates.
+- Decision: Move the understand helper into `src/core/intentRouterUnderstandSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 4830 lines / CC 686 to 4630 lines / CC 654. The extracted helper imports existing planning, repo, and verification signal modules, has no hotspot history, preserves existing understand keyword semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "understand keyword routing"` failed before extraction, then passed. Full slice verification caught stale router imports via lint; those imports were removed and the fixed state passed.

@@ -394,6 +394,21 @@ describe('routeIntent', () => {
     expect(targetSignalsSource).toContain('export function hasPackageChangeTarget');
   });
 
+  it('keeps understand keyword routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterUnderstandSignals.js'");
+    expect(routerSource).not.toContain('function understandKeywordMatches');
+
+    const understandSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterUnderstandSignals.ts'),
+      'utf8',
+    );
+    expect(understandSignalsSource).toContain('export function understandKeywordMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

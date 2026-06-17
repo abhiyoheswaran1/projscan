@@ -7020,3 +7020,55 @@ generic docs/readme/changelog wording should not become a package target.
 Kept change: one target-detection route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Forty Seventh Slice Decision
+
+Selected personas: Onboarding Engineer and Agent-Orchestrating Engineer.
+
+Reason: understand routing is how agents ask for repo orientation, setup,
+scripts, verification, env/config, database setup, documentation placement, and
+feature-placement guidance without stealing narrower search or failure routes.
+Onboarding engineers need this behavior isolated because it encodes how a new
+agent learns where to start.
+
+Smallest fix: move `understandKeywordMatches` into
+`intentRouterUnderstandSignals.ts`; leave route catalog data, route scoring,
+confidence, start-mode handling, and dispatch composition inside
+`intentRouter.ts`. Remove router imports that became stale after the move.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "understand keyword routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterUnderstandSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Understand Keyword Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, understand route entries, route confidence
+  scoring, `routeIntent`, start-mode behavior, keyword scoring, or public route
+  result shape.
+- Do not change repo orientation, setup, scripts, verification, env/config,
+  database setup, documentation-planning, API-change, database-change, or
+  feature-placement keyword semantics except by moving the existing helper into
+  `intentRouterUnderstandSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: "summarize this repo", "explain the architecture", "how do
+I run this locally", "where should I add this feature", "plan docs updates",
+and "how do I run tests" should keep their existing understand or narrower
+routes, while quoted text, env vars, dataflow, test-data, and UI lookup intents
+should remain blocked from generic understand routing.
+
+Kept change: one understand route-signal helper module, one router boundary
+regression, stale-import lint cleanup, existing route/start behavior coverage,
+this persona note, and no public API change.
