@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract hotspot candidate selection
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` still owned code-extension filtering, large-file guardrails, churn/size ordering, and line-count read target selection after scoring, line helpers, issue indexing, git churn, and memory tagging had been isolated.
+- Decision: Move hotspot candidate selection and measured line-count collection into `src/core/hotspotCandidates.ts`.
+- Consequences: Hotspot ranking, limits, max-read safeguards, line estimates, issue joins, and memory tagging stay unchanged, while the analyzer drops to 189 lines and CC 16.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts -t "candidate selection"` plus the full hotspot analyzer test file.
+
 ## 2026-06-17: Extract MCP request handler construction
 
 - Status: accepted

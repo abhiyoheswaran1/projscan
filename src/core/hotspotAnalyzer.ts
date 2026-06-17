@@ -1,42 +1,14 @@
 import type { AuthorShare, FileEntry, FileHotspot, HotspotReport, Issue } from '../types.js';
 import type { CodeGraph } from './codeGraph.js';
+import { collectHotspotCandidateEvidence } from './hotspotCandidates.js';
 import { collectGitChurn, countCommits, isGitRepository } from './hotspotGit.js';
 import { indexIssuesByFile } from './hotspotIssues.js';
-import { countLines, lineCountOrEstimate } from './hotspotLines.js';
+import { lineCountOrEstimate } from './hotspotLines.js';
 import { markAcceptedHotspots } from './hotspotMemory.js';
 import { buildReasons, computeRiskScore, rankAuthors } from './hotspotScoring.js';
 
 export { computeRiskScore } from './hotspotScoring.js';
 
-const CODE_EXTENSIONS = new Set([
-  '.ts',
-  '.tsx',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs',
-  '.py',
-  '.rb',
-  '.go',
-  '.java',
-  '.rs',
-  '.php',
-  '.c',
-  '.cc',
-  '.cpp',
-  '.h',
-  '.hpp',
-  '.cs',
-  '.swift',
-  '.kt',
-  '.kts',
-  '.scala',
-  '.vue',
-  '.svelte',
-]);
-
-const MAX_LINE_READS = 400;
-const MAX_LINE_READ_BYTES = 512 * 1024;
 const DEFAULT_SINCE = '12 months ago';
 
 export interface HotspotOptions {
@@ -92,26 +64,7 @@ export async function analyzeHotspots(
   }
 
   const churnMap = await collectGitChurn(rootPath, since);
-
-  const candidates = files.filter(
-    (f) => CODE_EXTENSIONS.has(f.extension) && f.sizeBytes <= MAX_LINE_READ_BYTES,
-  );
-
-  const candidatesByScore = [...candidates].sort((a, b) => {
-    const ca = churnMap.get(a.relativePath)?.churn ?? 0;
-    const cb = churnMap.get(b.relativePath)?.churn ?? 0;
-    if (cb !== ca) return cb - ca;
-    return b.sizeBytes - a.sizeBytes;
-  });
-
-  const readTargets = candidatesByScore.slice(0, MAX_LINE_READS);
-  const lineCounts = new Map<string, number>();
-  await Promise.all(
-    readTargets.map(async (f) => {
-      const lines = await countLines(f.absolutePath);
-      if (lines !== null) lineCounts.set(f.relativePath, lines);
-    }),
-  );
+  const { candidates, lineCounts } = await collectHotspotCandidateEvidence(files, churnMap);
 
   const issueIndex = indexIssuesByFile(issues, files);
 

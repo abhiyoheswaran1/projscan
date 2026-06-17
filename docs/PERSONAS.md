@@ -4300,3 +4300,52 @@ boundary.
 
 Kept change: one MCP handler module, one maintainability regression, existing
 MCP behavior coverage, this persona note, and no public schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Platform/Release Owner and Agent-Orchestrating Engineer.
+
+Reason: hotspot analysis is the planning signal used to choose future slices.
+The analyzer should make it clear which files become candidates and which files
+get measured line counts before scoring. Keeping extension filtering, max-byte
+guardrails, churn/size ordering, and read limits inline made the high-churn
+orchestrator harder to audit.
+
+Smallest fix: move hotspot candidate selection and measured line-count
+collection into `hotspotCandidates.ts`; keep `hotspotAnalyzer.ts` responsible
+for git availability, churn loading, issue joins, hotspot construction,
+ranking, and memory tagging.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/hotspotAnalyzer.test.ts -t "candidate selection"
+npm run test -- tests/core/hotspotAnalyzer.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json
+npm exec projscan -- file src/core/hotspotCandidates.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Hotspot Candidate Extraction
+
+Delete-list after this slice:
+
+- Do not change code-extension eligibility, max line-read count, max read byte
+  size, churn/size read ordering, hotspot limit handling, ranking, or score
+  calculation.
+- Do not change issue indexing, AST complexity preference, line estimate
+  fallback, memory tagging, or public hotspot report schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: oversized source files should still be skipped as
+candidates; high-churn files should still be prioritized for line reads;
+unreadable files should still fall back to line estimates; files with zero risk
+should still be excluded from ranked output.
+
+Kept change: one hotspot candidate helper module, one maintainability
+regression, existing hotspot behavior coverage, this persona note, and no
+public schema change.

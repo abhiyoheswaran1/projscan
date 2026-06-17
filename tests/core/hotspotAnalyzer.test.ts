@@ -67,6 +67,35 @@ describe('computeRiskScore', () => {
     expect(markAcceptedHotspots!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps hotspot candidate selection and line reads isolated from the analyzer orchestrator', async () => {
+    const analyzerSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/hotspotAnalyzer.ts'),
+      'utf-8',
+    );
+    expect(analyzerSource).not.toContain('CODE_EXTENSIONS');
+    expect(analyzerSource).not.toContain('MAX_LINE_READS');
+    expect(analyzerSource).not.toContain('MAX_LINE_READ_BYTES');
+    expect(analyzerSource).not.toContain('candidatesByScore');
+
+    const candidatesModule = await inspectRepoSourceFile('src/core/hotspotCandidates.ts');
+    const collectEvidence = candidatesModule.functions?.find(
+      (fn) => fn.name === 'collectHotspotCandidateEvidence',
+    );
+    const selectCandidates = candidatesModule.functions?.find(
+      (fn) => fn.name === 'selectHotspotCandidates',
+    );
+    const rankLineReadTargets = candidatesModule.functions?.find(
+      (fn) => fn.name === 'rankLineReadTargets',
+    );
+
+    expect(collectEvidence).toBeDefined();
+    expect(collectEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(selectCandidates).toBeDefined();
+    expect(selectCandidates!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(rankLineReadTargets).toBeDefined();
+    expect(rankLineReadTargets!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,
