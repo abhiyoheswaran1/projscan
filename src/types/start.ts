@@ -43,6 +43,21 @@ export interface StartAdoptionLoop {
   nextCommands: string[];
 }
 
+export interface StartRoadmapWorkstream {
+  id: string;
+  title: string;
+  priority: WorkplanPriority;
+  track: string;
+  verificationCommand?: string;
+}
+
+export interface StartRoadmapPreview {
+  policy: 'product-readiness-plan';
+  readOnly: true;
+  lines: string[];
+  workstreams: StartRoadmapWorkstream[];
+}
+
 export interface StartFirstTenMinutesStep {
   id: string;
   label: string;
@@ -487,6 +502,7 @@ export interface StartReport {
         truncated?: boolean;
       };
     };
+    roadmapPreview?: StartRoadmapPreview;
   };
   topRisks: StartRisk[];
   fixFirst?: FixFirstRecommendation;

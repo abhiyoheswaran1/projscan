@@ -29,6 +29,7 @@ export interface StartReportContext {
   adoptionGaps: StartReport['adoptionGaps'];
   adoptionLoop: NonNullable<StartReport['adoptionLoop']>;
   nextActions: StartReport['nextActions'];
+  roadmapPreview?: StartReport['evidence']['roadmapPreview'];
 }
 
 export function buildStartReportContext(input: BuildStartReportContextInput): StartReportContext {
@@ -74,5 +75,6 @@ export function buildStartReportContext(input: BuildStartReportContextInput): St
     adoptionGaps,
     adoptionLoop,
     nextActions,
+    roadmapPreview: input.mode === 'release' ? input.roadmapPreview : undefined,
   };
 }

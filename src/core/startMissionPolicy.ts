@@ -66,6 +66,16 @@ export function missionActionPlan(
   workplan: WorkplanReport,
   workflow: StartWorkflowRecommendation,
 ): PreflightSuggestedAction[] {
+  if (route?.tool === 'projscan_release_train' && mode !== 'release') {
+    return [
+      {
+        label: `Use projscan_workplan for ${intent ?? mode}`,
+        command: `projscan workplan --mode ${mode} --format json`,
+        tool: 'projscan_workplan',
+        args: { mode },
+      },
+    ];
+  }
   if (route && intent) return actionPlanFromRoute(mode, intent, route);
   const fallback =
     actionFromFixFirst(fixFirst) ?? actionFromWorkplan(workplan) ?? actionFromWorkflow(workflow);

@@ -1207,6 +1207,21 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (entry.tool === 'projscan_release_train') {
     if (keyword === 'releasing') return 2;
     if (['deploy', 'deploying', 'deployed', 'deployment'].includes(keyword)) return 2;
+    if (
+      [
+        'build',
+        'next',
+        'roadmap',
+        'plan',
+        'product',
+        'products',
+        'feature',
+        'features',
+        'workstream',
+        'workstreams',
+      ].includes(keyword)
+    )
+      return 2;
     if (['changed', 'since', 'last'].includes(keyword)) return 2;
     if (['changelog', 'note', 'notes', 'entry', 'summarize', 'summary'].includes(keyword)) return 2;
   }

@@ -1,4 +1,6 @@
 import { expect, test } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { computeStartReport } from '../../src/core/start.js';
 import { makeTempProject } from '../helpers/startProject.js';
@@ -165,20 +167,24 @@ test('start report turns open-ended next-step questions into a workplan', async 
   );
 });
 
-test('start report routes build-next product-planning questions to bug-hunt workplan', async () => {
+test('start report routes build-next product-planning questions to roadmap workstreams', async () => {
   const root = await makeTempProject();
+  await fs.writeFile(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({ name: 'fixture', version: '4.6.0', type: 'module' }, null, 2)}\n`,
+  );
 
   const report = await computeStartReport(root, {
     intent: 'what should we build next',
   });
 
-  expect(report.mode).toBe('bug_hunt');
+  expect(report.mode).toBe('release');
   expect(report.modeSource).toBe('intent');
   expect(report.modeReason).toContain('what should we build next');
-  expect(report.recommendedWorkflow.id).toBe('bug_hunt');
+  expect(report.recommendedWorkflow.id).toBe('release_approval');
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({
-      tool: 'projscan_workplan',
+      tool: 'projscan_release_train',
       confidence: 'high',
       matchedKeywords: expect.arrayContaining(['build', 'next']),
     }),
@@ -186,36 +192,47 @@ test('start report routes build-next product-planning questions to bug-hunt work
   expect(report.missionControl.routedIntent?.matchedKeywords).not.toEqual(['next']);
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan workplan --mode bug_hunt --format json',
-      tool: 'projscan_workplan',
-      args: { mode: 'bug_hunt' },
+      command: 'projscan release-train --format json',
+      tool: 'projscan_release_train',
+      args: {},
     }),
   );
-  expect(report.missionControl.successCriteria).toEqual(
+  expect(report.evidence.roadmapPreview).toEqual(
+    expect.objectContaining({
+      readOnly: true,
+      lines: ['4.5.x', '4.6.x', '4.7.x', '4.8.x', '4.9.x'],
+    }),
+  );
+  expect(report.evidence.roadmapPreview?.workstreams.map((entry) => entry.title)).toEqual(
     expect.arrayContaining([
-      'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
-      'The selected slice has a runnable verification command before implementation starts.',
-      'Deferred product ideas have an explicit reason or follow-up instead of staying in the active workplan.',
+      'Refresh roadmap and release-train surfaces',
+      'Validate swarm coordination in real agent workflows',
+      'Broaden framework dataflow precision',
+      'Add scoped and redacted report export controls',
+      'Ship Python upgrade intelligence and keep reducing hotspots',
     ]),
   );
 
   const roadmap = await computeStartReport(root, {
     intent: 'plan the product roadmap',
   });
-  expect(roadmap.mode).toBe('bug_hunt');
+  expect(roadmap.mode).toBe('release');
   expect(roadmap.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan workplan --mode bug_hunt --format json',
-      tool: 'projscan_workplan',
-      args: { mode: 'bug_hunt' },
+      command: 'projscan release-train --format json',
+      tool: 'projscan_release_train',
+      args: {},
     }),
   );
-  expect(roadmap.missionControl.successCriteria).toEqual(
-    expect.arrayContaining([
-      'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
-      'The selected slice has a runnable verification command before implementation starts.',
-    ]),
+  expect(roadmap.evidence.roadmapPreview?.workstreams.map((entry) => entry.id)).toContain(
+    'rt-4-6-swarm-coordination-validation',
   );
+
+  const bugHunt = await computeStartReport(root, {
+    intent: 'find bugs to fix before the PR',
+  });
+  expect(bugHunt.mode).toBe('bug_hunt');
+  expect(bugHunt.missionControl.primaryAction?.tool).toBe('projscan_bug_hunt');
 });
 
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {

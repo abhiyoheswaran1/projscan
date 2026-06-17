@@ -4,6 +4,7 @@ import { computeWorkplan } from './workplan.js';
 import { loadMissionOutcome } from './missionOutcome.js';
 import { detectStartHarnessHints } from './startHarness.js';
 import { buildStartRiskSources } from './startEvidence.js';
+import { buildStartRoadmapPreview } from './startRoadmapPreview.js';
 import type { ComputeStartOptions } from './startOptions.js';
 import type { WorkplanMode } from '../types.js';
 
@@ -18,7 +19,15 @@ export async function loadStartInputs(
   options: ComputeStartOptions,
   config: StartInputConfig,
 ) {
-  const [setup, workplan, quality, riskSources, missionOutcome, harnessHints] = await Promise.all([
+  const [
+    setup,
+    workplan,
+    quality,
+    riskSources,
+    missionOutcome,
+    harnessHints,
+    roadmapPreview,
+  ] = await Promise.all([
     computeFirstRunDiagnostics(rootPath),
     computeWorkplan(rootPath, { mode: config.mode, maxTasks: config.maxTasks }),
     computeQualityScorecard(rootPath, { maxRisks: config.maxRisks }),
@@ -27,6 +36,7 @@ export async function loadStartInputs(
       ? loadMissionOutcome(rootPath, options.missionDir)
       : Promise.resolve(undefined),
     detectStartHarnessHints(rootPath),
+    config.mode === 'release' ? buildStartRoadmapPreview(rootPath) : Promise.resolve(undefined),
   ]);
 
   return {
@@ -36,5 +46,6 @@ export async function loadStartInputs(
     riskSources,
     missionOutcome,
     harnessHints,
+    roadmapPreview,
   };
 }

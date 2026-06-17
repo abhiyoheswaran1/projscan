@@ -37,6 +37,17 @@ const RELEASE_COMMUNICATION_CONTEXT_TOKENS = [
 ];
 const RELEASE_CHANGE_KEYWORDS = new Set(['build', 'built', 'changed', 'since', 'last']);
 const RELEASE_CHANGE_CONTEXT_TOKENS = ['build', 'built', 'changed', 'change', 'changes'];
+const RELEASE_PLANNING_KEYWORDS = new Set([
+  'plan',
+  'roadmap',
+  'next',
+  'product',
+  'products',
+  'feature',
+  'features',
+  'workstream',
+  'workstreams',
+]);
 const RELEASE_NOTE_KEYWORDS = new Set([
   'note',
   'notes',
@@ -66,8 +77,13 @@ const RELEASE_TRAIN_KEYWORD_RULES: KeywordRule[] = [
   {
     keywords: RELEASE_CHANGE_KEYWORDS,
     matches: (tokens) =>
-      releaseCommunicationContextMatches(tokens) &&
-      hasAnyToken(tokens, RELEASE_CHANGE_CONTEXT_TOKENS),
+      (releaseCommunicationContextMatches(tokens) &&
+        hasAnyToken(tokens, RELEASE_CHANGE_CONTEXT_TOKENS)) ||
+      releasePlanningContextMatches(tokens),
+  },
+  {
+    keywords: RELEASE_PLANNING_KEYWORDS,
+    matches: releasePlanningContextMatches,
   },
   {
     keywords: RELEASE_NOTE_KEYWORDS,
@@ -129,6 +145,27 @@ export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>)
 
 function releaseCommunicationContextMatches(tokens: Set<string>): boolean {
   return hasAnyToken(tokens, RELEASE_COMMUNICATION_CONTEXT_TOKENS);
+}
+
+function releasePlanningContextMatches(tokens: Set<string>): boolean {
+  const planningSignal = hasAnyToken(tokens, [
+    'next',
+    'roadmap',
+    'plan',
+    'workstream',
+    'workstreams',
+  ]);
+  const productSignal = hasAnyToken(tokens, [
+    'build',
+    'product',
+    'products',
+    'feature',
+    'features',
+    'roadmap',
+    'workstream',
+    'workstreams',
+  ]);
+  return planningSignal && productSignal;
 }
 
 function releaseVersionCandidateContextMatches(tokens: Set<string>): boolean {

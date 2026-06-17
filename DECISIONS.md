@@ -2073,3 +2073,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Capture binding names from destructured function parameters and add route-file-scoped Remix dataflow labels for `remix.request.json`, `remix.request.formData`, `remix.request.text`, `remix.request.arrayBuffer`, `remix.request.headers`, `remix.request.url`, `remix.request.signal`, and `remix.params`.
 - Consequences: `projscan dataflow` can report additional additive source labels for `app/routes/**` Remix handlers. Same-shaped helpers outside route modules, or exported helpers that are not Remix request handlers, remain quiet.
 - Verification: `npm run test -- tests/core/ast.references.test.ts tests/core/dataflowFrameworkRemix.test.ts tests/core/dataflowSuiteStructure.test.ts` failed before the AST/source changes, then passed.
+
+## 2026-06-17: Route build-next start prompts to release-train roadmap evidence
+
+- Status: accepted
+- Context: The release-train roadmap task expects `projscan start --intent "what should we build next?"` to surface post-4.4 workstreams, but the intent previously routed to the bug-hunt workplan.
+- Decision: Treat build-next, product roadmap, feature roadmap, and workstream planning prompts as release-train planning context, and add `evidence.roadmapPreview` to release-mode start output using the existing roadmap catalog.
+- Consequences: Start JSON can now show a read-only roadmap preview with release-train lines and workstream titles. Explicit non-release modes still keep their selected workplan action, and explicit bug-hunt prompts remain bug-hunt.
+- Verification: `npm run test -- tests/core/startAgentPlanning.test.ts tests/core/startReviewRouting.test.ts tests/cli/start.test.ts` failed before the routing/preview changes, then passed.

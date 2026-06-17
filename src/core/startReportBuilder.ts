@@ -14,6 +14,7 @@ export interface BuildStartReportInput {
   workplan: WorkplanReport;
   quality: QualityScorecardReport;
   riskSources: StartReport['evidence']['riskSources'];
+  roadmapPreview?: StartReport['evidence']['roadmapPreview'];
   workflow: StartReport['recommendedWorkflow'];
   firstTenMinutes: StartReport['firstTenMinutes'];
   missionControl: StartReport['missionControl'];
@@ -57,6 +58,7 @@ export function buildStartReport(input: BuildStartReportInput): StartReport {
       healthScore: input.quality.health.score,
       mcpReady: mcpReady(input.setup),
       riskSources: input.riskSources,
+      ...(input.roadmapPreview ? { roadmapPreview: input.roadmapPreview } : {}),
     },
     topRisks: input.topRisks,
     ...(input.fixFirst ? { fixFirst: input.fixFirst } : {}),
