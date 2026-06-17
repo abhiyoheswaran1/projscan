@@ -16,13 +16,16 @@ const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['nextUrl.searchParams', 'request.nextUrl.searchParams'],
 ]);
 
-const NEXT_HEADERS_HELPER_SOURCE = 'next.headers';
+const NEXT_HEADERS_MODULE_SOURCE_BY_CALLEE = new Map<string, string>([
+  ['headers', 'next.headers'],
+  ['cookies', 'next.cookies'],
+]);
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
 export const NEXT_ROUTE_REQUEST_SOURCES = [
   ...NEXT_ROUTE_SOURCE_BY_CALLEE.values(),
   ...NEXT_ROUTE_SOURCE_BY_REFERENCE.values(),
-  NEXT_HEADERS_HELPER_SOURCE,
+  ...NEXT_HEADERS_MODULE_SOURCE_BY_CALLEE.values(),
 ];
 
 export function nextRouteRequestSource(
@@ -72,21 +75,25 @@ function nextHeadersHelperSource(
   imports: Array<{ source: string; specifiers?: string[]; kind?: string; typeOnly?: boolean }>,
   enabledSources: Set<string>,
 ): string | null {
-  if (!enabledSources.has(NEXT_HEADERS_HELPER_SOURCE)) return null;
-  if (!directCallSites.includes('headers')) return null;
-  if (!hasNextHeadersImport(imports)) return null;
-  return NEXT_HEADERS_HELPER_SOURCE;
+  const calls = new Set(directCallSites);
+  for (const [callee, source] of NEXT_HEADERS_MODULE_SOURCE_BY_CALLEE) {
+    if (enabledSources.has(source) && calls.has(callee) && hasNextHeadersImport(imports, callee)) {
+      return source;
+    }
+  }
+  return null;
 }
 
 function hasNextHeadersImport(
   imports: Array<{ source: string; specifiers?: string[]; kind?: string; typeOnly?: boolean }>,
+  specifier: string,
 ): boolean {
   return imports.some(
     (imp) =>
       imp.source === 'next/headers' &&
       imp.kind === 'static' &&
       imp.typeOnly !== true &&
-      (imp.specifiers ?? []).includes('headers'),
+      (imp.specifiers ?? []).includes(specifier),
   );
 }
 

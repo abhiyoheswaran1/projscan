@@ -295,4 +295,54 @@ export function helper() {
       report.risks.find((risk) => risk.sourceFn === 'helper' && risk.source === 'next.headers'),
     ).toBeUndefined();
   });
+
+  it('treats imported Next cookies helper as a request source without flagging local helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'account'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'account', 'page.tsx'),
+      `import { cookies } from 'next/headers';
+
+declare const db: { query(sql: string): unknown };
+
+export default async function Page() {
+  const session = (await cookies()).get('session')?.value;
+  return db.query(String(session));
+}
+`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'app', 'account', 'local.ts'),
+      `declare const cache: { query(key: string): unknown };
+
+function cookies() {
+  return {
+    get(name: string) {
+      return { name, value: 'fixture' };
+    },
+  };
+}
+
+export function helper() {
+  return cache.query(String(cookies().get('cache')?.value));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.effectiveSources).toContain('next.cookies');
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFn: 'Page',
+          source: 'next.cookies',
+          sink: 'query',
+        }),
+      ]),
+    );
+    expect(
+      report.risks.find((risk) => risk.sourceFn === 'helper' && risk.source === 'next.cookies'),
+    ).toBeUndefined();
+  });
 });
