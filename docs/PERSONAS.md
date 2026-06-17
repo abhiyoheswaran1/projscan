@@ -4164,3 +4164,47 @@ modified files plus graph evidence to the selected workspace package.
 Kept change: one package-scope helper module, one maintainability regression,
 existing package-scoped review coverage, this persona note, and no public schema
 change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Platform/Release Owner and OSS Maintainer.
+
+Reason: release-train is the public planning surface for current roadmap work.
+The core planner should stay easy to audit for read-only behavior, preflight
+readiness, task ranking, and suggested actions. Legacy/default line fallbacks
+are useful compatibility data, but keeping their branch-heavy catalog inline
+obscured the current planning flow.
+
+Smallest fix: move fallback product-line tracks and fallback tasks into
+`releaseTrainFallbacks.ts`; keep `releaseTrain.ts` responsible for version
+normalization, roadmap catalog lookup, readiness, ranking, and next actions.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/releaseTrain.test.ts -t "fallback tracks and tasks"
+npm run test -- tests/core/releaseTrain.test.ts tests/cli/releaseTrainBugHunt.test.ts tests/mcp/releaseTrainBugHunt.test.ts tests/types/public-release-train-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/releaseTrain.ts --format json
+npm exec projscan -- file src/core/releaseTrainFallbacks.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Release-Train Fallback Extraction
+
+Delete-list after this slice:
+
+- Do not change release-train schema, default roadmap lines, task IDs, task
+  order, readiness verdicts, suggested-action labels, or read-only behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: 2.x and 3.x fallback versions should still return the same
+themes and task IDs; 4.4+ should still prefer roadmap-catalog post-4.4 lines;
+preflight blockers should still inject `rt-blockers-first` ahead of plan tasks.
+
+Kept change: one fallback catalog module, one source-boundary regression,
+existing release-train behavior coverage, this persona note, and no public
+schema change.

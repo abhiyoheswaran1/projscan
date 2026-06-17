@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract release-train fallback catalog
+
+- Status: accepted
+- Context: `src/core/releaseTrain.ts` still owned legacy/default product-line fallback tracks and tasks, making the current release-train planner hard to scan.
+- Decision: Move fallback tracks and fallback tasks into `src/core/releaseTrainFallbacks.ts`; keep the planner focused on current package version, roadmap catalog lookup, preflight readiness, ranking, and suggested actions.
+- Consequences: Release-train output stays unchanged, while `src/core/releaseTrain.ts` drops from 496 to 166 lines and the branch-heavy fallback catalog is isolated.
+- Verification: `npm run test -- tests/core/releaseTrain.test.ts -t "fallback tracks and tasks"` plus focused release-train tests.
+
 ## 2026-06-17: Extract review package scoping
 
 - Status: accepted

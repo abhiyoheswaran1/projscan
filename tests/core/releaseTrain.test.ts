@@ -205,6 +205,20 @@ test('release train defaults to the post-4.4 product plan for 4.4 and newer', as
   );
 });
 
+test('release train keeps fallback tracks and tasks out of the core planner', async () => {
+  const planner = await fs.readFile(path.join(process.cwd(), 'src/core/releaseTrain.ts'), 'utf-8');
+  expect(planner).not.toContain("line.startsWith('2.3')");
+  expect(planner).not.toContain("track.line.startsWith('2.3')");
+  expect(planner).not.toContain("Quality Hardening");
+
+  const fallbacks = await fs.readFile(
+    path.join(process.cwd(), 'src/core/releaseTrainFallbacks.ts'),
+    'utf-8',
+  );
+  expect(fallbacks).toContain('fallbackTrackForLine');
+  expect(fallbacks).toContain('fallbackTasksForTrack');
+});
+
 test('release train marks blockers when preflight blocks', async () => {
   const root = await makeTempProject('2.2.0');
   await writeJson(path.join(root, 'package.json'), {
