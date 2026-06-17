@@ -71,6 +71,19 @@ describe('loadConfig', () => {
     expect(basicsSource).not.toContain("from './config.js'");
   });
 
+  it('keeps config source discovery out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('CONFIG_CANDIDATES');
+    expect(configSource).not.toContain('function safeParse');
+    expect(configSource).not.toContain('package.json');
+
+    const sourcesSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configSources.ts'),
+      'utf8',
+    );
+    expect(sourcesSource).not.toContain("from './config.js'");
+  });
+
   it('clamps minScore to 0..100', async () => {
     await fs.writeFile(path.join(tmp, '.projscanrc.json'), JSON.stringify({ minScore: 250 }));
     const result = await loadConfig(tmp);
