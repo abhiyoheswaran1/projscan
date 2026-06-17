@@ -109,6 +109,33 @@ describe('detectPythonProject', () => {
     ]);
   });
 
+  it('aggregates supported root lockfiles in deterministic order', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'poetry.lock'),
+      ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+    );
+    await fs.writeFile(
+      path.join(tmp, 'uv.lock'),
+      ['[[package]]', 'name = "httpx"', 'version = "0.27.2"'].join('\n'),
+    );
+    await fs.writeFile(
+      path.join(tmp, 'pyproject.toml'),
+      ['[project]', 'dependencies = ["requests>=2", "httpx>=0.27"]'].join('\n'),
+    );
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('pyproject.toml'),
+      fileEntry('poetry.lock'),
+      fileEntry('uv.lock'),
+    ]);
+
+    expect(info?.hasLockfile).toBe(true);
+    expect(info?.locked).toEqual([
+      { name: 'requests', version: '2.31.0', source: 'poetry.lock', line: 3 },
+      { name: 'httpx', version: '0.27.2', source: 'uv.lock', line: 3 },
+    ]);
+  });
+
   it('uses pdm.lock package versions as lockfile evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pdm.lock'),

@@ -326,6 +326,38 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual(['app/client.py']);
   });
 
+  it('uses later supported Python lockfiles when earlier lockfiles lack the package', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        ['[project]', 'name = "py-app"', 'dependencies = ["httpx>=0.27"]'].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'poetry.lock',
+        ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'uv.lock',
+        ['[[package]]', 'name = "httpx"', 'version = "0.27.2"'].join('\n'),
+      ),
+      await writeFile(tmp, 'app/client.py', 'import httpx\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'httpx', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.27');
+    expect(preview.installed).toBe('0.27.2');
+    expect(preview.latest).toBe('0.27.2');
+    expect(preview.installedSource).toBe('uv.lock');
+    expect(preview.installedLine).toBe(3);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
+
   it('uses pdm.lock as Python current-version evidence', async () => {
     const pdmLock = ['[[package]]', 'name = "requests"', 'version = "2.31.0"'].join('\n');
     const files = [

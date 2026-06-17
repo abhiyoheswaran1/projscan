@@ -24,11 +24,18 @@ const LOCKFILE_PARSERS: Record<string, (content: string, sourceFile: string) => 
 export async function readPythonLockfile(
   rootPath: string,
 ): Promise<{ name: string; content: string } | null> {
+  return (await readPythonLockfiles(rootPath))[0] ?? null;
+}
+
+export async function readPythonLockfiles(
+  rootPath: string,
+): Promise<Array<{ name: string; content: string }>> {
+  const out: Array<{ name: string; content: string }> = [];
   for (const name of LOCKFILES) {
     const content = await tryRead(path.join(rootPath, name));
-    if (content !== null) return { name, content };
+    if (content !== null) out.push({ name, content });
   }
-  return null;
+  return out;
 }
 
 export function parsePythonLockfile(name: string, content: string): PythonLockedDep[] {

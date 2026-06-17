@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
-import { parsePythonLockfile, readPythonLockfile } from './pythonLockfiles.js';
+import { parsePythonLockfile, readPythonLockfiles } from './pythonLockfiles.js';
 import { parsePyproject } from './pythonPyproject.js';
 import { hasPythonProjectEvidence } from './pythonProjectEvidence.js';
 import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
@@ -64,9 +64,12 @@ export async function detectPythonProject(
   if (roots.length === 0) roots.push('.');
 
   // Lockfile detection.
-  const lockfile = await readPythonLockfile(rootPath);
-  const hasLockfile = lockfile !== null || locked.length > 0;
-  if (lockfile) locked.unshift(...parsePythonLockfile(lockfile.name, lockfile.content));
+  const lockfiles = await readPythonLockfiles(rootPath);
+  const hasLockfile = lockfiles.length > 0 || locked.length > 0;
+  const lockfileDeps = lockfiles.flatMap((lockfile) =>
+    parsePythonLockfile(lockfile.name, lockfile.content),
+  );
+  locked.unshift(...lockfileDeps);
 
   return {
     packageRoots: dedupe(roots),
