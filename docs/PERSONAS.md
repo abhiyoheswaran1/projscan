@@ -9060,3 +9060,50 @@ and the combined start/bug-hunt-routing run should report 37 tests across
 
 Kept change: one bug-hunt workflow start test split, this persona note, and no
 release action.
+
+## One Hundred Ninetieth Slice Decision
+
+Selected personas: Codebase-Exploring Agent, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the bug-hunt workflow split, `tests/core/start.test.ts` still held
+direct file-inspection routing scenarios for explain, risk, ownership,
+reviewer, and authorship prompts. These cases share one behavior surface:
+exact-file understanding prompts should route straight to `projscan file` while
+preserving related alternatives such as quality scorecard, evidence pack, or
+session history.
+
+Smallest fix: move the five direct file-inspection scenarios into
+`tests/core/startFileInspectionRouting.test.ts` and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 1,192 lines to 982 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "file explanation intent|exact-file risk questions|file ownership questions|exact-file reviewer questions|file authorship questions"
+npm run test -- tests/core/startFileInspectionRouting.test.ts -t "file explanation intent|exact-file risk questions|file ownership questions|exact-file reviewer questions|file authorship questions"
+npm run test -- tests/core/start.test.ts tests/core/startFileInspectionRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startFileInspectionRouting.test.ts --format json
+```
+
+## Review Guardrails: Start File-Inspection Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan file`, exact-file extraction, ownership/reviewer
+  routing, authorship routing, ready actions, success criteria, package
+  version, release artifacts, publish behavior, deploy behavior, push behavior,
+  or merge behavior.
+- Do not weaken coverage for explain, risk, ownership, reviewer, or authorship
+  prompts that name an exact file path.
+- Do not broaden this into file-risk scoring, git history, or reviewer
+  selection behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused file-inspection run should report five tests,
+and the combined start/file-inspection-routing run should report 30 tests across
+`tests/core/start.test.ts` and `tests/core/startFileInspectionRouting.test.ts`.
+
+Kept change: one file-inspection start test split, this persona note, and no
+release action in this slice.
