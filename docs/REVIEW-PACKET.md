@@ -5,7 +5,7 @@ Date: 2026-06-16
 This packet packages the current post-4.4 implementation train for review.
 It originally held release action until explicit approval. On 2026-06-16 the
 user approved finishing the bug pass and cutting the next version, so this
-packet is now the review evidence behind the 4.5.0 release candidate.
+packet is now the review evidence behind the 4.6.0 release candidate.
 
 ## Decision Frame
 
@@ -18,7 +18,7 @@ The team/persona loop chose review readiness over starting another feature:
 - OSS Maintainer / MCP Adopter: needs proof examples more than another surface.
 
 Result: package the train, refresh evidence, accept the manual scale sign-off
-after the broad bug pass, and release as 4.5.0 if release gates pass.
+after the broad bug pass, and release as 4.6.0 if release gates pass.
 
 ## Scope
 
@@ -154,7 +154,7 @@ Package/dependency surface:
 Docs claims:
 
 - README and Guide no longer claim Python upgrade preview is Node-only.
-- Roadmap/release-train docs now distinguish the completed 4.5.0 train from
+- Roadmap/release-train docs now distinguish the completed 4.6.0 train from
   the next validation work.
 - Adoption examples are local-first and do not require a daemon or cloud
   service.
@@ -225,7 +225,7 @@ Alternative split:
 
 Release option:
 
-- The user approved release work after a big bug pass. Proceed with one 4.5.0
+- The user approved release work after a big bug pass. Proceed with one 4.6.0
   release train if gates pass; stop on concrete release blockers or missing
   channel credentials.
 

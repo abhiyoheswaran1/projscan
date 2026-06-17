@@ -35,16 +35,16 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.5.0
+## What's New in 4.6.0
 
-4.5.0 packages the post-4.4 intelligence train: current roadmap planning, shareable evidence controls, Python upgrade previews, framework dataflow precision, and concrete adoption workflows.
+4.6.0 hardens the agent workflow loop: broader framework dataflow precision, coordination evidence for multi-agent work, public code graph types, and a smaller, easier-to-review routing test surface.
 
-- **Current release train.** `projscan release-train` now defaults 4.4.x and newer projects to the current 4.5.x through 4.9.x product lines instead of stale shipped 3.x/4.0 work.
-- **Shareable evidence controls.** `analyze`, `doctor`, and `ci` accept `--report-policy`, `--report-scope`, and `--redact-paths`; `.projscanrc` can define reusable `reportPolicies` presets.
-- **Python upgrade previews.** `projscan upgrade requests` and MCP `projscan_upgrade` now read Python manifests, Poetry/Pipfile/uv/PDM/Conda lockfiles, pinned requirements/constraints, and importers offline.
-- **Framework dataflow precision.** Next.js, Hono, Express, Fastify, and Koa request sources are framework-gated and fixture-backed, including Next route URLs, Hono validator output, Express/Fastify/Koa request IP metadata, and Express/Koa header-accessor patterns without flagging lookalike helpers.
-- **Adoption proof recipes.** New docs cover agent orchestration, package ownership, policy plugins, swarm coordination, and scoped evidence workflows teams can copy into real reviews.
-- **Readiness cleanup.** The release packet documents the broad bug pass, review-risk sign-off, rollback plan, and verification evidence for the train.
+- **More framework dataflow coverage.** Next `nextUrl`, Hono URL reads, Express URL reads, Koa URL reads, and Fastify URL reads are now framework-gated request sources.
+- **Coordination evidence.** Agent hints include concrete local coordination evidence so teams can see which command answered the collision or handoff question.
+- **Public code graph types.** Code graph result types are exported for package consumers that build on projscan results.
+- **Routing hardening.** Mission Control start, intent router, review, CLI, and MCP coverage has been split into focused suites while preserving public behavior.
+- **Release cleanup.** The high-churn `tests/core/start.test.ts` matrix has been reduced to a small default/workspace/ownership/coupling suite with focused companion files.
+- **Bug fixes.** MCP watch IDs, request notifications, no-release continuation routing, agent harness proof routing, Python upgrade evidence, scoped dependency redaction, path-safe file links, unresolved review refs, and inspector purpose detection were tightened.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 

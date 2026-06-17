@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.6.0]
+
+2026-06-17 - "Agent Coordination And Routing Hardening"
+
+### Added
+
+- Added framework-gated request-source coverage for Next `nextUrl`, Hono URL
+  reads, Express URL reads, Koa URL reads, and Fastify URL reads in dataflow
+  analysis.
+- Added coordination evidence to agent hints so multi-agent workflows can show
+  the concrete local command path behind coordination decisions.
+- Exported code graph result types for public consumers.
+
+### Changed
+
+- Split the largest Mission Control start, intent router, review, CLI, and MCP
+  test surfaces into focused suites while preserving public behavior.
+- Decomposed intent routing, code graph parsing/indexing, release evidence,
+  Python/npm upgrade preview, CLI config/reporting, and MCP transport helpers
+  into smaller modules.
+- Reduced `tests/core/start.test.ts` from a very large routing matrix to a
+  small default/workspace/ownership/coupling suite with focused companion files.
+
+### Fixed
+
+- Fixed MCP watch IDs to use UUIDs and ignored MCP request notifications that
+  are not actionable server work.
+- Fixed no-release continuation and agent harness proof intents so they route
+  to the expected local workflow evidence.
+- Fixed Python upgrade evidence selection when npm install evidence is absent.
+- Fixed scoped dependency workspace path redaction and path-safe file inspection
+  issue links.
+- Fixed unresolved review head refs and inspector purpose false positives.
+
+### Security
+
+- Expanded framework request-source detection remains import/handler gated and
+  fixture-backed to avoid broad lookalike matches.
+- Scoped dependency redaction remains local-only and does not add telemetry,
+  network calls, or secret-value reads.
+
 ## [4.5.0]
 
 2026-06-16 - "Review-Ready Intelligence Train"
