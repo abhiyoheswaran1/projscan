@@ -7981,3 +7981,48 @@ MCP handoff/session tests still persist session state under the same temp root.
 
 Kept change: one test fixture cleanup across CLI and MCP start suites, this
 persona note, and no release action.
+
+## One Hundred Sixty Seventh Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, Test Steward,
+Release Safety Reviewer, and Agent Workflow Maintainer.
+
+Reason: `tests/core/start.test.ts` remained the largest start-router hotspot
+after fixture cleanup. The release-routing assertions at the end of the file
+were cohesive, independent, and large enough to move without changing runtime
+behavior or weakening coverage.
+
+Smallest fix: move the release-readiness, check-before-release, and
+release-note/changelog start-routing tests into
+`tests/core/startReleaseRouting.test.ts`. Keep the assertions unchanged so the
+split is reviewable as a coverage-preserving test organization change.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts
+npm run test -- tests/core/start.test.ts tests/core/startReleaseRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startReleaseRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Release Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan start`, release-train routing, router scoring, CLI
+  behavior, MCP behavior, package version, release artifacts, publish behavior,
+  deploy behavior, push behavior, or merge behavior.
+- Do not remove release-routing coverage for release, deploy, deployment,
+  check-before-release, release-note, changelog, and changed-since-release
+  phrasing.
+- Do not claim `tests/core/start.test.ts` is fully resolved; it is still large
+  and should keep shrinking through domain-specific test files.
+
+Reviewer edge case: the focused test run should still report 93 total tests
+across `tests/core/start.test.ts` and
+`tests/core/startReleaseRouting.test.ts`, preserving the pre-split coverage
+count while removing release routing from the monolithic file.
+
+Kept change: one focused release-routing test split, this persona note, and no
+release action.
