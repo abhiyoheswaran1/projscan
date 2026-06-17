@@ -1,12 +1,9 @@
-import { computeFirstRunDiagnostics, getWorkflowRecipes } from './adoption.js';
+import { getWorkflowRecipes } from './adoption.js';
 import { fixFirstFromStartRisk } from './fixFirst.js';
 import { buildFirstTenMinutes } from './onboarding.js';
-import { computeQualityScorecard } from './qualityScorecard.js';
-import { computeWorkplan } from './workplan.js';
-import { loadMissionOutcome } from './missionOutcome.js';
-import { detectStartHarnessHints } from './startHarness.js';
 import { buildAdoptionLoop } from './startAdoptionLoop.js';
-import { buildStartCoordinationHints, buildStartRiskSources } from './startEvidence.js';
+import { buildStartCoordinationHints } from './startEvidence.js';
+import { loadStartInputs } from './startInputs.js';
 import { buildStartNextActions } from './startNextActions.js';
 import { normalizeStartOptions, type ComputeStartOptions } from './startOptions.js';
 import { chooseWorkflow, combineRisks } from './startMissionPolicy.js';
@@ -22,16 +19,8 @@ export async function computeStartReport(
   options: ComputeStartOptions = {},
 ): Promise<StartReport> {
   const { intent, modeResolution, mode, maxTasks, maxRisks } = normalizeStartOptions(options);
-  const [setup, workplan, quality, riskSources, missionOutcome, harnessHints] = await Promise.all([
-    computeFirstRunDiagnostics(rootPath),
-    computeWorkplan(rootPath, { mode, maxTasks }),
-    computeQualityScorecard(rootPath, { maxRisks }),
-    buildStartRiskSources(rootPath),
-    options.missionDir
-      ? loadMissionOutcome(rootPath, options.missionDir)
-      : Promise.resolve(undefined),
-    detectStartHarnessHints(rootPath),
-  ]);
+  const { setup, workplan, quality, riskSources, missionOutcome, harnessHints } =
+    await loadStartInputs(rootPath, options, { mode, maxTasks, maxRisks });
   const workflow = chooseWorkflow(mode, getWorkflowRecipes().recipes);
   const topRisks = combineRisks(workplan, quality.topRisks, maxRisks);
   const fixFirst = workplan.fixFirst ?? fixFirstFromStartRisk(topRisks[0]);
