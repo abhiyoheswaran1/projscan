@@ -38,3 +38,24 @@ it('keeps database sink classification out of the dataflow traversal module', ()
   expect(classifierSource).toContain('export function isDefaultMisidentifiedDatabaseSink');
   expect(classifierSource).not.toContain("from './dataflow.js'");
 });
+
+it('keeps function indexing and bridge traversal out of the dataflow entrypoint', () => {
+  const dataflowSource = fs.readFileSync('src/core/dataflow.ts', 'utf8');
+  expect(dataflowSource).not.toContain('function buildFunctionIndex');
+  expect(dataflowSource).not.toContain('function buildImportedFilesByFile');
+  expect(dataflowSource).not.toContain('function functionNode');
+  expect(dataflowSource).not.toContain('function findReachable');
+  expect(dataflowSource).not.toContain('function resolveCalleeTargets');
+  expect(dataflowSource).not.toContain('COLLISION_PRONE_CALLEES');
+  expect(dataflowSource).not.toContain('function isCollisionProneCallee');
+  expect(dataflowSource).not.toContain('function pickSourceHit');
+  expect(dataflowSource).not.toContain('function pickSinkHit');
+  expect(dataflowSource).not.toContain('function bareName');
+  expect(dataflowSource).not.toContain('function uniqueFiles');
+  expect(dataflowSource).not.toContain('function compareRisks');
+
+  const traversalSource = fs.readFileSync('src/core/dataflowTraversal.ts', 'utf8');
+  expect(traversalSource).toContain('export function buildFunctionIndex');
+  expect(traversalSource).toContain('export function findReachable');
+  expect(traversalSource).not.toContain("from './dataflow.js'");
+});
