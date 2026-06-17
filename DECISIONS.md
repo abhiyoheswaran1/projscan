@@ -1953,3 +1953,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move that matcher cluster into `src/core/intentRouterVerificationSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6063 lines / CC 838 to 5928 lines / CC 800. The extracted helper imports only existing repo and regression signal helpers, has no hotspot history, preserves the existing verification/coverage keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "verification and coverage routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract general lookup search route signals
+
+- Status: accepted
+- Context: Route-handler, feature-flag, env-var, quoted debug text, observability, authorization, config, migration, generated-code, and documentation lookup routing formed a general search matcher cluster inside the intent-router hotspot.
+- Decision: Move that matcher cluster into `src/core/intentRouterSearchLookupSignals.ts`, while keeping dataflow, route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 5928 lines / CC 800 to 5582 lines / CC 761. The extracted helper has no imports, no hotspot history, preserves existing lookup keyword semantics, and no public route schema change. Projscan reports a potential TODO/FIXME on the helper only because an existing `todo` keyword token moved with the authorization blocker list.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "general lookup search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

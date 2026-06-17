@@ -247,6 +247,31 @@ describe('routeIntent', () => {
     expect(verificationSignalsSource).toContain('export function coverageKeywordMatches');
   });
 
+  it('keeps general lookup search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchLookupSignals.js'");
+    expect(routerSource).not.toContain('function searchRouteHandlerContextMatches');
+    expect(routerSource).not.toContain('function searchFeatureFlagContextMatches');
+    expect(routerSource).not.toContain('function searchEnvLookupContextMatches');
+    expect(routerSource).not.toContain('function searchQuotedDebugTextContextMatches');
+    expect(routerSource).not.toContain('function searchObservabilityContextMatches');
+    expect(routerSource).not.toContain('function searchAuthorizationContextMatches');
+    expect(routerSource).not.toContain('function searchConfigLookupContextMatches');
+    expect(routerSource).not.toContain('function searchMigrationLookupContextMatches');
+    expect(routerSource).not.toContain('function searchGeneratedContextMatches');
+    expect(routerSource).not.toContain('function searchDocumentationContextMatches');
+
+    const lookupSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchLookupSignals.ts'),
+      'utf8',
+    );
+    expect(lookupSignalsSource).toContain('export function searchRouteHandlerContextMatches');
+    expect(lookupSignalsSource).toContain('export function searchDocumentationContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

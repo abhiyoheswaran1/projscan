@@ -6671,3 +6671,55 @@ language should still route to regression planning.
 Kept change: one verification/coverage route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Fortieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Platform Maintainer.
+
+Reason: general lookup search routing is how agents find route handlers, feature
+flags, env-var usage, quoted error text, observability code, authorization
+checks, config files, migrations, generated code, and documentation without
+turning planning or dataflow requests into search results. Platform maintainers
+need this logic isolated because it is high-volume routing glue, not route
+catalog policy.
+
+Smallest fix: move the general lookup search matcher cluster into
+`intentRouterSearchLookupSignals.ts`; leave explicit dataflow/risk helpers,
+route catalog data, route scoring, confidence, start-mode handling, and
+dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "general lookup search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchLookupSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: General Lookup Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, explicit dataflow/risk
+  helpers, route confidence scoring, `routeIntent`, start-mode behavior, or
+  public route result shape.
+- Do not change route-handler, feature-flag, env-var, quoted debug,
+  observability, authorization, config, migration, generated-code, or
+  documentation lookup keyword semantics except by moving the existing matcher
+  cluster into `intentRouterSearchLookupSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "where is LOGIN_ENDPOINT used", "find the webhook
+handler", "where are metrics emitted", "where is RBAC checked", and "find
+generated code" should still route to search, while "add auth checks" and
+"plan a zero downtime migration" should stay out of lookup search.
+
+Kept change: one general lookup search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
