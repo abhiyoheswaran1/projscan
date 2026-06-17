@@ -5,6 +5,7 @@ import type { AstImport, AstExport, AstResult, FunctionInfo } from './ast.js';
 import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
+import { computeFanIn, computeFanOut } from './codeGraphFanMetrics.js';
 import { expandLocalStarReexports, isLocalStarReexport } from './codeGraphReexports.js';
 
 export interface GraphFile {
@@ -226,87 +227,6 @@ function rebuildCrossFileIndexes(
   }
 
   return { localImporters, packageImporters, symbolDefs };
-}
-
-/**
- * 0.15.0+ — per-function fan-in. For each function name across the
- * graph, count how many OTHER files include the name in their
- * `callSites`. Mutates `functions[*].fanIn` in place. Approximate:
- * shared names across files attribute to every definition.
- */
-function computeFanIn(graphFiles: Map<string, GraphFile>): void {
-  const callerFilesByName = new Map<string, Set<string>>();
-  for (const gf of graphFiles.values()) {
-    for (const name of gf.callSites ?? []) {
-      let set = callerFilesByName.get(name);
-      if (!set) {
-        set = new Set();
-        callerFilesByName.set(name, set);
-      }
-      set.add(gf.relativePath);
-    }
-  }
-  for (const gf of graphFiles.values()) {
-    if (!gf.functions || gf.functions.length === 0) continue;
-    for (const fn of gf.functions) {
-      const bare = bareName(fn.name);
-      const callers = callerFilesByName.get(bare);
-      // Subtract self if the function's own file appears in the caller
-      // set (self-call from within the same file).
-      fn.fanIn = !callers ? 0 : callers.size - (callers.has(gf.relativePath) ? 1 : 0);
-    }
-  }
-}
-
-/**
- * 1.2.0+ — per-function fan-out. For each function with per-function
- * callSites, count how many distinct callee names match a function
- * defined SOMEWHERE in the graph. Library / constructor / unknown
- * method calls drop — fan-out is "internal" coupling, not raw call
- * count. Mutates `functions[*].fanOut` in place.
- */
-function computeFanOut(graphFiles: Map<string, GraphFile>): void {
-  const definedNames = new Set<string>();
-  for (const gf of graphFiles.values()) {
-    if (!gf.functions) continue;
-    for (const fn of gf.functions) definedNames.add(bareName(fn.name));
-  }
-  for (const gf of graphFiles.values()) {
-    if (!gf.functions || gf.functions.length === 0) continue;
-    for (const fn of gf.functions) {
-      if (!fn.callSites) {
-        fn.fanOut = 0;
-        continue;
-      }
-      // 1.9+ — hoist bareName(fn.name) out of the inner loop. Was
-      // recomputing the string-slice for every callee; on a 50K-file
-      // repo averaging 20 functions × 30 call sites that's ~30M
-      // redundant slices. The bare name is per-function-constant.
-      const selfBare = bareName(fn.name);
-      let count = 0;
-      const seen = new Set<string>();
-      for (const callee of fn.callSites) {
-        if (seen.has(callee)) continue;
-        seen.add(callee);
-        if (callee === selfBare) continue; // self-recursion
-        if (definedNames.has(callee)) count++;
-      }
-      fn.fanOut = count;
-    }
-  }
-}
-
-/**
- * Function names in the graph are sometimes qualified (`Class.method` for
- * methods, `Class.<init>` for Java constructors). callSites only carries
- * the bare name (the called identifier), so we strip the class/receiver
- * prefix to do the lookup. Falls back to the original on names without a
- * dot.
- */
-function bareName(qualified: string): string {
-  const dot = qualified.lastIndexOf('.');
-  if (dot < 0) return qualified;
-  return qualified.slice(dot + 1);
 }
 
 /**

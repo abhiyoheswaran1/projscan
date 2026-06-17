@@ -5344,3 +5344,52 @@ custom source/sink config makes it intentional.
 Kept change: one taint matching helper module, one maintainability regression,
 existing taint behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Twelfth Slice Decision
+
+Selected personas: Platform/Release Owner and Agent-Orchestrating Senior
+Engineer.
+
+Reason: after the taint matching extraction, `src/core/codeGraph.ts` remained
+the highest-complexity production hotspot with a clear private boundary. The
+file still mixed graph parsing/index orchestration with per-function fan-in and
+fan-out metric calculation.
+
+Smallest fix: move fan-in, fan-out, and qualified-name bare-name matching into
+`codeGraphFanMetrics.ts`; keep `codeGraph.ts` responsible for file parsing,
+adapter context preparation, import/export index rebuilding, incremental
+updates, and public query APIs.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/codeGraph.fanIn.test.ts -t "fan metric computation"
+npm run test -- tests/core/codeGraph.fanIn.test.ts tests/core/codeGraph.fanOut.test.ts tests/core/codeGraph.incremental.test.ts tests/core/codeGraph.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/codeGraph.ts --format json
+npm exec projscan -- file src/core/codeGraphFanMetrics.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Code Graph Fan Metrics Extraction
+
+Delete-list after this slice:
+
+- Do not change `GraphFile`, `CodeGraph`, `buildCodeGraph`,
+  `incrementallyUpdateGraph`, `toPackageName`, or query API exports.
+- Do not change import resolution, local star re-export expansion, symbol
+  definition indexing, package importer indexing, or incremental parse/update
+  behavior.
+- Do not change fan-in self-file subtraction, fan-out distinct callee counting,
+  self-recursion suppression, or class-method bare-name matching.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: incremental graph updates should still recompute fan-in and
+fan-out after edited files are re-parsed and cross-file indexes are rebuilt.
+
+Kept change: one code graph fan-metrics helper module, one maintainability
+regression, existing fan-in/fan-out and incremental graph coverage, this persona
+note, and no public API change.

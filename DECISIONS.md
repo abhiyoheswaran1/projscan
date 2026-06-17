@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract code graph fan metrics
+
+- Status: accepted
+- Context: `src/core/codeGraph.ts` remained a high-complexity production hotspot and still owned per-function fan-in/fan-out metric calculation in addition to parsing, import resolution, index rebuilding, and incremental updates.
+- Decision: Move per-function fan-in, fan-out, and qualified-name bare-name matching into `src/core/codeGraphFanMetrics.ts`.
+- Consequences: Build and incremental graph updates still mutate `functions[*].fanIn` and `functions[*].fanOut` in place, self-call/self-recursion suppression, distinct internal callee counting, class-method bare-name matching, public `CodeGraph` / `GraphFile` exports, and query APIs stay unchanged, while `src/core/codeGraph.ts` drops from 477 lines / CC 62 to 397 lines / CC 39.
+- Verification: `npm run test -- tests/core/codeGraph.fanIn.test.ts -t "fan metric computation"` plus the code graph fan-in, fan-out, incremental, and query behavior test files.
+
 ## 2026-06-17: Extract taint source and sink matching
 
 - Status: accepted
