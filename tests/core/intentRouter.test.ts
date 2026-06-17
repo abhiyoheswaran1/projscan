@@ -1,7 +1,28 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { routeIntent, ROUTE_CATALOG } from '../../src/core/intentRouter.js';
 
 describe('routeIntent', () => {
+  it('keeps dependency and coupling keyword routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterDependencySignals.js'");
+    expect(routerSource).not.toContain('function dependenciesKeywordMatches');
+    expect(routerSource).not.toContain('function couplingKeywordMatches');
+    expect(routerSource).not.toContain('function auditKeywordMatches');
+    expect(routerSource).not.toContain('function workspacesKeywordMatches');
+
+    const dependencySignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterDependencySignals.ts'),
+      'utf8',
+    );
+    expect(dependencySignalsSource).toContain('export function dependenciesKeywordMatches');
+    expect(dependencySignalsSource).toContain('export function couplingKeywordMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

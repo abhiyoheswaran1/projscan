@@ -5489,3 +5489,50 @@ exit nonzero on stable-surface regressions.
 Kept change: one stability comparison helper module, one focused script test,
 existing script/stability behavior coverage, this persona note, and no release
 or baseline update.
+
+## One Hundred Fifteenth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer Evaluating
+MCP Adoption.
+
+Reason: `src/core/intentRouter.ts` remained the largest production hotspot, and
+dependency/coupling routing is an adoption-sensitive surface because agents ask
+for package importers, dependency health, audit, workspace ownership, and
+architecture risk before choosing tools.
+
+Smallest fix: move dependency, audit, package lookup, workspace, bloat, cycle,
+and coupling route-signal helpers into `intentRouterDependencySignals.ts`;
+leave route catalog data, scoring, confidence, and dispatch composition inside
+`intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterDependencySignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Dependency Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, route tool IDs, CLI command strings, confidence
+  scoring, `routeIntent`, or public route result shape.
+- Do not change dependency/audit/workspace/package/coupling keyword semantics
+  except by moving the existing cohesive checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: package lookup questions with file-path-like input should
+still avoid the generic package dependency lookup route when `hasFilePathTarget`
+is true.
+
+Kept change: one dependency route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.
