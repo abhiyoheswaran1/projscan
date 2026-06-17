@@ -8728,3 +8728,52 @@ tests, and the combined start/review-routing run should report 67 tests across
 
 Kept change: one branch/rebase review-routing start test split, this persona
 note, and no release action.
+
+## One Hundred Eighty Third Slice Decision
+
+Selected personas: Incident-Driven Developer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the branch-review split, `tests/core/start.test.ts` still mixed
+general start routing with production incident, stack-trace, and local setup
+blocker regression-routing cases. These cases share one behavior surface:
+operational failures should route to focused regression-plan evidence before
+the developer starts changing code.
+
+Smallest fix: move the three production/setup regression-routing scenarios into
+the existing `tests/core/startRegressionRouting.test.ts` file and keep the
+remaining start routing matrix in `tests/core/start.test.ts`. This preserves
+behavior coverage while reducing the original start test file from 1,971 lines
+to 1,864 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "production incidents|stack traces|local setup blockers"
+npm run test -- tests/core/startRegressionRouting.test.ts -t "production incidents|stack traces|local setup blockers"
+npm run test -- tests/core/start.test.ts tests/core/startRegressionRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startRegressionRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Regression Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan regression-plan`, focused regression level selection,
+  production incident success criteria, stack-trace search alternatives, local
+  setup blocker success criteria, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not weaken coverage for production-down prompts, stack trace lookup
+  prompts, port-in-use blockers, peer dependency install conflicts, or focused
+  regression proof commands.
+- Do not broaden this into route-scoring or incident-handling behavior changes;
+  this slice is test maintainability only.
+
+Reviewer edge case: the focused production/setup regression run should still
+report three tests, and the combined start/regression-routing run should report
+67 tests across `tests/core/start.test.ts` and
+`tests/core/startRegressionRouting.test.ts`.
+
+Kept change: one production/setup regression-routing start test split, this
+persona note, and no release action.

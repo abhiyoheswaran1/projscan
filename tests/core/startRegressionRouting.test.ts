@@ -119,6 +119,113 @@ test('start report turns GitHub Actions failures into a focused regression plan'
   );
 });
 
+test('start report turns production incidents into a focused regression plan', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'production is down',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Regression',
+      tool: 'projscan_regression_plan',
+      cli: 'projscan regression-plan',
+      confidence: 'high',
+      matchedKeywords: ['production', 'down'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan regression-plan --level focused --format json',
+      tool: 'projscan_regression_plan',
+      args: { level: 'focused' },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'The focused regression plan identifies the smallest high-signal commands to reproduce and verify the failure.',
+    ]),
+  );
+});
+
+test('start report turns stack traces into a focused regression plan', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'where is this stack trace from',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Regression',
+      tool: 'projscan_regression_plan',
+      confidence: 'high',
+      matchedKeywords: ['stack', 'trace'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan regression-plan --level focused --format json',
+      tool: 'projscan_regression_plan',
+      args: { level: 'focused' },
+    }),
+  );
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_search'),
+  ).toEqual(
+    expect.objectContaining({
+      matchedKeywords: ['where'],
+    }),
+  );
+});
+
+test('start report turns local setup blockers into a focused regression plan', async () => {
+  const root = await makeTempProject();
+
+  const portInUse = await computeStartReport(root, {
+    intent: 'port 3000 already in use',
+  });
+
+  expect(portInUse.mode).toBe('before_commit');
+  expect(portInUse.modeSource).toBe('intent');
+  expect(portInUse.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Regression',
+      tool: 'projscan_regression_plan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['port']),
+    }),
+  );
+  expect(portInUse.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan regression-plan --level focused --format json',
+      tool: 'projscan_regression_plan',
+      args: { level: 'focused' },
+    }),
+  );
+  expect(portInUse.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'The focused regression plan identifies the local setup command, environment symptom, and smallest rerun proof for the blocker.',
+    ]),
+  );
+
+  const peerConflict = await computeStartReport(root, {
+    intent: 'peer dependency conflict after npm install',
+  });
+  expect(peerConflict.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_regression_plan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['peer', 'install']),
+    }),
+  );
+});
+
 test('start report turns slow CI questions into a focused regression plan', async () => {
   const root = await makeTempProject();
 
@@ -538,4 +645,3 @@ test('start report turns full regression intent into a full before-merge plan', 
     'projscan regression-plan --level full --format json',
   );
 });
-
