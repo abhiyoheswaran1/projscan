@@ -12,12 +12,7 @@ import { recordCommandTelemetry } from '../core/telemetry.js';
 import { enableOfflineMode } from '../core/privacy.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import { OUTPUT_FORMATS, formatList, getCommandFormatSupport } from '../utils/formatSupport.js';
-import {
-  resolveReporterPlugin,
-  renderReporterPlugin,
-  type PluginDiagnostic,
-  type PluginReporterCommand,
-} from '../core/plugins.js';
+import type { PluginReporterCommand } from '../core/plugins.js';
 import {
   changedFilesAvailableMessage,
   changedFilesUnavailableMessage,
@@ -25,6 +20,7 @@ import {
   filterIssuesToChangedFiles,
 } from './changedIssueFilter.js';
 import { loadCliProjectConfig } from './projectConfig.js';
+import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
 
@@ -196,36 +192,13 @@ export async function renderPluginReporterIfRequested(
   reporterName: unknown,
   payload: unknown,
 ): Promise<boolean> {
-  if (typeof reporterName !== 'string' || reporterName.length === 0) return false;
-  const format = getFormat();
-  if (format !== 'console') {
-    console.error(chalk.red(`--reporter cannot be combined with --format ${format}`));
-    process.exit(1);
-  }
-
-  const rootPath = getRootPath();
-  const resolved = await resolveReporterPlugin(rootPath, reporterName, command);
-  if (!resolved.ok) {
-    printPluginReporterDiagnostic(resolved.diagnostic);
-    process.exit(1);
-  }
-  const rendered = await renderReporterPlugin(resolved.plugin, {
+  return await renderCliPluginReporterIfRequested({
     command,
-    rootPath,
-    manifest: resolved.plugin.manifest,
+    reporterName,
     payload,
+    format: getFormat(),
+    rootPath: getRootPath(),
   });
-  if (!rendered.ok) {
-    printPluginReporterDiagnostic(rendered.diagnostic);
-    process.exit(1);
-  }
-  console.log(rendered.output);
-  return true;
-}
-
-function printPluginReporterDiagnostic(diagnostic: PluginDiagnostic): void {
-  console.error(chalk.red(`[${diagnostic.code}] ${diagnostic.message}`));
-  if (diagnostic.hint) console.error(chalk.dim(`hint: ${diagnostic.hint}`));
 }
 
 /** Walk a DirectoryNode to find the node whose `path` matches targetPath. */
