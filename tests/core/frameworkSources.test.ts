@@ -26,7 +26,10 @@ describe('framework source maintainability', () => {
       path.join(process.cwd(), 'src/core/frameworkSources.ts'),
       'utf-8',
     );
-    const dataflow = await fs.readFile(path.join(process.cwd(), 'src/core/dataflow.ts'), 'utf-8');
+    const dataflowTraversal = await fs.readFile(
+      path.join(process.cwd(), 'src/core/dataflowTraversal.ts'),
+      'utf-8',
+    );
     const taintIndex = await fs.readFile(
       path.join(process.cwd(), 'src/core/taintIndex.ts'),
       'utf-8',
@@ -37,8 +40,8 @@ describe('framework source maintainability', () => {
       /frameworkRequestSourceForFunction\(\s*context: FrameworkRequestSourceContext,\s*\): string \| null/,
     );
     expect(shared).not.toContain('functionName: string,\n  memberCallSites: string[]');
-    expect(dataflow).toContain('frameworkRequestSourceForFunction({');
-    expect(dataflow).toContain('functionName: fn.name');
+    expect(dataflowTraversal).toContain('frameworkRequestSourceForFunction({');
+    expect(dataflowTraversal).toContain('functionName: fn.name');
     expect(taintIndex).toContain('frameworkRequestSourceForFunction({');
     expect(taintIndex).toContain('functionName: fn.name');
   });
