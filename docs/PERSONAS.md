@@ -8546,3 +8546,48 @@ and the combined start run should report 70 tests across
 
 Kept change: one repo-orientation start test split, this persona note, and no
 release action.
+
+## One Hundred Seventy Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform Review Owner,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: `tests/core/start.test.ts` still carried a broad end-to-end routing
+matrix after the repo-orientation split. The next cohesive group covered
+change-readiness routing for feature placement, documentation update planning,
+and database migration placement.
+
+Smallest fix: move the three change-readiness scenarios into
+`tests/core/startChangeReadiness.test.ts` and leave the remaining start routing
+matrix in `tests/core/start.test.ts`. This preserves the behavior coverage
+while reducing the original start test file from 2,507 lines to 2,332 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "feature-placement questions|documentation update planning|database migration placement"
+npm run test -- tests/core/start.test.ts tests/core/startChangeReadiness.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startChangeReadiness.test.ts --format json
+```
+
+## Review Guardrails: Start Change Readiness Test Split
+
+Delete-list after this slice:
+
+- Do not change start routing behavior, change-view commands, search
+  alternatives, upgrade-route suppression, mode inference, proof command
+  shaping, package version, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+- Do not weaken coverage for feature placement, auth change file planning,
+  OAuth implementation routing, webhook support routing, documentation update
+  planning, or database migration placement.
+- Do not broaden this into production intent routing changes; this slice is
+  test maintainability only.
+
+Reviewer edge case: the focused change-readiness run should still report three
+tests, and the combined start run should report 65 tests across
+`tests/core/start.test.ts` and `tests/core/startChangeReadiness.test.ts`.
+
+Kept change: one change-readiness start test split, this persona note, and no
+release action.
