@@ -172,6 +172,20 @@ describe('MCP server maintainability', () => {
     }
   });
 
+  it('keeps MCP tool catalog data out of registry lookup helpers', async () => {
+    const registrySource = await fs.readFile(path.join(process.cwd(), 'src/mcp/tools.ts'), 'utf-8');
+    expect(registrySource).not.toContain("import { analyzeTool }");
+    expect(registrySource).not.toContain('const tools: McpTool[] = [');
+
+    const catalogSource = await fs.readFile(
+      path.join(process.cwd(), 'src/mcp/toolCatalog.ts'),
+      'utf-8',
+    );
+    expect(catalogSource).toContain('export const mcpTools');
+    expect(catalogSource).toContain('analyzeTool');
+    expect(catalogSource).toContain('coordinateWatchTool');
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const testsRoot = path.join(process.cwd(), 'tests/mcp');
     const sessionRecordingTools = ['projscan_structure', 'projscan_file', 'projscan_search'];

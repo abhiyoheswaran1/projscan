@@ -4914,3 +4914,46 @@ either workplan or quality truncation.
 Kept change: one start report builder module, one maintainability regression,
 existing start behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Third Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and MCP Adopter.
+
+Reason: bug-hunt now points at the MCP tool registry as a production watch
+item. The registry is stable and low-complexity, so the right move is not to
+change tool behavior; it is to separate static catalog data from lookup helpers
+so future tool additions touch the catalog surface directly.
+
+Smallest fix: move the static `McpTool[]` catalog into `toolCatalog.ts`; keep
+`tools.ts` as the stable adapter exposing `getToolDefinitions`,
+`getToolHandler`, and public MCP tool types.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "tool catalog"
+npm run test -- tests/mcp/server.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/tools.ts --format json
+npm exec projscan -- file src/mcp/toolCatalog.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: MCP Tool-Catalog Extraction
+
+Delete-list after this slice:
+
+- Do not change MCP tool names, order, handlers, input schemas, deprecation
+  descriptions, public type exports, or server dispatch behavior.
+- Do not add or remove tools, change CLI/MCP parity, alter manifest generation,
+  or change token-budget behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: deprecated tools should still receive the same
+description-prefix shaping through `getToolDefinitions`.
+
+Kept change: one MCP tool catalog module, one maintainability regression,
+existing MCP server coverage, this persona note, and no public schema change.

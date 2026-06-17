@@ -1,7 +1,6 @@
 /**
- * MCP tool registry - barrel that aggregates the per-tool modules under
- * `src/mcp/tools/`. New tools live in their own file under that directory and
- * are added to the `tools` array below.
+ * MCP tool registry lookup helpers. Static catalog data lives in
+ * `src/mcp/toolCatalog.ts`; new tool modules are added there.
  *
  * The shape exposed here (`getToolDefinitions`, `getToolHandler`,
  * `McpToolHandler`) is consumed by `src/mcp/server.ts`. Re-export `McpTool`
@@ -9,107 +8,15 @@
  * directory split.
  */
 
-import { analyzeTool } from './tools/analyze.js';
-import { doctorTool } from './tools/doctor.js';
-import { hotspotsTool } from './tools/hotspots.js';
-import { fileTool } from './tools/file.js';
-import { structureTool } from './tools/structure.js';
-import { dependenciesTool } from './tools/dependencies.js';
-import { outdatedTool } from './tools/outdated.js';
-import { auditTool } from './tools/audit.js';
-import { upgradeTool } from './tools/upgrade.js';
-import { coverageTool } from './tools/coverage.js';
-import { semanticGraphTool } from './tools/semanticGraph.js';
-import { couplingTool } from './tools/coupling.js';
-import { workspacesTool } from './tools/workspaces.js';
-import { prDiffTool } from './tools/prDiff.js';
-import { reviewTool } from './tools/review.js';
-import { fixSuggestTool } from './tools/fixSuggest.js';
-import { explainIssueTool } from './tools/explainIssue.js';
-import { impactTool } from './tools/impact.js';
-import { collisionTool } from './tools/collision.js';
-import { claimTool } from './tools/claim.js';
-import { mergeRiskTool } from './tools/mergeRisk.js';
-import { routeTool } from './tools/route.js';
-import { coordinateTool } from './tools/coordinate.js';
-import { coordinateWatchTool } from './tools/coordinateWatch.js';
-import { searchTool } from './tools/search.js';
-import { sessionTool } from './tools/session.js';
-import { memoryTool } from './tools/memory.js';
-import { workspaceGraphTool } from './tools/workspaceGraph.js';
-import { applyFixTool } from './tools/applyFix.js';
-import { taintTool } from './tools/taint.js';
-import { dataflowTool } from './tools/dataflow.js';
-import { costSummaryTool } from './tools/costSummary.js';
-import { reviewWatchTool } from './tools/reviewWatch.js';
-import { pluginTool } from './tools/plugin.js';
-import { preflightTool } from './tools/preflight.js';
-import { workplanTool } from './tools/workplan.js';
-import { releaseTrainTool } from './tools/releaseTrain.js';
-import { bugHuntTool } from './tools/bugHunt.js';
-import { evidencePackTool } from './tools/evidencePack.js';
-import { regressionPlanTool } from './tools/regressionPlan.js';
-import { agentBriefTool } from './tools/agentBrief.js';
-import { qualityScorecardTool } from './tools/qualityScorecard.js';
-import { adoptionTool } from './tools/adoption.js';
-import { startTool } from './tools/start.js';
-import { understandTool } from './tools/understand.js';
 import { deprecationDescriptionPrefix } from '../core/deprecations.js';
 import type { McpToolDefinition } from '../types.js';
+import { mcpTools } from './toolCatalog.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
 export type { McpTool, McpToolHandler };
 
-const tools: McpTool[] = [
-  analyzeTool,
-  doctorTool,
-  hotspotsTool,
-  fileTool,
-  structureTool,
-  dependenciesTool,
-  outdatedTool,
-  auditTool,
-  upgradeTool,
-  coverageTool,
-  semanticGraphTool,
-  couplingTool,
-  workspacesTool,
-  prDiffTool,
-  reviewTool,
-  fixSuggestTool,
-  explainIssueTool,
-  impactTool,
-  searchTool,
-  sessionTool,
-  memoryTool,
-  workspaceGraphTool,
-  applyFixTool,
-  taintTool,
-  dataflowTool,
-  costSummaryTool,
-  reviewWatchTool,
-  pluginTool,
-  preflightTool,
-  workplanTool,
-  releaseTrainTool,
-  bugHuntTool,
-  evidencePackTool,
-  regressionPlanTool,
-  agentBriefTool,
-  qualityScorecardTool,
-  adoptionTool,
-  startTool,
-  understandTool,
-  collisionTool,
-  claimTool,
-  mergeRiskTool,
-  routeTool,
-  coordinateTool,
-  coordinateWatchTool,
-];
-
 export function getToolDefinitions(): McpToolDefinition[] {
-  return tools.map(({ name, description, inputSchema, deprecated }) => {
+  return mcpTools.map(({ name, description, inputSchema, deprecated }) => {
     const def: McpToolDefinition = {
       name,
       description: deprecated
@@ -123,5 +30,5 @@ export function getToolDefinitions(): McpToolDefinition[] {
 }
 
 export function getToolHandler(name: string): McpToolHandler | undefined {
-  return tools.find((t) => t.name === name)?.handler;
+  return mcpTools.find((tool) => tool.name === name)?.handler;
 }

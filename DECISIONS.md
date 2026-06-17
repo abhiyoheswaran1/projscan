@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract MCP tool catalog
+
+- Status: accepted
+- Context: `src/mcp/tools.ts` is a bug-hunt hotspot watch item and mixed static MCP tool catalog data with registry lookup and definition shaping.
+- Decision: Move the static MCP tool list into `src/mcp/toolCatalog.ts` and keep `src/mcp/tools.ts` focused on `getToolDefinitions`, `getToolHandler`, and type re-exports.
+- Consequences: MCP tool order, names, handlers, deprecation descriptions, public exports, and server behavior stay unchanged, while `src/mcp/tools.ts` drops from 128 lines to 35 lines.
+- Verification: `npm run test -- tests/mcp/server.test.ts -t "tool catalog"` plus the full MCP server test file.
+
 ## 2026-06-17: Extract start report assembly
 
 - Status: accepted
