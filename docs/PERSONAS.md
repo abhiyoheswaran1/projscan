@@ -7578,3 +7578,53 @@ available.
 Kept change: one release evidence baseline module, one architecture-boundary
 regression, existing release-evidence behavior coverage, this persona note, and
 no release action.
+
+## One Hundred Fifty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `src/core/codeGraph.ts` remains a high-risk internal hub because graph
+orchestration, adapter parsing, mtime cache reuse, and incremental re-parse
+handling lived in one file. The behavior is already widely covered, so the
+lowest-risk improvement is to isolate parsing and graph-entry construction while
+keeping the public `codeGraph.ts` API stable.
+
+Smallest fix: move graph file types into `src/core/codeGraphTypes.ts` and move
+adapter parse/cache/re-parse helpers into `src/core/codeGraphParsing.ts`.
+Re-export `CodeGraph` and `GraphFile` from `codeGraph.ts` so existing callers do
+not change, and keep build/incremental graph behavior unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/codeGraph.test.ts -t "keeps file parsing"
+npm run test -- tests/core/codeGraph.test.ts tests/core/codeGraph.incremental.test.ts tests/core/codeGraph.fanIn.test.ts tests/core/codeGraph.fanOut.test.ts tests/core/codeGraphIndexes.test.ts tests/core/codeGraph.python.test.ts tests/core/codeGraph.mixed.test.ts tests/core/codeGraph.namespacePkg.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/codeGraph.test.ts tests/core/codeGraph.incremental.test.ts tests/core/codeGraph.fanIn.test.ts tests/core/codeGraph.fanOut.test.ts tests/core/codeGraphIndexes.test.ts tests/core/codeGraph.python.test.ts tests/core/codeGraph.mixed.test.ts tests/core/codeGraph.namespacePkg.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/codeGraph.ts --format json
+npm exec projscan -- file src/core/codeGraphParsing.ts --format json
+npm exec projscan -- file src/core/codeGraphTypes.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Code Graph Parsing Helpers
+
+Delete-list after this slice:
+
+- Do not change code-graph public functions, public `CodeGraph` or `GraphFile`
+  shapes, package-name behavior, cross-file indexes, star re-export expansion,
+  fan-in/fan-out calculation, or incremental graph mutation semantics.
+- Do not change language adapter parsing, package-root context derivation,
+  cache invalidation rules, max file-size filtering, or adapter error handling.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: a changed file that becomes unreadable or non-parseable
+should still be removed from the graph during incremental update.
+
+Kept change: one graph type module, one graph parsing module, one
+architecture-boundary regression, existing code-graph behavior coverage, this
+persona note, and no release action.

@@ -61,6 +61,34 @@ describe('buildCodeGraph', () => {
     expect(source).toContain('rebuildCrossFileIndexes(');
   });
 
+  it('keeps file parsing and cached-entry construction isolated from the graph orchestrator', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'src/core/codeGraph.ts'), 'utf-8');
+    const parsingPath = path.join(process.cwd(), 'src/core/codeGraphParsing.ts');
+    const parsingExists = await fs.access(parsingPath).then(
+      () => true,
+      () => false,
+    );
+
+    expect(parsingExists).toBe(true);
+    if (!parsingExists) return;
+
+    const parsing = await fs.readFile(parsingPath, 'utf-8');
+
+    expect(source).toContain("from './codeGraphParsing.js'");
+    expect(source).toContain("from './codeGraphTypes.js'");
+    expect(source).toContain("import type { CodeGraph, GraphFile } from './codeGraphTypes.js';");
+    expect(source).toContain('export type { CodeGraph, GraphFile };');
+    expect(source).not.toContain('async function parseFileToGraphEntry');
+    expect(source).not.toContain('async function processChangedPath');
+    expect(source).not.toContain('async function safeAdapterParse');
+    expect(source).not.toContain('function graphFileFromResult');
+    expect(parsing).toContain('export async function parseFileToGraphEntry');
+    expect(parsing).toContain('export async function processChangedPath');
+    expect(parsing).toContain('export async function safeAdapterParse');
+    expect(parsing).toContain('export function graphFileFromResult');
+    expect(parsing).not.toContain("from './codeGraph.js'");
+  });
+
   it('indexes package importers and external packages', async () => {
     const files = [
       await writeFile(tmp, 'src/a.ts', "import React from 'react';"),
