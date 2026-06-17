@@ -7525,3 +7525,56 @@ still omit intent fields entirely.
 Kept change: one review intent module, one architecture-boundary regression,
 existing review/intent behavior coverage, this persona note, and no release
 action.
+
+## One Hundred Fifty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and Security-Conscious Reviewer.
+
+Reason: `src/core/releaseEvidence.ts` remains a complex source hotspot and the
+baseline trend path pulled repository scanning, config application, issue
+collection, hotspot analysis, and baseline diffing into the evidence-pack
+orchestrator. That is internal evidence plumbing and can be isolated without
+changing release behavior or cutting a version.
+
+Smallest fix: move baseline trend collection into
+`src/core/releaseEvidenceBaseline.ts` and keep `computeEvidencePack()` focused
+on composing train, bug-hunt, workplan, preflight, ownership, PR summary, and
+optional comment evidence. Preserve read-only behavior, optional baseline
+failure handling, PR summary contents, comments, validation, and suggested
+actions.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/releaseEvidenceArchitecture.test.ts
+npm run test -- tests/core/releaseEvidenceArchitecture.test.ts tests/core/releaseEvidence.test.ts tests/core/releaseEvidencePrCommentFixtures.test.ts tests/core/releaseEvidencePrSummary.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/releaseEvidenceArchitecture.test.ts tests/core/releaseEvidence.test.ts tests/core/releaseEvidencePrCommentFixtures.test.ts tests/core/releaseEvidencePrSummary.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/releaseEvidence.ts --format json
+npm exec projscan -- file src/core/releaseEvidenceBaseline.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Release Evidence Baseline Trend
+
+Delete-list after this slice:
+
+- Do not change evidence-pack public schema, verdict calibration, approval
+  recommendation text, artifact IDs, changelog entries, website prompt,
+  PR-comment rendering, PR-comment validation, or suggested next actions.
+- Do not change baseline file lookup, config ignore handling, issue filtering,
+  hotspot limit, baseline diff calculation, or the rule that baseline failures
+  produce no baseline trend instead of failing the evidence pack.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: a missing or unreadable `.projscan-baseline.json` should
+still omit baseline trend data while leaving the rest of the evidence pack
+available.
+
+Kept change: one release evidence baseline module, one architecture-boundary
+regression, existing release-evidence behavior coverage, this persona note, and
+no release action.

@@ -1,10 +1,8 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-
 import { computeBugHunt } from './bugHunt.js';
 import { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
 export { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
 import { computePreflight } from './preflight.js';
+import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
 import {
   buildEvidencePackPrSummary,
   concreteDefectMessages,
@@ -12,17 +10,11 @@ import {
 export { calibratePreflightTrust } from './releaseEvidencePrSummary.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
-import { analyzeHotspots } from './hotspotAnalyzer.js';
-import { collectIssues } from './issueEngine.js';
 import { loadOwnership } from './ownership.js';
-import { scanRepository } from './repositoryScanner.js';
-import { computeDiff, loadBaseline } from '../utils/baseline.js';
-import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import type {
   BugHuntReport,
   EvidencePackArtifact,
   EvidencePackArtifactStatus,
-  BaselineTrend,
   EvidencePackPrSummary,
   EvidencePackReport,
   EvidencePackVerdict,
@@ -112,28 +104,6 @@ export async function computeEvidencePack(
     prComment,
     prCommentValidation: validateEvidencePackPrComment(prComment, report),
   };
-}
-
-async function safeBaselineTrend(rootPath: string): Promise<BaselineTrend | undefined> {
-  const baselinePath = path.join(rootPath, '.projscan-baseline.json');
-  try {
-    await fs.access(baselinePath);
-  } catch {
-    return undefined;
-  }
-  try {
-    const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
-    const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-    const issues = applyConfigToIssues(
-      await collectIssues(rootPath, scan.files),
-      configResult.config,
-    );
-    const hotspots = await analyzeHotspots(rootPath, scan.files, issues, { limit: 20 });
-    const baseline = await loadBaseline(baselinePath, rootPath);
-    return computeDiff(baseline, issues, hotspots).trend;
-  } catch {
-    return undefined;
-  }
 }
 
 function buildArtifacts(

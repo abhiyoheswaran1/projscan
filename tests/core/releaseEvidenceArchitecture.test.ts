@@ -1,0 +1,26 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+describe('release evidence architecture', () => {
+  it('keeps baseline trend collection isolated from evidence pack orchestration', () => {
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidence.ts'),
+      'utf8',
+    );
+
+    expect(evidenceSource).toContain("from './releaseEvidenceBaseline.js'");
+    expect(evidenceSource).not.toContain('function safeBaselineTrend');
+    expect(evidenceSource).not.toContain('loadBaseline');
+    expect(evidenceSource).not.toContain('scanRepository');
+    expect(evidenceSource).not.toContain('collectIssues');
+
+    const baselineSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidenceBaseline.ts'),
+      'utf8',
+    );
+    expect(baselineSource).toContain('export async function safeBaselineTrend');
+    expect(baselineSource).toContain('loadBaseline');
+    expect(baselineSource).toContain('scanRepository');
+  });
+});
