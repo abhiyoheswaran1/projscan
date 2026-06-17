@@ -4,33 +4,44 @@ export function bindingIdentifierName(node: Node | null | undefined): string | n
   return bindingIdentifierNames(node)[0] ?? null;
 }
 
+type BindingNameReader = (node: Node) => string[];
+
+const BINDING_NAME_READERS: Partial<Record<Node['type'], BindingNameReader>> = {
+  Identifier: identifierBindingNames,
+  AssignmentPattern: assignmentPatternBindingNames,
+  RestElement: restElementBindingNames,
+  ObjectPattern: objectPatternBindingNames,
+  ArrayPattern: arrayPatternBindingNames,
+};
+
 export function bindingIdentifierNames(node: Node | null | undefined): string[] {
   if (!node) return [];
-  if (node.type === 'Identifier') {
-    const name = (node as { name?: string }).name;
-    return name ? [name] : [];
-  }
-  if (node.type === 'AssignmentPattern') {
-    return bindingIdentifierNames((node as { left?: Node }).left);
-  }
-  if (node.type === 'RestElement') {
-    return bindingIdentifierNames((node as { argument?: Node }).argument);
-  }
-  if (node.type === 'ObjectPattern') {
-    const names: string[] = [];
-    for (const property of (node as { properties?: Node[] }).properties ?? []) {
-      names.push(...bindingNamesFromObjectPatternProperty(property));
-    }
-    return names;
-  }
-  if (node.type === 'ArrayPattern') {
-    const names: string[] = [];
-    for (const element of (node as { elements?: Array<Node | null> }).elements ?? []) {
-      names.push(...bindingIdentifierNames(element));
-    }
-    return names;
-  }
-  return [];
+  return BINDING_NAME_READERS[node.type]?.(node) ?? [];
+}
+
+function identifierBindingNames(node: Node): string[] {
+  const name = (node as { name?: string }).name;
+  return name ? [name] : [];
+}
+
+function assignmentPatternBindingNames(node: Node): string[] {
+  return bindingIdentifierNames((node as { left?: Node }).left);
+}
+
+function restElementBindingNames(node: Node): string[] {
+  return bindingIdentifierNames((node as { argument?: Node }).argument);
+}
+
+function objectPatternBindingNames(node: Node): string[] {
+  return ((node as { properties?: Node[] }).properties ?? []).flatMap(
+    bindingNamesFromObjectPatternProperty,
+  );
+}
+
+function arrayPatternBindingNames(node: Node): string[] {
+  return ((node as { elements?: Array<Node | null> }).elements ?? []).flatMap(
+    bindingIdentifierNames,
+  );
 }
 
 function bindingNamesFromObjectPatternProperty(property: Node): string[] {

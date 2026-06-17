@@ -9424,3 +9424,47 @@ before; only their tests moved.
 
 Kept change: one lockfile parser test suite, one suite-structure guard, this
 persona note, and no release action in this slice.
+
+## One Hundred Ninety Eighth Slice Decision
+
+Selected personas: Release Steward, Static-Analysis Maintainer, and Framework
+Integration Reviewer.
+
+Reason: `projscan review` still blocked the current train on one newly added
+high-CC function, `bindingIdentifierNames`, even after the broader bug pass
+found no health, supply-chain, plugin, taint, or dataflow defects. That function
+is review-sensitive because destructured parameter extraction feeds framework
+request-source detection.
+
+Smallest fix: keep the exported binding traversal API unchanged, but make
+`bindingIdentifierNames` a small dispatcher over focused helpers for identifiers,
+assignment patterns, rest elements, object patterns, and array patterns.
+Preserve the existing AST reference and framework dataflow behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/astMembersArchitecture.test.ts
+npm run test -- tests/core/ast.references.test.ts
+npm run test -- tests/core/dataflowFrameworkRemix.test.ts tests/core/dataflowFrameworkNext.test.ts tests/core/dataflowFrameworkHono.test.ts
+npm exec projscan -- file src/core/astMembers.ts --format json
+npm exec projscan -- review --format json --quiet
+```
+
+## Review Guardrails: AST Binding Traversal Simplification
+
+Delete-list after this slice:
+
+- Do not change parser adapters, source/sink semantics, dataflow labels, AST
+  public exports, package metadata, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+- Do not broaden binding capture beyond the existing Identifier,
+  AssignmentPattern, RestElement, ObjectPattern, and ArrayPattern behavior.
+- Do not treat the remaining large-train review caution as release-ready.
+
+Reviewer edge case: framework source detection that depends on destructured
+handler arguments must keep seeing names such as `request`, `params`, aliases,
+and defaulted bindings.
+
+Kept change: one dispatcher refactor, one maintainability regression test, this
+persona note, and no release action in this slice.

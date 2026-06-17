@@ -2121,3 +2121,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move Poetry, Pipfile, uv, PDM, and Conda lockfile parser coverage into `tests/core/languages/pythonLockfiles.test.ts`, and add suite-structure assertions that keep lockfile parser coverage out of `pythonManifests.test.ts`.
 - Consequences: The manifest parser suite now stays focused on PEP 508, requirements, and pyproject behavior at 150 lines. Lockfile parser exports and behavior are unchanged; this is a test organization hardening slice only.
 - Verification: `npm run test -- tests/core/languages/pythonManifestSuiteStructure.test.ts` failed before the split, then passed. The manifest and lockfile parser suites passed together with 21 tests, and `projscan file tests/core/languages/pythonManifests.test.ts --format json` reported no issues.
+
+## 2026-06-17: Simplify AST binding identifier traversal
+
+- Status: accepted
+- Context: `projscan review` flagged `src/core/astMembers.ts` `bindingIdentifierNames` as the one newly added high-CC function in the current train. That helper feeds destructured function parameter capture, which framework dataflow uses for route handlers.
+- Decision: Convert `bindingIdentifierNames` into a small resolver dispatcher and delegate Identifier, AssignmentPattern, RestElement, ObjectPattern, and ArrayPattern traversal to focused helpers.
+- Consequences: `bindingIdentifierNames` drops from cyclomatic complexity 12 to 3, and `projscan review` no longer reports risky functions. AST reference extraction, member alias capture, and framework request-source behavior remain unchanged.
+- Verification: `npm run test -- tests/core/astMembersArchitecture.test.ts` failed before the refactor, then passed. The AST reference suite, Remix/Next/Hono framework dataflow suites, `projscan file src/core/astMembers.ts --format json`, and a parsed `projscan review --format json --quiet` summary passed after the refactor.
