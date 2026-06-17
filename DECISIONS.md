@@ -2081,3 +2081,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Treat build-next, product roadmap, feature roadmap, and workstream planning prompts as release-train planning context, and add `evidence.roadmapPreview` to release-mode start output using the existing roadmap catalog.
 - Consequences: Start JSON can now show a read-only roadmap preview with release-train lines and workstream titles. Explicit non-release modes still keep their selected workplan action, and explicit bug-hunt prompts remain bug-hunt.
 - Verification: `npm run test -- tests/core/startAgentPlanning.test.ts tests/core/startReviewRouting.test.ts tests/cli/start.test.ts` failed before the routing/preview changes, then passed.
+
+## 2026-06-17: Align build-next docs with roadmap routing
+
+- Status: accepted
+- Context: README and GUIDE still described `projscan start --intent "what should we build next?"` as a bug-hunt product-planning workplan after the implementation changed the route to release-train roadmap evidence.
+- Decision: Update public docs to name release-train roadmap planning and `evidence.roadmapPreview`, while keeping quick-win, low-risk, and broad improve-next prompts documented as bug-hunt routes.
+- Consequences: Agents reading docs see the same product-planning route that JSON clients receive. No command, schema, version, changelog, or release behavior changes.
+- Verification: `npm run test -- tests/docs/startRoutingDocs.test.ts` failed before the docs changes, then passed.
