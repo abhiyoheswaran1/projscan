@@ -8071,3 +8071,49 @@ the pre-split coverage count while moving only the basic tests.
 
 Kept change: one focused MCP start test split, this persona note, and no release
 action.
+
+## One Hundred Sixty Ninth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, MCP Tooling
+Maintainer, Test Steward, and Protocol Safety Reviewer.
+
+Reason: `tests/mcp/server.test.ts` remained a hotspot with both architecture
+maintainability assertions and JSON-RPC protocol behavior in one file. The
+maintainability `describe` block used different helpers and imports than the
+protocol tests, making it a clean split point.
+
+Smallest fix: move the MCP server orchestration and architecture guardrails into
+`tests/mcp/serverMaintainability.test.ts`, leaving request/response protocol
+behavior in `tests/mcp/server.test.ts`. The split preserves all 34 focused
+server tests while dropping the original server test file from 605 lines and
+cyclomatic complexity 11 to 393 lines and complexity 3.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts
+npm run test -- tests/mcp/server.test.ts tests/mcp/serverMaintainability.test.ts
+npm exec projscan -- file tests/mcp/server.test.ts --format json
+npm exec projscan -- file tests/mcp/serverMaintainability.test.ts --format json
+```
+
+## Review Guardrails: MCP Server Maintainability Split
+
+Delete-list after this slice:
+
+- Do not change MCP server runtime behavior, JSON-RPC responses, tool catalog
+  contents, stdio behavior, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not remove coverage for server orchestration boundaries, dispatch
+  handlers, session recording, lifecycle wiring, stdio wiring, or
+  session-recording test isolation.
+- Do not move protocol behavior tests into the maintainability file unless the
+  test also inspects source architecture boundaries.
+
+Reviewer edge case: the focused server run should still report 34 tests across
+`tests/mcp/server.test.ts` and `tests/mcp/serverMaintainability.test.ts`,
+preserving the pre-split coverage count while separating architecture guards
+from protocol behavior.
+
+Kept change: one MCP server maintainability test split, this persona note, and
+no release action.
