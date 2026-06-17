@@ -9,11 +9,15 @@ function workplanDoContextMatches(tokens: Set<string>): boolean {
     'prioritize',
     'priorities',
     'roadmap',
+    'full',
   ].some((token) => tokens.has(token));
 }
 
 export function workplanKeywordMatches(keyword: string, tokens: Set<string>): boolean {
   if (keyword === 'do') return workplanDoContextMatches(tokens);
+  if (['continue', 'keep', 'going', 'implementation', 'implementing'].includes(keyword)) {
+    return ongoingWorkplanContextMatches(tokens);
+  }
   if (
     [
       'build',
@@ -29,6 +33,25 @@ export function workplanKeywordMatches(keyword: string, tokens: Set<string>): bo
     return productPlanningContextMatches(tokens);
   }
   return true;
+}
+
+function ongoingWorkplanContextMatches(tokens: Set<string>): boolean {
+  if (tokens.has('keep') && tokens.has('going')) return true;
+  const planningSignal = [
+    'continue',
+    'plan',
+    'workplan',
+    'task',
+    'tasks',
+    'todo',
+    'roadmap',
+    'implementation',
+    'implementing',
+  ].some((token) => tokens.has(token));
+  const ongoingSignal = ['continue', 'implementation', 'implementing'].some((token) =>
+    tokens.has(token),
+  );
+  return planningSignal && ongoingSignal;
 }
 
 function productPlanningContextMatches(tokens: Set<string>): boolean {

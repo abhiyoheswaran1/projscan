@@ -7727,3 +7727,54 @@ from 'projscan'` should compile, while existing imports from
 
 Kept change: one additive entrypoint type export, one public-type regression,
 one architecture decision note, this persona note, and no release action.
+
+## One Hundred Sixty First Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: the highest-risk router hotspot is small, but it sits directly in the
+agent workflow path. No-release implementation prompts are common during long
+autonomous work sessions. They should continue planning implementation work,
+not accidentally surface release, publish, deploy, push, merge, tag, or version
+bump workflows.
+
+Smallest fix: add guarded workplan signals for "keep going", "continue", and
+implementation-roadmap wording; suppress release-train and package-upgrade
+routes when the same prompt explicitly prohibits those actions; and require a
+real regression context before standalone "full" maps to regression planning.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterCoordinationWork.test.ts
+npm run test -- tests/core/intentRouterCoordinationWork.test.ts tests/core/intentRouterReviewRelease.test.ts tests/core/intentRouterRegressionSecurity.test.ts tests/core/intentRouter.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/intentRouterCoordinationWork.test.ts tests/core/intentRouterReviewRelease.test.ts tests/core/intentRouterRegressionSecurity.test.ts tests/core/intentRouter.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/intentRouterWorkSignals.ts --format json
+npm exec projscan -- file src/core/intentRouterReleaseSignals.ts --format json
+npm exec projscan -- file src/core/intentRouterRegressionKeywordMatches.ts --format json
+npm exec projscan -- file src/core/intentRouterCatalog.ts --format json
+```
+
+## Review Guardrails: No-Release Continuation Routing
+
+Delete-list after this slice:
+
+- Do not make positive release-readiness prompts stop routing to
+  `projscan_release_train`.
+- Do not make explicit full-regression prompts stop routing to
+  `projscan_regression_plan`.
+- Do not add release actions, version changes, dependency changes, publish
+  paths, deploy paths, push behavior, merge behavior, or tag behavior.
+- Do not broaden "going" so collision prompts such as "am I going to collide"
+  become workplan prompts.
+
+Reviewer edge case: `keep going and do not cut a release` should route to
+`projscan_workplan`, while `prepare this branch for release` should still route
+to `projscan_release_train`.
+
+Kept change: one guarded router behavior fix, one focused regression expansion,
+one public-behavior decision note, this persona note, and no release action.

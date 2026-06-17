@@ -34,6 +34,7 @@ export function regressionKeywordMatches(
   tokens: Set<string>,
   hasQuotedText: boolean,
 ): boolean {
+  if (keyword === 'full' && !fullRegressionContextMatches(tokens)) return false;
   if (
     [
       'github',
@@ -176,4 +177,22 @@ export function regressionKeywordMatches(
   )
     return false;
   return true;
+}
+
+function fullRegressionContextMatches(tokens: Set<string>): boolean {
+  return [
+    'regression',
+    'verification',
+    'verify',
+    'test',
+    'tests',
+    'suite',
+    'suites',
+    'run',
+    'rerun',
+    'check',
+    'checks',
+    'proof',
+    'prove',
+  ].some((token) => tokens.has(token));
 }

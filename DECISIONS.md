@@ -2041,3 +2041,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add an additive type-only export for `CodeGraph` and `GraphFile` from `src/index.ts`, backed by public type tests.
 - Consequences: Consumers can import `type CodeGraph` and `type GraphFile` from the package entrypoint alongside `buildCodeGraph`. Runtime output, CLI behavior, MCP behavior, and existing public schemas do not change.
 - Verification: `npm run test -- tests/types/public-graph-types.test.ts` failed before the entrypoint export, then passed.
+
+## 2026-06-17: Route prohibited-release continuation prompts to work planning
+
+- Status: accepted
+- Context: Agent instructions often say to keep implementing while explicitly prohibiting release, publish, deploy, push, merge, tag, or version-bump actions. The intent router already blocked release-action keywords in that context, but continuation wording such as "keep going and do not cut a release" could produce no route, and generic release-train keywords could still appear as lower-ranked alternatives.
+- Decision: Treat guarded "keep going", "continue", and implementation-roadmap wording as workplan intent, suppress release-train and package-upgrade routes whenever the corresponding action is explicitly prohibited, and require real regression context before the standalone `full` keyword routes to regression planning.
+- Consequences: No-release continuation prompts now route to `projscan_workplan` instead of release or upgrade workflows. Positive release-readiness prompts still route to release-train, and explicit full-regression prompts still route to regression planning.
+- Verification: `npm run test -- tests/core/intentRouterCoordinationWork.test.ts` failed before the routing change, then passed. The adjacent router suites also passed: `tests/core/intentRouterCoordinationWork.test.ts`, `tests/core/intentRouterReviewRelease.test.ts`, `tests/core/intentRouterRegressionSecurity.test.ts`, and `tests/core/intentRouter.test.ts`.

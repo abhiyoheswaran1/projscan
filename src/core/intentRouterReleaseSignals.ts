@@ -28,38 +28,15 @@ export function hasProhibitedVersionBumpAction(intent: string): boolean {
   );
 }
 
-function isReleaseWorkflowActionKeyword(keyword: string): boolean {
-  return [
-    'release',
-    'releasing',
-    'deploy',
-    'deploying',
-    'deployed',
-    'deployment',
-    'ship',
-    'shipping',
-    'publish',
-    'tag',
-  ].includes(keyword);
-}
-
-function isVersionBumpActionKeyword(keyword: string): boolean {
-  return ['bump', 'version'].includes(keyword);
-}
-
 export function prohibitedWorkflowKeywordMatches(
   entry: RouteToolEntry,
-  keyword: string,
+  _keyword: string,
   hasProhibitedReleaseAction: boolean,
   hasProhibitedVersionBump: boolean,
 ): boolean {
   return (
-    (entry.tool === 'projscan_release_train' &&
-      hasProhibitedReleaseAction &&
-      isReleaseWorkflowActionKeyword(keyword)) ||
-    (entry.tool === 'projscan_upgrade' &&
-      hasProhibitedVersionBump &&
-      isVersionBumpActionKeyword(keyword))
+    (entry.tool === 'projscan_release_train' && hasProhibitedReleaseAction) ||
+    (entry.tool === 'projscan_upgrade' && hasProhibitedVersionBump)
   );
 }
 

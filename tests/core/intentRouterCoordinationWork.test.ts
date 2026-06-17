@@ -271,6 +271,51 @@ describe('routeIntent coordination and work routing', () => {
     expect(result.matches.slice(0, 3).map((match) => match.tool)).not.toContain(
       'projscan_upgrade',
     );
+
+    const keepGoing = routeIntent('keep going and do not cut a release');
+    expect(keepGoing.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['keep', 'going']),
+      }),
+    );
+    expect(keepGoing.matches.map((match) => match.tool)).not.toContain('projscan_release_train');
+
+    const fullImplementation = routeIntent('do these in full, do not cut a version or release');
+    expect(fullImplementation.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        confidence: 'medium',
+        matchedKeywords: ['do'],
+      }),
+    );
+    expect(fullImplementation.matches.map((match) => match.tool)).not.toContain(
+      'projscan_regression_plan',
+    );
+    expect(fullImplementation.matches.map((match) => match.tool)).not.toContain(
+      'projscan_release_train',
+    );
+    expect(fullImplementation.matches.map((match) => match.tool)).not.toContain(
+      'projscan_upgrade',
+    );
+
+    const versionCandidateReview = routeIntent(
+      'prepare a version-candidate review only. do not publish deploy push merge or bump the version',
+    );
+    expect(versionCandidateReview.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_evidence_pack',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['review', 'prepare']),
+      }),
+    );
+    expect(versionCandidateReview.matches.map((match) => match.tool)).not.toContain(
+      'projscan_release_train',
+    );
+    expect(versionCandidateReview.matches.map((match) => match.tool)).not.toContain(
+      'projscan_upgrade',
+    );
   });
 
   it('routes product-planning wording to high-confidence workplan', () => {
