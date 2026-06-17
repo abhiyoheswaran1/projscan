@@ -12,3 +12,5 @@ export interface KeywordMatchContext {
   hasEnvVar: boolean;
   hasQuotedText: boolean;
 }
+
+export type KeywordMatchDecision = boolean | undefined;

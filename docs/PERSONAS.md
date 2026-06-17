@@ -7171,3 +7171,56 @@ dataflow matches unless the explicit risk wording is present.
 Kept change: one early-guard module, one shared context type, one architecture
 boundary regression, existing behavior coverage, this persona note, and no
 release action.
+
+## One Hundred Fiftieth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform And Release
+Owner.
+
+Reason: after the first dispatcher extraction,
+`src/core/intentRouterKeywordMatches.ts` still owned direct file, hotspot,
+impact, semantic-graph, and cleanup decisions. Those rules are target-sensitive:
+they sometimes accept a match immediately and sometimes reject it to avoid noisy
+tool routing. Keeping that tri-state policy in the dispatcher made future
+agent-facing route changes harder to review.
+
+Smallest fix: move target-sensitive keyword decisions into
+`src/core/intentRouterKeywordTargetGuards.ts` and expose a small
+`KeywordMatchDecision` type from the shared keyword context module. Keep route
+catalog entries, keyword scoring, command names, MCP tool names, and public
+route result schemas unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterSearchArchitecture.test.ts -t "target keyword guard decisions"
+npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouterKeywordMatches.ts --format json
+npm exec projscan -- file src/core/intentRouterKeywordTargetGuards.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Intent Router Target Guards
+
+Delete-list after this slice:
+
+- Do not change file, hotspot, impact, semantic graph, doctor cleanup, or
+  evidence-pack routing behavior while moving target-sensitive decisions.
+- Do not change `ROUTE_CATALOG`, keyword weights, route confidence thresholds,
+  CLI command strings, MCP tool names, or public route result schemas.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: direct file intents should still require a file path,
+impact delete/database/API/rollback prompts should keep their existing context
+guards, and semantic graph definition prompts should stay quiet for background,
+test-data, authorization, data-contract, data-access, and style-system lookup
+contexts.
+
+Kept change: one target-guard module, one tri-state decision type, two
+architecture-boundary test updates, full intent-router behavior coverage, this
+persona note, and no release action.

@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 describe('routeIntent architecture', () => {
   const keywordMatchesSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordMatches.ts'), 'utf8');
+  const earlyGuardsSource = () =>
+    readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordEarlyGuards.ts'), 'utf8');
   const scoringSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterScoring.ts'), 'utf8');
 
@@ -47,7 +49,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterReviewSignals.js'");
+    expect(earlyGuardsSource()).toContain("from './intentRouterReviewSignals.js'");
     expect(routerSource).not.toContain('function evidencePackKeywordMatches');
     expect(routerSource).not.toContain('function reviewKeywordMatches');
 
@@ -100,7 +102,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterPlanningSignals.js'");
+    expect(earlyGuardsSource()).toContain("from './intentRouterPlanningSignals.js'");
     expect(routerSource).not.toContain('function featurePlacementContextMatches');
     expect(routerSource).not.toContain('function domainWorkflowPlanningContextMatches');
     expect(routerSource).not.toContain('function stateManagementPlanningContextMatches');
@@ -131,7 +133,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterRepoSignals.js'");
+    expect(earlyGuardsSource()).toContain("from './intentRouterRepoSignals.js'");
     expect(routerSource).not.toContain('function repoRunContextMatches');
     expect(routerSource).not.toContain('function localServiceSetupCommandContextMatches');
     expect(routerSource).not.toContain('function databaseSetupCommandContextMatches');
@@ -420,7 +422,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterUnderstandSignals.js'");
+    expect(earlyGuardsSource()).toContain("from './intentRouterUnderstandSignals.js'");
     expect(routerSource).not.toContain('function understandKeywordMatches');
 
     const understandSignalsSource = readFileSync(

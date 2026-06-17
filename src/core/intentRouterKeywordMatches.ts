@@ -17,13 +17,12 @@ import {
   dependenciesKeywordMatches,
   dependencyCycleContextMatches,
   outdatedNpmContextMatches,
-  packageDependencyLookupContextMatches,
   packageImporterContextMatches,
   workspacesKeywordMatches,
 } from './intentRouterDependencySignals.js';
 import { routeKeywordRejectedByEarlyGuards } from './intentRouterKeywordEarlyGuards.js';
 import type { KeywordMatchRouteEntry } from './intentRouterKeywordContext.js';
-import { evidencePackKeywordMatches } from './intentRouterReviewSignals.js';
+import { routeKeywordTargetGuardDecision } from './intentRouterKeywordTargetGuards.js';
 import {
   preflightBranchRecoveryContextMatches,
   preflightReadyContextMatches,
@@ -34,18 +33,9 @@ import { regressionLocalSetupContextMatches } from './intentRouterRegressionSign
 import { regressionKeywordMatches } from './intentRouterRegressionKeywordMatches.js';
 import { releaseTrainKeywordMatches } from './intentRouterReleaseSignals.js';
 import {
-  doctorCleanupDeleteContextMatches,
   doctorCleanupDiscoveryContextMatches,
-  fileHistoryContextMatches,
-  fileTestContextMatches,
   hotspotFileRiskContextMatches,
   hotspotPerformanceContextMatches,
-  hotspotWhereContextMatches,
-  impactApiContextMatches,
-  impactApiKeywordMatches,
-  impactDatabaseContextMatches,
-  impactDeleteContextMatches,
-  impactRollbackContextMatches,
 } from './intentRouterRiskSignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
 import { searchBackgroundWorkContextMatches } from './intentRouterSearchBackgroundSignals.js';
@@ -103,190 +93,20 @@ export function routeKeywordMatches(
   hasQuotedText: boolean,
 ): boolean {
   if (!tokens.has(keyword)) return false;
-  if (
-    routeKeywordRejectedByEarlyGuards({
-      entry,
-      keyword,
-      tokens,
-      hasFilePath,
-      hasPackageRemoval,
-      hasPackageChange,
-      hasEnvVar,
-      hasQuotedText,
-    })
-  )
+  const context = {
+    entry,
+    keyword,
+    tokens,
+    hasFilePath,
+    hasPackageRemoval,
+    hasPackageChange,
+    hasEnvVar,
+    hasQuotedText,
+  };
+  if (routeKeywordRejectedByEarlyGuards(context))
     return false;
-  if (
-    hasFilePath &&
-    keyword === 'start' &&
-    ['projscan_hotspots', 'projscan_start'].includes(entry.tool)
-  )
-    return false;
-  if (entry.tool === 'projscan_file' && keyword === 'read') return hasFilePath;
-  if (entry.tool === 'projscan_file' && ['review', 'reviewer', 'reviewers'].includes(keyword))
-    return hasFilePath;
-  if (entry.tool === 'projscan_file' && keyword === 'owns') return hasFilePath;
-  if (entry.tool === 'projscan_file' && ['risk', 'risks', 'risky', 'dangerous'].includes(keyword))
-    return hasFilePath;
-  if (
-    entry.tool === 'projscan_file' &&
-    [
-      'last',
-      'touched',
-      'touch',
-      'changed',
-      'recently',
-      'history',
-      'author',
-      'authors',
-      'blame',
-    ].includes(keyword)
-  ) {
-    return hasFilePath && fileHistoryContextMatches(tokens);
-  }
-  if (
-    entry.tool === 'projscan_file' &&
-    ['add', 'write', 'coverage', 'covered', 'uncovered', 'test', 'tests'].includes(keyword)
-  ) {
-    return hasFilePath && fileTestContextMatches(tokens);
-  }
-  if (
-    entry.tool === 'projscan_file' &&
-    keyword === 'file' &&
-    searchConfigLookupContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_file' &&
-    keyword === 'file' &&
-    searchToolingConfigContextMatches(tokens)
-  )
-    return false;
-  if (entry.tool === 'projscan_hotspots' && searchUiInteractionContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_hotspots' && searchNavigationLayoutContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_hotspots' && searchFrontendPageRouteContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_hotspots' && searchStyleSystemContextMatches(tokens)) return false;
-  if (
-    entry.tool === 'projscan_hotspots' &&
-    ['where', 'start'].includes(keyword) &&
-    !hotspotWhereContextMatches(tokens, hasFilePath)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['delete', 'remove'].includes(keyword) &&
-    !hasFilePath &&
-    !impactDeleteContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    hasEnvVar &&
-    [
-      'depends',
-      'affect',
-      'callers',
-      'used',
-      'usage',
-      'referenced',
-      'called',
-      'api',
-      'apis',
-    ].includes(keyword)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['used', 'usage', 'referenced', 'called'].includes(keyword) &&
-    searchTestDataContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['used', 'usage', 'referenced', 'called'].includes(keyword) &&
-    searchReliabilityContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['drop', 'schema', 'table', 'column', 'database', 'db', 'migration', 'migrations'].includes(
-      keyword,
-    ) &&
-    searchDataContractContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['drop', 'schema', 'table', 'column', 'database', 'db', 'migration', 'migrations'].includes(
-      keyword,
-    ) &&
-    !impactDatabaseContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    impactApiKeywordMatches(keyword) &&
-    !impactApiContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['revert', 'rollback', 'undo', 'backout', 'back', 'out', 'recover'].includes(keyword) &&
-    !impactRollbackContextMatches(keyword, tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['uses', 'depend', 'depends', 'installed'].includes(keyword) &&
-    !packageDependencyLookupContextMatches(tokens, hasFilePath)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchBackgroundWorkContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchTestDataContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchAuthorizationContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchDataContractContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchDataAccessContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    ['defined', 'definition'].includes(keyword) &&
-    searchStyleSystemContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_doctor' &&
-    ['safe', 'safely', 'delete', 'remove'].includes(keyword) &&
-    !doctorCleanupDeleteContextMatches(tokens, hasFilePath, hasPackageRemoval)
-  )
-    return false;
-  if (entry.tool === 'projscan_evidence_pack' && !evidencePackKeywordMatches(keyword, tokens))
-    return false;
+  const targetGuardDecision = routeKeywordTargetGuardDecision(context);
+  if (targetGuardDecision !== undefined) return targetGuardDecision;
   if (
     entry.tool === 'projscan_search' &&
     ['search', 'find', 'locate', 'where', 'show', 'code'].includes(keyword) &&

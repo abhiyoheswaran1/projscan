@@ -47,6 +47,22 @@ describe('routeIntent search architecture', () => {
     expect(earlyGuardsSource).toContain('function dataflowKeywordRejected');
   });
 
+  it('keeps target keyword guard decisions isolated from the keyword dispatcher', () => {
+    const keywordSource = keywordMatchesSource();
+
+    expect(keywordSource).toContain("from './intentRouterKeywordTargetGuards.js'");
+    expect(keywordSource).not.toContain('function targetKeywordDecision');
+    expect(keywordSource).not.toContain('function impactKeywordDecision');
+
+    const targetGuardsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterKeywordTargetGuards.ts'),
+      'utf8',
+    );
+    expect(targetGuardsSource).toContain('export function routeKeywordTargetGuardDecision');
+    expect(targetGuardsSource).toContain('function targetKeywordDecision');
+    expect(targetGuardsSource).toContain('function impactKeywordDecision');
+  });
+
   it('keeps infra artifact search routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
