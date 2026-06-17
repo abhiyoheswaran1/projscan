@@ -1,3 +1,5 @@
+import type { ReportControlsMetadata } from '../core/reportScope.js';
+
 const STYLE = `
 :root {
   color-scheme: light dark;
@@ -96,4 +98,14 @@ export function severityIcon(s: 'info' | 'warning' | 'error'): string {
 
 export function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
+}
+
+export function reportControlsHtml(reportControls: ReportControlsMetadata | undefined): string {
+  if (!reportControls) return '';
+  const redaction = reportControls.redactPaths
+    ? (reportControls.pathLabelFormat ?? 'enabled')
+    : 'disabled';
+  return `<div class="card">
+<strong>Report controls:</strong> active; scopes: ${reportControls.scopeCount}; path redaction: ${escapeHtml(redaction)}.
+</div>`;
 }

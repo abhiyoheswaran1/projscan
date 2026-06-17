@@ -2257,3 +2257,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move `reportPrDiffHtml` into `src/reporters/htmlPrDiffReporter.ts`, reuse `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
 - Consequences: PR diff HTML artifact wording and import compatibility stay stable while the main HTML reporter sheds another review-only renderer.
 - Verification: `npm run test -- tests/reporters/htmlPrDiffReporter.test.ts` failed before the extracted module existed, then passed after the extraction. Existing HTML reporter coverage and `npm run typecheck` also passed.
+
+## 2026-06-18: Extract HTML analysis reporter
+
+- Status: accepted
+- Context: `src/reporters/htmlReporter.ts` still owned the broad project analysis HTML renderer at cyclomatic complexity 9 after the review and PR diff renderer extractions.
+- Decision: Move `reportAnalysisHtml` into `src/reporters/htmlAnalysisReporter.ts`, share report-control rendering through `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
+- Consequences: First-run HTML analysis artifact wording and import compatibility stay stable while the main HTML reporter sheds another high-complexity renderer.
+- Verification: `npm run test -- tests/reporters/htmlAnalysisReporter.test.ts` failed before the extracted module existed, then passed after the extraction. Existing HTML reporter coverage and `npm run typecheck` also passed.

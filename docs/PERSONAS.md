@@ -9739,3 +9739,49 @@ return the same `reportPrDiffHtml` function that the focused module exports.
 Kept change: one focused HTML PR diff renderer module, compatibility re-export,
 focused characterization tests, this persona note, and no release action in
 this slice.
+
+## Two Hundred Fifth Slice Decision
+
+Selected personas: First-Run Evaluator and Maintainer Preparing Review.
+
+Reason: project analysis HTML is often the first artifact a maintainer sees
+after pointing ProjScan at a repository. After the review and PR-diff
+extractions, `src/reporters/htmlReporter.ts` still carried that broad renderer
+at cyclomatic complexity 9.
+
+Smallest fix: move `reportAnalysisHtml` into
+`src/reporters/htmlAnalysisReporter.ts`, reuse `src/reporters/htmlShared.ts`,
+move the report-controls HTML helper into that shared module, and re-export
+`reportAnalysisHtml` from `src/reporters/htmlReporter.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/reporters/htmlAnalysisReporter.test.ts
+npm run test -- tests/reporters/htmlReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/reporters/htmlReporter.ts --format json
+npm exec projscan -- file src/reporters/htmlAnalysisReporter.ts --format json
+```
+
+## Review Guardrails: HTML Analysis Reporter Extraction
+
+Delete-list after this slice:
+
+- Do not change `AnalysisReport`, CLI flags, JSON/Markdown/console reporters,
+  package exports, dependencies, lockfiles, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not change Project analysis headings, score card, project metadata,
+  language table, issue table, file table, report-controls card, truncation
+  behavior, or HTML shell output.
+- Do not split every HTML renderer, introduce templates/classes, or create a
+  broad HTML rendering framework.
+
+Reviewer edge case: report-control metadata must render the same card for both
+analysis and health HTML output after the helper moves to `htmlShared`.
+
+Kept change: one focused HTML analysis renderer module, shared report-controls
+helper, compatibility re-export, focused characterization tests, this persona
+note, and no release action in this slice.
