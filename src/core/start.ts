@@ -12,7 +12,7 @@ import { buildStartAdoptionGaps } from './startAdoptionGaps.js';
 import { buildStartReport } from './startReportBuilder.js';
 import type { StartReport } from '../types/start.js';
 
-export type { ComputeStartOptions } from './startOptions.js';
+export type { ComputeStartOptions };
 
 export async function computeStartReport(
   rootPath: string,

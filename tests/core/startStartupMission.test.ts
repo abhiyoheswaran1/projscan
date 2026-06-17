@@ -33,6 +33,15 @@ test('start report keeps final report assembly out of the main orchestrator', ()
   expect(reportSource).toContain('schemaVersion: 1');
 });
 
+test('start report re-exports options type without duplicating the startOptions import surface', () => {
+  const startSource = readFileSync(path.join(process.cwd(), 'src/core/start.ts'), 'utf8');
+  expect(startSource).toContain(
+    "import { normalizeStartOptions, type ComputeStartOptions } from './startOptions.js';",
+  );
+  expect(startSource).toContain('export type { ComputeStartOptions };');
+  expect(startSource).not.toContain("export type { ComputeStartOptions } from './startOptions.js';");
+});
+
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
   const root = await makeTempProject();
 

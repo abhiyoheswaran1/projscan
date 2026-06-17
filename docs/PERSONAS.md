@@ -7628,3 +7628,52 @@ should still be removed from the graph during incremental update.
 Kept change: one graph type module, one graph parsing module, one
 architecture-boundary regression, existing code-graph behavior coverage, this
 persona note, and no release action.
+
+## One Hundred Fifty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `src/core/start.ts` is still a high-churn Mission Control entry point.
+It is already a small orchestrator, so the next safe improvement is not another
+extraction. `projscan file src/core/start.ts --format json` showed
+`startOptions.js` twice in the import surface because `ComputeStartOptions` was
+imported for local use and separately re-exported from the same module. That is
+minor but noisy in the review evidence for a file agents frequently inspect.
+
+Smallest fix: keep the existing `ComputeStartOptions` public export from
+`start.ts`, but re-export the already imported type binding. This preserves the
+public API and removes the duplicate import edge from the file-inspection view.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startStartupMission.test.ts -t "re-exports options type"
+npm run test -- tests/core/startStartupMission.test.ts tests/core/startOptions.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/startStartupMission.test.ts tests/core/startOptions.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/start.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Start Type Re-Export
+
+Delete-list after this slice:
+
+- Do not change start report schema, mode resolution, mission-control routing,
+  proof commands, handoff behavior, setup diagnostics, coordination hints, or
+  next-action ordering.
+- Do not change `ComputeStartOptions` shape or remove its public export from
+  `src/core/start.ts`.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: consumers importing `type ComputeStartOptions` from
+`src/core/start.ts` should continue to compile, while `projscan file` should
+show a single `startOptions.js` import edge.
+
+Kept change: one local type re-export cleanup, one architecture-boundary
+regression, focused start behavior coverage, this persona note, and no release
+action.
