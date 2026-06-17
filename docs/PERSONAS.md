@@ -6045,3 +6045,50 @@ planning.
 Kept change: one domain workflow search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: frontend page lookup routing helps agents find existing settings,
+billing, checkout, dashboard, admin, route-segment, not-found, and 404 page
+behavior without turning lookup questions into implementation work. Maintainers
+need production/failure wording to remain outside this matcher so regression
+and failure investigation routing stays distinct.
+
+Smallest fix: move frontend page search matching into
+`intentRouterSearchPageSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "frontend page search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchPageSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Frontend Page Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, regression failure
+  routing, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change frontend page keyword semantics except by moving the existing
+  cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is /settings page rendered" should
+still route as code search, while "why is /settings returning 404" should stay
+out of the frontend page search matcher and continue to use failure routing.
+
+Kept change: one frontend page search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

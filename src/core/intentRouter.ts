@@ -36,6 +36,7 @@ import { searchCommunicationArtifactContextMatches } from './intentRouterSearchC
 import { searchDomainWorkflowContextMatches } from './intentRouterSearchDomainSignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
+import { searchFrontendPageRouteContextMatches } from './intentRouterSearchPageSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchStateManagementContextMatches } from './intentRouterSearchStateSignals.js';
 import { searchStyleSystemContextMatches } from './intentRouterSearchStyleSignals.js';
@@ -4687,64 +4688,6 @@ function searchNavigationLayoutContextMatches(tokens: Set<string>): boolean {
     ) ||
     tokens.size >= 3
   );
-}
-
-function searchFrontendPageRouteContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    [
-      'why',
-      'returning',
-      'returns',
-      'failing',
-      'failed',
-      'failure',
-      'failures',
-      'production',
-      'prod',
-      'down',
-      'outage',
-      'incident',
-      'runtime',
-      'crash',
-      'crashes',
-      'crashing',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const renderSignal = [
-    'render',
-    'renders',
-    'rendered',
-    'handled',
-    'defined',
-    'located',
-    'lives',
-  ].some((token) => tokens.has(token));
-  const pageSubject =
-    tokens.has('page') &&
-    (renderSignal ||
-      ['billing', 'settings', 'checkout', 'dashboard', 'admin'].some((token) =>
-        tokens.has(token),
-      ) ||
-      (tokens.has('not') && tokens.has('found')) ||
-      tokens.has('404'));
-  const routeSegmentSubject =
-    (tokens.has('route') || tokens.has('routes')) &&
-    (tokens.has('segment') || tokens.has('segments'));
-  const notFoundSubject = tokens.has('page') && tokens.has('not') && tokens.has('found');
-  const statusPageSubject = tokens.has('page') && tokens.has('404');
-  const subject = pageSubject || routeSegmentSubject || notFoundSubject || statusPageSubject;
-  if (!subject) return false;
-  return locator || renderSignal || tokens.size >= 3;
 }
 
 function styleSystemFailureContextMatches(tokens: Set<string>): boolean {

@@ -196,6 +196,23 @@ describe('routeIntent', () => {
     expect(domainSignalsSource).toContain('export function searchDomainWorkflowContextMatches');
   });
 
+  it('keeps frontend page search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchPageSignals.js'");
+    expect(routerSource).not.toContain('function searchFrontendPageRouteContextMatches');
+
+    const pageSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchPageSignals.ts'),
+      'utf8',
+    );
+    expect(pageSignalsSource).toContain(
+      'export function searchFrontendPageRouteContextMatches',
+    );
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');
