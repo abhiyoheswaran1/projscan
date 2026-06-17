@@ -46,6 +46,16 @@ describe('framework source maintainability', () => {
     expect(taintIndex).toContain('functionName: fn.name');
   });
 
+  it('keeps the shared framework source dispatcher as a low-complexity orchestrator', async () => {
+    const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
+    const dispatcher = shared.functions?.find(
+      (fn) => fn.name === 'frameworkRequestSourceForFunction',
+    );
+
+    expect(dispatcher).toBeDefined();
+    expect(dispatcher!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('keeps Next route source matching out of the shared framework source orchestrator', async () => {
     const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
     const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));

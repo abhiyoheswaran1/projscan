@@ -30,9 +30,28 @@ export interface FrameworkRequestSourceContext {
   directCallSites?: string[];
 }
 
+type FrameworkRequestSourceResolver = (context: FrameworkRequestSourceContext) => string | null;
+
+const FRAMEWORK_REQUEST_SOURCE_RESOLVERS: FrameworkRequestSourceResolver[] = [
+  resolveNextRouteSource,
+  resolveRemixSource,
+  resolveHonoSource,
+  resolveExpressSource,
+  resolveFastifySource,
+  resolveKoaSource,
+];
+
 export function frameworkRequestSourceForFunction(
   context: FrameworkRequestSourceContext,
 ): string | null {
+  for (const resolve of FRAMEWORK_REQUEST_SOURCE_RESOLVERS) {
+    const source = resolve(context);
+    if (source) return source;
+  }
+  return null;
+}
+
+function resolveNextRouteSource(context: FrameworkRequestSourceContext): string | null {
   const {
     file,
     functionName,
@@ -40,13 +59,11 @@ export function frameworkRequestSourceForFunction(
     memberReferences,
     parameters,
     enabledSources,
-    references = [],
-    contextualCallSite,
     imports = [],
     directCallSites = [],
   } = context;
 
-  const nextSource = nextRouteRequestSource(
+  return nextRouteRequestSource(
     file,
     functionName,
     memberCallSites,
@@ -56,8 +73,12 @@ export function frameworkRequestSourceForFunction(
     imports,
     directCallSites,
   );
-  if (nextSource) return nextSource;
-  const remixSource = remixRequestSource(
+}
+
+function resolveRemixSource(context: FrameworkRequestSourceContext): string | null {
+  const { file, functionName, parameters, memberCallSites, memberReferences, enabledSources } =
+    context;
+  return remixRequestSource(
     file,
     functionName,
     parameters,
@@ -65,8 +86,18 @@ export function frameworkRequestSourceForFunction(
     memberReferences,
     enabledSources,
   );
-  if (remixSource) return remixSource;
-  const honoSource = honoRequestSource(
+}
+
+function resolveHonoSource(context: FrameworkRequestSourceContext): string | null {
+  const {
+    parameters,
+    memberCallSites,
+    memberReferences,
+    enabledSources,
+    contextualCallSite,
+    imports = [],
+  } = context;
+  return honoRequestSource(
     parameters,
     memberCallSites,
     memberReferences,
@@ -74,32 +105,63 @@ export function frameworkRequestSourceForFunction(
     contextualCallSite,
     imports,
   );
-  if (honoSource) return honoSource;
-  return (
-    expressRequestSource(
-      parameters,
-      references,
-      memberReferences,
-      memberCallSites,
-      enabledSources,
-      contextualCallSite,
-      imports,
-    ) ??
-    fastifyRequestSource(
-      parameters,
-      references,
-      memberReferences,
-      enabledSources,
-      contextualCallSite,
-      imports,
-    ) ??
-    koaRequestSource(
-      parameters,
-      memberReferences,
-      memberCallSites,
-      enabledSources,
-      contextualCallSite,
-      imports,
-    )
+}
+
+function resolveExpressSource(context: FrameworkRequestSourceContext): string | null {
+  const {
+    parameters,
+    references = [],
+    memberReferences,
+    memberCallSites,
+    enabledSources,
+    contextualCallSite,
+    imports = [],
+  } = context;
+  return expressRequestSource(
+    parameters,
+    references,
+    memberReferences,
+    memberCallSites,
+    enabledSources,
+    contextualCallSite,
+    imports,
+  );
+}
+
+function resolveFastifySource(context: FrameworkRequestSourceContext): string | null {
+  const {
+    parameters,
+    references = [],
+    memberReferences,
+    enabledSources,
+    contextualCallSite,
+    imports = [],
+  } = context;
+  return fastifyRequestSource(
+    parameters,
+    references,
+    memberReferences,
+    enabledSources,
+    contextualCallSite,
+    imports,
+  );
+}
+
+function resolveKoaSource(context: FrameworkRequestSourceContext): string | null {
+  const {
+    parameters,
+    memberReferences,
+    memberCallSites,
+    enabledSources,
+    contextualCallSite,
+    imports = [],
+  } = context;
+  return koaRequestSource(
+    parameters,
+    memberReferences,
+    memberCallSites,
+    enabledSources,
+    contextualCallSite,
+    imports,
   );
 }

@@ -2089,3 +2089,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Update public docs to name release-train roadmap planning and `evidence.roadmapPreview`, while keeping quick-win, low-risk, and broad improve-next prompts documented as bug-hunt routes.
 - Consequences: Agents reading docs see the same product-planning route that JSON clients receive. No command, schema, version, changelog, or release behavior changes.
 - Verification: `npm run test -- tests/docs/startRoutingDocs.test.ts` failed before the docs changes, then passed.
+
+## 2026-06-17: Simplify framework request-source dispatch
+
+- Status: accepted
+- Context: `src/core/frameworkSources.ts` remained a high-churn hotspot with one shared dispatcher at cyclomatic complexity 6 even though framework-specific source matching already lived in focused modules.
+- Decision: Replace the shared dispatcher body with an ordered resolver pipeline that preserves Next, Remix, Hono, Express, Fastify, and Koa precedence while keeping `FrameworkRequestSourceContext` as the caller contract.
+- Consequences: The dispatcher is a lower-complexity orchestrator and individual framework matchers remain isolated. Dataflow and taint callers keep the same API and request-source labels.
+- Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "low-complexity orchestrator"` failed before the resolver-pipeline refactor, then passed. The full framework dataflow fixture set also passed.
