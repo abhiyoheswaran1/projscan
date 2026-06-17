@@ -24,9 +24,10 @@ import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import { cliCommandPath } from './commandPath.js';
 import { renderCliBanner } from './bannerDisplay.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
-import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
+import type { FileExplanation, Issue } from '../types.js';
 
 export { buildArchitectureLayers } from './architectureLayers.js';
+export { sliceCliTree } from './treeSlice.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
@@ -177,16 +178,6 @@ export async function renderPluginReporterIfRequested(
     format: getFormat(),
     rootPath: getRootPath(),
   });
-}
-
-/** Walk a DirectoryNode to find the node whose `path` matches targetPath. */
-export function sliceCliTree(node: DirectoryNode, targetPath: string): DirectoryNode | null {
-  if (node.path === targetPath) return node;
-  for (const child of node.children) {
-    const hit = sliceCliTree(child, targetPath);
-    if (hit) return hit;
-  }
-  return null;
 }
 
 export async function analyzeFile(filePath: string): Promise<FileExplanation> {
