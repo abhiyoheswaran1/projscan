@@ -209,6 +209,17 @@ describe('routeIntent coordination and work routing', () => {
       }),
     );
 
+    const noReleaseImproveNext = routeIntent('what should we improve next without releasing');
+    expect(noReleaseImproveNext.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Agent planning',
+        tool: 'projscan_bug_hunt',
+        cli: 'projscan bug-hunt',
+        confidence: 'high',
+        matchedKeywords: ['improve'],
+      }),
+    );
+
     const testImprovement = routeIntent('what should we improve next in tests');
     expect(testImprovement.matches[0]).toEqual(
       expect.objectContaining({

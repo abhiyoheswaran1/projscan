@@ -134,6 +134,7 @@ export function bugHuntOpportunityContextMatches(tokens: Set<string>): boolean {
 
 export function protectedImproveNextContextMatches(tokens: Set<string>): boolean {
   if (!(tokens.has('improve') || tokens.has('improvement')) || !tokens.has('next')) return false;
+  if (noReleaseImproveNextContextMatches(tokens)) return false;
   return [
     'release',
     'releasing',
@@ -170,4 +171,21 @@ export function protectedImproveNextContextMatches(tokens: Set<string>): boolean
     'risk',
     'risks',
   ].some((token) => tokens.has(token));
+}
+
+function noReleaseImproveNextContextMatches(tokens: Set<string>): boolean {
+  const releaseAction = [
+    'release',
+    'releasing',
+    'deploy',
+    'deploying',
+    'deployed',
+    'deployment',
+    'ship',
+    'shipping',
+    'publish',
+    'tag',
+  ].some((token) => tokens.has(token));
+  const releaseProhibition = ['without', 'no', 'not', 'never'].some((token) => tokens.has(token));
+  return releaseAction && releaseProhibition;
 }

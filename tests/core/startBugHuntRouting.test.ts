@@ -122,6 +122,32 @@ test('start report turns broad improve next wording into a bug-hunt planning que
   );
 });
 
+test('start report turns no-release improve next wording into a bug-hunt planning queue', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what should we improve next without releasing',
+  });
+
+  expect(report.mode).toBe('bug_hunt');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain('what should we improve next without releasing');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_bug_hunt',
+      confidence: 'high',
+      matchedKeywords: ['improve'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan bug-hunt --format json',
+      tool: 'projscan_bug_hunt',
+      args: {},
+    }),
+  );
+});
+
 test('start report turns tiny safe task prompts into bug-hunt', async () => {
   const root = await makeTempProject();
 
