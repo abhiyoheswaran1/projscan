@@ -89,6 +89,32 @@ describe('buildCodeGraph', () => {
     expect(parsing).not.toContain("from './codeGraph.js'");
   });
 
+  it('keeps public query helpers isolated from the graph orchestrator', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'src/core/codeGraph.ts'), 'utf-8');
+
+    expect(source).toContain("from './codeGraphQueries.js'");
+    expect(source).toContain('export {');
+    expect(source).not.toContain('export function packagesUsed');
+    expect(source).not.toContain('export function filesImportingPackage');
+    expect(source).not.toContain('export function filesImportingFile');
+    expect(source).not.toContain('export function filesDefiningSymbol');
+    expect(source).not.toContain('export function importersOf');
+    expect(source).not.toContain('export function exportsOf');
+    expect(source).not.toContain('export function importsOf');
+
+    const queries = await fs.readFile(
+      path.join(process.cwd(), 'src/core/codeGraphQueries.ts'),
+      'utf-8',
+    );
+    expect(queries).toContain('export function packagesUsed');
+    expect(queries).toContain('export function filesImportingPackage');
+    expect(queries).toContain('export function filesImportingFile');
+    expect(queries).toContain('export function filesDefiningSymbol');
+    expect(queries).toContain('export function importersOf');
+    expect(queries).toContain('export function exportsOf');
+    expect(queries).toContain('export function importsOf');
+  });
+
   it('indexes package importers and external packages', async () => {
     const files = [
       await writeFile(tmp, 'src/a.ts', "import React from 'react';"),

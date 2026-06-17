@@ -1,12 +1,20 @@
 import path from 'node:path';
 import type { FileEntry } from '../types.js';
-import type { AstImport, AstExport } from './ast.js';
 import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
 import { computeFanIn, computeFanOut } from './codeGraphFanMetrics.js';
 import { rebuildCrossFileIndexes } from './codeGraphIndexes.js';
 import { parseFileToGraphEntry, processChangedPath } from './codeGraphParsing.js';
+export {
+  packagesUsed,
+  filesImportingPackage,
+  filesImportingFile,
+  filesDefiningSymbol,
+  importersOf,
+  exportsOf,
+  importsOf,
+} from './codeGraphQueries.js';
 import { expandLocalStarReexports, isLocalStarReexport } from './codeGraphReexports.js';
 import type { CodeGraph, GraphFile } from './codeGraphTypes.js';
 
@@ -165,37 +173,4 @@ function rebuildIndexesIntoGraph(
   for (const [k, v] of packageImporters) graph.packageImporters.set(k, v);
   graph.symbolDefs.clear();
   for (const [k, v] of symbolDefs) graph.symbolDefs.set(k, v);
-}
-
-// ── Query API ──────────────────────────────────────────────
-
-export function packagesUsed(graph: CodeGraph): Set<string> {
-  return new Set(graph.packageImporters.keys());
-}
-
-export function filesImportingPackage(graph: CodeGraph, pkg: string): string[] {
-  const set = graph.packageImporters.get(pkg);
-  return set ? [...set].sort() : [];
-}
-
-export function filesImportingFile(graph: CodeGraph, relativePath: string): string[] {
-  const set = graph.localImporters.get(relativePath);
-  return set ? [...set].sort() : [];
-}
-
-export function filesDefiningSymbol(graph: CodeGraph, name: string): string[] {
-  const set = graph.symbolDefs.get(name);
-  return set ? [...set].sort() : [];
-}
-
-export function importersOf(graph: CodeGraph, relativePath: string): string[] {
-  return filesImportingFile(graph, relativePath);
-}
-
-export function exportsOf(graph: CodeGraph, relativePath: string): AstExport[] {
-  return graph.files.get(relativePath)?.exports ?? [];
-}
-
-export function importsOf(graph: CodeGraph, relativePath: string): AstImport[] {
-  return graph.files.get(relativePath)?.imports ?? [];
 }
