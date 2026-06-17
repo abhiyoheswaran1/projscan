@@ -2,7 +2,6 @@ import type {
   FileEntry,
   FileExplanation,
   FileInspection,
-  FileHotspot,
   HotspotReport,
   Issue,
 } from '../types.js';
@@ -17,10 +16,10 @@ import {
   importsFromGraphFile,
   resolveInspectionGraph,
 } from './fileInspectionGraph.js';
+import { collectFileInspectionEvidence } from './fileInspectionEvidence.js';
 import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
 import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
-import { indexIssuesByFile } from './hotspotIssues.js';
 
 export { inferPurpose } from './filePurpose.js';
 export { detectFileIssues } from './fileIssues.js';
@@ -80,9 +79,12 @@ export async function inspectFile(
   const hotspotReport =
     options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100, graph }));
 
-  const hotspot = findHotspotForFile(hotspotReport, relativePath);
-  const relatedIssueIds = new Set(indexIssuesByFile(issues, files).get(relativePath) ?? []);
-  const relatedIssues = issues.filter((issue) => relatedIssueIds.has(issue.id));
+  const relatedEvidence = collectFileInspectionEvidence({
+    files,
+    issues,
+    hotspots: hotspotReport,
+    relativePath,
+  });
 
   const graphMetrics = deriveFileGraphMetrics(graph, relativePath);
 
@@ -95,8 +97,8 @@ export async function inspectFile(
     imports,
     exports,
     potentialIssues,
-    hotspot,
-    issues: relatedIssues,
+    hotspot: relatedEvidence.hotspot,
+    issues: relatedEvidence.issues,
     cyclomaticComplexity: graphMetrics.cyclomaticComplexity,
     fanIn: graphMetrics.fanIn,
     fanOut: graphMetrics.fanOut,
@@ -119,12 +121,4 @@ function makeEmpty(relativePath: string, reason: string): FileInspection {
     hotspot: null,
     issues: [],
   };
-}
-
-function findHotspotForFile(
-  report: HotspotReport | undefined,
-  relativePath: string,
-): FileHotspot | null {
-  if (!report || !report.available) return null;
-  return report.hotspots.find((h) => h.relativePath === relativePath) ?? null;
 }

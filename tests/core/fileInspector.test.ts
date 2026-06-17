@@ -97,6 +97,21 @@ describe('deprecated extractor exports', () => {
     const accessSource = readFileSync(path.join(process.cwd(), 'src/core/fileAccess.ts'), 'utf8');
     expect(accessSource).not.toContain("from './fileInspector.js'");
   });
+
+  it('keeps related evidence lookup out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('indexIssuesByFile');
+    expect(inspectorSource).not.toContain('findHotspotForFile');
+
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspectionEvidence.ts'),
+      'utf8',
+    );
+    expect(evidenceSource).not.toContain("from './fileInspector.js'");
+  });
 });
 
 describe('inferPurpose', () => {
