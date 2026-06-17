@@ -5196,3 +5196,52 @@ boundary cleanup.
 Kept change: one setuptools helper module, one maintainability regression,
 existing Python manifest and upgrade-preview coverage, this persona note, and
 no public schema change.
+
+## One Hundred Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: after the Python and hotspot slices, `src/core/preflight.ts` returned
+to the top production hotspot list. The remaining private collection helpers
+for session memory, hotspot analysis, and swarm coordination are local evidence
+inputs; they should be isolated from the preflight report orchestrator so
+reviewers can distinguish evidence collection from verdict/report shaping.
+
+Smallest fix: move `safeSession`, `safeHotspots`, and `safeCoordination` into
+`preflightLocalEvidence.ts`; keep `computePreflight` responsible for composing
+configuration, scan, issues, evidence inputs, reasons, checks, actions, and the
+final report.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "local evidence collection"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightLocalEvidence.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Local-Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change remembered-session ordering, event counts, touched-file
+  truncation behavior, hotspot limit, hotspot unavailable fallback, or
+  coordination availability filtering.
+- Do not change preflight verdicts, summary text, reason ordering, required
+  checks, suggested actions, release-scale sign-off behavior, or public
+  preflight schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: same-file worktree collision evidence should remain a
+warning/caution signal, never an error/block signal.
+
+Kept change: one preflight local-evidence helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

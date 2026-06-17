@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight local evidence collection
+
+- Status: accepted
+- Context: `src/core/preflight.ts` remained the top production hotspot and still owned session-memory, hotspot, and coordination evidence collection after changed-file and review evidence were isolated.
+- Decision: Move safe session, hotspot, and coordination evidence collection into `src/core/preflightLocalEvidence.ts`.
+- Consequences: Remembered-session ordering, hotspot fallback behavior, coordination availability filtering, preflight evidence, reason generation, and public preflight schema stay unchanged, while `src/core/preflight.ts` drops from 234 lines / CC 17 to 192 lines / CC 12.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "local evidence collection"` plus the full preflight test file.
+
 ## 2026-06-17: Extract Python setuptools evidence
 
 - Status: accepted

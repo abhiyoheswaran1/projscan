@@ -304,6 +304,25 @@ test('preflight keeps changed-file evidence collection isolated from the main pr
   expect(fromResult!.cyclomaticComplexity).toBeLessThanOrEqual(2);
 });
 
+test('preflight keeps local evidence collection isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('loadSession');
+  expect(preflightSource).not.toContain('analyzeHotspots');
+  expect(preflightSource).not.toContain('computeCoordination');
+
+  const localEvidence = await inspectRepoSourceFile('src/core/preflightLocalEvidence.ts');
+  const safeSession = localEvidence.functions?.find((fn) => fn.name === 'safeSession');
+  const safeHotspots = localEvidence.functions?.find((fn) => fn.name === 'safeHotspots');
+  const safeCoordination = localEvidence.functions?.find((fn) => fn.name === 'safeCoordination');
+
+  expect(safeSession).toBeDefined();
+  expect(safeSession!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(safeHotspots).toBeDefined();
+  expect(safeHotspots!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(safeCoordination).toBeDefined();
+  expect(safeCoordination!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

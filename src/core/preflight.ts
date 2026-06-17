@@ -1,9 +1,6 @@
 import { scanRepository } from './repositoryScanner.js';
 import { collectIssues } from './issueEngine.js';
-import { analyzeHotspots } from './hotspotAnalyzer.js';
-import { loadSession } from './session.js';
 import { pluginsEnabled } from './plugins.js';
-import { computeCoordination, type CoordinationSummary } from './coordination.js';
 import { policyIssueReasons } from './preflightIssueReasons.js';
 import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
@@ -23,6 +20,13 @@ import {
   safeChangedFiles,
   type PreflightChangedFiles,
 } from './preflightChangedFiles.js';
+import {
+  safeCoordination,
+  safeHotspots,
+  safeSession,
+  type CoordinationSummary,
+  type PreflightSessionEvidence,
+} from './preflightLocalEvidence.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type {
@@ -43,12 +47,6 @@ export interface ComputePreflightOptions {
   headRef?: string;
   maxChangedFiles?: number;
   enablePlugins?: boolean;
-}
-
-interface PreflightSessionEvidence {
-  id: string;
-  touchedFiles: string[];
-  eventCount: number;
 }
 
 const DEFAULT_MAX_CHANGED_FILES = 50;
@@ -161,46 +159,6 @@ async function collectIssuesWithPluginOption(
   _enablePlugins?: boolean,
 ): Promise<Issue[]> {
   return collectIssues(rootPath, files);
-}
-
-async function safeSession(rootPath: string): Promise<PreflightSessionEvidence> {
-  const { session } = await loadSession(rootPath);
-  const touchedFiles = Object.values(session.touchedFiles)
-    .sort((a, b) => {
-      const byTime = Date.parse(b.lastTouchedAt) - Date.parse(a.lastTouchedAt);
-      return byTime !== 0 ? byTime : a.file.localeCompare(b.file);
-    })
-    .map((touch) => touch.file);
-  return {
-    id: session.id,
-    touchedFiles,
-    eventCount: session.events.length,
-  };
-}
-
-async function safeHotspots(
-  rootPath: string,
-  files: FileEntry[],
-  issues: Issue[],
-): Promise<HotspotReport | null> {
-  try {
-    return await analyzeHotspots(rootPath, files, issues, { limit: 20 });
-  } catch {
-    return null;
-  }
-}
-
-/** Coordination evidence for preflight; null when no real cross-worktree read. */
-async function safeCoordination(
-  rootPath: string,
-  baseRef?: string,
-): Promise<CoordinationSummary | null> {
-  try {
-    const summary = await computeCoordination(rootPath, baseRef ? { baseRef } : {});
-    return summary.available ? summary : null;
-  } catch {
-    return null;
-  }
 }
 
 function buildPreflightReasons(input: {
