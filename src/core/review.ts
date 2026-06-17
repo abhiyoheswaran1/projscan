@@ -1,9 +1,9 @@
 import { diffGraphs } from './prDiff.js';
-import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
 import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
 import { readManifests } from './reviewManifests.js';
 import { buildReviewFindings } from './reviewFindings.js';
+import { applyReviewIntent } from './reviewIntent.js';
 import { resolveReviewState, unavailableReviewReport } from './reviewState.js';
 import type { ReviewReport } from '../types/review.js';
 
@@ -46,7 +46,7 @@ export async function computeReview(
   const state = await resolveReviewState(rootPath, options);
   if (state.kind === 'unavailable') return state.report;
   if (state.kind === 'no-change') {
-    applyIntent(state.report, options.intent);
+    applyReviewIntent(state.report, options.intent);
     return state.report;
   }
   const { baseRef, baseSha, headRef, headSha } = state;
@@ -86,24 +86,7 @@ export async function computeReview(
   // annotate each finding with an alignment label, and append a
   // small intent summary to the verdict bullets. Does NOT change the
   // verdict — verdict stays structural.
-  applyIntent(report, options.intent);
+  applyReviewIntent(report, options.intent);
 
   return report;
-}
-
-function applyIntent(report: ReviewReport, rawIntent?: string): void {
-  const intent = parseIntent(rawIntent);
-  if (intent) {
-    const analysis = annotateReviewWithIntent(report, intent);
-    report.intent = {
-      raw: intent.raw,
-      action: intent.action,
-      scopeTokens: intent.scopeTokens,
-    };
-    report.intentAnalysis = {
-      totals: analysis.totals,
-      notable: analysis.notable,
-    };
-    appendIntentToSummary(report.summary, analysis);
-  }
 }

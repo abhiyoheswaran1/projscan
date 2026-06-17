@@ -225,6 +225,22 @@ describe('review architecture guards', () => {
     expect(buildNoChangeReport!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps intent annotation isolated from the review orchestrator', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).toContain("from './reviewIntent.js'");
+    expect(reviewSource).not.toContain("from './intent.js'");
+    expect(reviewSource).not.toContain('function applyIntent');
+    expect(reviewSource).not.toContain('annotateReviewWithIntent');
+
+    const intentModule = await inspectRepoSourceFile('src/core/reviewIntent.ts');
+    const applyReviewIntent = intentModule.functions?.find(
+      (fn) => fn.name === 'applyReviewIntent',
+    );
+
+    expect(applyReviewIntent).toBeDefined();
+    expect(applyReviewIntent!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('keeps head-side scan and hotspot assembly isolated from the review orchestrator', async () => {
     const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
     expect(reviewSource).not.toContain('collectIssues');

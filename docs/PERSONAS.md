@@ -7475,3 +7475,53 @@ watch suffix and emit file-change notifications only when a notifier exists.
 
 Kept change: one stdio transport module, one architecture-boundary regression,
 existing MCP server behavior coverage, this persona note, and no release action.
+
+## One Hundred Fifty Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `src/core/review.ts` remains a high-churn review entry point and still
+mixed snapshot/diff orchestration with optional PR-intent annotation. The intent
+behavior is already covered, so the next lowest-risk improvement is an internal
+ownership split that leaves verdicting and report shape unchanged.
+
+Smallest fix: move intent parsing, finding annotation, intent echo, and summary
+append behavior into `src/core/reviewIntent.ts`. Keep `computeReview()` as the
+one-shot review orchestrator and preserve no-change behavior, structural
+verdicts, intent output fields, and per-finding alignment labels.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/reviewArchitecture.test.ts -t "intent annotation"
+npm run test -- tests/core/reviewArchitecture.test.ts tests/core/review.test.ts tests/core/intent.test.ts tests/core/reviewContract.test.ts tests/core/reviewStructuralSignals.test.ts tests/core/reviewFlowRisks.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/reviewArchitecture.test.ts tests/core/review.test.ts tests/core/intent.test.ts tests/core/reviewContract.test.ts tests/core/reviewStructuralSignals.test.ts tests/core/reviewFlowRisks.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewIntent.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Intent Annotation
+
+Delete-list after this slice:
+
+- Do not change review state resolution, head/base snapshot creation, diffing,
+  package scoping, finding assembly, structural verdict logic, no-change
+  handling, or public review report schemas.
+- Do not change intent parsing semantics, intent output fields,
+  `intentAnalysis` totals/notable entries, summary append behavior, or
+  per-finding `intentAlignment` labels.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: a no-change report with intent should still receive the
+same intent echo and summary annotation, while a review without intent should
+still omit intent fields entirely.
+
+Kept change: one review intent module, one architecture-boundary regression,
+existing review/intent behavior coverage, this persona note, and no release
+action.
