@@ -23,6 +23,23 @@ describe('routeIntent', () => {
     expect(dependencySignalsSource).toContain('export function couplingKeywordMatches');
   });
 
+  it('keeps review and evidence keyword routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterReviewSignals.js'");
+    expect(routerSource).not.toContain('function evidencePackKeywordMatches');
+    expect(routerSource).not.toContain('function reviewKeywordMatches');
+
+    const reviewSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterReviewSignals.ts'),
+      'utf8',
+    );
+    expect(reviewSignalsSource).toContain('export function evidencePackKeywordMatches');
+    expect(reviewSignalsSource).toContain('export function reviewKeywordMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

@@ -23,6 +23,10 @@ import {
   packageImporterContextMatches,
   workspacesKeywordMatches,
 } from './intentRouterDependencySignals.js';
+import {
+  evidencePackKeywordMatches,
+  reviewKeywordMatches,
+} from './intentRouterReviewSignals.js';
 
 export interface RouteEntry {
   /** Short intent label. */
@@ -3300,79 +3304,6 @@ function routeKeywordMatches(
     return false;
   if (entry.tool === 'projscan_release_train' && !releaseTrainKeywordMatches(keyword, tokens))
     return false;
-  return true;
-}
-
-function evidencePackKeywordMatches(keyword: string, tokens: Set<string>): boolean {
-  const reviewerRoutingContext = [
-    'who',
-    'owner',
-    'owners',
-    'routing',
-    'reviewer',
-    'reviewers',
-  ].some((token) => tokens.has(token));
-  const prReviewContext = [
-    'pr',
-    'pull',
-    'request',
-    'review',
-    'reviewer',
-    'reviewers',
-    'comment',
-  ].some((token) => tokens.has(token));
-  const prNarrativeContext = ['pr', 'pull', 'request'].some((token) => tokens.has(token));
-  const reviewerSummaryContext =
-    (tokens.has('summarize') || tokens.has('summary')) &&
-    tokens.has('changes') &&
-    ['reviewer', 'reviewers', 'pr', 'pull', 'request'].some((token) => tokens.has(token));
-  const teamNarrativeContext =
-    ['tell', 'share', 'team'].some((token) => tokens.has(token)) &&
-    ['change', 'changes', 'changed', 'pr', 'pull', 'request'].some((token) => tokens.has(token));
-  const prReadinessContext =
-    prReviewContext &&
-    ['ready', 'open', 'opening', 'before', 'prepare'].some((token) => tokens.has(token));
-  const changedFileOwnerContext =
-    tokens.has('changed') &&
-    (tokens.has('file') || tokens.has('files')) &&
-    ['who', 'owner', 'owners', 'owns'].some((token) => tokens.has(token));
-  if (['description', 'draft', 'say'].includes(keyword)) return prNarrativeContext;
-  if (keyword === 'checklist') return prNarrativeContext;
-  if (['tell', 'team', 'share', 'change'].includes(keyword)) return teamNarrativeContext;
-  if (['summarize', 'changes'].includes(keyword))
-    return reviewerSummaryContext || teamNarrativeContext;
-  if (keyword === 'summary') return prReviewContext || reviewerSummaryContext;
-  if (keyword === 'review') return reviewerRoutingContext || prReadinessContext;
-  if (['ready', 'open', 'opening', 'before', 'prepare'].includes(keyword))
-    return prReadinessContext;
-  if (['changed', 'file', 'files'].includes(keyword)) return changedFileOwnerContext;
-  if (['who', 'owner', 'owners', 'owns', 'routing'].includes(keyword)) {
-    return (
-      changedFileOwnerContext ||
-      ['review', 'reviewer', 'reviewers', 'pr', 'pull', 'request', 'comment'].some((token) =>
-        tokens.has(token),
-      )
-    );
-  }
-  return true;
-}
-
-function reviewKeywordMatches(keyword: string, tokens: Set<string>): boolean {
-  const reviewContext = [
-    'review',
-    'pr',
-    'pull',
-    'request',
-    'branch',
-    'diff',
-    'change',
-    'changes',
-  ].some((token) => tokens.has(token));
-  if (['risk', 'risks', 'risky', 'branch'].includes(keyword)) return reviewContext;
-  if (['secure', 'security'].includes(keyword)) return reviewContext || tokens.has('check');
-  if (['issues', 'check'].includes(keyword)) return tokens.has('security') && reviewContext;
-  if (keyword === 'change')
-    return tokens.has('secure') || tokens.has('security') || tokens.has('review');
   return true;
 }
 
