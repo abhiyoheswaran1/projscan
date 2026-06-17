@@ -6874,3 +6874,53 @@ routes and ownership questions should not become claim requests.
 Kept change: one coordination/session route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Forty Fourth Slice Decision
+
+Selected personas: Product Manager and Agent-Orchestrating Engineer.
+
+Reason: workplan and bug-hunt opportunity routing is how agents choose between
+"what should we build next", "what should I do next", "what is a quick win",
+and "what should we improve next" without stealing release, dependency,
+performance, test, or safety improvement intents.
+
+Smallest fix: move workplan, product-planning, bug-hunt speed, quick-win, and
+protected improve-next matching into `intentRouterWorkSignals.ts`; leave route
+catalog data, route scoring, confidence, start-mode handling, and dispatch
+composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "workplan and bug-hunt opportunity routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterWorkSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Workplan And Bug-Hunt Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, workplan route entries, bug-hunt route
+  entries, route confidence scoring, `routeIntent`, start-mode behavior, or
+  public route result shape.
+- Do not change workplan, roadmap, product-planning, quick-win, first-fix,
+  low-risk improvement, or protected improve-next keyword semantics except by
+  moving the existing matcher cluster into `intentRouterWorkSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: "what should we build next", "what should I do next",
+"quick low-risk improvement", and "what should we improve next" should keep
+their existing routes, while "what should we improve next before release",
+"what should we improve next for dependencies", and "what should we improve
+next in performance" should stay protected from generic bug-hunt routing.
+
+Kept change: one workplan/bug-hunt route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

@@ -1985,3 +1985,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move that matcher cluster into `src/core/intentRouterCoordinationSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 5225 lines / CC 717 to 5106 lines / CC 702. The extracted helper has no imports, no hotspot history, preserves existing coordination/session keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "coordination and session routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract workplan and bug-hunt route signals
+
+- Status: accepted
+- Context: Workplan, product-planning, bug-hunt speed, quick-win, and protected "improve next" routing formed a planning-opportunity matcher cluster inside the intent-router hotspot.
+- Decision: Move that matcher cluster into `src/core/intentRouterWorkSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 5106 lines / CC 702 to 4961 lines / CC 690. The extracted helper has no imports, no hotspot history, preserves existing workplan/bug-hunt keyword semantics, and no public route schema change. Projscan reports a potential TODO/FIXME on the helper only because the existing `todo` keyword token moved with workplan routing.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "workplan and bug-hunt opportunity routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

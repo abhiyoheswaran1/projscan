@@ -351,6 +351,28 @@ describe('routeIntent', () => {
     expect(coordinationSignalsSource).toContain('export function sessionAgentContextMatches');
   });
 
+  it('keeps workplan and bug-hunt opportunity routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterWorkSignals.js'");
+    expect(routerSource).not.toContain('function workplanDoContextMatches');
+    expect(routerSource).not.toContain('function workplanKeywordMatches');
+    expect(routerSource).not.toContain('function productPlanningContextMatches');
+    expect(routerSource).not.toContain('function bugHuntSpeedContextMatches');
+    expect(routerSource).not.toContain('function bugHuntOpportunityContextMatches');
+    expect(routerSource).not.toContain('function protectedImproveNextContextMatches');
+
+    const workSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterWorkSignals.ts'),
+      'utf8',
+    );
+    expect(workSignalsSource).toContain('export function workplanKeywordMatches');
+    expect(workSignalsSource).toContain('export function bugHuntSpeedContextMatches');
+    expect(workSignalsSource).toContain('export function protectedImproveNextContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
