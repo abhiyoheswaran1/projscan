@@ -4441,3 +4441,53 @@ untrusted preview-disabled plugins should still not execute.
 Kept change: one preflight policy-reason helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Third Slice Decision
+
+Selected personas: Platform/Release Owner and Agent-Orchestrating Senior
+Engineer.
+
+Reason: preflight is the compact reviewer gate agents rely on before commit and
+merge. After policy wording moved out, the same orchestrator still owned
+changed-file health, availability, and threshold reason formatting, keeping a
+high-change review gate harder to audit.
+
+Smallest fix: move changed-file reason construction into
+`preflightChangedFileReasons.ts`; keep `buildPreflightReasons` responsible for
+reason ordering across policy, changed-file, release-scale, review, session,
+health, and coordination signals.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "changed-file reason formatting"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightChangedFileReasons.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Changed-File Reason Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight reason order, severity, source, issue id, file,
+  message text, tool routing, verdict logic, required checks, or release-scale
+  sign-off behavior.
+- Do not change changed-file detection, review computation, policy issue
+  formatting, session evidence, health scoring, coordination evidence, or
+  public report schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: changed-file health errors should still block before commit
+or merge; changed-file health warnings and unavailable changed-file evidence
+should still caution; release-scale threshold wording should still appear in
+release-scale evidence.
+
+Kept change: one preflight changed-file reason helper module, one
+maintainability regression, existing preflight behavior coverage, this persona
+note, and no public schema change.

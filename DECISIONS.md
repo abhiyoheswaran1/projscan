@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight changed-file reasons
+
+- Status: accepted
+- Context: `buildPreflightReasons` in `src/core/preflight.ts` still owned changed-file health, availability, and threshold reason formatting after policy issue reasons were isolated.
+- Decision: Move changed-file reason construction into `src/core/preflightChangedFileReasons.ts`.
+- Consequences: Preflight reason order, message text, tools, verdict behavior, required checks, and release-scale behavior stay unchanged, while `buildPreflightReasons` drops from CC 29 to CC 20 and changed-file wording is isolated for review.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "changed-file reason formatting"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight policy issue reasons
 
 - Status: accepted

@@ -102,6 +102,33 @@ test('preflight keeps policy issue reason formatting isolated from the reason or
   expect(pluginIssueReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps changed-file reason formatting isolated from the reason orchestrator', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('Health error on changed file');
+  expect(preflightSource).not.toContain('Health warning on changed file');
+  expect(preflightSource).not.toContain('Changed files unavailable');
+  expect(preflightSource).toContain('changedFileReasons(input)');
+
+  const changedFileReasons = await inspectRepoSourceFile('src/core/preflightChangedFileReasons.ts');
+  const entrypoint = changedFileReasons.functions?.find((fn) => fn.name === 'changedFileReasons');
+  const issueReason = changedFileReasons.functions?.find((fn) => fn.name === 'changedIssueReason');
+  const availabilityReason = changedFileReasons.functions?.find(
+    (fn) => fn.name === 'changedFilesAvailabilityReason',
+  );
+  const thresholdReason = changedFileReasons.functions?.find(
+    (fn) => fn.name === 'changedFilesThresholdReason',
+  );
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(issueReason).toBeDefined();
+  expect(issueReason!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(availabilityReason).toBeDefined();
+  expect(availabilityReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(thresholdReason).toBeDefined();
+  expect(thresholdReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

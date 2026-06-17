@@ -6,6 +6,7 @@ import { loadSession } from './session.js';
 import { pluginsEnabled } from './plugins.js';
 import { computeCoordination, type CoordinationSummary } from './coordination.js';
 import { policyIssueReasons } from './preflightIssueReasons.js';
+import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -285,56 +286,9 @@ function buildPreflightReasons(input: {
   maxChangedFiles: number;
 }): PreflightReason[] {
   const reasons: PreflightReason[] = [];
-  const changedSet = new Set(input.changedFiles.files);
   const changedOnly = input.mode !== 'before_edit' && input.changedFiles.available;
   reasons.push(...policyIssueReasons(input.issues));
-
-  if (changedOnly) {
-    const changedIssues = input.issues.filter((issue) =>
-      issueTouchesChangedFile(issue, changedSet),
-    );
-    const error = changedIssues.find((issue) => issue.severity === 'error');
-    const warning = changedIssues.find((issue) => issue.severity === 'warning');
-    if (error) {
-      reasons.push({
-        severity: 'error',
-        source: 'doctor',
-        issueId: error.id,
-        file: firstIssueFile(error),
-        message: `Health error on changed file: ${error.title}`,
-        tool: 'projscan_doctor',
-      });
-    } else if (warning) {
-      reasons.push({
-        severity: 'warning',
-        source: 'doctor',
-        issueId: warning.id,
-        file: firstIssueFile(warning),
-        message: `Health warning on changed file: ${warning.title}`,
-        tool: 'projscan_doctor',
-      });
-    }
-  } else if (input.mode !== 'before_edit' && !input.changedFiles.available) {
-    reasons.push({
-      severity: 'warning',
-      source: 'changed-files',
-      message: `Changed files unavailable: ${input.changedFiles.reason ?? 'unknown reason'}`,
-      tool: 'projscan_review',
-    });
-  }
-
-  if (
-    input.mode !== 'before_edit' &&
-    input.changedFiles.available &&
-    input.changedFiles.count > input.maxChangedFiles
-  ) {
-    reasons.push({
-      severity: 'warning',
-      source: 'changed-files',
-      message: `${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}`,
-      tool: 'projscan_review',
-    });
-  }
+  reasons.push(...changedFileReasons(input));
   if (input.releaseScale?.detected) {
     reasons.push({
       severity: 'warning',
@@ -745,14 +699,4 @@ function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedA
     out.push(action);
   }
   return out;
-}
-
-function issueTouchesChangedFile(issue: Issue, changedFiles: Set<string>): boolean {
-  return (issue.locations ?? []).some(
-    (location) => location.file && changedFiles.has(location.file),
-  );
-}
-
-function firstIssueFile(issue: Issue): string | undefined {
-  return issue.locations?.find((location) => location.file)?.file;
 }
