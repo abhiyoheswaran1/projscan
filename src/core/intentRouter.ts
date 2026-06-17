@@ -14,8 +14,10 @@
 
 import { ROUTE_CATALOG, type RouteEntry } from './intentRouterCatalog.js';
 import { routeScore, scoreRouteCatalog } from './intentRouterScoring.js';
+import { tokenizeIntent } from './intentRouterTokens.js';
 
-export { ROUTE_CATALOG, type RouteEntry } from './intentRouterCatalog.js';
+export { ROUTE_CATALOG };
+export type { RouteEntry };
 
 export type RouteConfidence = 'high' | 'medium' | 'low';
 
@@ -30,43 +32,6 @@ export interface RouteResult {
   intent: string | null;
   matched: boolean;
   matches: RouteMatch[];
-}
-
-const STOPWORDS = new Set([
-  'the',
-  'a',
-  'an',
-  'i',
-  'to',
-  'my',
-  'is',
-  'it',
-  'of',
-  'in',
-  'on',
-  'and',
-  'or',
-  'for',
-  'this',
-  'that',
-  'how',
-  'what',
-  'me',
-  'we',
-  'with',
-  'can',
-  'should',
-  'if',
-  'be',
-  'am',
-  'are',
-]);
-
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
 
 /**
@@ -84,7 +49,7 @@ export function routeIntent(intent: string | undefined): RouteResult {
     };
   }
 
-  const scored = scoreRouteCatalog(intent, ROUTE_CATALOG, new Set(tokenize(intent)));
+  const scored = scoreRouteCatalog(intent, ROUTE_CATALOG, new Set(tokenizeIntent(intent)));
 
   return {
     intent,
