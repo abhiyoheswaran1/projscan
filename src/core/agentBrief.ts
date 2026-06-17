@@ -135,11 +135,17 @@ function swarmCoordinationHints(summary: CoordinationSummary | null): Array<{
   if (!summary) return [];
   const hints = toCoordinationHints(summary);
   if (hints.length === 0) return [];
+  const hintMessage = hints.join(' ');
+  const sessionBoundary = summary.evidence?.sessionSeparation.rememberedContext;
+  const message =
+    sessionBoundary && !hintMessage.includes(sessionBoundary)
+      ? `${hintMessage} ${sessionBoundary}`
+      : hintMessage;
   return [
     {
       id: 'swarm-coordination',
       label: 'Swarm coordination',
-      message: hints.join(' '),
+      message,
       command: 'projscan coordinate --format json',
     },
   ];
