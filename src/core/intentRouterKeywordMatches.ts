@@ -38,21 +38,12 @@ import {
 } from './intentRouterPreflightSignals.js';
 import { prDiffKeywordMatches } from './intentRouterPrDiffSignals.js';
 import {
-  proofCommandContextMatches,
-  regressionBenchmarkContextMatches,
-  regressionCiPlatformContextMatches,
-  regressionFailureContextMatches,
-  regressionFlakeContextMatches,
-  harnessProofContextMatches,
   regressionLocalSetupContextMatches,
-  regressionPerformanceContextMatches,
   styleSystemFailureContextMatches,
   toolingFailureContextMatches,
 } from './intentRouterRegressionSignals.js';
-import {
-  localServiceSetupCommandContextMatches,
-  packageScriptDiscoveryContextMatches,
-} from './intentRouterRepoSignals.js';
+import { regressionKeywordMatches } from './intentRouterRegressionKeywordMatches.js';
+import { localServiceSetupCommandContextMatches } from './intentRouterRepoSignals.js';
 import { releaseTrainKeywordMatches } from './intentRouterReleaseSignals.js';
 import {
   doctorCleanupDeleteContextMatches,
@@ -106,13 +97,9 @@ import { searchTestDataContextMatches } from './intentRouterSearchTestSignals.js
 import { searchToolingConfigContextMatches } from './intentRouterSearchToolingSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 import {
-  coverageGapContextMatches,
   coverageKeywordMatches,
   searchCodeLocationContextMatches,
   searchTestLocationContextMatches,
-  testCoverageLookupContextMatches,
-  testRunContextMatches,
-  verificationPlanningContextMatches,
 } from './intentRouterVerificationSignals.js';
 import {
   bugHuntOpportunityContextMatches,
@@ -1367,176 +1354,7 @@ export function routeKeywordMatches(
     return false;
   if (
     entry.tool === 'projscan_regression_plan' &&
-    [
-      'github',
-      'action',
-      'actions',
-      'workflow',
-      'workflows',
-      'pipeline',
-      'pipelines',
-      'job',
-      'jobs',
-    ].includes(keyword) &&
-    !regressionCiPlatformContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    searchQuotedDebugTextContextMatches(tokens, hasQuotedText)
-  )
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchReliabilityContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchUiInteractionContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchIntegrationContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchApiContractContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchInfraArtifactContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchDomainWorkflowContextMatches(tokens))
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    searchCommunicationArtifactContextMatches(tokens)
-  )
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchStateManagementContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchDataAccessContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchNavigationLayoutContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchFrontendPageRouteContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && searchStyleSystemContextMatches(tokens))
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    verificationPlanningContextMatches(tokens) &&
-    !harnessProofContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['agentflight', 'agentloop', 'agentloopkit', 'harness'].includes(keyword) &&
-    !harnessProofContextMatches(tokens)
-  )
-    return false;
-  if (entry.tool === 'projscan_regression_plan' && packageScriptDiscoveryContextMatches(tokens))
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    [
-      'port',
-      'ports',
-      'eaddrinuse',
-      'listen',
-      'address',
-      'permission',
-      'denied',
-      'enoent',
-      'eresolve',
-      'peer',
-    ].includes(keyword) &&
-    !regressionLocalSetupContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    [
-      'build',
-      'builds',
-      'lint',
-      'typecheck',
-      'typechecking',
-      'install',
-      'debug',
-      'stack',
-      'trace',
-      'error',
-      'errors',
-      'failure',
-      'failures',
-      'production',
-      'prod',
-      'down',
-      'outage',
-      'incident',
-      'triage',
-      'runtime',
-      'crash',
-      'crashes',
-      'crashing',
-      'connection',
-      'refused',
-      'root',
-      'cause',
-      'returning',
-      'returns',
-      'log',
-      'logs',
-      '500',
-      '502',
-      '503',
-      '504',
-      '404',
-      '403',
-      '401',
-    ].includes(keyword) &&
-    !regressionFailureContextMatches(tokens) &&
-    !regressionPerformanceContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['test', 'tests'].includes(keyword) &&
-    (testCoverageLookupContextMatches(tokens) || coverageGapContextMatches(tokens))
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['run', 'rerun'].includes(keyword) &&
-    !testRunContextMatches(tokens) &&
-    !harnessProofContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['commands', 'command', 'works'].includes(keyword) &&
-    !proofCommandContextMatches(tokens) &&
-    !regressionBenchmarkContextMatches(tokens) &&
-    !regressionFlakeContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['slow', 'slower', 'speed', 'speedup', 'faster', 'benchmark', 'benchmarks'].includes(keyword) &&
-    !regressionPerformanceContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    [
-      'reproduce',
-      'reproduces',
-      'reproducing',
-      'flake',
-      'flaky',
-      'flakes',
-      'intermittent',
-      'intermittently',
-      'nondeterministic',
-      'nondeterminism',
-      'race',
-      'condition',
-      'stabilize',
-      'stabilise',
-      'quarantine',
-    ].includes(keyword) &&
-    !regressionFlakeContextMatches(tokens)
+    !regressionKeywordMatches(keyword, tokens, hasQuotedText)
   )
     return false;
   if (entry.tool === 'projscan_release_train' && searchInfraArtifactContextMatches(tokens))
