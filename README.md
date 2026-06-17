@@ -35,16 +35,29 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.6.0
+## What's New in 4.7.0
 
-4.6.0 hardens the agent workflow loop: broader framework dataflow precision, coordination evidence for multi-agent work, public code graph types, and a smaller, easier-to-review routing test surface.
+4.7.0 turns the post-4.6 validation train into release-ready evidence: broader
+framework dataflow precision, offline Python requirement include support,
+release-train roadmap routing, and lower-risk internal hotspots.
 
-- **More framework dataflow coverage.** Next `nextUrl`, Hono URL reads, Express URL reads, Koa URL reads, and Fastify URL reads are now framework-gated request sources.
-- **Coordination evidence.** Agent hints include concrete local coordination evidence so teams can see which command answered the collision or handoff question.
-- **Public code graph types.** Code graph result types are exported for package consumers that build on projscan results.
-- **Routing hardening.** Mission Control start, intent router, review, CLI, and MCP coverage has been split into focused suites while preserving public behavior.
-- **Release cleanup.** The high-churn `tests/core/start.test.ts` matrix has been reduced to a small default/workspace/ownership/coupling suite with focused companion files.
-- **Bug fixes.** MCP watch IDs, request notifications, no-release continuation routing, agent harness proof routing, Python upgrade evidence, scoped dependency redaction, path-safe file links, unresolved review refs, and inspector purpose detection were tightened.
+- **Remix dataflow coverage.** Remix route actions and loaders now classify
+  request body readers, headers, URL, signal, and params through
+  framework-gated source patterns.
+- **Python requirements includes.** Upgrade previews follow local `-r`
+  requirements and `-c` constraints without reading outside the scan or adding
+  network access.
+- **Roadmap routing.** Build-next product-planning prompts now route to
+  release-train roadmap evidence with a read-only roadmap preview.
+- **Hotspot cleanup.** Dataflow risk assembly, plugin manifest validation,
+  telemetry flushing, search index helpers, release evidence, and bug-hunt
+  findings have been split into focused modules.
+- **Focused coverage.** Python lockfile, framework dataflow, intent router,
+  preflight, MCP, and start suites now carry smaller regression tests plus
+  architecture guards for high-risk entrypoints.
+- **Release readiness.** Large-train preflight warnings are now separated from
+  concrete taint, dataflow, health, plugin, and supply-chain defects so release
+  review can focus on scale sign-off.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 
