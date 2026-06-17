@@ -7,6 +7,8 @@ describe('routeIntent architecture', () => {
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordMatches.ts'), 'utf8');
   const earlyGuardsSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordEarlyGuards.ts'), 'utf8');
+  const searchGuardsSource = () =>
+    readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordSearchGuards.ts'), 'utf8');
   const scoringSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterScoring.ts'), 'utf8');
 
@@ -162,7 +164,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSearchTestSignals.js'");
+    expect(searchGuardsSource()).toContain("from './intentRouterSearchTestSignals.js'");
     expect(routerSource).not.toContain('function searchTestDataContextMatches');
 
     const testSignalsSource = readFileSync(
@@ -177,7 +179,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSearchDataSignals.js'");
+    expect(searchGuardsSource()).toContain("from './intentRouterSearchDataSignals.js'");
     expect(routerSource).not.toContain('function searchDataContractContextMatches');
     expect(routerSource).not.toContain('function searchDataAccessContextMatches');
 
@@ -194,7 +196,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSearchBackgroundSignals.js'");
+    expect(searchGuardsSource()).toContain("from './intentRouterSearchBackgroundSignals.js'");
     expect(routerSource).not.toContain('function searchBackgroundWorkContextMatches');
 
     const backgroundSignalsSource = readFileSync(
@@ -209,7 +211,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSearchOwnershipSignals.js'");
+    expect(searchGuardsSource()).toContain("from './intentRouterSearchOwnershipSignals.js'");
     expect(routerSource).not.toContain('function searchOwnershipContextMatches');
 
     const ownershipSignalsSource = readFileSync(
@@ -273,7 +275,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSearchLookupSignals.js'");
+    expect(searchGuardsSource()).toContain("from './intentRouterSearchLookupSignals.js'");
     expect(routerSource).not.toContain('function searchRouteHandlerContextMatches');
     expect(routerSource).not.toContain('function searchFeatureFlagContextMatches');
     expect(routerSource).not.toContain('function searchEnvLookupContextMatches');

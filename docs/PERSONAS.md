@@ -7224,3 +7224,54 @@ contexts.
 Kept change: one target-guard module, one tri-state decision type, two
 architecture-boundary test updates, full intent-router behavior coverage, this
 persona note, and no release action.
+
+## One Hundred Fifty First Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform And Release
+Owner.
+
+Reason: after target guard extraction, the keyword dispatcher still owned the
+largest agent-facing search rejection block. Search routing is where agents ask
+"where is this implemented?", "who owns this?", "which config controls this?",
+and similar questions before choosing tools, so the branch-heavy search policy
+needs its own reviewable boundary.
+
+Smallest fix: move `projscan_search` keyword rejection policy into
+`src/core/intentRouterKeywordSearchGuards.ts` as table-driven guard rules. Keep
+route catalog entries, scoring, command names, MCP tool names, public route
+result schemas, and non-search tail decisions unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterSearchArchitecture.test.ts -t "search keyword guard decisions"
+npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/intentRouterKeywordMatches.ts --format json
+npm exec projscan -- file src/core/intentRouterKeywordSearchGuards.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Intent Router Search Guards
+
+Delete-list after this slice:
+
+- Do not change search route catalog entries, keyword weights, route confidence
+  thresholds, CLI command strings, MCP tool names, or public route result
+  schemas.
+- Do not widen search contexts while moving the guard block; feature flags,
+  env vars, errors, API contracts, infra, UI, ownership, docs, migrations, and
+  generated-code prompts should keep the same allow/reject contexts.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: generic search words such as `show`, `code`, and `file`
+should still avoid doctor cleanup and migration/generated lookups unless the
+existing specialized context matchers allow them.
+
+Kept change: one search-guard module, one architecture-boundary regression,
+existing full intent-router behavior coverage, this persona note, and no release
+action.
