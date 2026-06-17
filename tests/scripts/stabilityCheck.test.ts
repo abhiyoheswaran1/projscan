@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { compareStableSurface } from '../../scripts/check-stability.mjs';
+import { compareStableSurface, createStableSurface } from '../../scripts/check-stability.mjs';
 
 describe('stable surface check', () => {
+  it('builds the default stable CLI and exit-code contract', () => {
+    const surface = createStableSurface({ tools: [] });
+
+    expect(surface.cliCommands).toContain('review');
+    expect(surface.cliCommands).toContain('workspace');
+    expect(surface.exitCodes).toEqual({
+      success: 0,
+      issues: 1,
+      invalidUsage: 2,
+    });
+  });
+
   it('allows additive stable surface changes while reporting them for review', () => {
     const report = compareStableSurface(
       {
