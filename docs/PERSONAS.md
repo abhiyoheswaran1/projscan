@@ -6570,3 +6570,52 @@ routing and "who should review this PR" should remain evidence-pack routing.
 Kept change: one ownership search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Thirty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Release Steward.
+
+Reason: regression and failure routing is the path agents use when tests,
+CI, local setup, tooling, style systems, benchmarks, proof commands, or
+runtime incidents need a focused verification plan. Release stewards need
+this logic easier to review without mixing it into unrelated search,
+release-readiness, and route-score code.
+
+Smallest fix: move the regression/failure matcher cluster into
+`intentRouterRegressionSignals.ts`; leave route catalog data, release-train
+matching, route scoring, confidence, start-mode handling, and dispatch
+composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "regression and failure routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterRegressionSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Regression And Failure Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, regression-plan route entries,
+  release-train routing, route confidence scoring, `routeIntent`,
+  start-mode behavior, or public route result shape.
+- Do not change regression/failure keyword semantics except by moving the
+  existing matcher cluster into `intentRouterRegressionSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "CI is flaky", "build failed", "typecheck errors",
+"proof commands before push", "port already in use", and "production 500"
+should still route to regression planning, while release-note and changelog
+requests should stay on release readiness.
+
+Kept change: one regression/failure route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

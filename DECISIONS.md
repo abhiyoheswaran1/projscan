@@ -1937,3 +1937,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move ownership search matching into `src/core/intentRouterSearchOwnershipSignals.ts`, while keeping route catalog data, scoring, confidence, claim matching, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6299 lines / CC 920 to 6280 lines / CC 910. The extracted helper has no imports, no hotspot history, receives the existing claim-context blocker from the router, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "ownership search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract regression and failure route signals
+
+- Status: accepted
+- Context: Regression planning, CI failure, flaky test, local setup blocker, style-system failure, tooling failure, and proof-command routing shared a cohesive matcher cluster inside the intent-router hotspot.
+- Decision: Move that matcher cluster into `src/core/intentRouterRegressionSignals.ts`, while keeping route catalog data, scoring, release routing, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6280 lines / CC 910 to 6063 lines / CC 838. The extracted helper has no imports, no hotspot history, preserves the existing regression/failure keyword semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "regression and failure routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

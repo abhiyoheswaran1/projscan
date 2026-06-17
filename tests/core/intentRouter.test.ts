@@ -198,6 +198,30 @@ describe('routeIntent', () => {
     expect(ownershipSignalsSource).toContain('export function searchOwnershipContextMatches');
   });
 
+  it('keeps regression and failure routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterRegressionSignals.js'");
+    expect(routerSource).not.toContain('function regressionFailureContextMatches');
+    expect(routerSource).not.toContain('function regressionLocalSetupContextMatches');
+    expect(routerSource).not.toContain('function regressionCiPlatformContextMatches');
+    expect(routerSource).not.toContain('function regressionPerformanceContextMatches');
+    expect(routerSource).not.toContain('function regressionBenchmarkContextMatches');
+    expect(routerSource).not.toContain('function regressionFlakeContextMatches');
+    expect(routerSource).not.toContain('function proofCommandContextMatches');
+    expect(routerSource).not.toContain('function styleSystemFailureContextMatches');
+    expect(routerSource).not.toContain('function toolingFailureContextMatches');
+
+    const regressionSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterRegressionSignals.ts'),
+      'utf8',
+    );
+    expect(regressionSignalsSource).toContain('export function regressionFailureContextMatches');
+    expect(regressionSignalsSource).toContain('export function regressionFlakeContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
