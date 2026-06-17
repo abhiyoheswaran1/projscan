@@ -1189,34 +1189,3 @@ test('start report turns module coupling questions into full coupling analysis',
     ]),
   );
 });
-
-test('start report recommends the bug-hunt recipe for bug_hunt mode', async () => {
-  const root = await makeTempProject();
-
-  const report = await computeStartReport(root, { mode: 'bug_hunt', maxTasks: 2 });
-
-  expect(report.recommendedWorkflow.id).toBe('bug_hunt');
-  expect(report.recommendedWorkflow.name).toBe('Bug Hunt');
-  expect(report.recommendedWorkflow.mcpTools).toContain('projscan_bug_hunt');
-});
-
-test('start report infers bug-hunt mode from bug-fix intent', async () => {
-  const root = await makeTempProject();
-
-  const report = await computeStartReport(root, { intent: 'find bugs to fix before the PR' });
-
-  expect(report.mode).toBe('bug_hunt');
-  expect(report.modeSource).toBe('intent');
-  expect(report.modeReason).toContain('find bugs to fix before the PR');
-  expect(report.recommendedWorkflow.id).toBe('bug_hunt');
-  expect(report.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
-      command: 'projscan bug-hunt --format json',
-      tool: 'projscan_bug_hunt',
-      args: {},
-    }),
-  );
-  expect(report.missionControl.readyActions.map((action) => action.command)).toContain(
-    'projscan bug-hunt --format json',
-  );
-});

@@ -9015,3 +9015,48 @@ and the combined start/agent-planning run should report 42 tests across
 
 Kept change: one product-planning workplan start test split, this persona note,
 and no release action.
+
+## One Hundred Eighty Ninth Slice Decision
+
+Selected personas: Triage-Focused Maintainer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the product-planning split, `tests/core/start.test.ts` still held
+bug-hunt workflow report assertions. These cases share the bug-hunt behavior
+surface with the existing queue-routing tests: explicit bug_hunt mode should
+select the Bug Hunt workflow, and bug-fix intent should infer bug_hunt mode and
+route to `projscan bug-hunt`.
+
+Smallest fix: move the two bug-hunt workflow scenarios into
+`tests/core/startBugHuntRouting.test.ts` and keep the remaining start routing
+matrix in `tests/core/start.test.ts`. This preserves behavior coverage while
+reducing the original start test file from 1,223 lines to 1,192 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "recommends the bug-hunt recipe|infers bug-hunt mode"
+npm run test -- tests/core/startBugHuntRouting.test.ts -t "recommends the bug-hunt recipe|infers bug-hunt mode"
+npm run test -- tests/core/start.test.ts tests/core/startBugHuntRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startBugHuntRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Bug-Hunt Workflow Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan bug-hunt`, bug_hunt mode selection, bug-fix intent
+  inference, ready actions, workflow metadata, package version, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken coverage for explicit bug_hunt mode or bug-fix intent prompts.
+- Do not broaden this into bug-hunt ranking or route scoring behavior changes;
+  this slice is test maintainability only.
+
+Reviewer edge case: the focused bug-hunt workflow run should report two tests,
+and the combined start/bug-hunt-routing run should report 37 tests across
+`tests/core/start.test.ts` and `tests/core/startBugHuntRouting.test.ts`.
+
+Kept change: one bug-hunt workflow start test split, this persona note, and no
+release action.
