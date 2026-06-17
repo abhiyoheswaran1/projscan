@@ -166,6 +166,21 @@ describe('routeIntent', () => {
     );
   });
 
+  it('keeps state management search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchStateSignals.js'");
+    expect(routerSource).not.toContain('function searchStateManagementContextMatches');
+
+    const stateSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchStateSignals.ts'),
+      'utf8',
+    );
+    expect(stateSignalsSource).toContain('export function searchStateManagementContextMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

@@ -36,6 +36,7 @@ import { searchCommunicationArtifactContextMatches } from './intentRouterSearchC
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
+import { searchStateManagementContextMatches } from './intentRouterSearchStateSignals.js';
 import { searchStyleSystemContextMatches } from './intentRouterSearchStyleSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 
@@ -4690,81 +4691,6 @@ function searchDomainWorkflowContextMatches(tokens: Set<string>): boolean {
     subscriptionRenewal;
   if (!subject) return false;
   return locator || action || tokens.size >= 3;
-}
-
-function searchStateManagementContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    [
-      'leak',
-      'leaks',
-      'leaking',
-      'logged',
-      'logging',
-      'retention',
-      'pii',
-      'gdpr',
-      'security',
-      'secret',
-      'secrets',
-      'token',
-      'tokens',
-      'password',
-      'customer',
-      'personal',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const frameworkSubject = ['redux', 'zustand', 'jotai', 'recoil'].some((token) =>
-    tokens.has(token),
-  );
-  const storeSubject =
-    (tokens.has('state') && ['store', 'stores', 'stored'].some((token) => tokens.has(token))) ||
-    (frameworkSubject &&
-      ['store', 'stores', 'slice', 'slices', 'selector', 'selectors'].some((token) =>
-        tokens.has(token),
-      ));
-  const sliceSubject = frameworkSubject && (tokens.has('slice') || tokens.has('slices'));
-  const selectorSubject = frameworkSubject && (tokens.has('selector') || tokens.has('selectors'));
-  const contextSubject =
-    tokens.has('context') &&
-    ['provider', 'providers', 'supplies', 'supplied', 'provides', 'provided'].some((token) =>
-      tokens.has(token),
-    );
-  const hookSubject =
-    (tokens.has('hook') || tokens.has('hooks')) &&
-    ['fetch', 'fetches', 'fetched', 'query', 'queries', 'mutation', 'mutations'].some((token) =>
-      tokens.has(token),
-    );
-  const reactQuerySubject =
-    tokens.has('react') &&
-    tokens.has('query') &&
-    ['query', 'queries', 'mutation', 'mutations', 'fetch', 'fetches', 'fetched'].some((token) =>
-      tokens.has(token),
-    );
-  const subject =
-    storeSubject ||
-    sliceSubject ||
-    selectorSubject ||
-    contextSubject ||
-    hookSubject ||
-    reactQuerySubject;
-  if (!subject) return false;
-  return (
-    locator ||
-    ['stored', 'fetch', 'fetches', 'fetched', 'supplies', 'supplied', 'provides', 'provided'].some(
-      (token) => tokens.has(token),
-    ) ||
-    tokens.size >= 3
-  );
 }
 
 function searchNavigationLayoutContextMatches(tokens: Set<string>): boolean {
