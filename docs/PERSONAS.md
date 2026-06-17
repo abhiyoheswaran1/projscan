@@ -8312,3 +8312,51 @@ compile for `renderEvidencePackPrComment`,
 
 Kept change: one public-export-preserving runtime edge cleanup, one architecture
 guard, this persona note, and no release action.
+
+## One Hundred Seventy Fourth Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: the roadmap calls out hotspot maintainability for review/type/start
+surfaces, and `tests/core/review.test.ts` was still a high-churn review hotspot
+mixing core review-state scenarios, intent-grounding scenarios, and local git
+fixture plumbing. The production review orchestrator was already small enough;
+the concrete risk was test reviewability and repeated git fixture setup.
+
+Smallest fix: extract the reusable review git fixture into
+`tests/helpers/reviewRepo.ts`, keep the core compute-review scenarios in
+`tests/core/review.test.ts`, and move intent-grounding integration coverage to
+`tests/core/reviewIntentIntegration.test.ts`. This preserves the same seven
+review tests while cutting the original review test file from 206 lines to 101
+lines and lowering its reported risk.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts
+npm run test -- tests/core/review.test.ts tests/core/reviewIntentIntegration.test.ts
+npm exec projscan -- file tests/core/review.test.ts --format json
+```
+
+## Review Guardrails: Review Intent Test Split
+
+Delete-list after this slice:
+
+- Do not change review verdict semantics, intent parsing, intent alignment,
+  dirty-worktree review behavior, unavailable review behavior, public exports,
+  package version, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not expand this helper into a general test framework; keep it limited to
+  the local git review fixture surface.
+- Do not remove coverage for no-git repos, identical refs, same-SHA dirty
+  changes, base worktree checkout failures, missing head refs, intent
+  alignment, or the no-intent default.
+
+Reviewer edge case: the focused review test run should still report seven tests
+across `tests/core/review.test.ts` and
+`tests/core/reviewIntentIntegration.test.ts`, preserving the pre-split coverage
+count while shrinking the original hotspot file.
+
+Kept change: one review test split, one shared local git fixture, this persona
+note, and no release action.
