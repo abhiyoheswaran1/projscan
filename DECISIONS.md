@@ -2137,3 +2137,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move plugin manifest schema constants, manifest types, diagnostic types, reporter command validation, and `validateManifest` into `src/core/pluginManifestValidation.ts`, while re-exporting the same public names from `src/core/plugins.ts`.
 - Consequences: `src/core/plugins.ts` drops to 547 lines / cyclomatic complexity 65 and remains focused on plugin runtime loading, trust checks, reporter rendering, and issue shaping. `validateManifest` now lives in a focused validation module at cyclomatic complexity 3. Public plugin API names and diagnostic behavior are unchanged.
 - Verification: `npm run test -- tests/core/pluginArchitecture.test.ts` failed before extraction, then passed. Plugin pipeline, trust-gate, and MCP plugin suites passed; `projscan file` metrics for both plugin modules reported no issues.
+
+## 2026-06-17: Extract dataflow risk assembly
+
+- Status: accepted
+- Context: `computeDataflow` owned source/sink setup, taint risk construction, bridge risk construction, filtering, sorting, and report assembly, leaving the exported dataflow entrypoint at cyclomatic complexity 24.
+- Decision: Move direct, propagated, and bridge `DataflowRisk` construction into `src/core/dataflowRiskAssembly.ts`, while keeping `computeDataflow` as the public orchestration and report-shaping boundary.
+- Consequences: The dataflow public API and report schema stay unchanged. Risk dedupe order, filter behavior, bridge reachability, and final sorting continue to use the existing traversal and filter helpers, but the entrypoint is now guarded by a low-complexity architecture test.
+- Verification: `npm run test -- tests/core/dataflowArchitecture.test.ts` failed before extraction at cyclomatic complexity 24, then passed after the extraction.
