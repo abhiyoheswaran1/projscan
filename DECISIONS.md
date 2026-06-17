@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract hotspot file assembly
+
+- Status: accepted
+- Context: `src/core/hotspotAnalyzer.ts` remained a production hotspot and still owned per-file hotspot assembly after scoring, line counting, memory tagging, candidate selection, issue linking, and git churn collection were isolated.
+- Decision: Move per-file hotspot assembly, author summary shaping, date recency calculation, and numeric normalization into `src/core/hotspotBuilder.ts`.
+- Consequences: Hotspot score inputs, reasons, author concentration fields, coverage, issue IDs, recency, public hotspot schema, and downstream report behavior stay unchanged, while `src/core/hotspotAnalyzer.ts` drops from 189 lines / CC 16 to 92 lines / CC 9.
+- Verification: `npm run test -- tests/core/hotspotAnalyzer.test.ts -t "per-file hotspot assembly"` plus the full hotspot analyzer and issue-linking test files.
+
 ## 2026-06-17: Extract preflight changed-file evidence
 
 - Status: accepted

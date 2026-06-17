@@ -5098,3 +5098,52 @@ same unavailable evidence and warning path outside `before_edit`.
 Kept change: one preflight changed-file helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## One Hundred Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: `projscan hotspots --format json` ranked `src/core/hotspotAnalyzer.ts`
+as the top production hotspot after the preflight slices. This module feeds the
+bug-hunt loop, preflight context, file inspection, review snapshots, and several
+MCP tools, so keeping it small and reviewable improves trust in every later
+roadmap slice.
+
+Smallest fix: move pure per-file hotspot assembly into `hotspotBuilder.ts`,
+including author summary shaping, date recency calculation, line/CC/coverage
+normalization, score inputs, reasons, and the final `FileHotspot` object.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/hotspotAnalyzer.test.ts -t "per-file hotspot assembly"
+npm run test -- tests/core/hotspotAnalyzer.test.ts
+npm run test -- tests/core/hotspotIssueLinking.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/hotspotAnalyzer.ts --format json
+npm exec projscan -- file src/core/hotspotBuilder.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Hotspot Builder Extraction
+
+Delete-list after this slice:
+
+- Do not change hotspot score formulas, reason wording, author share rounding,
+  bus-factor threshold, coverage handling, issue ID propagation, recency logic,
+  or public hotspot schema.
+- Do not change git churn collection, candidate filtering, line-read limits,
+  issue-to-file linking, memory acceptance tagging, or report sorting.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: a graph-parsed file should still use AST cyclomatic
+complexity, while unparsed and non-adapter files should keep falling back to
+line counts.
+
+Kept change: one hotspot builder helper module, one maintainability regression,
+existing hotspot behavior coverage, this persona note, and no public schema
+change.

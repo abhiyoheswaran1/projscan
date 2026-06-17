@@ -96,6 +96,24 @@ describe('computeRiskScore', () => {
     expect(rankLineReadTargets!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps per-file hotspot assembly isolated from the analyzer orchestrator', async () => {
+    const analyzer = await inspectRepoSourceFile('src/core/hotspotAnalyzer.ts');
+    expect(analyzer.functions?.some((fn) => fn.name === 'buildFileHotspot')).toBe(false);
+    expect(analyzer.functions?.some((fn) => fn.name === 'summarizeHotspotAuthors')).toBe(false);
+    expect(analyzer.functions?.some((fn) => fn.name === 'daysSinceLastChangeFrom')).toBe(false);
+
+    const builder = await inspectRepoSourceFile('src/core/hotspotBuilder.ts');
+    const buildFileHotspot = builder.functions?.find((fn) => fn.name === 'buildFileHotspot');
+    const summarizeAuthors = builder.functions?.find(
+      (fn) => fn.name === 'summarizeHotspotAuthors',
+    );
+
+    expect(buildFileHotspot).toBeDefined();
+    expect(buildFileHotspot!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+    expect(summarizeAuthors).toBeDefined();
+    expect(summarizeAuthors!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,
