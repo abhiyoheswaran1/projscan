@@ -8591,3 +8591,48 @@ tests, and the combined start run should report 65 tests across
 
 Kept change: one change-readiness start test split, this persona note, and no
 release action.
+
+## One Hundred Eightieth Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: the remaining `tests/core/start.test.ts` matrix still mixed general
+start routing with quality-scorecard and hotspot-specific questions. Those
+cases are a coherent reviewer surface because they decide whether agents should
+inspect quality dimensions or hotspot evidence before picking work.
+
+Smallest fix: move the four quality and hotspot routing scenarios into
+`tests/core/startQualityHotspots.test.ts` and keep the rest of the start routing
+matrix in `tests/core/start.test.ts`. This preserves behavior coverage while
+reducing the original start test file from 2,332 lines to 2,181 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "quality and risk picture|risky-file touch|complexity and refactor focus|performance bottleneck"
+npm run test -- tests/core/start.test.ts tests/core/startQualityHotspots.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startQualityHotspots.test.ts --format json
+```
+
+## Review Guardrails: Start Quality Hotspots Test Split
+
+Delete-list after this slice:
+
+- Do not change quality-scorecard routing, hotspot routing, proof commands,
+  alternative route behavior, mode inference, package version, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken coverage for repo risk picture questions, risky-file touch
+  questions, complexity/refactor focus questions, file-inspection alternatives,
+  or performance bottleneck questions.
+- Do not fold these assertions into low-level route-action tests; this slice
+  protects end-to-end start-report routing.
+
+Reviewer edge case: the focused quality/hotspot run should still report four
+tests, and the combined start run should report 62 tests across
+`tests/core/start.test.ts` and `tests/core/startQualityHotspots.test.ts`.
+
+Kept change: one quality/hotspot start test split, this persona note, and no
+release action.
