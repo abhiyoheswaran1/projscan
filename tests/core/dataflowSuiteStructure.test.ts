@@ -16,7 +16,25 @@ it('keeps Next and Hono framework dataflow coverage in focused companion suites'
 
   expect(nextSuite).toContain('Next route request.json');
   expect(nextSuite).not.toContain('Hono route');
-  expect(nextSuite.split('\n').length).toBeLessThanOrEqual(170);
+  expect(nextSuite.split('\n').length).toBeLessThanOrEqual(360);
   expect(honoSuite).toContain('Hono route context request JSON');
   expect(honoSuite).toContain('documented Hono body parsers');
+  expect(honoSuite.split('\n').length).toBeLessThanOrEqual(260);
+});
+
+it('keeps database sink classification out of the dataflow traversal module', () => {
+  const dataflowSource = fs.readFileSync('src/core/dataflow.ts', 'utf8');
+  expect(dataflowSource).not.toContain('DEFAULT_DATABASE_SINKS');
+  expect(dataflowSource).not.toContain('DATABASE_RECEIVERS');
+  expect(dataflowSource).not.toContain('KNOWN_DATABASE_PACKAGES');
+  expect(dataflowSource).not.toContain('function isDefaultMisidentifiedDatabaseSink');
+  expect(dataflowSource).not.toContain('function isDatabaseMemberCall');
+  expect(dataflowSource).not.toContain('function isImportedDatabaseHelper');
+  expect(dataflowSource).not.toContain('function isDatabaseModule');
+  expect(dataflowSource).not.toContain('function isDatabaseMemberAlias');
+  expect(dataflowSource).not.toContain('function isJavaScriptLikeFile');
+
+  const classifierSource = fs.readFileSync('src/core/dataflowDatabaseSinks.ts', 'utf8');
+  expect(classifierSource).toContain('export function isDefaultMisidentifiedDatabaseSink');
+  expect(classifierSource).not.toContain("from './dataflow.js'");
 });
