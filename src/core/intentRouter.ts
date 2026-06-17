@@ -31,6 +31,7 @@ import {
   dataflowKeywordMatches,
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
+import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 
 export interface RouteEntry {
   /** Short intent label. */
@@ -4838,71 +4839,6 @@ function searchApiContractContextMatches(tokens: Set<string>): boolean {
   const subject = openApiSubject || trpcSubject || graphqlSubject || protoSubject;
   if (!subject) return false;
   return locator || artifactAction || tokens.size >= 3;
-}
-
-function searchInfraArtifactContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    [
-      'fail',
-      'failing',
-      'failed',
-      'failure',
-      'failures',
-      'error',
-      'errors',
-      'flake',
-      'flaky',
-      'slow',
-      'slower',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const dockerSubject =
-    tokens.has('dockerfile') ||
-    tokens.has('containerfile') ||
-    (tokens.has('docker') && tokens.has('compose'));
-  const orchestrationSubject =
-    tokens.has('kubernetes') ||
-    tokens.has('k8s') ||
-    tokens.has('manifest') ||
-    tokens.has('manifests') ||
-    tokens.has('helm') ||
-    tokens.has('chart') ||
-    tokens.has('charts');
-  const iacSubject =
-    tokens.has('terraform') ||
-    tokens.has('tf') ||
-    tokens.has('cloudformation') ||
-    tokens.has('cdk') ||
-    tokens.has('pulumi') ||
-    ((tokens.has('module') || tokens.has('modules')) &&
-      ['terraform', 'tf', 's3'].some((token) => tokens.has(token)));
-  const hostedConfigSubject =
-    ['vercel', 'netlify', 'railway', 'fly'].some((token) => tokens.has(token)) &&
-    ['config', 'configuration', 'deploy', 'deployment'].some((token) => tokens.has(token));
-  const workflowSubject =
-    tokens.has('github') &&
-    (tokens.has('workflow') || tokens.has('workflows')) &&
-    ['deploy', 'deploys', 'deployment', 'staging', 'production'].some((token) => tokens.has(token));
-  const subject =
-    dockerSubject || orchestrationSubject || iacSubject || hostedConfigSubject || workflowSubject;
-  if (!subject) return false;
-  return (
-    locator ||
-    ['defined', 'configured', 'deploy', 'deploys', 'deployment'].some((token) =>
-      tokens.has(token),
-    ) ||
-    tokens.size >= 3
-  );
 }
 
 function searchDomainWorkflowContextMatches(tokens: Set<string>): boolean {

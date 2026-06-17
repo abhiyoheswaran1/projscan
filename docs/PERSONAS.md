@@ -5626,3 +5626,48 @@ privacy-check trust-boundary path.
 Kept change: one security route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Eighteenth Slice Decision
+
+Selected personas: Platform/Release Owner and Agent-Orchestrating Engineer.
+
+Reason: infrastructure artifact search routing helps agents distinguish
+deployment/config lookups from release-train intent. That distinction matters
+for local-first planning and for avoiding accidental release workflows.
+
+Smallest fix: move infrastructure artifact search matching into
+`intentRouterSearchInfraSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "infra artifact search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchInfraSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Infra Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, release-train route
+  entries, route confidence scoring, `routeIntent`, or public route result shape.
+- Do not change Docker, orchestration, IaC, hosted-config, or GitHub workflow
+  deployment keyword semantics except by moving the existing cohesive checks
+  into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: deployment artifact lookup language should still suppress
+release-train routing when it is really asking where Docker/Kubernetes/IaC or
+hosted deployment config lives.
+
+Kept change: one infra search route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.

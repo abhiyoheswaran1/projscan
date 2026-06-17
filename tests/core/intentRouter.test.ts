@@ -57,6 +57,21 @@ describe('routeIntent', () => {
     expect(securitySignalsSource).toContain('export function privacyCheckKeywordMatches');
   });
 
+  it('keeps infra artifact search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchInfraSignals.js'");
+    expect(routerSource).not.toContain('function searchInfraArtifactContextMatches');
+
+    const infraSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchInfraSignals.ts'),
+      'utf8',
+    );
+    expect(infraSignalsSource).toContain('export function searchInfraArtifactContextMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');
