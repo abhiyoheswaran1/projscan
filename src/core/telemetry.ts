@@ -55,6 +55,23 @@ export type TelemetryCommandCategory =
   | 'start'
   | 'other';
 
+const TELEMETRY_COMMAND_CATEGORY_BY_COMMAND: Readonly<
+  Partial<Record<string, TelemetryCommandCategory>>
+> = {
+  doctor: 'doctor',
+  review: 'review',
+  preflight: 'preflight',
+  dogfood: 'dogfood',
+  feedback: 'feedback',
+  trial: 'trial',
+  init: 'init',
+  mcp: 'mcp',
+  'evidence-pack': 'evidence',
+  start: 'start',
+  'first-run': 'start',
+  recipes: 'start',
+};
+
 export type TelemetryEventStatus = 'success' | 'failure';
 export type DurationBucket = '<1s' | '1-5s' | '5-30s' | '30s-2m' | '2m+';
 export type CountBucket = '0' | '1' | '2-5' | '6-20' | '21-100' | '100+';
@@ -363,17 +380,7 @@ async function buildCommandEvent(
 function categorizeCommand(commandName: string): TelemetryCommandCategory {
   const name = sanitizeCommandName(commandName);
   const first = name.split(' ')[0] ?? 'other';
-  if (first === 'doctor') return 'doctor';
-  if (first === 'review') return 'review';
-  if (first === 'preflight') return 'preflight';
-  if (first === 'dogfood') return 'dogfood';
-  if (first === 'feedback') return 'feedback';
-  if (first === 'trial') return 'trial';
-  if (first === 'init') return 'init';
-  if (first === 'mcp') return 'mcp';
-  if (first === 'evidence-pack') return 'evidence';
-  if (first === 'start' || first === 'first-run' || first === 'recipes') return 'start';
-  return 'other';
+  return TELEMETRY_COMMAND_CATEGORY_BY_COMMAND[first] ?? 'other';
 }
 
 function sanitizeCommandName(commandName: string): string {

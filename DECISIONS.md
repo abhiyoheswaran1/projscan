@@ -2145,3 +2145,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move direct, propagated, and bridge `DataflowRisk` construction into `src/core/dataflowRiskAssembly.ts`, while keeping `computeDataflow` as the public orchestration and report-shaping boundary.
 - Consequences: The dataflow public API and report schema stay unchanged. Risk dedupe order, filter behavior, bridge reachability, and final sorting continue to use the existing traversal and filter helpers, but the entrypoint is now guarded by a low-complexity architecture test.
 - Verification: `npm run test -- tests/core/dataflowArchitecture.test.ts` failed before extraction at cyclomatic complexity 24, then passed after the extraction.
+
+## 2026-06-17: Simplify telemetry command categorization
+
+- Status: accepted
+- Context: `src/core/telemetry.ts` is policy-sensitive and remained a high-complexity hotspot. Its command categorizer used a long branch chain even though the behavior is a fixed mapping from sanitized command names to existing telemetry categories.
+- Decision: Replace the branch chain with a constant command-to-category lookup table and keep `categorizeCommand` as a small sanitizer-plus-lookup helper.
+- Consequences: Telemetry opt-in, no-network behavior, queueing, sending, event fields, and public telemetry exports remain unchanged. The category aliases stay explicit in one table, and `categorizeCommand` is guarded by an architecture test.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the refactor at cyclomatic complexity 14, then passed after the lookup-table change.
