@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import chalk from 'chalk';
 import path from 'node:path';
 import readline from 'node:readline';
 import { readFileSync } from 'node:fs';
@@ -10,15 +9,9 @@ import { setLogLevel } from '../utils/logger.js';
 import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { recordCommandTelemetry } from '../core/telemetry.js';
 import { enableOfflineMode } from '../core/privacy.js';
-import { getChangedFiles } from '../utils/changedFiles.js';
 import { formatList } from '../utils/formatSupport.js';
 import type { PluginReporterCommand } from '../core/plugins.js';
-import {
-  changedFilesAvailableMessage,
-  changedFilesUnavailableMessage,
-  changedIssueFilterMessage,
-  filterIssuesToChangedFiles,
-} from './changedIssueFilter.js';
+import { filterIssuesByChangedFilesForCli } from './changedOnly.js';
 import { loadCliProjectConfig } from './projectConfig.js';
 import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import { cliCommandPath } from './commandPath.js';
@@ -99,37 +92,13 @@ export async function filterIssuesByChangedFiles(
   rootPath: string,
   baseRef?: string,
 ): Promise<Issue[]> {
-  const result = await getChangedFiles(rootPath, baseRef);
-  const format = getFormat();
-  const quiet = Boolean(program.opts().quiet);
-  if (!result.available) {
-    writeChangedOnlyNotice(changedFilesUnavailableMessage(result.reason), format, quiet, 'warning');
-    return issues;
-  }
-  writeChangedOnlyNotice(
-    changedFilesAvailableMessage(result.baseRef, result.files.length),
-    format,
-    quiet,
-    'dim',
-  );
-  const filtered = filterIssuesToChangedFiles(issues, result.files);
-  const filterMessage = changedIssueFilterMessage(filtered);
-  if (filterMessage) writeChangedOnlyNotice(filterMessage, format, quiet, 'dim');
-  return filtered.issues;
-}
-
-function writeChangedOnlyNotice(
-  message: string,
-  format: ReportFormat,
-  quiet: boolean,
-  style: 'dim' | 'warning',
-): void {
-  if (quiet) return;
-  if (format !== 'console') {
-    console.error(message.trim());
-    return;
-  }
-  console.error(style === 'warning' ? chalk.yellow(message) : chalk.dim(message));
+  return await filterIssuesByChangedFilesForCli({
+    issues,
+    rootPath,
+    baseRef,
+    format: getFormat(),
+    quiet: Boolean(program.opts().quiet),
+  });
 }
 
 export function setupLogLevel(): void {
