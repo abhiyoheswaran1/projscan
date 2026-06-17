@@ -9202,3 +9202,51 @@ across `tests/core/start.test.ts` and
 
 Kept change: one test-evidence start test split, this persona note, and no
 release action in this slice.
+
+## One Hundred Ninety Third Slice Decision
+
+Selected personas: Dependency-Aware Maintainer, Security-Conscious Reviewer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the test-evidence split, `tests/core/start.test.ts` still held
+dependency and package routing scenarios. These cases share one behavior
+surface: package upgrade/removal prompts should route to `projscan upgrade`,
+CVE prompts should route to `projscan audit`, and dependency inventory,
+license, and bundle-size prompts should route to `projscan dependencies`.
+
+Smallest fix: move the ten dependency and package routing scenarios into
+`tests/core/startDependencyRouting.test.ts` and keep the remaining workspace,
+ownership, coupling, and default-mode scenarios in `tests/core/start.test.ts`.
+This preserves behavior coverage while reducing the original start test file
+from 548 lines to 209 lines and removing its file-size warning.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "package bump intent|package update intent|package removal intent|reversed package removal intent|package CVE questions|repo CVE questions|outdated dependencies before upgrade preview|dependency inventory questions|open-source compliance questions|bundle-size questions"
+npm run test -- tests/core/startDependencyRouting.test.ts -t "package bump intent|package update intent|package removal intent|reversed package removal intent|package CVE questions|repo CVE questions|outdated dependencies before upgrade preview|dependency inventory questions|open-source compliance questions|bundle-size questions"
+npm run test -- tests/core/start.test.ts tests/core/startDependencyRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startDependencyRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Dependency Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan upgrade`, `projscan audit`, `projscan dependencies`,
+  `projscan outdated`, dependency target extraction, unresolved input handling,
+  package version, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not weaken coverage for package bump, update, removal, reversed removal,
+  package CVE, repo CVE, missing-package upgrade preview, dependency inventory,
+  open-source compliance, or bundle-size prompts.
+- Do not broaden this into dependency analyzer, audit, upgrade preview, or
+  route scoring behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused dependency routing run should report ten tests,
+and the combined start/dependency-routing run should report 16 tests across
+`tests/core/start.test.ts` and `tests/core/startDependencyRouting.test.ts`.
+
+Kept change: one dependency start test split, this persona note, and no release
+action in this slice.
