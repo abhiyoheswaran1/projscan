@@ -7378,3 +7378,53 @@ missing Python package should keep returning an unavailable Python preview.
 Kept change: one Python upgrade preview module, one architecture-boundary
 regression, existing upgrade behavior coverage, this persona note, and no
 release action.
+
+## One Hundred Fifty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Security-Conscious
+Reviewer, and OSS Maintainer.
+
+Reason: after isolating Python upgrade evidence, `src/core/upgradePreview.ts`
+still carried npm package-name validation, local package reads, and changelog
+slicing. That kept security-sensitive path handling and preview orchestration in
+one file, making future registry or evidence changes harder to review.
+
+Smallest fix: move npm package-name validation plus local package and changelog
+evidence helpers into `src/core/upgradePreviewNpmEvidence.ts`, while keeping
+`previewUpgrade()` as the public orchestrator and re-exporting
+`isValidPackageName` from the original module. Keep path-traversal rejection,
+offline defaults, registry opt-in behavior, output fields, importer detection,
+and Python fallback behavior unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/upgradePreviewArchitecture.test.ts
+npm run test -- tests/core/upgradePreviewArchitecture.test.ts tests/core/upgradePreview.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/mcp/pythonUpgradeFallback.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/upgradePreviewArchitecture.test.ts tests/core/upgradePreview.test.ts tests/core/upgradePreview.checkRegistry.test.ts tests/mcp/pythonUpgradeFallback.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/upgradePreview.ts --format json
+npm exec projscan -- file src/core/upgradePreviewNpmEvidence.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Npm Upgrade Evidence Module
+
+Delete-list after this slice:
+
+- Do not change package-name grammar, traversal rejection, scoped-package path
+  handling, package.json dependency precedence, changelog filenames, breaking
+  marker patterns, changelog truncation output, or public exports.
+- Do not change registry opt-in behavior, offline defaults, npm preview output
+  fields, importer detection, Python fallback behavior, or MCP tool behavior.
+- Do not add dependencies, hidden network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: invalid package names must still be rejected before any
+filesystem access, and scoped package registry checks should still encode only
+the scope separator when `checkRegistry` is explicitly enabled.
+
+Kept change: one npm evidence module, one architecture-boundary regression,
+existing upgrade behavior coverage, this persona note, and no release action.
