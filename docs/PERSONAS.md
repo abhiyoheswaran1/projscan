@@ -4636,3 +4636,44 @@ caution.
 Kept change: one preflight review-reason helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Seventh Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform/Release Owner.
+
+Reason: scoped/redacted evidence controls are a roadmap success signal, and
+reviewers need proof that the controls work beyond `analyze`. The code already
+applied controls to `doctor` and `ci`, but CLI coverage only proved analyze
+SARIF/Markdown/HTML.
+
+Smallest fix: add focused CLI regression coverage for `doctor --format json`
+and `ci --format sarif` with `--report-scope src/private --redact-paths`,
+including explicit checks that scoped and out-of-scope raw paths are absent.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/formatHandling.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Scoped Evidence CLI Coverage
+
+Delete-list after this slice:
+
+- Do not change report-control behavior, CLI flags, output schema, path
+  redaction labels, scope filtering, or reporter APIs.
+- Do not broaden this into new report formats, config schema changes, or
+  release preparation.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: `doctor` JSON and `ci` SARIF should include
+`reportControls` metadata, redact in-scope issue paths to stable labels, and
+avoid leaking both scoped raw paths and out-of-scope raw paths.
+
+Kept change: two CLI regression tests, a shared scoped-cycle fixture for the
+format-handling suite, this persona note, and no public behavior change.
