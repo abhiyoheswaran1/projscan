@@ -56,6 +56,18 @@ async function inspectRepoSourceFile(rel: string) {
 }
 
 describe('MCP server maintainability', () => {
+  it('keeps package-version loading out of server orchestration', async () => {
+    const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
+    expect(serverSource).not.toContain('readFileSync');
+    expect(serverSource).not.toContain('function readPackageVersion');
+    expect(serverSource).toContain("from './serverVersion.js'");
+
+    const versionModule = await inspectRepoSourceFile('src/mcp/serverVersion.ts');
+    const readVersion = versionModule.functions?.find((fn) => fn.name === 'readMcpPackageVersion');
+    expect(readVersion).toBeDefined();
+    expect(readVersion!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('keeps JSON-RPC dispatch routing out of server orchestration', async () => {
     const server = await inspectRepoSourceFile('src/mcp/server.ts');
     expect(server.functions?.some((fn) => fn.name === 'dispatch')).toBe(false);

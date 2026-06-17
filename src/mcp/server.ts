@@ -1,22 +1,10 @@
 import readline from 'node:readline';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { dispatchMcpRequest } from './serverDispatch.js';
 import { parseJsonRpcMessage } from './serverMessage.js';
 import { createMcpServerLifecycle } from './serverLifecycle.js';
 import { createServerSessionRecorder } from './serverSession.js';
 import { createMcpDispatchHandlers } from './serverHandlers.js';
-
-function readPackageVersion(): string {
-  try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
-    return String(pkg.version ?? '0.0.0');
-  } catch {
-    return '0.0.0';
-  }
-}
+import { readMcpPackageVersion } from './serverVersion.js';
 
 export interface McpServerHandle {
   handleMessage(line: string): Promise<string | null>;
@@ -41,7 +29,7 @@ export interface McpServerOptions {
 }
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
-  const serverVersion = readPackageVersion();
+  const serverVersion = readMcpPackageVersion();
   const watchEnabled = options.watch === true && options.notify !== undefined;
 
   // 1.4 — durable cross-invocation session. Lazily loaded on first
