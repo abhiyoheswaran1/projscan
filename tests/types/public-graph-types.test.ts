@@ -208,10 +208,12 @@ test('graph public types compile from the module and legacy barrel', () => {
 });
 
 test('package entrypoint exports code graph construction result types', () => {
-  const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
+  const publicCoreSource = readFileSync(new URL('../../src/publicCore.ts', import.meta.url), 'utf-8');
 
   expect(entrypointCodeGraph.scannedFiles).toBe(1);
-  expect(indexSource).toContain('type CodeGraph,');
-  expect(indexSource).toContain('type GraphFile,');
-  expect(indexSource).not.toContain("export type { CodeGraph, GraphFile } from './core/codeGraph.js';");
+  expect(publicCoreSource).toContain('type CodeGraph,');
+  expect(publicCoreSource).toContain('type GraphFile,');
+  expect(publicCoreSource).not.toContain(
+    "export type { CodeGraph, GraphFile } from './core/codeGraph.js';",
+  );
 });

@@ -31,6 +31,12 @@ type PublicEntrypointTypeProbe = {
 };
 
 const probeKey: keyof PublicEntrypointTypeProbe = 'scan';
+const publicEntrypointModules = [
+  './publicCore.js',
+  './publicAgent.js',
+  './publicMcp.js',
+  './publicLanguages.js',
+];
 
 test('package entrypoint re-exports public types through a type-only star export', () => {
   const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
@@ -38,6 +44,19 @@ test('package entrypoint re-exports public types through a type-only star export
   expect(probeKey).toBe('scan');
   expect(indexSource).toContain("export type * from './types.js';");
   expect(indexSource).not.toContain('export type {\n  ScanResult,');
+});
+
+test('package entrypoint delegates value exports through grouped public entry modules', () => {
+  const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
+
+  for (const moduleSpecifier of publicEntrypointModules) {
+    expect(indexSource).toContain(`export * from '${moduleSpecifier}';`);
+  }
+
+  expect(indexSource).not.toContain("from './core/repositoryScanner.js'");
+  expect(indexSource).not.toContain("from './mcp/server.js'");
+  expect(indexSource).not.toContain("from './core/languages/LanguageAdapter.js'");
+  expect(indexSource.split('\n').filter((line) => line.trim()).length).toBeLessThanOrEqual(6);
 });
 
 test('legacy public type barrel re-exports focused modules through type-only stars', () => {
@@ -48,8 +67,15 @@ test('legacy public type barrel re-exports focused modules through type-only sta
   expect(typesSource).not.toContain('export type {\n  ExportInfo,');
 });
 
-test('package entrypoint keeps type specifiers on existing export edges', () => {
-  const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
+test('grouped public entry modules keep type specifiers on existing export edges', () => {
+  const publicSource = publicEntrypointModules
+    .map((moduleSpecifier) =>
+      readFileSync(
+        new URL(`../../src/${moduleSpecifier.replace('./', '').replace('.js', '.ts')}`, import.meta.url),
+        'utf-8',
+      ),
+    )
+    .join('\n');
 
   for (const source of [
     './core/ast.js',
@@ -58,7 +84,7 @@ test('package entrypoint keeps type specifiers on existing export edges', () => 
     './core/adoption.js',
     './core/languages/LanguageAdapter.js',
   ]) {
-    expect(moduleSpecifierCount(indexSource, source)).toBe(1);
+    expect(moduleSpecifierCount(publicSource, source)).toBe(1);
   }
 });
 

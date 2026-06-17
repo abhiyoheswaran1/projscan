@@ -23,20 +23,29 @@ export function buildContractChanges(
     baseGraph,
     headGraph,
   );
+  const basePublicSymbols = publicExportSymbols(baseGraph, publicExportFiles);
+  const headPublicSymbols = publicExportSymbols(headGraph, publicExportFiles);
   return [
     ...exportContractChangesForFiles(
       'export-added',
       prDiff.filesAdded,
       headGraph,
       publicExportFiles,
+      basePublicSymbols,
     ),
     ...exportContractChangesForFiles(
       'export-removed',
       prDiff.filesRemoved,
       baseGraph,
       publicExportFiles,
+      headPublicSymbols,
     ),
-    ...modifiedExportContractChanges(prDiff.filesModified, publicExportFiles),
+    ...modifiedExportContractChanges(
+      prDiff.filesModified,
+      publicExportFiles,
+      basePublicSymbols,
+      headPublicSymbols,
+    ),
     ...entrypointContractChanges(scopedBaseManifests, scopedHeadManifests),
   ];
 }
@@ -54,11 +63,13 @@ function exportContractChangesForFiles(
   files: string[],
   graph: CodeGraph,
   publicExportFiles: Set<string>,
+  previouslyPublicSymbols: Set<string>,
 ): ReviewContractChange[] {
   const changes: ReviewContractChange[] = [];
   for (const file of files) {
     if (!publicExportFiles.has(file)) continue;
     for (const exp of graph.files.get(file)?.exports ?? []) {
+      if (previouslyPublicSymbols.has(exp.name)) continue;
       changes.push(exportContractChange(kind, file, exp.name));
     }
   }
@@ -68,15 +79,37 @@ function exportContractChangesForFiles(
 function modifiedExportContractChanges(
   files: ModifiedFileDiff[],
   publicExportFiles: Set<string>,
+  basePublicSymbols: Set<string>,
+  headPublicSymbols: Set<string>,
 ): ReviewContractChange[] {
   const changes: ReviewContractChange[] = [];
   for (const file of files) {
     if (!publicExportFiles.has(file.relativePath)) continue;
-    appendExportSymbolChanges(changes, 'export-added', file.relativePath, file.exportsAdded);
-    appendExportSymbolChanges(changes, 'export-removed', file.relativePath, file.exportsRemoved);
+    appendExportSymbolChanges(
+      changes,
+      'export-added',
+      file.relativePath,
+      file.exportsAdded,
+      basePublicSymbols,
+    );
+    appendExportSymbolChanges(
+      changes,
+      'export-removed',
+      file.relativePath,
+      file.exportsRemoved,
+      headPublicSymbols,
+    );
     appendRenamedExportChanges(changes, file);
   }
   return changes;
+}
+
+function publicExportSymbols(graph: CodeGraph, publicExportFiles: Set<string>): Set<string> {
+  const symbols = new Set<string>();
+  for (const file of publicExportFiles) {
+    for (const exp of graph.files.get(file)?.exports ?? []) symbols.add(exp.name);
+  }
+  return symbols;
 }
 
 function appendExportSymbolChanges(
@@ -84,8 +117,10 @@ function appendExportSymbolChanges(
   kind: ExportChangeKind,
   file: string,
   symbols: string[],
+  unchangedPublicSymbols: Set<string>,
 ): void {
   for (const symbol of symbols) {
+    if (unchangedPublicSymbols.has(symbol)) continue;
     changes.push(exportContractChange(kind, file, symbol));
   }
 }

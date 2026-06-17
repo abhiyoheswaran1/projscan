@@ -2233,3 +2233,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Treat recognized `constraints/*.txt` names as Python project evidence and pinned lock evidence when they are already present in the scan file list.
 - Consequences: Offline Python previews can use nested constraints as current-version evidence without declaring runtime dependencies, adding globbing, or reading files outside the scan boundary. Existing included-constraint parsing and unsafe include guards remain unchanged.
 - Verification: `npm run test -- tests/core/languages/pythonProjectDetection.test.ts tests/core/upgradePreview.test.ts` failed before nested constraints were recognized, then passed after the change.
+
+## 2026-06-18: Group public entrypoint re-exports
+
+- Status: accepted
+- Context: `src/index.ts` remained a high-churn public entrypoint because every public value export edge lived directly in one dense file, so unrelated additions continued to touch the stable package entrypoint.
+- Decision: Keep `src/index.ts` as the package entrypoint, but move grouped value re-exports into internal `publicCore`, `publicAgent`, `publicMcp`, and `publicLanguages` entry modules while preserving the type-only public type barrel export. Treat re-export regrouping as neutral in review-contract evidence when the symbol was already public before and remains public after.
+- Consequences: Public names remain available from `src/index.ts`, but future public-surface edits can land in narrower grouped files. Stability-sensitive aliases, type specifiers, and review-contract noise from neutral regrouping stay covered by focused tests and the stable-surface gate.
+- Verification: `npm run test -- tests/types/public-entrypoint-type-star.test.ts` failed before the grouped modules existed, then passed after the refactor. `npm run test -- tests/core/reviewContract.test.ts -t "neutral public re-export grouping"` failed before the contract evidence filter, then passed after the fix.

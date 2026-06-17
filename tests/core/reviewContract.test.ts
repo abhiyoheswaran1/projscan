@@ -147,6 +147,34 @@ export function newApi() { return 2; }
     );
   });
 
+  it('does not report contract changes for neutral public re-export grouping', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x', main: './dist/index.js' }));
+    await write(
+      'src/index.ts',
+      `export function oldApi() { return 1; }
+export function anotherApi() { return 2; }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write('src/index.ts', `export * from './publicCore.js';\n`);
+    await write(
+      'src/publicCore.ts',
+      `export function oldApi() { return 1; }
+export function anotherApi() { return 2; }
+`,
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'group public exports']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.contractChanges ?? []).toEqual([]);
+  });
+
   it('reports exports added in source files for declaration entrypoints', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x', types: 'dist/index.d.ts' }));
