@@ -36,4 +36,23 @@ describe('release evidence architecture', () => {
       'export { renderEvidencePackPrComment, validateEvidencePackPrComment };',
     );
   });
+
+  it('keeps artifact assembly isolated from evidence pack orchestration', () => {
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidence.ts'),
+      'utf8',
+    );
+
+    expect(evidenceSource).toContain("from './releaseEvidenceArtifacts.js'");
+    expect(evidenceSource).not.toContain('function buildArtifacts');
+    expect(evidenceSource).not.toContain('function bugHuntQueueEvidence');
+    expect(evidenceSource).not.toContain('function statusFromPreflight');
+
+    const artifactsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidenceArtifacts.ts'),
+      'utf8',
+    );
+    expect(artifactsSource).toContain('export function buildEvidencePackArtifacts');
+    expect(artifactsSource).toContain('export function statusFromPreflight');
+  });
 });

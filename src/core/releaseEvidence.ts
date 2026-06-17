@@ -2,11 +2,9 @@ import { computeBugHunt } from './bugHunt.js';
 import { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
 export { renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
+import { buildEvidencePackArtifacts } from './releaseEvidenceArtifacts.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
-import {
-  buildEvidencePackPrSummary,
-  concreteDefectMessages,
-} from './releaseEvidencePrSummary.js';
+import { buildEvidencePackPrSummary, concreteDefectMessages } from './releaseEvidencePrSummary.js';
 export { calibratePreflightTrust } from './releaseEvidencePrSummary.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
@@ -14,13 +12,11 @@ import { loadOwnership } from './ownership.js';
 import type {
   BugHuntReport,
   EvidencePackArtifact,
-  EvidencePackArtifactStatus,
   EvidencePackPrSummary,
   EvidencePackReport,
   EvidencePackVerdict,
   PreflightReport,
   PreflightSuggestedAction,
-  PreflightVerdict,
   ReleaseTrainReport,
   WorkplanReport,
 } from '../types.js';
@@ -46,7 +42,7 @@ export async function computeEvidencePack(
       maxChangedFiles: options.preflightMaxChangedFiles,
     }),
   ]);
-  const artifacts = buildArtifacts(train, bugHunt, workplan, preflight);
+  const artifacts = buildEvidencePackArtifacts(train, bugHunt, workplan, preflight);
   const rawVerdict = packVerdict(artifacts);
   const blockingReasons = blockingEvidence(preflight, bugHunt, workplan);
   const changelogEntries = buildChangelogEntries();
@@ -104,71 +100,6 @@ export async function computeEvidencePack(
     prComment,
     prCommentValidation: validateEvidencePackPrComment(prComment, report),
   };
-}
-
-function buildArtifacts(
-  train: ReleaseTrainReport,
-  bugHunt: BugHuntReport,
-  workplan: WorkplanReport,
-  preflight: PreflightReport,
-): EvidencePackArtifact[] {
-  return [
-    {
-      id: 'ep-release-train',
-      title: 'Product plan readiness',
-      status: statusFromPreflight(train.readiness.verdict),
-      summary: train.readiness.summary,
-      evidence: [
-        `${train.plan.lines.length} product line(s): ${train.plan.lines.join(', ')}`,
-        `${train.readiness.blockers} blocker(s), ${train.readiness.cautions} caution(s)`,
-        'read-only evidence: yes',
-      ],
-      commands: ['projscan release-train --format json'],
-    },
-    {
-      id: 'ep-bug-hunt',
-      title: 'Bug-hunt queue',
-      status:
-        bugHunt.verdict === 'block' ? 'blocked' : bugHunt.verdict === 'fix' ? 'caution' : 'ready',
-      summary: bugHunt.summary,
-      evidence: [
-        `health score ${bugHunt.health.score}`,
-        bugHuntQueueEvidence(bugHunt),
-        `preflight evidence during bug hunt: ${bugHunt.evidence.preflightVerdict}`,
-      ],
-      commands: ['projscan bug-hunt --format json'],
-    },
-    {
-      id: 'ep-workplan',
-      title: 'Agent workplan',
-      status: statusFromPreflight(workplan.verdict),
-      summary: workplan.summary,
-      evidence: [
-        `${workplan.tasks.length} task(s)`,
-        `${workplan.topRisks.length} top risk(s)`,
-        workplan.coordination.recommendedNextAgent,
-      ],
-      commands: [
-        'projscan workplan --mode release --format json',
-        'projscan handoff --mode release',
-      ],
-    },
-    {
-      id: 'ep-preflight',
-      title: 'Preflight gate',
-      status: statusFromPreflight(preflight.verdict),
-      summary: preflight.summary,
-      evidence: preflight.requiredChecks.map((check) => `${check.name}: ${check.status}`),
-      commands: ['projscan preflight --mode before_merge --format json'],
-    },
-  ];
-}
-
-function bugHuntQueueEvidence(bugHunt: BugHuntReport): string {
-  const queueLabel = bugHunt.summary.includes('manual sign-off action')
-    ? 'manual sign-off action(s)'
-    : 'fix target(s)';
-  return `${bugHunt.fixQueue.length} ${queueLabel} in queue`;
 }
 
 function blockingEvidence(
@@ -254,12 +185,6 @@ function approvalRecommendation(verdict: EvidencePackVerdict): string {
   if (verdict === 'caution')
     return 'Review cautions, then approve only after the regression plan passes.';
   return 'Approval can proceed after the recorded regression commands pass.';
-}
-
-function statusFromPreflight(verdict: PreflightVerdict): EvidencePackArtifactStatus {
-  if (verdict === 'block') return 'blocked';
-  if (verdict === 'caution') return 'caution';
-  return 'ready';
 }
 
 function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedAction[] {
