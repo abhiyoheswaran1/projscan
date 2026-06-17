@@ -6234,3 +6234,50 @@ away" should stay led by session context.
 Kept change: one PR-diff route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Thirty First Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: preflight routing helps agents choose the local safety gate for
+ready/risk questions and for rebase or merge-conflict recovery, without
+confusing post-conflict test planning or PR-diff comparisons. Maintainers need
+these safety-gate phrases isolated because they are high-leverage routing
+guards near review, hotspot, and branch-change paths.
+
+Smallest fix: move preflight ready, risk, and branch-recovery matching into
+`intentRouterPreflightSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "preflight route routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterPreflightSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, preflight route entries, PR-diff routing,
+  hotspot routing, regression planning, route confidence scoring, `routeIntent`,
+  or public route result shape.
+- Do not change preflight keyword semantics except by moving the existing ready,
+  risk, and branch-recovery checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "rebase went wrong" and "resolve merge conflicts" should
+still route to `projscan_preflight`, while "what should I test after resolving
+conflicts" should stay led by regression planning.
+
+Kept change: one preflight route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.

@@ -55,6 +55,27 @@ describe('routeIntent', () => {
     expect(prDiffSignalsSource).toContain('export function prDiffKeywordMatches');
   });
 
+  it('keeps preflight route routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterPreflightSignals.js'");
+    expect(routerSource).not.toContain('function preflightReadyContextMatches');
+    expect(routerSource).not.toContain('function preflightRiskContextMatches');
+    expect(routerSource).not.toContain('function preflightBranchRecoveryContextMatches');
+
+    const preflightSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterPreflightSignals.ts'),
+      'utf8',
+    );
+    expect(preflightSignalsSource).toContain('export function preflightReadyContextMatches');
+    expect(preflightSignalsSource).toContain('export function preflightRiskContextMatches');
+    expect(preflightSignalsSource).toContain(
+      'export function preflightBranchRecoveryContextMatches',
+    );
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
