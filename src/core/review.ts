@@ -55,7 +55,7 @@ export async function computeReview(
 
   const baseSnapshot = await buildReviewBaseSnapshot(rootPath, baseRef, baseSha);
   if (!baseSnapshot.available) {
-    return unavailableReviewReport(baseSnapshot.reason, options, baseRef, headRef, headSha);
+    return unavailableReviewReport(baseSnapshot.reason, options, baseRef, headRef, headSha, baseSha);
   }
   const baseGraph = baseSnapshot.graph;
   const basePackageManifests = baseSnapshot.packageManifests;

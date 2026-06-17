@@ -22,7 +22,7 @@ export type ReviewState =
       baseRef: string;
       baseSha: string;
       headRef: string;
-      headSha: string | null;
+      headSha: string;
     };
 
 export async function resolveReviewState(
@@ -33,7 +33,7 @@ export async function resolveReviewState(
   if (unavailable) return unavailable;
 
   const refs = await resolveReviewRefs(rootPath, options);
-  const ready = requireResolvedBase(refs, options);
+  const ready = requireResolvedRefs(refs, options);
   if (ready.kind !== 'ready') return ready;
 
   const noChange = await noChangeReviewState(rootPath, ready);
@@ -67,20 +67,41 @@ async function resolveReviewRefs(
   };
 }
 
-function requireResolvedBase(
+function requireResolvedRefs(
   refs: ReviewRefs,
   options: ReviewStateOptions,
 ): Extract<ReviewState, { kind: 'ready' | 'unavailable' }> {
-  if (refs.baseSha) return { kind: 'ready', ...refs, baseSha: refs.baseSha };
+  if (!refs.baseSha) {
+    return {
+      kind: 'unavailable',
+      report: unavailableReviewReport(
+        `Could not resolve base ref "${refs.baseRef}".`,
+        options,
+        refs.baseRef,
+        refs.headRef,
+        refs.headSha,
+      ),
+    };
+  }
+  if (!refs.headSha) {
+    return {
+      kind: 'unavailable',
+      report: unavailableReviewReport(
+        `Could not resolve head ref "${refs.headRef}".`,
+        options,
+        refs.baseRef,
+        refs.headRef,
+        null,
+        refs.baseSha,
+      ),
+    };
+  }
   return {
-    kind: 'unavailable',
-    report: unavailableReviewReport(
-      `Could not resolve base ref "${refs.baseRef}".`,
-      options,
-      refs.baseRef,
-      refs.headRef,
-      refs.headSha,
-    ),
+    kind: 'ready',
+    baseRef: refs.baseRef,
+    baseSha: refs.baseSha,
+    headRef: refs.headRef,
+    headSha: refs.headSha,
   };
 }
 
@@ -88,7 +109,7 @@ async function noChangeReviewState(
   rootPath: string,
   refs: Extract<ReviewState, { kind: 'ready' }>,
 ): Promise<ReviewState | undefined> {
-  if (!refs.headSha || refs.headSha !== refs.baseSha) return undefined;
+  if (refs.headSha !== refs.baseSha) return undefined;
   if (!(await isWorktreeClean(rootPath))) return undefined;
   return {
     kind: 'no-change',
@@ -107,16 +128,17 @@ export function unavailableReviewReport(
   baseRef = options.base ?? '',
   headRef = options.head ?? 'HEAD',
   headSha: string | null = null,
+  baseSha: string | null = null,
 ): ReviewReport {
   return {
     available: false,
     reason,
-    base: { ref: baseRef, resolvedSha: null },
+    base: { ref: baseRef, resolvedSha: baseSha },
     head: { ref: headRef, resolvedSha: headSha },
     prDiff: {
       available: false,
       reason,
-      base: { ref: baseRef, resolvedSha: null },
+      base: { ref: baseRef, resolvedSha: baseSha },
       head: { ref: headRef, resolvedSha: headSha },
       filesAdded: [],
       filesRemoved: [],

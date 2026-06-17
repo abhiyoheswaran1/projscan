@@ -128,6 +128,25 @@ function makeGraph(
 }
 
 describe('computePrDiff', () => {
+  it('returns unavailable when an explicit head ref cannot be resolved', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    const r = await computePrDiff(tmp, { base: 'HEAD', head: 'missing-head' });
+
+    expect(r.available).toBe(false);
+    expect(r.reason).toMatch(/Could not resolve head ref "missing-head"/);
+    expect(r.base).toEqual({ ref: 'HEAD', resolvedSha: expect.any(String) });
+    expect(r.head).toEqual({ ref: 'missing-head', resolvedSha: null });
+    expect(r.filesAdded).toEqual([]);
+    expect(r.filesModified).toEqual([]);
+    expect(r.filesRemoved).toEqual([]);
+    expect(r.totalFilesChanged).toBe(0);
+  });
+
   it('returns unavailable when the base worktree cannot be checked out', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));

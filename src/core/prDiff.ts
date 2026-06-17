@@ -61,6 +61,18 @@ export async function computePrDiff(
       totalFilesChanged: 0,
     };
   }
+  if (!headSha) {
+    return {
+      available: false,
+      reason: `Could not resolve head ref "${headRef}".`,
+      base: { ref: baseRef, resolvedSha: baseSha },
+      head: { ref: headRef, resolvedSha: null },
+      filesAdded: [],
+      filesRemoved: [],
+      filesModified: [],
+      totalFilesChanged: 0,
+    };
+  }
 
   // Build the head graph from rootPath as-is (the working tree).
   const headScan = await scanRepository(rootPath);

@@ -144,6 +144,23 @@ describe('computeReview', () => {
     expect(r.newDataflowRisks).toEqual([]);
   });
 
+  it('returns unavailable when an explicit head ref cannot be resolved', async () => {
+    await setupRepo();
+    await write('package.json', JSON.stringify({ name: 'x' }));
+    await write('src/a.ts', `export const a = 1;\n`);
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    const r = await computeReview(tmp, { base: 'HEAD', head: 'missing-head' });
+
+    expect(r.available).toBe(false);
+    expect(r.reason).toMatch(/Could not resolve head ref "missing-head"/);
+    expect(r.base).toEqual({ ref: 'HEAD', resolvedSha: expect.any(String) });
+    expect(r.head).toEqual({ ref: 'missing-head', resolvedSha: null });
+    expect(r.changedFiles).toEqual([]);
+    expect(r.prDiff.totalFilesChanged).toBe(0);
+  });
+
   it('annotates findings with intent alignment when intent is passed (1.9+)', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x' }));
