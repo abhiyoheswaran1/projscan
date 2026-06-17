@@ -30,12 +30,16 @@ import { readFile, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
+import {
+  compareStableSurface,
+  createStableSurface as createSurfaceFromManifest,
+} from './stability-surface.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, '..');
-const distDir = path.join(root, 'dist');
-const manifestPath = path.join(distDir, 'tool-manifest.json');
-const baselinePath = path.join(root, 'stability-baseline.json');
+export { compareStableSurface };
+
+const scriptPath = fileURLToPath(import.meta.url);
+const here = path.dirname(scriptPath);
+const defaultRoot = path.resolve(here, '..');
 
 // CLI commands that are part of the stable surface (per STABILITY.md). Edit
 // this list ONLY on a major version bump; otherwise additions go through
@@ -99,157 +103,111 @@ const STABLE_EXIT_CODES = {
   invalidUsage: 2,
 };
 
-const args = new Set(process.argv.slice(2));
-const updateMode = args.has('--update');
-
-// ── Load the live surface ─────────────────────────────────
-
-let manifest;
-try {
-  await stat(manifestPath);
-} catch {
-  fail(`tool-manifest.json missing at ${manifestPath}. Run \`npm run build\` first.`);
-}
-try {
-  manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
-} catch (err) {
-  fail(`Could not parse ${manifestPath}: ${err.message}`);
+export function createStableSurface(manifest, options = {}) {
+  return createSurfaceFromManifest(manifest, {
+    cliCommands: STABLE_CLI_COMMANDS,
+    exitCodes: STABLE_EXIT_CODES,
+    ...options,
+  });
 }
 
-const liveSurface = {
-  schemaVersion: 1,
-  mcpTools: {},
-  cliCommands: [...STABLE_CLI_COMMANDS].sort(),
-  exitCodes: STABLE_EXIT_CODES,
-};
+export async function createStabilityCheckReport(options = {}) {
+  const root = path.resolve(options.root ?? defaultRoot);
+  const manifestPath = options.manifestPath ?? path.join(root, 'dist', 'tool-manifest.json');
+  const baselinePath = options.baselinePath ?? path.join(root, 'stability-baseline.json');
+  const manifest = await readManifest(manifestPath);
+  const baseline = await readBaseline(baselinePath, root);
+  const liveSurface = createStableSurface(manifest, options);
 
-for (const tool of manifest.tools) {
-  const props = tool.inputSchema?.properties ?? {};
-  const required = tool.inputSchema?.required ?? [];
-  liveSurface.mcpTools[tool.name] = {
-    args: Object.keys(props).sort(),
-    required: [...required].sort(),
+  return {
+    ...compareStableSurface(baseline, liveSurface),
+    baselinePath: path.relative(root, baselinePath),
   };
 }
 
-// ── Update mode: rewrite the baseline and exit ────────────
-
-if (updateMode) {
+export async function updateStabilityBaseline(options = {}) {
+  const root = path.resolve(options.root ?? defaultRoot);
+  const manifestPath = options.manifestPath ?? path.join(root, 'dist', 'tool-manifest.json');
+  const baselinePath = options.baselinePath ?? path.join(root, 'stability-baseline.json');
+  const manifest = await readManifest(manifestPath);
+  const liveSurface = createStableSurface(manifest, options);
   await writeFile(baselinePath, JSON.stringify(liveSurface, null, 2) + '\n', 'utf-8');
-  console.log(`✓ stability baseline updated at ${path.relative(root, baselinePath)}`);
-  console.log('  Only do this on a deliberate major version bump or when intentionally');
-  console.log('  expanding the stable surface (e.g. promoting a tool to GA).');
-  process.exit(0);
+  return {
+    baselinePath: path.relative(root, baselinePath),
+    liveSurface,
+  };
 }
 
-// ── Check mode: load + diff ───────────────────────────────
-
-let baseline;
-try {
-  baseline = JSON.parse(await readFile(baselinePath, 'utf-8'));
-} catch (err) {
-  if (err.code === 'ENOENT') {
-    fail(
-      `No baseline file at ${path.relative(root, baselinePath)}. Run\n` +
-        `  node scripts/check-stability.mjs --update\n` +
-        `to bootstrap one (only on a deliberate major bump).`,
-    );
+export async function runCli(argv = process.argv.slice(2)) {
+  const args = new Set(argv);
+  if (args.has('--update')) {
+    const report = await updateStabilityBaseline();
+    console.log(`✓ stability baseline updated at ${report.baselinePath}`);
+    console.log('  Only do this on a deliberate major version bump or when intentionally');
+    console.log('  expanding the stable surface (e.g. promoting a tool to GA).');
+    return 0;
   }
-  fail(`Could not parse baseline: ${err.message}`);
+
+  const report = await createStabilityCheckReport();
+  printStabilityReport(report);
+  return report.status === 'pass' ? 0 : 1;
 }
 
-const issues = [];
-
-// MCP tools: tracked individually.
-const baselineToolNames = new Set(Object.keys(baseline.mcpTools ?? {}));
-const liveToolNames = new Set(Object.keys(liveSurface.mcpTools));
-
-for (const name of baselineToolNames) {
-  if (!liveToolNames.has(name)) {
-    issues.push(`REMOVED MCP tool: ${name}`);
+async function readManifest(manifestPath) {
+  try {
+    await stat(manifestPath);
+  } catch {
+    throw new Error(`tool-manifest.json missing at ${manifestPath}. Run \`npm run build\` first.`);
+  }
+  try {
+    return JSON.parse(await readFile(manifestPath, 'utf-8'));
+  } catch (err) {
+    throw new Error(`Could not parse ${manifestPath}: ${err.message}`);
   }
 }
 
-for (const name of baselineToolNames) {
-  if (!liveToolNames.has(name)) continue;
-  const baseTool = baseline.mcpTools[name];
-  const liveTool = liveSurface.mcpTools[name];
-  for (const arg of baseTool.args) {
-    if (!liveTool.args.includes(arg)) {
-      issues.push(`REMOVED arg from ${name}: ${arg}`);
-    }
-  }
-  // Required args may NOT change mid-major. New args may be added but not as required.
-  const baseRequired = new Set(baseTool.required);
-  const liveRequired = new Set(liveTool.required);
-  for (const r of liveRequired) {
-    if (!baseRequired.has(r)) {
-      issues.push(`NEW required arg in ${name}: ${r} (must be optional within a major version)`);
-    }
-  }
-  for (const r of baseRequired) {
-    if (!liveRequired.has(r)) {
-      issues.push(
-        `required arg ${r} in ${name} is no longer required (allowed but flag for review)`,
+async function readBaseline(baselinePath, root) {
+  try {
+    return JSON.parse(await readFile(baselinePath, 'utf-8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(
+        `No baseline file at ${path.relative(root, baselinePath)}. Run\n` +
+          `  node scripts/check-stability.mjs --update\n` +
+          `to bootstrap one (only on a deliberate major bump).`,
       );
     }
+    throw new Error(`Could not parse baseline: ${err.message}`);
   }
 }
 
-// CLI commands: removal is a break.
-for (const cmd of baseline.cliCommands ?? []) {
-  if (!liveSurface.cliCommands.includes(cmd)) {
-    issues.push(`REMOVED CLI command: ${cmd}`);
+function printStabilityReport(report) {
+  if (report.additions.length > 0) {
+    console.log('Stable-surface additions (allowed on minor/patch):');
+    for (const addition of report.additions) console.log(`  ${addition}`);
+    console.log('');
   }
-}
 
-// Exit codes: meaning may not flip.
-for (const [k, v] of Object.entries(baseline.exitCodes ?? {})) {
-  if (liveSurface.exitCodes[k] !== v) {
-    issues.push(`exit code "${k}" changed: ${v} → ${liveSurface.exitCodes[k]}`);
+  if (report.issues.length === 0) {
+    console.log(`✓ stable surface holds against ${report.baselinePath}`);
+    return;
   }
+
+  console.error('✗ stable-surface regressions detected:');
+  for (const issue of report.issues) console.error(`  ${issue}`);
+  console.error('');
+  console.error(
+    'These changes require a major version bump. If that is intentional, run:\n' +
+      '  node scripts/check-stability.mjs --update\n' +
+      'to refresh the baseline. Otherwise, restore the removed/renamed surface.',
+  );
 }
 
-// ── Surface additions (informational, not failures) ───────
-const additions = [];
-for (const name of liveToolNames) {
-  if (!baselineToolNames.has(name)) additions.push(`+ MCP tool: ${name}`);
-}
-for (const name of liveToolNames) {
-  if (!baselineToolNames.has(name)) continue;
-  const baseArgs = new Set(baseline.mcpTools[name].args);
-  for (const arg of liveSurface.mcpTools[name].args) {
-    if (!baseArgs.has(arg)) additions.push(`+ arg ${arg} in ${name}`);
+if (path.resolve(process.argv[1] ?? '') === scriptPath) {
+  try {
+    process.exit(await runCli());
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
   }
-}
-for (const cmd of liveSurface.cliCommands) {
-  if (!(baseline.cliCommands ?? []).includes(cmd)) additions.push(`+ CLI command: ${cmd}`);
-}
-
-// ── Report ────────────────────────────────────────────────
-
-if (additions.length > 0) {
-  console.log('Stable-surface additions (allowed on minor/patch):');
-  for (const a of additions) console.log(`  ${a}`);
-  console.log('');
-}
-
-if (issues.length === 0) {
-  console.log(`✓ stable surface holds against ${path.relative(root, baselinePath)}`);
-  process.exit(0);
-}
-
-console.error('✗ stable-surface regressions detected:');
-for (const issue of issues) console.error(`  ${issue}`);
-console.error('');
-console.error(
-  'These changes require a major version bump. If that is intentional, run:\n' +
-    '  node scripts/check-stability.mjs --update\n' +
-    'to refresh the baseline. Otherwise, restore the removed/renamed surface.',
-);
-process.exit(1);
-
-function fail(msg) {
-  console.error(msg);
-  process.exit(1);
 }

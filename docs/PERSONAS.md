@@ -5442,3 +5442,50 @@ still use that graph directly and avoid cache load/build/save work.
 Kept change: one file inspection graph helper module, one maintainability
 regression, existing file inspector behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Fourteenth Slice Decision
+
+Selected personas: Platform/Release Owner and OSS Maintainer Evaluating MCP
+Adoption.
+
+Reason: `scripts/check-stability.mjs` was the next production-ish hotspot and
+guards the public stable surface that release owners and MCP adopters rely on.
+Its comparison rules were embedded in top-level CLI code, so importing it for
+focused tests immediately exited the test process.
+
+Smallest fix: move pure stable-surface shaping and comparison into
+`stability-surface.mjs`; keep `check-stability.mjs` responsible for manifest
+IO, baseline writes, CLI formatting, and exit codes.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/scripts/stabilityCheck.test.ts
+npm exec agentflight -- verify npm run test -- tests/scripts/stabilityCheck.test.ts tests/scripts/releaseCheck.test.ts tests/scripts/graphCorpusCheck.test.ts
+npm exec agentflight -- verify npm run check:stability
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file scripts/check-stability.mjs --format json
+npm exec projscan -- file scripts/stability-surface.mjs --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Stability Surface Comparison Extraction
+
+Delete-list after this slice:
+
+- Do not change stable CLI command names, exit-code meanings, MCP tool/argument
+  compatibility rules, allowed-addition reporting, baseline path, or failure
+  wording.
+- Do not update `stability-baseline.json`, run `--update`, bump versions, tag,
+  publish, push, or cut a release.
+- Do not add dependency, network, telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: importing `check-stability.mjs` in Vitest should not call
+`process.exit`, while running `node scripts/check-stability.mjs` should still
+exit nonzero on stable-surface regressions.
+
+Kept change: one stability comparison helper module, one focused script test,
+existing script/stability behavior coverage, this persona note, and no release
+or baseline update.
