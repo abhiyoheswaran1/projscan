@@ -12,6 +12,7 @@ const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['url', 'request.url'],
   ['headers', 'request.headers'],
   ['cookies', 'request.cookies'],
+  ['nextUrl.pathname', 'request.nextUrl.pathname'],
   ['nextUrl.searchParams', 'request.nextUrl.searchParams'],
 ]);
 

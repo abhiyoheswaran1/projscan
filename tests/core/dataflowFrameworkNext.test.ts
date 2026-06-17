@@ -158,6 +158,42 @@ export function helper(request: { nextUrl: { searchParams: URLSearchParams } }) 
     ).toBeUndefined();
   });
 
+  it('treats Next route nextUrl pathname as a framework request source without flagging helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'api', 'pathname'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'api', 'pathname', 'route.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function GET(request: Request & { nextUrl: URL }) {
+  const pathname = request.nextUrl.pathname;
+  return db.query(String(pathname));
+}
+
+export function helper(request: { nextUrl: { pathname: string } }) {
+  return db.query(request.nextUrl.pathname);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFn: 'GET',
+          source: 'request.nextUrl.pathname',
+          sink: 'query',
+        }),
+      ]),
+    );
+    expect(
+      report.risks.find(
+        (risk) => risk.sourceFn === 'helper' && risk.source === 'request.nextUrl.pathname',
+      ),
+    ).toBeUndefined();
+  });
+
   it('treats Next route request headers and cookies as framework request sources without flagging helpers', async () => {
     await fs.mkdir(path.join(tmp, 'app', 'api', 'identity'), { recursive: true });
     await fs.writeFile(
