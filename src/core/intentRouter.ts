@@ -32,6 +32,7 @@ import {
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
+import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 
 export interface RouteEntry {
@@ -4516,80 +4517,6 @@ function searchAuthorizationContextMatches(tokens: Set<string>): boolean {
       'access',
     ].some((token) => tokens.has(token)) || tokens.size >= 3
   );
-}
-
-function searchReliabilityContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  const rateLimitSubject =
-    ((tokens.has('rate') || tokens.has('rates')) &&
-      (tokens.has('limit') || tokens.has('limits') || tokens.has('limiting'))) ||
-    tokens.has('throttle') ||
-    tokens.has('throttling');
-  const cacheSubject = [
-    'cache',
-    'caches',
-    'cached',
-    'redis',
-    'invalidate',
-    'invalidates',
-    'invalidated',
-    'invalidation',
-  ].some((token) => tokens.has(token));
-  const retrySubject = ['retry', 'retries', 'retried', 'backoff'].some((token) =>
-    tokens.has(token),
-  );
-  const timeoutSubject = tokens.has('timeout') || tokens.has('timeouts');
-  const circuitSubject = tokens.has('circuit') && tokens.has('breaker');
-  const idempotencySubject = tokens.has('idempotency') || tokens.has('idempotent');
-  const signatureSubject =
-    (tokens.has('signature') || tokens.has('signatures')) &&
-    (tokens.has('webhook') ||
-      tokens.has('verified') ||
-      tokens.has('verify') ||
-      tokens.has('verification'));
-  const debounceSubject = tokens.has('debounce') || tokens.has('debounced');
-  const subject =
-    rateLimitSubject ||
-    cacheSubject ||
-    retrySubject ||
-    timeoutSubject ||
-    circuitSubject ||
-    idempotencySubject ||
-    signatureSubject ||
-    debounceSubject;
-  if (!subject) return false;
-  return [
-    'where',
-    'which',
-    'what',
-    'find',
-    'locate',
-    'search',
-    'lookup',
-    'code',
-    'logic',
-    'configured',
-    'defined',
-    'handled',
-    'handling',
-    'used',
-    'set',
-    'sets',
-    'protect',
-    'protects',
-    'invalidate',
-    'invalidates',
-    'invalidated',
-    'retry',
-    'retries',
-    'verified',
-    'verify',
-  ].some((token) => tokens.has(token));
 }
 
 function searchDataContractContextMatches(tokens: Set<string>): boolean {

@@ -1793,3 +1793,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move UI interaction search matching into `src/core/intentRouterSearchUiSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7798 lines / CC 1366 to 7737 lines / CC 1338. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "UI interaction search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract reliability search route signals
+
+- Status: accepted
+- Context: Reliability lookup routing for rate limits, cache invalidation, retries, timeouts, circuit breakers, idempotency, webhook signatures, and debounce behavior was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move reliability search matching into `src/core/intentRouterSearchReliabilitySignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7737 lines / CC 1338 to 7664 lines / CC 1314. The extracted helper has no hotspot history, max function CC 8, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "reliability search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

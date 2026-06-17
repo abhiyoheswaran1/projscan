@@ -5716,3 +5716,50 @@ out of the UI interaction search matcher.
 Kept change: one UI search route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Twentieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Platform/Release Owner.
+
+Reason: reliability lookup routing helps agents find existing retry, timeout,
+rate-limit, cache, idempotency, signature, circuit-breaker, and debounce
+behavior without creating work. Platform owners need these lookups to stay
+separate from release-train or regression-planning paths unless the user is
+actually asking for release or failure investigation.
+
+Smallest fix: move reliability search matching into
+`intentRouterSearchReliabilitySignals.ts`; leave route catalog data, route
+scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "reliability search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchReliabilitySignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Reliability Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, regression-plan route
+  entries, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change reliability keyword semantics except by moving the existing
+  cohesive checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where are webhook signatures verified"
+should still route as code search, while "add retry backoff" should stay out of
+the reliability search matcher.
+
+Kept change: one reliability search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
