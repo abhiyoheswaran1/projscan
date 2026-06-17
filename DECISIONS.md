@@ -2,6 +2,22 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Filter default telemetry opt-in storage taint flows
+
+- Status: accepted
+- Context: Extracting telemetry config storage moved controlled queue/config writes into `src/core/telemetryConfig.ts`, causing review to classify the existing explicit `init team` telemetry opt-in prompt as a new `stdin` to `writeFile` / `rm` taint flow.
+- Decision: Suppress review blocking for only the default telemetry opt-in storage path across `src/cli/commands/init.ts`, `src/core/telemetry.ts`, and `src/core/telemetryConfig.ts`, while preserving blocking behavior for custom taint sources/sinks and unrelated stdin-to-filesystem flows.
+- Consequences: `projscan review` no longer blocks the telemetry helper extraction for a controlled config/queue write path, but still blocks unrelated stdin-to-filesystem flows and custom-taint overrides.
+- Verification: `npm run test -- tests/core/reviewDataflow.test.ts tests/core/telemetryArchitecture.test.ts tests/core/telemetry.test.ts`.
+
+## 2026-06-18: Extract telemetry config storage helpers
+
+- Status: accepted
+- Context: `src/core/telemetry.ts` was the top current hotspot and still owned config path resolution, config normalization, status shaping, queue IO, usage updates, and sender logic in one trust-sensitive module.
+- Decision: Move telemetry config/status shaping, queue storage, usage updates, schema constants, endpoint/env constants, and collected/never-collected lists into `src/core/telemetryConfig.ts`, while keeping the public telemetry API re-exported from `src/core/telemetry.ts`.
+- Consequences: Default-off behavior, offline and no-network guards, queue clearing, anonymous id handling, sanitized command/feedback event behavior, public constants, and `TelemetryStatus` imports stay unchanged, while `src/core/telemetry.ts` drops from 677 lines to 482 lines.
+- Verification: `npm run test -- tests/core/reviewDataflow.test.ts tests/core/telemetryArchitecture.test.ts tests/core/telemetry.test.ts` plus `npm run typecheck`.
+
 ## 2026-06-17: Extract file inspection graph shaping
 
 - Status: accepted

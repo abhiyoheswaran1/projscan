@@ -1,46 +1,43 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 
-export const DEFAULT_TELEMETRY_ENDPOINT = 'https://www.baseframelabs.com/api/projscan/telemetry';
-export const TELEMETRY_HOME_ENV = 'PROJSCAN_TELEMETRY_HOME';
-export const TELEMETRY_ENDPOINT_ENV = 'PROJSCAN_TELEMETRY_ENDPOINT';
+import {
+  appendTelemetryQueue,
+  buildTelemetryStatus,
+  clearTelemetryQueue,
+  countTelemetryQueue,
+  DEFAULT_TELEMETRY_ENDPOINT,
+  getDefaultEndpoint,
+  readTelemetryConfig,
+  readTelemetryQueue,
+  resolveTelemetryPaths,
+  TELEMETRY_COLLECTED,
+  TELEMETRY_ENDPOINT_ENV,
+  TELEMETRY_HOME_ENV,
+  TELEMETRY_NEVER_COLLECTED,
+  TELEMETRY_SCHEMA_VERSION,
+  toIso,
+  updateTelemetryUsage,
+  writeTelemetryConfig,
+  type StoredTelemetryConfig,
+  type TelemetryStatus,
+} from './telemetryConfig.js';
+
+export {
+  DEFAULT_TELEMETRY_ENDPOINT,
+  TELEMETRY_COLLECTED,
+  TELEMETRY_ENDPOINT_ENV,
+  TELEMETRY_HOME_ENV,
+  TELEMETRY_NEVER_COLLECTED,
+};
+export type { TelemetryStatus };
+
 export const TELEMETRY_DISABLED_ENV = 'PROJSCAN_TELEMETRY_DISABLED';
 export const TELEMETRY_NO_NETWORK_ENV = 'PROJSCAN_TELEMETRY_NO_NETWORK';
 const OFFLINE_ENV = 'PROJSCAN_OFFLINE';
 
-const CONFIG_FILE = 'telemetry.json';
-const QUEUE_FILE = 'telemetry-queue.jsonl';
-const SCHEMA_VERSION = 1;
 const REQUEST_TIMEOUT_MS = 750;
-
-export const TELEMETRY_COLLECTED = [
-  'command_category',
-  'command_name',
-  'success_or_failure',
-  'duration_bucket',
-  'projscan_version',
-  'node_major',
-  'platform',
-  'ci_boolean',
-  'setup_booleans',
-  'repeat_use_buckets',
-  'optional_feedback_buckets',
-] as const;
-
-export const TELEMETRY_NEVER_COLLECTED = [
-  'source_code',
-  'file_paths',
-  'repo_names',
-  'branch_names',
-  'package_names',
-  'usernames',
-  'emails',
-  'raw_findings',
-  'secrets',
-  'environment_variables',
-] as const;
 
 export type TelemetryCommandCategory =
   | 'doctor'
@@ -86,36 +83,6 @@ export interface TelemetryPolicy {
   neverCollected: string[];
   controls: string[];
   notes: string[];
-}
-
-interface StoredTelemetryConfig {
-  schemaVersion: 1;
-  enabled: boolean;
-  anonymousId?: string;
-  endpoint: string;
-  createdAt: string;
-  updatedAt: string;
-  usage: {
-    firstSeenDay?: string;
-    lastSeenDay?: string;
-    runCount: number;
-    activeDays: string[];
-  };
-}
-
-export interface TelemetryStatus {
-  schemaVersion: 1;
-  enabled: boolean;
-  mode: 'enabled' | 'disabled';
-  anonymousId: string | null;
-  endpoint: string;
-  configPath: string;
-  queuePath: string;
-  queueLength: number;
-  collected: string[];
-  neverCollected: string[];
-  controls: string[];
-  nextCommands: string[];
 }
 
 export interface TelemetryFeedbackInput {
@@ -191,7 +158,7 @@ export interface RecordTelemetryResult {
 
 export function explainTelemetryPolicy(): TelemetryPolicy {
   return {
-    schemaVersion: 1,
+    schemaVersion: TELEMETRY_SCHEMA_VERSION,
     default: 'off',
     prompt: getTelemetryOptInPrompt(),
     endpoint: getDefaultEndpoint(),
@@ -218,17 +185,17 @@ export function getTelemetryOptInPrompt(): string {
 
 export async function getTelemetryStatus(options: TelemetryOptions = {}): Promise<TelemetryStatus> {
   const paths = resolveTelemetryPaths(options);
-  const loaded = await readConfig(paths.configPath, options.now);
-  const queueLength = await countQueue(paths.queuePath);
+  const loaded = await readTelemetryConfig(paths.configPath, options.now);
+  const queueLength = await countTelemetryQueue(paths.queuePath);
   const enabled = isRuntimeTelemetryDisabled() ? false : loaded.config.enabled === true;
-  return buildStatus(paths, loaded.config, queueLength, enabled);
+  return buildTelemetryStatus(paths, loaded.config, queueLength, enabled);
 }
 
 export async function enableTelemetry(
   options: TelemetryOptions & { endpoint?: string } = {},
 ): Promise<TelemetryStatus> {
   const paths = resolveTelemetryPaths(options);
-  const loaded = await readConfig(paths.configPath, options.now);
+  const loaded = await readTelemetryConfig(paths.configPath, options.now);
   const now = toIso(options.now);
   const config: StoredTelemetryConfig = {
     ...loaded.config,
@@ -237,18 +204,18 @@ export async function enableTelemetry(
     endpoint: options.endpoint ?? loaded.config.endpoint ?? getDefaultEndpoint(),
     updatedAt: now,
   };
-  await writeConfig(paths.configPath, config);
-  return buildStatus(
+  await writeTelemetryConfig(paths.configPath, config);
+  return buildTelemetryStatus(
     paths,
     config,
-    await countQueue(paths.queuePath),
+    await countTelemetryQueue(paths.queuePath),
     !isRuntimeTelemetryDisabled(),
   );
 }
 
 export async function disableTelemetry(options: TelemetryOptions = {}): Promise<TelemetryStatus> {
   const paths = resolveTelemetryPaths(options);
-  const loaded = await readConfig(paths.configPath, options.now);
+  const loaded = await readTelemetryConfig(paths.configPath, options.now);
   const now = toIso(options.now);
   const config: StoredTelemetryConfig = {
     ...loaded.config,
@@ -256,9 +223,9 @@ export async function disableTelemetry(options: TelemetryOptions = {}): Promise<
     anonymousId: undefined,
     updatedAt: now,
   };
-  await writeConfig(paths.configPath, config);
-  await fs.rm(paths.queuePath, { force: true });
-  return buildStatus(paths, config, 0, false);
+  await writeTelemetryConfig(paths.configPath, config);
+  await clearTelemetryQueue(paths.queuePath);
+  return buildTelemetryStatus(paths, config, 0, false);
 }
 
 export function buildFeedbackTelemetry(input: TelemetryFeedbackInput): TelemetryFeedbackSummary {
@@ -282,23 +249,27 @@ export async function recordCommandTelemetry(
   if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
   if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
   const paths = resolveTelemetryPaths(options);
-  const loaded = await readConfig(paths.configPath, options.now);
+  const loaded = await readTelemetryConfig(paths.configPath, options.now);
   if (!loaded.config.enabled || !loaded.config.anonymousId)
     return { status: 'skipped', reason: 'disabled' };
 
-  const config = updateUsage(loaded.config, options.now);
-  await writeConfig(paths.configPath, config);
+  const config = updateTelemetryUsage(loaded.config, options.now);
+  await writeTelemetryConfig(paths.configPath, config);
 
   const event = await buildCommandEvent(input, config, options.now);
-  await appendQueue(paths.queuePath, event);
+  await appendTelemetryQueue(paths.queuePath, event);
 
   if (options.flush === false || isTelemetryNetworkDisabled()) {
-    return { status: 'queued', queued: await countQueue(paths.queuePath) };
+    return { status: 'queued', queued: await countTelemetryQueue(paths.queuePath) };
   }
 
   const flushed = await flushTelemetry({ ...options, configDir: paths.configDir });
   if (flushed.status === 'sent') return flushed;
-  return { status: 'queued', reason: flushed.reason, queued: await countQueue(paths.queuePath) };
+  return {
+    status: 'queued',
+    reason: flushed.reason,
+    queued: await countTelemetryQueue(paths.queuePath),
+  };
 }
 
 export async function recordFeedbackTelemetry(
@@ -324,10 +295,10 @@ export async function flushTelemetry(
   const blocked = flushBlockedResult();
   if (blocked) return blocked;
   const paths = resolveTelemetryPaths(options);
-  const loaded = await readConfig(paths.configPath, options.now);
+  const loaded = await readTelemetryConfig(paths.configPath, options.now);
   if (!loaded.config.enabled || !loaded.config.anonymousId)
     return { status: 'skipped', reason: 'disabled' };
-  const events = await readQueue(paths.queuePath);
+  const events = await readTelemetryQueue<TelemetryEvent>(paths.queuePath);
   if (events.length === 0) return { status: 'skipped', reason: 'empty' };
   const sender = options.sender ?? defaultSender;
   return sendQueuedTelemetry(events, loaded.config.endpoint, sender, paths.queuePath);
@@ -350,7 +321,7 @@ async function sendQueuedTelemetry(
     const result = await sender(events, endpoint);
     if (!result.ok)
       return { status: 'failed', reason: 'http_' + result.status, queued: events.length };
-    await fs.rm(queuePath, { force: true });
+    await clearTelemetryQueue(queuePath);
     return { status: 'sent', queued: 0 };
   } catch (error) {
     return {
@@ -369,7 +340,7 @@ async function buildCommandEvent(
   const now = nowValue ?? new Date();
   const rootPath = input.rootPath ?? process.cwd();
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: TELEMETRY_SCHEMA_VERSION,
     eventId: 'evt_' + crypto.randomUUID(),
     eventType: input.feedback ? 'feedback_outcome' : 'command_run',
     anonymousId: config.anonymousId ?? generateAnonymousId(),
@@ -470,163 +441,6 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-function updateUsage(
-  config: StoredTelemetryConfig,
-  nowValue: Date | undefined,
-): StoredTelemetryConfig {
-  const day = toDay(nowValue);
-  const activeDays = new Set(config.usage.activeDays ?? []);
-  activeDays.add(day);
-  return {
-    ...config,
-    updatedAt: toIso(nowValue),
-    usage: {
-      firstSeenDay: config.usage.firstSeenDay ?? day,
-      lastSeenDay: day,
-      runCount: (config.usage.runCount ?? 0) + 1,
-      activeDays: [...activeDays].sort(),
-    },
-  };
-}
-
-function buildStatus(
-  paths: TelemetryPaths,
-  config: StoredTelemetryConfig,
-  queueLength: number,
-  enabledOverride: boolean,
-): TelemetryStatus {
-  const enabled = enabledOverride && config.enabled === true;
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    enabled,
-    mode: enabled ? 'enabled' : 'disabled',
-    anonymousId: enabled ? (config.anonymousId ?? null) : null,
-    endpoint: config.endpoint,
-    configPath: paths.configPath,
-    queuePath: paths.queuePath,
-    queueLength: enabled ? queueLength : 0,
-    collected: [...TELEMETRY_COLLECTED],
-    neverCollected: [...TELEMETRY_NEVER_COLLECTED],
-    controls: [
-      'projscan telemetry status',
-      'projscan telemetry enable',
-      'projscan telemetry disable',
-      'projscan telemetry explain',
-    ],
-    nextCommands: enabled
-      ? ['projscan telemetry disable', 'projscan telemetry explain']
-      : ['projscan telemetry explain', 'projscan telemetry enable'],
-  };
-}
-
-interface TelemetryPaths {
-  configDir: string;
-  configPath: string;
-  queuePath: string;
-}
-
-function resolveTelemetryPaths(options: TelemetryOptions): TelemetryPaths {
-  const configDir = options.configDir ?? defaultConfigDir();
-  return {
-    configDir,
-    configPath: path.join(configDir, CONFIG_FILE),
-    queuePath: path.join(configDir, QUEUE_FILE),
-  };
-}
-
-function defaultConfigDir(): string {
-  if (process.env[TELEMETRY_HOME_ENV])
-    return path.resolve(process.env[TELEMETRY_HOME_ENV] as string);
-  if (process.env.XDG_CONFIG_HOME) return path.join(process.env.XDG_CONFIG_HOME, 'projscan');
-  return path.join(os.homedir(), '.config', 'projscan');
-}
-
-function getDefaultEndpoint(): string {
-  return process.env[TELEMETRY_ENDPOINT_ENV] || DEFAULT_TELEMETRY_ENDPOINT;
-}
-
-async function readConfig(
-  configPath: string,
-  nowValue: Date | undefined,
-): Promise<{ exists: boolean; config: StoredTelemetryConfig }> {
-  try {
-    const raw = await fs.readFile(configPath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<StoredTelemetryConfig>;
-    return { exists: true, config: normalizeConfig(parsed, nowValue) };
-  } catch {
-    return { exists: false, config: defaultConfig(nowValue) };
-  }
-}
-
-function normalizeConfig(
-  value: Partial<StoredTelemetryConfig>,
-  nowValue: Date | undefined,
-): StoredTelemetryConfig {
-  const fallback = defaultConfig(nowValue);
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    enabled: value.enabled === true,
-    anonymousId: typeof value.anonymousId === 'string' ? value.anonymousId : undefined,
-    endpoint: typeof value.endpoint === 'string' ? value.endpoint : getDefaultEndpoint(),
-    createdAt: typeof value.createdAt === 'string' ? value.createdAt : fallback.createdAt,
-    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : fallback.updatedAt,
-    usage: {
-      firstSeenDay:
-        typeof value.usage?.firstSeenDay === 'string' ? value.usage.firstSeenDay : undefined,
-      lastSeenDay:
-        typeof value.usage?.lastSeenDay === 'string' ? value.usage.lastSeenDay : undefined,
-      runCount: Number.isFinite(value.usage?.runCount) ? Number(value.usage?.runCount) : 0,
-      activeDays: Array.isArray(value.usage?.activeDays)
-        ? value.usage.activeDays.filter((item): item is string => typeof item === 'string')
-        : [],
-    },
-  };
-}
-
-function defaultConfig(nowValue: Date | undefined): StoredTelemetryConfig {
-  const now = toIso(nowValue);
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    enabled: false,
-    endpoint: getDefaultEndpoint(),
-    createdAt: now,
-    updatedAt: now,
-    usage: { runCount: 0, activeDays: [] },
-  };
-}
-
-async function writeConfig(configPath: string, config: StoredTelemetryConfig): Promise<void> {
-  await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-}
-
-async function appendQueue(queuePath: string, event: TelemetryEvent): Promise<void> {
-  await fs.mkdir(path.dirname(queuePath), { recursive: true });
-  await fs.appendFile(queuePath, JSON.stringify(event) + '\n', 'utf-8');
-}
-
-async function readQueue(queuePath: string): Promise<TelemetryEvent[]> {
-  try {
-    const raw = await fs.readFile(queuePath, 'utf-8');
-    return raw
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as TelemetryEvent);
-  } catch {
-    return [];
-  }
-}
-
-async function countQueue(queuePath: string): Promise<number> {
-  try {
-    const raw = await fs.readFile(queuePath, 'utf-8');
-    return raw.split('\n').filter((line) => line.trim().length > 0).length;
-  } catch {
-    return 0;
-  }
-}
-
 async function defaultSender(
   batch: TelemetryEvent[],
   endpoint: string,
@@ -640,7 +454,7 @@ async function defaultSender(
         'content-type': 'application/json',
         'user-agent': 'projscan-telemetry',
       },
-      body: JSON.stringify({ schemaVersion: SCHEMA_VERSION, events: batch }),
+      body: JSON.stringify({ schemaVersion: TELEMETRY_SCHEMA_VERSION, events: batch }),
       signal: controller.signal,
     });
     return { ok: response.ok, status: response.status };
@@ -665,12 +479,4 @@ function isRuntimeTelemetryDisabled(): boolean {
 
 function isTelemetryNetworkDisabled(): boolean {
   return process.env[TELEMETRY_NO_NETWORK_ENV] === '1';
-}
-
-function toIso(value: Date | undefined): string {
-  return (value ?? new Date()).toISOString();
-}
-
-function toDay(value: Date | undefined): string {
-  return toIso(value).slice(0, 10);
 }
