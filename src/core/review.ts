@@ -1,10 +1,6 @@
-import { diffGraphs } from './prDiff.js';
-import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
-import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
-import { readManifests } from './reviewManifests.js';
-import { buildReviewFindings } from './reviewFindings.js';
+import { buildChangedReviewReport } from './reviewChangedReport.js';
 import { applyReviewIntent } from './reviewIntent.js';
-import { resolveReviewState, unavailableReviewReport } from './reviewState.js';
+import { resolveReviewState } from './reviewState.js';
 import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
@@ -49,44 +45,5 @@ export async function computeReview(
     applyReviewIntent(state.report, options.intent);
     return state.report;
   }
-  const { baseRef, baseSha, headRef, headSha } = state;
-
-  const { graph: headGraph, hotspots: headHotspots } = await buildReviewHeadSnapshot(rootPath);
-
-  const baseSnapshot = await buildReviewBaseSnapshot(rootPath, baseRef, baseSha);
-  if (!baseSnapshot.available) {
-    return unavailableReviewReport(baseSnapshot.reason, options, baseRef, headRef, headSha, baseSha);
-  }
-  const baseGraph = baseSnapshot.graph;
-  const basePackageManifests = baseSnapshot.packageManifests;
-
-  const headPackageManifests = await readManifests(rootPath);
-
-  const prDiff = diffGraphs(baseRef, baseSha, headRef, headSha, baseGraph, headGraph);
-  const findings = await buildReviewFindings({
-    rootPath,
-    packageName: options.package,
-    prDiff,
-    baseGraph,
-    headGraph,
-    headHotspots,
-    basePackageManifests,
-    headPackageManifests,
-  });
-
-  const report: ReviewReport = {
-    available: true,
-    base: { ref: baseRef, resolvedSha: baseSha },
-    head: { ref: headRef, resolvedSha: headSha },
-    prDiff,
-    ...findings,
-  };
-
-  // 1.9+ — intent grounding. Parse the agent-supplied description,
-  // annotate each finding with an alignment label, and append a
-  // small intent summary to the verdict bullets. Does NOT change the
-  // verdict — verdict stays structural.
-  applyReviewIntent(report, options.intent);
-
-  return report;
+  return buildChangedReviewReport(rootPath, options, state);
 }

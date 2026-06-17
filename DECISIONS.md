@@ -2273,3 +2273,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move `reportCoverageHtml` into `src/reporters/htmlCoverageReporter.ts`, move `reportImpactHtml` into `src/reporters/htmlImpactReporter.ts`, and keep both functions re-exported from `src/reporters/htmlReporter.ts`.
 - Consequences: Coverage and impact artifact wording, escaping, unavailable states, and import compatibility remain stable while the umbrella reporter is narrowed to the smaller health, hotspot, and coupling renderers.
 - Verification: `npm run test -- tests/reporters/htmlCoverageReporter.test.ts tests/reporters/htmlImpactReporter.test.ts` failed before the extracted modules existed, then passed after the extraction. Existing HTML reporter coverage also passed.
+
+## 2026-06-18: Extract changed review report assembly
+
+- Status: accepted
+- Context: `src/core/review.ts` is a high-churn review gate hotspot and still owned the changed-review path after state resolution, including head/base snapshots, PR diffing, manifest reads, finding assembly, report shaping, and intent annotation.
+- Decision: Move ready-state changed-review assembly into `src/core/reviewChangedReport.ts` while keeping `computeReview` responsible for state dispatch and no-change intent annotation.
+- Consequences: Review verdict behavior, intent annotation, schemas, CLI/MCP behavior, and public exports remain unchanged. Future changed-review assembly edits now land in a focused helper instead of the review dispatcher.
+- Verification: `npm run test -- tests/core/reviewArchitecture.test.ts` failed before the helper existed and `review.ts` stopped importing assembly helpers, then passed after extraction. Existing `tests/core/review.test.ts` behavior coverage also passed.

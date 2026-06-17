@@ -9835,3 +9835,47 @@ focused modules export.
 Kept change: two focused HTML reporter modules, compatibility re-exports,
 focused characterization tests, this persona note, and no release action in
 this slice.
+
+## Two Hundred Seventh Slice Decision
+
+Selected personas: Platform And Release Owner and Security-Conscious Reviewer.
+
+Reason: `projscan review` is a release and PR gate, and `src/core/review.ts`
+remains a top hotspot by churn. Even after earlier extractions, the dispatcher
+still owned the ready-state review path: head and base snapshots, PR diffing,
+manifest reads, finding assembly, report shaping, and intent annotation.
+
+Smallest fix: move that ready-state assembly into
+`src/core/reviewChangedReport.ts`, keep `computeReview` as the state dispatcher,
+and preserve the existing no-change intent annotation path.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/reviewArchitecture.test.ts
+npm run test -- tests/core/review.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewChangedReport.ts --format json
+```
+
+## Review Guardrails: Changed Review Report Extraction
+
+Delete-list after this slice:
+
+- Do not change `ReviewOptions`, `ReviewReport`, review verdict thresholds,
+  intent annotation behavior, package scoping, dependency diffing, taint/dataflow
+  review, JSON output, CLI flags, MCP schemas, dependencies, lockfiles, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge behavior.
+- Do not move unavailable/no-change state resolution out of `reviewState.ts` or
+  change no-change report behavior in the same slice.
+- Do not broaden this into review heuristic tuning, review-tier shaping, or
+  public API changes.
+
+Reviewer edge case: a base snapshot failure inside the changed-review path must
+still return the same unavailable review report with resolved base/head refs.
+
+Kept change: one focused changed-review assembly module, one architecture guard,
+this persona note, and no release action in this slice.

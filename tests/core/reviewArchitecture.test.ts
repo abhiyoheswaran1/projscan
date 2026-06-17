@@ -338,4 +338,26 @@ describe('review architecture guards', () => {
     expect(unavailableReport!.cyclomaticComplexity).toBeLessThanOrEqual(1);
   });
 
+  it('keeps changed-review assembly isolated from the review dispatcher', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).toContain("from './reviewChangedReport.js'");
+    expect(reviewSource).not.toContain("from './reviewHeadSnapshot.js'");
+    expect(reviewSource).not.toContain("from './reviewBaseSnapshot.js'");
+    expect(reviewSource).not.toContain("from './reviewManifests.js'");
+    expect(reviewSource).not.toContain("from './reviewFindings.js'");
+    expect(reviewSource).not.toContain("from './prDiff.js'");
+    expect(reviewSource).not.toContain('buildReviewHeadSnapshot(');
+    expect(reviewSource).not.toContain('buildReviewBaseSnapshot(');
+    expect(reviewSource).not.toContain('buildReviewFindings(');
+    expect(reviewSource).not.toContain('diffGraphs(');
+
+    const changedReport = await inspectRepoSourceFile('src/core/reviewChangedReport.ts');
+    const buildChangedReport = changedReport.functions?.find(
+      (fn) => fn.name === 'buildChangedReviewReport',
+    );
+
+    expect(buildChangedReport).toBeDefined();
+    expect(buildChangedReport!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
 });
