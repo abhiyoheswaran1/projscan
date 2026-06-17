@@ -4073,3 +4073,51 @@ without changing the structured report schema.
 
 Kept change: one hint helper, one behavior test, one docs example update, this
 persona note, and no schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: OSS Maintainer and Security-Conscious Reviewer.
+
+Reason: `src/core/review.ts` remains a high-churn production hotspot. Base
+worktree checkout is security-sensitive because it shells out to git, uses
+detached worktrees, and must always clean up temp directories. Keeping that
+logic inside `computeReview` made review behavior harder to audit next to graph
+diffing, verdict assembly, and intent grounding.
+
+Smallest fix: move base-side detached worktree checkout, scan, graph build,
+manifest read, cleanup, and git failure wording into `reviewBaseSnapshot.ts`;
+move the review-local git runner into `reviewGit.ts`; keep `computeReview`
+calling one base snapshot boundary.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "base worktree snapshot"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewBaseSnapshot.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Base Snapshot Extraction
+
+Delete-list after this slice:
+
+- Do not change review report schema, verdict inputs, package scoping,
+  no-change behavior, intent grounding, or public CLI/MCP output.
+- Do not remove the detached worktree `--` separator, git timeout, stdin
+  detachment, best-effort worktree removal, or temp directory cleanup.
+- Do not add dependencies, release actions, version changes, network calls, or
+  secret reads.
+
+Reviewer edge case: invalid base refs should still return an unavailable review
+with the same reason shape; base worktree checkout failure should still include
+the git failure summary; successful reviews should preserve changed-file,
+cycle, dependency, contract, taint, dataflow, graph-evidence, and intent fields.
+
+Kept change: one base snapshot helper, one review-local git helper, one
+maintainability regression, existing review behavior coverage, this persona
+note, and no public schema change.

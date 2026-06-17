@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract review base snapshot assembly
+
+- Status: accepted
+- Context: `computeReview` still owned base-side detached worktree checkout, base repository scan, base graph build, base manifest reading, worktree cleanup, and git failure summarization.
+- Decision: Move base snapshot assembly into `src/core/reviewBaseSnapshot.ts` and move the review-local git runner into `src/core/reviewGit.ts`.
+- Consequences: Review output and git timeout behavior stay unchanged, while `src/core/review.ts` drops from 427 to 334 lines and base checkout cleanup is easier to audit independently.
+- Verification: `npm run test -- tests/core/review.test.ts -t "base worktree snapshot"` plus focused review tests.
+
 ## 2026-06-17: Surface coordination validation workflow in hints
 
 - Status: accepted

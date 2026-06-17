@@ -1,9 +1,4 @@
-import { spawn } from 'node:child_process';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { scanRepository } from './repositoryScanner.js';
-import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
+import type { CodeGraph } from './codeGraph.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
@@ -15,14 +10,11 @@ import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.
 import { classifyNewCycles, scopeCyclesToFiles } from './reviewCycles.js';
 import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
 import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
+import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
+import { runReviewGit as runGit } from './reviewGit.js';
 import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
 import { buildNoChangeReviewReport } from './reviewNoChanges.js';
-import {
-  diffManifests,
-  readManifests,
-  scopeDependencyChanges,
-  type ManifestSnapshot,
-} from './reviewManifests.js';
+import { diffManifests, readManifests, scopeDependencyChanges } from './reviewManifests.js';
 import type { PrDiffReport } from '../types/prDiff.js';
 import type { ReviewReport } from '../types/review.js';
 
@@ -89,40 +81,12 @@ export async function computeReview(
 
   const { graph: headGraph, hotspots: headHotspots } = await buildReviewHeadSnapshot(rootPath);
 
-  // Base-side: spin up a worktree, scan, build graph. Best-effort cleanup.
-  const worktreeDir = await mkTempWorktreeDir();
-  let baseGraph: CodeGraph;
-  let basePackageManifests: Map<string, ManifestSnapshot>;
-  try {
-    // `--` separator before positional args. baseSha is verified through
-    // `rev-parse --verify ... ^{commit}` upstream so it's already sha-shaped,
-    // but the separator is a defense-in-depth: if a future caller pipes a
-    // user-supplied ref here without that verification, refs starting with
-    // '-' (e.g. `--upload-pack=evil`) won't be parsed as flags.
-    const addWorktree = await runGit(rootPath, [
-      'worktree',
-      'add',
-      '--detach',
-      '--',
-      worktreeDir,
-      baseSha,
-    ]);
-    if (addWorktree.code !== 0) {
-      return unavailable(
-        `Could not check out base ref "${baseRef}" for review: ${gitFailureSummary(addWorktree)}`,
-        options,
-        baseRef,
-        headRef,
-        headSha,
-      );
-    }
-    const baseScan = await scanRepository(worktreeDir);
-    baseGraph = await buildCodeGraph(worktreeDir, baseScan.files);
-    basePackageManifests = await readManifests(worktreeDir);
-  } finally {
-    await runGit(rootPath, ['worktree', 'remove', '--force', worktreeDir]).catch(() => {});
-    await fs.rm(worktreeDir, { recursive: true, force: true }).catch(() => {});
+  const baseSnapshot = await buildReviewBaseSnapshot(rootPath, baseRef, baseSha);
+  if (!baseSnapshot.available) {
+    return unavailable(baseSnapshot.reason, options, baseRef, headRef, headSha);
   }
+  const baseGraph = baseSnapshot.graph;
+  const basePackageManifests = baseSnapshot.packageManifests;
 
   const headPackageManifests = await readManifests(rootPath);
 
@@ -366,61 +330,4 @@ async function pickDefaultBase(rootPath: string): Promise<string> {
     if (await resolveSha(rootPath, candidate)) return candidate;
   }
   return 'HEAD~1';
-}
-
-async function mkTempWorktreeDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'projscan-review-'));
-}
-
-interface GitResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-
-function gitFailureSummary(result: GitResult): string {
-  const message = (result.stderr || result.stdout).trim().replace(/\s+/g, ' ');
-  return message || `git exited with code ${result.code}`;
-}
-
-/**
- * 1.9+ — Default cap on any single `git` invocation made from the
- * review pipeline (worktree add/remove, rev-parse, etc.). Without it
- * a hung git operation (credential prompt, blocking hook, dead remote)
- * would hang the MCP server until kill. Mirror of prDiff.ts's same
- * default; kept as a sibling rather than shared because runGit here
- * is intentionally minimal and `prDiff.runGit` carries extra
- * timeoutMs override plumbing that this caller doesn't need.
- */
-const DEFAULT_GIT_TIMEOUT_MS = 30_000;
-
-function runGit(cwd: string, args: string[]): Promise<GitResult> {
-  return new Promise((resolve, reject) => {
-    // Detach stdin so credential prompts / interactive hooks see EOF
-    // and exit instead of waiting forever.
-    const child = spawn('git', args, { cwd, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      child.kill('SIGKILL');
-      reject(new Error(`git command timed out after ${DEFAULT_GIT_TIMEOUT_MS}ms`));
-    }, DEFAULT_GIT_TIMEOUT_MS);
-    child.stdout.on('data', (d) => (stdout += d.toString()));
-    child.stderr.on('data', (d) => (stderr += d.toString()));
-    child.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(err);
-    });
-    child.on('close', (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ code: code ?? 1, stdout, stderr });
-    });
-  });
 }

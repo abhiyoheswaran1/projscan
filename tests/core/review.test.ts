@@ -306,6 +306,26 @@ describe('computeReview', () => {
     expect(buildHeadSnapshot!.cyclomaticComplexity).toBeLessThanOrEqual(3);
   });
 
+  it('keeps base worktree snapshot assembly isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const reviewFunctions = new Set(review.functions?.map((fn) => fn.name));
+    expect(reviewFunctions.has('mkTempWorktreeDir')).toBe(false);
+    expect(reviewFunctions.has('gitFailureSummary')).toBe(false);
+
+    const baseModule = await inspectRepoSourceFile('src/core/reviewBaseSnapshot.ts');
+    const buildBaseSnapshot = baseModule.functions?.find(
+      (fn) => fn.name === 'buildReviewBaseSnapshot',
+    );
+    const mkTempWorktreeDir = baseModule.functions?.find(
+      (fn) => fn.name === 'mkTempWorktreeDir',
+    );
+
+    expect(buildBaseSnapshot).toBeDefined();
+    expect(buildBaseSnapshot!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(mkTempWorktreeDir).toBeDefined();
+    expect(mkTempWorktreeDir!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
