@@ -9,12 +9,15 @@ const HONO_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
   ['queries', 'hono.req.queries'],
   ['param', 'hono.req.param'],
   ['header', 'hono.req.header'],
+  ['raw.headers.get', 'hono.req.raw.headers'],
   ['valid', 'hono.req.valid'],
 ]);
 
 const HONO_REQUEST_SOURCE_BY_MEMBER_REFERENCE = new Map<string, string>([
   ['url', 'hono.req.url'],
   ['path', 'hono.req.path'],
+  ['raw.url', 'hono.req.raw.url'],
+  ['raw.headers', 'hono.req.raw.headers'],
 ]);
 
 const HONO_CONTEXT_PARAM_NAMES = new Set(['c', 'ctx', 'context']);

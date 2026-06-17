@@ -200,4 +200,47 @@ export function helper(c: { req: { url: string, path: string } }) {
     );
     expect(honoRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
+
+  it('treats Hono raw request URL and headers as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hono-raw.ts'),
+      `import { Hono } from 'hono';
+
+declare const db: { query(sql: string): unknown };
+declare const cache: { query(key: string): unknown };
+const app = new Hono();
+
+app.get('/raw-url', (c) => {
+  const href = c.req.raw.url;
+  return db.query(String(href));
+});
+
+app.get('/raw-headers', (ctx) => {
+  const headers = ctx.req.raw.headers;
+  return db.query(String(headers.get('x-tenant')));
+});
+
+app.get('/raw-header-get', (context) => {
+  const tenant = context.req.raw.headers.get('x-tenant');
+  return db.query(String(tenant));
+});
+
+export function helper(c: { req: { raw: { url: string, headers: Headers } } }) {
+  return cache.query(c.req.raw.url + String(c.req.raw.headers.get('x-cache-key')));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const honoRisks = report.risks.filter((risk) => risk.files.includes('src/hono-raw.ts'));
+
+    expect(honoRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'hono.req.raw.url', sink: 'query' }),
+        expect.objectContaining({ source: 'hono.req.raw.headers', sink: 'query' }),
+      ]),
+    );
+    expect(honoRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
 });
