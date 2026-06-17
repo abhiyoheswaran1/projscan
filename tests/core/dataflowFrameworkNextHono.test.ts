@@ -186,6 +186,65 @@ app.post('/search', async (c) => {
     ).toBe(true);
   });
 
+  it('treats documented Hono body parsers and multi-query helpers as framework request sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hono-body-query.ts'),
+      `import { Hono } from 'hono';
+
+declare const db: { query(sql: string): unknown };
+declare const cache: { query(key: string): unknown };
+const app = new Hono();
+
+app.post('/form', async (c) => {
+  const form = await c.req.formData();
+  return db.query(String(form.get('sql')));
+});
+
+app.post('/bytes', async (ctx) => {
+  const bytes = await ctx.req.arrayBuffer();
+  return db.query(String(bytes.byteLength));
+});
+
+app.post('/blob', async (context) => {
+  const blob = await context.req.blob();
+  return db.query(String(blob.size));
+});
+
+app.get('/tags', (c) => {
+  const tags = c.req.queries('tags');
+  return db.query(String(tags?.join(',')));
+});
+
+export async function helper(c: { req: {
+  formData(): Promise<FormData>,
+  arrayBuffer(): Promise<ArrayBuffer>,
+  blob(): Promise<Blob>,
+  queries(name: string): string[] | undefined
+} }) {
+  const form = await c.req.formData();
+  const tags = c.req.queries('tags');
+  return cache.query(String(form.get('key')) + String(tags?.join(',')));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const honoRisks = report.risks.filter((risk) =>
+      risk.files.includes('src/hono-body-query.ts'),
+    );
+
+    expect(honoRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'hono.req.formData', sink: 'query' }),
+        expect.objectContaining({ source: 'hono.req.arrayBuffer', sink: 'query' }),
+        expect.objectContaining({ source: 'hono.req.blob', sink: 'query' }),
+        expect.objectContaining({ source: 'hono.req.queries', sink: 'query' }),
+      ]),
+    );
+    expect(honoRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat ordinary Hono-shaped helpers as route request sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'hono-helper.ts'),
