@@ -25,6 +25,7 @@ export function frameworkRequestSourceForFunction(
   references: string[] = [],
   contextualCallSite?: string,
   imports: Array<{ source: string }> = [],
+  directCallSites: string[] = [],
 ): string | null {
   const nextSource = nextRouteRequestSource(
     file,
@@ -33,6 +34,8 @@ export function frameworkRequestSourceForFunction(
     memberReferences,
     parameters,
     enabledSources,
+    imports,
+    directCallSites,
   );
   if (nextSource) return nextSource;
   const honoSource = honoRequestSource(

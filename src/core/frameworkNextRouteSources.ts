@@ -16,14 +16,39 @@ const NEXT_ROUTE_SOURCE_BY_REFERENCE = new Map<string, string>([
   ['nextUrl.searchParams', 'request.nextUrl.searchParams'],
 ]);
 
+const NEXT_HEADERS_HELPER_SOURCE = 'next.headers';
 const NEXT_ROUTE_HANDLERS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
 export const NEXT_ROUTE_REQUEST_SOURCES = [
   ...NEXT_ROUTE_SOURCE_BY_CALLEE.values(),
   ...NEXT_ROUTE_SOURCE_BY_REFERENCE.values(),
+  NEXT_HEADERS_HELPER_SOURCE,
 ];
 
 export function nextRouteRequestSource(
+  file: string,
+  functionName: string,
+  memberCallSites: string[],
+  memberReferences: string[],
+  parameters: string[],
+  enabledSources: Set<string>,
+  imports: Array<{ source: string; specifiers?: string[]; kind?: string; typeOnly?: boolean }> = [],
+  directCallSites: string[] = [],
+): string | null {
+  return (
+    nextHeadersHelperSource(directCallSites, imports, enabledSources) ??
+    nextRouteParameterSource(
+      file,
+      functionName,
+      memberCallSites,
+      memberReferences,
+      parameters,
+      enabledSources,
+    )
+  );
+}
+
+function nextRouteParameterSource(
   file: string,
   functionName: string,
   memberCallSites: string[],
@@ -39,6 +64,29 @@ export function nextRouteRequestSource(
   return (
     nextRouteCallSource(parameters, memberCallSites, enabledSources) ??
     nextRouteReferenceSource(parameters, memberReferences, enabledSources)
+  );
+}
+
+function nextHeadersHelperSource(
+  directCallSites: string[],
+  imports: Array<{ source: string; specifiers?: string[]; kind?: string; typeOnly?: boolean }>,
+  enabledSources: Set<string>,
+): string | null {
+  if (!enabledSources.has(NEXT_HEADERS_HELPER_SOURCE)) return null;
+  if (!directCallSites.includes('headers')) return null;
+  if (!hasNextHeadersImport(imports)) return null;
+  return NEXT_HEADERS_HELPER_SOURCE;
+}
+
+function hasNextHeadersImport(
+  imports: Array<{ source: string; specifiers?: string[]; kind?: string; typeOnly?: boolean }>,
+): boolean {
+  return imports.some(
+    (imp) =>
+      imp.source === 'next/headers' &&
+      imp.kind === 'static' &&
+      imp.typeOnly !== true &&
+      (imp.specifiers ?? []).includes('headers'),
   );
 }
 

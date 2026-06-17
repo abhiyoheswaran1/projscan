@@ -81,6 +81,7 @@ function buildTaintFunctionNode(
     graphFile,
     fn,
     callees,
+    directCallSites,
     memberCallSites,
     memberReferences,
     references,
@@ -118,6 +119,7 @@ function resolveSourceHit(
   graphFile: GraphFile,
   fn: GraphFunction,
   callees: string[],
+  directCallSites: string[],
   memberCallSites: string[],
   memberReferences: string[],
   references: string[],
@@ -135,6 +137,7 @@ function resolveSourceHit(
       references,
       fn.contextualCallSite,
       graphFile.imports,
+      directCallSites,
     ) ?? pickSourceHit(callees, references, sources, customSources)
   );
 }

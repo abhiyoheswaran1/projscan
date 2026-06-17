@@ -249,4 +249,50 @@ export function helper(request: {
     );
     expect(report.risks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
+
+  it('treats imported Next headers helper as a request source without flagging local helpers', async () => {
+    await fs.mkdir(path.join(tmp, 'app', 'dashboard'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'app', 'dashboard', 'page.tsx'),
+      `import { headers } from 'next/headers';
+
+declare const db: { query(sql: string): unknown };
+
+export default async function Page() {
+  const tenant = (await headers()).get('x-tenant');
+  return db.query(String(tenant));
+}
+`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'app', 'dashboard', 'local.ts'),
+      `declare const cache: { query(key: string): unknown };
+
+function headers() {
+  return new Headers([['x-cache-key', 'fixture']]);
+}
+
+export function helper() {
+  return cache.query(String(headers().get('x-cache-key')));
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.effectiveSources).toContain('next.headers');
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFn: 'Page',
+          source: 'next.headers',
+          sink: 'query',
+        }),
+      ]),
+    );
+    expect(
+      report.risks.find((risk) => risk.sourceFn === 'helper' && risk.source === 'next.headers'),
+    ).toBeUndefined();
+  });
 });

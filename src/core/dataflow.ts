@@ -216,6 +216,7 @@ function functionNode(
       references,
       fn.contextualCallSite,
       graphFile.imports,
+      directCallSites,
     ) ?? pickSourceHit(callees, references, sources, customSources);
   const sink = pickSinkHit(
     callees,
