@@ -12,6 +12,8 @@ const FASTIFY_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['raw.url', 'fastify.request.raw.url'],
   ['host', 'fastify.request.host'],
   ['hostname', 'fastify.request.hostname'],
+  ['url', 'fastify.request.url'],
+  ['originalUrl', 'fastify.request.originalUrl'],
 ]);
 
 const FASTIFY_REQUEST_PARAM_NAMES = new Set(['req', 'request']);

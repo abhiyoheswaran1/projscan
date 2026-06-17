@@ -262,4 +262,42 @@ export function helper(request: { raw: { url?: string, headers: { host?: string 
     expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Fastify direct request URL fields as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'fastify-url.ts'),
+      `import Fastify from 'fastify';
+
+const app = Fastify();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/url', async (request) => {
+  const url = request.url;
+  return db.query(String(url));
+});
+
+app.get('/original-url', async (request) => {
+  const originalUrl = request.originalUrl;
+  return db.query(String(originalUrl));
+});
+
+export function helper(request: { url: string, originalUrl: string }) {
+  return cache.query(request.url + request.originalUrl);
+}
+`,
+    );
+
+    const graph = await buildFixtureGraph();
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const fastifyRisks = report.risks.filter((risk) => risk.files.includes('src/fastify-url.ts'));
+
+    expect(fastifyRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'fastify.request.url', sink: 'query' }),
+        expect.objectContaining({ source: 'fastify.request.originalUrl', sink: 'query' }),
+      ]),
+    );
+    expect(fastifyRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
 });
