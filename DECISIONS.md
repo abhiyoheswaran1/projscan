@@ -1921,3 +1921,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move data lookup search matching into `src/core/intentRouterSearchDataSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6482 lines / CC 959 to 6358 lines / CC 929. The extracted helper has no hotspot history, preserves existing package-script blocker semantics through `intentRouterRepoSignals.ts`, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "data lookup search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract background-work search route signals
+
+- Status: accepted
+- Context: Background-work lookup routing for cron jobs, scheduled tasks, workers, queues, processors, and background jobs was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move background-work search matching into `src/core/intentRouterSearchBackgroundSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6358 lines / CC 929 to 6299 lines / CC 920. The extracted helper has no imports, no hotspot history, preserves existing lookup semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "background-work search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

@@ -168,6 +168,21 @@ describe('routeIntent', () => {
     expect(dataSignalsSource).toContain('export function searchDataAccessContextMatches');
   });
 
+  it('keeps background-work search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchBackgroundSignals.js'");
+    expect(routerSource).not.toContain('function searchBackgroundWorkContextMatches');
+
+    const backgroundSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchBackgroundSignals.ts'),
+      'utf8',
+    );
+    expect(backgroundSignalsSource).toContain('export function searchBackgroundWorkContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
