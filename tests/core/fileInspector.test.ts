@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import { inspectFile, inferPurpose, detectFileIssues } from '../../src/core/fileInspector.js';
+import type { FileEntry, Issue } from '../../src/types.js';
 
 describe('deprecated extractor exports', () => {
   it('does not expose the removed regex import/export helpers', async () => {
@@ -208,6 +209,35 @@ describe('inspectFile', () => {
     expect(insp.relativePath).toBe('sample.ts');
   });
 
+  it('uses exact issue locations before legacy text matching', async () => {
+    const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
+    await fs.mkdir(path.join(tmpRoot, 'src'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'src/a.ts'), 'export const a = 1;\n');
+    await fs.writeFile(path.join(tmpRoot, 'src/ab.ts'), 'export const ab = 2;\n');
+    const files = [
+      await fileEntry(tmpRoot, 'src/a.ts'),
+      await fileEntry(tmpRoot, 'src/ab.ts'),
+    ];
+    const locatedIssue: Issue = {
+      id: 'issue-1',
+      title: 'problem in src/a.ts',
+      description: 'mentions src/a.ts as context',
+      severity: 'warning',
+      category: 'test',
+      fixAvailable: false,
+      locations: [{ file: 'src/ab.ts' }],
+    };
+
+    const a = await inspectFile(tmpRoot, 'src/a.ts', { scan: { files }, issues: [locatedIssue] });
+    const ab = await inspectFile(tmpRoot, 'src/ab.ts', {
+      scan: { files },
+      issues: [locatedIssue],
+    });
+
+    expect(a.issues.map((issue) => issue.id)).not.toContain('issue-1');
+    expect(ab.issues.map((issue) => issue.id)).toContain('issue-1');
+  });
+
   it('returns graph-backed Python imports and exports for a real file', async () => {
     const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fi-'));
     await fs.writeFile(path.join(tmpRoot, 'helper.py'), 'def helper():\n    return 1\n');
@@ -223,3 +253,15 @@ describe('inspectFile', () => {
     expect(insp.exports.map((e) => e.name)).toContain('run');
   });
 });
+
+async function fileEntry(root: string, relativePath: string): Promise<FileEntry> {
+  const absolutePath = path.join(root, relativePath);
+  const stat = await fs.stat(absolutePath);
+  return {
+    relativePath,
+    absolutePath,
+    extension: path.extname(relativePath).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(relativePath),
+  };
+}

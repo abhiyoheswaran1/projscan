@@ -20,6 +20,7 @@ import {
 import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
 import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
+import { indexIssuesByFile } from './hotspotIssues.js';
 
 export { inferPurpose } from './filePurpose.js';
 export { detectFileIssues } from './fileIssues.js';
@@ -80,9 +81,8 @@ export async function inspectFile(
     options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100, graph }));
 
   const hotspot = findHotspotForFile(hotspotReport, relativePath);
-  const relatedIssues = issues.filter((issue) =>
-    (issue.title + '\n' + issue.description).includes(relativePath),
-  );
+  const relatedIssueIds = new Set(indexIssuesByFile(issues, files).get(relativePath) ?? []);
+  const relatedIssues = issues.filter((issue) => relatedIssueIds.has(issue.id));
 
   const graphMetrics = deriveFileGraphMetrics(graph, relativePath);
 
