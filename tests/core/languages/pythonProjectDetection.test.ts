@@ -183,6 +183,37 @@ describe('detectPythonProject', () => {
     expect(scopes['black']).toBe('dev');
   });
 
+  it('reads pip-tools requirements inputs as declarations without lockfile evidence', async () => {
+    await fs.writeFile(path.join(tmp, 'requirements.in'), 'django==4.2.0\n');
+    await fs.writeFile(path.join(tmp, 'dev-requirements.in'), 'pytest\n');
+    await fs.writeFile(path.join(tmp, 'test-requirements.in'), 'tox\n');
+    await fs.writeFile(path.join(tmp, 'lint-requirements.in'), 'ruff\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('requirements.in'),
+      fileEntry('dev-requirements.in'),
+      fileEntry('test-requirements.in'),
+      fileEntry('lint-requirements.in'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.manifestFiles).toEqual([
+      'requirements.in',
+      'dev-requirements.in',
+      'test-requirements.in',
+      'lint-requirements.in',
+    ]);
+    expect(info?.hasLockfile).toBe(false);
+    expect(info?.locked).toEqual([]);
+    expect(Object.fromEntries(info!.declared.map((dep) => [dep.name, dep.scope]))).toEqual({
+      django: 'main',
+      pytest: 'dev',
+      tox: 'dev',
+      ruff: 'dev',
+    });
+    expect(info?.declared.find((dep) => dep.name === 'django')?.versionSpec).toBe('==4.2.0');
+  });
+
   it('reads prefixed dev requirements as root Python project evidence', async () => {
     await fs.writeFile(path.join(tmp, 'dev-requirements.txt'), 'pytest\n');
     await fs.writeFile(path.join(tmp, 'test-requirements.txt'), 'tox\n');

@@ -27,7 +27,7 @@ export async function previewPythonUpgrade(
 function unavailablePythonUpgrade(pkgName: string): UpgradePreview {
   return {
     available: false,
-    reason: `Python package "${pkgName}" not found in pyproject.toml, setup.cfg, setup.py, or requirements*.txt`,
+    reason: `Python package "${pkgName}" not found in pyproject.toml, setup.cfg, setup.py, requirements*.txt, or requirements*.in`,
     name: pkgName,
     ecosystem: 'python',
     declared: null,

@@ -1,7 +1,8 @@
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
 
-const REQUIREMENTS_FILE_RE = /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.txt$/i;
+const REQUIREMENTS_FILE_RE =
+  /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.(?:txt|in)$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 const ROOT_PYTHON_MANIFEST_NAMES = new Set([
   'pyproject.toml',

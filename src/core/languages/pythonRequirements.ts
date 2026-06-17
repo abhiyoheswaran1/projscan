@@ -4,9 +4,11 @@ import type { FileEntry } from '../../types.js';
 import type { PythonDeclaredDep, PythonLockedDep } from './pythonProjectTypes.js';
 import { splitPep508 } from './pythonPep508.js';
 
-const REQUIREMENTS_FILE_RE = /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.txt$/i;
+const REQUIREMENTS_DECLARATION_FILE_RE =
+  /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.(?:txt|in)$/i;
+const REQUIREMENTS_LOCK_FILE_RE = /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.txt$/i;
 const DEV_REQUIREMENTS_FILE_RE =
-  /^(?:requirements-(?:test|dev|lint)|(?:dev|test|lint)-requirements)\.txt$/i;
+  /^(?:requirements-(?:test|dev|lint)|(?:dev|test|lint)-requirements)\.(?:txt|in)$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 
 export interface PythonRequirementEvidence {
@@ -43,7 +45,9 @@ async function appendRootRequirements(
     const isDev = DEV_REQUIREMENTS_FILE_RE.test(path.basename(rel));
     const deps = parseRequirements(content, rel, isDev ? 'dev' : 'main');
     evidence.declared.push(...deps);
-    evidence.locked.push(...deps.flatMap(requirementPinToLockedDep));
+    if (isRequirementsLockFile(rel)) {
+      evidence.locked.push(...deps.flatMap(requirementPinToLockedDep));
+    }
   }
 }
 
@@ -69,7 +73,7 @@ function rootConstraintFiles(files: FileEntry[]): string[] {
 }
 
 function isRootRequirementsFile(file: FileEntry): boolean {
-  return isRootFile(file) && REQUIREMENTS_FILE_RE.test(path.basename(file.relativePath));
+  return isRootFile(file) && REQUIREMENTS_DECLARATION_FILE_RE.test(path.basename(file.relativePath));
 }
 
 function isRootConstraintsFile(file: FileEntry): boolean {
@@ -78,6 +82,10 @@ function isRootConstraintsFile(file: FileEntry): boolean {
 
 function isRootFile(file: FileEntry): boolean {
   return !file.directory || file.directory === '.';
+}
+
+function isRequirementsLockFile(rel: string): boolean {
+  return REQUIREMENTS_LOCK_FILE_RE.test(path.basename(rel));
 }
 
 async function tryRead(absolutePath: string): Promise<string | null> {

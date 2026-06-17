@@ -221,6 +221,26 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual(['app/main.py']);
   });
 
+  it('previews requirements.in dependency impact without installed-version evidence', async () => {
+    await fs.writeFile(path.join(tmp, 'requirements.in'), 'fastapi==0.110.0\n');
+    const files = [
+      await writeFile(tmp, 'requirements.in', 'fastapi==0.110.0\n'),
+      await writeFile(tmp, 'app/main.py', 'from fastapi import FastAPI\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'fastapi', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('==0.110.0');
+    expect(preview.installed).toBeNull();
+    expect(preview.latest).toBeNull();
+    expect(preview.drift).toBe('unknown');
+    expect(preview.declaredSource).toBe('requirements.in');
+    expect(preview.declaredLine).toBe(1);
+    expect(preview.importers).toEqual(['app/main.py']);
+  });
+
   it('uses pinned root requirements as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),
