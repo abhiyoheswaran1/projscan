@@ -33,6 +33,7 @@ import {
 } from './intentRouterSecuritySignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
 import { searchCommunicationArtifactContextMatches } from './intentRouterSearchCommunicationSignals.js';
+import { searchDomainWorkflowContextMatches } from './intentRouterSearchDomainSignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
@@ -4650,47 +4651,6 @@ function searchDataAccessContextMatches(tokens: Set<string>): boolean {
     ) ||
     tokens.size >= 3
   );
-}
-
-function searchDomainWorkflowContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const action = [
-    'handled',
-    'handles',
-    'implemented',
-    'creates',
-    'created',
-    'generated',
-    'sent',
-    'export',
-    'exports',
-  ].some((token) => tokens.has(token));
-  const passwordReset = tokens.has('password') && tokens.has('reset');
-  const inviteFlow = tokens.has('invite') || tokens.has('invites');
-  const onboardingFlow = tokens.has('onboarding') && (tokens.has('flow') || tokens.has('flows'));
-  const csvExport = tokens.has('csv') && (tokens.has('export') || tokens.has('exports'));
-  const auditLog =
-    tokens.has('audit') && (tokens.has('log') || tokens.has('logs') || tokens.has('entries'));
-  const refundFlow = tokens.has('refund');
-  const subscriptionRenewal = tokens.has('subscription') && tokens.has('renewal');
-  const subject =
-    passwordReset ||
-    inviteFlow ||
-    onboardingFlow ||
-    csvExport ||
-    auditLog ||
-    refundFlow ||
-    subscriptionRenewal;
-  if (!subject) return false;
-  return locator || action || tokens.size >= 3;
 }
 
 function searchNavigationLayoutContextMatches(tokens: Set<string>): boolean {

@@ -181,6 +181,21 @@ describe('routeIntent', () => {
     expect(stateSignalsSource).toContain('export function searchStateManagementContextMatches');
   });
 
+  it('keeps domain workflow search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchDomainSignals.js'");
+    expect(routerSource).not.toContain('function searchDomainWorkflowContextMatches');
+
+    const domainSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchDomainSignals.ts'),
+      'utf8',
+    );
+    expect(domainSignalsSource).toContain('export function searchDomainWorkflowContextMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

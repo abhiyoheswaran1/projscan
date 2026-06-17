@@ -5997,3 +5997,51 @@ routing.
 Kept change: one state-management search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: domain workflow lookup routing helps agents find existing password
+reset, invite, onboarding, CSV export, audit log, refund, and subscription
+renewal behavior without turning lookup questions into implementation work.
+Maintainers need these workflow words to stay reviewable outside the main
+intent-router hotspot.
+
+Smallest fix: move domain workflow search matching into
+`intentRouterSearchDomainSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "domain workflow search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchDomainSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Domain Workflow Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, workflow planning
+  routing, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change domain workflow keyword semantics except by moving the existing
+  cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is password reset handled" should
+still route as code search, while "implement password reset" should stay out of
+the domain workflow search matcher and continue to route as implementation
+planning.
+
+Kept change: one domain workflow search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

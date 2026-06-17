@@ -1841,3 +1841,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move state-management search matching into `src/core/intentRouterSearchStateSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7424 lines / CC 1221 to 7350 lines / CC 1199. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "state management search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract domain workflow search route signals
+
+- Status: accepted
+- Context: Domain workflow lookup routing for password reset, invites, onboarding flows, CSV export, audit logs, refunds, and subscription renewal was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move domain workflow search matching into `src/core/intentRouterSearchDomainSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7350 lines / CC 1199 to 7310 lines / CC 1179. The extracted helper has no hotspot history, max function CC 7, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "domain workflow search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
