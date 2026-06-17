@@ -7093,13 +7093,13 @@ pattern does not become a broad `nextUrl` or `searchParams` name match.
 Proof commands:
 
 ```bash
-npm run test -- tests/core/dataflowFrameworkNextHono.test.ts -t "nextUrl search params"
-npm exec agentflight -- verify npm run test -- tests/core/dataflowFrameworkNextHono.test.ts tests/core/dataflowFrameworkExpress.test.ts tests/core/dataflowFrameworkFastify.test.ts tests/core/dataflowFrameworkKoa.test.ts
+npm run test -- tests/core/dataflowFrameworkNext.test.ts -t "nextUrl search params"
+npm exec agentflight -- verify npm run test -- tests/core/dataflowFrameworkNext.test.ts tests/core/dataflowFrameworkHono.test.ts tests/core/dataflowFrameworkExpress.test.ts tests/core/dataflowFrameworkFastify.test.ts tests/core/dataflowFrameworkKoa.test.ts
 npm exec agentflight -- verify npm run typecheck
 npm exec agentflight -- verify npm run lint
 npm exec agentflight -- verify npm run build
 npm exec projscan -- file src/core/frameworkNextRouteSources.ts --format json
-npm exec projscan -- file tests/core/dataflowFrameworkNextHono.test.ts --format json
+npm exec projscan -- file tests/core/dataflowFrameworkNext.test.ts --format json
 npm exec projscan -- bug-hunt --format json
 ```
 
