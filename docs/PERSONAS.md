@@ -9785,3 +9785,53 @@ analysis and health HTML output after the helper moves to `htmlShared`.
 Kept change: one focused HTML analysis renderer module, shared report-controls
 helper, compatibility re-export, focused characterization tests, this persona
 note, and no release action in this slice.
+
+## Two Hundred Sixth Slice Decision
+
+Selected personas: Maintainer Preparing Review and Platform And Release Owner.
+
+Reason: Coverage x Risk and Impact HTML reports are review artifacts that help a
+maintainer decide where to test and what a change can reach. After the analysis,
+review, and PR-diff extractions, `src/reporters/htmlReporter.ts` still owned
+both renderers and remained the shared compatibility file with the highest
+remaining local complexity.
+
+Smallest fix: move `reportCoverageHtml` into
+`src/reporters/htmlCoverageReporter.ts`, move `reportImpactHtml` into
+`src/reporters/htmlImpactReporter.ts`, reuse `src/reporters/htmlShared.ts`, and
+re-export both functions from `src/reporters/htmlReporter.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/reporters/htmlCoverageReporter.test.ts tests/reporters/htmlImpactReporter.test.ts
+npm run test -- tests/reporters/htmlReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/reporters/htmlReporter.ts --format json
+npm exec projscan -- file src/reporters/htmlCoverageReporter.ts --format json
+npm exec projscan -- file src/reporters/htmlImpactReporter.ts --format json
+```
+
+## Review Guardrails: HTML Coverage And Impact Reporter Extraction
+
+Delete-list after this slice:
+
+- Do not change `CoverageJoinedReport`, `ImpactReport`, CLI flags,
+  JSON/Markdown/console reporters, package exports, dependencies, lockfiles,
+  release artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not change Coverage x Risk headings, source text, risk/coverage priority
+  columns, red-row threshold, truncation behavior, Impact headings, definition
+  lists, reachable table, unavailable output, or HTML shell output.
+- Do not introduce templates/classes, create a broad HTML rendering framework,
+  or split unrelated health, hotspot, or coupling renderers in the same slice.
+
+Reviewer edge case: imports from `src/reporters/htmlReporter.js` must still
+return the same `reportCoverageHtml` and `reportImpactHtml` functions that the
+focused modules export.
+
+Kept change: two focused HTML reporter modules, compatibility re-exports,
+focused characterization tests, this persona note, and no release action in
+this slice.

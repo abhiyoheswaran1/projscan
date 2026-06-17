@@ -2265,3 +2265,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move `reportAnalysisHtml` into `src/reporters/htmlAnalysisReporter.ts`, share report-control rendering through `src/reporters/htmlShared.ts`, and keep `src/reporters/htmlReporter.ts` as the compatibility re-export boundary.
 - Consequences: First-run HTML analysis artifact wording and import compatibility stay stable while the main HTML reporter sheds another high-complexity renderer.
 - Verification: `npm run test -- tests/reporters/htmlAnalysisReporter.test.ts` failed before the extracted module existed, then passed after the extraction. Existing HTML reporter coverage and `npm run typecheck` also passed.
+
+## 2026-06-18: Extract HTML coverage and impact reporters
+
+- Status: accepted
+- Context: `src/reporters/htmlReporter.ts` still owned the remaining Coverage x Risk and Impact HTML renderers, leaving the highest local complexity in the compatibility reporter after the analysis, review, and PR diff extractions.
+- Decision: Move `reportCoverageHtml` into `src/reporters/htmlCoverageReporter.ts`, move `reportImpactHtml` into `src/reporters/htmlImpactReporter.ts`, and keep both functions re-exported from `src/reporters/htmlReporter.ts`.
+- Consequences: Coverage and impact artifact wording, escaping, unavailable states, and import compatibility remain stable while the umbrella reporter is narrowed to the smaller health, hotspot, and coupling renderers.
+- Verification: `npm run test -- tests/reporters/htmlCoverageReporter.test.ts tests/reporters/htmlImpactReporter.test.ts` failed before the extracted modules existed, then passed after the extraction. Existing HTML reporter coverage also passed.

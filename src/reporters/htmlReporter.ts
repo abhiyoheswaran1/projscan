@@ -1,8 +1,6 @@
 import type {
   CouplingReport,
-  CoverageJoinedReport,
   HotspotReport,
-  ImpactReport,
   Issue,
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
@@ -11,6 +9,8 @@ import { escapeHtml, htmlShell, reportControlsHtml, severityIcon } from './htmlS
 
 export { htmlShell } from './htmlShared.js';
 export { reportAnalysisHtml } from './htmlAnalysisReporter.js';
+export { reportCoverageHtml } from './htmlCoverageReporter.js';
+export { reportImpactHtml } from './htmlImpactReporter.js';
 export { reportPrDiffHtml } from './htmlPrDiffReporter.js';
 export { reportReviewHtml } from './htmlReviewReporter.js';
 
@@ -132,88 +132,4 @@ ${cyclesHtml}
 </table>
 `;
   console.log(htmlShell('Coupling', body));
-}
-
-export function reportCoverageHtml(report: CoverageJoinedReport): void {
-  if (!report.available) {
-    console.log(
-      htmlShell(
-        'Coverage — unavailable',
-        `<h1>Coverage × Risk</h1><p class="muted">${escapeHtml(report.reason ?? 'Coverage unavailable.')}</p>`,
-      ),
-    );
-    return;
-  }
-  const rows = report.entries
-    .slice(0, 100)
-    .map((h, i) => {
-      const cov = h.coverage;
-      const covPct = cov === null ? '-' : `${Math.round(cov * 100)}%`;
-      const danger = cov !== null && cov < 0.5 && h.riskScore > 50;
-      const cls = danger ? ' class="severity-error"' : '';
-      return `<tr${cls}>
-<td class="right">${i + 1}</td>
-<td><code>${escapeHtml(h.relativePath)}</code></td>
-<td class="right">${h.riskScore.toFixed(1)}</td>
-<td class="right">${covPct}</td>
-<td class="right">${h.priority.toFixed(1)}</td>
-<td class="right">${h.lineCount}</td>
-<td class="muted">${escapeHtml(h.reasons.join(', '))}</td>
-</tr>`;
-    })
-    .join('\n');
-  const sourceLabel = report.coverageSource ?? 'no coverage source';
-  const sourceFile = report.coverageSourceFile
-    ? ` (<code>${escapeHtml(report.coverageSourceFile)}</code>)`
-    : '';
-  const body = `
-<h1>Coverage × Risk</h1>
-<p class="muted">Source: ${escapeHtml(sourceLabel)}${sourceFile} · ${report.entries.length} file(s) ranked.</p>
-<p>Rows highlighted in red have <strong>coverage &lt; 50%</strong> AND <strong>risk score &gt; 50</strong> — the "scariest untested files" combination. The Priority column blends risk and uncovered fraction; rows are sorted by it.</p>
-<table>
-<thead><tr><th>#</th><th>File</th><th class="right">Risk</th><th class="right">Coverage</th><th class="right">Priority</th><th class="right">Lines</th><th>Reasons</th></tr></thead>
-<tbody>${rows}</tbody>
-</table>
-${report.entries.length > 100 ? `<p class="muted">… and ${report.entries.length - 100} more</p>` : ''}
-`;
-  console.log(htmlShell('Coverage × Risk', body));
-}
-
-export function reportImpactHtml(report: ImpactReport): void {
-  if (!report.available) {
-    console.log(
-      htmlShell(
-        'Impact — unavailable',
-        `<h1>Impact</h1><p class="muted">${escapeHtml(report.reason ?? 'Impact unavailable.')}</p>`,
-      ),
-    );
-    return;
-  }
-  const defs =
-    report.definitionFiles.length === 0
-      ? ''
-      : `<h2>Defined in</h2><ul>${report.definitionFiles.map((f) => `<li><code>${escapeHtml(f)}</code></li>`).join('\n')}</ul>`;
-
-  const reachable =
-    report.reachable.length === 0
-      ? '<p class="muted">No reachable files.</p>'
-      : `<table>
-<thead><tr><th class="right">Distance</th><th>File</th></tr></thead>
-<tbody>${report.reachable
-          .slice(0, 200)
-          .map(
-            (n) =>
-              `<tr><td class="right">${n.distance}</td><td><code>${escapeHtml(n.file)}</code></td></tr>`,
-          )
-          .join('\n')}</tbody>
-</table>`;
-
-  const body = `
-<h1>Impact: ${escapeHtml(report.target.kind)} <code>${escapeHtml(report.target.value)}</code></h1>
-<p class="muted">${report.totalReachable} file(s) reachable within distance ${report.maxDistance}${report.truncated ? ' (truncated; more files exist beyond)' : ''}.</p>
-${defs}
-<h2>Reachable</h2>
-${reachable}
-`;
-  console.log(htmlShell(`Impact: ${report.target.value}`, body));
 }
