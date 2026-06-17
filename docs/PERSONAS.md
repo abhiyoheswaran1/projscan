@@ -4819,3 +4819,50 @@ block without concrete policy or review findings.
 Kept change: one preflight contextual-reason helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## One Hundred First Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Security-Conscious
+Reviewer.
+
+Reason: `src/core/review.ts` is a current bug-hunt hotspot and review is the
+gate agents use before merge decisions. The highest-risk remaining review code
+was not a new feature gap; it was the dense assembly of changed files, cycles,
+risky functions, dependency/contract changes, taint/dataflow deltas, graph
+evidence, and verdict inputs in the orchestrator.
+
+Smallest fix: move derived finding assembly into `reviewFindings.ts`; keep
+`computeReview` responsible for git/ref state, snapshot loading, no-change
+handling, final report shape, and intent annotation.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "review finding assembly"
+npm run test -- tests/core/review.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewFindings.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Finding-Assembly Extraction
+
+Delete-list after this slice:
+
+- Do not change review verdict inputs, package scoping, changed-file ordering,
+  cycle classification, dependency/contract detection, taint/dataflow
+  semantics, graph evidence, or public report schema.
+- Do not change git/ref resolution, no-change handling, base/head snapshot
+  behavior, worktree cleanup, or intent annotation.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: package-scoped reviews should still scope the diff before
+all derived findings and verdict inputs are computed.
+
+Kept change: one review finding helper module, one maintainability regression,
+existing review behavior coverage, this persona note, and no public schema
+change.

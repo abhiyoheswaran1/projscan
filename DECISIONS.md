@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract review finding assembly
+
+- Status: accepted
+- Context: `computeReview` still owned package-scoped finding assembly, changed-file enrichment, cycle/risky/dependency/contract/dataflow evidence, graph evidence, and verdict summary after prior review helpers were isolated.
+- Decision: Move derived review finding assembly into `src/core/reviewFindings.ts`.
+- Consequences: Review output fields, package scoping, verdict inputs, intent annotation behavior, and public schema stay unchanged, while `src/core/review.ts` drops from 240 lines to 161 lines.
+- Verification: `npm run test -- tests/core/review.test.ts -t "review finding assembly"` plus the full review test file.
+
 ## 2026-06-17: Extract preflight contextual reasons
 
 - Status: accepted

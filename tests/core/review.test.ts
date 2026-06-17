@@ -247,6 +247,22 @@ describe('computeReview', () => {
     expect(computeNewDataflowRisks!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps review finding assembly isolated from the review orchestrator', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).not.toContain('const touchedFiles = new Set<string>');
+    expect(reviewSource).not.toContain('computeNewTaintFlows(');
+    expect(reviewSource).not.toContain('decideVerdict(');
+
+    const findings = await inspectRepoSourceFile('src/core/reviewFindings.ts');
+    const buildFindings = findings.functions?.find((fn) => fn.name === 'buildReviewFindings');
+    const touchedFiles = findings.functions?.find((fn) => fn.name === 'reviewTouchedFiles');
+
+    expect(buildFindings).toBeDefined();
+    expect(buildFindings!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(touchedFiles).toBeDefined();
+    expect(touchedFiles!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+  });
+
   it('keeps tier shaping isolated from the review orchestrator', async () => {
     const review = await inspectRepoSourceFile('src/core/review.ts');
     const tierFunctions = new Set(['selectReviewTier', 'shapeReviewForTier']);

@@ -1,19 +1,11 @@
-import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
-import { findRiskyFunctions } from './reviewRiskyFunctions.js';
-import { decideVerdict } from './reviewVerdict.js';
-import { buildContractChanges } from './reviewContractChanges.js';
-import { buildReviewChangedFiles, indexHotspotRisk } from './reviewChangedFiles.js';
-import { classifyNewCycles, scopeCyclesToFiles } from './reviewCycles.js';
-import { buildReviewGraphEvidence } from './reviewGraphEvidence.js';
-import { computeNewDataflowRisks, computeNewTaintFlows } from './reviewFlowDiffs.js';
 import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
 import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
 import { buildNoChangeReviewReport } from './reviewNoChanges.js';
-import { resolvePackageScopeFiles, scopePrDiffToPackage } from './reviewPackageScope.js';
 import { isGitRepository, isWorktreeClean, pickDefaultBase, resolveSha } from './reviewRefs.js';
-import { diffManifests, readManifests, scopeDependencyChanges } from './reviewManifests.js';
+import { readManifests } from './reviewManifests.js';
+import { buildReviewFindings } from './reviewFindings.js';
 import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
@@ -89,94 +81,23 @@ export async function computeReview(
   const headPackageManifests = await readManifests(rootPath);
 
   const prDiff = diffGraphs(baseRef, baseSha, headRef, headSha, baseGraph, headGraph);
-  await scopePrDiffToPackage(rootPath, prDiff, options.package);
-  const graphScopeFiles = await resolvePackageScopeFiles(rootPath, headGraph, options.package);
-
-  // Build the per-file enriched view. Index head hotspots by path for O(1) lookup.
-  const changedFiles = buildReviewChangedFiles(
+  const findings = await buildReviewFindings({
+    rootPath,
+    packageName: options.package,
     prDiff,
     baseGraph,
     headGraph,
-    indexHotspotRisk(headHotspots.hotspots),
-  );
-
-  // Cycles: compute on both sides; classify head cycles as new/expanded based
-  // on overlap with base cycles.
-  const headCoupling = computeCoupling(headGraph);
-  const baseCoupling = computeCoupling(baseGraph);
-  const newCycles = scopeCyclesToFiles(
-    classifyNewCycles(baseCoupling.cycles, headCoupling.cycles, prDiff.filesAdded),
-    graphScopeFiles,
-  );
-
-  // Risky functions: compare per-file function lists between base and head.
-  const riskyFunctions = findRiskyFunctions(baseGraph, headGraph, prDiff);
-
-  // Dependency changes across root + workspaces.
-  const dependencyChanges = scopeDependencyChanges(
-    diffManifests(basePackageManifests, headPackageManifests),
-    options.package,
-  );
-  const contractChanges = buildContractChanges(
-    prDiff,
-    baseGraph,
-    headGraph,
+    headHotspots,
     basePackageManifests,
     headPackageManifests,
-    options.package,
-  );
-
-  // 1.6+ — taint flows newly introduced at head. A flow is "new" iff
-  //   (a) the (sourceFn, sinkFn, source, sink) flow didn't exist at base, AND
-  //   (b) at least one file along the flow's path is in the PR diff.
-  // (b) prevents a base-graph parse failure from avalanching every
-  // pre-existing head flow into a false "new" verdict. Project config
-  // adds user-declared sources/sinks on top of the built-in defaults.
-  const touchedFiles = new Set<string>([
-    ...prDiff.filesAdded,
-    ...prDiff.filesRemoved,
-    ...prDiff.filesModified.map((f) => f.relativePath),
-  ]);
-  const newTaintFlows = await computeNewTaintFlows(rootPath, baseGraph, headGraph, touchedFiles);
-  const newDataflowRisks = await computeNewDataflowRisks(
-    rootPath,
-    baseGraph,
-    headGraph,
-    touchedFiles,
-  );
-  const graphEvidence = buildReviewGraphEvidence(
-    headGraph,
-    touchedFiles,
-    newDataflowRisks.length,
-    graphScopeFiles,
-  );
-
-  // Verdict.
-  const { verdict, summary } = decideVerdict(
-    changedFiles,
-    newCycles,
-    riskyFunctions,
-    dependencyChanges,
-    contractChanges,
-    newTaintFlows,
-    newDataflowRisks,
-  );
+  });
 
   const report: ReviewReport = {
     available: true,
     base: { ref: baseRef, resolvedSha: baseSha },
     head: { ref: headRef, resolvedSha: headSha },
     prDiff,
-    changedFiles,
-    newCycles,
-    riskyFunctions,
-    dependencyChanges,
-    contractChanges,
-    newTaintFlows,
-    newDataflowRisks,
-    graphEvidence,
-    verdict,
-    summary,
+    ...findings,
   };
 
   // 1.9+ — intent grounding. Parse the agent-supplied description,
