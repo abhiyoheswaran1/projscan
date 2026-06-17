@@ -8681,3 +8681,50 @@ tests, and the combined start run should report 58 tests across
 
 Kept change: one cleanup-routing start test split, this persona note, and no
 release action.
+
+## One Hundred Eighty Second Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the cleanup split, `tests/core/start.test.ts` still mixed general
+start routing with branch review and rebase-recovery routing. The moved cases
+share one behavior surface: branch state questions should route to structural
+diff evidence, while rebase recovery should route to before-merge preflight.
+
+Smallest fix: move the three branch/rebase review-routing scenarios into the
+existing `tests/core/startReviewRouting.test.ts` file and keep the remaining
+start routing matrix in `tests/core/start.test.ts`. This preserves behavior
+coverage while reducing the original start test file from 2,065 lines to 1,971
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "branch change questions|branch freshness questions|rebase recovery"
+npm run test -- tests/core/startReviewRouting.test.ts -t "branch change questions|branch freshness questions|rebase recovery"
+npm run test -- tests/core/start.test.ts tests/core/startReviewRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startReviewRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Branch Review Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan pr-diff`, before-commit mode inference,
+  before-merge preflight routing, proof commands, package version, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken coverage for "what did I change since main", branch stale
+  questions, rebase recovery, structural diff success criteria, or preflight
+  success criteria.
+- Do not broaden this into route-scoring behavior changes; this slice is test
+  maintainability only.
+
+Reviewer edge case: the focused branch/rebase run should still report three
+tests, and the combined start/review-routing run should report 67 tests across
+`tests/core/start.test.ts` and `tests/core/startReviewRouting.test.ts`.
+
+Kept change: one branch/rebase review-routing start test split, this persona
+note, and no release action.
