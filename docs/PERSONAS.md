@@ -5671,3 +5671,48 @@ hosted deployment config lives.
 Kept change: one infra search route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Nineteenth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: UI interaction search routing helps agents find existing form, state,
+shortcut, modal, i18n, aria, and focus-trap behavior without turning lookup
+questions into implementation plans. Maintainers also need this matcher outside
+the main router hotspot so route behavior remains reviewable.
+
+Smallest fix: move UI interaction search matching into
+`intentRouterSearchUiSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "UI interaction search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchUiSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: UI Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, route confidence scoring,
+  `routeIntent`, or public route result shape.
+- Do not change UI interaction keyword semantics except by moving the existing
+  cohesive checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is the empty results state rendered"
+should still route as code search, while "add empty results state" should stay
+out of the UI interaction search matcher.
+
+Kept change: one UI search route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.

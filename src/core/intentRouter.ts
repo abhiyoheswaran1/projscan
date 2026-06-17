@@ -32,6 +32,7 @@ import {
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
+import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 
 export interface RouteEntry {
   /** Short intent label. */
@@ -5198,68 +5199,6 @@ function toolingFailureContextMatches(tokens: Set<string>): boolean {
     'npm',
   ].some((token) => tokens.has(token));
   return toolingSubject && regressionFailureContextMatches(tokens);
-}
-
-function searchUiInteractionContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  const formSubject =
-    (tokens.has('form') || tokens.has('forms')) &&
-    ['submit', 'submits', 'submitted', 'handles', 'handled'].some((token) => tokens.has(token));
-  const stateSubject =
-    (tokens.has('state') && ['loading', 'empty', 'error'].some((token) => tokens.has(token))) ||
-    (tokens.has('empty') && tokens.has('results'));
-  const boundarySubject = tokens.has('boundary') && tokens.has('error');
-  const notificationSubject = ['toast', 'notification', 'notifications'].some((token) =>
-    tokens.has(token),
-  );
-  const shortcutSubject =
-    tokens.has('keyboard') ||
-    tokens.has('shortcut') ||
-    tokens.has('shortcuts') ||
-    (tokens.has('command') && tokens.has('palette'));
-  const modalSubject = tokens.has('modal');
-  const componentSubject =
-    tokens.has('component') &&
-    (tokens.has('page') || tokens.has('renders') || tokens.has('render'));
-  const translationSubject =
-    tokens.has('i18n') || tokens.has('translation') || tokens.has('translations');
-  const accessibilitySubject = tokens.has('aria') || (tokens.has('focus') && tokens.has('trap'));
-  const subject =
-    formSubject ||
-    stateSubject ||
-    boundarySubject ||
-    notificationSubject ||
-    shortcutSubject ||
-    modalSubject ||
-    componentSubject ||
-    translationSubject ||
-    accessibilitySubject;
-  if (!subject) return false;
-  return (
-    [
-      'where',
-      'which',
-      'what',
-      'find',
-      'locate',
-      'search',
-      'lookup',
-      'handles',
-      'handled',
-      'renders',
-      'render',
-      'shown',
-      'triggers',
-      'triggered',
-      'opened',
-      'implemented',
-    ].some((token) => tokens.has(token)) || tokens.size >= 3
-  );
 }
 
 function explicitDataflowContextMatches(tokens: Set<string>): boolean {

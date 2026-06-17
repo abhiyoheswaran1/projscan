@@ -1785,3 +1785,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move infrastructure artifact search matching into `src/core/intentRouterSearchInfraSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7862 lines / CC 1395 to 7798 lines / CC 1366. The extracted helper has no hotspot history, max function CC 8, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "infra artifact search routing"` failed before extraction, then passed. `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts`, `npm exec agentflight -- verify npm run typecheck`, `npm exec agentflight -- verify npm run lint`, `npm exec agentflight -- verify npm run build`, `npm exec projscan -- file src/core/intentRouter.ts --format json`, `npm exec projscan -- file src/core/intentRouterSearchInfraSignals.ts --format json`, `npm exec projscan -- bug-hunt --format json`, `npm exec projscan -- release-train --format json`, and `git diff --check` passed with only the expected manual release sign-off caution remaining.
+
+## 2026-06-17: Extract UI search route signals
+
+- Status: accepted
+- Context: UI interaction search routing is another cohesive cluster inside the largest production router hotspot. It distinguishes lookup questions about forms, loading/empty/error states, keyboard shortcuts, modals, i18n, aria, and focus traps from implementation-plan language.
+- Decision: Move UI interaction search matching into `src/core/intentRouterSearchUiSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7798 lines / CC 1366 to 7737 lines / CC 1338. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "UI interaction search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

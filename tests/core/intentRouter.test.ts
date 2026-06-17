@@ -72,6 +72,21 @@ describe('routeIntent', () => {
     expect(infraSignalsSource).toContain('export function searchInfraArtifactContextMatches');
   });
 
+  it('keeps UI interaction search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchUiSignals.js'");
+    expect(routerSource).not.toContain('function searchUiInteractionContextMatches');
+
+    const uiSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchUiSignals.ts'),
+      'utf8',
+    );
+    expect(uiSignalsSource).toContain('export function searchUiInteractionContextMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');
