@@ -4,22 +4,19 @@ export { renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
 import { buildEvidencePackArtifacts } from './releaseEvidenceArtifacts.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
-import { buildEvidencePackPrSummary, concreteDefectMessages } from './releaseEvidencePrSummary.js';
+import { buildEvidencePackPrSummary } from './releaseEvidencePrSummary.js';
 export { calibratePreflightTrust } from './releaseEvidencePrSummary.js';
+import {
+  approvalRecommendation,
+  blockingEvidence,
+  calibrateEvidencePackVerdict,
+  evidencePackVerdict,
+  summarizeEvidencePack,
+} from './releaseEvidenceVerdict.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
 import { loadOwnership } from './ownership.js';
-import type {
-  BugHuntReport,
-  EvidencePackArtifact,
-  EvidencePackPrSummary,
-  EvidencePackReport,
-  EvidencePackVerdict,
-  PreflightReport,
-  PreflightSuggestedAction,
-  ReleaseTrainReport,
-  WorkplanReport,
-} from '../types.js';
+import type { EvidencePackReport, PreflightSuggestedAction, ReleaseTrainReport } from '../types.js';
 
 export interface ComputeEvidencePackOptions {
   lines?: string[];
@@ -43,7 +40,7 @@ export async function computeEvidencePack(
     }),
   ]);
   const artifacts = buildEvidencePackArtifacts(train, bugHunt, workplan, preflight);
-  const rawVerdict = packVerdict(artifacts);
+  const rawVerdict = evidencePackVerdict(artifacts);
   const blockingReasons = blockingEvidence(preflight, bugHunt, workplan);
   const changelogEntries = buildChangelogEntries();
   const suggestedNextActions = dedupeActions([
@@ -75,7 +72,7 @@ export async function computeEvidencePack(
     currentVersion: train.currentVersion,
     readOnly: true,
     verdict,
-    summary: summarize(verdict, train.currentVersion, blockingReasons),
+    summary: summarizeEvidencePack(verdict, train.currentVersion, blockingReasons),
     train: {
       lines: train.plan.lines,
       readiness: train.readiness,
@@ -102,28 +99,6 @@ export async function computeEvidencePack(
   };
 }
 
-function blockingEvidence(
-  preflight: PreflightReport,
-  bugHunt: BugHuntReport,
-  workplan: WorkplanReport,
-): string[] {
-  return dedupeStrings([
-    ...(concreteDefectMessages(preflight).length > 0
-      ? concreteDefectMessages(preflight)
-      : preflight.verdict === 'block' && preflight.evidence.releaseScale?.detected
-        ? [preflight.evidence.releaseScale.explanation]
-        : []),
-    ...(bugHunt.verdict === 'block'
-      ? bugHunt.fixQueue
-          .filter((finding) => finding.priority === 'p0')
-          .map((finding) => finding.title)
-      : []),
-    ...(workplan.verdict === 'block'
-      ? workplan.topRisks.filter((risk) => risk.priority === 'p0').map((risk) => risk.message)
-      : []),
-  ]).slice(0, 10);
-}
-
 function buildChangelogEntries(): string[] {
   return [
     '`projscan_evidence_pack` / `projscan evidence-pack` produce one approval-ready packet with planning, preflight, workplan, bug-hunt, changelog, and website-update evidence.',
@@ -142,49 +117,6 @@ function buildWebsitePrompt(train: ReleaseTrainReport, changelogEntries: string[
     ...changelogEntries.map((entry) => `- ${entry}`),
     'Keep claims grounded in the completed product evidence.',
   ].join('\n');
-}
-
-function packVerdict(artifacts: EvidencePackArtifact[]): EvidencePackVerdict {
-  if (artifacts.some((artifact) => artifact.status === 'blocked')) return 'blocked';
-  if (artifacts.some((artifact) => artifact.status === 'caution')) return 'caution';
-  return 'ready';
-}
-
-function calibrateEvidencePackVerdict(
-  verdict: EvidencePackVerdict,
-  prSummary: EvidencePackPrSummary,
-): EvidencePackVerdict {
-  if (
-    verdict === 'blocked' &&
-    prSummary.trust.verdict === 'manual_review' &&
-    prSummary.trust.concreteBlockers.length === 0
-  ) {
-    return 'caution';
-  }
-  return verdict;
-}
-
-function summarize(
-  verdict: EvidencePackVerdict,
-  currentVersion: string | null | undefined,
-  blockingReasons: string[],
-): string {
-  const version = currentVersion ?? 'current version';
-  if (verdict === 'blocked') {
-    return `blocked: ${blockingReasons[0] ?? 'product evidence still contains blocking signals'}`;
-  }
-  if (verdict === 'caution') {
-    return `caution: ${version} evidence is assembled but still needs explicit review`;
-  }
-  return `ready: ${version} evidence is assembled for approval`;
-}
-
-function approvalRecommendation(verdict: EvidencePackVerdict): string {
-  if (verdict === 'blocked')
-    return 'Do not approve launch until p0 evidence is cleared or accepted.';
-  if (verdict === 'caution')
-    return 'Review cautions, then approve only after the regression plan passes.';
-  return 'Approval can proceed after the recorded regression commands pass.';
 }
 
 function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedAction[] {

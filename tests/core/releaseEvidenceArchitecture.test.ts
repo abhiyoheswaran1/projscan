@@ -55,4 +55,28 @@ describe('release evidence architecture', () => {
     expect(artifactsSource).toContain('export function buildEvidencePackArtifacts');
     expect(artifactsSource).toContain('export function statusFromPreflight');
   });
+
+  it('keeps verdict and approval decisions isolated from evidence pack orchestration', () => {
+    const evidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidence.ts'),
+      'utf8',
+    );
+
+    expect(evidenceSource).toContain("from './releaseEvidenceVerdict.js'");
+    expect(evidenceSource).not.toContain('function blockingEvidence');
+    expect(evidenceSource).not.toContain('function packVerdict');
+    expect(evidenceSource).not.toContain('function calibrateEvidencePackVerdict');
+    expect(evidenceSource).not.toContain('function summarize');
+    expect(evidenceSource).not.toContain('function approvalRecommendation');
+
+    const verdictSource = readFileSync(
+      path.join(process.cwd(), 'src/core/releaseEvidenceVerdict.ts'),
+      'utf8',
+    );
+    expect(verdictSource).toContain('export function blockingEvidence');
+    expect(verdictSource).toContain('export function evidencePackVerdict');
+    expect(verdictSource).toContain('export function calibrateEvidencePackVerdict');
+    expect(verdictSource).toContain('export function summarizeEvidencePack');
+    expect(verdictSource).toContain('export function approvalRecommendation');
+  });
 });
