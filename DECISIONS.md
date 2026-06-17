@@ -1897,3 +1897,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the planning helper group into `src/core/intentRouterPlanningSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7033 lines / CC 1086 to 6767 lines / CC 1033. The extracted helper has no imports, no hotspot history, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "planning route routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract repo setup and orientation route signals
+
+- Status: accepted
+- Context: Repo setup, local-service startup, database setup, npm/package script discovery, repo config, and repo orientation routing were a cohesive helper group inside the intent-router hotspot and also acted as blockers for search/test-data routing.
+- Decision: Move repo setup and orientation matching into `src/core/intentRouterRepoSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6767 lines / CC 1033 to 6519 lines / CC 978. The extracted helper has no imports, no hotspot history, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "repo setup and orientation routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

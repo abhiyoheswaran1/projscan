@@ -107,6 +107,35 @@ describe('routeIntent', () => {
     expect(planningSignalsSource).toContain('export function apiChangePlanningContextMatches');
   });
 
+  it('keeps repo setup and orientation routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterRepoSignals.js'");
+    expect(routerSource).not.toContain('function repoRunContextMatches');
+    expect(routerSource).not.toContain('function localServiceSetupCommandContextMatches');
+    expect(routerSource).not.toContain('function databaseSetupCommandContextMatches');
+    expect(routerSource).not.toContain('function npmScriptsContextMatches');
+    expect(routerSource).not.toContain('function packageScriptDiscoveryContextMatches');
+    expect(routerSource).not.toContain('function repoSetupContextMatches');
+    expect(routerSource).not.toContain('function repoConfigContextMatches');
+    expect(routerSource).not.toContain('function repoOrientationContextMatches');
+
+    const repoSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterRepoSignals.ts'),
+      'utf8',
+    );
+    expect(repoSignalsSource).toContain('export function repoRunContextMatches');
+    expect(repoSignalsSource).toContain('export function localServiceSetupCommandContextMatches');
+    expect(repoSignalsSource).toContain('export function databaseSetupCommandContextMatches');
+    expect(repoSignalsSource).toContain('export function npmScriptsContextMatches');
+    expect(repoSignalsSource).toContain('export function packageScriptDiscoveryContextMatches');
+    expect(repoSignalsSource).toContain('export function repoSetupContextMatches');
+    expect(repoSignalsSource).toContain('export function repoConfigContextMatches');
+    expect(repoSignalsSource).toContain('export function repoOrientationContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

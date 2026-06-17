@@ -6330,3 +6330,52 @@ tests for auth" should stay with regression planning.
 Kept change: one planning route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Thirty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: repo setup and orientation routing helps agents ask how to run the app,
+which scripts exist, how to set up local services or migrations, which config or
+env vars are needed, and where to start reading a repo. Maintainers also need
+these helpers isolated because script and setup matchers are blockers for
+verification, search, and test-data routing.
+
+Smallest fix: move repo setup, local-service setup, database setup,
+npm/package-script discovery, repo config, and repo orientation matching into
+`intentRouterRepoSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "repo setup and orientation routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterRepoSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Repo Setup And Orientation Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, understand route entries, start/setup routing,
+  package-script discovery, search routing, verification planning, route
+  confidence scoring, `routeIntent`, or public route result shape.
+- Do not change repo setup/orientation keyword semantics except by moving the
+  existing matchers into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "what command starts the dev server", "which script runs
+e2e tests", and "what env vars does this repo need" should keep their existing
+understand/start routing, while failure phrases like "dev server is failing"
+should stay out of setup discovery.
+
+Kept change: one repo setup/orientation route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
