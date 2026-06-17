@@ -66,6 +66,7 @@ import { searchDomainWorkflowContextMatches } from './intentRouterSearchDomainSi
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchNavigationLayoutContextMatches } from './intentRouterSearchNavigationSignals.js';
+import { searchOwnershipContextMatches } from './intentRouterSearchOwnershipSignals.js';
 import { searchFrontendPageRouteContextMatches } from './intentRouterSearchPageSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchStateManagementContextMatches } from './intentRouterSearchStateSignals.js';
@@ -2970,7 +2971,7 @@ function routeKeywordMatches(
       'contact',
       'contacts',
     ].includes(keyword) &&
-    !searchOwnershipContextMatches(tokens, hasFilePath) &&
+    !searchOwnershipContextMatches(tokens, hasFilePath, claimContextMatches(tokens)) &&
     !searchDomainWorkflowContextMatches(tokens)
   )
     return false;
@@ -4103,26 +4104,6 @@ function searchGeneratedContextMatches(tokens: Set<string>): boolean {
     'file',
     'files',
   ].some((token) => tokens.has(token));
-}
-
-function searchOwnershipContextMatches(tokens: Set<string>, hasFilePath: boolean): boolean {
-  if (hasFilePath) return false;
-  if (claimContextMatches(tokens)) return false;
-  if (tokens.has('changed') && (tokens.has('file') || tokens.has('files'))) return false;
-  if (
-    ['pr', 'pull', 'request', 'review', 'reviewer', 'reviewers'].some((token) => tokens.has(token))
-  )
-    return false;
-  const ownershipSignal = ['owner', 'owners', 'ownership', 'owns', 'team'].some((token) =>
-    tokens.has(token),
-  );
-  const helpSignal = ['ask', 'help', 'knows', 'expert', 'experts', 'contact', 'contacts'].some(
-    (token) => tokens.has(token),
-  );
-  const lookupSignal = ['who', 'which', 'find', 'locate', 'search', 'where'].some((token) =>
-    tokens.has(token),
-  );
-  return (ownershipSignal && (lookupSignal || tokens.has('area'))) || (helpSignal && lookupSignal);
 }
 
 function searchDocumentationContextMatches(tokens: Set<string>): boolean {

@@ -6522,3 +6522,51 @@ stay out of lookup routing.
 Kept change: one background-work search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Thirty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: ownership lookup routing helps agents find owners, teams, experts, help
+contacts, and area ownership without turning advisory claim commands into
+search results. Maintainers need this matcher isolated while keeping the
+claim-context blocker in the router, because ownership language overlaps with
+file claims, PR reviewers, and evidence-pack routing.
+
+Smallest fix: move ownership search matching into
+`intentRouterSearchOwnershipSignals.ts`; leave route catalog data, claim
+matching, route scoring, confidence, and dispatch composition inside
+`intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "ownership search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchOwnershipSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Ownership Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, claim routing,
+  evidence-pack routing, file ownership routing, route confidence scoring,
+  `routeIntent`, or public route result shape.
+- Do not change ownership keyword semantics except by moving the existing
+  matcher and passing the existing claim-context blocker from `intentRouter.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "who owns billing area" and "which team owns payments"
+should still route to search, while "claim src/auth.ts" should remain claim
+routing and "who should review this PR" should remain evidence-pack routing.
+
+Kept change: one ownership search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

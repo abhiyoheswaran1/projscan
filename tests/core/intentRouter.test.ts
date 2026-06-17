@@ -183,6 +183,21 @@ describe('routeIntent', () => {
     expect(backgroundSignalsSource).toContain('export function searchBackgroundWorkContextMatches');
   });
 
+  it('keeps ownership search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchOwnershipSignals.js'");
+    expect(routerSource).not.toContain('function searchOwnershipContextMatches');
+
+    const ownershipSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchOwnershipSignals.ts'),
+      'utf8',
+    );
+    expect(ownershipSignalsSource).toContain('export function searchOwnershipContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
