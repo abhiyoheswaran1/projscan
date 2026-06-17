@@ -8970,3 +8970,48 @@ the combined start/search-routing run should report 37 tests across
 
 Kept change: one lookup/search start test split, this persona note, and no
 release action.
+
+## One Hundred Eighty Eighth Slice Decision
+
+Selected personas: Product-Planning Maintainer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the lookup/search split, `tests/core/start.test.ts` still mixed
+general start routing with product-planning workplan behavior. These cases share
+one behavior surface: build-next and roadmap prompts should route to a bug-hunt
+workplan, while explicit mode overrides should preserve the requested mode.
+
+Smallest fix: move the two product-planning workplan scenarios into the existing
+`tests/core/startAgentPlanning.test.ts` file and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 1,302 lines to 1,223 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "build-next product-planning|explicit mode overrides product planning"
+npm run test -- tests/core/startAgentPlanning.test.ts -t "build-next product-planning|explicit mode overrides product planning"
+npm run test -- tests/core/start.test.ts tests/core/startAgentPlanning.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startAgentPlanning.test.ts --format json
+```
+
+## Review Guardrails: Start Product-Planning Workplan Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan workplan`, bug-hunt workplan mode selection,
+  explicit mode preservation, product-planning success criteria, package
+  version, release artifacts, publish behavior, deploy behavior, push behavior,
+  or merge behavior.
+- Do not weaken coverage for build-next prompts, product roadmap prompts, or
+  explicit before-edit overrides for product planning.
+- Do not broaden this into workplan ranking or roadmap behavior changes; this
+  slice is test maintainability only.
+
+Reviewer edge case: the focused product-planning run should report two tests,
+and the combined start/agent-planning run should report 42 tests across
+`tests/core/start.test.ts` and `tests/core/startAgentPlanning.test.ts`.
+
+Kept change: one product-planning workplan start test split, this persona note,
+and no release action.
