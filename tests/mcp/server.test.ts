@@ -201,6 +201,12 @@ describe('MCP server maintainability', () => {
   it('keeps stdio transport wiring out of server orchestration', async () => {
     const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
     expect(serverSource).toContain("from './serverStdio.js'");
+    expect(serverSource).not.toContain(
+      "export type { RunMcpServerOptions } from './serverStdio.js';",
+    );
+    expect(serverSource).not.toContain(
+      "export type { McpServerHandle, McpServerOptions } from './serverTypes.js';",
+    );
     expect(serverSource).not.toContain("from 'node:readline'");
     expect(serverSource).not.toContain('readline.createInterface');
     expect(serverSource).not.toContain('process.stdin.on');

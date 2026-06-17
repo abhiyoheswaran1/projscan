@@ -7,8 +7,7 @@ import { runMcpServerStdio, type RunMcpServerOptions } from './serverStdio.js';
 import type { McpServerHandle, McpServerOptions } from './serverTypes.js';
 import { readMcpPackageVersion } from './serverVersion.js';
 
-export type { RunMcpServerOptions } from './serverStdio.js';
-export type { McpServerHandle, McpServerOptions } from './serverTypes.js';
+export type { RunMcpServerOptions, McpServerHandle, McpServerOptions };
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readMcpPackageVersion();

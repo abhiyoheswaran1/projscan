@@ -7857,3 +7857,43 @@ callback exactly once.
 
 Kept change: one UUID watch-id hardening, one focused regression, one
 public-behavior decision note, this persona note, and no release action.
+
+## One Hundred Sixty Fourth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, Protocol-Minded
+Integration Engineer, and OSS Maintainer.
+
+Reason: `src/mcp/server.ts` already imports `RunMcpServerOptions`,
+`McpServerHandle`, and `McpServerOptions` for its implementation surface, but
+also re-exported those types from their source modules. The extra type
+re-export statements created duplicate graph edges in `projscan file`, making
+the MCP server orchestrator look more coupled than it is.
+
+Smallest fix: re-export the already imported type bindings locally, preserving
+the public type surface while keeping one import edge for `serverStdio` and one
+for `serverTypes`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "keeps stdio transport wiring"
+npm run test -- tests/mcp/server.test.ts
+```
+
+## Review Guardrails: MCP Server Type Re-Exports
+
+Delete-list after this slice:
+
+- Do not change MCP server runtime behavior, stdio startup, JSON-RPC handling,
+  watch lifecycle behavior, or tool schemas.
+- Do not remove public exports for `RunMcpServerOptions`, `McpServerHandle`, or
+  `McpServerOptions`.
+- Do not change package version, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+
+Reviewer edge case: `src/mcp/server.ts` should keep the public type exports but
+`projscan file src/mcp/server.ts --format json` should show a single import edge
+for `./serverStdio.js` and a single import edge for `./serverTypes.js`.
+
+Kept change: one local type re-export cleanup, one architecture-boundary
+regression, this persona note, and no release action.
