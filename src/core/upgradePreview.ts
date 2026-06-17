@@ -122,6 +122,9 @@ export async function previewUpgrade(
   }
 
   if (!installed) {
+    const pythonPreview = await previewPythonUpgrade(rootPath, pkgName, files);
+    if (pythonPreview?.available) return pythonPreview;
+
     return {
       available: false,
       reason: `Package "${pkgName}" not installed - run npm install and retry`,

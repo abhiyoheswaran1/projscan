@@ -154,6 +154,26 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual([]);
   });
 
+  it('falls back to Python evidence when an npm declaration is not installed', async () => {
+    await writeJson(path.join(tmp, 'package.json'), { dependencies: { requests: '^0.0.1' } });
+    const files = [
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        ['[project]', 'name = "py-app"', 'dependencies = ["requests>=2.31.0"]'].join('\n'),
+      ),
+      await writeFile(tmp, 'pkg/client.py', 'import requests\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'requests', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=2.31.0');
+    expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.importers).toEqual(['pkg/client.py']);
+  });
+
   it('uses poetry.lock as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),
