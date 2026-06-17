@@ -38,6 +38,7 @@ export function frameworkRequestSourceForFunction(
   const honoSource = honoRequestSource(
     parameters,
     memberCallSites,
+    memberReferences,
     enabledSources,
     contextualCallSite,
     imports,
