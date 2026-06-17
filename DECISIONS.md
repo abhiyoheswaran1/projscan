@@ -2057,3 +2057,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Return `null` for any notification before method dispatch, while preserving the existing initialized-notification behavior and normal request handling for messages with an id.
 - Consequences: Inbound notification-shaped `ping`, `tools/list`, and other known methods no longer emit responses or perform tool-side work. Standard request/response calls with ids are unchanged, and outbound server notifications still use the existing `notify` path.
 - Verification: `npm run test -- tests/mcp/server.test.ts` failed before the dispatcher change, then passed. Adjacent MCP server, file-change notification, progress, and cross-cutting suites passed together.
+
+## 2026-06-17: Use UUID-backed MCP watch identifiers
+
+- Status: accepted
+- Context: Long-running MCP watch tools return a `watchId` that clients later pass to stop the stream. The review-watch implementation documented that server-side watch registration should use `crypto.randomUUID()`, but the shared server context still used a timestamp plus `Math.random()` suffix.
+- Decision: Generate watch identifiers as `watch-${randomUUID()}` in `createToolContext`.
+- Consequences: Watch IDs remain opaque strings but now have UUID entropy and a stable `watch-<uuid>` shape. Existing stop/list flows continue to work because clients should treat the identifier as opaque.
+- Verification: `npm run test -- tests/mcp/serverContext.test.ts` failed before the UUID change, then passed. Watch lifecycle suites for server context, coordination watch, review watch, and cost summary stream passed together.

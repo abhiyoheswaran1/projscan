@@ -7819,3 +7819,41 @@ return no response, while `{ "jsonrpc": "2.0", "id": 2, "method": "tools/list"
 
 Kept change: one MCP dispatcher protocol fix, one focused regression, one
 public-behavior decision note, this persona note, and no release action.
+
+## One Hundred Sixty Third Slice Decision
+
+Selected personas: Protocol-Minded Integration Engineer, Reliability-Minded
+Platform Engineer, and OSS Maintainer.
+
+Reason: long-running MCP watch tools return a `watchId` that clients hold and
+send back to stop streams. The review-watch implementation already documented
+that shared server registration should use `crypto.randomUUID()`, but
+`serverContext` still used a timestamp plus `Math.random()` suffix.
+
+Smallest fix: generate server watch IDs as `watch-${randomUUID()}` while
+leaving registration, stop, list, cancellation, and notification behavior
+unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/serverContext.test.ts
+npm run test -- tests/mcp/serverContext.test.ts tests/mcp/coordinateWatch.test.ts tests/mcp/reviewWatch.test.ts tests/mcp/costSummary.test.ts
+```
+
+## Review Guardrails: MCP Watch IDs
+
+Delete-list after this slice:
+
+- Do not make clients parse watch IDs beyond treating them as opaque strings.
+- Do not change watch start, stop, list, cancellation, or notification payload
+  behavior.
+- Do not change tool schemas, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+
+Reviewer edge case: a started watch should return an id matching
+`watch-<uuid>`, and `unregisterWatch` should still call the registered cancel
+callback exactly once.
+
+Kept change: one UUID watch-id hardening, one focused regression, one
+public-behavior decision note, this persona note, and no release action.

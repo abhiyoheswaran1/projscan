@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ProgressEmitter } from './progress.js';
 import type { McpToolContext } from './tools/_shared.js';
 
@@ -10,7 +11,7 @@ export function createToolContext(
   return {
     notify: notify ? buildToolNotifier(notify) : undefined,
     registerWatch: (cancel) => {
-      const id = `watch-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+      const id = `watch-${randomUUID()}`;
       toolWatches.set(id, cancel);
       return id;
     },
