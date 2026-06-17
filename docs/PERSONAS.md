@@ -8636,3 +8636,48 @@ tests, and the combined start run should report 62 tests across
 
 Kept change: one quality/hotspot start test split, this persona note, and no
 release action.
+
+## One Hundred Eighty First Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the quality/hotspot split, `tests/core/start.test.ts` still mixed
+general start routing with cleanup-specific doctor routing. The cleanup cases
+share one behavior surface: route broad deletion and dead-code questions to
+`projscan doctor` before any file removal.
+
+Smallest fix: move the two cleanup-routing scenarios into
+`tests/core/startCleanupRouting.test.ts` and keep the remaining start routing
+matrix in `tests/core/start.test.ts`. This preserves behavior coverage while
+reducing the original start test file from 2,181 lines to 2,065 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "dead-code cleanup|broad safe-delete"
+npm run test -- tests/core/start.test.ts tests/core/startCleanupRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startCleanupRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Cleanup Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change doctor routing, cleanup success criteria, impact-route
+  suppression, upgrade-route suppression, proof commands, mode inference,
+  package version, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not weaken coverage for dead-code cleanup, unused-export cleanup,
+  broad safe-delete prompts, broad safe-remove prompts, or doctor-first cleanup
+  planning.
+- Do not broaden this into production intent routing changes; this slice is
+  test maintainability only.
+
+Reviewer edge case: the focused cleanup-routing run should still report two
+tests, and the combined start run should report 58 tests across
+`tests/core/start.test.ts` and `tests/core/startCleanupRouting.test.ts`.
+
+Kept change: one cleanup-routing start test split, this persona note, and no
+release action.
