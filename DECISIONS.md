@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract review state resolution
+
+- Status: accepted
+- Context: `computeReview` still owned git repository readiness, base/head ref resolution, no-change detection, and unavailable-report shaping after review finding assembly was isolated.
+- Decision: Move review state resolution and unavailable-report construction into `src/core/reviewState.ts`.
+- Consequences: Non-git, unresolved-base, no-change, base-snapshot-failure, intent annotation, and review report behavior stay unchanged, while `src/core/review.ts` drops from 161 lines / CC 12 to 110 lines / CC 5.
+- Verification: `npm run test -- tests/core/review.test.ts -t "review state resolution"` plus the full review test file.
+
 ## 2026-06-17: Extract MCP tool catalog
 
 - Status: accepted

@@ -4957,3 +4957,49 @@ description-prefix shaping through `getToolDefinitions`.
 
 Kept change: one MCP tool catalog module, one maintainability regression,
 existing MCP server coverage, this persona note, and no public schema change.
+
+## One Hundred Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Security-Conscious
+Reviewer.
+
+Reason: `src/core/review.ts` remained a bug-hunt production hotspot after
+finding assembly was isolated. The next highest-risk responsibility was review
+state resolution: repository readiness, ref/SHA resolution, no-change detection,
+and unavailable-report shaping.
+
+Smallest fix: move review state resolution into `reviewState.ts`; keep
+`computeReview` focused on snapshot loading, diffing, finding assembly, final
+available report shape, and intent annotation.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "review state resolution"
+npm run test -- tests/core/review.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewState.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review State-Resolution Extraction
+
+Delete-list after this slice:
+
+- Do not change non-git, unresolved-base, no-change, or base-snapshot failure
+  report shapes, reason text, verdicts, or public schema.
+- Do not change default-base selection, SHA resolution, worktree-clean checks,
+  snapshot loading, finding assembly, package scoping, or intent annotation.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: no-change reports should still receive intent annotation
+after state resolution, while unavailable reports should remain simple
+unavailable payloads.
+
+Kept change: one review state helper module, one maintainability regression,
+existing review behavior coverage, this persona note, and no public schema
+change.

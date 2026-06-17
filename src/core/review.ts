@@ -2,10 +2,9 @@ import { diffGraphs } from './prDiff.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
 import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
-import { buildNoChangeReviewReport } from './reviewNoChanges.js';
-import { isGitRepository, isWorktreeClean, pickDefaultBase, resolveSha } from './reviewRefs.js';
 import { readManifests } from './reviewManifests.js';
 import { buildReviewFindings } from './reviewFindings.js';
+import { resolveReviewState, unavailableReviewReport } from './reviewState.js';
 import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
@@ -44,36 +43,19 @@ export async function computeReview(
   rootPath: string,
   options: ReviewOptions = {},
 ): Promise<ReviewReport> {
-  const isRepo = await isGitRepository(rootPath);
-  if (!isRepo) {
-    return unavailable('Not a git repository - PR review requires git history.', options);
+  const state = await resolveReviewState(rootPath, options);
+  if (state.kind === 'unavailable') return state.report;
+  if (state.kind === 'no-change') {
+    applyIntent(state.report, options.intent);
+    return state.report;
   }
-
-  const headRef = options.head ?? 'HEAD';
-  const baseRef = options.base ?? (await pickDefaultBase(rootPath));
-
-  const headSha = await resolveSha(rootPath, headRef);
-  const baseSha = await resolveSha(rootPath, baseRef);
-  if (!baseSha) {
-    return unavailable(
-      `Could not resolve base ref "${baseRef}".`,
-      options,
-      baseRef,
-      headRef,
-      headSha,
-    );
-  }
-  if (headSha && headSha === baseSha && (await isWorktreeClean(rootPath))) {
-    const report = buildNoChangeReviewReport({ baseRef, baseSha, headRef, headSha });
-    applyIntent(report, options.intent);
-    return report;
-  }
+  const { baseRef, baseSha, headRef, headSha } = state;
 
   const { graph: headGraph, hotspots: headHotspots } = await buildReviewHeadSnapshot(rootPath);
 
   const baseSnapshot = await buildReviewBaseSnapshot(rootPath, baseRef, baseSha);
   if (!baseSnapshot.available) {
-    return unavailable(baseSnapshot.reason, options, baseRef, headRef, headSha);
+    return unavailableReviewReport(baseSnapshot.reason, options, baseRef, headRef, headSha);
   }
   const baseGraph = baseSnapshot.graph;
   const basePackageManifests = baseSnapshot.packageManifests;
@@ -124,37 +106,4 @@ function applyIntent(report: ReviewReport, rawIntent?: string): void {
     };
     appendIntentToSummary(report.summary, analysis);
   }
-}
-
-function unavailable(
-  reason: string,
-  options: ReviewOptions,
-  baseRef = options.base ?? '',
-  headRef = options.head ?? 'HEAD',
-  headSha: string | null = null,
-): ReviewReport {
-  return {
-    available: false,
-    reason,
-    base: { ref: baseRef, resolvedSha: null },
-    head: { ref: headRef, resolvedSha: headSha },
-    prDiff: {
-      available: false,
-      reason,
-      base: { ref: baseRef, resolvedSha: null },
-      head: { ref: headRef, resolvedSha: headSha },
-      filesAdded: [],
-      filesRemoved: [],
-      filesModified: [],
-      totalFilesChanged: 0,
-    },
-    changedFiles: [],
-    newCycles: [],
-    riskyFunctions: [],
-    dependencyChanges: [],
-    newTaintFlows: [],
-    newDataflowRisks: [],
-    verdict: 'ok',
-    summary: [reason],
-  };
 }

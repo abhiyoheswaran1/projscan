@@ -386,6 +386,25 @@ describe('computeReview', () => {
     expect(pickDefaultBase!.cyclomaticComplexity).toBeLessThanOrEqual(3);
   });
 
+  it('keeps review state resolution isolated from the review orchestrator', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).not.toContain('Not a git repository - PR review requires git history.');
+    expect(reviewSource).not.toContain('Could not resolve base ref');
+    expect(reviewSource).not.toContain('buildNoChangeReviewReport');
+    expect(reviewSource).not.toContain('function unavailable');
+
+    const state = await inspectRepoSourceFile('src/core/reviewState.ts');
+    const resolveState = state.functions?.find((fn) => fn.name === 'resolveReviewState');
+    const unavailableReport = state.functions?.find(
+      (fn) => fn.name === 'unavailableReviewReport',
+    );
+
+    expect(resolveState).toBeDefined();
+    expect(resolveState!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(unavailableReport).toBeDefined();
+    expect(unavailableReport!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
