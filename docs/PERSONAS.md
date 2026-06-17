@@ -8117,3 +8117,55 @@ from protocol behavior.
 
 Kept change: one MCP server maintainability test split, this persona note, and
 no release action.
+
+## One Hundred Seventieth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, MCP Tooling
+Maintainer, Test Steward, and Agent-Orchestrating Senior Engineer.
+
+Reason: `tests/mcp/start.test.ts` stayed on the maintainability watch list
+after the basic split. Fresh `projscan file` evidence showed the remaining
+hotspot was dominated by one fuzzy-impact Mission Control test plus two smaller
+handoff/routing tests. The fuzzy-impact case also carried a large handwritten
+result type even though `src/types/start.ts` already exports the real
+`StartReport` contract.
+
+Smallest fix: move the fuzzy-impact MCP coverage into focused action, handoff,
+and review-gate test files, keep the handoff proof and mixed-intent route tests
+in `tests/mcp/start.test.ts`, and type MCP start results with the existing
+`StartReport` type. The split turns one broad fuzzy-impact assertion into three
+named checks, drops `tests/mcp/start.test.ts` from 978 lines to 116 lines, and
+keeps the largest new test files under 250 lines with no potential file issues.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/start.test.ts tests/mcp/startBasic.test.ts
+npm run test -- tests/mcp/start.test.ts tests/mcp/startBasic.test.ts tests/mcp/startFuzzyImpactActions.test.ts tests/mcp/startFuzzyImpactHandoff.test.ts tests/mcp/startFuzzyImpactReviewGate.test.ts
+npm exec projscan -- file tests/mcp/start.test.ts --format json
+npm exec projscan -- file tests/mcp/startFuzzyImpactActions.test.ts --format json
+npm exec projscan -- file tests/mcp/startFuzzyImpactReviewGate.test.ts --format json
+```
+
+## Review Guardrails: MCP Start Fuzzy-Impact Test Split
+
+Delete-list after this slice:
+
+- Do not change MCP tool schemas, `projscan_start` behavior, Mission Control
+  output, routing behavior, CLI behavior, package version, release artifacts,
+  publish behavior, deploy behavior, push behavior, or merge behavior.
+- Do not duplicate handwritten Mission Control result shapes when
+  `StartReport` already describes the contract.
+- Do not remove fuzzy-impact coverage for action plans, resume checklists,
+  proof queues, handoff prompts, review gates, execution plans, runbooks, or
+  task cards.
+
+Reviewer edge case: the focused MCP start run should report eight tests across
+`tests/mcp/start.test.ts`, `tests/mcp/startBasic.test.ts`,
+`tests/mcp/startFuzzyImpactActions.test.ts`,
+`tests/mcp/startFuzzyImpactHandoff.test.ts`, and
+`tests/mcp/startFuzzyImpactReviewGate.test.ts`, preserving the same fuzzy-impact
+coverage while splitting one broad assertion into three named checks.
+
+Kept change: one MCP start fuzzy-impact test split, this persona note, and no
+release action.
