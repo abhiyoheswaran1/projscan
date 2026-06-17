@@ -104,6 +104,21 @@ describe('routeIntent', () => {
     );
   });
 
+  it('keeps style-system search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchStyleSignals.js'");
+    expect(routerSource).not.toContain('function searchStyleSystemContextMatches');
+
+    const styleSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchStyleSignals.ts'),
+      'utf8',
+    );
+    expect(styleSignalsSource).toContain('export function searchStyleSystemContextMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

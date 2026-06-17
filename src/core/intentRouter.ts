@@ -33,6 +33,7 @@ import {
 } from './intentRouterSecuritySignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
+import { searchStyleSystemContextMatches } from './intentRouterSearchStyleSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 
 export interface RouteEntry {
@@ -5023,82 +5024,6 @@ function searchFrontendPageRouteContextMatches(tokens: Set<string>): boolean {
   const subject = pageSubject || routeSegmentSubject || notFoundSubject || statusPageSubject;
   if (!subject) return false;
   return locator || renderSignal || tokens.size >= 3;
-}
-
-function searchStyleSystemContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    [
-      'why',
-      'failing',
-      'failed',
-      'failure',
-      'failures',
-      'broken',
-      'error',
-      'errors',
-      'runtime',
-      'production',
-      'prod',
-      'outage',
-      'incident',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const styleSignal = [
-    'defined',
-    'define',
-    'defines',
-    'configured',
-    'created',
-    'loaded',
-    'imported',
-    'implemented',
-    'handled',
-    'styles',
-    'style',
-    'styled',
-    'sets',
-    'set',
-  ].some((token) => tokens.has(token));
-  const designTokenSubject = tokens.has('design') && (tokens.has('token') || tokens.has('tokens'));
-  const tailwindSubject =
-    tokens.has('tailwind') &&
-    (tokens.has('theme') ||
-      tokens.has('themes') ||
-      tokens.has('config') ||
-      tokens.has('configuration') ||
-      styleSignal);
-  const cssSubject =
-    tokens.has('css') &&
-    (tokens.has('global') ||
-      tokens.has('module') ||
-      tokens.has('modules') ||
-      ['imported', 'styles', 'style', 'styled', 'defined', 'configured'].some((token) =>
-        tokens.has(token),
-      ));
-  const darkModeSubject = tokens.has('dark') && tokens.has('mode');
-  const breakpointSubject = tokens.has('breakpoint') || tokens.has('breakpoints');
-  const colorSubject =
-    ['color', 'colors', 'palette', 'palettes'].some((token) => tokens.has(token)) &&
-    (tokens.has('theme') || tokens.has('design') || styleSignal);
-  const subject =
-    designTokenSubject ||
-    tailwindSubject ||
-    cssSubject ||
-    darkModeSubject ||
-    breakpointSubject ||
-    colorSubject;
-  if (!subject) return false;
-  return locator || styleSignal || tokens.size >= 3;
 }
 
 function styleSystemFailureContextMatches(tokens: Set<string>): boolean {

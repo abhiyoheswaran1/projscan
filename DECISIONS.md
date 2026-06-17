@@ -1801,3 +1801,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move reliability search matching into `src/core/intentRouterSearchReliabilitySignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7737 lines / CC 1338 to 7664 lines / CC 1314. The extracted helper has no hotspot history, max function CC 8, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "reliability search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract style-system search route signals
+
+- Status: accepted
+- Context: Style-system lookup routing for design tokens, Tailwind themes/config, CSS imports/modules, dark mode, breakpoints, and color palettes was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move style-system search matching into `src/core/intentRouterSearchStyleSignals.ts`, while keeping route catalog data, scoring, confidence, dispatch composition, and regression-failure routing inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7664 lines / CC 1314 to 7589 lines / CC 1288. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "style-system search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
