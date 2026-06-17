@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract start report assembly
+
+- Status: accepted
+- Context: `src/core/start.ts` is a current hotspot and still owned the final `StartReport` literal, including evidence shaping, optional handoff, and truncation flags.
+- Decision: Move final start report assembly into `src/core/startReportBuilder.ts`.
+- Consequences: `projscan start` report fields, summary text, evidence fields, optional handoff behavior, truncation behavior, and public schema stay unchanged, while `src/core/start.ts` drops from 103 lines / CC 7 to 83 lines / CC 3.
+- Verification: `npm run test -- tests/core/start.test.ts -t "final report assembly"` plus the full start core test file.
+
 ## 2026-06-17: Extract review finding assembly
 
 - Status: accepted

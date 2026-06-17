@@ -36,6 +36,20 @@ test('start report keeps adoption gap shaping out of the main orchestrator', () 
   expect(adoptionGapsSource).not.toContain("from './start.js'");
 });
 
+test('start report keeps final report assembly out of the main orchestrator', () => {
+  const startSource = readFileSync(path.join(process.cwd(), 'src/core/start.ts'), 'utf8');
+  expect(startSource).not.toContain('schemaVersion: 1');
+  expect(startSource).not.toContain('buildWorkplanHandoff');
+  expect(startSource).not.toContain('quality.truncated === true');
+
+  const reportSource = readFileSync(
+    path.join(process.cwd(), 'src/core/startReportBuilder.ts'),
+    'utf8',
+  );
+  expect(reportSource).toContain('export function buildStartReport');
+  expect(reportSource).toContain('schemaVersion: 1');
+});
+
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
   const root = await makeTempProject();
 

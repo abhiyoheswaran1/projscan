@@ -4866,3 +4866,51 @@ all derived findings and verdict inputs are computed.
 Kept change: one review finding helper module, one maintainability regression,
 existing review behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Second Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and OSS Maintainer /
+MCP Adopter.
+
+Reason: bug-hunt now points at `src/core/start.ts` as the top production
+hotspot. `projscan start` is the first command many agents and maintainers see,
+so its orchestrator should remain easy to audit while the report schema stays
+stable.
+
+Smallest fix: move final `StartReport` assembly, summary projection,
+`mcpReady` evidence, optional handoff, and truncation flags into
+`startReportBuilder.ts`; keep `computeStartReport` focused on collecting inputs
+and choosing the current workflow.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "final report assembly"
+npm run test -- tests/core/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/start.ts --format json
+npm exec projscan -- file src/core/startReportBuilder.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Start Report-Assembly Extraction
+
+Delete-list after this slice:
+
+- Do not change `projscan start` report field names, summary text, evidence
+  shape, optional handoff behavior, truncation behavior, or public schema.
+- Do not change mode resolution, workflow selection, mission-control assembly,
+  first-ten-minutes guidance, coordination hints, adoption gaps, or next-action
+  ordering.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: `includeHandoff` should still be the only condition that
+adds a workplan handoff payload, and truncated reports should still reflect
+either workplan or quality truncation.
+
+Kept change: one start report builder module, one maintainability regression,
+existing start behavior coverage, this persona note, and no public schema
+change.
