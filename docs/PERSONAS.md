@@ -8924,3 +8924,49 @@ combined start/preflight-routing run should report 41 tests across
 
 Kept change: one preflight start test split, this persona note, and no release
 action.
+
+## One Hundred Eighty Seventh Slice Decision
+
+Selected personas: Search-Oriented Developer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the preflight split, `tests/core/start.test.ts` still mixed
+general start routing with generic lookup and documentation lookup search
+behavior. These cases share one behavior surface: lookup wording should route to
+focused `projscan search` evidence without accidentally becoming bug-hunt work.
+
+Smallest fix: move the two generic/documentation lookup routing scenarios into
+the existing `tests/core/startSearchIntentRouting.test.ts` file and keep the
+remaining start routing matrix in `tests/core/start.test.ts`. This preserves
+behavior coverage while reducing the original start test file from 1,370 lines
+to 1,302 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "generic lookup intents|documentation lookup questions"
+npm run test -- tests/core/startSearchIntentRouting.test.ts -t "generic lookup intents|documentation lookup questions"
+npm run test -- tests/core/start.test.ts tests/core/startSearchIntentRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startSearchIntentRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Search Lookup Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan search`, generic lookup routing, documentation lookup
+  routing, bug-hunt alternatives, search success criteria, package version,
+  release artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken coverage for PR-template lookup prompts, documentation lookup
+  prompts, or low-confidence bug-hunt alternatives for generic find wording.
+- Do not broaden this into search query extraction or router scoring behavior
+  changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused lookup/search run should report two tests, and
+the combined start/search-routing run should report 37 tests across
+`tests/core/start.test.ts` and `tests/core/startSearchIntentRouting.test.ts`.
+
+Kept change: one lookup/search start test split, this persona note, and no
+release action.

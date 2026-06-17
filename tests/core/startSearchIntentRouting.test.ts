@@ -12,6 +12,74 @@ function primaryActionForIntent(intent: string) {
   return { action, route };
 }
 
+test('start report routes generic lookup intents to search rather than bug hunt', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'find the PR template',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('default');
+  expect(report.modeReason).toContain('find the PR template');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_search',
+      confidence: 'medium',
+      matchedKeywords: ['find'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan search "the PR template" --format json',
+      tool: 'projscan_search',
+      args: { query: 'the PR template' },
+    }),
+  );
+  expect(report.missionControl.alternatives?.map((route) => route.tool)).toContain(
+    'projscan_bug_hunt',
+  );
+  expect(
+    report.missionControl.alternatives?.find((route) => route.tool === 'projscan_bug_hunt'),
+  ).toEqual(
+    expect.objectContaining({
+      confidence: 'low',
+      matchedKeywords: ['find', 'pr'],
+    }),
+  );
+});
+
+test('start report turns documentation lookup questions into search', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'find documentation for auth',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('default');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Search',
+      tool: 'projscan_search',
+      confidence: 'high',
+      matchedKeywords: ['find', 'documentation'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan search "documentation for auth" --format json',
+      tool: 'projscan_search',
+      args: { query: 'documentation for auth' },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'Search results identify the target files or symbols with enough confidence to choose the next tool.',
+    ]),
+  );
+});
+
 test('start report turns code-location questions into focused search', async () => {
   const root = await makeTempProject();
 
