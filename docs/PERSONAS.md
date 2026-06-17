@@ -5245,3 +5245,51 @@ warning/caution signal, never an error/block signal.
 Kept change: one preflight local-evidence helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## One Hundred Tenth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: after preflight local-evidence extraction, `src/core/ast.ts` became the
+highest-ranked production hotspot. The file already delegates traversal,
+module signals, body signals, function naming, and function collection; parser
+setup remained as a separate concern with high fan-in risk.
+
+Smallest fix: move parseability checks, Babel parser plugin selection, parse
+execution, and parse-error shaping into `astParser.ts`; keep `parseSource`
+responsible for orchestrating imports, exports, call sites, file-level
+complexity, and per-function metadata.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/ast.functions.test.ts -t "Babel parser setup"
+npm run test -- tests/core/ast.functions.test.ts tests/core/ast.test.ts tests/core/ast.cyclomatic.test.ts tests/core/ast.references.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/ast.ts --format json
+npm exec projscan -- file src/core/astParser.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: AST Parser Setup Extraction
+
+Delete-list after this slice:
+
+- Do not change parseable extensions, Babel parser options/plugins,
+  parse-error reason format/truncation, or public `parseSource` / `isParseable`
+  exports.
+- Do not change import/export/call-site extraction, cyclomatic complexity,
+  function extraction, or fallback behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: malformed source should still return `ok: false` with a
+parse error reason, while TSX/JSX still gets the JSX plugin and TypeScript
+extensions still get the TypeScript plugin.
+
+Kept change: one AST parser helper module, one maintainability regression,
+existing AST behavior coverage, this persona note, and no public schema
+change.

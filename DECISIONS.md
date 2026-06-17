@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract AST parser setup
+
+- Status: accepted
+- Context: `src/core/ast.ts` became the top production hotspot and still owned Babel parser imports, parser plugin selection, and parse-error shaping after traversal, module-signal, body-signal, function-naming, and function-collection helpers were isolated.
+- Decision: Move parseability checks, Babel parser plugin selection, and parser error shaping into `src/core/astParser.ts`.
+- Consequences: Parseable extension detection, parser options, parse-error reason truncation, import/export/call-site/function extraction, cyclomatic complexity, and public `parseSource` / `isParseable` exports stay unchanged, while `src/core/ast.ts` drops from 117 lines / CC 9 to 79 lines / CC 5.
+- Verification: `npm run test -- tests/core/ast.functions.test.ts -t "Babel parser setup"` plus the AST behavior test files.
+
 ## 2026-06-17: Extract preflight local evidence collection
 
 - Status: accepted

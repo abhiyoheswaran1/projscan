@@ -114,6 +114,24 @@ describe('per-function CC (JS/TS)', () => {
     expect(extractor!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps Babel parser setup out of the AST parse orchestrator hotspot', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    const astFns = fns(astSource, 'src/core/ast.ts');
+    expect(astSource).not.toContain('@babel/parser');
+    expect(astFns.some((fn) => fn.name === 'parseBabelFile')).toBe(false);
+    expect(astFns.some((fn) => fn.name === 'parserPluginsForFile')).toBe(false);
+
+    const parserSource = readFileSync(join(process.cwd(), 'src/core/astParser.ts'), 'utf8');
+    const parserFns = fns(parserSource, 'src/core/astParser.ts');
+    const parseBabelFile = parserFns.find((fn) => fn.name === 'parseBabelFile');
+    const parserPluginsForFile = parserFns.find((fn) => fn.name === 'parserPluginsForFile');
+
+    expect(parseBabelFile).toBeDefined();
+    expect(parseBabelFile!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(parserPluginsForFile).toBeDefined();
+    expect(parserPluginsForFile!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('empty file has no functions', () => {
     expect(fns('')).toEqual([]);
   });
