@@ -1,9 +1,10 @@
 import path from 'node:path';
 import type { FileEntry } from '../types.js';
-import { getAdapterFor, listAdapters } from './languages/registry.js';
+import { listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
 import { computeFanIn, computeFanOut } from './codeGraphFanMetrics.js';
+import { selectParseableGraphInputs } from './codeGraphFileSelection.js';
 import { rebuildCrossFileIndexes } from './codeGraphIndexes.js';
 import { parseFileToGraphEntry, processChangedPath } from './codeGraphParsing.js';
 export {
@@ -20,20 +21,13 @@ import type { CodeGraph, GraphFile } from './codeGraphTypes.js';
 
 export type { CodeGraph, GraphFile };
 
-const MAX_FILE_SIZE = 1024 * 1024;
-
 export async function buildCodeGraph(
   rootPath: string,
   files: FileEntry[],
   previousGraph?: CodeGraph,
 ): Promise<CodeGraph> {
   const contextByAdapter = await prepareAdapterContexts(rootPath, files);
-  const parseable = files
-    .map((f) => ({ file: f, adapter: getAdapterFor(f.relativePath) }))
-    .filter(
-      (x): x is { file: FileEntry; adapter: LanguageAdapter } =>
-        !!x.adapter && x.file.sizeBytes <= (x.adapter.maxFileSize ?? MAX_FILE_SIZE),
-    );
+  const parseable = selectParseableGraphInputs(files);
 
   const graphFiles = new Map<string, GraphFile>();
   // Bound concurrency. Without this, a 10K-file repo would issue 10K
