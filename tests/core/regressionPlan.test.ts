@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
-import { computeRegressionPlan } from '../../src/core/regressionPlan.js';
+import {
+  computeRegressionPlan,
+  regressionTitleForBugHuntTarget,
+} from '../../src/core/regressionPlan.js';
+import type { BugHuntFinding, BugHuntReport } from '../../src/types.js';
 
 const tempRoots: string[] = [];
 
@@ -57,6 +61,25 @@ test('regression plan keeps smoke mode small and reproducible', async () => {
   );
   expect(report.commands).not.toContain('npm run release:check');
   expect(report.targets.map((target) => target.source)).toContain('baseline');
+});
+
+test('regression plan labels manual release sign-off queues as manual review gates', () => {
+  const finding = {
+    title: 'Review preflight release sign-off',
+  } as BugHuntFinding;
+
+  expect(
+    regressionTitleForBugHuntTarget(
+      { summary: 'fix: bug hunt found 1 manual sign-off action(s)' } as BugHuntReport,
+      finding,
+    ),
+  ).toBe('Manual-review bug-hunt gate: Review preflight release sign-off');
+  expect(
+    regressionTitleForBugHuntTarget(
+      { summary: 'fix: bug hunt found 1 prioritized fix target(s)' } as BugHuntReport,
+      finding,
+    ),
+  ).toBe('Regression-cover bug-hunt target: Review preflight release sign-off');
 });
 
 async function makeTempProject(): Promise<string> {

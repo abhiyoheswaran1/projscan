@@ -2,6 +2,7 @@ import { computeBugHunt } from './bugHunt.js';
 import { computePreflight } from './preflight.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import type {
+  BugHuntFinding,
   BugHuntReport,
   PreflightReport,
   PreflightSuggestedAction,
@@ -116,7 +117,7 @@ function bugHuntTargets(bugHunt: BugHuntReport): RegressionPlanTarget[] {
       id: 'rp-bug-hunt-top',
       priority: first.priority,
       source: 'bug-hunt',
-      title: `Regression-cover bug-hunt target: ${first.title}`,
+      title: regressionTitleForBugHuntTarget(bugHunt, first),
       why: first.why,
       files: first.files,
       verification: {
@@ -125,6 +126,16 @@ function bugHuntTargets(bugHunt: BugHuntReport): RegressionPlanTarget[] {
       },
     },
   ];
+}
+
+export function regressionTitleForBugHuntTarget(
+  bugHunt: Pick<BugHuntReport, 'summary'>,
+  finding: Pick<BugHuntFinding, 'title'>,
+): string {
+  const prefix = bugHunt.summary.includes('manual sign-off action')
+    ? 'Manual-review bug-hunt gate'
+    : 'Regression-cover bug-hunt target';
+  return `${prefix}: ${finding.title}`;
 }
 
 function preflightTargets(preflight: PreflightReport): RegressionPlanTarget[] {
