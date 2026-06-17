@@ -53,6 +53,14 @@ describe('buildCodeGraph', () => {
     await fs.rm(tmp, { recursive: true, force: true });
   });
 
+  it('keeps cross-file index rebuilding isolated from the graph orchestrator', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'src/core/codeGraph.ts'), 'utf-8');
+
+    expect(source).not.toContain('function rebuildCrossFileIndexes');
+    expect(source).toContain("from './codeGraphIndexes.js'");
+    expect(source).toContain('rebuildCrossFileIndexes(');
+  });
+
   it('indexes package importers and external packages', async () => {
     const files = [
       await writeFile(tmp, 'src/a.ts', "import React from 'react';"),

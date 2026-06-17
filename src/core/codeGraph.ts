@@ -6,6 +6,7 @@ import { getAdapterFor, listAdapters } from './languages/registry.js';
 import type { LanguageAdapter, LanguageResolveContext } from './languages/LanguageAdapter.js';
 import { mapWithConcurrency, DEFAULT_FILE_IO_CONCURRENCY } from '../utils/concurrency.js';
 import { computeFanIn, computeFanOut } from './codeGraphFanMetrics.js';
+import { rebuildCrossFileIndexes } from './codeGraphIndexes.js';
 import { expandLocalStarReexports, isLocalStarReexport } from './codeGraphReexports.js';
 
 export interface GraphFile {
@@ -176,57 +177,6 @@ function graphFileFromResult(
     parseReason: result.reason,
     adapterId: adapterId as GraphFile['adapterId'],
   };
-}
-
-/**
- * Rebuild the three cross-file derived indexes from scratch:
- *   - localImporters: target file → set of files importing it
- *   - packageImporters: package name → set of files importing it
- *   - symbolDefs: exported name → set of files defining it
- *
- * Each adapter gets a shot at local resolution first (matters for
- * Python's `pkg.core` which may be local OR third-party); falls back
- * to package-name classification.
- */
-function rebuildCrossFileIndexes(
-  graphFiles: Map<string, GraphFile>,
-  contextByAdapter: Map<LanguageAdapter, LanguageResolveContext>,
-): {
-  localImporters: Map<string, Set<string>>;
-  packageImporters: Map<string, Set<string>>;
-  symbolDefs: Map<string, Set<string>>;
-} {
-  const localImporters = new Map<string, Set<string>>();
-  const packageImporters = new Map<string, Set<string>>();
-  const symbolDefs = new Map<string, Set<string>>();
-
-  for (const [importingFile, entry] of graphFiles) {
-    const adapter = getAdapterFor(importingFile);
-    if (!adapter) continue;
-    const context = contextByAdapter.get(adapter) ?? {};
-
-    for (const imp of entry.imports) {
-      const resolved = adapter.resolveImport(importingFile, imp.source, graphFiles, context);
-      if (resolved) {
-        if (!localImporters.has(resolved)) localImporters.set(resolved, new Set());
-        localImporters.get(resolved)!.add(importingFile);
-        continue;
-      }
-      const pkg = adapter.toPackageName(imp.source);
-      if (pkg) {
-        if (!packageImporters.has(pkg)) packageImporters.set(pkg, new Set());
-        packageImporters.get(pkg)!.add(importingFile);
-      }
-    }
-
-    for (const exp of entry.exports) {
-      if (!exp.name) continue;
-      if (!symbolDefs.has(exp.name)) symbolDefs.set(exp.name, new Set());
-      symbolDefs.get(exp.name)!.add(importingFile);
-    }
-  }
-
-  return { localImporters, packageImporters, symbolDefs };
 }
 
 /**
