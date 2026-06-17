@@ -20,13 +20,9 @@ import {
   type PluginReporterCommand,
 } from '../core/plugins.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
-import type {
-  ArchitectureLayer,
-  FileExplanation,
-  Issue,
-  FileEntry,
-  DirectoryNode,
-} from '../types.js';
+import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
+
+export { buildArchitectureLayers } from './architectureLayers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const pkg = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
@@ -254,94 +250,6 @@ export function sliceCliTree(node: DirectoryNode, targetPath: string): Directory
 export async function analyzeFile(filePath: string): Promise<FileExplanation> {
   const rootPath = process.cwd();
   return await explainProjectFile(rootPath, path.relative(rootPath, filePath));
-}
-
-export function buildArchitectureLayers(
-  files: FileEntry[],
-  frameworkNames: string[],
-): ArchitectureLayer[] {
-  const layers: ArchitectureLayer[] = [];
-  const dirs = new Set(files.map((f) => f.directory.split(path.sep)[0]).filter(Boolean));
-
-  const frontendDirs = ['pages', 'components', 'views', 'layouts', 'public', 'app', 'styles'];
-  const frontendMatches = frontendDirs.filter((d) => dirs.has(d) || dirs.has(`src/${d}`));
-  const frontendFrameworks = frameworkNames.filter((f) =>
-    [
-      'React',
-      'Next.js',
-      'Vue.js',
-      'Nuxt.js',
-      'Svelte',
-      'SvelteKit',
-      'Angular',
-      'Solid.js',
-    ].includes(f),
-  );
-  if (frontendMatches.length > 0 || frontendFrameworks.length > 0) {
-    layers.push({
-      name: 'Frontend',
-      technologies: frontendFrameworks.length > 0 ? frontendFrameworks : ['Static'],
-      directories: frontendMatches,
-    });
-  }
-
-  const apiDirs = ['api', 'routes', 'controllers', 'endpoints'];
-  const apiMatches = apiDirs.filter((d) => dirs.has(d) || dirs.has(`src/${d}`));
-  const apiFrameworks = frameworkNames.filter((f) =>
-    ['Express', 'Fastify', 'NestJS', 'Hono', 'Koa', 'Apollo Server', 'tRPC'].includes(f),
-  );
-  if (apiMatches.length > 0 || apiFrameworks.length > 0) {
-    layers.push({
-      name: 'API Layer',
-      technologies: apiFrameworks.length > 0 ? apiFrameworks : ['HTTP'],
-      directories: apiMatches,
-    });
-  }
-
-  const serviceDirs = ['services', 'lib', 'core', 'domain', 'modules'];
-  const serviceMatches = serviceDirs.filter((d) => dirs.has(d) || dirs.has(`src/${d}`));
-  if (serviceMatches.length > 0) {
-    layers.push({
-      name: 'Services',
-      technologies: inferServiceTech(files, serviceMatches),
-      directories: serviceMatches,
-    });
-  }
-
-  const dbDirs = ['db', 'database', 'prisma', 'migrations', 'models', 'entities'];
-  const dbMatches = dbDirs.filter((d) => dirs.has(d) || dirs.has(`src/${d}`));
-  const dbFrameworks = frameworkNames.filter((f) =>
-    ['Prisma', 'Drizzle ORM', 'Mongoose', 'TypeORM', 'Sequelize'].includes(f),
-  );
-  if (dbMatches.length > 0 || dbFrameworks.length > 0) {
-    layers.push({
-      name: 'Database',
-      technologies: dbFrameworks.length > 0 ? dbFrameworks : ['Database'],
-      directories: dbMatches,
-    });
-  }
-
-  if (layers.length === 0) {
-    const topDirs = [...dirs].slice(0, 5);
-    layers.push({
-      name: 'Application',
-      technologies: frameworkNames.length > 0 ? frameworkNames : ['Unknown'],
-      directories: topDirs,
-    });
-  }
-
-  return layers;
-}
-
-function inferServiceTech(files: FileEntry[], serviceDirs: string[]): string[] {
-  const techs: string[] = [];
-  const serviceFiles = files.filter((f) => serviceDirs.some((d) => f.directory.startsWith(d)));
-  const hasTsFiles = serviceFiles.some((f) => f.extension === '.ts' || f.extension === '.tsx');
-  const hasJsFiles = serviceFiles.some((f) => f.extension === '.js' || f.extension === '.jsx');
-  if (hasTsFiles) techs.push('TypeScript');
-  else if (hasJsFiles) techs.push('JavaScript');
-  if (techs.length === 0) techs.push('Mixed');
-  return techs;
 }
 
 export function promptYesNo(question: string): Promise<boolean> {
