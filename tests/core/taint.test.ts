@@ -69,6 +69,30 @@ describe('taint maintainability', () => {
     expect(envPassthrough).toBeDefined();
     expect(envPassthrough!.cyclomaticComplexity).toBeLessThanOrEqual(7);
   });
+
+  it('keeps function indexing and traversal out of the taint report orchestrator', async () => {
+    const taint = await inspectRepoSourceFile('src/core/taint.ts');
+    const computeTaintFn = taint.functions?.find((fn) => fn.name === 'computeTaint');
+
+    expect(computeTaintFn).toBeDefined();
+    expect(computeTaintFn!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+
+    const index = await inspectRepoSourceFile('src/core/taintIndex.ts');
+    const traversal = await inspectRepoSourceFile('src/core/taintTraversal.ts');
+    const indexFunctions = new Set(index.functions?.map((fn) => fn.name));
+    const traversalFunctions = new Set(traversal.functions?.map((fn) => fn.name));
+    const buildNode = index.functions?.find((fn) => fn.name === 'buildTaintFunctionNode');
+    const expandFrontier = traversal.functions?.find((fn) => fn.name === 'expandFrontier');
+    const traversalSource = await fs.readFile(path.join(process.cwd(), 'src/core/taintTraversal.ts'), 'utf8');
+
+    expect(indexFunctions.has('buildTaintFunctionIndex')).toBe(true);
+    expect(traversalFunctions.has('findTaintFlows')).toBe(true);
+    expect(buildNode).toBeDefined();
+    expect(buildNode!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+    expect(expandFrontier).toBeDefined();
+    expect(expandFrontier!.cyclomaticComplexity).toBeLessThanOrEqual(7);
+    expect(traversalSource).not.toContain("from './taint.js'");
+  });
 });
 
 describe('computeTaint', () => {

@@ -1,13 +1,10 @@
 import type { CodeGraph } from './codeGraph.js';
-import {
-  FRAMEWORK_REQUEST_SOURCES,
-  frameworkRequestSourceForFunction,
-} from './frameworkSources.js';
-import {
-  isDefaultChildProcessEnvPassthrough,
-  pickSinkHit,
-  pickSourceHit,
-} from './taintMatching.js';
+import { FRAMEWORK_REQUEST_SOURCES } from './frameworkSources.js';
+import { buildTaintFunctionIndex } from './taintIndex.js';
+import { findTaintFlows } from './taintTraversal.js';
+import type { TaintConfig, TaintReport } from './taintTypes.js';
+
+export type { TaintConfig, TaintFlow, TaintReport } from './taintTypes.js';
 
 /**
  * Lightweight taint flow analysis (1.6+).
@@ -39,30 +36,6 @@ import {
  * variable-level dataflow, no AST inspection beyond what callSites
  * already gives us. If this drifts toward "general dataflow" cut it.
  */
-
-export interface TaintConfig {
-  /**
-   * Bare callee names treated as taint sources. Examples:
-   *   "process.env"        — environment variables (read sensitive config)
-   *   "req.body"           — HTTP request body
-   *   "readFileSync"       — disk read (could be user-controlled paths)
-   *
-   * Match is by bare name (the rightmost identifier in a member-access
-   * chain). "process.env.SECRET" → "env"; "req.body.userId" → "body".
-   * The default list captures the most common JS / Python / Go sources;
-   * users override via .projscanrc taint.sources.
-   */
-  sources: string[];
-  /**
-   * Bare callee names treated as taint sinks. Examples:
-   *   "exec"               — child_process.exec
-   *   "spawn"              — child_process.spawn
-   *   "writeFile"          — fs.writeFile
-   *   "query"              — raw SQL (db.query("SELECT...${user}"))
-   *   "eval"               — JS eval / Python eval / etc.
-   */
-  sinks: string[];
-}
 
 export const DEFAULT_TAINT_SOURCES: ReadonlyArray<string> = [
   'env', // process.env.X
@@ -100,52 +73,6 @@ export const DEFAULT_TAINT_SINKS: ReadonlyArray<string> = [
   //             included only when call-shaped helpers wrap it (e.g. setInnerHtml).
 ];
 
-export interface TaintFlow {
-  /** Bare function name where the source was called. */
-  sourceFn: string;
-  /** Bare function name where the sink was called. */
-  sinkFn: string;
-  /** The source identifier (e.g. "env"). */
-  source: string;
-  /** The sink identifier (e.g. "exec"). */
-  sink: string;
-  /**
-   * Sequence of fully-qualified function names from sourceFn to sinkFn,
-   * inclusive at both ends. Length 1 means the same function reads the
-   * source and calls the sink (the most direct flow).
-   */
-  path: string[];
-  /** Files touched by the path (in order, deduped). */
-  files: string[];
-}
-
-export interface TaintReport {
-  available: boolean;
-  reason?: string;
-  flowCount: number;
-  flows: TaintFlow[];
-  /** The effective sources/sinks list used for this run (after merging defaults + config). */
-  effectiveSources: string[];
-  effectiveSinks: string[];
-  /**
-   * 1.8+ — true when the BFS hit MAX_DEPTH for at least one source with
-   * a non-empty frontier still pending. When set, the agent should know
-   * that flows deeper than MAX_DEPTH may exist but weren't reported.
-   * Pairs with `truncatedSources` so a follow-up scan can re-target.
-   */
-  truncated?: boolean;
-  /**
-   * 1.8+ — function names whose BFS exited at MAX_DEPTH with the
-   * frontier non-empty. Empty when no truncation occurred.
-   */
-  truncatedSources?: string[];
-  /**
-   * 1.8+ — the depth cap actually used. Surfacing this lets agents
-   * notice when projscan's defaults shift between releases.
-   */
-  maxDepth?: number;
-}
-
 /**
  * Compute taint flows over the given code graph. Per-function callSites
  * are required (1.5+ ships these for every adapter); functions without
@@ -167,96 +94,9 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
   const sinks = new Set([...DEFAULT_TAINT_SINKS, ...config.sinks]);
   const customSources = new Set(config.sources);
   const customSinks = new Set(config.sinks);
+  const index = buildTaintFunctionIndex(graph, sources, sinks, customSources, customSinks);
 
-  // Build function index. Key by the (file, name) pair to disambiguate
-  // same-named methods on different classes; we project to bare-name
-  // edges for the call-graph traversal.
-  interface FnNode {
-    id: string;
-    qualName: string; // "Foo.bar" or "doIt"
-    bareName: string; // "bar" or "doIt"
-    file: string;
-    callees: string[]; // bare names from the function's callSites
-    references: string[]; // member-expression read idents (1.6+)
-    memberReferences: string[]; // qualified member-expression reads, e.g. process.env.MY_CMD
-    sourceHit: string | null;
-    sinkHit: string | null;
-    hasSource: boolean;
-    hasSink: boolean;
-  }
-
-  const fnByQual = new Map<string, FnNode>();
-  const fnsByBareName = new Map<string, FnNode[]>();
-  let totalCallSites = 0;
-
-  for (const [file, gf] of graph.files) {
-    if (!gf.functions) continue;
-    for (const fn of gf.functions) {
-      const callees = fn.callSites ?? [];
-      const directCallSites = fn.directCallSites ?? [];
-      const memberCallSites = fn.memberCallSites ?? [];
-      const memberReferences = fn.memberReferences ?? [];
-      const memberAliases = fn.memberAliases ?? [];
-      const references = fn.references ?? [];
-      totalCallSites += callees.length;
-      // Default sources mostly match property/reference reads; custom sources
-      // may still be call-shaped. Sinks are call-shaped, so callSites only.
-      const sourceHit =
-        frameworkRequestSourceForFunction(
-          file,
-          fn.name,
-          memberCallSites,
-          memberReferences,
-          fn.parameters ?? [],
-          sources,
-          references,
-          fn.contextualCallSite,
-          gf.imports,
-        ) ?? pickSourceHit(callees, references, sources, customSources);
-      const sinkHit = pickSinkHit(
-        callees,
-        directCallSites,
-        memberCallSites,
-        memberAliases,
-        sinks,
-        customSinks,
-        file,
-        gf,
-      );
-      const hasSource =
-        sourceHit !== null &&
-        !isDefaultChildProcessEnvPassthrough(
-          sourceHit,
-          sinkHit,
-          memberReferences,
-          customSources,
-          customSinks,
-        );
-      const hasSink = sinkHit !== null;
-      const node: FnNode = {
-        id: `${file}::${fn.name}@${fn.line}`,
-        qualName: fn.name,
-        bareName: bareName(fn.name),
-        file,
-        callees,
-        references,
-        memberReferences,
-        sourceHit,
-        sinkHit,
-        hasSource,
-        hasSink,
-      };
-      fnByQual.set(node.id, node);
-      let list = fnsByBareName.get(node.bareName);
-      if (!list) {
-        list = [];
-        fnsByBareName.set(node.bareName, list);
-      }
-      list.push(node);
-    }
-  }
-
-  if (fnByQual.size === 0 || totalCallSites === 0) {
+  if (index.fnByQual.size === 0 || index.totalCallSites === 0) {
     return {
       available: false,
       reason:
@@ -268,125 +108,16 @@ export function computeTaint(graph: CodeGraph, config: TaintConfig): TaintReport
     };
   }
 
-  const flows: TaintFlow[] = [];
-  const seen = new Set<string>(); // dedupe key: sourceFnId::sinkFnId
-  // 1.8+ — track which source functions hit MAX_DEPTH with frontier
-  // still non-empty. The agent gets these in `truncatedSources` so it
-  // knows where the analysis was clipped.
-  const truncatedSources: string[] = [];
-  // 1.8+ — raised from 8 → 12. The original 8 was a conservative pick
-  // when the algorithm was new; six months of dogfood data show real
-  // user repos averaging 10–11 hops between an HTTP handler and a
-  // shell-exec sink. 12 catches those without exploding fan-out
-  // memory in the BFS frontier.
-  const MAX_DEPTH = 12;
-  // 1.10+ — per-step frontier cap. MAX_DEPTH bounds path length, but
-  // wide-fan-out graphs (Java/TS with prevalent get/set/toString bare-name
-  // collisions) can balloon the frontier exponentially: each step
-  // resolves every bare-name callee to every same-named function in the
-  // graph. Once a single step would push past this cap, we abort the
-  // remaining BFS for this source and surface it in `truncatedSources`,
-  // matching how MAX_DEPTH truncation is reported.
-  const MAX_FRONTIER_PER_STEP = 5000;
-
-  for (const sourceFn of fnByQual.values()) {
-    if (!sourceFn.hasSource) continue;
-    // Same-function shortcut.
-    if (sourceFn.hasSink) {
-      const key = `${sourceFn.id}::${sourceFn.id}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        flows.push({
-          sourceFn: sourceFn.qualName,
-          sinkFn: sourceFn.qualName,
-          source: sourceFn.sourceHit!,
-          sink: sourceFn.sinkHit!,
-          path: [sourceFn.qualName],
-          files: [sourceFn.file],
-        });
-      }
-    }
-    // BFS through callees.
-    const visited = new Set<string>([sourceFn.id]);
-    type FrontierEntry = { node: FnNode; path: FnNode[] };
-    let frontier: FrontierEntry[] = [{ node: sourceFn, path: [sourceFn] }];
-    let depth = 0;
-    let frontierCapped = false;
-    while (frontier.length > 0 && depth < MAX_DEPTH) {
-      depth += 1;
-      const next: FrontierEntry[] = [];
-      let aborted = false;
-      for (const entry of frontier) {
-        if (aborted) break;
-        for (const calleeName of entry.node.callees) {
-          const candidates = fnsByBareName.get(calleeName) ?? [];
-          for (const candidate of candidates) {
-            if (visited.has(candidate.id)) continue;
-            visited.add(candidate.id);
-            const newPath = [...entry.path, candidate];
-            if (candidate.hasSink) {
-              const flowKey = `${sourceFn.id}::${candidate.id}`;
-              if (!seen.has(flowKey)) {
-                seen.add(flowKey);
-                const filesInPath: string[] = [];
-                for (const n of newPath) {
-                  if (filesInPath[filesInPath.length - 1] !== n.file) filesInPath.push(n.file);
-                }
-                flows.push({
-                  sourceFn: sourceFn.qualName,
-                  sinkFn: candidate.qualName,
-                  source: sourceFn.sourceHit!,
-                  sink: candidate.sinkHit!,
-                  path: newPath.map((n) => n.qualName),
-                  files: filesInPath,
-                });
-              }
-              // Don't continue past a sink — the flow is reported.
-              continue;
-            }
-            next.push({ node: candidate, path: newPath });
-            if (next.length >= MAX_FRONTIER_PER_STEP) {
-              // 1.10+ — per-step frontier cap reached. Abort this source's
-              // BFS and surface it as truncated. Continuing would just
-              // multiply: each entry in `next` will spawn its own bare-name
-              // resolutions on the following step.
-              frontierCapped = true;
-              aborted = true;
-              break;
-            }
-          }
-          if (aborted) break;
-        }
-      }
-      frontier = next;
-    }
-    // If the BFS exited because of MAX_DEPTH or the per-step frontier cap
-    // (not because the frontier emptied), record the source so the caller
-    // knows flows beyond that point weren't explored.
-    if (frontier.length > 0 || frontierCapped) {
-      truncatedSources.push(sourceFn.qualName);
-    }
-  }
-
-  flows.sort((a, b) => {
-    if (a.sourceFn !== b.sourceFn) return a.sourceFn.localeCompare(b.sourceFn);
-    return a.sinkFn.localeCompare(b.sinkFn);
-  });
+  const traversal = findTaintFlows(index);
 
   return {
     available: true,
-    flowCount: flows.length,
-    flows,
+    flowCount: traversal.flows.length,
+    flows: traversal.flows,
     effectiveSources: [...sources].sort(),
     effectiveSinks: [...sinks].sort(),
-    truncated: truncatedSources.length > 0,
-    truncatedSources: [...new Set(truncatedSources)].sort(),
-    maxDepth: MAX_DEPTH,
+    truncated: traversal.truncatedSources.length > 0,
+    truncatedSources: traversal.truncatedSources,
+    maxDepth: traversal.maxDepth,
   };
-}
-
-function bareName(qualified: string): string {
-  const dot = qualified.lastIndexOf('.');
-  if (dot < 0) return qualified;
-  return qualified.slice(dot + 1);
 }
