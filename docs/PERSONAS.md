@@ -6824,3 +6824,53 @@ or bump version" should keep release train and upgrade out of the top routes.
 Kept change: one release route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Forty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Team Lead.
+
+Reason: coordination/session routing is how multi-agent teams ask who is
+working, where collisions exist, what should merge first, which file is claimed,
+and where a previous session left off. Team leads need that behavior isolated
+because these phrases are collaboration intent, not route catalog policy.
+
+Smallest fix: move claim, coordinate, collision, merge-risk, and session-resume
+matching into `intentRouterCoordinationSignals.ts`; leave route catalog data,
+route scoring, confidence, start-mode handling, ownership-search blockers, and
+dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "coordination and session routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterCoordinationSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Coordination And Session Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, coordination route entries, claim route
+  entries, collision route entries, session route entries, merge-risk behavior,
+  route confidence scoring, `routeIntent`, start-mode behavior, or public route
+  result shape.
+- Do not change claim, coordinate, collision, overlap, merge-order,
+  session-away, session-history, or leave-off keyword semantics except by moving
+  the existing matcher cluster into `intentRouterCoordinationSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: "coordinate parallel agents working the same repo",
+"what changed while I was away", "which branch should merge first", "claim
+src/core/start.ts", and "who owns src/core/start.ts" should keep their existing
+routes and ownership questions should not become claim requests.
+
+Kept change: one coordination/session route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

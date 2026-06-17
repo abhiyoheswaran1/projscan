@@ -323,6 +323,34 @@ describe('routeIntent', () => {
     expect(releaseSignalsSource).toContain('export function releaseTrainKeywordMatches');
   });
 
+  it('keeps coordination and session routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterCoordinationSignals.js'");
+    expect(routerSource).not.toContain('function claimContextMatches');
+    expect(routerSource).not.toContain('function claimKeywordMatches');
+    expect(routerSource).not.toContain('function coordinateAgentContextMatches');
+    expect(routerSource).not.toContain('function coordinateWorkingContextMatches');
+    expect(routerSource).not.toContain('function coordinateActiveContextMatches');
+    expect(routerSource).not.toContain('function coordinateConflictContextMatches');
+    expect(routerSource).not.toContain('function collisionConflictContextMatches');
+    expect(routerSource).not.toContain('function collisionChangeContextMatches');
+    expect(routerSource).not.toContain('function mergeRiskKeywordMatches');
+    expect(routerSource).not.toContain('function sessionLeaveOffContextMatches');
+    expect(routerSource).not.toContain('function sessionAwayContextMatches');
+    expect(routerSource).not.toContain('function sessionAgentContextMatches');
+
+    const coordinationSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterCoordinationSignals.ts'),
+      'utf8',
+    );
+    expect(coordinationSignalsSource).toContain('export function claimContextMatches');
+    expect(coordinationSignalsSource).toContain('export function coordinateAgentContextMatches');
+    expect(coordinationSignalsSource).toContain('export function sessionAgentContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
