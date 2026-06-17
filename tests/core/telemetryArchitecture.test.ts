@@ -96,6 +96,24 @@ describe('telemetry maintainability', () => {
     expect(flush).toBeDefined();
     expect(flush!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
+
+  it('keeps the network sender implementation in a focused helper module', async () => {
+    const telemetrySource = await readRepoSourceFile('src/core/telemetry.ts');
+    expect(telemetrySource).toContain("from './telemetrySender.js'");
+    expect(telemetrySource).not.toContain('function defaultSender');
+    expect(telemetrySource).not.toContain('REQUEST_TIMEOUT_MS');
+    expect(telemetrySource).not.toContain('new AbortController');
+    expect(telemetrySource).not.toContain('fetch(endpoint');
+
+    const senderSource = await readRepoSourceFile('src/core/telemetrySender.ts');
+    expect(senderSource).toContain('new AbortController');
+    expect(senderSource).toContain('fetch(endpoint');
+
+    const sender = await inspectRepoSourceFile('src/core/telemetrySender.ts');
+    const defaultSender = sender.functions?.find((fn) => fn.name === 'defaultTelemetrySender');
+    expect(defaultSender).toBeDefined();
+    expect(defaultSender!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {

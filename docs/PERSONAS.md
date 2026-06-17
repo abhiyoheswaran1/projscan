@@ -9879,3 +9879,48 @@ still return the same unavailable review report with resolved base/head refs.
 
 Kept change: one focused changed-review assembly module, one architecture guard,
 this persona note, and no release action in this slice.
+
+## Two Hundred Eighth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: telemetry is privacy-sensitive and opt-in, but
+`src/core/telemetry.ts` still mixed policy/status/queue orchestration with the
+default network sender implementation. Reviewers should be able to inspect the
+only `fetch` and timeout wiring in one small file.
+
+Smallest fix: move the `TelemetrySender` type and default sender into
+`src/core/telemetrySender.ts`, import `defaultTelemetrySender` from
+`src/core/telemetry.ts`, and keep the sender type re-exported from the existing
+public telemetry boundary.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/telemetryArchitecture.test.ts
+npm run test -- tests/core/telemetry.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/telemetry.ts --format json
+npm exec projscan -- file src/core/telemetrySender.ts --format json
+```
+
+## Review Guardrails: Telemetry Sender Extraction
+
+Delete-list after this slice:
+
+- Do not change telemetry policy, default-off behavior, endpoint constants, event
+  schema version, event payload fields, anonymous id generation, queue behavior,
+  or offline/no-network/disabled env guards.
+- Do not add dependencies, read source files, read `.env` values, add hidden
+  network calls, change lockfiles, publish, deploy, push, merge, or cut a
+  release.
+- Do not move config storage, event shaping, or runtime env guards in the same
+  slice.
+
+Reviewer edge case: importing `TelemetrySender` from `src/core/telemetry.js`
+must continue to typecheck after the type moves to the focused sender module.
+
+Kept change: one focused telemetry sender module, public type re-export,
+architecture guard, this persona note, and no release action in this slice.

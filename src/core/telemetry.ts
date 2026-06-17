@@ -34,6 +34,7 @@ import {
   type TelemetryFeedbackInput,
   type TelemetryFeedbackSummary,
 } from './telemetryEvents.js';
+import { defaultTelemetrySender, type TelemetrySender } from './telemetrySender.js';
 
 export {
   buildFeedbackTelemetry,
@@ -60,8 +61,6 @@ export const TELEMETRY_DISABLED_ENV = 'PROJSCAN_TELEMETRY_DISABLED';
 export const TELEMETRY_NO_NETWORK_ENV = 'PROJSCAN_TELEMETRY_NO_NETWORK';
 const OFFLINE_ENV = 'PROJSCAN_OFFLINE';
 
-const REQUEST_TIMEOUT_MS = 750;
-
 export interface TelemetryPolicy {
   schemaVersion: 1;
   default: 'off';
@@ -73,10 +72,7 @@ export interface TelemetryPolicy {
   notes: string[];
 }
 
-export type TelemetrySender = (
-  batch: TelemetryEvent[],
-  endpoint: string,
-) => Promise<{ ok: boolean; status: number }>;
+export type { TelemetrySender };
 
 export interface TelemetryOptions {
   configDir?: string;
@@ -221,7 +217,7 @@ export async function flushTelemetry(
     return { status: 'skipped', reason: 'disabled' };
   const events = await readTelemetryQueue<TelemetryEvent>(paths.queuePath);
   if (events.length === 0) return { status: 'skipped', reason: 'empty' };
-  const sender = options.sender ?? defaultSender;
+  const sender = options.sender ?? defaultTelemetrySender;
   return sendQueuedTelemetry(events, loaded.config.endpoint, sender, paths.queuePath);
 }
 
@@ -250,28 +246,6 @@ async function sendQueuedTelemetry(
       reason: error instanceof Error ? error.message : String(error),
       queued: events.length,
     };
-  }
-}
-
-async function defaultSender(
-  batch: TelemetryEvent[],
-  endpoint: string,
-): Promise<{ ok: boolean; status: number }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'user-agent': 'projscan-telemetry',
-      },
-      body: JSON.stringify({ schemaVersion: TELEMETRY_SCHEMA_VERSION, events: batch }),
-      signal: controller.signal,
-    });
-    return { ok: response.ok, status: response.status };
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

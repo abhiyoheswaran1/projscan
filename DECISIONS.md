@@ -2281,3 +2281,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move ready-state changed-review assembly into `src/core/reviewChangedReport.ts` while keeping `computeReview` responsible for state dispatch and no-change intent annotation.
 - Consequences: Review verdict behavior, intent annotation, schemas, CLI/MCP behavior, and public exports remain unchanged. Future changed-review assembly edits now land in a focused helper instead of the review dispatcher.
 - Verification: `npm run test -- tests/core/reviewArchitecture.test.ts` failed before the helper existed and `review.ts` stopped importing assembly helpers, then passed after extraction. Existing `tests/core/review.test.ts` behavior coverage also passed.
+
+## 2026-06-18: Extract telemetry sender helper
+
+- Status: accepted
+- Context: `src/core/telemetry.ts` remained a moderate-complexity privacy-sensitive hotspot and still contained the `fetch`/`AbortController` sender implementation beside default-off policy, status, queueing, and flush orchestration.
+- Decision: Move the default network sender and `TelemetrySender` type into `src/core/telemetrySender.ts`, and re-export the type from `src/core/telemetry.ts` for public compatibility.
+- Consequences: Telemetry remains default-off, local-first, and controlled by the same offline/no-network/disabled env guards. Event payload shape, endpoint behavior, queue flushing, and public imports remain unchanged while network-capable code is easier to review in one module.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before `telemetry.ts` delegated sender wiring, then passed after extraction. Existing telemetry behavior tests also passed.
