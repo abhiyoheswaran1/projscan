@@ -1905,3 +1905,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move repo setup and orientation matching into `src/core/intentRouterRepoSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6767 lines / CC 1033 to 6519 lines / CC 978. The extracted helper has no imports, no hotspot history, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "repo setup and orientation routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract test-data search route signals
+
+- Status: accepted
+- Context: Test-data lookup routing for seeds, fixtures, mocks, factories, and story/storybook artifacts depended on repo setup/script blockers and was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move test-data search matching into `src/core/intentRouterSearchTestSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6519 lines / CC 978 to 6482 lines / CC 959. The extracted helper has no hotspot history, preserves existing setup/script blocker semantics through `intentRouterRepoSignals.ts`, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "test-data search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

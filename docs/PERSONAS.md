@@ -6379,3 +6379,51 @@ should stay out of setup discovery.
 Kept change: one repo setup/orientation route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Thirty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: test-data lookup routing helps agents find existing seed data, fixtures,
+mocks, factories, and stories without turning lookup questions into test-writing
+or database setup work. Maintainers need this matcher isolated because it relies
+on repo setup and package-script blockers to avoid stealing setup commands.
+
+Smallest fix: move test-data search matching into
+`intentRouterSearchTestSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "test-data search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchTestSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Test-Data Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, repo setup routing,
+  package-script discovery, database setup routing, regression planning, route
+  confidence scoring, `routeIntent`, or public route result shape.
+- Do not change test-data keyword semantics except by moving the existing
+  matcher and preserving its setup/script blockers through
+  `intentRouterRepoSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "find fixtures for checkout" and "where is seed data
+defined" should still route to search, while "how do I run migrations locally"
+should stay with setup/understand routing and "add tests for auth" should stay
+with regression planning.
+
+Kept change: one test-data search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
