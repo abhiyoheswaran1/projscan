@@ -9,6 +9,8 @@ const EXPRESS_REQUEST_SOURCE_BY_REFERENCE = new Map<string, string>([
 
 const EXPRESS_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['originalUrl', 'express.req.originalUrl'],
+  ['url', 'express.req.url'],
+  ['path', 'express.req.path'],
 ]);
 
 const EXPRESS_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([

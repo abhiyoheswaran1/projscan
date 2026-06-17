@@ -297,4 +297,44 @@ export function helper(req: { originalUrl: string }) {
     expect(originalUrlRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Express request URL and path fields as sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'express-url-path.ts'),
+      `import express from 'express';
+
+const app = express();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.get('/lookup', (req) => {
+  const raw = req.url;
+  return db.query(raw);
+});
+
+app.get('/path', (request) => {
+  const requestPath = request.path;
+  return db.query(String(requestPath));
+});
+
+export function helper(req: { url: string, path: string }) {
+  return cache.query(req.url + req.path);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const expressRisks = report.risks.filter((risk) =>
+      risk.files.includes('src/express-url-path.ts'),
+    );
+
+    expect(expressRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'express.req.url', sink: 'query' }),
+        expect.objectContaining({ source: 'express.req.path', sink: 'query' }),
+      ]),
+    );
+    expect(expressRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
 });
