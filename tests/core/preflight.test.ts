@@ -289,6 +289,21 @@ test('preflight keeps review evidence collection isolated from the main prefligh
   expect(fromReport!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps changed-file evidence collection isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('getChangedFiles(');
+  expect(preflightSource).not.toContain('changed-file detection is not required before edits');
+
+  const changedFiles = await inspectRepoSourceFile('src/core/preflightChangedFiles.ts');
+  const safeChangedFiles = changedFiles.functions?.find((fn) => fn.name === 'safeChangedFiles');
+  const fromResult = changedFiles.functions?.find((fn) => fn.name === 'changedFilesFromResult');
+
+  expect(safeChangedFiles).toBeDefined();
+  expect(safeChangedFiles!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(fromResult).toBeDefined();
+  expect(fromResult!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

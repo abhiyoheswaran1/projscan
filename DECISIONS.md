@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight changed-file evidence
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned changed-file detection and unavailable-fallback shaping after review evidence was isolated.
+- Decision: Move changed-file evidence collection into `src/core/preflightChangedFiles.ts`.
+- Consequences: Before-edit changed-file skip behavior, git changed-file result shaping, error fallback reasons, downstream reason/evidence behavior, and public preflight schema stay unchanged, while `src/core/preflight.ts` drops from 273 lines / CC 21 to 234 lines / CC 17.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "changed-file evidence collection"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight review evidence
 
 - Status: accepted

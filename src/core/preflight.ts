@@ -19,7 +19,10 @@ import {
   safeReviewEvidence,
   type PreflightReviewEvidence,
 } from './preflightReviewEvidence.js';
-import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
+import {
+  safeChangedFiles,
+  type PreflightChangedFiles,
+} from './preflightChangedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type {
@@ -40,14 +43,6 @@ export interface ComputePreflightOptions {
   headRef?: string;
   maxChangedFiles?: number;
   enablePlugins?: boolean;
-}
-
-interface PreflightChangedFiles {
-  available: boolean;
-  count: number;
-  files: string[];
-  baseRef: string | null;
-  reason?: string;
 }
 
 interface PreflightSessionEvidence {
@@ -166,40 +161,6 @@ async function collectIssuesWithPluginOption(
   _enablePlugins?: boolean,
 ): Promise<Issue[]> {
   return collectIssues(rootPath, files);
-}
-
-async function safeChangedFiles(
-  rootPath: string,
-  mode: PreflightMode,
-  baseRef?: string,
-): Promise<PreflightChangedFiles> {
-  if (mode === 'before_edit') {
-    return {
-      available: false,
-      count: 0,
-      files: [],
-      baseRef: null,
-      reason: 'changed-file detection is not required before edits',
-    };
-  }
-  try {
-    const result: ChangedFilesResult = await getChangedFiles(rootPath, baseRef);
-    return {
-      available: result.available,
-      count: result.files.length,
-      files: result.files,
-      baseRef: result.baseRef,
-      ...(result.reason ? { reason: result.reason } : {}),
-    };
-  } catch (err) {
-    return {
-      available: false,
-      count: 0,
-      files: [],
-      baseRef: null,
-      reason: err instanceof Error ? err.message : String(err),
-    };
-  }
 }
 
 async function safeSession(rootPath: string): Promise<PreflightSessionEvidence> {

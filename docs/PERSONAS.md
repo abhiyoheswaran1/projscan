@@ -5051,3 +5051,50 @@ counts for release-scale and evidence consumers.
 Kept change: one preflight review-evidence helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## One Hundred Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: `src/core/preflight.ts` remained a production hotspot after review
+evidence was isolated. Changed-file evidence is a separate input boundary: it
+decides whether current worktree scope is available and feeds reason,
+required-check, evidence, and action shaping downstream.
+
+Smallest fix: move changed-file detection, before-edit skip behavior,
+`getChangedFiles` projection, and error fallback shaping into
+`preflightChangedFiles.ts`; keep `computePreflight` focused on composing
+preflight inputs.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "changed-file evidence collection"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightChangedFiles.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Changed-File Extraction
+
+Delete-list after this slice:
+
+- Do not change before-edit changed-file skip behavior, changed-file count,
+  file list, base-ref propagation, unavailable reason text, or public preflight
+  schema.
+- Do not change reason order, required checks, evidence shaping, suggested
+  actions, release-scale behavior, review behavior, or coordination behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: changed-file detection failures should still produce the
+same unavailable evidence and warning path outside `before_edit`.
+
+Kept change: one preflight changed-file helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.
