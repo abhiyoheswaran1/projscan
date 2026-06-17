@@ -114,6 +114,33 @@ describe('telemetry maintainability', () => {
     expect(defaultSender).toBeDefined();
     expect(defaultSender!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
+
+  it('keeps telemetry event recording in a focused helper module', async () => {
+    const telemetrySource = await readRepoSourceFile('src/core/telemetry.ts');
+    expect(telemetrySource).toContain("from './telemetryRecording.js'");
+    expect(telemetrySource).not.toContain('buildTelemetryCommandEvent');
+    expect(telemetrySource).not.toContain('appendTelemetryQueue');
+    expect(telemetrySource).not.toContain('updateTelemetryUsage');
+
+    const telemetry = await inspectRepoSourceFile('src/core/telemetry.ts');
+    const recordFacade = telemetry.functions?.find((fn) => fn.name === 'recordCommandTelemetry');
+    expect(recordFacade).toBeDefined();
+    expect(recordFacade!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+
+    const recordingSource = await readRepoSourceFile('src/core/telemetryRecording.ts');
+    expect(recordingSource).toContain('buildTelemetryCommandEvent');
+    expect(recordingSource).toContain('buildFeedbackTelemetry');
+    expect(recordingSource).toContain('appendTelemetryQueue');
+    expect(recordingSource).toContain('updateTelemetryUsage');
+
+    const recording = await inspectRepoSourceFile('src/core/telemetryRecording.ts');
+    expect(functionNames(recording)).toEqual(
+      expect.arrayContaining(['recordCommandTelemetry', 'recordFeedbackTelemetry']),
+    );
+    const recordHelper = recording.functions?.find((fn) => fn.name === 'recordCommandTelemetry');
+    expect(recordHelper).toBeDefined();
+    expect(recordHelper!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {

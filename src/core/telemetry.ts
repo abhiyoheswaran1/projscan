@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 
 import {
-  appendTelemetryQueue,
   buildTelemetryStatus,
   clearTelemetryQueue,
   countTelemetryQueue,
@@ -16,14 +15,11 @@ import {
   TELEMETRY_NEVER_COLLECTED,
   TELEMETRY_SCHEMA_VERSION,
   toIso,
-  updateTelemetryUsage,
   writeTelemetryConfig,
   type StoredTelemetryConfig,
   type TelemetryStatus,
 } from './telemetryConfig.js';
 import {
-  buildFeedbackTelemetry,
-  buildTelemetryCommandEvent,
   type CommandTelemetryInput,
   type CountBucket,
   type DurationBucket,
@@ -34,16 +30,23 @@ import {
   type TelemetryFeedbackInput,
   type TelemetryFeedbackSummary,
 } from './telemetryEvents.js';
+import {
+  recordCommandTelemetry as recordTelemetryCommand,
+  recordFeedbackTelemetry as recordTelemetryFeedback,
+  type RecordTelemetryResult,
+  type TelemetryOptions,
+  type TelemetryRecordingRuntime,
+} from './telemetryRecording.js';
 import { defaultTelemetrySender, type TelemetrySender } from './telemetrySender.js';
 
 export {
-  buildFeedbackTelemetry,
   DEFAULT_TELEMETRY_ENDPOINT,
   TELEMETRY_COLLECTED,
   TELEMETRY_ENDPOINT_ENV,
   TELEMETRY_HOME_ENV,
   TELEMETRY_NEVER_COLLECTED,
 };
+export { buildFeedbackTelemetry } from './telemetryEvents.js';
 export type {
   CommandTelemetryInput,
   CountBucket,
@@ -73,19 +76,7 @@ export interface TelemetryPolicy {
 }
 
 export type { TelemetrySender };
-
-export interface TelemetryOptions {
-  configDir?: string;
-  now?: Date;
-  sender?: TelemetrySender;
-  flush?: boolean;
-}
-
-export interface RecordTelemetryResult {
-  status: 'skipped' | 'queued' | 'sent' | 'failed';
-  reason?: string;
-  queued?: number;
-}
+export type { RecordTelemetryResult, TelemetryOptions };
 
 export function explainTelemetryPolicy(): TelemetryPolicy {
   return {
@@ -163,47 +154,14 @@ export async function recordCommandTelemetry(
   input: CommandTelemetryInput,
   options: TelemetryOptions = {},
 ): Promise<RecordTelemetryResult> {
-  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
-  if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
-  const paths = resolveTelemetryPaths(options);
-  const loaded = await readTelemetryConfig(paths.configPath, options.now);
-  if (!loaded.config.enabled || !loaded.config.anonymousId)
-    return { status: 'skipped', reason: 'disabled' };
-
-  const config = updateTelemetryUsage(loaded.config, options.now);
-  await writeTelemetryConfig(paths.configPath, config);
-
-  const event = await buildTelemetryCommandEvent(input, config, options.now);
-  await appendTelemetryQueue(paths.queuePath, event);
-
-  if (options.flush === false || isTelemetryNetworkDisabled()) {
-    return { status: 'queued', queued: await countTelemetryQueue(paths.queuePath) };
-  }
-
-  const flushed = await flushTelemetry({ ...options, configDir: paths.configDir });
-  if (flushed.status === 'sent') return flushed;
-  return {
-    status: 'queued',
-    reason: flushed.reason,
-    queued: await countTelemetryQueue(paths.queuePath),
-  };
+  return recordTelemetryCommand(input, options, telemetryRecordingRuntime());
 }
 
 export async function recordFeedbackTelemetry(
   input: TelemetryFeedbackInput,
   options: TelemetryOptions & { rootPath?: string; version?: string } = {},
 ): Promise<RecordTelemetryResult> {
-  return recordCommandTelemetry(
-    {
-      commandName: 'feedback add',
-      status: 'success',
-      durationMs: 0,
-      rootPath: options.rootPath,
-      version: options.version,
-      feedback: buildFeedbackTelemetry(input),
-    },
-    options,
-  );
+  return recordTelemetryFeedback(input, options, telemetryRecordingRuntime());
 }
 
 export async function flushTelemetry(
@@ -247,6 +205,17 @@ async function sendQueuedTelemetry(
       queued: events.length,
     };
   }
+}
+
+function telemetryRecordingRuntime(): TelemetryRecordingRuntime {
+  return {
+    flushTelemetry,
+    isOfflineMode,
+    isRuntimeTelemetryDisabled,
+    isTelemetryNetworkDisabled,
+    offlineReason: OFFLINE_ENV,
+    disabledReason: TELEMETRY_DISABLED_ENV,
+  };
 }
 
 function generateAnonymousId(): string {

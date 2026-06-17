@@ -2289,3 +2289,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the default network sender and `TelemetrySender` type into `src/core/telemetrySender.ts`, and re-export the type from `src/core/telemetry.ts` for public compatibility.
 - Consequences: Telemetry remains default-off, local-first, and controlled by the same offline/no-network/disabled env guards. Event payload shape, endpoint behavior, queue flushing, and public imports remain unchanged while network-capable code is easier to review in one module.
 - Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before `telemetry.ts` delegated sender wiring, then passed after extraction. Existing telemetry behavior tests also passed.
+
+## 2026-06-18: Extract telemetry recording helper
+
+- Status: accepted
+- Context: After the sender split, `src/core/telemetry.ts` still mixed default-off policy/status/flush behavior with command and feedback event recording, usage updates, queue appends, and record-time flush delegation.
+- Decision: Move command and feedback recording into `src/core/telemetryRecording.ts`, keep `src/core/telemetry.ts` as the public facade, and pass the existing runtime guard functions into the helper instead of changing their behavior.
+- Consequences: Public telemetry imports, opt-in policy, event payload shape, queue semantics, flush behavior, and offline/no-network/disabled guards remain stable. Recording-specific privacy review now has one focused module.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the helper existed and `telemetry.ts` stopped owning recording internals, then passed after extraction. Existing telemetry behavior tests also passed.

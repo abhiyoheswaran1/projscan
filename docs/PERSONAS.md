@@ -9924,3 +9924,49 @@ must continue to typecheck after the type moves to the focused sender module.
 
 Kept change: one focused telemetry sender module, public type re-export,
 architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Ninth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: after the sender split, `src/core/telemetry.ts` still mixed
+default-off policy, status, and flush behavior with command/feedback recording.
+The recording path updates usage, appends queued events, and can delegate to
+flush, so privacy reviewers need one small module to inspect those edges.
+
+Smallest fix: move command and feedback recording into
+`src/core/telemetryRecording.ts`, keep public `recordCommandTelemetry` and
+`recordFeedbackTelemetry` wrappers in `src/core/telemetry.ts`, and pass the
+existing offline/no-network/disabled runtime guards into the helper instead of
+changing them.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/telemetryArchitecture.test.ts
+npm run test -- tests/core/telemetry.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/telemetry.ts --format json
+npm exec projscan -- file src/core/telemetryRecording.ts --format json
+```
+
+## Review Guardrails: Telemetry Recording Extraction
+
+Delete-list after this slice:
+
+- Do not change telemetry policy, default-off behavior, endpoint constants, event
+  schema version, event payload fields, anonymous id generation, queue behavior,
+  flush behavior, or offline/no-network/disabled env guard behavior.
+- Do not add dependencies, read `.env` values, add hidden network calls, change
+  lockfiles, publish, deploy, push, merge, tag, or cut a release.
+- Do not move config storage, event shaping internals, sender implementation, or
+  runtime env guards in the same slice.
+
+Reviewer edge case: `recordCommandTelemetry` should still return queued status
+when `flush: false` or telemetry network is disabled, and should still return the
+flush result when the supplied sender succeeds.
+
+Kept change: one focused telemetry recording module, public facade wrappers,
+architecture guard, this persona note, and no release action in this slice.
