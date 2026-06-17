@@ -21,6 +21,7 @@ import {
 } from './changedIssueFilter.js';
 import { loadCliProjectConfig } from './projectConfig.js';
 import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
+import { cliCommandPath } from './commandPath.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
 
@@ -50,12 +51,12 @@ program.hook('preAction', (_thisCommand, actionCommand) => {
   if (opts.offline) enableOfflineMode();
   if (opts.includeIgnored) process.env.PROJSCAN_INCLUDE_IGNORED = '1';
   if (opts.scanEnvValues) process.env.PROJSCAN_SCAN_ENV_VALUES = '1';
-  activeTelemetryRun = { commandName: commandPath(actionCommand), startedAt: Date.now() };
+  activeTelemetryRun = { commandName: cliCommandPath(actionCommand), startedAt: Date.now() };
 });
 
 program.hook('postAction', async (_thisCommand, actionCommand) => {
   const run = activeTelemetryRun ?? {
-    commandName: commandPath(actionCommand),
+    commandName: cliCommandPath(actionCommand),
     startedAt: Date.now(),
   };
   activeTelemetryRun = null;
@@ -67,17 +68,6 @@ program.hook('postAction', async (_thisCommand, actionCommand) => {
     version: pkg.version,
   }).catch(() => undefined);
 });
-
-function commandPath(actionCommand: Command): string {
-  const parts: string[] = [];
-  let current: Command | null = actionCommand;
-  while (current && current.name() !== 'projscan') {
-    const name = current.name();
-    if (name) parts.unshift(name);
-    current = current.parent ?? null;
-  }
-  return parts.join(' ') || actionCommand.name() || 'unknown';
-}
 
 export function getFormat(): ReportFormat {
   const opts = program.opts();
