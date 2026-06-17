@@ -8877,3 +8877,50 @@ start/bug-hunt/hotspot run should report 51 tests across
 
 Kept change: one bug-hunt/hotspot start test split, this persona note, and no
 release action.
+
+## One Hundred Eighty Sixth Slice Decision
+
+Selected personas: Safety-Gate Reviewer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the bug-hunt split, `tests/core/start.test.ts` still mixed general
+start routing with safety-gate preflight behavior. The moved cases share one
+behavior surface: commit and merge safety prompts should select the right
+preflight mode, keep impact alternatives visible, and avoid duplicate proof
+commands.
+
+Smallest fix: move the five safety-gate/preflight routing scenarios into a new
+`tests/core/startPreflightRouting.test.ts` file and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 1,536 lines to 1,370 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "alternative routes for mixed intents|does not duplicate preflight proof|preserves an explicit mode|PR blocker questions|merge-readiness questions"
+npm run test -- tests/core/startPreflightRouting.test.ts -t "alternative routes for mixed intents|does not duplicate preflight proof|preserves an explicit mode|PR blocker questions|merge-readiness questions"
+npm run test -- tests/core/start.test.ts tests/core/startPreflightRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startPreflightRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Preflight Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan preflight`, before-commit mode inference,
+  before-merge mode inference, explicit mode preservation, impact-route
+  alternatives, proof-command de-duplication, package version, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not weaken coverage for mixed safe+impact prompts, safe commit prompts,
+  PR blocker prompts, merge-readiness prompts, or explicit mode override.
+- Do not broaden this into preflight verdict logic or release sign-off behavior;
+  this slice is test maintainability only.
+
+Reviewer edge case: the focused preflight run should report five tests, and the
+combined start/preflight-routing run should report 41 tests across
+`tests/core/start.test.ts` and `tests/core/startPreflightRouting.test.ts`.
+
+Kept change: one preflight start test split, this persona note, and no release
+action.
