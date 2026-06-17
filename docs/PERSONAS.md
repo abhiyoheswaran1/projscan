@@ -9384,3 +9384,43 @@ the new helper.
 Kept change: one existing-file report helper module, a low-complexity
 orchestrator regression, this persona note, and no release action in this
 slice.
+
+## One Hundred Ninety Seventh Slice Decision
+
+Selected personas: Maintainer Reviewer, Python Ecosystem Integrator, and
+Codebase-Exploring Agent.
+
+Reason: Python parser coverage had been separated from architecture and project
+detection guardrails, but `pythonManifests.test.ts` still mixed requirements,
+pyproject, and five lockfile parser fixture families. That makes review diffs
+harder to scan when agents add Python ecosystem behavior.
+
+Smallest fix: move Poetry, Pipfile, uv, PDM, and Conda lockfile parser coverage
+into `tests/core/languages/pythonLockfiles.test.ts`. Keep PEP 508,
+requirements, and pyproject parser coverage in `pythonManifests.test.ts` and
+add a structure guard that prevents the suites from collapsing back together.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifestSuiteStructure.test.ts
+npm run test -- tests/core/languages/pythonManifests.test.ts tests/core/languages/pythonLockfiles.test.ts
+npm exec projscan -- file tests/core/languages/pythonManifests.test.ts --format json
+```
+
+## Review Guardrails: Python Lockfile Test Split
+
+Delete-list after this slice:
+
+- Do not change Python manifest parsing, lockfile parsing, project detection,
+  upgrade preview behavior, public exports, package metadata, release artifacts,
+  publish behavior, deploy behavior, push behavior, or merge behavior.
+- Do not add dependencies or normalize lockfile fixture expectations beyond the
+  mechanical split.
+- Do not treat this as release evidence; it is review-surface hardening only.
+
+Reviewer edge case: lockfile parsers still export from the same module as
+before; only their tests moved.
+
+Kept change: one lockfile parser test suite, one suite-structure guard, this
+persona note, and no release action in this slice.
