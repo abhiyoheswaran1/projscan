@@ -5293,3 +5293,54 @@ extensions still get the TypeScript plugin.
 Kept change: one AST parser helper module, one maintainability regression,
 existing AST behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Eleventh Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Agent-Orchestrating Senior
+Engineer.
+
+Reason: `src/core/taint.ts` remained a production hotspot with security review
+impact. The main report builder still mixed graph traversal with source/sink
+hit selection and default false-positive filters for child-process, database,
+and env passthrough cases.
+
+Smallest fix: move source matching, sink matching, child-process import
+filtering, database member/helper/alias filtering, JavaScript-file detection,
+and env passthrough suppression into `taintMatching.ts`; keep `computeTaint`
+responsible for effective config, framework-source delegation, graph indexing,
+BFS traversal, flow shaping, sorting, and truncation reporting.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/taint.test.ts -t "source and sink matching"
+npm run test -- tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/taint.ts --format json
+npm exec projscan -- file src/core/taintMatching.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Taint Matching Extraction
+
+Delete-list after this slice:
+
+- Do not change default or custom taint source/sink semantics, framework
+  request-source detection, same-function flows, BFS traversal, dedupe keys,
+  truncation flags, or `maxDepth`.
+- Do not change child-process import filtering, database member/helper/alias
+  filtering, JavaScript-like file detection, or env passthrough suppression.
+- Do not change public `computeTaint`, `TaintReport`, `TaintFlow`,
+  `DEFAULT_TAINT_SOURCES`, or `DEFAULT_TAINT_SINKS` exports.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: `process.env` passed through as a child-process `env`
+option should stay suppressed unless a concrete `process.env.NAME` read or
+custom source/sink config makes it intentional.
+
+Kept change: one taint matching helper module, one maintainability regression,
+existing taint behavior coverage, this persona note, and no public schema
+change.

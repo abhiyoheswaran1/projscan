@@ -5,6 +5,8 @@ import os from 'node:os';
 import { computeTaint } from '../../src/core/taint.js';
 import { scanRepository } from '../../src/core/repositoryScanner.js';
 import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
+import type { FileEntry } from '../../src/types.js';
 
 let tmp: string;
 
@@ -22,6 +24,52 @@ async function buildGraph() {
   const scan = await scanRepository(tmp);
   return await buildCodeGraph(tmp, scan.files);
 }
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}
+
+describe('taint maintainability', () => {
+  it('keeps source and sink matching out of the taint report orchestrator', async () => {
+    const taint = await inspectRepoSourceFile('src/core/taint.ts');
+    const taintFunctions = new Set(taint.functions?.map((fn) => fn.name));
+
+    expect(taintFunctions.has('pickSourceHit')).toBe(false);
+    expect(taintFunctions.has('pickSinkHit')).toBe(false);
+    expect(taintFunctions.has('isDefaultMisidentifiedDatabaseSink')).toBe(false);
+    expect(taintFunctions.has('isDefaultChildProcessEnvPassthrough')).toBe(false);
+
+    const matching = await inspectRepoSourceFile('src/core/taintMatching.ts');
+    const pickSourceHit = matching.functions?.find((fn) => fn.name === 'pickSourceHit');
+    const pickSinkHit = matching.functions?.find((fn) => fn.name === 'pickSinkHit');
+    const databaseFilter = matching.functions?.find(
+      (fn) => fn.name === 'isDefaultMisidentifiedDatabaseSink',
+    );
+    const envPassthrough = matching.functions?.find(
+      (fn) => fn.name === 'isDefaultChildProcessEnvPassthrough',
+    );
+
+    expect(pickSourceHit).toBeDefined();
+    expect(pickSourceHit!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+    expect(pickSinkHit).toBeDefined();
+    expect(pickSinkHit!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(databaseFilter).toBeDefined();
+    expect(databaseFilter!.cyclomaticComplexity).toBeLessThanOrEqual(9);
+    expect(envPassthrough).toBeDefined();
+    expect(envPassthrough!.cyclomaticComplexity).toBeLessThanOrEqual(7);
+  });
+});
 
 describe('computeTaint', () => {
   it('detects same-function flow (source + sink in one body)', async () => {

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract taint source and sink matching
+
+- Status: accepted
+- Context: `src/core/taint.ts` remained a high-complexity production hotspot and still owned source/sink hit selection plus default false-positive filters for child-process and database sink matching.
+- Decision: Move taint source matching, sink matching, JavaScript child-process sink filtering, database sink filtering, and env passthrough filtering into `src/core/taintMatching.ts`.
+- Consequences: Default and custom source/sink semantics, framework request-source delegation, same-function flows, BFS traversal, truncation reporting, child-process import checks, database helper/alias detection, public `computeTaint` output, and exported taint constants stay unchanged, while `src/core/taint.ts` drops from 560 lines / CC 77 to 393 lines / CC 38.
+- Verification: `npm run test -- tests/core/taint.test.ts -t "source and sink matching"` plus the full taint behavior test file.
+
 ## 2026-06-17: Extract AST parser setup
 
 - Status: accepted
