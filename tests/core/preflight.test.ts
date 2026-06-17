@@ -223,6 +223,19 @@ test('preflight keeps evidence shaping isolated from the main preflight module',
   expect(coordination!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps report truncation policy isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('MAX_PREFLIGHT_EVIDENCE_FILES');
+  expect(preflightSource).not.toContain('evidence.session?.truncated');
+  expect(preflightSource).toContain('isPreflightReportTruncated({ evidence, changedFiles })');
+
+  const truncation = await inspectRepoSourceFile('src/core/preflightTruncation.ts');
+  const entrypoint = truncation.functions?.find((fn) => fn.name === 'isPreflightReportTruncated');
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+});
+
 test('preflight keeps suggested action shaping isolated from the main preflight module', async () => {
   const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
   expect(preflightSource).not.toContain('function buildSuggestedActions');

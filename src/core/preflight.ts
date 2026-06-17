@@ -4,7 +4,7 @@ import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
 import { reviewReasons } from './preflightReviewReasons.js';
-import { buildEvidence, MAX_PREFLIGHT_EVIDENCE_FILES } from './preflightEvidence.js';
+import { buildEvidence } from './preflightEvidence.js';
 import { contextReasons } from './preflightContextReasons.js';
 import {
   buildSuggestedActions,
@@ -21,6 +21,7 @@ import {
   type PreflightSessionEvidence,
 } from './preflightLocalEvidence.js';
 import { loadPreflightInputs } from './preflightInputs.js';
+import { isPreflightReportTruncated } from './preflightTruncation.js';
 import type {
   HealthScore,
   HotspotReport,
@@ -85,10 +86,7 @@ export async function computePreflight(
     releaseScale,
     coordination,
   });
-  const truncated =
-    evidence.session?.truncated === true ||
-    changedFiles.files.length > MAX_PREFLIGHT_EVIDENCE_FILES ||
-    (evidence.hotspots?.touched.length ?? 0) > MAX_PREFLIGHT_EVIDENCE_FILES;
+  const truncated = isPreflightReportTruncated({ evidence, changedFiles });
   const report: PreflightReport = {
     schemaVersion: 1,
     mode,
