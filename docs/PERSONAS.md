@@ -8499,3 +8499,50 @@ tests, and the combined start run should report 78 tests across
 
 Kept change: one impact-routing start test split, this persona note, and no
 release action.
+
+## One Hundred Seventy Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform Review Owner,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the impact-routing split, `tests/core/start.test.ts` was still a
+large maintainability hotspot. The next cohesive block covered end-to-end
+orientation routing: repo map questions, contracts-view command discovery, and
+verify-view proof selection.
+
+Smallest fix: move the five repo-orientation and proof-selection scenarios into
+`tests/core/startRepoOrientation.test.ts` and leave the remaining start routing
+matrix in `tests/core/start.test.ts`. This preserves the start-report behavior
+coverage while reducing the original start test file from 2,915 lines to 2,507
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "read-first orientation|first-time codebase orientation|repo summary questions|project run questions|proactive proof-selection"
+npm run test -- tests/core/start.test.ts tests/core/startRepoOrientation.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startRepoOrientation.test.ts --format json
+```
+
+## Review Guardrails: Start Repo Orientation Test Split
+
+Delete-list after this slice:
+
+- Do not change start routing behavior, repo-map commands, contracts-view
+  commands, verify-view commands, regression-plan fallback behavior,
+  alternative-route suppression, mode inference, proof command shaping, package
+  version, release artifacts, publish behavior, deploy behavior, push behavior,
+  or merge behavior.
+- Do not weaken coverage for read-first orientation, npm/script command
+  discovery, first-time codebase tours, repo summaries, project-run questions,
+  proactive proof selection, or failing-test fallback.
+- Do not merge this into lower-level route-action tests; this slice is
+  end-to-end start-report coverage.
+
+Reviewer edge case: the focused orientation run should still report five tests,
+and the combined start run should report 70 tests across
+`tests/core/start.test.ts` and `tests/core/startRepoOrientation.test.ts`.
+
+Kept change: one repo-orientation start test split, this persona note, and no
+release action.
