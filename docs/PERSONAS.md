@@ -4254,3 +4254,49 @@ reviewed instead of fast-pathed.
 Kept change: one git/ref state helper module, one maintainability regression,
 existing review behavior coverage, this persona note, and no public schema
 change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: OSS Maintainer and Agent-Orchestrating Engineer.
+
+Reason: `src/mcp/server.ts` remains a high-churn production hotspot and is the
+first integration boundary many agent clients touch. It should be easy to audit
+the stdio server orchestration without reading the protocol-specific
+initialize, tool, prompt, and resource handlers inline.
+
+Smallest fix: move MCP request handler construction into
+`serverHandlers.ts`; keep `server.ts` responsible for package version lookup,
+lifecycle creation, raw message parsing, JSON-RPC dispatch, and stdio wiring.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "MCP request handlers"
+npm run test -- tests/mcp/server.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverHandlers.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: MCP Request Handler Extraction
+
+Delete-list after this slice:
+
+- Do not change MCP method names, request params, response shapes, error codes,
+  progress notifications, or tool content formatting.
+- Do not change tool session recording, watcher startup timing, prompt/resource
+  definitions, stdio behavior, or public CLI/MCP surface.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: missing tool, prompt, and resource params should keep the
+same invalid-params responses; unknown tools should keep method-not-found;
+tool exceptions should still return `isError: true` without cost or budget
+sidecars; initialize should still start the watcher only through the lifecycle
+boundary.
+
+Kept change: one MCP handler module, one maintainability regression, existing
+MCP behavior coverage, this persona note, and no public schema change.

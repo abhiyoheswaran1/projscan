@@ -138,6 +138,40 @@ describe('MCP server maintainability', () => {
     expect(close!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
 
+  it('keeps MCP request handlers out of server orchestration', async () => {
+    const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
+    for (const handlerName of [
+      'handleInitialize',
+      'handleToolsCall',
+      'handlePromptsGet',
+      'handleResourcesRead',
+    ]) {
+      expect(serverSource).not.toContain(`function ${handlerName}`);
+    }
+    expect(serverSource).not.toContain('Missing tool name');
+    expect(serverSource).not.toContain('Missing prompt name');
+    expect(serverSource).not.toContain('Missing resource uri');
+
+    const handlersModule = await inspectRepoSourceFile('src/mcp/serverHandlers.ts');
+    const createHandlers = handlersModule.functions?.find(
+      (fn) => fn.name === 'createMcpDispatchHandlers',
+    );
+    expect(createHandlers).toBeDefined();
+    expect(createHandlers!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+
+    const expectedHandlers = new Map([
+      ['handleInitialize', 5],
+      ['handleToolsCall', 7],
+      ['handlePromptsGet', 6],
+      ['handleResourcesRead', 5],
+    ]);
+    for (const [handlerName, maxComplexity] of expectedHandlers) {
+      const handler = handlersModule.functions?.find((fn) => fn.name === handlerName);
+      expect(handler).toBeDefined();
+      expect(handler!.cyclomaticComplexity).toBeLessThanOrEqual(maxComplexity);
+    }
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const testsRoot = path.join(process.cwd(), 'tests/mcp');
     const sessionRecordingTools = ['projscan_structure', 'projscan_file', 'projscan_search'];

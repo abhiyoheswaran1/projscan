@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract MCP request handler construction
+
+- Status: accepted
+- Context: `src/mcp/server.ts` still owned initialize, tools/call, prompts/get, and resources/read request handlers after parser, dispatch, context, session, and lifecycle extraction.
+- Decision: Move MCP request handler construction into `src/mcp/serverHandlers.ts`; keep `src/mcp/server.ts` focused on version lookup, lifecycle setup, JSON-RPC parsing/dispatch, and stdio transport.
+- Consequences: MCP method names, response shapes, progress emission, tool session recording, prompt/resource behavior, and watcher startup behavior stay unchanged, while `src/mcp/server.ts` drops to 131 lines and CC 10.
+- Verification: `npm run test -- tests/mcp/server.test.ts -t "MCP request handlers"` plus the full MCP server test file.
+
 ## 2026-06-17: Extract review git/ref state checks
 
 - Status: accepted
