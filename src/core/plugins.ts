@@ -10,6 +10,14 @@ import type {
   SemanticGraphReport,
 } from '../types.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
+import { validateManifest } from './pluginManifestValidation.js';
+import type {
+  PluginAnalyzerManifest,
+  PluginDiagnostic,
+  PluginManifest,
+  PluginReporterCommand,
+  PluginReporterManifest,
+} from './pluginManifestValidation.js';
 
 /**
  * Stable local plugin API (2.0+).
@@ -27,42 +35,25 @@ import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
  */
 
 export const PLUGIN_PREVIEW_FLAG = 'PROJSCAN_PLUGINS_PREVIEW';
-export const PLUGIN_SCHEMA_VERSION = 1;
 export const PLUGIN_DIR = '.projscan-plugins';
 export const PLUGIN_MANIFEST_EXT = '.projscan-plugin.json';
+export {
+  PLUGIN_REPORTER_COMMANDS,
+  PLUGIN_SCHEMA_VERSION,
+  validateManifest,
+} from './pluginManifestValidation.js';
+export type {
+  PluginAnalyzerManifest,
+  PluginDiagnostic,
+  PluginKind,
+  PluginManifest,
+  PluginReporterCommand,
+  PluginReporterManifest,
+} from './pluginManifestValidation.js';
 
 type DynamicImport = (specifier: string) => Promise<Record<string, unknown>>;
 // Keep arbitrary plugin file URLs out of Vite/Vitest's static import transform.
 const dynamicImport = new Function('specifier', 'return import(specifier)') as DynamicImport;
-
-export type PluginKind = 'analyzer' | 'reporter';
-export type PluginReporterCommand = 'doctor' | 'analyze' | 'ci';
-
-export const PLUGIN_REPORTER_COMMANDS = ['doctor', 'analyze', 'ci'] as const;
-
-interface PluginManifestBase {
-  schemaVersion: number;
-  name: string;
-  kind: PluginKind;
-  /** Module entry point, relative to the manifest file. */
-  module: string;
-  /** Optional human-readable summary. */
-  description?: string;
-}
-
-export interface PluginAnalyzerManifest extends PluginManifestBase {
-  kind: 'analyzer';
-  /** Issue category emitted by this plugin (`Issue.category`). */
-  category: string;
-}
-
-export interface PluginReporterManifest extends PluginManifestBase {
-  kind: 'reporter';
-  /** CLI commands this reporter can render. */
-  commands: PluginReporterCommand[];
-}
-
-export type PluginManifest = PluginAnalyzerManifest | PluginReporterManifest;
 
 export interface PluginAnalyzerContext {
   schemaVersion: 1;
@@ -527,45 +518,6 @@ export async function runAnalyzerPlugins(
   return out;
 }
 
-export interface PluginDiagnostic {
-  code:
-    | 'invalid-manifest'
-    | 'unsupported-schema-version'
-    | 'invalid-name'
-    | 'unsupported-kind'
-    | 'invalid-module'
-    | 'invalid-category'
-    | 'invalid-commands'
-    | 'invalid-description'
-    | 'invalid-manifest-path'
-    | 'invalid-json'
-    | 'read-error'
-    | 'plugins-disabled'
-    | 'reporter-not-found'
-    | 'reporter-unsupported-command'
-    | 'invalid-reporter-export'
-    | 'reporter-load-error'
-    | 'reporter-render-error'
-    | 'plugin-untrusted';
-  message: string;
-  field?: string;
-  hint?: string;
-}
-
-interface ValidationOk {
-  ok: true;
-  manifest: PluginManifest;
-}
-interface ValidationFail {
-  ok: false;
-  reason: string;
-  diagnostic: PluginDiagnostic;
-}
-
-function failValidation(diagnostic: PluginDiagnostic): ValidationFail {
-  return { ok: false, reason: diagnostic.message, diagnostic };
-}
-
 function pluginRuntimeFail(
   diagnostic: PluginDiagnostic,
 ): PluginReporterResolveResult & PluginReporterRenderResult {
@@ -574,137 +526,6 @@ function pluginRuntimeFail(
 
 function formatError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-export function validateManifest(input: unknown): ValidationOk | ValidationFail {
-  if (!input || typeof input !== 'object') {
-    return failValidation({
-      code: 'invalid-manifest',
-      message: 'manifest must be a JSON object',
-      hint: 'Use an object with schemaVersion, name, kind, module, and category fields.',
-    });
-  }
-  const obj = input as Record<string, unknown>;
-  if (obj.schemaVersion !== PLUGIN_SCHEMA_VERSION) {
-    return failValidation({
-      code: 'unsupported-schema-version',
-      field: 'schemaVersion',
-      message: `unsupported schemaVersion ${String(obj.schemaVersion)}; expected ${PLUGIN_SCHEMA_VERSION}`,
-      hint: `Set "schemaVersion": ${PLUGIN_SCHEMA_VERSION}.`,
-    });
-  }
-  if (typeof obj.name !== 'string' || !/^[a-z0-9][a-z0-9._/-]{0,64}$/i.test(obj.name)) {
-    return failValidation({
-      code: 'invalid-name',
-      field: 'name',
-      message: 'name is required and must be 1-65 chars of [a-z0-9._/-]',
-      hint: 'Use a stable 1-65 character plugin id such as "team/no-console" or "my-plugin".',
-    });
-  }
-  if (obj.kind !== 'analyzer' && obj.kind !== 'reporter') {
-    return failValidation({
-      code: 'unsupported-kind',
-      field: 'kind',
-      message: 'kind must be "analyzer" or "reporter"',
-      hint: 'Set "kind": "analyzer" for issue-producing plugins or "kind": "reporter" for CLI output plugins.',
-    });
-  }
-  if (typeof obj.module !== 'string' || obj.module.length === 0) {
-    return failValidation({
-      code: 'invalid-module',
-      field: 'module',
-      message: 'module is required and must be a relative path',
-      hint: 'Point to a local module inside the same plugin directory, for example "./check.mjs".',
-    });
-  }
-  // Path-traversal guard. Modules must resolve under the manifest's own dir.
-  if (path.isAbsolute(obj.module) || obj.module.split(/[/\\]/).some((seg) => seg === '..')) {
-    return failValidation({
-      code: 'invalid-module',
-      field: 'module',
-      message: 'module must be a relative path inside the plugin dir',
-      hint: 'Do not use absolute paths or any ".." path segment.',
-    });
-  }
-  if (obj.description !== undefined && typeof obj.description !== 'string') {
-    return failValidation({
-      code: 'invalid-description',
-      field: 'description',
-      message: 'description must be a string when provided',
-    });
-  }
-  if (obj.kind === 'analyzer') {
-    if (typeof obj.category !== 'string' || obj.category.length === 0) {
-      return failValidation({
-        code: 'invalid-category',
-        field: 'category',
-        message: 'category is required for analyzer plugins',
-        hint: 'Use the fallback Issue.category for this plugin, for example "custom" or "security".',
-      });
-    }
-    return {
-      ok: true,
-      manifest: {
-        schemaVersion: obj.schemaVersion,
-        name: obj.name,
-        kind: obj.kind,
-        module: obj.module,
-        category: obj.category,
-        ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
-      },
-    };
-  }
-
-  const commandValidation = validateReporterCommands(obj.commands);
-  if (!commandValidation.ok) return commandValidation;
-
-  return {
-    ok: true,
-    manifest: {
-      schemaVersion: obj.schemaVersion,
-      name: obj.name,
-      kind: obj.kind,
-      module: obj.module,
-      commands: commandValidation.commands,
-      ...(typeof obj.description === 'string' ? { description: obj.description } : {}),
-    },
-  };
-}
-
-function validateReporterCommands(
-  input: unknown,
-): { ok: true; commands: PluginReporterCommand[] } | ValidationFail {
-  if (!Array.isArray(input) || input.length === 0) {
-    return failValidation({
-      code: 'invalid-commands',
-      field: 'commands',
-      message: 'commands must be a non-empty array for reporter plugins',
-      hint: 'Use one or more supported commands: doctor, analyze, ci.',
-    });
-  }
-
-  const seen = new Set<PluginReporterCommand>();
-  const invalid: string[] = [];
-  for (const value of input) {
-    if (typeof value !== 'string' || !isReporterCommand(value)) {
-      invalid.push(String(value));
-      continue;
-    }
-    seen.add(value);
-  }
-  if (invalid.length > 0) {
-    return failValidation({
-      code: 'invalid-commands',
-      field: 'commands',
-      message: `unsupported reporter command(s): ${invalid.join(', ')}`,
-      hint: 'Supported reporter commands are: doctor, analyze, ci.',
-    });
-  }
-  return { ok: true, commands: [...seen] };
-}
-
-function isReporterCommand(value: string): value is PluginReporterCommand {
-  return (PLUGIN_REPORTER_COMMANDS as readonly string[]).includes(value);
 }
 
 function isWellShapedIssue(x: unknown): x is Issue {

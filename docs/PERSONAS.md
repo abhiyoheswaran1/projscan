@@ -9468,3 +9468,47 @@ and defaulted bindings.
 
 Kept change: one dispatcher refactor, one maintainability regression test, this
 persona note, and no release action in this slice.
+
+## One Hundred Ninety Ninth Slice Decision
+
+Selected personas: Plugin Platform Maintainer, Security Reviewer, and
+Integration Team Lead.
+
+Reason: `src/core/plugins.ts` remained a high-complexity hotspot in
+trust-adjacent code. Manifest validation mixed schema checks, reporter command
+checks, diagnostics, and runtime plugin loading in one large file, which makes
+review harder for teams evaluating local plugin execution safety.
+
+Smallest fix: move plugin manifest schema constants, manifest types,
+diagnostic types, reporter command validation, and `validateManifest` into
+`src/core/pluginManifestValidation.ts`. Keep `plugins.ts` as the runtime
+loader/trust boundary and re-export the same public names from it.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/pluginPipeline.test.ts tests/core/pluginTrustGate.test.ts tests/mcp/plugin.test.ts
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginManifestValidation.ts --format json
+```
+
+## Review Guardrails: Plugin Manifest Validation Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin preview enablement, trust-on-first-use storage, dynamic
+  import behavior, reporter rendering, manifest schema, diagnostic
+  codes/messages, public export names, package metadata, release artifacts,
+  publish behavior, deploy behavior, push behavior, or merge behavior.
+- Do not add dependencies, network calls, telemetry, plugin execution paths, or
+  automatic plugin trust.
+- Do not treat this as a release-ready signal while the large-train preflight
+  caution remains.
+
+Reviewer edge case: invalid module paths with absolute paths or `..` segments
+must still produce the same `invalid-module` diagnostic and must not reach the
+dynamic import path.
+
+Kept change: one manifest-validation module extraction, one maintainability
+regression test, this persona note, and no release action in this slice.

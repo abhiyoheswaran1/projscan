@@ -2129,3 +2129,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Convert `bindingIdentifierNames` into a small resolver dispatcher and delegate Identifier, AssignmentPattern, RestElement, ObjectPattern, and ArrayPattern traversal to focused helpers.
 - Consequences: `bindingIdentifierNames` drops from cyclomatic complexity 12 to 3, and `projscan review` no longer reports risky functions. AST reference extraction, member alias capture, and framework request-source behavior remain unchanged.
 - Verification: `npm run test -- tests/core/astMembersArchitecture.test.ts` failed before the refactor, then passed. The AST reference suite, Remix/Next/Hono framework dataflow suites, `projscan file src/core/astMembers.ts --format json`, and a parsed `projscan review --format json --quiet` summary passed after the refactor.
+
+## 2026-06-17: Extract plugin manifest validation
+
+- Status: accepted
+- Context: `src/core/plugins.ts` remained a plugin trust-adjacent hotspot at 725 lines / cyclomatic complexity 90, with `validateManifest` at cyclomatic complexity 20.
+- Decision: Move plugin manifest schema constants, manifest types, diagnostic types, reporter command validation, and `validateManifest` into `src/core/pluginManifestValidation.ts`, while re-exporting the same public names from `src/core/plugins.ts`.
+- Consequences: `src/core/plugins.ts` drops to 547 lines / cyclomatic complexity 65 and remains focused on plugin runtime loading, trust checks, reporter rendering, and issue shaping. `validateManifest` now lives in a focused validation module at cyclomatic complexity 3. Public plugin API names and diagnostic behavior are unchanged.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts` failed before extraction, then passed. Plugin pipeline, trust-gate, and MCP plugin suites passed; `projscan file` metrics for both plugin modules reported no issues.
