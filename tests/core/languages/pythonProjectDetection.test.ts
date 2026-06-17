@@ -182,4 +182,29 @@ describe('detectPythonProject', () => {
     expect(scopes['pytest']).toBe('dev');
     expect(scopes['black']).toBe('dev');
   });
+
+  it('reads prefixed dev requirements as root Python project evidence', async () => {
+    await fs.writeFile(path.join(tmp, 'dev-requirements.txt'), 'pytest\n');
+    await fs.writeFile(path.join(tmp, 'test-requirements.txt'), 'tox\n');
+    await fs.writeFile(path.join(tmp, 'lint-requirements.txt'), 'ruff\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('dev-requirements.txt'),
+      fileEntry('test-requirements.txt'),
+      fileEntry('lint-requirements.txt'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.packageRoots).toEqual(['.']);
+    expect(info?.manifestFiles).toEqual([
+      'dev-requirements.txt',
+      'test-requirements.txt',
+      'lint-requirements.txt',
+    ]);
+    expect(Object.fromEntries(info!.declared.map((dep) => [dep.name, dep.scope]))).toEqual({
+      pytest: 'dev',
+      tox: 'dev',
+      ruff: 'dev',
+    });
+  });
 });

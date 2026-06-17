@@ -4,7 +4,9 @@ import type { FileEntry } from '../../types.js';
 import type { PythonDeclaredDep, PythonLockedDep } from './pythonProjectTypes.js';
 import { splitPep508 } from './pythonPep508.js';
 
-const REQUIREMENTS_FILE_RE = /^requirements(-.*)?\.txt$/i;
+const REQUIREMENTS_FILE_RE = /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.txt$/i;
+const DEV_REQUIREMENTS_FILE_RE =
+  /^(?:requirements-(?:test|dev|lint)|(?:dev|test|lint)-requirements)\.txt$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 
 export interface PythonRequirementEvidence {
@@ -38,7 +40,7 @@ async function appendRootRequirements(
     const content = await tryRead(path.join(rootPath, rel));
     if (content === null) continue;
     evidence.manifestFiles.push(rel);
-    const isDev = /requirements(-test|-dev|-lint)\.txt$/i.test(rel);
+    const isDev = DEV_REQUIREMENTS_FILE_RE.test(path.basename(rel));
     const deps = parseRequirements(content, rel, isDev ? 'dev' : 'main');
     evidence.declared.push(...deps);
     evidence.locked.push(...deps.flatMap(requirementPinToLockedDep));
