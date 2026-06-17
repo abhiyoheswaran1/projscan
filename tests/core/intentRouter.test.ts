@@ -299,6 +299,30 @@ describe('routeIntent', () => {
     expect(riskSignalsSource).toContain('export function hotspotWhereContextMatches');
   });
 
+  it('keeps release and no-release routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterReleaseSignals.js'");
+    expect(routerSource).not.toContain('function hasProhibitedReleaseWorkflowAction');
+    expect(routerSource).not.toContain('function hasProhibitedVersionBumpAction');
+    expect(routerSource).not.toContain('function isReleaseWorkflowActionKeyword');
+    expect(routerSource).not.toContain('function isVersionBumpActionKeyword');
+    expect(routerSource).not.toContain('function prohibitedWorkflowKeywordMatches');
+    expect(routerSource).not.toContain('function releaseReadinessContextMatches');
+    expect(routerSource).not.toContain('function releaseTrainKeywordMatches');
+    expect(routerSource).not.toContain('function releaseCommunicationContextMatches');
+
+    const releaseSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterReleaseSignals.ts'),
+      'utf8',
+    );
+    expect(releaseSignalsSource).toContain('export function hasProhibitedReleaseWorkflowAction');
+    expect(releaseSignalsSource).toContain('export function prohibitedWorkflowKeywordMatches');
+    expect(releaseSignalsSource).toContain('export function releaseTrainKeywordMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

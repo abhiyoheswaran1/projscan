@@ -6774,3 +6774,53 @@ hotspot routing where they already did.
 Kept change: one risk/impact route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Forty Second Slice Decision
+
+Selected personas: Release Steward and Agent-Orchestrating Engineer.
+
+Reason: release-readiness routing is where agents ask whether a branch is ready
+to ship, deploy, publish, tag, or summarize release notes, while no-release
+phrasing is how an orchestrating agent stays inside an explicit implementation
+loop without accidentally turning a prohibition into a release action.
+
+Smallest fix: move prohibited release/version-bump matching plus release-train
+keyword gating into `intentRouterReleaseSignals.ts`; leave route catalog data,
+route scoring, confidence, start-mode handling, and dispatch composition inside
+`intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "release and no-release routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterReleaseSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Release And No-Release Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, release route entries, upgrade route entries,
+  route confidence scoring, `routeIntent`, start-mode behavior, or public route
+  result shape.
+- Do not change release-readiness, release-note, changelog, changed-since-last,
+  no-release, no-publish, no-deploy, no-tag, no-ship, no-push, no-merge, or
+  no-version-bump semantics except by moving the existing matcher cluster into
+  `intentRouterReleaseSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: "what should I check before release", "draft changelog
+entry", and "what changed since last deploy" should still route to release
+train, while "continue autonomous no-release roadmap validation; do not release
+or bump version" should keep release train and upgrade out of the top routes.
+
+Kept change: one release route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.

@@ -1969,3 +1969,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move that matcher cluster into `src/core/intentRouterRiskSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 5582 lines / CC 761 to 5332 lines / CC 732. The extracted helper imports only existing repo and regression signal helpers, has no hotspot history, preserves existing risk/impact keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "risk and impact routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract release and no-release route signals
+
+- Status: accepted
+- Context: Release-readiness routing and prohibited no-release/version-bump wording are small but high-risk helpers inside the intent-router hotspot because they decide whether "do not release" wording suppresses release/upgrade routes.
+- Decision: Move the release/no-release matcher cluster into `src/core/intentRouterReleaseSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 5332 lines / CC 732 to 5225 lines / CC 717. The extracted helper has no imports, no hotspot history, preserves existing release-readiness and no-release keyword semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "release and no-release routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
