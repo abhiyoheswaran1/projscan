@@ -1,6 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
+import type { FileEntry } from '../../src/types.js';
 
 describe('routeIntent architecture', () => {
   const keywordMatchesSource = () =>
@@ -349,6 +352,18 @@ describe('routeIntent architecture', () => {
     expect(releaseSignalsSource).toContain('export function releaseTrainKeywordMatches');
   });
 
+  it('keeps release keyword routing below the review high-CC threshold', async () => {
+    const releaseSignalsInspection = await inspectRepoSourceFile(
+      'src/core/intentRouterReleaseSignals.ts',
+    );
+    const releaseTrainKeywordMatches = releaseSignalsInspection.functions?.find(
+      (fn) => fn.name === 'releaseTrainKeywordMatches',
+    );
+
+    expect(releaseTrainKeywordMatches).toBeDefined();
+    expect(releaseTrainKeywordMatches!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
   it('keeps coordination and session routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
@@ -468,3 +483,18 @@ describe('routeIntent architecture', () => {
     expect(keywordMatchesModuleSource).toContain('export function routeKeywordMatches');
   });
 });
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = statSync(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
+}

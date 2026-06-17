@@ -2,6 +2,83 @@ type RouteToolEntry = {
   tool: string;
 };
 
+type KeywordRule = {
+  keywords: Set<string>;
+  matches: (tokens: Set<string>) => boolean;
+};
+
+const RELEASE_READINESS_CONTEXT_TOKENS = [
+  'release',
+  'releasing',
+  'deploy',
+  'deploying',
+  'deployed',
+  'deployment',
+  'ship',
+  'shipping',
+  'publish',
+  'tag',
+  'changelog',
+  'sbom',
+  'package',
+];
+const RELEASE_COMMUNICATION_CONTEXT_TOKENS = [
+  'release',
+  'releasing',
+  'deploy',
+  'deploying',
+  'deployed',
+  'deployment',
+  'ship',
+  'shipping',
+  'publish',
+  'tag',
+  'changelog',
+];
+const RELEASE_CHANGE_KEYWORDS = new Set(['build', 'built', 'changed', 'since', 'last']);
+const RELEASE_CHANGE_CONTEXT_TOKENS = ['build', 'built', 'changed', 'change', 'changes'];
+const RELEASE_NOTE_KEYWORDS = new Set([
+  'note',
+  'notes',
+  'draft',
+  'entry',
+  'summarize',
+  'summary',
+  'change',
+  'changes',
+]);
+const RELEASE_VERSION_CANDIDATE_KEYWORDS = new Set([
+  'cut',
+  'cutting',
+  'version',
+  'versions',
+  'candidate',
+  'worth',
+]);
+const RELEASE_VERSION_TOKENS = ['version', 'versions'];
+const RELEASE_VERSION_ACTION_TOKENS = ['cut', 'cutting', 'candidate', 'worth'];
+
+const RELEASE_TRAIN_KEYWORD_RULES: KeywordRule[] = [
+  {
+    keywords: new Set(['check']),
+    matches: releaseReadinessContextMatches,
+  },
+  {
+    keywords: RELEASE_CHANGE_KEYWORDS,
+    matches: (tokens) =>
+      releaseCommunicationContextMatches(tokens) &&
+      hasAnyToken(tokens, RELEASE_CHANGE_CONTEXT_TOKENS),
+  },
+  {
+    keywords: RELEASE_NOTE_KEYWORDS,
+    matches: releaseCommunicationContextMatches,
+  },
+  {
+    keywords: RELEASE_VERSION_CANDIDATE_KEYWORDS,
+    matches: releaseVersionCandidateContextMatches,
+  },
+];
+
 export function hasProhibitedReleaseWorkflowAction(intent: string): boolean {
   return (
     /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
@@ -42,71 +119,26 @@ export function prohibitedWorkflowKeywordMatches(
 }
 
 function releaseReadinessContextMatches(tokens: Set<string>): boolean {
-  return [
-    'release',
-    'releasing',
-    'deploy',
-    'deploying',
-    'deployed',
-    'deployment',
-    'ship',
-    'shipping',
-    'publish',
-    'tag',
-    'changelog',
-    'sbom',
-    'package',
-  ].some((token) => tokens.has(token));
+  return hasAnyToken(tokens, RELEASE_READINESS_CONTEXT_TOKENS);
 }
 
 export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>): boolean {
-  if (keyword === 'check') return releaseReadinessContextMatches(tokens);
-  if (['build', 'built', 'changed', 'since', 'last'].includes(keyword)) {
-    return (
-      releaseCommunicationContextMatches(tokens) &&
-      (tokens.has('build') ||
-        tokens.has('built') ||
-        tokens.has('changed') ||
-        tokens.has('change') ||
-        tokens.has('changes'))
-    );
-  }
-  if (
-    ['note', 'notes', 'draft', 'entry', 'summarize', 'summary', 'change', 'changes'].includes(
-      keyword,
-    )
-  ) {
-    return releaseCommunicationContextMatches(tokens);
-  }
-  if (['cut', 'cutting', 'version', 'versions', 'candidate', 'worth'].includes(keyword)) {
-    return releaseVersionCandidateContextMatches(tokens);
-  }
-  return true;
+  const rule = RELEASE_TRAIN_KEYWORD_RULES.find((candidate) => candidate.keywords.has(keyword));
+  return rule ? rule.matches(tokens) : true;
 }
 
 function releaseCommunicationContextMatches(tokens: Set<string>): boolean {
-  return [
-    'release',
-    'releasing',
-    'deploy',
-    'deploying',
-    'deployed',
-    'deployment',
-    'ship',
-    'shipping',
-    'publish',
-    'tag',
-    'changelog',
-  ].some((token) => tokens.has(token));
+  return hasAnyToken(tokens, RELEASE_COMMUNICATION_CONTEXT_TOKENS);
 }
 
 function releaseVersionCandidateContextMatches(tokens: Set<string>): boolean {
   return (
     releaseCommunicationContextMatches(tokens) ||
-    ((tokens.has('version') || tokens.has('versions')) &&
-      (tokens.has('cut') ||
-        tokens.has('cutting') ||
-        tokens.has('candidate') ||
-        tokens.has('worth')))
+    (hasAnyToken(tokens, RELEASE_VERSION_TOKENS) &&
+      hasAnyToken(tokens, RELEASE_VERSION_ACTION_TOKENS))
   );
+}
+
+function hasAnyToken(tokens: Set<string>, candidates: readonly string[]): boolean {
+  return candidates.some((token) => tokens.has(token));
 }
