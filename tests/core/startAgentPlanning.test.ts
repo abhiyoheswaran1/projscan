@@ -107,6 +107,31 @@ test('start report turns handoff requests into an agent brief', async () => {
   );
 });
 
+test('start report surfaces a swarm coordination hint for coordination intents', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'coordinate parallel agents working the same repo',
+  });
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_coordinate',
+      command: 'projscan coordinate --format json',
+    }),
+  );
+  expect(report.coordinationHints).toContainEqual(
+    expect.objectContaining({
+      id: 'swarm-coordination',
+      label: 'Validate swarm coordination locally',
+      command: 'projscan coordinate --format json',
+    }),
+  );
+  const hint = report.coordinationHints.find((entry) => entry.id === 'swarm-coordination');
+  expect(hint?.message).toContain('collisions, claims, and merge order');
+  expect(hint?.message).toContain('local worktree evidence');
+});
+
 test('start report turns open-ended next-step questions into a workplan', async () => {
   const root = await makeTempProject();
 

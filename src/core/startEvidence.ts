@@ -1,4 +1,5 @@
 import { loadSession } from './session.js';
+import { routesForIntent } from './startMode.js';
 import { preflightModeForMission } from './startSuccessCriteria.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import type { SessionCoordinationHint } from '../types/session.js';
@@ -9,6 +10,7 @@ export function buildStartCoordinationHints(
   riskSources: StartReport['evidence']['riskSources'],
   mode: WorkplanMode,
   harnessHints: SessionCoordinationHint[] = [],
+  intent?: string,
 ): SessionCoordinationHint[] {
   const preflightMode = preflightModeForMission(mode);
   const hints: SessionCoordinationHint[] = [
@@ -19,6 +21,8 @@ export function buildStartCoordinationHints(
       command: `projscan preflight --mode ${preflightMode} --format json`,
     },
   ];
+  const swarmHint = swarmCoordinationHintForIntent(intent);
+  if (swarmHint) hints.push(swarmHint);
   hints.push(...harnessHints);
   if (riskSources.sessionMemory.totalTouchedFiles > 0) {
     hints.push({
@@ -29,6 +33,20 @@ export function buildStartCoordinationHints(
     });
   }
   return hints;
+}
+
+function swarmCoordinationHintForIntent(
+  intent: string | undefined,
+): SessionCoordinationHint | null {
+  const primaryRoute = routesForIntent(intent)[0];
+  if (primaryRoute?.tool !== 'projscan_coordinate') return null;
+  return {
+    id: 'swarm-coordination',
+    label: 'Validate swarm coordination locally',
+    message:
+      'Intent routes to the one-call swarm coordination read; run it before parallel edits so collisions, claims, and merge order are checked from local worktree evidence.',
+    command: 'projscan coordinate --format json',
+  };
 }
 
 export async function buildStartRiskSources(

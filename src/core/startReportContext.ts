@@ -42,6 +42,7 @@ export function buildStartReportContext(input: BuildStartReportContextInput): St
     input.riskSources,
     input.mode,
     input.harnessHints,
+    input.intent,
   );
   const missionControl = buildMissionControl({
     mode: input.mode,
