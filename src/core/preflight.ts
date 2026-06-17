@@ -9,6 +9,7 @@ import { policyIssueReasons } from './preflightIssueReasons.js';
 import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
+import { reviewReasons } from './preflightReviewReasons.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -299,38 +300,7 @@ function buildPreflightReasons(input: {
     });
   }
 
-  if (input.review.available) {
-    if ((input.review.newTaintFlows ?? 0) > 0) {
-      reasons.push({
-        severity: 'error',
-        source: 'taint',
-        message: `${input.review.newTaintFlows} new taint flow(s) found in review`,
-        tool: 'projscan_review',
-      });
-    }
-    if (input.review.verdict === 'block') {
-      reasons.push({
-        severity: input.releaseScale?.detected ? 'warning' : 'error',
-        source: 'review',
-        message: formatReviewBlockMessage(input.review, input.releaseScale),
-        tool: 'projscan_review',
-      });
-    } else if (input.review.verdict === 'review') {
-      reasons.push({
-        severity: 'warning',
-        source: 'review',
-        message: 'Review verdict requires careful review',
-        tool: 'projscan_review',
-      });
-    }
-  } else if (input.mode !== 'before_edit') {
-    reasons.push({
-      severity: 'warning',
-      source: 'review',
-      message: `Review unavailable: ${input.review.reason ?? 'unknown reason'}`,
-      tool: 'projscan_review',
-    });
-  }
+  reasons.push(...reviewReasons(input));
 
   const touched = new Set(input.session.touchedFiles);
   const hotspotTouches =
@@ -382,16 +352,6 @@ function buildPreflightReasons(input: {
   }
 
   return reasons;
-}
-
-function formatReviewBlockMessage(
-  review: PreflightReviewEvidence,
-  releaseScale: PreflightReleaseScaleEvidence | null,
-): string {
-  if (releaseScale?.detected) {
-    return `Review verdict is block due to scale/complexity risk: ${review.summary ?? 'review requires manual sign-off'}`;
-  }
-  return 'Review verdict is block';
 }
 
 function buildEvidence(input: {

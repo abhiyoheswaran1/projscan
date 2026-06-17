@@ -4587,3 +4587,52 @@ as scale-only release risk.
 Kept change: one preflight release-scale helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Sixth Slice Decision
+
+Selected personas: Platform/Release Owner and Security-Conscious Reviewer.
+
+Reason: review and taint reasons are the strongest preflight signals before
+commit or merge. Keeping review block, review caution, review unavailable, and
+taint wording inside the main reason orchestrator made it harder to audit why a
+large release-scale review block is downgraded to warning while concrete taint
+still blocks.
+
+Smallest fix: move review-related reason construction into
+`preflightReviewReasons.ts`; keep `buildPreflightReasons` responsible for
+ordering policy, changed-file, release-scale, review, session, health, and
+coordination reason groups.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "review reason formatting"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightReviewReasons.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Review-Reason Extraction
+
+Delete-list after this slice:
+
+- Do not change taint, review block, review caution, or review-unavailable
+  reason order, severity, source, message text, or tool routing.
+- Do not change release-scale review downgrade behavior, review computation,
+  preflight verdict logic, required checks, evidence shape, or public report
+  schema.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: new taint flows should still produce an error reason before
+review-verdict reasons; release-scale review blocks should still become warning
+reasons; unavailable review evidence outside before-edit mode should still
+caution.
+
+Kept change: one preflight review-reason helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

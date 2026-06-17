@@ -178,6 +178,30 @@ test('preflight keeps release-scale evidence isolated from the main preflight mo
   expect(blockers!.cyclomaticComplexity).toBeLessThanOrEqual(8);
 });
 
+test('preflight keeps review reason formatting isolated from the reason orchestrator', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('Review verdict is block');
+  expect(preflightSource).not.toContain('new taint flow(s) found in review');
+  expect(preflightSource).not.toContain('Review unavailable');
+
+  const reviewReasons = await inspectRepoSourceFile('src/core/preflightReviewReasons.ts');
+  const entrypoint = reviewReasons.functions?.find((fn) => fn.name === 'reviewReasons');
+  const verdictReason = reviewReasons.functions?.find((fn) => fn.name === 'reviewVerdictReason');
+  const blockMessage = reviewReasons.functions?.find((fn) => fn.name === 'formatReviewBlockMessage');
+  const unavailableReason = reviewReasons.functions?.find(
+    (fn) => fn.name === 'reviewUnavailableReason',
+  );
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(verdictReason).toBeDefined();
+  expect(verdictReason!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(blockMessage).toBeDefined();
+  expect(blockMessage!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(unavailableReason).toBeDefined();
+  expect(unavailableReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

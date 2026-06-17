@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight review reasons
+
+- Status: accepted
+- Context: `buildPreflightReasons` in `src/core/preflight.ts` still owned taint, review-verdict, release-scale review downgrade, and review-unavailable reason formatting.
+- Decision: Move review-related preflight reason construction into `src/core/preflightReviewReasons.ts`.
+- Consequences: Review, taint, and unavailable-review reason order, severity, messages, tools, and release-scale downgrade behavior stay unchanged, while `buildPreflightReasons` drops from CC 20 to CC 12 and `src/core/preflight.ts` drops to 522 lines / CC 66.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "review reason formatting"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight release-scale evidence
 
 - Status: accepted
