@@ -32,6 +32,7 @@ import {
   privacyCheckKeywordMatches,
 } from './intentRouterSecuritySignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
+import { searchCommunicationArtifactContextMatches } from './intentRouterSearchCommunicationSignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
@@ -4689,52 +4690,6 @@ function searchDomainWorkflowContextMatches(tokens: Set<string>): boolean {
     subscriptionRenewal;
   if (!subject) return false;
   return locator || action || tokens.size >= 3;
-}
-
-function searchCommunicationArtifactContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo', 'next'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  if (
-    [
-      'leak',
-      'leaks',
-      'leaking',
-      'logged',
-      'logging',
-      'store',
-      'stores',
-      'retention',
-      'pii',
-      'gdpr',
-      'security',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const artifact = ['template', 'templates', 'copy', 'pdf'].some((token) => tokens.has(token));
-  const emailSubject =
-    (tokens.has('email') || tokens.has('emails')) &&
-    (artifact || tokens.has('welcome') || tokens.has('receipt') || tokens.has('reset'));
-  const pushSubject =
-    tokens.has('push') &&
-    (tokens.has('notification') || tokens.has('notifications')) &&
-    tokens.has('copy');
-  const smsSubject = tokens.has('sms') && (tokens.has('template') || tokens.has('verification'));
-  const receiptSubject = tokens.has('receipt') && (tokens.has('email') || tokens.has('template'));
-  const invoiceSubject = tokens.has('invoice') && tokens.has('pdf');
-  const subject = emailSubject || pushSubject || smsSubject || receiptSubject || invoiceSubject;
-  if (!subject) return false;
-  return (
-    locator ||
-    ['send', 'sends', 'sent', 'generated', 'created'].some((token) => tokens.has(token)) ||
-    tokens.size >= 3
-  );
 }
 
 function searchStateManagementContextMatches(tokens: Set<string>): boolean {

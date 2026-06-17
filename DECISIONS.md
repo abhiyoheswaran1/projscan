@@ -1825,3 +1825,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move API contract search matching into `src/core/intentRouterSearchApiSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7508 lines / CC 1265 to 7469 lines / CC 1243. The extracted helper has no hotspot history, max function CC 7, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "API contract search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract communication search route signals
+
+- Status: accepted
+- Context: Communication artifact lookup routing for email templates/copy, push notification copy, SMS templates, receipt emails/templates, and invoice PDFs was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move communication artifact search matching into `src/core/intentRouterSearchCommunicationSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7469 lines / CC 1243 to 7424 lines / CC 1221. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "communication artifact search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

@@ -149,6 +149,23 @@ describe('routeIntent', () => {
     expect(apiSignalsSource).toContain('export function searchApiContractContextMatches');
   });
 
+  it('keeps communication artifact search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchCommunicationSignals.js'");
+    expect(routerSource).not.toContain('function searchCommunicationArtifactContextMatches');
+
+    const communicationSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchCommunicationSignals.ts'),
+      'utf8',
+    );
+    expect(communicationSignalsSource).toContain(
+      'export function searchCommunicationArtifactContextMatches',
+    );
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

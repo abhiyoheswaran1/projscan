@@ -5903,3 +5903,50 @@ use the public-contract understanding path.
 Kept change: one API contract search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: communication artifact lookup routing helps agents find existing email
+templates, email copy, push notification copy, SMS templates, receipt
+artifacts, and invoice PDFs without creating implementation work. Maintainers
+need sensitive/security wording to remain outside this search matcher so
+privacy/security routing stays distinct.
+
+Smallest fix: move communication artifact search matching into
+`intentRouterSearchCommunicationSignals.ts`; leave route catalog data, route
+scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "communication artifact search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchCommunicationSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Communication Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, privacy/security routing,
+  route confidence scoring, `routeIntent`, or public route result shape.
+- Do not change communication artifact keyword semantics except by moving the
+  existing cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is welcome email template" should
+still route as code search, while "where is PII logged in email" should stay
+out of the communication search matcher and remain available to
+privacy/security routing.
+
+Kept change: one communication artifact search route-signal helper module, one
+router boundary regression, existing route/start behavior coverage, this
+persona note, and no public API change.
