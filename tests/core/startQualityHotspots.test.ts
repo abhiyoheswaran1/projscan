@@ -152,3 +152,30 @@ test('start report turns performance bottleneck questions into hotspots', async 
   );
   expect(report.missionControl.proofCommands).toContain('projscan hotspots --format json');
 });
+
+test('start report turns tech debt simplification into hotspots', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what tech debt should I pay down',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('default');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Hotspots',
+      tool: 'projscan_hotspots',
+      cli: 'projscan hotspots',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['tech', 'debt']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan hotspots --format json',
+      tool: 'projscan_hotspots',
+      args: {},
+    }),
+  );
+});

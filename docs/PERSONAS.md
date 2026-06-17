@@ -8825,3 +8825,55 @@ across `tests/core/start.test.ts` and
 
 Kept change: one security/trust start test split, this persona note, and no
 release action.
+
+## One Hundred Eighty Fifth Slice Decision
+
+Selected personas: Triage-Focused Maintainer, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the security split, `tests/core/start.test.ts` still mixed
+general start routing with bug-hunt planning prompts and a tech-debt hotspot
+prompt. These cases share two adjacent behavior surfaces: quick-fix planning
+should route to `projscan bug-hunt`, while tech-debt simplification should stay
+with hotspot/quality routing.
+
+Smallest fix: move the five bug-hunt planning scenarios into a new
+`tests/core/startBugHuntRouting.test.ts` file, move the tech-debt hotspot
+scenario into `tests/core/startQualityHotspots.test.ts`, and keep the remaining
+start routing matrix in `tests/core/start.test.ts`. This preserves behavior
+coverage while reducing the original start test file from 1,710 lines to 1,536
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "first-fix prioritization|fastest safe fix|quick-win wording|broad improve next|tiny safe task|tech debt simplification"
+npm run test -- tests/core/startBugHuntRouting.test.ts -t "first-fix prioritization|fastest safe fix|quick-win wording|broad improve next|tiny safe task"
+npm run test -- tests/core/startQualityHotspots.test.ts -t "tech debt simplification"
+npm run test -- tests/core/start.test.ts tests/core/startBugHuntRouting.test.ts tests/core/startQualityHotspots.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startBugHuntRouting.test.ts --format json
+npm exec projscan -- file tests/core/startQualityHotspots.test.ts --format json
+```
+
+## Review Guardrails: Start Bug-Hunt Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan bug-hunt`, `projscan hotspots`, bug-hunt mode
+  inference, fix-suggest alternatives, preflight alternatives, tech-debt hotspot
+  routing, package version, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+- Do not weaken coverage for "what should I fix first", fastest safe fix,
+  quick-win, broad improve-next, five-minute task, or tech-debt prompts.
+- Do not broaden this into bug-hunt ranking, hotspot scoring, or planning-route
+  behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused bug-hunt run should report five tests, the
+focused tech-debt hotspot run should report one test, and the combined
+start/bug-hunt/hotspot run should report 51 tests across
+`tests/core/start.test.ts`, `tests/core/startBugHuntRouting.test.ts`, and
+`tests/core/startQualityHotspots.test.ts`.
+
+Kept change: one bug-hunt/hotspot start test split, this persona note, and no
+release action.
