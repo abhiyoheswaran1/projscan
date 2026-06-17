@@ -6,9 +6,11 @@ import { EXPRESS_REQUEST_SOURCES, expressRequestSource } from './frameworkExpres
 import { FASTIFY_REQUEST_SOURCES, fastifyRequestSource } from './frameworkFastifySources.js';
 import { HONO_REQUEST_SOURCES, honoRequestSource } from './frameworkHonoSources.js';
 import { KOA_REQUEST_SOURCES, koaRequestSource } from './frameworkKoaSources.js';
+import { REMIX_REQUEST_SOURCES, remixRequestSource } from './frameworkRemixSources.js';
 
 export const FRAMEWORK_REQUEST_SOURCES = [
   ...NEXT_ROUTE_REQUEST_SOURCES,
+  ...REMIX_REQUEST_SOURCES,
   ...HONO_REQUEST_SOURCES,
   ...EXPRESS_REQUEST_SOURCES,
   ...FASTIFY_REQUEST_SOURCES,
@@ -55,6 +57,15 @@ export function frameworkRequestSourceForFunction(
     directCallSites,
   );
   if (nextSource) return nextSource;
+  const remixSource = remixRequestSource(
+    file,
+    functionName,
+    parameters,
+    memberCallSites,
+    memberReferences,
+    enabledSources,
+  );
+  if (remixSource) return remixSource;
   const honoSource = honoRequestSource(
     parameters,
     memberCallSites,

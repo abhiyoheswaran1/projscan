@@ -2,7 +2,7 @@ import type { Node } from '@babel/types';
 import {
   babelCalleeName,
   babelQualifiedMemberName,
-  bindingIdentifierName,
+  bindingIdentifierNames,
   collectMemberAliases,
   collectMemberReadIdents,
   isMemberExpressionNode,
@@ -54,8 +54,7 @@ export function functionParamNames(fnNode: Node): string[] {
   const params = (fnNode as { params?: Node[] }).params ?? [];
   const out = new Set<string>();
   for (const param of params) {
-    const name = bindingIdentifierName(param);
-    if (name) out.add(name);
+    for (const name of bindingIdentifierNames(param)) out.add(name);
   }
   return [...out];
 }

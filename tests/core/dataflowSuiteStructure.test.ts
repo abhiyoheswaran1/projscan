@@ -10,9 +10,10 @@ it('keeps bridge dataflow coverage in a focused companion suite', () => {
   expect(bridgeSuite).toContain('detects bridge functions that source and sink through callees');
 });
 
-it('keeps Next and Hono framework dataflow coverage in focused companion suites', () => {
+it('keeps framework dataflow coverage in focused companion suites', () => {
   const nextSuite = fs.readFileSync('tests/core/dataflowFrameworkNext.test.ts', 'utf8');
   const honoSuite = fs.readFileSync('tests/core/dataflowFrameworkHono.test.ts', 'utf8');
+  const remixSuite = fs.readFileSync('tests/core/dataflowFrameworkRemix.test.ts', 'utf8');
 
   expect(nextSuite).toContain('Next route request.json');
   expect(nextSuite).not.toContain('Hono route');
@@ -20,6 +21,9 @@ it('keeps Next and Hono framework dataflow coverage in focused companion suites'
   expect(honoSuite).toContain('Hono route context request JSON');
   expect(honoSuite).toContain('documented Hono body parsers');
   expect(honoSuite.split('\n').length).toBeLessThanOrEqual(260);
+  expect(remixSuite).toContain('Remix action request body readers');
+  expect(remixSuite).not.toContain('Next route');
+  expect(remixSuite.split('\n').length).toBeLessThanOrEqual(180);
 });
 
 it('keeps database sink classification out of the dataflow traversal module', () => {

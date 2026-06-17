@@ -143,4 +143,15 @@ describe('FunctionInfo.references (1.6+)', () => {
     expect(handler).toBeDefined();
     expect(handler!.contextualCallSite).toBe('app.route');
   });
+
+  it('captures binding names from destructured function parameters', () => {
+    const out = fns(`export async function action({ request, params: routeParams, context = {} }) {
+  const body = await request.formData();
+  return body.get('q') + routeParams.id + context.tenant;
+}`);
+
+    expect(out[0].parameters).toEqual(
+      expect.arrayContaining(['request', 'routeParams', 'context']),
+    );
+  });
 });

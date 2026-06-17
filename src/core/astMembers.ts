@@ -1,15 +1,46 @@
 import type { Node } from '@babel/types';
 
 export function bindingIdentifierName(node: Node | null | undefined): string | null {
-  if (!node) return null;
-  if (node.type === 'Identifier') return (node as { name?: string }).name ?? null;
+  return bindingIdentifierNames(node)[0] ?? null;
+}
+
+export function bindingIdentifierNames(node: Node | null | undefined): string[] {
+  if (!node) return [];
+  if (node.type === 'Identifier') {
+    const name = (node as { name?: string }).name;
+    return name ? [name] : [];
+  }
   if (node.type === 'AssignmentPattern') {
-    return bindingIdentifierName((node as { left?: Node }).left);
+    return bindingIdentifierNames((node as { left?: Node }).left);
   }
   if (node.type === 'RestElement') {
-    return bindingIdentifierName((node as { argument?: Node }).argument);
+    return bindingIdentifierNames((node as { argument?: Node }).argument);
   }
-  return null;
+  if (node.type === 'ObjectPattern') {
+    const names: string[] = [];
+    for (const property of (node as { properties?: Node[] }).properties ?? []) {
+      names.push(...bindingNamesFromObjectPatternProperty(property));
+    }
+    return names;
+  }
+  if (node.type === 'ArrayPattern') {
+    const names: string[] = [];
+    for (const element of (node as { elements?: Array<Node | null> }).elements ?? []) {
+      names.push(...bindingIdentifierNames(element));
+    }
+    return names;
+  }
+  return [];
+}
+
+function bindingNamesFromObjectPatternProperty(property: Node): string[] {
+  if (!property) return [];
+  if (property.type === 'RestElement') {
+    return bindingIdentifierNames((property as { argument?: Node }).argument);
+  }
+  if (property.type !== 'ObjectProperty') return [];
+  const value = (property as { value?: Node }).value;
+  return bindingIdentifierNames(value);
 }
 
 export function isMemberExpressionNode(node: Node): boolean {

@@ -2065,3 +2065,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Generate watch identifiers as `watch-${randomUUID()}` in `createToolContext`.
 - Consequences: Watch IDs remain opaque strings but now have UUID entropy and a stable `watch-<uuid>` shape. Existing stop/list flows continue to work because clients should treat the identifier as opaque.
 - Verification: `npm run test -- tests/mcp/serverContext.test.ts` failed before the UUID change, then passed. Watch lifecycle suites for server context, coordination watch, review watch, and cost summary stream passed together.
+
+## 2026-06-17: Add Remix route dataflow request sources
+
+- Status: accepted
+- Context: Remix route modules pass user-controlled inputs through destructured `loader`, `action`, `clientLoader`, and `clientAction` arguments. `FunctionInfo.parameters` ignored object-pattern bindings, so dataflow could not classify `request` or `params` in those handlers.
+- Decision: Capture binding names from destructured function parameters and add route-file-scoped Remix dataflow labels for `remix.request.json`, `remix.request.formData`, `remix.request.text`, `remix.request.arrayBuffer`, `remix.request.headers`, `remix.request.url`, `remix.request.signal`, and `remix.params`.
+- Consequences: `projscan dataflow` can report additional additive source labels for `app/routes/**` Remix handlers. Same-shaped helpers outside route modules, or exported helpers that are not Remix request handlers, remain quiet.
+- Verification: `npm run test -- tests/core/ast.references.test.ts tests/core/dataflowFrameworkRemix.test.ts tests/core/dataflowSuiteStructure.test.ts` failed before the AST/source changes, then passed.
