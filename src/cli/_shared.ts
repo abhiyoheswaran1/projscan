@@ -22,6 +22,7 @@ import {
 import { loadCliProjectConfig } from './projectConfig.js';
 import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import { cliCommandPath } from './commandPath.js';
+import { renderCliBanner } from './bannerDisplay.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue, DirectoryNode } from '../types.js';
 
@@ -152,29 +153,16 @@ export function setupLogLevel(): void {
 }
 
 export function maybeBanner(): void {
-  const opts = program.opts();
-  if (!opts.quiet && getFormat() === 'console') {
-    try {
-      showBanner();
-    } catch (err) {
-      console.error(
-        chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`),
-      );
-    }
-  }
+  renderCliBanner(currentBannerOptions(), showBanner);
 }
 
 export function maybeCompactBanner(): void {
+  renderCliBanner(currentBannerOptions(), showCompactBanner);
+}
+
+function currentBannerOptions(): { quiet: boolean; format: ReportFormat } {
   const opts = program.opts();
-  if (!opts.quiet && getFormat() === 'console') {
-    try {
-      showCompactBanner();
-    } catch (err) {
-      console.error(
-        chalk.dim(`  [banner error: ${err instanceof Error ? err.message : String(err)}]`),
-      );
-    }
-  }
+  return { quiet: Boolean(opts.quiet), format: getFormat() };
 }
 
 export async function renderPluginReporterIfRequested(
