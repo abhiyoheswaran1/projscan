@@ -1,6 +1,4 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
 
 import {
   appendTelemetryQueue,
@@ -23,13 +21,38 @@ import {
   type StoredTelemetryConfig,
   type TelemetryStatus,
 } from './telemetryConfig.js';
+import {
+  buildFeedbackTelemetry,
+  buildTelemetryCommandEvent,
+  type CommandTelemetryInput,
+  type CountBucket,
+  type DurationBucket,
+  type MinutesSavedBucket,
+  type TelemetryCommandCategory,
+  type TelemetryEvent,
+  type TelemetryEventStatus,
+  type TelemetryFeedbackInput,
+  type TelemetryFeedbackSummary,
+} from './telemetryEvents.js';
 
 export {
+  buildFeedbackTelemetry,
   DEFAULT_TELEMETRY_ENDPOINT,
   TELEMETRY_COLLECTED,
   TELEMETRY_ENDPOINT_ENV,
   TELEMETRY_HOME_ENV,
   TELEMETRY_NEVER_COLLECTED,
+};
+export type {
+  CommandTelemetryInput,
+  CountBucket,
+  DurationBucket,
+  MinutesSavedBucket,
+  TelemetryCommandCategory,
+  TelemetryEvent,
+  TelemetryEventStatus,
+  TelemetryFeedbackInput,
+  TelemetryFeedbackSummary,
 };
 export type { TelemetryStatus };
 
@@ -38,41 +61,6 @@ export const TELEMETRY_NO_NETWORK_ENV = 'PROJSCAN_TELEMETRY_NO_NETWORK';
 const OFFLINE_ENV = 'PROJSCAN_OFFLINE';
 
 const REQUEST_TIMEOUT_MS = 750;
-
-export type TelemetryCommandCategory =
-  | 'doctor'
-  | 'review'
-  | 'preflight'
-  | 'dogfood'
-  | 'feedback'
-  | 'trial'
-  | 'init'
-  | 'mcp'
-  | 'evidence'
-  | 'start'
-  | 'other';
-
-const TELEMETRY_COMMAND_CATEGORY_BY_COMMAND: Readonly<
-  Partial<Record<string, TelemetryCommandCategory>>
-> = {
-  doctor: 'doctor',
-  review: 'review',
-  preflight: 'preflight',
-  dogfood: 'dogfood',
-  feedback: 'feedback',
-  trial: 'trial',
-  init: 'init',
-  mcp: 'mcp',
-  'evidence-pack': 'evidence',
-  start: 'start',
-  'first-run': 'start',
-  recipes: 'start',
-};
-
-export type TelemetryEventStatus = 'success' | 'failure';
-export type DurationBucket = '<1s' | '1-5s' | '5-30s' | '30s-2m' | '2m+';
-export type CountBucket = '0' | '1' | '2-5' | '6-20' | '21-100' | '100+';
-export type MinutesSavedBucket = '0' | '1-5' | '6-10' | '10-20' | '20+';
 
 export interface TelemetryPolicy {
   schemaVersion: 1;
@@ -83,59 +71,6 @@ export interface TelemetryPolicy {
   neverCollected: string[];
   controls: string[];
   notes: string[];
-}
-
-export interface TelemetryFeedbackInput {
-  repo?: unknown;
-  pr?: unknown;
-  reviewer?: unknown;
-  useful?: boolean;
-  minutesSaved?: number;
-  preventedBadEdit?: boolean;
-  falsePositiveRules?: unknown[];
-  falsePositiveReported?: boolean;
-}
-
-export interface TelemetryFeedbackSummary {
-  useful?: boolean;
-  minutesSavedBucket?: MinutesSavedBucket;
-  preventedBadEdit?: boolean;
-  falsePositiveReported?: boolean;
-}
-
-export interface CommandTelemetryInput {
-  commandName: string;
-  status: TelemetryEventStatus;
-  durationMs: number;
-  rootPath?: string;
-  version?: string;
-  feedback?: TelemetryFeedbackSummary;
-}
-
-export interface TelemetryEvent {
-  schemaVersion: 1;
-  eventId: string;
-  eventType: 'command_run' | 'feedback_outcome';
-  anonymousId: string;
-  occurredAt: string;
-  commandCategory: TelemetryCommandCategory;
-  commandName: string;
-  status: TelemetryEventStatus;
-  durationBucket: DurationBucket;
-  version: string;
-  nodeMajor: number;
-  platform: NodeJS.Platform;
-  ci: boolean;
-  setup: {
-    githubActionConfigured: boolean;
-    mcpConfigured: boolean;
-    teamInitConfigured: boolean;
-  };
-  repeatUse: {
-    runCountBucket: CountBucket;
-    activeDaysBucket: CountBucket;
-  };
-  feedback?: TelemetryFeedbackSummary;
 }
 
 export type TelemetrySender = (
@@ -228,20 +163,6 @@ export async function disableTelemetry(options: TelemetryOptions = {}): Promise<
   return buildTelemetryStatus(paths, config, 0, false);
 }
 
-export function buildFeedbackTelemetry(input: TelemetryFeedbackInput): TelemetryFeedbackSummary {
-  const result: TelemetryFeedbackSummary = {};
-  if (typeof input.useful === 'boolean') result.useful = input.useful;
-  if (typeof input.minutesSaved === 'number' && Number.isFinite(input.minutesSaved)) {
-    result.minutesSavedBucket = bucketMinutes(input.minutesSaved);
-  }
-  if (typeof input.preventedBadEdit === 'boolean') result.preventedBadEdit = input.preventedBadEdit;
-  const ruleCount = Array.isArray(input.falsePositiveRules) ? input.falsePositiveRules.length : 0;
-  if (typeof input.falsePositiveReported === 'boolean' || ruleCount > 0) {
-    result.falsePositiveReported = input.falsePositiveReported === true || ruleCount > 0;
-  }
-  return result;
-}
-
 export async function recordCommandTelemetry(
   input: CommandTelemetryInput,
   options: TelemetryOptions = {},
@@ -256,7 +177,7 @@ export async function recordCommandTelemetry(
   const config = updateTelemetryUsage(loaded.config, options.now);
   await writeTelemetryConfig(paths.configPath, config);
 
-  const event = await buildCommandEvent(input, config, options.now);
+  const event = await buildTelemetryCommandEvent(input, config, options.now);
   await appendTelemetryQueue(paths.queuePath, event);
 
   if (options.flush === false || isTelemetryNetworkDisabled()) {
@@ -329,115 +250,6 @@ async function sendQueuedTelemetry(
       reason: error instanceof Error ? error.message : String(error),
       queued: events.length,
     };
-  }
-}
-
-async function buildCommandEvent(
-  input: CommandTelemetryInput,
-  config: StoredTelemetryConfig,
-  nowValue: Date | undefined,
-): Promise<TelemetryEvent> {
-  const now = nowValue ?? new Date();
-  const rootPath = input.rootPath ?? process.cwd();
-  return {
-    schemaVersion: TELEMETRY_SCHEMA_VERSION,
-    eventId: 'evt_' + crypto.randomUUID(),
-    eventType: input.feedback ? 'feedback_outcome' : 'command_run',
-    anonymousId: config.anonymousId ?? generateAnonymousId(),
-    occurredAt: toIso(now),
-    commandCategory: categorizeCommand(input.commandName),
-    commandName: sanitizeCommandName(input.commandName),
-    status: input.status,
-    durationBucket: bucketDuration(input.durationMs),
-    version: sanitizeVersion(input.version),
-    nodeMajor: Number.parseInt(process.versions.node.split('.')[0] ?? '0', 10) || 0,
-    platform: process.platform,
-    ci: process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true',
-    setup: await detectSetup(rootPath),
-    repeatUse: {
-      runCountBucket: bucketCount(config.usage.runCount),
-      activeDaysBucket: bucketCount(config.usage.activeDays.length),
-    },
-    ...(input.feedback ? { feedback: input.feedback } : {}),
-  };
-}
-
-function categorizeCommand(commandName: string): TelemetryCommandCategory {
-  const name = sanitizeCommandName(commandName);
-  const first = name.split(' ')[0] ?? 'other';
-  return TELEMETRY_COMMAND_CATEGORY_BY_COMMAND[first] ?? 'other';
-}
-
-function sanitizeCommandName(commandName: string): string {
-  return (
-    commandName
-      .toLowerCase()
-      .replace(/[^a-z0-9:_-]+/g, ' ')
-      .trim()
-      .split(/\s+/)
-      .slice(0, 3)
-      .join(' ') || 'unknown'
-  );
-}
-
-function sanitizeVersion(value: string | undefined): string {
-  if (!value) return 'unknown';
-  return /^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(value) ? value : 'unknown';
-}
-
-function bucketDuration(durationMs: number): DurationBucket {
-  if (!Number.isFinite(durationMs) || durationMs < 1000) return '<1s';
-  if (durationMs < 5000) return '1-5s';
-  if (durationMs < 30000) return '5-30s';
-  if (durationMs < 120000) return '30s-2m';
-  return '2m+';
-}
-
-function bucketMinutes(value: number): MinutesSavedBucket {
-  if (value <= 0) return '0';
-  if (value <= 5) return '1-5';
-  if (value <= 10) return '6-10';
-  if (value <= 20) return '10-20';
-  return '20+';
-}
-
-function bucketCount(value: number): CountBucket {
-  if (value <= 0) return '0';
-  if (value === 1) return '1';
-  if (value <= 5) return '2-5';
-  if (value <= 20) return '6-20';
-  if (value <= 100) return '21-100';
-  return '100+';
-}
-
-async function detectSetup(rootPath: string): Promise<TelemetryEvent['setup']> {
-  const githubActionConfigured = await exists(
-    path.join(rootPath, '.github', 'workflows', 'projscan.yml'),
-  );
-  const teamInitConfigured =
-    (await exists(path.join(rootPath, '.projscan-baseline.json'))) ||
-    (await exists(path.join(rootPath, '.github', 'CODEOWNERS')));
-  const mcpConfigured = await anyExists([
-    path.join(rootPath, '.codex', 'config.toml'),
-    path.join(rootPath, '.cursor', 'mcp.json'),
-    path.join(rootPath, '.continue', 'config.json'),
-  ]);
-  return { githubActionConfigured, mcpConfigured, teamInitConfigured };
-}
-
-async function anyExists(paths: string[]): Promise<boolean> {
-  for (const candidate of paths) {
-    if (await exists(candidate)) return true;
-  }
-  return false;
-}
-
-async function exists(file: string): Promise<boolean> {
-  try {
-    await fs.access(file);
-    return true;
-  } catch {
-    return false;
   }
 }
 

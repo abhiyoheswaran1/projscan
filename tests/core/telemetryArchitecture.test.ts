@@ -43,9 +43,47 @@ describe('telemetry maintainability', () => {
     );
   });
 
-  it('keeps command categorization below the review high-CC threshold', async () => {
+  it('keeps telemetry event shaping helpers in a focused module', async () => {
+    const telemetrySource = await readRepoSourceFile('src/core/telemetry.ts');
+    const telemetry = await inspectRepoSourceFile('src/core/telemetry.ts');
+    const events = await inspectRepoSourceFile('src/core/telemetryEvents.ts');
+
+    expect(lineCount(telemetrySource)).toBeLessThanOrEqual(360);
+
+    const telemetryFunctions = functionNames(telemetry);
+    for (const helperName of [
+      'buildCommandEvent',
+      'categorizeCommand',
+      'sanitizeCommandName',
+      'sanitizeVersion',
+      'bucketDuration',
+      'bucketMinutes',
+      'bucketCount',
+      'detectSetup',
+      'anyExists',
+      'exists',
+    ]) {
+      expect(telemetryFunctions).not.toContain(helperName);
+    }
+
+    expect(functionNames(events)).toEqual(
+      expect.arrayContaining([
+        'buildTelemetryCommandEvent',
+        'buildFeedbackTelemetry',
+        'categorizeTelemetryCommand',
+        'sanitizeTelemetryCommandName',
+        'sanitizeTelemetryVersion',
+        'bucketTelemetryDuration',
+        'bucketTelemetryMinutes',
+        'bucketTelemetryCount',
+        'detectTelemetrySetup',
+      ]),
+    );
+  });
+
+  it('keeps command telemetry recording below the review high-CC threshold', async () => {
     const inspection = await inspectRepoSourceFile('src/core/telemetry.ts');
-    const classifier = inspection.functions?.find((fn) => fn.name === 'categorizeCommand');
+    const classifier = inspection.functions?.find((fn) => fn.name === 'recordCommandTelemetry');
 
     expect(classifier).toBeDefined();
     expect(classifier!.cyclomaticComplexity).toBeLessThanOrEqual(8);

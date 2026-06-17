@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract telemetry event shaping helpers
+
+- Status: accepted
+- Context: `src/core/telemetry.ts` remained the top hotspot after config extraction and still owned event shape types, feedback bucketing, command categorization, event construction, version/duration/count bucketing, and setup detection.
+- Decision: Move telemetry event types, feedback event bucketing, command event construction, command/category sanitization, duration/count bucketing, and setup detection into `src/core/telemetryEvents.ts`, while re-exporting the existing public types and `buildFeedbackTelemetry` from `src/core/telemetry.ts`.
+- Consequences: Sanitized command telemetry, feedback redaction, setup booleans, repeat-use buckets, default-off behavior, offline/no-network behavior, and public telemetry imports stay unchanged, while `src/core/telemetry.ts` drops from 482 lines to 294 lines.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts tests/core/telemetry.test.ts`.
+
 ## 2026-06-18: Filter default telemetry opt-in storage taint flows
 
 - Status: accepted
