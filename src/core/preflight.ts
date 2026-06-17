@@ -1,5 +1,3 @@
-import { scanRepository } from './repositoryScanner.js';
-import { collectIssues } from './issueEngine.js';
 import { pluginsEnabled } from './plugins.js';
 import { policyIssueReasons } from './preflightIssueReasons.js';
 import { changedFileReasons } from './preflightChangedFileReasons.js';
@@ -13,24 +11,17 @@ import {
   buildToolCalls,
 } from './preflightSuggestedActions.js';
 import {
-  safeReviewEvidence,
-  type PreflightReviewEvidence,
-} from './preflightReviewEvidence.js';
+  decidePreflightVerdict,
+  summarizePreflight,
+} from './preflightVerdict.js';
+import type { PreflightReviewEvidence } from './preflightReviewEvidence.js';
+import type { PreflightChangedFiles } from './preflightChangedFiles.js';
 import {
-  safeChangedFiles,
-  type PreflightChangedFiles,
-} from './preflightChangedFiles.js';
-import {
-  safeCoordination,
-  safeHotspots,
-  safeSession,
   type CoordinationSummary,
   type PreflightSessionEvidence,
 } from './preflightLocalEvidence.js';
-import { loadConfig, applyConfigToIssues } from '../utils/config.js';
-import { calculateScore } from '../utils/scoreCalculator.js';
+import { loadPreflightInputs } from './preflightInputs.js';
 import type {
-  FileEntry,
   HealthScore,
   HotspotReport,
   Issue,
@@ -38,8 +29,9 @@ import type {
   PreflightReason,
   PreflightReleaseScaleEvidence,
   PreflightReport,
-  PreflightVerdict,
 } from '../types.js';
+
+export { decidePreflightVerdict, summarizePreflight };
 
 export interface ComputePreflightOptions {
   mode?: PreflightMode;
@@ -56,18 +48,8 @@ export async function computePreflight(
   options: ComputePreflightOptions = {},
 ): Promise<PreflightReport> {
   const mode = options.mode ?? 'before_edit';
-  const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
-  const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(
-    await collectIssuesWithPluginOption(rootPath, scan.files, options.enablePlugins),
-    configResult.config,
-  );
-  const health = calculateScore(issues);
-  const changedFiles = await safeChangedFiles(rootPath, mode, options.baseRef);
-  const session = await safeSession(rootPath);
-  const hotspots = await safeHotspots(rootPath, scan.files, issues);
-  const review = await safeReviewEvidence(rootPath, mode, options);
-  const coordination = await safeCoordination(rootPath, options.baseRef);
+  const { issues, health, changedFiles, session, hotspots, review, coordination } =
+    await loadPreflightInputs(rootPath, mode, options);
   const maxChangedFiles = options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES;
   const supplyChain = countSupplyChainIssues(issues);
   const releaseScale = buildReleaseScaleEvidence({
@@ -135,30 +117,6 @@ function countSupplyChainIssues(issues: Issue[]): { errorIssues: number; warning
     errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
     warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
   };
-}
-
-export function decidePreflightVerdict(reasons: PreflightReason[]): PreflightVerdict {
-  if (reasons.some((reason) => reason.severity === 'error')) return 'block';
-  if (reasons.some((reason) => reason.severity === 'warning')) return 'caution';
-  return 'proceed';
-}
-
-export function summarizePreflight(report: PreflightReport): string {
-  if (report.reasons.length === 0) {
-    return `${report.verdict}: no blocking or cautionary signals found`;
-  }
-  if (report.evidence.releaseScale?.detected) {
-    return `${report.verdict}: manual release sign-off recommended for large platform release risk`;
-  }
-  return `${report.verdict}: ${report.reasons[0].message}`;
-}
-
-async function collectIssuesWithPluginOption(
-  rootPath: string,
-  files: FileEntry[],
-  _enablePlugins?: boolean,
-): Promise<Issue[]> {
-  return collectIssues(rootPath, files);
 }
 
 function buildPreflightReasons(input: {
