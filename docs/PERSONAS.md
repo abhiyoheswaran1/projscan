@@ -9107,3 +9107,50 @@ and the combined start/file-inspection-routing run should report 30 tests across
 
 Kept change: one file-inspection start test split, this persona note, and no
 release action in this slice.
+
+## One Hundred Ninety First Slice Decision
+
+Selected personas: Codebase-Exploring Agent, Dependency-Aware Maintainer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the file-inspection split, `tests/core/start.test.ts` still held
+report-level semantic graph routing scenarios. These cases share one behavior
+surface: importer and definition prompts should route to targeted
+`projscan semantic-graph` queries instead of dumping broad graph output or
+falling through to dependency upgrade routes.
+
+Smallest fix: move the three semantic graph report scenarios into
+`tests/core/startSemanticGraphRouting.test.ts` and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 982 lines to 832 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "file importer intent|package importer intent|symbol definition intent"
+npm run test -- tests/core/startSemanticGraphRouting.test.ts -t "file importer intent|package importer intent|symbol definition intent"
+npm run test -- tests/core/start.test.ts tests/core/startSemanticGraphRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startSemanticGraphRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Semantic Graph Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan semantic-graph`, importer query extraction,
+  package-importer query extraction, symbol definition query extraction,
+  dependency-upgrade alternatives, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not weaken coverage for file importer, package importer, package use, why
+  dependency, or symbol definition prompts.
+- Do not broaden this into semantic graph indexing, dependency analysis, or
+  route scoring behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused semantic-graph routing run should report three
+tests, and the combined start/semantic-graph-routing run should report 25 tests
+across `tests/core/start.test.ts` and
+`tests/core/startSemanticGraphRouting.test.ts`.
+
+Kept change: one semantic graph start test split, this persona note, and no
+release action in this slice.
