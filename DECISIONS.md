@@ -1865,3 +1865,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move tooling config search matching into `src/core/intentRouterSearchToolingSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7253 lines / CC 1160 to 7175 lines / CC 1141. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "tooling config search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract navigation layout search route signals
+
+- Status: accepted
+- Context: Navigation/layout lookup routing for sidebar nav items, breadcrumbs, page titles, metadata, and Next/dashboard layouts was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move navigation layout search matching into `src/core/intentRouterSearchNavigationSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7175 lines / CC 1141 to 7140 lines / CC 1124. The extracted helper has no hotspot history, max function CC 5, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "navigation layout search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

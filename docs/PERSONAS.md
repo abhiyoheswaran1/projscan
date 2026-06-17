@@ -6139,3 +6139,50 @@ config search matcher and continue to use regression routing.
 Kept change: one tooling config search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Twenty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: navigation/layout lookup routing helps agents find existing sidebar nav,
+breadcrumb, page-title, metadata, and Next/dashboard layout behavior without
+turning lookup questions into implementation work. Maintainers need this search
+matcher reviewable without scanning the full intent-router hotspot.
+
+Smallest fix: move navigation layout search matching into
+`intentRouterSearchNavigationSignals.ts`; leave route catalog data, route
+scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "navigation layout search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchNavigationSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Navigation Layout Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, navigation planning
+  routing, route confidence scoring, `routeIntent`, or public route result
+  shape.
+- Do not change navigation/layout keyword semantics except by moving the
+  existing cohesive search checks into the helper module.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: questions like "where is sidebar nav item for billing"
+should still route as code search, while "add sidebar nav item" should stay out
+of the navigation layout search matcher and continue to route as implementation
+planning.
+
+Kept change: one navigation layout search route-signal helper module, one
+router boundary regression, existing route/start behavior coverage, this
+persona note, and no public API change.

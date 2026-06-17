@@ -228,6 +228,23 @@ describe('routeIntent', () => {
     expect(toolingSignalsSource).toContain('export function searchToolingConfigContextMatches');
   });
 
+  it('keeps navigation layout search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchNavigationSignals.js'");
+    expect(routerSource).not.toContain('function searchNavigationLayoutContextMatches');
+
+    const navigationSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchNavigationSignals.ts'),
+      'utf8',
+    );
+    expect(navigationSignalsSource).toContain(
+      'export function searchNavigationLayoutContextMatches',
+    );
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');

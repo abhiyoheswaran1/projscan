@@ -36,6 +36,7 @@ import { searchCommunicationArtifactContextMatches } from './intentRouterSearchC
 import { searchDomainWorkflowContextMatches } from './intentRouterSearchDomainSignals.js';
 import { searchInfraArtifactContextMatches } from './intentRouterSearchInfraSignals.js';
 import { searchIntegrationContextMatches } from './intentRouterSearchIntegrationSignals.js';
+import { searchNavigationLayoutContextMatches } from './intentRouterSearchNavigationSignals.js';
 import { searchFrontendPageRouteContextMatches } from './intentRouterSearchPageSignals.js';
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchStateManagementContextMatches } from './intentRouterSearchStateSignals.js';
@@ -4649,42 +4650,6 @@ function searchDataAccessContextMatches(tokens: Set<string>): boolean {
   return (
     locator ||
     ['defined', 'configured', 'saves', 'save', 'persist', 'persists'].some((token) =>
-      tokens.has(token),
-    ) ||
-    tokens.size >= 3
-  );
-}
-
-function searchNavigationLayoutContextMatches(tokens: Set<string>): boolean {
-  if (
-    ['add', 'create', 'implement', 'build', 'plan', 'should', 'todo'].some((token) =>
-      tokens.has(token),
-    )
-  )
-    return false;
-  const locator = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const navSubject =
-    ['sidebar', 'nav', 'navigation', 'menu'].some((token) => tokens.has(token)) &&
-    ['item', 'items', 'billing', 'settings', 'checkout', 'route', 'routes'].some((token) =>
-      tokens.has(token),
-    );
-  const breadcrumbSubject = tokens.has('breadcrumb') || tokens.has('breadcrumbs');
-  const titleSubject =
-    (tokens.has('page') && tokens.has('title')) || tokens.has('metadata') || tokens.has('meta');
-  const layoutSubject =
-    tokens.has('layout') &&
-    (tokens.has('next') ||
-      tokens.has('js') ||
-      tokens.has('dashboard') ||
-      tokens.has('page') ||
-      tokens.has('route'));
-  const subject = navSubject || breadcrumbSubject || titleSubject || layoutSubject;
-  if (!subject) return false;
-  return (
-    locator ||
-    ['renders', 'render', 'set', 'sets', 'configured', 'defined'].some((token) =>
       tokens.has(token),
     ) ||
     tokens.size >= 3
