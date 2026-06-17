@@ -25,6 +25,7 @@ const NESTED_REQUIREMENTS_STEMS = new Set([
   'ci',
   'local',
 ]);
+const NESTED_CONSTRAINTS_STEMS = new Set([...NESTED_REQUIREMENTS_STEMS, 'constraints']);
 const NESTED_DEV_REQUIREMENTS_STEMS = new Set([
   'dev',
   'development',
@@ -87,7 +88,7 @@ async function appendRootConstraints(
   context: RequirementReadContext,
   files: FileEntry[],
 ): Promise<void> {
-  for (const rel of rootConstraintFiles(files)) {
+  for (const rel of constraintManifestFiles(files)) {
     await appendConstraintFile(evidence, context, rel);
   }
 }
@@ -147,12 +148,16 @@ function requirementManifestFiles(files: FileEntry[]): string[] {
   return files.filter(isPythonRequirementManifestFile).map((file) => file.relativePath);
 }
 
-function rootConstraintFiles(files: FileEntry[]): string[] {
-  return files.filter(isRootConstraintsFile).map((file) => file.relativePath);
+function constraintManifestFiles(files: FileEntry[]): string[] {
+  return files.filter(isPythonConstraintManifestFile).map((file) => file.relativePath);
 }
 
 export function isPythonRequirementManifestFile(file: FileEntry): boolean {
   return isRootRequirementsFile(file) || isNestedRequirementsFile(file);
+}
+
+export function isPythonConstraintManifestFile(file: FileEntry): boolean {
+  return isRootConstraintsFile(file) || isNestedConstraintsFile(file);
 }
 
 function isRootRequirementsFile(file: FileEntry): boolean {
@@ -161,6 +166,15 @@ function isRootRequirementsFile(file: FileEntry): boolean {
 
 function isRootConstraintsFile(file: FileEntry): boolean {
   return isRootFile(file) && CONSTRAINTS_FILE_RE.test(path.basename(file.relativePath));
+}
+
+function isNestedConstraintsFile(file: FileEntry): boolean {
+  if (normalizeRel(file.directory) !== 'constraints') return false;
+  const name = path.basename(file.relativePath);
+  const ext = path.extname(name).toLowerCase();
+  if (ext !== '.txt') return false;
+  const stem = name.slice(0, -ext.length).toLowerCase();
+  return CONSTRAINTS_FILE_RE.test(name) || NESTED_CONSTRAINTS_STEMS.has(stem);
 }
 
 function isNestedRequirementsFile(file: FileEntry): boolean {

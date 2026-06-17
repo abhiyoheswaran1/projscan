@@ -1,6 +1,9 @@
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
-import { isPythonRequirementManifestFile } from './pythonRequirements.js';
+import {
+  isPythonConstraintManifestFile,
+  isPythonRequirementManifestFile,
+} from './pythonRequirements.js';
 
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 const ROOT_PYTHON_MANIFEST_NAMES = new Set([
@@ -24,7 +27,7 @@ function hasPythonEvidenceFile(file: FileEntry): boolean {
 }
 
 function isRootPythonManifestFile(file: FileEntry): boolean {
-  if (isPythonRequirementManifestFile(file)) return true;
+  if (isPythonRequirementManifestFile(file) || isPythonConstraintManifestFile(file)) return true;
   if (file.directory && file.directory !== '.') return false;
   const name = path.basename(file.relativePath);
   return ROOT_PYTHON_MANIFEST_NAMES.has(name) || CONSTRAINTS_FILE_RE.test(name);

@@ -704,7 +704,7 @@ Preview the impact of upgrading a package. The default path is fully offline; pa
 - CHANGELOG excerpt sliced to the relevant version range (read from `node_modules/<pkg>/CHANGELOG.md`)
 - Importer list - every file in your source tree that imports the package (direct or sub-path)
 - Python manifest evidence for packages declared in `pyproject.toml` (including PEP 735 `dependency-groups`, Poetry dependency groups, and legacy `tool.poetry.dev-dependencies`), `setup.cfg`, `setup.py`, root `requirements*.txt`, or common `requirements/*.txt` / `requirements/*.in` manifests such as `requirements/base.txt` and `requirements/dev.in`. Python manifests are sufficient local evidence even before `.py` files exist.
-- Python current-version evidence from `poetry.lock` / `uv.lock` / `pdm.lock` package blocks, `conda-lock.yml` / `conda-lock.yaml` package entries, `Pipfile.lock` exact versions, pinned root or recognized nested `requirements/*.txt`, or pinned root `constraints*.txt` entries
+- Python current-version evidence from `poetry.lock` / `uv.lock` / `pdm.lock` package blocks, `conda-lock.yml` / `conda-lock.yaml` package entries, `Pipfile.lock` exact versions, pinned root or recognized nested `requirements/*.txt`, or pinned root or recognized nested `constraints/*.txt` entries
 
 **Example:**
 
@@ -726,7 +726,7 @@ $ projscan upgrade react --format markdown
 
 - Reads the CHANGELOG that npm already placed in `node_modules/`. If the package author doesn't ship one, you'll see "No local CHANGELOG found."
 - Without `--check-registry`, works with what's **installed** and reports `latestSource: "installed"`. With `--check-registry`, npm registry lookup is attempted and failures fall back to the installed version with `registryError`.
-- Python previews stay offline. They do not query PyPI; current-version evidence comes from supported local lockfiles, pinned root or recognized nested requirements, or pinned root constraints.
+- Python previews stay offline. They do not query PyPI; current-version evidence comes from supported local lockfiles, pinned root or recognized nested requirements, or pinned root or recognized nested constraints.
 
 ### coverage
 

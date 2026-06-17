@@ -190,6 +190,25 @@ describe('detectPythonProject', () => {
     ]);
   });
 
+  it('reads common nested constraints manifests without a root include', async () => {
+    await fs.mkdir(path.join(tmp, 'constraints'), { recursive: true });
+    await fs.writeFile(path.join(tmp, 'constraints/base.txt'), 'httpx==0.27.2\n');
+    await fs.writeFile(path.join(tmp, 'constraints/dev.txt'), 'pytest==8.2.0\nruff>=0.5\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('constraints/base.txt', 'constraints'),
+      fileEntry('constraints/dev.txt', 'constraints'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.declared).toEqual([]);
+    expect(info?.locked).toEqual([
+      { name: 'httpx', version: '0.27.2', source: 'constraints/base.txt', line: 1 },
+      { name: 'pytest', version: '8.2.0', source: 'constraints/dev.txt', line: 1 },
+    ]);
+    expect(info?.hasLockfile).toBe(true);
+  });
+
   it('no lockfile when requirements are unpinned', async () => {
     await fs.writeFile(path.join(tmp, 'requirements.txt'), 'requests\nflask>=2\n');
     const info = await detectPythonProject(tmp, [fileEntry('a.py'), fileEntry('requirements.txt')]);

@@ -347,6 +347,28 @@ describe('previewUpgrade', () => {
     expect(preview.installedLine).toBe(1);
   });
 
+  it('previews nested constraints manifests without a root include', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        ['[project]', 'name = "py-app"', 'dependencies = ["fastapi>=0.109.0"]'].join('\n'),
+      ),
+      await writeFile(tmp, 'constraints/prod.txt', 'fastapi==0.110.0\n'),
+      await writeFile(tmp, 'app/main.py', 'from fastapi import FastAPI\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'fastapi', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.109.0');
+    expect(preview.installed).toBe('0.110.0');
+    expect(preview.installedSource).toBe('constraints/prod.txt');
+    expect(preview.installedLine).toBe(1);
+    expect(preview.importers).toEqual(['app/main.py']);
+  });
+
   it('uses Pipfile.lock as Python current-version evidence', async () => {
     const pipfileLock = JSON.stringify({ default: { requests: { version: '==2.31.0' } } });
     const files = [

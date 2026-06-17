@@ -2225,3 +2225,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add a guarded `projscan_analyze` intent route for shareable scoped/redacted evidence, infer the before-commit workflow for that route, and return ready analyze, doctor, and CI commands with `--report-scope` and `--redact-paths`.
 - Consequences: Mission Control now exposes the existing path-safe artifact workflow from natural-language prompts. Generic PR comment, PR description, checklist, and team-summary prompts still route to `projscan evidence-pack --pr-comment`. Report filtering, redaction, and output schemas are unchanged.
 - Verification: `npm run test -- tests/core/startReviewRouting.test.ts tests/core/intentRouterReviewRelease.test.ts` failed before the route/action-plan change, then passed after it.
+
+## 2026-06-18: Read nested Python constraints manifests
+
+- Status: accepted
+- Context: Python upgrade previews could read included constraints from root requirements files and direct root `constraints*.txt`, but common direct files such as `constraints/base.txt` and `constraints/prod.txt` were invisible unless another manifest included them.
+- Decision: Treat recognized `constraints/*.txt` names as Python project evidence and pinned lock evidence when they are already present in the scan file list.
+- Consequences: Offline Python previews can use nested constraints as current-version evidence without declaring runtime dependencies, adding globbing, or reading files outside the scan boundary. Existing included-constraint parsing and unsafe include guards remain unchanged.
+- Verification: `npm run test -- tests/core/languages/pythonProjectDetection.test.ts tests/core/upgradePreview.test.ts` failed before nested constraints were recognized, then passed after the change.
