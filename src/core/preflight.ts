@@ -11,6 +11,7 @@ import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
 import { reviewReasons } from './preflightReviewReasons.js';
 import { buildEvidence, MAX_PREFLIGHT_EVIDENCE_FILES } from './preflightEvidence.js';
+import { contextReasons } from './preflightContextReasons.js';
 import {
   buildSuggestedActions,
   buildToolCalls,
@@ -290,7 +291,6 @@ function buildPreflightReasons(input: {
   maxChangedFiles: number;
 }): PreflightReason[] {
   const reasons: PreflightReason[] = [];
-  const changedOnly = input.mode !== 'before_edit' && input.changedFiles.available;
   reasons.push(...policyIssueReasons(input.issues));
   reasons.push(...changedFileReasons(input));
   if (input.releaseScale?.detected) {
@@ -303,55 +303,6 @@ function buildPreflightReasons(input: {
   }
 
   reasons.push(...reviewReasons(input));
-
-  const touched = new Set(input.session.touchedFiles);
-  const hotspotTouches =
-    input.hotspots?.available === true
-      ? input.hotspots.hotspots.filter(
-          (hotspot) => touched.has(hotspot.relativePath) && hotspot.riskScore >= 40,
-        )
-      : [];
-  for (const hotspot of hotspotTouches.slice(0, 3)) {
-    reasons.push({
-      severity: 'warning',
-      source: 'session',
-      file: hotspot.relativePath,
-      message: `Remembered session context touched high-risk hotspot ${hotspot.relativePath} (risk ${hotspot.riskScore})`,
-      tool: 'projscan_session',
-    });
-  }
-
-  if (input.health.errors > 0 && input.mode === 'before_merge' && !changedOnly) {
-    reasons.push({
-      severity: 'warning',
-      source: 'doctor',
-      message: `${input.health.errors} project health error(s) exist; changed-file scoping was unavailable`,
-      tool: 'projscan_doctor',
-    });
-  }
-
-  // Swarm coordination — advisory only: a cross-worktree collision raises
-  // caution (warning), never a hard block. No reason when clear/unavailable.
-  if (input.coordination?.available) {
-    const { collisions, claims, worktreeCount, readiness } = input.coordination;
-    if (readiness === 'conflicted') {
-      const contended =
-        claims.contendedTargets > 0 ? `, ${claims.contendedTargets} contended claim(s)` : '';
-      reasons.push({
-        severity: 'warning',
-        source: 'coordination',
-        message: `Swarm collision risk across ${worktreeCount} in-flight worktrees: ${collisions.high} high / ${collisions.medium} medium${contended}. Run \`projscan coordinate\` before merging.`,
-        tool: 'projscan_coordinate',
-      });
-    } else if (readiness === 'caution') {
-      reasons.push({
-        severity: 'info',
-        source: 'coordination',
-        message: `Dependency overlap with another in-flight worktree (${collisions.medium} medium). Run \`projscan coordinate\`.`,
-        tool: 'projscan_coordinate',
-      });
-    }
-  }
-
+  reasons.push(...contextReasons(input));
   return reasons;
 }

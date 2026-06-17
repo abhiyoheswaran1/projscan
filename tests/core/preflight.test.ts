@@ -247,6 +247,30 @@ test('preflight keeps suggested action shaping isolated from the main preflight 
   expect(dedupe!.cyclomaticComplexity).toBeLessThanOrEqual(5);
 });
 
+test('preflight keeps contextual reason formatting isolated from the reason orchestrator', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('Remembered session context touched high-risk hotspot');
+  expect(preflightSource).not.toContain('project health error(s) exist');
+  expect(preflightSource).not.toContain('Swarm collision risk across');
+
+  const contextReasons = await inspectRepoSourceFile('src/core/preflightContextReasons.ts');
+  const entrypoint = contextReasons.functions?.find((fn) => fn.name === 'contextReasons');
+  const sessionReasons = contextReasons.functions?.find((fn) => fn.name === 'sessionHotspotReasons');
+  const healthReason = contextReasons.functions?.find((fn) => fn.name === 'changedFileScopeHealthReason');
+  const coordinationReason = contextReasons.functions?.find(
+    (fn) => fn.name === 'coordinationReason',
+  );
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(sessionReasons).toBeDefined();
+  expect(sessionReasons!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(healthReason).toBeDefined();
+  expect(healthReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(coordinationReason).toBeDefined();
+  expect(coordinationReason!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

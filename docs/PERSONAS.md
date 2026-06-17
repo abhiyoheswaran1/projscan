@@ -4771,3 +4771,51 @@ ref.
 Kept change: one preflight suggested-action helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## One Hundredth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: contextual preflight reasons are the remaining mixed responsibility in
+the main preflight reason orchestrator: remembered session hotspot risk,
+project-health fallback risk, and multi-worktree coordination risk. Agents need
+that context, but reviewers need the orchestrator to stay small enough to audit
+reason order and severity without rereading every formatter.
+
+Smallest fix: move session hotspot, changed-file-scope health fallback, and
+coordination advisory reason construction into `preflightContextReasons.ts`;
+keep `buildPreflightReasons` responsible for only ordering reason groups.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "contextual reason formatting"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightContextReasons.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Contextual-Reason Extraction
+
+Delete-list after this slice:
+
+- Do not change session hotspot, health fallback, or coordination reason
+  wording, severity, tool names, order, or preflight report schema.
+- Do not change changed-file detection, health scoring, session loading,
+  hotspot analysis, coordination computation, verdict logic, required checks,
+  evidence shaping, or suggested-action behavior.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: conflicted coordination should remain warning-only and
+caution coordination should remain info-only; neither path should become a hard
+block without concrete policy or review findings.
+
+Kept change: one preflight contextual-reason helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

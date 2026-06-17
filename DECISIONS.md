@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight contextual reasons
+
+- Status: accepted
+- Context: `buildPreflightReasons` in `src/core/preflight.ts` still owned remembered-session hotspot, changed-file-scope health fallback, and coordination risk reason formatting after suggested actions were isolated.
+- Decision: Move contextual preflight reason construction into `src/core/preflightContextReasons.ts`.
+- Consequences: Session hotspot warnings, health fallback warnings, coordination advisory wording, reason order, verdict behavior, and report schema stay unchanged, while `src/core/preflight.ts` drops from 358 lines / CC 40 to 309 lines / CC 29.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "contextual reason formatting"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight suggested actions
 
 - Status: accepted
