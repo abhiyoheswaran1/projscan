@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract file inspection graph shaping
+
+- Status: accepted
+- Context: `src/core/fileInspector.ts` remained a production hotspot and still owned graph cache loading plus graph-backed import/export shaping after purpose, issue, access, export-type, and graph-metric helpers were isolated.
+- Decision: Move inspection graph loading, graph cache save/load, graph import shaping, and graph export shaping into `src/core/fileInspectionGraph.ts`.
+- Consequences: Graph-backed JavaScript/Python import/export output, cached graph reuse, hotspot analysis inputs, file-purpose inference, path-safety behavior, public `inspectFile` / `explainFile` exports, and removed regex extractor behavior stay unchanged, while `src/core/fileInspector.ts` drops from 150 lines / CC 13 to 131 lines / CC 10.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "graph loading and import/export shaping"` plus the full file inspector test file.
+
 ## 2026-06-17: Extract code graph fan metrics
 
 - Status: accepted

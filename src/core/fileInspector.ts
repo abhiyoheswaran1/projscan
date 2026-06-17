@@ -1,11 +1,9 @@
 import type {
-  ExportInfo,
   FileEntry,
   FileExplanation,
   FileInspection,
   FileHotspot,
   HotspotReport,
-  ImportInfo,
   Issue,
 } from '../types.js';
 import { readProjectFile } from './fileAccess.js';
@@ -13,9 +11,12 @@ import { scanRepository } from './repositoryScanner.js';
 import { collectIssues } from './issueEngine.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { getAdapterFor } from './languages/registry.js';
-import { buildCodeGraph, type CodeGraph } from './codeGraph.js';
-import { loadCachedGraph, saveCachedGraph } from './indexCache.js';
-import { mapExportType } from './fileExportTypes.js';
+import type { CodeGraph } from './codeGraph.js';
+import {
+  exportsFromGraphFile,
+  importsFromGraphFile,
+  resolveInspectionGraph,
+} from './fileInspectionGraph.js';
 import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
 import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
@@ -68,30 +69,10 @@ export async function inspectFile(
   const files = options.scan?.files ?? (await scanRepository(resolvedRoot)).files;
   const issues = options.issues ?? (await collectIssues(resolvedRoot, files));
 
-  // Build the graph before deriving imports/exports. The removed regex
-  // extractors only understood JS/TS and emitted misleading metadata for
-  // other languages.
-  let graph = options.graph;
-  if (!graph) {
-    const cached = await loadCachedGraph(resolvedRoot);
-    graph = await buildCodeGraph(resolvedRoot, files, cached);
-    await saveCachedGraph(resolvedRoot, graph);
-  }
-
-  let imports: ImportInfo[] = [];
-  let exports: ExportInfo[] = [];
+  const graph = await resolveInspectionGraph(resolvedRoot, files, options.graph);
   const graphFile = graph.files.get(relativePath);
-  if (graphFile) {
-    imports = graphFile.imports.map((i) => ({
-      source: i.source,
-      specifiers: i.specifiers,
-      isRelative: i.source.startsWith('.') || i.source.startsWith('/'),
-    }));
-    exports = graphFile.exports.map((e) => ({
-      name: e.name,
-      type: mapExportType(e.kind),
-    }));
-  }
+  const imports = importsFromGraphFile(graphFile);
+  const exports = exportsFromGraphFile(graphFile);
   const purpose = inferPurpose(absolutePath, exports);
   const potentialIssues = detectFileIssues(content, lines.length);
 

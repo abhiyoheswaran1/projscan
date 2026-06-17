@@ -68,6 +68,23 @@ describe('deprecated extractor exports', () => {
     expect(metricsSource).not.toContain("from './fileInspector.js'");
   });
 
+  it('keeps graph loading and import/export shaping out of the file inspector orchestrator', () => {
+    const inspectorSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspector.ts'),
+      'utf8',
+    );
+    expect(inspectorSource).not.toContain('loadCachedGraph');
+    expect(inspectorSource).not.toContain('saveCachedGraph');
+    expect(inspectorSource).not.toContain('mapExportType');
+    expect(inspectorSource).not.toContain('i.source.startsWith');
+
+    const graphSource = readFileSync(
+      path.join(process.cwd(), 'src/core/fileInspectionGraph.ts'),
+      'utf8',
+    );
+    expect(graphSource).not.toContain("from './fileInspector.js'");
+  });
+
   it('keeps file access path safety out of the file inspector orchestrator', () => {
     const inspectorSource = readFileSync(
       path.join(process.cwd(), 'src/core/fileInspector.ts'),

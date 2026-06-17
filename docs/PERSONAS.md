@@ -5393,3 +5393,52 @@ fan-out after edited files are re-parsed and cross-file indexes are rebuilt.
 Kept change: one code graph fan-metrics helper module, one maintainability
 regression, existing fan-in/fan-out and incremental graph coverage, this persona
 note, and no public API change.
+
+## One Hundred Thirteenth Slice Decision
+
+Selected personas: OSS Maintainer Evaluating MCP Adoption and Platform/Release
+Owner.
+
+Reason: `src/core/fileInspector.ts` remained a production hotspot and still
+mixed file inspection orchestration with graph cache loading plus graph-backed
+import/export shaping. Those details are review noise for an inspector that
+should primarily compose file access, scan/issues, graph metrics, hotspots, and
+the final inspection record.
+
+Smallest fix: move inspection graph loading, cache save/load, import shaping,
+and export shaping into `fileInspectionGraph.ts`; keep `inspectFile`
+responsible for file access, scan/issue lookup, purpose/issues, hotspot lookup,
+graph metrics, and final report assembly.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts -t "graph loading and import/export shaping"
+npm run test -- tests/core/fileInspector.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileInspectionGraph.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: File Inspection Graph Extraction
+
+Delete-list after this slice:
+
+- Do not change `inspectFile`, `explainFile`, `InspectOptions`, `inferPurpose`,
+  or `detectFileIssues` exports.
+- Do not change path safety, symlink handling, missing-file behavior, cached
+  graph reuse, graph-backed JavaScript/Python imports/exports, hotspot lookup,
+  related issue filtering, or graph metrics.
+- Do not reintroduce removed regex import/export extractors.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: when a caller supplies `options.graph`, the inspector should
+still use that graph directly and avoid cache load/build/save work.
+
+Kept change: one file inspection graph helper module, one maintainability
+regression, existing file inspector behavior coverage, this persona note, and no
+public API change.
