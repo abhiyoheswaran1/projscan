@@ -219,12 +219,40 @@ describe('coordinationHints', () => {
           { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
           { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
         ],
+        evidence: {
+          commandPath: 'projscan collisions',
+          command: 'projscan collisions --format json',
+          localOnly: true,
+          worktreeCount: 2,
+          currentWorktree: { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          activeSignals: [
+            {
+              name: 'collisions',
+              commandPath: 'projscan collisions',
+              source: 'git worktree list, local diffs, and the local import graph',
+            },
+          ],
+          validationWorkflow: [
+            {
+              command: 'projscan collisions --format json',
+              purpose: 'Find same-file and dependency overlaps across sibling worktrees.',
+            },
+          ],
+          sessionSeparation: {
+            currentEvidence:
+              'Current worktree evidence is read from local git/worktree state during this command.',
+            rememberedContext:
+              'Remembered session context is read separately through projscan session and agent-brief coordination hints.',
+            command: 'projscan agent-brief --format json',
+          },
+        },
       }),
       claims: [],
       mergeRisk: mergeRisk({}),
     });
     expect(coordinationHints(clear)).toEqual([
       'Swarm readiness: clear across 2 worktrees - ' +
+        '`projscan coordinate` local-only evidence sees current worktree a with 1 changed file(s) against main; ' +
         'validate locally with `projscan coordinate --format json`, ' +
         '`projscan coordinate --watch --interval 5 --format json`, then ' +
         '`projscan agent-brief --format json` before parallel edits continue.',

@@ -121,12 +121,12 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
     return summary.worktreeCount > 1
       ? [
           `Swarm readiness: clear across ${summary.worktreeCount} worktrees - ` +
-            `${validation} before parallel edits continue.`,
+            `${coordinationEvidenceBoundary(summary)}${validation} before parallel edits continue.`,
         ]
       : [];
   }
   const hints: string[] = [
-    `Swarm readiness: ${summary.readiness} - ${validation}.`,
+    `Swarm readiness: ${summary.readiness} - ${coordinationEvidenceBoundary(summary)}${validation}.`,
   ];
   if (summary.collisions.high > 0) {
     hints.push(
@@ -142,6 +142,22 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
   const first = summary.mergeRisk.integrationOrder[0];
   if (first) hints.push(`Merge ${first.branch ?? first.worktree} first (lowest risk).`);
   return hints;
+}
+
+function coordinationEvidenceBoundary(summary: CoordinationSummary): string {
+  const evidence = summary.evidence;
+  if (!evidence) return '';
+  return `\`${evidence.commandPath}\` local-only evidence sees ${currentWorktreeState(evidence)}; `;
+}
+
+function currentWorktreeState(
+  evidence: NonNullable<CoordinationSummary['evidence']>,
+): string {
+  const current = evidence.currentWorktree;
+  if (!current) return `${evidence.worktreeCount} worktree(s)`;
+  const label = current.branch ?? current.path;
+  const base = current.baseRef ?? 'working tree';
+  return `current worktree ${label} with ${current.changedFileCount} changed file(s) against ${base}`;
 }
 
 function coordinationValidationWorkflow(summary: CoordinationSummary): string {
