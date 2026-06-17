@@ -12,21 +12,8 @@
  * this router) is a breaking change reserved for 4.0.
  */
 
-import { keywordWeight } from './intentRouterKeywordWeights.js';
 import { ROUTE_CATALOG, type RouteEntry } from './intentRouterCatalog.js';
-import { routeKeywordMatches } from './intentRouterKeywordMatches.js';
-import {
-  hasProhibitedReleaseWorkflowAction,
-  hasProhibitedVersionBumpAction,
-  prohibitedWorkflowKeywordMatches,
-} from './intentRouterReleaseSignals.js';
-import {
-  hasEnvVarTarget,
-  hasFilePathTarget,
-  hasPackageChangeTarget,
-  hasPackageRemovalTarget,
-  hasQuotedTextTarget,
-} from './intentRouterTargetSignals.js';
+import { routeScore, scoreRouteCatalog } from './intentRouterScoring.js';
 
 export { ROUTE_CATALOG, type RouteEntry } from './intentRouterCatalog.js';
 
@@ -43,24 +30,6 @@ export interface RouteResult {
   intent: string | null;
   matched: boolean;
   matches: RouteMatch[];
-}
-
-interface IntentSignals {
-  tokens: Set<string>;
-  hasFilePath: boolean;
-  hasPackageRemoval: boolean;
-  hasPackageChange: boolean;
-  hasEnvVar: boolean;
-  hasQuotedText: boolean;
-  hasProhibitedReleaseAction: boolean;
-  hasProhibitedVersionBump: boolean;
-}
-
-interface ScoredRoute {
-  entry: RouteEntry;
-  score: number;
-  matchedKeywords: string[];
-  index: number;
 }
 
 const STOPWORDS = new Set([
@@ -115,67 +84,13 @@ export function routeIntent(intent: string | undefined): RouteResult {
     };
   }
 
-  const signals = intentSignals(intent);
-  const scored = ROUTE_CATALOG.map((entry, index) => scoreRouteEntry(entry, index, signals))
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const scored = scoreRouteCatalog(intent, ROUTE_CATALOG, new Set(tokenize(intent)));
 
   return {
     intent,
     matched: scored.length > 0,
     matches: scored.map((s, index) => routeMatch(s.entry, index + 1, s.matchedKeywords)),
   };
-}
-
-function intentSignals(intent: string): IntentSignals {
-  const tokens = new Set(tokenize(intent));
-  const hasFilePath = hasFilePathTarget(intent);
-
-  return {
-    tokens,
-    hasFilePath,
-    hasPackageRemoval: !hasFilePath && hasPackageRemovalTarget(intent),
-    hasPackageChange: !hasFilePath && hasPackageChangeTarget(intent),
-    hasEnvVar: hasEnvVarTarget(intent),
-    hasQuotedText: hasQuotedTextTarget(intent),
-    hasProhibitedReleaseAction: hasProhibitedReleaseWorkflowAction(intent),
-    hasProhibitedVersionBump: hasProhibitedVersionBumpAction(intent),
-  };
-}
-
-function scoreRouteEntry(entry: RouteEntry, index: number, signals: IntentSignals): ScoredRoute {
-  const matchedKeywords = matchedEntryKeywords(entry, signals);
-  return { entry, score: routeScore(entry, matchedKeywords), matchedKeywords, index };
-}
-
-function matchedEntryKeywords(entry: RouteEntry, signals: IntentSignals): string[] {
-  return entry.keywords
-    .filter((keyword) => workflowKeywordAllowed(entry, keyword, signals))
-    .filter((keyword) =>
-      routeKeywordMatches(
-        entry,
-        keyword,
-        signals.tokens,
-        signals.hasFilePath,
-        signals.hasPackageRemoval,
-        signals.hasPackageChange,
-        signals.hasEnvVar,
-        signals.hasQuotedText,
-      ),
-    );
-}
-
-function workflowKeywordAllowed(
-  entry: RouteEntry,
-  keyword: string,
-  signals: IntentSignals,
-): boolean {
-  return !prohibitedWorkflowKeywordMatches(
-    entry,
-    keyword,
-    signals.hasProhibitedReleaseAction,
-    signals.hasProhibitedVersionBump,
-  );
 }
 
 function routeMatch(entry: RouteEntry, rank: number, matchedKeywords: string[]): RouteMatch {
@@ -187,10 +102,6 @@ function routeMatch(entry: RouteEntry, rank: number, matchedKeywords: string[]):
     confidence: routeConfidence(score),
     matchedKeywords,
   };
-}
-
-function routeScore(entry: RouteEntry, matchedKeywords: string[]): number {
-  return matchedKeywords.reduce((total, keyword) => total + keywordWeight(entry, keyword), 0);
 }
 
 function routeConfidence(score: number): RouteConfidence {
