@@ -272,6 +272,33 @@ describe('routeIntent', () => {
     expect(lookupSignalsSource).toContain('export function searchDocumentationContextMatches');
   });
 
+  it('keeps risk and impact routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterRiskSignals.js'");
+    expect(routerSource).not.toContain('function fileHistoryContextMatches');
+    expect(routerSource).not.toContain('function fileTestContextMatches');
+    expect(routerSource).not.toContain('function impactDeleteContextMatches');
+    expect(routerSource).not.toContain('function impactDatabaseContextMatches');
+    expect(routerSource).not.toContain('function impactApiKeywordMatches');
+    expect(routerSource).not.toContain('function impactApiContextMatches');
+    expect(routerSource).not.toContain('function impactRollbackContextMatches');
+    expect(routerSource).not.toContain('function doctorCleanupDeleteContextMatches');
+    expect(routerSource).not.toContain('function doctorCleanupDiscoveryContextMatches');
+    expect(routerSource).not.toContain('function hotspotFileRiskContextMatches');
+    expect(routerSource).not.toContain('function hotspotWhereContextMatches');
+    expect(routerSource).not.toContain('function hotspotPerformanceContextMatches');
+
+    const riskSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterRiskSignals.ts'),
+      'utf8',
+    );
+    expect(riskSignalsSource).toContain('export function impactDeleteContextMatches');
+    expect(riskSignalsSource).toContain('export function hotspotWhereContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

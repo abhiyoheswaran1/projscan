@@ -1961,3 +1961,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move that matcher cluster into `src/core/intentRouterSearchLookupSignals.ts`, while keeping dataflow, route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 5928 lines / CC 800 to 5582 lines / CC 761. The extracted helper has no imports, no hotspot history, preserves existing lookup keyword semantics, and no public route schema change. Projscan reports a potential TODO/FIXME on the helper only because an existing `todo` keyword token moved with the authorization blocker list.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "general lookup search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract risk and impact route signals
+
+- Status: accepted
+- Context: File history/test questions, impact checks, rollback intent, doctor cleanup routing, and hotspot/performance routing formed a risk-focused matcher cluster inside the intent-router hotspot.
+- Decision: Move that matcher cluster into `src/core/intentRouterRiskSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 5582 lines / CC 761 to 5332 lines / CC 732. The extracted helper imports only existing repo and regression signal helpers, has no hotspot history, preserves existing risk/impact keyword semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "risk and impact routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

@@ -6723,3 +6723,54 @@ generated code" should still route to search, while "add auth checks" and
 Kept change: one general lookup search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Forty First Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Code Reviewer.
+
+Reason: risk and impact routing is how agents answer "what breaks", "who used
+this", "can I delete this", "what rollback path exists", and "where is the
+hotspot" without confusing those questions with plain search or regression
+planning. Code reviewers need this logic isolated because it encodes review
+risk and cleanup intent, not catalog policy.
+
+Smallest fix: move file history/test, impact, rollback, doctor-cleanup, and
+hotspot matching into `intentRouterRiskSignals.ts`; leave route catalog data,
+route scoring, confidence, start-mode handling, and dispatch composition inside
+`intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "risk and impact routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterRiskSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Risk And Impact Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, risk/impact route entries, doctor cleanup
+  route entries, hotspot route entries, route confidence scoring, `routeIntent`,
+  start-mode behavior, or public route result shape.
+- Do not change file-history, file-test, impact, rollback, cleanup, hotspot, or
+  performance keyword semantics except by moving the existing matcher cluster
+  into `intentRouterRiskSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "what breaks if I delete this file", "who last touched
+src/foo.ts", "can I safely remove unused code", "find hotspots", and "where
+should I start refactoring" should keep their existing routes, while local
+service setup and regression-performance intents should continue to block
+hotspot routing where they already did.
+
+Kept change: one risk/impact route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.
