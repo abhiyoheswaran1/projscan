@@ -8026,3 +8026,48 @@ count while removing release routing from the monolithic file.
 
 Kept change: one focused release-routing test split, this persona note, and no
 release action.
+
+## One Hundred Sixty Eighth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, MCP Tooling
+Maintainer, Test Steward, and Agent Workflow Maintainer.
+
+Reason: `tests/mcp/start.test.ts` remained on the maintainability watch list
+with a `Very large file` warning. Its first three tests covered basic MCP tool
+exposure, first-run release guidance, and safety-gate mode inference, which are
+independent from the large fuzzy-impact and handoff proof assertions later in
+the file.
+
+Smallest fix: move those basic MCP start tests into
+`tests/mcp/startBasic.test.ts`, leaving the more complex mission-control
+coverage in `tests/mcp/start.test.ts`. The split preserves the same six focused
+MCP start tests while removing the `Very large file` warning from the original
+file.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/start.test.ts
+npm run test -- tests/mcp/start.test.ts tests/mcp/startBasic.test.ts
+npm exec projscan -- file tests/mcp/start.test.ts --format json
+npm exec projscan -- file tests/mcp/startBasic.test.ts --format json
+```
+
+## Review Guardrails: MCP Start Basic Test Split
+
+Delete-list after this slice:
+
+- Do not change MCP tool schemas, MCP handler behavior, `projscan_start`
+  routing behavior, CLI behavior, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not remove coverage for the `projscan_start` tool schema, release-mode
+  first-run guidance, or before-commit safety-gate inference.
+- Do not claim `tests/mcp/start.test.ts` is fully resolved; the large fuzzy
+  impact test still needs a later bounded split or helper extraction.
+
+Reviewer edge case: the focused MCP start run should still report six tests
+across `tests/mcp/start.test.ts` and `tests/mcp/startBasic.test.ts`, preserving
+the pre-split coverage count while moving only the basic tests.
+
+Kept change: one focused MCP start test split, this persona note, and no release
+action.
