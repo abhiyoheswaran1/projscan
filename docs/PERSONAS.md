@@ -6972,3 +6972,51 @@ security merely because the helper code moved.
 Kept change: expanded security route-signal helper module, one router boundary
 regression update, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Forty Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and Package Maintainer.
+
+Reason: target detection is how the router decides whether an intent names a
+file path, env var, quoted string, package removal, or package upgrade before
+keyword scoring begins. Package maintainers need these heuristics isolated
+because package targets should not be confused with file or documentation
+targets.
+
+Smallest fix: move file-path, env-var, quoted-text, package-removal, and
+package-change target detection into `intentRouterTargetSignals.ts`; leave route
+catalog data, route scoring, confidence, start-mode handling, and dispatch
+composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "intent target detection"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterTargetSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Intent Target Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, route confidence scoring, `routeIntent`,
+  start-mode behavior, keyword scoring, or public route result shape.
+- Do not change file-path, env-var, quoted-text, package-removal, or
+  package-change detection semantics except by moving the existing helper group
+  into `intentRouterTargetSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, deployment, or secret-reading behavior.
+
+Reviewer edge case: file paths should still block package-removal/package-change
+target detection, env vars and quoted debug text should still be detected, and
+generic docs/readme/changelog wording should not become a package target.
+
+Kept change: one target-detection route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

@@ -134,6 +134,13 @@ import { searchTestDataContextMatches } from './intentRouterSearchTestSignals.js
 import { searchToolingConfigContextMatches } from './intentRouterSearchToolingSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 import {
+  hasEnvVarTarget,
+  hasFilePathTarget,
+  hasPackageChangeTarget,
+  hasPackageRemovalTarget,
+  hasQuotedTextTarget,
+} from './intentRouterTargetSignals.js';
+import {
   coverageGapContextMatches,
   coverageKeywordMatches,
   searchCodeLocationContextMatches,
@@ -4813,92 +4820,6 @@ function keywordWeight(entry: RouteEntry, keyword: string): number {
     if (['find', 'fix', 'pr'].includes(keyword)) return 0.25;
   }
   return 1;
-}
-
-function hasFilePathTarget(intent: string): boolean {
-  return /(?:^|\s)[A-Za-z0-9_./:@-]+\.[A-Za-z0-9]{1,12}(?=[\s?!.,;:]|$)/.test(intent);
-}
-
-function hasEnvVarTarget(intent: string): boolean {
-  return (
-    /\bprocess\.env\.[A-Za-z_][A-Za-z0-9_]*\b/.test(intent) ||
-    /\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/.test(intent)
-  );
-}
-
-function hasQuotedTextTarget(intent: string): boolean {
-  return /(["'`])\S.{0,200}?\1/.test(intent);
-}
-
-function hasPackageRemovalTarget(intent: string): boolean {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const actionFirst = compactIntent.match(
-    /\b(?:remove|drop|uninstall)\s+(?:the\s+)?(?:(?:package|dependency)\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
-  );
-  const targetFirst = compactIntent.match(
-    /\b(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)\s+(?:safe\s+to\s+)?(?:remove|drop|uninstall)\b/i,
-  );
-  const match = actionFirst ?? targetFirst;
-  const target = match?.[1]?.toLowerCase();
-  if (!target) return false;
-  return ![
-    'this',
-    'that',
-    'it',
-    'thing',
-    'file',
-    'files',
-    'function',
-    'method',
-    'class',
-    'symbol',
-    'code',
-    'for',
-    'safe',
-    'safely',
-    'carefully',
-    'docs',
-    'doc',
-    'documentation',
-    'document',
-    'readme',
-    'changelog',
-    'examples',
-    'example',
-    'guide',
-  ].includes(target);
-}
-
-function hasPackageChangeTarget(intent: string): boolean {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const actionFirst = compactIntent.match(
-    /\b(?:bump|upgrade|update)\s+(?:the\s+)?(?:(?:package|dependency)\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
-  );
-  const target = actionFirst?.[1]?.toLowerCase();
-  if (!target) return false;
-  return ![
-    'this',
-    'that',
-    'it',
-    'thing',
-    'file',
-    'files',
-    'function',
-    'method',
-    'class',
-    'symbol',
-    'code',
-    'for',
-    'docs',
-    'doc',
-    'documentation',
-    'document',
-    'readme',
-    'changelog',
-    'examples',
-    'example',
-    'guide',
-  ].includes(target);
 }
 
 function routeConfidence(score: number): RouteConfidence {

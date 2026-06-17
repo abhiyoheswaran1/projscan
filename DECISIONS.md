@@ -2001,3 +2001,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the explicit dataflow helper pair into `src/core/intentRouterSecuritySignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 4961 lines / CC 690 to 4909 lines / CC 690. The expanded security helper still has no imports, no hotspot history, preserves existing dataflow/privacy keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "dataflow and privacy keyword routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract intent target route signals
+
+- Status: accepted
+- Context: File-path, env-var, quoted-text, package-removal, and package-change target detection remained as setup helpers at the bottom of the intent-router hotspot.
+- Decision: Move the target detection helper group into `src/core/intentRouterTargetSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 4909 lines / CC 690 to 4830 lines / CC 686. The extracted helper has no imports, no hotspot history, preserves existing target-detection semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "intent target detection"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

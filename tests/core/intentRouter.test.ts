@@ -373,6 +373,27 @@ describe('routeIntent', () => {
     expect(workSignalsSource).toContain('export function protectedImproveNextContextMatches');
   });
 
+  it('keeps intent target detection isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterTargetSignals.js'");
+    expect(routerSource).not.toContain('function hasFilePathTarget');
+    expect(routerSource).not.toContain('function hasEnvVarTarget');
+    expect(routerSource).not.toContain('function hasQuotedTextTarget');
+    expect(routerSource).not.toContain('function hasPackageRemovalTarget');
+    expect(routerSource).not.toContain('function hasPackageChangeTarget');
+
+    const targetSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterTargetSignals.ts'),
+      'utf8',
+    );
+    expect(targetSignalsSource).toContain('export function hasFilePathTarget');
+    expect(targetSignalsSource).toContain('export function hasPackageRemovalTarget');
+    expect(targetSignalsSource).toContain('export function hasPackageChangeTarget');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
