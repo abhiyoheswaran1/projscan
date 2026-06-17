@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import { inspectFile, inferPurpose, detectFileIssues } from '../../src/core/fileInspector.js';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
 import type { FileEntry, Issue } from '../../src/types.js';
 
 describe('deprecated extractor exports', () => {
@@ -111,6 +112,14 @@ describe('deprecated extractor exports', () => {
       'utf8',
     );
     expect(evidenceSource).not.toContain("from './fileInspector.js'");
+  });
+
+  it('keeps inspectFile as a low-complexity orchestration boundary', async () => {
+    const inspection = await inspectRepoSourceFile('src/core/fileInspector.ts');
+    const inspectFileFn = inspection.functions?.find((fn) => fn.name === 'inspectFile');
+
+    expect(inspectFileFn).toBeDefined();
+    expect(inspectFileFn!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 });
 
@@ -284,4 +293,11 @@ async function fileEntry(root: string, relativePath: string): Promise<FileEntry>
     sizeBytes: stat.size,
     directory: path.posix.dirname(relativePath),
   };
+}
+
+async function inspectRepoSourceFile(relativePath: string) {
+  const root = process.cwd();
+  const file = await fileEntry(root, relativePath);
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, relativePath, { scan: { files: [file] }, issues: [], graph });
 }

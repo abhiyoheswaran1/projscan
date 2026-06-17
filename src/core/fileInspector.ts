@@ -1,36 +1,13 @@
 import type {
-  FileEntry,
   FileExplanation,
   FileInspection,
-  HotspotReport,
-  Issue,
 } from '../types.js';
 import { readProjectFile } from './fileAccess.js';
-import { scanRepository } from './repositoryScanner.js';
-import { collectIssues } from './issueEngine.js';
-import { analyzeHotspots } from './hotspotAnalyzer.js';
-import { getAdapterFor } from './languages/registry.js';
-import type { CodeGraph } from './codeGraph.js';
-import {
-  exportsFromGraphFile,
-  importsFromGraphFile,
-  resolveInspectionGraph,
-} from './fileInspectionGraph.js';
-import { collectFileInspectionEvidence } from './fileInspectionEvidence.js';
-import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
-import { detectFileIssues } from './fileIssues.js';
-import { inferPurpose } from './filePurpose.js';
+import { inspectExistingProjectFile, type InspectOptions } from './fileInspectionReport.js';
 
 export { inferPurpose } from './filePurpose.js';
 export { detectFileIssues } from './fileIssues.js';
-
-export interface InspectOptions {
-  scan?: { files: FileEntry[] };
-  issues?: Issue[];
-  hotspots?: HotspotReport;
-  /** If provided, prefer graph-derived imports/exports over regex parsing. */
-  graph?: CodeGraph;
-}
+export type { InspectOptions } from './fileInspectionReport.js';
 
 export async function explainFile(
   rootPath: string,
@@ -61,50 +38,7 @@ export async function inspectFile(
     return makeEmpty(fileRead.relativePath, fileRead.reason);
   }
 
-  const { resolvedRoot, absolutePath, relativePath, content, sizeBytes } = fileRead.file;
-  const lines = content.split('\n');
-  const adapter = getAdapterFor(relativePath);
-  const language = adapter?.id;
-
-  const files = options.scan?.files ?? (await scanRepository(resolvedRoot)).files;
-  const issues = options.issues ?? (await collectIssues(resolvedRoot, files));
-
-  const graph = await resolveInspectionGraph(resolvedRoot, files, options.graph);
-  const graphFile = graph.files.get(relativePath);
-  const imports = importsFromGraphFile(graphFile);
-  const exports = exportsFromGraphFile(graphFile);
-  const purpose = inferPurpose(absolutePath, exports);
-  const potentialIssues = detectFileIssues(content, lines.length);
-
-  const hotspotReport =
-    options.hotspots ?? (await analyzeHotspots(resolvedRoot, files, issues, { limit: 100, graph }));
-
-  const relatedEvidence = collectFileInspectionEvidence({
-    files,
-    issues,
-    hotspots: hotspotReport,
-    relativePath,
-  });
-
-  const graphMetrics = deriveFileGraphMetrics(graph, relativePath);
-
-  return {
-    relativePath,
-    exists: true,
-    purpose,
-    lineCount: lines.length,
-    sizeBytes,
-    imports,
-    exports,
-    potentialIssues,
-    hotspot: relatedEvidence.hotspot,
-    issues: relatedEvidence.issues,
-    cyclomaticComplexity: graphMetrics.cyclomaticComplexity,
-    fanIn: graphMetrics.fanIn,
-    fanOut: graphMetrics.fanOut,
-    language,
-    functions: graphMetrics.functions,
-  };
+  return inspectExistingProjectFile(fileRead.file, options);
 }
 
 function makeEmpty(relativePath: string, reason: string): FileInspection {

@@ -9340,3 +9340,47 @@ constraints are most useful when the requirement declaration is a range.
 Kept change: local-only include traversal in the Python requirements evidence
 reader, focused upgrade/project-detection regressions, this persona note, and
 no release action in this slice.
+
+## One Hundred Ninety Sixth Slice Decision
+
+Selected personas: Staff Reviewer, Maintainability-Focused Platform Engineer,
+and Codebase-Exploring Agent.
+
+Reason: `src/core/fileInspector.ts` is a high-churn review surface. It had
+already extracted purpose, issue, graph, access, and evidence helpers, but
+`inspectFile` still mixed the read boundary with existing-file report assembly.
+That makes a file-inspection change harder to audit under review pressure.
+
+Smallest fix: move existing-file report assembly into
+`src/core/fileInspectionReport.ts`. Keep `inspectFile` as the path-safe
+read-success/read-failure boundary and preserve all public exports and output
+fields.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/fileInspector.test.ts
+npm exec projscan -- file src/core/fileInspector.ts --format json
+npm exec projscan -- file src/core/fileInspectionReport.ts --format json
+```
+
+## Review Guardrails: File Inspection Report Extraction
+
+Delete-list after this slice:
+
+- Do not change file access policy, symlink handling, absolute-path rejection,
+  or outside-root rejection.
+- Do not change purpose inference, issue detection, graph construction,
+  hotspot scoring, related evidence lookup, reporter output, or public
+  `FileInspection` fields.
+- Do not add dependencies, generic renderer abstractions, package metadata,
+  release artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+
+Reviewer edge case: missing and unsafe paths must still return the same
+`exists: false` shape from `inspectFile`; only successfully read files enter
+the new helper.
+
+Kept change: one existing-file report helper module, a low-complexity
+orchestrator regression, this persona note, and no release action in this
+slice.

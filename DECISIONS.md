@@ -2105,3 +2105,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Follow local, repo-contained requirement and constraint includes from scanned requirements files. Included requirements add declaration evidence, included constraints add pinned current-version evidence, and unsafe or unscanned include paths are ignored.
 - Consequences: `projscan upgrade <python-package>` can now preview split-requirements projects without installing packages, reading outside the scanned file set, adding network calls, or changing the upgrade schema. Exact pins in included requirements keep the existing behavior of acting as lockfile evidence.
 - Verification: `npm run test -- tests/core/upgradePreview.test.ts -t "included requirements|included constraints"` and the adjacent Python project-detection/manifest suites failed before the include traversal, then passed. The complexity regression for the requirements include helpers also passed after refactor.
+
+## 2026-06-17: Extract file inspection report assembly
+
+- Status: accepted
+- Context: `src/core/fileInspector.ts` remained a high-churn hotspot, and `inspectFile` still mixed path-read branching with scan loading, graph shaping, hotspot evidence, issue evidence, and report assembly.
+- Decision: Move existing-file report assembly into `src/core/fileInspectionReport.ts` and keep `inspectFile` as the read-success/read-failure boundary.
+- Consequences: `inspectFile` drops to cyclomatic complexity 2 while public exports, path-safety behavior, file purpose, imports, exports, issues, hotspots, graph metrics, and `FileInspection` output remain unchanged. The new helper owns one cohesive existing-file report assembly path at cyclomatic complexity 4.
+- Verification: `npm run test -- tests/core/fileInspector.test.ts -t "low-complexity orchestration boundary"` failed before extraction, then passed. The full file inspector suite and `projscan file` metrics passed after extraction.
