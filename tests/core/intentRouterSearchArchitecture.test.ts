@@ -7,6 +7,8 @@ describe('routeIntent search architecture', () => {
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordMatches.ts'), 'utf8');
   const searchGuardsSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordSearchGuards.ts'), 'utf8');
+  const toolGuardsSource = () =>
+    readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordToolGuards.ts'), 'utf8');
 
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
@@ -76,6 +78,20 @@ describe('routeIntent search architecture', () => {
     expect(guardSource).toContain('export function routeKeywordSearchGuardDecision');
     expect(guardSource).toContain('function searchKeywordDecision');
     expect(guardSource).toContain('searchFeatureFlagContextMatches');
+  });
+
+  it('keeps tool keyword guard decisions isolated from the keyword dispatcher', () => {
+    const keywordSource = keywordMatchesSource();
+
+    expect(keywordSource).toContain("from './intentRouterKeywordToolGuards.js'");
+    expect(keywordSource).not.toContain("entry.tool === 'projscan_pr_diff'");
+    expect(keywordSource).not.toContain("keyword === 'ready'");
+    expect(keywordSource).not.toContain('releaseTrainKeywordMatches(keyword');
+
+    const guardSource = toolGuardsSource();
+    expect(guardSource).toContain('export function routeKeywordToolGuardDecision');
+    expect(guardSource).toContain('function toolKeywordDecision');
+    expect(guardSource).toContain('prDiffKeywordMatches');
   });
 
   it('keeps infra artifact search routing isolated from the main router', () => {

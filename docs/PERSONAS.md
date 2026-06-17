@@ -7275,3 +7275,55 @@ existing specialized context matchers allow them.
 Kept change: one search-guard module, one architecture-boundary regression,
 existing full intent-router behavior coverage, this persona note, and no release
 action.
+
+## One Hundred Fifty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform And Release
+Owner.
+
+Reason: after the search extraction, `routeKeywordMatches()` still carried the
+remaining non-search tool rejectors for PR diff, coverage, dependency,
+preflight, coordination, workplan, bug-hunt, regression, and release-train
+routes. That kept the dispatcher branch-heavy even though each rule was a
+tool-specific guard.
+
+Smallest fix: move the remaining tool-specific keyword rejectors into
+`src/core/intentRouterKeywordToolGuards.ts` and leave the dispatcher as a small
+orchestrator over early, target, search, and tool guard decisions. Keep catalog
+entries, scoring, command names, MCP tool names, public route result schemas,
+and route behavior unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterSearchArchitecture.test.ts -t "tool keyword guard decisions"
+npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/core/intentRouter*.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/core/intentRouterKeywordMatches.ts --format json
+npm exec projscan -- file src/core/intentRouterKeywordToolGuards.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Intent Router Tool Guards
+
+Delete-list after this slice:
+
+- Do not change PR diff, coverage, dependency, upgrade, preflight, hotspot,
+  coordination, session, workplan, bug-hunt, regression, or release-train route
+  behavior while moving rejectors.
+- Do not change `ROUTE_CATALOG`, keyword weights, confidence thresholds, CLI
+  command strings, MCP tool names, or public route result schemas.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: package-cycle prompts should still suppress audit/outdated
+upgrade routes, preflight `ready` should still require ready context, bug-hunt
+speed/opportunity words should still require their contexts, and release-train
+should remain quiet for infra artifact search contexts.
+
+Kept change: one tool-guard module, one architecture-boundary regression,
+existing full intent-router behavior coverage, this persona note, and no release
+action.
