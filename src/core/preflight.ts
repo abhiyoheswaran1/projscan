@@ -1,7 +1,6 @@
 import { scanRepository } from './repositoryScanner.js';
 import { collectIssues } from './issueEngine.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
-import { computeReview } from './review.js';
 import { loadSession } from './session.js';
 import { pluginsEnabled } from './plugins.js';
 import { computeCoordination, type CoordinationSummary } from './coordination.js';
@@ -16,6 +15,10 @@ import {
   buildSuggestedActions,
   buildToolCalls,
 } from './preflightSuggestedActions.js';
+import {
+  safeReviewEvidence,
+  type PreflightReviewEvidence,
+} from './preflightReviewEvidence.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -30,7 +33,6 @@ import type {
   PreflightReport,
   PreflightVerdict,
 } from '../types.js';
-import type { ReviewReport } from '../types/review.js';
 
 export interface ComputePreflightOptions {
   mode?: PreflightMode;
@@ -54,15 +56,6 @@ interface PreflightSessionEvidence {
   eventCount: number;
 }
 
-interface PreflightReviewEvidence {
-  available: boolean;
-  verdict?: ReviewReport['verdict'];
-  summary?: string;
-  reason?: string;
-  newTaintFlows?: number;
-  newDataflowRisks?: number;
-}
-
 const DEFAULT_MAX_CHANGED_FILES = 50;
 
 export async function computePreflight(
@@ -80,7 +73,7 @@ export async function computePreflight(
   const changedFiles = await safeChangedFiles(rootPath, mode, options.baseRef);
   const session = await safeSession(rootPath);
   const hotspots = await safeHotspots(rootPath, scan.files, issues);
-  const review = await safeReview(rootPath, mode, options);
+  const review = await safeReviewEvidence(rootPath, mode, options);
   const coordination = await safeCoordination(rootPath, options.baseRef);
   const maxChangedFiles = options.maxChangedFiles ?? DEFAULT_MAX_CHANGED_FILES;
   const supplyChain = countSupplyChainIssues(issues);
@@ -233,35 +226,6 @@ async function safeHotspots(
     return await analyzeHotspots(rootPath, files, issues, { limit: 20 });
   } catch {
     return null;
-  }
-}
-
-async function safeReview(
-  rootPath: string,
-  mode: PreflightMode,
-  options: ComputePreflightOptions,
-): Promise<PreflightReviewEvidence> {
-  if (mode === 'before_edit') {
-    return { available: false, reason: 'review is not required before edits' };
-  }
-  try {
-    const report = await computeReview(rootPath, {
-      base: options.baseRef,
-      head: options.headRef,
-    });
-    return {
-      available: report.available,
-      verdict: report.available ? report.verdict : undefined,
-      summary: report.available ? report.summary.join('; ') : undefined,
-      reason: report.available ? undefined : report.reason,
-      newTaintFlows: report.available ? report.newTaintFlows.length : undefined,
-      newDataflowRisks: report.available ? report.newDataflowRisks.length : undefined,
-    };
-  } catch (err) {
-    return {
-      available: false,
-      reason: err instanceof Error ? err.message : String(err),
-    };
   }
 }
 

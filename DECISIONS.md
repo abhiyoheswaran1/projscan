@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight review evidence
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned review execution and review-result shaping after reason, evidence, required-check, action, contextual reason, and release-scale helpers were isolated.
+- Decision: Move review evidence collection into `src/core/preflightReviewEvidence.ts`.
+- Consequences: Before-edit review skip behavior, review unavailable reasons, taint/dataflow counts, release-scale behavior, preflight evidence, and public report schema stay unchanged, while `src/core/preflight.ts` drops from 309 lines / CC 29 to 273 lines / CC 21.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "review evidence collection"` plus the full preflight test file.
+
 ## 2026-06-17: Extract review state resolution
 
 - Status: accepted

@@ -271,6 +271,24 @@ test('preflight keeps contextual reason formatting isolated from the reason orch
   expect(coordinationReason!.cyclomaticComplexity).toBeLessThanOrEqual(4);
 });
 
+test('preflight keeps review evidence collection isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('computeReview(');
+  expect(preflightSource).not.toContain('review is not required before edits');
+  expect(preflightSource).not.toContain('newDataflowRisks');
+
+  const reviewEvidence = await inspectRepoSourceFile('src/core/preflightReviewEvidence.ts');
+  const safeReviewEvidence = reviewEvidence.functions?.find(
+    (fn) => fn.name === 'safeReviewEvidence',
+  );
+  const fromReport = reviewEvidence.functions?.find((fn) => fn.name === 'reviewEvidenceFromReport');
+
+  expect(safeReviewEvidence).toBeDefined();
+  expect(safeReviewEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(fromReport).toBeDefined();
+  expect(fromReport!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

@@ -5003,3 +5003,51 @@ unavailable payloads.
 Kept change: one review state helper module, one maintainability regression,
 existing review behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform/Release
+Owner.
+
+Reason: after the review-state cleanup, `src/core/preflight.ts` remained one of
+the highest-complexity production hotspots. The remaining review-specific work
+inside preflight was review execution and review-result projection, which is
+important for release-scale sign-off but not core preflight orchestration.
+
+Smallest fix: move review execution, before-edit skip behavior, unavailable
+reason capture, summary joining, and taint/dataflow count projection into
+`preflightReviewEvidence.ts`; keep `computePreflight` responsible for composing
+the final preflight report.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "review evidence collection"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightReviewEvidence.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Review-Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change before-edit review skip behavior, review unavailable reason
+  text, review summary joining, taint/dataflow count projection, or public
+  preflight schema.
+- Do not change preflight verdict logic, reason order, required checks,
+  release-scale sign-off behavior, evidence shaping, or suggested actions.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: unavailable review reports should still feed the same
+warning path, and available review reports should still expose taint/dataflow
+counts for release-scale and evidence consumers.
+
+Kept change: one preflight review-evidence helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.
