@@ -12,27 +12,18 @@
  * this router) is a breaking change reserved for 4.0.
  */
 
-import { ROUTE_CATALOG, type RouteEntry } from './intentRouterCatalog.js';
-import { routeScore, scoreRouteCatalog } from './intentRouterScoring.js';
+import { ROUTE_CATALOG } from './intentRouterCatalog.js';
+import {
+  buildCatalogRouteResult,
+  buildScoredRouteResult,
+  type RouteResult,
+} from './intentRouterResult.js';
+import { scoreRouteCatalog } from './intentRouterScoring.js';
 import { tokenizeIntent } from './intentRouterTokens.js';
 
 export { ROUTE_CATALOG };
-export type { RouteEntry };
-
-export type RouteConfidence = 'high' | 'medium' | 'low';
-
-export interface RouteMatch extends RouteEntry {
-  score: number;
-  rank: number;
-  confidence: RouteConfidence;
-  matchedKeywords: string[];
-}
-
-export interface RouteResult {
-  intent: string | null;
-  matched: boolean;
-  matches: RouteMatch[];
-}
+export type { RouteEntry } from './intentRouterCatalog.js';
+export type { RouteConfidence, RouteMatch, RouteResult } from './intentRouterResult.js';
 
 /**
  * Map a stated intent to the best-matching projscan tool(s). With no intent,
@@ -41,36 +32,9 @@ export interface RouteResult {
  */
 export function routeIntent(intent: string | undefined): RouteResult {
   if (!intent || intent.trim() === '') {
-    const grouped = [...ROUTE_CATALOG].sort((a, b) => a.category.localeCompare(b.category));
-    return {
-      intent: null,
-      matched: grouped.length > 0,
-      matches: grouped.map((entry, index) => routeMatch(entry, index + 1, [])),
-    };
+    return buildCatalogRouteResult(ROUTE_CATALOG);
   }
 
   const scored = scoreRouteCatalog(intent, ROUTE_CATALOG, new Set(tokenizeIntent(intent)));
-
-  return {
-    intent,
-    matched: scored.length > 0,
-    matches: scored.map((s, index) => routeMatch(s.entry, index + 1, s.matchedKeywords)),
-  };
-}
-
-function routeMatch(entry: RouteEntry, rank: number, matchedKeywords: string[]): RouteMatch {
-  const score = routeScore(entry, matchedKeywords);
-  return {
-    ...entry,
-    score,
-    rank,
-    confidence: routeConfidence(score),
-    matchedKeywords,
-  };
-}
-
-function routeConfidence(score: number): RouteConfidence {
-  if (score >= 2) return 'high';
-  if (score >= 1) return 'medium';
-  return 'low';
+  return buildScoredRouteResult(intent, scored);
 }
