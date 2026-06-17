@@ -7,6 +7,21 @@ describe('routeIntent', () => {
   const keywordMatchesSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordMatches.ts'), 'utf8');
 
+  it('keeps the route catalog isolated from router scoring logic', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    const catalogSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterCatalog.ts'),
+      'utf8',
+    );
+
+    expect(routerSource).toContain("from './intentRouterCatalog.js'");
+    expect(routerSource).not.toContain('export const ROUTE_CATALOG');
+    expect(catalogSource).toContain('export const ROUTE_CATALOG');
+  });
+
   it('keeps dependency and coupling keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
