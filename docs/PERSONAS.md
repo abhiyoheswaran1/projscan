@@ -8407,3 +8407,49 @@ across `tests/core/start.test.ts` and
 while reducing the original hotspot file.
 
 Kept change: one start test split, this persona note, and no release action.
+
+## One Hundred Seventy Sixth Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: `tests/core/start.test.ts` remained the largest concrete
+maintainability hotspot after the agent-planning split. The next cohesive group
+inside the file covered issue-id driven action routing: direct fix suggestions,
+direct issue explanations, and doctor-first fallback when the issue id is
+missing.
+
+Smallest fix: move the four issue fix/explain routing scenarios into
+`tests/core/startIssueActions.test.ts` and leave the rest of the start routing
+matrix in `tests/core/start.test.ts`. This preserves the issue-action behavior
+coverage while reducing the original start test file from 3,341 lines to 3,181
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "issue-fix intent|issue-explanation intent|explain-issue intent lacks|fix-suggest intent lacks"
+npm run test -- tests/core/start.test.ts tests/core/startIssueActions.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+```
+
+## Review Guardrails: Start Issue Actions Test Split
+
+Delete-list after this slice:
+
+- Do not change start routing behavior, mode inference, direct fix-suggest
+  commands, direct explain-issue commands, doctor-first fallback behavior,
+  unresolved input placeholders, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not weaken coverage for issue ids embedded in intents or missing issue-id
+  fallback through `projscan doctor --format json`.
+- Do not broaden this into production intent routing changes; this slice is
+  test maintainability only.
+
+Reviewer edge case: the focused start issue-action run should still report four
+tests in `tests/core/startIssueActions.test.ts`, and the combined start run
+should report 82 tests across `tests/core/start.test.ts` and
+`tests/core/startIssueActions.test.ts`.
+
+Kept change: one issue-action start test split, this persona note, and no
+release action.
