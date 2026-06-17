@@ -1,8 +1,7 @@
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
+import { isPythonRequirementManifestFile } from './pythonRequirements.js';
 
-const REQUIREMENTS_FILE_RE =
-  /^(?:requirements(?:-.*)?|(?:dev|test|lint)-requirements)\.(?:txt|in)$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
 const ROOT_PYTHON_MANIFEST_NAMES = new Set([
   'pyproject.toml',
@@ -25,11 +24,8 @@ function hasPythonEvidenceFile(file: FileEntry): boolean {
 }
 
 function isRootPythonManifestFile(file: FileEntry): boolean {
+  if (isPythonRequirementManifestFile(file)) return true;
   if (file.directory && file.directory !== '.') return false;
   const name = path.basename(file.relativePath);
-  return (
-    ROOT_PYTHON_MANIFEST_NAMES.has(name) ||
-    REQUIREMENTS_FILE_RE.test(name) ||
-    CONSTRAINTS_FILE_RE.test(name)
-  );
+  return ROOT_PYTHON_MANIFEST_NAMES.has(name) || CONSTRAINTS_FILE_RE.test(name);
 }

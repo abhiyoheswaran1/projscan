@@ -274,6 +274,26 @@ describe('detectPythonProject', () => {
     expect(info?.hasLockfile).toBe(true);
   });
 
+  it('reads common nested requirements manifests without a root include', async () => {
+    await fs.mkdir(path.join(tmp, 'requirements'), { recursive: true });
+    await fs.writeFile(path.join(tmp, 'requirements/base.txt'), 'httpx>=0.27\n');
+    await fs.writeFile(path.join(tmp, 'requirements/dev.in'), 'pytest>=8\n');
+
+    const info = await detectPythonProject(tmp, [
+      fileEntry('requirements/base.txt', 'requirements'),
+      fileEntry('requirements/dev.in', 'requirements'),
+    ]);
+
+    expect(info).not.toBeNull();
+    expect(info?.manifestFiles).toEqual(['requirements/base.txt', 'requirements/dev.in']);
+    expect(Object.fromEntries(info!.declared.map((dep) => [dep.name, dep.scope]))).toEqual({
+      httpx: 'main',
+      pytest: 'dev',
+    });
+    expect(info?.declared.find((dep) => dep.name === 'httpx')?.versionSpec).toBe('>=0.27');
+    expect(info?.declared.find((dep) => dep.name === 'pytest')?.versionSpec).toBe('>=8');
+  });
+
   it('ignores unsafe requirement include paths outside the repo root', async () => {
     await fs.mkdir(path.join(tmp, 'requirements'), { recursive: true });
     await fs.writeFile(

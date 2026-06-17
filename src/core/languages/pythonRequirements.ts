@@ -10,6 +10,32 @@ const REQUIREMENTS_LOCK_FILE_RE = /^(?:requirements(?:-.*)?|(?:dev|test|lint)-re
 const DEV_REQUIREMENTS_FILE_RE =
   /^(?:requirements-(?:test|dev|lint)|(?:dev|test|lint)-requirements)\.(?:txt|in)$/i;
 const CONSTRAINTS_FILE_RE = /^constraints(-.*)?\.txt$/i;
+const NESTED_REQUIREMENTS_STEMS = new Set([
+  'base',
+  'common',
+  'prod',
+  'production',
+  'dev',
+  'development',
+  'test',
+  'tests',
+  'lint',
+  'docs',
+  'doc',
+  'ci',
+  'local',
+]);
+const NESTED_DEV_REQUIREMENTS_STEMS = new Set([
+  'dev',
+  'development',
+  'test',
+  'tests',
+  'lint',
+  'docs',
+  'doc',
+  'ci',
+  'local',
+]);
 
 export interface PythonRequirementEvidence {
   manifestFiles: string[];
@@ -51,9 +77,8 @@ async function appendRootRequirements(
   context: RequirementReadContext,
   files: FileEntry[],
 ): Promise<void> {
-  for (const rel of rootRequirementFiles(files)) {
-    const isDev = DEV_REQUIREMENTS_FILE_RE.test(path.basename(rel));
-    await appendRequirementFile(evidence, context, rel, isDev ? 'dev' : 'main');
+  for (const rel of requirementManifestFiles(files)) {
+    await appendRequirementFile(evidence, context, rel, requirementScope(rel));
   }
 }
 
@@ -118,12 +143,16 @@ async function appendConstraintFile(
   }
 }
 
-function rootRequirementFiles(files: FileEntry[]): string[] {
-  return files.filter(isRootRequirementsFile).map((file) => file.relativePath);
+function requirementManifestFiles(files: FileEntry[]): string[] {
+  return files.filter(isPythonRequirementManifestFile).map((file) => file.relativePath);
 }
 
 function rootConstraintFiles(files: FileEntry[]): string[] {
   return files.filter(isRootConstraintsFile).map((file) => file.relativePath);
+}
+
+export function isPythonRequirementManifestFile(file: FileEntry): boolean {
+  return isRootRequirementsFile(file) || isNestedRequirementsFile(file);
 }
 
 function isRootRequirementsFile(file: FileEntry): boolean {
@@ -134,12 +163,38 @@ function isRootConstraintsFile(file: FileEntry): boolean {
   return isRootFile(file) && CONSTRAINTS_FILE_RE.test(path.basename(file.relativePath));
 }
 
+function isNestedRequirementsFile(file: FileEntry): boolean {
+  if (normalizeRel(file.directory) !== 'requirements') return false;
+  const name = path.basename(file.relativePath);
+  const ext = path.extname(name).toLowerCase();
+  if (ext !== '.txt' && ext !== '.in') return false;
+  const stem = name.slice(0, -ext.length).toLowerCase();
+  return REQUIREMENTS_DECLARATION_FILE_RE.test(name) || NESTED_REQUIREMENTS_STEMS.has(stem);
+}
+
 function isRootFile(file: FileEntry): boolean {
   return !file.directory || file.directory === '.';
 }
 
 function isRequirementsLockFile(rel: string): boolean {
-  return REQUIREMENTS_LOCK_FILE_RE.test(path.basename(rel));
+  const normalized = normalizeRel(rel);
+  if (REQUIREMENTS_LOCK_FILE_RE.test(path.basename(normalized))) return true;
+  return (
+    path.posix.dirname(normalized) === 'requirements' &&
+    path.extname(normalized).toLowerCase() === '.txt' &&
+    NESTED_REQUIREMENTS_STEMS.has(
+      path.basename(normalized, path.extname(normalized)).toLowerCase(),
+    )
+  );
+}
+
+function requirementScope(rel: string): 'main' | 'dev' {
+  const name = path.basename(rel);
+  const ext = path.extname(name).toLowerCase();
+  const stem = ext ? name.slice(0, -ext.length).toLowerCase() : name.toLowerCase();
+  return DEV_REQUIREMENTS_FILE_RE.test(name) || NESTED_DEV_REQUIREMENTS_STEMS.has(stem)
+    ? 'dev'
+    : 'main';
 }
 
 async function readScannedFile(

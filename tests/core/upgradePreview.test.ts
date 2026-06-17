@@ -305,6 +305,25 @@ describe('previewUpgrade', () => {
     expect(preview.installedLine).toBe(1);
   });
 
+  it('previews nested requirements manifests without a root include', async () => {
+    const files = [
+      await writeFile(tmp, 'requirements/base.txt', 'httpx>=0.27.0\n'),
+      await writeFile(tmp, 'requirements/prod.txt', 'httpx==0.27.2\n'),
+      await writeFile(tmp, 'app/client.py', 'import httpx\n'),
+    ];
+
+    const preview = await previewUpgrade(tmp, 'httpx', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=0.27.0');
+    expect(preview.declaredSource).toBe('requirements/base.txt');
+    expect(preview.installed).toBe('0.27.2');
+    expect(preview.installedSource).toBe('requirements/prod.txt');
+    expect(preview.installedLine).toBe(1);
+    expect(preview.importers).toEqual(['app/client.py']);
+  });
+
   it('uses pinned constraints as Python current-version evidence', async () => {
     await fs.writeFile(
       path.join(tmp, 'pyproject.toml'),

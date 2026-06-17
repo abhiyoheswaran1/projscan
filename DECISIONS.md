@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Read nested Python requirements manifests
+
+- Status: accepted
+- Context: Python upgrade previews could read root requirements files and nested requirements included by root files, but missed repos that keep primary requirements in common direct nested files such as `requirements/base.txt`, `requirements/prod.txt`, or `requirements/dev.in`.
+- Decision: Treat a conservative set of direct `requirements/` manifests as Python project evidence, read them through the existing scanned-file-only requirements reader, classify dev/test/lint/docs/local nested files as dev scope, and use pinned nested `.txt` files as current-version evidence.
+- Consequences: Offline Python upgrade previews now work for common pip-tools-style nested layouts without root includes, still ignore unscanned paths, and preserve safe include traversal behavior.
+- Verification: `npm run test -- tests/core/languages/pythonProjectDetection.test.ts tests/core/upgradePreview.test.ts`.
+
 ## 2026-06-18: Extract telemetry event shaping helpers
 
 - Status: accepted
