@@ -8169,3 +8169,55 @@ coverage while splitting one broad assertion into three named checks.
 
 Kept change: one MCP start fuzzy-impact test split, this persona note, and no
 release action.
+
+## One Hundred Seventy First Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, Test Steward,
+Agent-Orchestrating Senior Engineer, and OSS Maintainer.
+
+Reason: `tests/core/intentRouter.test.ts` remained a high-churn hotspot at 435
+lines. Its single broad `routeIntent` describe block mixed early
+issue/search/security/planning routing with regression-oriented local setup
+prompts, agent harness proof prompts, dependency/coupling prompts, and catalog
+fallback checks.
+
+Smallest fix: keep the early issue/search/security/planning/hotspot routing
+checks in `tests/core/intentRouter.test.ts`, move local-regression and
+agent-harness proof routing into
+`tests/core/intentRouterRegressionRouting.test.ts`, and move dependency,
+coupling, and catalog fallback checks into
+`tests/core/intentRouterCatalogRouting.test.ts`. The split preserves all 14
+intent-router tests while dropping the original hotspot file from 435 lines to
+192 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouter.test.ts
+npm run test -- tests/core/intentRouter.test.ts tests/core/intentRouterRegressionRouting.test.ts tests/core/intentRouterCatalogRouting.test.ts
+npm exec projscan -- file tests/core/intentRouter.test.ts --format json
+```
+
+## Review Guardrails: Intent Router Test Split
+
+Delete-list after this slice:
+
+- Do not change routing scores, keyword catalogs, CLI commands, MCP behavior,
+  package version, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not remove coverage for issue explanation, fix suggestion, PR-template
+  lookup, coverage-gap prompts, PII/GDPR prompts, tiny safe tasks, tech-debt
+  prompts, local setup failures, harness proof wording, dependency inventory,
+  coupling prompts, no-intent catalog output, unrelated intents, or catalog
+  entry shape.
+- Do not split the production router in this slice; current evidence justifies
+  reducing test hotspot risk without behavior changes.
+
+Reviewer edge case: the focused intent-router run should still report 14 tests
+across `tests/core/intentRouter.test.ts`,
+`tests/core/intentRouterRegressionRouting.test.ts`, and
+`tests/core/intentRouterCatalogRouting.test.ts`, preserving the pre-split
+coverage count while reducing the original hotspot file.
+
+Kept change: one intent-router test split, this persona note, and no release
+action.
