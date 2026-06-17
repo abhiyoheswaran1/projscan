@@ -8,6 +8,7 @@ import { computeCoordination, type CoordinationSummary } from './coordination.js
 import { policyIssueReasons } from './preflightIssueReasons.js';
 import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
+import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -381,82 +382,6 @@ function buildPreflightReasons(input: {
   }
 
   return reasons;
-}
-
-function buildReleaseScaleEvidence(input: {
-  mode: PreflightMode;
-  issues: Issue[];
-  changedFiles: PreflightChangedFiles;
-  health: HealthScore;
-  review: PreflightReviewEvidence;
-  supplyChain: { errorIssues: number; warningIssues: number };
-  maxChangedFiles: number;
-}): PreflightReleaseScaleEvidence | null {
-  if (input.mode === 'before_edit') return null;
-  if (!input.changedFiles.available) return null;
-
-  const concreteBlockers = concretePreflightBlockers(input);
-  if (concreteBlockers.length > 0) return null;
-
-  const reviewSummary = input.review.summary;
-  const changedFileThresholdExceeded = input.changedFiles.count > input.maxChangedFiles;
-  const reviewScaleOnly =
-    input.review.available &&
-    input.review.verdict === 'block' &&
-    isScaleComplexityReviewBlock(reviewSummary);
-  if (!changedFileThresholdExceeded && !reviewScaleOnly) return null;
-
-  const triggers = [
-    changedFileThresholdExceeded
-      ? `${input.changedFiles.count} changed files exceeds the preflight threshold of ${input.maxChangedFiles}`
-      : undefined,
-    reviewScaleOnly && reviewSummary
-      ? `review signal: ${trimTrailingSentencePunctuation(reviewSummary)}`
-      : undefined,
-  ].filter(Boolean);
-
-  const reviewBlocksOnScale = input.review.available && input.review.verdict === 'block';
-  const explanationTail = reviewBlocksOnScale
-    ? 'Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects.'
-    : 'This is a configured scale threshold/manual review signal, not a concrete taint, dataflow, health, plugin, or supply-chain defect.';
-  const signoffTail = reviewSummary?.toLowerCase().includes('manual release sign-off')
-    ? ''
-    : ' Treat this as a manual release sign-off gate.';
-
-  return {
-    detected: true,
-    changedFiles: input.changedFiles.count,
-    threshold: input.maxChangedFiles,
-    ...(input.review.verdict ? { reviewVerdict: input.review.verdict } : {}),
-    ...(reviewSummary ? { reviewSummary } : {}),
-    concreteBlockers,
-    explanation: `Large platform release risk: ${triggers.join('; ')}. ${explanationTail}${signoffTail}`,
-  };
-}
-
-function isScaleComplexityReviewBlock(summary: string | undefined): boolean {
-  if (!summary?.includes('Maximum changed-file risk score')) return false;
-  return !summary.includes('new import cycle');
-}
-
-function trimTrailingSentencePunctuation(value: string): string {
-  return value.trim().replace(/[.]+$/u, '');
-}
-
-function concretePreflightBlockers(input: {
-  issues: Issue[];
-  health: HealthScore;
-  review: PreflightReviewEvidence;
-  supplyChain: { errorIssues: number; warningIssues: number };
-}): string[] {
-  const blockers: string[] = [];
-  if (input.health.errors > 0) blockers.push('health');
-  if (input.supplyChain.errorIssues > 0) blockers.push('supply-chain');
-  if (input.issues.some((issue) => issue.id.startsWith('plugin:') && issue.severity === 'error'))
-    blockers.push('plugin');
-  if ((input.review.newTaintFlows ?? 0) > 0) blockers.push('taint');
-  if ((input.review.newDataflowRisks ?? 0) > 0) blockers.push('dataflow');
-  return blockers;
 }
 
 function formatReviewBlockMessage(

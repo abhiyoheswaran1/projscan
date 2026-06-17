@@ -157,6 +157,27 @@ test('preflight keeps required check formatting isolated from the main preflight
   expect(reviewReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
+test('preflight keeps release-scale evidence isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('function buildReleaseScaleEvidence');
+  expect(preflightSource).not.toContain('function concretePreflightBlockers');
+
+  const releaseScale = await inspectRepoSourceFile('src/core/preflightReleaseScale.ts');
+  const entrypoint = releaseScale.functions?.find((fn) => fn.name === 'buildReleaseScaleEvidence');
+  const signals = releaseScale.functions?.find((fn) => fn.name === 'releaseScaleSignals');
+  const explanation = releaseScale.functions?.find((fn) => fn.name === 'releaseScaleExplanation');
+  const blockers = releaseScale.functions?.find((fn) => fn.name === 'concretePreflightBlockers');
+
+  expect(entrypoint).toBeDefined();
+  expect(entrypoint!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  expect(signals).toBeDefined();
+  expect(signals!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  expect(explanation).toBeDefined();
+  expect(explanation!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(blockers).toBeDefined();
+  expect(blockers!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+});
+
 test('before_edit works outside git and returns a complete report', async () => {
   const root = await makeTempProject();
 

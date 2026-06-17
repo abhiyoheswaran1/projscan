@@ -4538,3 +4538,52 @@ before-edit review should remain `unavailable`.
 Kept change: one preflight required-check helper module, one maintainability
 regression, existing preflight behavior coverage, this persona note, and no
 public schema change.
+
+## Ninety-Fifth Slice Decision
+
+Selected personas: Platform/Release Owner and Security-Conscious Reviewer.
+
+Reason: release-scale evidence decides whether a large change is a manual
+sign-off gate or whether concrete health, supply-chain, plugin, taint, or
+dataflow blockers should keep preflight strict. That distinction is
+reviewer-facing and security-sensitive enough to audit independently from the
+main preflight orchestration.
+
+Smallest fix: move release-scale detection, scale-only review interpretation,
+concrete blocker detection, and sign-off explanation text into
+`preflightReleaseScale.ts`; keep the preflight module responsible for gathering
+inputs and attaching the returned evidence.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "release-scale evidence isolated"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightReleaseScale.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Release-Scale Extraction
+
+Delete-list after this slice:
+
+- Do not change release-scale detection, explanation text, concrete blocker
+  suppression, manual sign-off wording, required-check downgrade behavior, or
+  report schema.
+- Do not change review computation, taint/dataflow blocker handling, plugin or
+  supply-chain policy, changed-file thresholds, or preflight verdict logic.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: scale-only review blocks should still become manual
+sign-off cautions only when there are no concrete health, supply-chain, plugin,
+taint, or dataflow blockers; import-cycle review blocks should not be treated
+as scale-only release risk.
+
+Kept change: one preflight release-scale helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.

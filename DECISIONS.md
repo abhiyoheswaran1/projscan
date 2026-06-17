@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight release-scale evidence
+
+- Status: accepted
+- Context: `src/core/preflight.ts` still owned release-scale detection, scale-only review interpretation, concrete blocker detection, and manual sign-off explanation text.
+- Decision: Move release-scale evidence construction and blocker detection into `src/core/preflightReleaseScale.ts`.
+- Consequences: Release-scale detection, explanation text, concrete blocker suppression, review required-check downgrade behavior, and report schema stay unchanged, while `src/core/preflight.ts` drops from 637 lines / CC 100 to 562 lines / CC 76.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "release-scale evidence isolated"` plus the full preflight test file.
+
 ## 2026-06-17: Extract preflight required checks
 
 - Status: accepted
