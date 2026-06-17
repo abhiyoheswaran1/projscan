@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.7.0]
+
+2026-06-17 - "Roadmap Validation And Release Readiness"
+
+### Added
+
+- Added Remix route request-source coverage for `request` body readers,
+  headers, URL, signal, and params in framework-gated dataflow analysis.
+- Added local Python requirements include traversal for `-r` requirement files
+  and `-c` constraint files so upgrade previews can use split requirements
+  layouts without network access.
+- Added release-train roadmap routing and read-only roadmap preview evidence for
+  build-next product-planning prompts.
+
+### Changed
+
+- Extracted dataflow traversal, dataflow risk assembly, plugin manifest
+  validation, file-inspection report assembly, fix-suggest previews, search
+  index helpers, release evidence shaping, and bug-hunt preflight/hotspot
+  findings into focused modules.
+- Simplified telemetry command categorization and flush orchestration while
+  preserving explicit opt-in, no-network, queueing, and sender behavior.
+- Split Python lockfile, framework dataflow, intent router, preflight, MCP, and
+  start coverage into focused suites with architecture guards for high-risk
+  entrypoints.
+
+### Fixed
+
+- Fixed build-next docs and legacy intent-router tests to match the accepted
+  release-train roadmap route.
+- Fixed telemetry review false positives by keeping no-network env checks out
+  of the command-recording path that reaches queue cleanup.
+- Fixed release-readiness blocker handling so large-train warnings are reported
+  as manual sign-off cautions when no concrete taint, dataflow, health, plugin,
+  or supply-chain defects remain.
+
+### Security
+
+- Framework source additions remain handler/import gated with false-positive
+  fixtures.
+- Python requirements include traversal stays local to scanned files and does
+  not read secrets, expand telemetry, or add network calls.
+- Telemetry refactors preserve explicit opt-in and no-network behavior.
+
 ## [4.6.0]
 
 2026-06-17 - "Agent Coordination And Routing Hardening"
