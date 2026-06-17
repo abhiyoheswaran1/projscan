@@ -2153,3 +2153,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace the branch chain with a constant command-to-category lookup table and keep `categorizeCommand` as a small sanitizer-plus-lookup helper.
 - Consequences: Telemetry opt-in, no-network behavior, queueing, sending, event fields, and public telemetry exports remain unchanged. The category aliases stay explicit in one table, and `categorizeCommand` is guarded by an architecture test.
 - Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the refactor at cyclomatic complexity 14, then passed after the lookup-table change.
+
+## 2026-06-17: Simplify telemetry flush orchestration
+
+- Status: accepted
+- Context: `flushTelemetry` still mixed runtime guard checks, config eligibility, queue loading, sender execution, queue cleanup, and failure result shaping at cyclomatic complexity 11 inside the telemetry hotspot.
+- Decision: Extract the runtime flush guard into `flushBlockedResult` and sender execution plus queue cleanup into `sendQueuedTelemetry`, leaving `flushTelemetry` as the public orchestration boundary.
+- Consequences: Telemetry opt-in, no-network behavior, queue handling, sender behavior, failure shaping, event fields, and public telemetry exports remain unchanged. `flushTelemetry` is now guarded by the telemetry architecture test alongside command categorization.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the refactor at cyclomatic complexity 11 for `flushTelemetry`, then passed after the helper extraction.

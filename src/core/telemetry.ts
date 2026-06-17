@@ -321,10 +321,8 @@ export async function recordFeedbackTelemetry(
 export async function flushTelemetry(
   options: TelemetryOptions = {},
 ): Promise<RecordTelemetryResult> {
-  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
-  if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
-  if (process.env[TELEMETRY_NO_NETWORK_ENV] === '1')
-    return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
+  const blocked = flushBlockedResult();
+  if (blocked) return blocked;
   const paths = resolveTelemetryPaths(options);
   const loaded = await readConfig(paths.configPath, options.now);
   if (!loaded.config.enabled || !loaded.config.anonymousId)
@@ -332,11 +330,28 @@ export async function flushTelemetry(
   const events = await readQueue(paths.queuePath);
   if (events.length === 0) return { status: 'skipped', reason: 'empty' };
   const sender = options.sender ?? defaultSender;
+  return sendQueuedTelemetry(events, loaded.config.endpoint, sender, paths.queuePath);
+}
+
+function flushBlockedResult(): RecordTelemetryResult | null {
+  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
+  if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
+  if (process.env[TELEMETRY_NO_NETWORK_ENV] === '1')
+    return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
+  return null;
+}
+
+async function sendQueuedTelemetry(
+  events: TelemetryEvent[],
+  endpoint: string,
+  sender: TelemetrySender,
+  queuePath: string,
+): Promise<RecordTelemetryResult> {
   try {
-    const result = await sender(events, loaded.config.endpoint);
+    const result = await sender(events, endpoint);
     if (!result.ok)
       return { status: 'failed', reason: 'http_' + result.status, queued: events.length };
-    await fs.rm(paths.queuePath, { force: true });
+    await fs.rm(queuePath, { force: true });
     return { status: 'sent', queued: 0 };
   } catch (error) {
     return {

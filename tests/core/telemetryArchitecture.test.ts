@@ -13,6 +13,14 @@ describe('telemetry maintainability', () => {
     expect(classifier).toBeDefined();
     expect(classifier!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
+
+  it('keeps telemetry flushing below the review high-CC threshold', async () => {
+    const inspection = await inspectRepoSourceFile('src/core/telemetry.ts');
+    const flush = inspection.functions?.find((fn) => fn.name === 'flushTelemetry');
+
+    expect(flush).toBeDefined();
+    expect(flush!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {
