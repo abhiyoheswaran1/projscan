@@ -1,6 +1,6 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-16.
+Last reviewed 2026-06-17.
 
 ---
 
@@ -45,7 +45,7 @@ Four plays, in order:
 3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). ✅ Shipped in the 1.6 arc.
 4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. ✅ The 1.7 → 2.0 arc turns this into a platform contract.
 5. **Coordinate the swarm** — collision detection, claims/leases, merge-risk preflight, intent routing, one-call coordination, and live coordinate watch shipped across the 3.6 through 3.7 arc, with the 4.0 tool-surface consolidation now complete. The next work is evidence: prove which commands agents reach for in real multi-worktree sessions, then deepen only the paths that prevent integration failures.
-6. **Make agent proof release-ready** — 4.1 through 4.5 turned Mission Control into a goal → mission → proof → review harness and packaged the post-4.4 implementation train: current planning surfaces, adoption examples, precise framework dataflow, scoped/redacted evidence exports, Python upgrade previews, and hotspot maintainability cleanup.
+6. **Make agent proof release-ready** — 4.1 through 4.6 turned Mission Control into a goal → mission → proof → review harness and packaged the post-4.4 implementation train: current planning surfaces, adoption examples, precise framework dataflow, scoped/redacted evidence exports, Python upgrade previews, coordination evidence, public graph types, and hotspot maintainability cleanup.
 
 We are _not_ trying to be:
 
@@ -56,9 +56,9 @@ We are _not_ trying to be:
 
 ## Now / Next / Later
 
-### Now — Post-4.5 Validation
+### Now — Post-4.6 Validation
 
-4.5.0 "Review-Ready Intelligence Train" packages the post-4.4 implementation train. The next work is validation and selective hardening from real use, not another broad feature push.
+4.6.0 "Agent Coordination And Routing Hardening" packages the latest post-4.4 implementation train. The next work is validation and selective hardening from real use, not another broad feature push or another release push.
 
 The active validation lines are:
 
@@ -70,7 +70,18 @@ The active validation lines are:
 
 Strictly **local-first** throughout: same-repo / same-machine evidence, no daemon, no cloud, no hidden network calls, no new telemetry, and no secret-value reads.
 
-Success signals: teams copy the adoption examples into real reviews, scoped/redacted artifacts are accepted by reviewers, Python upgrade previews identify useful local evidence, dataflow additions stay quiet on lookalikes, and release bug-hunts remain free of concrete defects.
+Success signals: teams copy the adoption examples into real reviews, scoped/redacted artifacts are accepted by reviewers, Python upgrade previews identify useful local evidence, coordination evidence explains multi-agent decisions, dataflow additions stay quiet on lookalikes, and release bug-hunts remain free of concrete defects.
+
+### Recently Completed — 4.6.0 (2026)
+
+**4.6.0 "Agent Coordination And Routing Hardening"** shipped the next hardening pass after the review-ready train:
+
+- Framework-gated request-source coverage now includes Next `nextUrl`, Hono URL reads, Express URL reads, Koa URL reads, and Fastify URL reads.
+- Agent hints include concrete local coordination evidence for multi-agent collision, handoff, and coordination decisions.
+- Public consumers can import code graph result types.
+- Mission Control start, intent router, review, CLI, and MCP test surfaces were split into focused suites while preserving public behavior.
+- Intent routing, code graph parsing/indexing, release evidence, upgrade preview, CLI reporting, and MCP transport helpers moved into smaller modules.
+- MCP watch IDs, request notifications, no-release continuation routing, agent harness proof routing, Python upgrade evidence, scoped dependency redaction, path-safe file links, unresolved review refs, and inspector purpose detection were tightened.
 
 ### Recently Completed — 4.5.0 (2026)
 

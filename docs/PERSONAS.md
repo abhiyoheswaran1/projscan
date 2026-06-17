@@ -9250,3 +9250,45 @@ and the combined start/dependency-routing run should report 16 tests across
 
 Kept change: one dependency start test split, this persona note, and no release
 action in this slice.
+
+## One Hundred Ninety Fourth Slice Decision
+
+Selected personas: Platform And Release Owner, Agent-Orchestrating Senior
+Engineer, and OSS Maintainer.
+
+Reason: after the `4.6.0` release, the roadmap still framed active validation
+as post-4.5 work. That stale planning label can mislead the next autonomous
+agent into treating already-shipped coordination evidence, routing hardening,
+and public graph types as release-candidate work instead of the current
+post-release validation baseline.
+
+Smallest fix: update roadmap planning language and recently completed context
+to post-4.6 while keeping the same no-release validation lines. Do not prepare
+another release or change package metadata.
+
+Proof commands:
+
+```bash
+node -e "const fs=require('node:fs'); const text=fs.readFileSync('docs/ROADMAP.md','utf8')+'\n'+fs.readFileSync('docs/PERSONAS.md','utf8'); if (/Post-4\.5|4\.5\.0 \"Review-Ready Intelligence Train\" packages/.test(text)) process.exit(1);"
+npm exec projscan -- release-train --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Post-4.6 Roadmap Cleanup
+
+Delete-list after this slice:
+
+- Do not bump versions, tag, push, publish, deploy, or prepare another release.
+- Do not change package metadata, changelog release entries, MCP registry
+  metadata, or release workflows.
+- Do not add product surfaces or implementation code while fixing planning
+  context.
+- Do not remove the active validation lines for swarm coordination, evidence
+  export adoption, Python upgrade coverage, framework dataflow precision, or
+  hotspot maintainability.
+
+Reviewer edge case: the historical 4.5 completed section must remain as
+history, but it must not be described as the current active validation train.
+
+Kept change: one roadmap planning cleanup, this persona note, and no release
+action in this slice.
