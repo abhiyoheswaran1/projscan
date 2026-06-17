@@ -7428,3 +7428,50 @@ the scope separator when `checkRegistry` is explicitly enabled.
 
 Kept change: one npm evidence module, one architecture-boundary regression,
 existing upgrade behavior coverage, this persona note, and no release action.
+
+## One Hundred Fifty Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `src/mcp/server.ts` remains a high-churn public entry point even after
+handler, lifecycle, session, message parsing, and version-loading extractions.
+The remaining transport loop was not protocol logic, but it kept process IO and
+readline wiring in the same file as the server factory.
+
+Smallest fix: move the stdio transport loop into `src/mcp/serverStdio.ts` and
+keep the public `runMcpServer()` export in `src/mcp/server.ts` as a thin
+wrapper. Preserve the `createMcpServer` factory, `runMcpServer` API, stdout
+responses, stderr status/error messages, watch behavior, and MCP tool behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/server.test.ts -t "stdio transport"
+npm run test -- tests/mcp/server.test.ts
+npm exec agentflight -- verify -- npm run test -- tests/mcp/server.test.ts tests/mcp/serverBudget.test.ts tests/mcp/fileChangedNotifications.test.ts tests/mcp/progress.test.ts tests/mcp/crossCutting.test.ts tests/mcp/sessionIntegration.test.ts
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverStdio.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: MCP Stdio Transport
+
+Delete-list after this slice:
+
+- Do not change MCP protocol responses, JSON-RPC parsing, handler dispatch,
+  tool definitions, tool names, prompts, resources, session recording, file
+  watch notifications, progress notifications, or public CLI/MCP exports.
+- Do not change stdout response formatting, stderr status/error messages,
+  watch opt-in behavior, server close behavior, or process stream usage.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: `projscan mcp --watch` should still include the same stderr
+watch suffix and emit file-change notifications only when a notifier exists.
+
+Kept change: one stdio transport module, one architecture-boundary regression,
+existing MCP server behavior coverage, this persona note, and no release action.

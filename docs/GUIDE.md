@@ -1632,7 +1632,8 @@ src/
 │   ├── markdownReporter.ts      # Markdown output
 │   └── sarifReporter.ts         # SARIF 2.1.0 output
 ├── mcp/
-│   ├── server.ts                # JSON-RPC 2.0 dispatcher, stdio transport, negotiation
+│   ├── server.ts                # MCP server factory and JSON-RPC request orchestration
+│   ├── serverStdio.ts           # stdio transport loop for the CLI entry point
 │   ├── tools.ts                 # 41 MCP tools (barrel; per-tool files under tools/)
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)

@@ -198,6 +198,27 @@ describe('MCP server maintainability', () => {
     expect(catalogSource).toContain('coordinateWatchTool');
   });
 
+  it('keeps stdio transport wiring out of server orchestration', async () => {
+    const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
+    expect(serverSource).toContain("from './serverStdio.js'");
+    expect(serverSource).not.toContain("from 'node:readline'");
+    expect(serverSource).not.toContain('readline.createInterface');
+    expect(serverSource).not.toContain('process.stdin.on');
+    expect(serverSource).not.toContain('process.stderr.write');
+
+    const stdioSource = await fs.readFile(
+      path.join(process.cwd(), 'src/mcp/serverStdio.ts'),
+      'utf-8',
+    );
+    expect(stdioSource).not.toContain("from './server.js'");
+    expect(stdioSource).toContain("from './serverTypes.js'");
+
+    const stdioModule = await inspectRepoSourceFile('src/mcp/serverStdio.ts');
+    const runStdio = stdioModule.functions?.find((fn) => fn.name === 'runMcpServerStdio');
+    expect(runStdio).toBeDefined();
+    expect(runStdio!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  });
+
   it('keeps session-recording tool tests off the real repository root', async () => {
     const testsRoot = path.join(process.cwd(), 'tests/mcp');
     const sessionRecordingTools = ['projscan_structure', 'projscan_file', 'projscan_search'];

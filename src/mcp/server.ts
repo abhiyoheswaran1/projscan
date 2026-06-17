@@ -1,32 +1,14 @@
-import readline from 'node:readline';
 import { dispatchMcpRequest } from './serverDispatch.js';
 import { parseJsonRpcMessage } from './serverMessage.js';
 import { createMcpServerLifecycle } from './serverLifecycle.js';
 import { createServerSessionRecorder } from './serverSession.js';
 import { createMcpDispatchHandlers } from './serverHandlers.js';
+import { runMcpServerStdio, type RunMcpServerOptions } from './serverStdio.js';
+import type { McpServerHandle, McpServerOptions } from './serverTypes.js';
 import { readMcpPackageVersion } from './serverVersion.js';
 
-export interface McpServerHandle {
-  handleMessage(line: string): Promise<string | null>;
-  /** Stop any active watchers (1.3+). Idempotent. */
-  close(): Promise<void>;
-}
-
-export interface McpServerOptions {
-  /**
-   * Called when the server wants to emit a JSON-RPC notification (e.g.,
-   * `notifications/progress`, `notifications/file_changed`) out of band
-   * from the normal request/response cycle. The transport layer is
-   * responsible for writing the payload.
-   */
-  notify?: (payload: string) => void;
-  /**
-   * 1.3+ — when true, start a fs.watch on `rootPath` and emit
-   * `notifications/file_changed` on each debounced batch. Off by default;
-   * agents that don't ask for it pay nothing for it.
-   */
-  watch?: boolean;
-}
+export type { RunMcpServerOptions } from './serverStdio.js';
+export type { McpServerHandle, McpServerOptions } from './serverTypes.js';
 
 export function createMcpServer(rootPath: string, options: McpServerOptions = {}): McpServerHandle {
   const serverVersion = readMcpPackageVersion();
@@ -71,48 +53,9 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
   return { handleMessage, close: lifecycle.close };
 }
 
-export interface RunMcpServerOptions {
-  /** 1.3+ — emit notifications/file_changed on source-file changes. */
-  watch?: boolean;
-}
-
 export async function runMcpServer(
   rootPath: string,
   runOptions: RunMcpServerOptions = {},
 ): Promise<void> {
-  const server = createMcpServer(rootPath, {
-    notify: (payload) => {
-      process.stdout.write(payload + '\n');
-    },
-    watch: runOptions.watch,
-  });
-
-  const watchSuffix = runOptions.watch ? ' [watch on]' : '';
-  process.stderr.write(`[projscan-mcp] listening on stdio (root=${rootPath})${watchSuffix}\n`);
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    crlfDelay: Infinity,
-  });
-
-  rl.on('line', (line) => {
-    server
-      .handleMessage(line)
-      .then((response) => {
-        if (response !== null) {
-          process.stdout.write(response + '\n');
-        }
-      })
-      .catch((err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        process.stderr.write(`[projscan-mcp] error: ${message}\n`);
-      });
-  });
-
-  await new Promise<void>((resolve) => {
-    rl.on('close', resolve);
-    process.stdin.on('end', resolve);
-  });
-
-  await server.close();
+  await runMcpServerStdio(rootPath, runOptions, createMcpServer);
 }
