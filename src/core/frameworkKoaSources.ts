@@ -3,10 +3,16 @@ const KOA_REQUEST_SOURCE_BY_MEMBER = new Map<string, string>([
   ['request.query', 'koa.ctx.request.query'],
   ['request.headers', 'koa.ctx.request.headers'],
   ['request.ip', 'koa.ctx.request.ip'],
+  ['request.url', 'koa.ctx.request.url'],
+  ['request.originalUrl', 'koa.ctx.request.originalUrl'],
+  ['request.path', 'koa.ctx.request.path'],
   ['query', 'koa.ctx.query'],
   ['params', 'koa.ctx.params'],
   ['headers', 'koa.ctx.headers'],
   ['ip', 'koa.ctx.ip'],
+  ['url', 'koa.ctx.url'],
+  ['originalUrl', 'koa.ctx.originalUrl'],
+  ['path', 'koa.ctx.path'],
 ]);
 
 const KOA_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([

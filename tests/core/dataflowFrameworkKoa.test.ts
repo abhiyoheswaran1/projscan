@@ -229,6 +229,70 @@ export function helper(ctx: { ip: string, request: { ip: string } }) {
     expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
   });
 
+  it('treats Koa request URL and path aliases as framework sources without helper lookalikes', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'src', 'koa-url.ts'),
+      `import Koa from 'koa';
+import Router from '@koa/router';
+
+const app = new Koa();
+const router = new Router();
+const db = { query(sql: string) { return sql; } };
+const cache = { query(key: string) { return key; } };
+
+app.use((ctx) => {
+  const url = ctx.url;
+  return db.query(String(url));
+});
+
+router.get('/original', (context) => {
+  const original = context.originalUrl;
+  return db.query(String(original));
+});
+
+router.get('/path', (ctx) => {
+  const path = ctx.path;
+  return db.query(String(path));
+});
+
+router.get('/request-url', (context) => {
+  const requestUrl = context.request.url;
+  return db.query(String(requestUrl));
+});
+
+router.get('/request-original', (context) => {
+  const requestOriginal = context.request.originalUrl;
+  return db.query(String(requestOriginal));
+});
+
+router.get('/request-path', (ctx) => {
+  const requestPath = ctx.request.path;
+  return db.query(String(requestPath));
+});
+
+export function helper(ctx: { url: string, originalUrl: string, path: string, request: { url: string, originalUrl: string, path: string } }) {
+  return cache.query(ctx.url + ctx.originalUrl + ctx.path + ctx.request.url + ctx.request.originalUrl + ctx.request.path);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+    const koaRisks = report.risks.filter((risk) => risk.files.includes('src/koa-url.ts'));
+
+    expect(koaRisks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'koa.ctx.url', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.originalUrl', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.path', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.url', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.originalUrl', sink: 'query' }),
+        expect.objectContaining({ source: 'koa.ctx.request.path', sink: 'query' }),
+      ]),
+    );
+    expect(koaRisks.find((risk) => risk.sourceFn === 'helper')).toBeUndefined();
+  });
+
   it('does not treat Koa response-body writes as request body sources', async () => {
     await fs.writeFile(
       path.join(tmp, 'src', 'koa-response.ts'),
