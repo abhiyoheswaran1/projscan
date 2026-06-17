@@ -2,13 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
 import { parsePythonLockfile, readPythonLockfile } from './pythonLockfiles.js';
-import { extractListValues, offsetToLine } from './pythonManifestText.js';
-import { splitPep508 } from './pythonPep508.js';
 import { parsePyproject } from './pythonPyproject.js';
 import { hasPythonProjectEvidence } from './pythonProjectEvidence.js';
 import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
 import { readRootRequirementEvidence } from './pythonRequirements.js';
 import { extractPyprojectRoots, inferRootsFromInitFiles } from './pythonRoots.js';
+import { readSetuptoolsEvidence } from './pythonSetuptools.js';
 
 export {
   parseCondaLock,
@@ -47,17 +46,9 @@ export async function detectPythonProject(
     roots.push(...extractPyprojectRoots(pyprojectContent));
   }
 
-  const setupCfgContent = await tryRead(path.join(rootPath, 'setup.cfg'));
-  if (setupCfgContent !== null) {
-    manifestFiles.push('setup.cfg');
-    declared.push(...parseSetupCfg(setupCfgContent));
-  }
-
-  const setupPyContent = await tryRead(path.join(rootPath, 'setup.py'));
-  if (setupPyContent !== null) {
-    manifestFiles.push('setup.py');
-    declared.push(...parseSetupPyInstallRequires(setupPyContent));
-  }
+  const setuptoolsEvidence = await readSetuptoolsEvidence(rootPath);
+  manifestFiles.push(...setuptoolsEvidence.manifestFiles);
+  declared.push(...setuptoolsEvidence.declared);
 
   const requirementEvidence = await readRootRequirementEvidence(rootPath, files);
   manifestFiles.push(...requirementEvidence.manifestFiles);
@@ -96,34 +87,4 @@ async function tryRead(absolutePath: string): Promise<string | null> {
 
 function dedupe(arr: string[]): string[] {
   return [...new Set(arr)];
-}
-
-// ── setup.py / setup.cfg ──────────────────────────────────────
-
-function parseSetupPyInstallRequires(content: string): PythonDeclaredDep[] {
-  const out: PythonDeclaredDep[] = [];
-  const m = /install_requires\s*=\s*\[([\s\S]*?)\]/.exec(content);
-  if (!m) return out;
-  const inside = m[1];
-  const baseLine = offsetToLine(content, m.index + m[0].indexOf('['));
-  for (const { name, versionSpec, line } of extractListValues(inside, baseLine)) {
-    out.push({ name, versionSpec, source: 'setup.py', line, scope: 'main' });
-  }
-  return out;
-}
-
-function parseSetupCfg(content: string): PythonDeclaredDep[] {
-  const out: PythonDeclaredDep[] = [];
-  const m = /\[options\][\s\S]*?install_requires\s*=\s*([\s\S]*?)(?=\n\[|\n\n|$)/.exec(content);
-  if (!m) return out;
-  const baseLine = offsetToLine(content, m.index + m[0].indexOf('install_requires'));
-  const lines = m[1].split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const stripped = lines[i].replace(/#.*$/, '').trim();
-    if (!stripped) continue;
-    const { name, versionSpec } = splitPep508(stripped);
-    if (!name) continue;
-    out.push({ name, versionSpec, source: 'setup.cfg', line: baseLine + i + 1, scope: 'main' });
-  }
-  return out;
 }

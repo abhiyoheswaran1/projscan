@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract Python setuptools evidence
+
+- Status: accepted
+- Context: `src/core/languages/pythonManifests.ts` remained a Python-upgrade hotspot and still owned `setup.py` / `setup.cfg` reads and dependency parsing after lockfiles, root requirements, project evidence, roots, and pyproject parsing were isolated.
+- Decision: Move setuptools manifest reading and dependency parsing into `src/core/languages/pythonSetuptools.ts`.
+- Consequences: `setup.py` and `setup.cfg` dependency detection, source names, line numbers, scopes, Python project detection, upgrade-preview inputs, and public Python project types stay unchanged, while `src/core/languages/pythonManifests.ts` drops from 130 lines / CC 16 to 91 lines / CC 8.
+- Verification: `npm run test -- tests/core/languages/pythonManifests.test.ts -t "setuptools manifest parsing"` plus the full Python manifest, upgrade-preview, and MCP Python upgrade fallback test files.
+
 ## 2026-06-17: Extract hotspot file assembly
 
 - Status: accepted

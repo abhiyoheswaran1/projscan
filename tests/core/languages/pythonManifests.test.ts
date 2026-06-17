@@ -174,6 +174,40 @@ describe('python manifest maintainability', () => {
     expect(parsePyproject).toBeDefined();
     expect(parsePyproject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
   });
+
+  it('keeps setuptools manifest parsing out of the manifest detector', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).not.toContain('function parseSetupCfg');
+    expect(manifestSource).not.toContain('function parseSetupPyInstallRequires');
+    expect(manifestSource).not.toContain('install_requires');
+
+    const setuptoolsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonSetuptools.ts'),
+      'utf8',
+    );
+    expect(setuptoolsSource).not.toContain("from './pythonManifests.js'");
+
+    const setuptoolsInspection = await inspectRepoSourceFile(
+      'src/core/languages/pythonSetuptools.ts',
+    );
+    const readSetuptoolsEvidence = setuptoolsInspection.functions?.find(
+      (fn) => fn.name === 'readSetuptoolsEvidence',
+    );
+    const parseSetupCfg = setuptoolsInspection.functions?.find((fn) => fn.name === 'parseSetupCfg');
+    const parseSetupPy = setuptoolsInspection.functions?.find(
+      (fn) => fn.name === 'parseSetupPyInstallRequires',
+    );
+
+    expect(readSetuptoolsEvidence).toBeDefined();
+    expect(readSetuptoolsEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(parseSetupCfg).toBeDefined();
+    expect(parseSetupCfg!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+    expect(parseSetupPy).toBeDefined();
+    expect(parseSetupPy!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
 });
 
 describe('splitPep508', () => {

@@ -5147,3 +5147,52 @@ line counts.
 Kept change: one hotspot builder helper module, one maintainability regression,
 existing hotspot behavior coverage, this persona note, and no public schema
 change.
+
+## One Hundred Eighth Slice Decision
+
+Selected personas: OSS Maintainer Evaluating MCP Adoption and
+Security-Conscious Reviewer.
+
+Reason: `src/core/languages/pythonManifests.ts` remained a production hotspot
+on the Python upgrade-intelligence roadmap line. The file still mixed the
+detector with setuptools-specific manifest reads and `install_requires`
+parsing, even though lockfiles, requirements, roots, pyproject parsing, and
+project evidence were already separated.
+
+Smallest fix: move `setup.py` and `setup.cfg` evidence reading plus dependency
+parsing into `pythonSetuptools.ts`; keep `detectPythonProject` responsible for
+orchestrating manifest evidence, package roots, and lockfile detection.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifests.test.ts -t "setuptools manifest parsing"
+npm run test -- tests/core/languages/pythonManifests.test.ts
+npm run test -- tests/core/upgradePreview.test.ts tests/mcp/pythonUpgradeFallback.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonSetuptools.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Python Setuptools Extraction
+
+Delete-list after this slice:
+
+- Do not change `setup.py` or `setup.cfg` dependency names, version specs,
+  source names, line numbers, scopes, or manifest file ordering.
+- Do not change pyproject parsing, root requirements evidence, lockfile
+  precedence, package-root inference, Python project detection gating, or
+  public Python project types.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: pinned requirement and lockfile evidence should still drive
+upgrade previews exactly as before; setuptools extraction is only a detector
+boundary cleanup.
+
+Kept change: one setuptools helper module, one maintainability regression,
+existing Python manifest and upgrade-preview coverage, this persona note, and
+no public schema change.
