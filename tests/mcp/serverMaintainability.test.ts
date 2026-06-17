@@ -163,6 +163,16 @@ describe('MCP server maintainability', () => {
     expect(catalogSource).toContain('coordinateWatchTool');
   });
 
+  it('keeps MCP tool definition shaping in a named helper', async () => {
+    const registrySource = await fs.readFile(path.join(process.cwd(), 'src/mcp/tools.ts'), 'utf-8');
+
+    expect(registrySource).toContain('return mcpTools.map(toToolDefinition);');
+    expect(registrySource).toContain('function toToolDefinition(');
+    expect(registrySource).not.toContain(
+      'mcpTools.map(({ name, description, inputSchema, deprecated }) =>',
+    );
+  });
+
   it('keeps stdio transport wiring out of server orchestration', async () => {
     const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
     expect(serverSource).toContain("from './serverStdio.js'");

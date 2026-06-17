@@ -16,19 +16,24 @@ import type { McpTool, McpToolHandler } from './tools/_shared.js';
 export type { McpTool, McpToolHandler };
 
 export function getToolDefinitions(): McpToolDefinition[] {
-  return mcpTools.map(({ name, description, inputSchema, deprecated }) => {
-    const def: McpToolDefinition = {
-      name,
-      description: deprecated
-        ? deprecationDescriptionPrefix(deprecated) + description
-        : description,
-      inputSchema,
-    };
-    if (deprecated) def.deprecated = deprecated;
-    return def;
-  });
+  return mcpTools.map(toToolDefinition);
 }
 
 export function getToolHandler(name: string): McpToolHandler | undefined {
   return mcpTools.find((tool) => tool.name === name)?.handler;
+}
+
+function toToolDefinition({
+  name,
+  description,
+  inputSchema,
+  deprecated,
+}: McpTool): McpToolDefinition {
+  const def: McpToolDefinition = {
+    name,
+    description: deprecated ? deprecationDescriptionPrefix(deprecated) + description : description,
+    inputSchema,
+  };
+  if (deprecated) def.deprecated = deprecated;
+  return def;
 }
