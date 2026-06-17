@@ -27,6 +27,10 @@ import {
   evidencePackKeywordMatches,
   reviewKeywordMatches,
 } from './intentRouterReviewSignals.js';
+import {
+  dataflowKeywordMatches,
+  privacyCheckKeywordMatches,
+} from './intentRouterSecuritySignals.js';
 
 export interface RouteEntry {
   /** Short intent label. */
@@ -3307,132 +3311,6 @@ function routeKeywordMatches(
   return true;
 }
 
-function dataflowKeywordMatches(keyword: string, tokens: Set<string>): boolean {
-  const inherent = [
-    'dataflow',
-    'taint',
-    'security',
-    'injection',
-    'source',
-    'sink',
-    'sinks',
-    'vulnerability',
-    'sql',
-    'xss',
-  ];
-  if (inherent.includes(keyword)) return true;
-  const privacySubject = [
-    'pii',
-    'gdpr',
-    'personal',
-    'customer',
-    'email',
-    'emails',
-    'password',
-    'token',
-    'tokens',
-    'secret',
-    'secrets',
-    'data',
-  ].some((token) => tokens.has(token));
-  const privacyAction = [
-    'leak',
-    'leaks',
-    'expose',
-    'exposes',
-    'exposed',
-    'logged',
-    'logging',
-    'log',
-    'logs',
-    'store',
-    'stores',
-    'retention',
-    'handled',
-    'handles',
-    'process',
-    'processes',
-    'processing',
-  ].some((token) => tokens.has(token));
-  if (['pii', 'gdpr', 'personal', 'customer', 'email', 'emails'].includes(keyword)) return true;
-  if (keyword === 'compliance') return privacySubject;
-  if (
-    [
-      'password',
-      'token',
-      'tokens',
-      'leak',
-      'leaks',
-      'logged',
-      'logging',
-      'log',
-      'logs',
-      'store',
-      'stores',
-      'retention',
-      'handled',
-      'handles',
-      'process',
-      'processes',
-      'processing',
-    ].includes(keyword)
-  ) {
-    return privacySubject || privacyAction;
-  }
-  const flowContext = [
-    'security',
-    'secure',
-    'vulnerable',
-    'vulnerability',
-    'secret',
-    'secrets',
-    'expose',
-    'exposes',
-    'exposed',
-    'sanitize',
-    'sanitized',
-    'request',
-    'data',
-    'reach',
-    'reaches',
-    'exec',
-    'auth',
-    'bypass',
-    'risk',
-    'risks',
-    'xss',
-    'sql',
-    'sink',
-    'sinks',
-    'pii',
-    'gdpr',
-    'personal',
-    'customer',
-    'email',
-    'emails',
-    'password',
-    'token',
-    'tokens',
-    'leak',
-    'leaks',
-    'logged',
-    'logging',
-    'store',
-    'stores',
-    'retention',
-    'handled',
-    'handles',
-    'process',
-    'processes',
-    'processing',
-  ].some((token) => tokens.has(token));
-  if (['auth'].includes(keyword))
-    return (
-      tokens.has('bypass') || tokens.has('security') || tokens.has('risk') || tokens.has('risks')
-    );
-  return flowContext;
-}
-
 function understandKeywordMatches(keyword: string, tokens: Set<string>): boolean {
   if (
     [
@@ -3620,42 +3498,6 @@ function understandKeywordMatches(keyword: string, tokens: Set<string>): boolean
       return false;
     if (keyword === 'change' && apiChangePlanningContextMatches(tokens)) return true;
     return featurePlacementContextMatches(tokens);
-  }
-  return true;
-}
-
-function privacyCheckKeywordMatches(keyword: string, tokens: Set<string>): boolean {
-  const privacySubjectContext = [
-    'privacy',
-    'trust',
-    'boundary',
-    'upload',
-    'leave',
-    'machine',
-    'telemetry',
-    'network',
-    'contact',
-    'contacted',
-    'projscan',
-  ].some((token) => tokens.has(token));
-  if (keyword === 'offline') return privacySubjectContext || tokens.has('mode');
-  if (keyword === 'read') return privacySubjectContext;
-  if (['env', 'values', 'code', 'source', 'local'].includes(keyword))
-    return privacySubjectContext || (tokens.has('read') && tokens.has('projscan'));
-  if (['write', 'writes'].includes(keyword)) return privacySubjectContext;
-  if (keyword === 'check')
-    return tokens.has('privacy') || tokens.has('trust') || tokens.has('boundary');
-  if (keyword === 'projscan') {
-    return [
-      'read',
-      'upload',
-      'telemetry',
-      'privacy',
-      'write',
-      'writes',
-      'contact',
-      'contacted',
-    ].some((token) => tokens.has(token));
   }
   return true;
 }

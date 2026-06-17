@@ -40,6 +40,23 @@ describe('routeIntent', () => {
     expect(reviewSignalsSource).toContain('export function reviewKeywordMatches');
   });
 
+  it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSecuritySignals.js'");
+    expect(routerSource).not.toContain('function dataflowKeywordMatches');
+    expect(routerSource).not.toContain('function privacyCheckKeywordMatches');
+
+    const securitySignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSecuritySignals.ts'),
+      'utf8',
+    );
+    expect(securitySignalsSource).toContain('export function dataflowKeywordMatches');
+    expect(securitySignalsSource).toContain('export function privacyCheckKeywordMatches');
+  });
+
   it('routes "what breaks if I rename a function" to impact', () => {
     const result = routeIntent('what breaks if I rename a function');
     expect(result.matches[0].tool).toBe('projscan_impact');
