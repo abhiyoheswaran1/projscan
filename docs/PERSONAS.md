@@ -8453,3 +8453,49 @@ should report 82 tests across `tests/core/start.test.ts` and
 
 Kept change: one issue-action start test split, this persona note, and no
 release action.
+
+## One Hundred Seventy Seventh Slice Decision
+
+Selected personas: Platform Review Owner, Agent-Orchestrating Engineer,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: `tests/core/start.test.ts` remained a large hotspot after the
+issue-action split. The next cohesive group covered impact routing: exact
+symbols, exact files, deletion/revert/dependency wording, and search-first
+fallback when the requested impact target is ambiguous.
+
+Smallest fix: move those eight impact-routing scenarios into
+`tests/core/startImpactRouting.test.ts` and leave the rest of the start routing
+matrix in `tests/core/start.test.ts`. This keeps impact behavior coverage
+focused while reducing the original start test file from 3,181 lines to 2,915
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts tests/core/startImpactRouting.test.ts -t "mission control runs impact directly|mission control runs symbol impact|mission control runs file impact directly|mission control searches for a target before generic rollback impact|mission control searches for a target before schema-drop impact"
+npm run test -- tests/core/start.test.ts tests/core/startImpactRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startImpactRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Impact Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change start routing behavior, impact commands, search-first fallback
+  behavior, mode inference, proof command shaping, unresolved input behavior,
+  package version, release artifacts, publish behavior, deploy behavior, push
+  behavior, or merge behavior.
+- Do not weaken coverage for exact symbol impact, usage questions, exact file
+  impact, deletion questions, exact-file rollback questions, generic rollback
+  search fallback, schema-drop search fallback, or dependency questions.
+- Do not broaden this into production intent routing changes; this slice is
+  test maintainability only.
+
+Reviewer edge case: the focused impact-routing run should still report eight
+tests, and the combined start run should report 78 tests across
+`tests/core/start.test.ts` and `tests/core/startImpactRouting.test.ts`.
+
+Kept change: one impact-routing start test split, this persona note, and no
+release action.
