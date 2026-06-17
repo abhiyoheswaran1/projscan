@@ -97,6 +97,11 @@ test('bug hunt treats pure hotspot churn as watchlist instead of an immediate fi
   expect(report.verdict).toBe('clean');
   expect(report.fixQueue[0]?.id).toBe('bh-verify-clean');
   expect(report.topSuspects.some((finding) => finding.source === 'hotspot')).toBe(true);
+  const hotspotFinding = report.topSuspects.find((finding) => finding.source === 'hotspot');
+  expect(hotspotFinding?.why).toContain('primary author');
+  expect(hotspotFinding?.evidence.map((entry) => entry.message)).toEqual(
+    expect.arrayContaining([expect.stringContaining('primary author')]),
+  );
 }, 120_000);
 
 test('bug hunt applies project config before ranking doctor issues', async () => {

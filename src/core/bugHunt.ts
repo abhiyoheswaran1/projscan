@@ -1,6 +1,7 @@
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { collectIssues } from './issueEngine.js';
 import { fixFirstFromBugHuntFinding } from './fixFirst.js';
+import { hotspotToFinding } from './bugHuntHotspotFindings.js';
 import { computePreflight } from './preflight.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
@@ -175,43 +176,6 @@ function conflictToFinding(conflict: SessionConflict, index: number): BugHuntFin
     verification: {
       commands: ['projscan session touched --format json', 'projscan bug-hunt --format json'],
       expected: 'Touched-file overlap is understood and no coordination blocker remains.',
-    },
-  };
-}
-
-function hotspotToFinding(hotspot: {
-  relativePath: string;
-  riskScore: number;
-  reasons: string[];
-  issueIds: string[];
-}): BugHuntFinding {
-  return {
-    id: `bh-hotspot-${slug(hotspot.relativePath)}`,
-    priority: hotspot.issueIds.length > 0 ? (hotspot.riskScore >= 70 ? 'p1' : 'p2') : 'p2',
-    source: 'hotspot',
-    title: `${hotspot.issueIds.length > 0 ? 'Inspect' : 'Watch'} risky hotspot ${hotspot.relativePath}`,
-    why:
-      hotspot.reasons[0] ??
-      `Risk score ${Math.round(hotspot.riskScore)} combines churn, complexity, and issue density.`,
-    files: [hotspot.relativePath],
-    evidence: [
-      {
-        source: 'hotspots',
-        message: `risk score ${Math.round(hotspot.riskScore)}`,
-        file: hotspot.relativePath,
-      },
-      ...hotspot.issueIds.slice(0, 3).map((issueId) => ({
-        source: 'doctor' as const,
-        message: `linked issue ${issueId}`,
-        issueId,
-        file: hotspot.relativePath,
-      })),
-    ],
-    suggestedTools: ['projscan_file', 'projscan_hotspots', 'projscan_impact'],
-    verification: {
-      commands: [`projscan file ${hotspot.relativePath} --format json`, 'npm test'],
-      expected:
-        'The hotspot has either lower risk, added regression coverage, or an explicit owner for remaining risk.',
     },
   };
 }
@@ -463,13 +427,4 @@ function sourceRank(source: BugHuntFinding['source']): number {
 function normalizeMax(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_MAX_FINDINGS;
   return Math.max(1, Math.min(25, Math.floor(value)));
-}
-
-function slug(value: string): string {
-  return (
-    value
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase() || 'root'
-  );
 }
