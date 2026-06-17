@@ -40,6 +40,7 @@ import { searchFrontendPageRouteContextMatches } from './intentRouterSearchPageS
 import { searchReliabilityContextMatches } from './intentRouterSearchReliabilitySignals.js';
 import { searchStateManagementContextMatches } from './intentRouterSearchStateSignals.js';
 import { searchStyleSystemContextMatches } from './intentRouterSearchStyleSignals.js';
+import { searchToolingConfigContextMatches } from './intentRouterSearchToolingSignals.js';
 import { searchUiInteractionContextMatches } from './intentRouterSearchUiSignals.js';
 
 export interface RouteEntry {
@@ -4799,85 +4800,6 @@ function searchConfigLookupContextMatches(tokens: Set<string>): boolean {
       tokens.has(token),
     );
   return lookup || configDefinition;
-}
-
-function searchToolingConfigContextMatches(tokens: Set<string>): boolean {
-  if (
-    [
-      'add',
-      'create',
-      'implement',
-      'build',
-      'plan',
-      'should',
-      'todo',
-      'update',
-      'upgrade',
-      'bump',
-      'remove',
-      'drop',
-      'uninstall',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  if (
-    [
-      'why',
-      'failing',
-      'failed',
-      'failure',
-      'failures',
-      'broken',
-      'error',
-      'errors',
-      'runtime',
-      'production',
-      'prod',
-      'outage',
-      'incident',
-    ].some((token) => tokens.has(token))
-  )
-    return false;
-  const lookup = ['where', 'which', 'what', 'find', 'locate', 'search', 'lookup', 'show'].some(
-    (token) => tokens.has(token),
-  );
-  const configSignal = [
-    'config',
-    'configuration',
-    'configured',
-    'file',
-    'files',
-    'defined',
-    'define',
-    'defines',
-  ].some((token) => tokens.has(token));
-  const configTool =
-    ['vite', 'vitest', 'jest', 'babel', 'webpack'].some((token) => tokens.has(token)) &&
-    (configSignal || lookup);
-  const tsconfigSubject =
-    tokens.has('tsconfig') ||
-    (tokens.has('typescript') &&
-      ['config', 'configuration', 'path', 'paths', 'alias', 'aliases', 'strict'].some((token) =>
-        tokens.has(token),
-      ));
-  const pathAliasSubject =
-    ['path', 'paths'].some((token) => tokens.has(token)) &&
-    ['alias', 'aliases'].some((token) => tokens.has(token)) &&
-    (tokens.has('tsconfig') || tokens.has('typescript') || tokens.has('config'));
-  const packageManagerSubject = tokens.has('package') && tokens.has('manager');
-  const workspaceFileSubject =
-    ['pnpm', 'yarn', 'npm'].some((token) => tokens.has(token)) &&
-    ['workspace', 'workspaces', 'lockfile', 'lockfiles', 'package', 'manager'].some((token) =>
-      tokens.has(token),
-    );
-  const subject =
-    configTool ||
-    tsconfigSubject ||
-    pathAliasSubject ||
-    packageManagerSubject ||
-    workspaceFileSubject;
-  if (!subject) return false;
-  return lookup || configSignal || tokens.size >= 3;
 }
 
 function searchMigrationLookupContextMatches(tokens: Set<string>): boolean {

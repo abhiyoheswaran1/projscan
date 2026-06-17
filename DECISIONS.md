@@ -1857,3 +1857,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move frontend page search matching into `src/core/intentRouterSearchPageSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7310 lines / CC 1179 to 7253 lines / CC 1160. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "frontend page search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract tooling config search route signals
+
+- Status: accepted
+- Context: Tooling config lookup routing for Vite, Vitest, Jest, Babel, Webpack, tsconfig, TypeScript aliases, package managers, workspaces, and lockfiles was another cohesive search matcher inside the intent-router hotspot.
+- Decision: Move tooling config search matching into `src/core/intentRouterSearchToolingSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7253 lines / CC 1160 to 7175 lines / CC 1141. The extracted helper has no hotspot history, max function CC 6, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "tooling config search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
