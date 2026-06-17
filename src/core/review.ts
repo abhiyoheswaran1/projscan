@@ -1,7 +1,5 @@
-import type { CodeGraph } from './codeGraph.js';
 import { computeCoupling } from './couplingAnalyzer.js';
 import { diffGraphs } from './prDiff.js';
-import { detectWorkspaces, filterFilesByPackage } from './monorepo.js';
 import { annotateReviewWithIntent, appendIntentToSummary, parseIntent } from './intent.js';
 import { findRiskyFunctions } from './reviewRiskyFunctions.js';
 import { decideVerdict } from './reviewVerdict.js';
@@ -14,8 +12,8 @@ import { buildReviewBaseSnapshot } from './reviewBaseSnapshot.js';
 import { runReviewGit as runGit } from './reviewGit.js';
 import { buildReviewHeadSnapshot } from './reviewHeadSnapshot.js';
 import { buildNoChangeReviewReport } from './reviewNoChanges.js';
+import { resolvePackageScopeFiles, scopePrDiffToPackage } from './reviewPackageScope.js';
 import { diffManifests, readManifests, scopeDependencyChanges } from './reviewManifests.js';
-import type { PrDiffReport } from '../types/prDiff.js';
 import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
@@ -188,36 +186,6 @@ export async function computeReview(
   applyIntent(report, options.intent);
 
   return report;
-}
-
-async function resolvePackageScopeFiles(
-  rootPath: string,
-  graph: CodeGraph,
-  packageName: string | undefined,
-): Promise<Set<string> | undefined> {
-  if (!packageName) return undefined;
-  const workspaces = await detectWorkspaces(rootPath);
-  return new Set(filterFilesByPackage(workspaces, packageName, [...graph.files.keys()]));
-}
-
-async function scopePrDiffToPackage(
-  rootPath: string,
-  prDiff: PrDiffReport,
-  packageName: string | undefined,
-): Promise<void> {
-  if (!packageName) return;
-  const workspaces = await detectWorkspaces(rootPath);
-  const allChangedPaths = [
-    ...prDiff.filesAdded,
-    ...prDiff.filesRemoved,
-    ...prDiff.filesModified.map((file) => file.relativePath),
-  ];
-  const allowed = new Set(filterFilesByPackage(workspaces, packageName, allChangedPaths));
-  prDiff.filesAdded = prDiff.filesAdded.filter((file) => allowed.has(file));
-  prDiff.filesRemoved = prDiff.filesRemoved.filter((file) => allowed.has(file));
-  prDiff.filesModified = prDiff.filesModified.filter((file) => allowed.has(file.relativePath));
-  prDiff.totalFilesChanged =
-    prDiff.filesAdded.length + prDiff.filesRemoved.length + prDiff.filesModified.length;
 }
 
 function applyIntent(report: ReviewReport, rawIntent?: string): void {

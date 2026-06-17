@@ -4121,3 +4121,46 @@ cycle, dependency, contract, taint, dataflow, graph-evidence, and intent fields.
 Kept change: one base snapshot helper, one review-local git helper, one
 maintainability regression, existing review behavior coverage, this persona
 note, and no public schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: OSS Maintainer and Agent-Orchestrating Engineer.
+
+Reason: package-scoped review is an agent-facing precision feature. Keeping
+changed-file package filtering and graph-scope package selection inside
+`computeReview` made the high-churn review orchestrator harder to scan and
+mixed monorepo boundaries with verdict assembly.
+
+Smallest fix: move package-scope file filtering and graph-scope selection into
+`reviewPackageScope.ts`; keep `computeReview` calling those boundaries before
+changed-file enrichment and graph evidence assembly.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/review.test.ts -t "package scope filtering"
+npm run test -- tests/core/review.test.ts tests/core/reviewTier.test.ts tests/core/reviewPublicSurface.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewPackageScope.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Review Package Scope Extraction
+
+Delete-list after this slice:
+
+- Do not change package-scoped review semantics, review report schema, graph
+  evidence shape, verdict logic, or package manifest diff scoping.
+- Do not broaden workspace detection, add dependency changes, or introduce
+  network calls, release actions, version changes, or secret reads.
+
+Reviewer edge case: unscoped reviews should still leave all changed files and
+graph evidence intact; scoped reviews should still filter added, removed, and
+modified files plus graph evidence to the selected workspace package.
+
+Kept change: one package-scope helper module, one maintainability regression,
+existing package-scoped review coverage, this persona note, and no public schema
+change.

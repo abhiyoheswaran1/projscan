@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract review package scoping
+
+- Status: accepted
+- Context: `src/core/review.ts` still owned package-scoped changed-file filtering and package graph-scope selection after several review hotspot extractions.
+- Decision: Move package-scope filtering into `src/core/reviewPackageScope.ts`.
+- Consequences: Review package behavior and schema stay unchanged, while `src/core/review.ts` drops to 302 lines and package filtering can be tested and audited independently.
+- Verification: `npm run test -- tests/core/review.test.ts -t "package scope filtering"` plus focused review tests.
+
 ## 2026-06-17: Extract review base snapshot assembly
 
 - Status: accepted

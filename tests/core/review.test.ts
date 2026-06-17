@@ -326,6 +326,26 @@ describe('computeReview', () => {
     expect(mkTempWorktreeDir!.cyclomaticComplexity).toBeLessThanOrEqual(1);
   });
 
+  it('keeps package scope filtering isolated from the review orchestrator', async () => {
+    const review = await inspectRepoSourceFile('src/core/review.ts');
+    const reviewFunctions = new Set(review.functions?.map((fn) => fn.name));
+    expect(reviewFunctions.has('resolvePackageScopeFiles')).toBe(false);
+    expect(reviewFunctions.has('scopePrDiffToPackage')).toBe(false);
+
+    const packageScope = await inspectRepoSourceFile('src/core/reviewPackageScope.ts');
+    const resolvePackageScopeFiles = packageScope.functions?.find(
+      (fn) => fn.name === 'resolvePackageScopeFiles',
+    );
+    const scopePrDiffToPackage = packageScope.functions?.find(
+      (fn) => fn.name === 'scopePrDiffToPackage',
+    );
+
+    expect(resolvePackageScopeFiles).toBeDefined();
+    expect(resolvePackageScopeFiles!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+    expect(scopePrDiffToPackage).toBeDefined();
+    expect(scopePrDiffToPackage!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('returns unavailable when not a git repo', async () => {
     const r = await computeReview(tmp);
     expect(r.available).toBe(false);
