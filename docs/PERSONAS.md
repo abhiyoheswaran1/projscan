@@ -9154,3 +9154,51 @@ across `tests/core/start.test.ts` and
 
 Kept change: one semantic graph start test split, this persona note, and no
 release action in this slice.
+
+## One Hundred Ninety Second Slice Decision
+
+Selected personas: Test-Focused Maintainer, Codebase-Exploring Agent,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: after the semantic graph split, `tests/core/start.test.ts` still held
+test-evidence routing scenarios across search, exact-file inspection, and
+coverage-gap analysis. These cases share one user workflow: a maintainer asks
+where tests live, what covers an area, what tests to add for a file, or which
+untested files deserve attention.
+
+Smallest fix: move the six test-evidence routing scenarios into
+`tests/core/startTestEvidenceRouting.test.ts` and keep the remaining start
+routing matrix in `tests/core/start.test.ts`. This preserves behavior coverage
+while reducing the original start test file from 832 lines to 548 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "test-location questions|existing-test coverage lookup|exact-file test coverage questions|exact-file test-authoring questions|exact-file read-before-change questions|coverage-gap intent"
+npm run test -- tests/core/startTestEvidenceRouting.test.ts -t "test-location questions|existing-test coverage lookup|exact-file test coverage questions|exact-file test-authoring questions|exact-file read-before-change questions|coverage-gap intent"
+npm run test -- tests/core/start.test.ts tests/core/startTestEvidenceRouting.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+npm exec projscan -- file tests/core/startTestEvidenceRouting.test.ts --format json
+```
+
+## Review Guardrails: Start Test-Evidence Routing Test Split
+
+Delete-list after this slice:
+
+- Do not change `projscan search`, `projscan file`, `projscan coverage`,
+  regression-plan alternatives, understand alternatives, coverage success
+  criteria, package version, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+- Do not weaken coverage for test-location lookup, existing-test coverage
+  lookup, exact-file test coverage, exact-file test authoring, read-before-
+  change, scariest untested files, or files-with-no-tests prompts.
+- Do not broaden this into coverage ranking, search query extraction, or
+  route scoring behavior changes; this slice is test maintainability only.
+
+Reviewer edge case: the focused test-evidence routing run should report six
+tests, and the combined start/test-evidence-routing run should report 22 tests
+across `tests/core/start.test.ts` and
+`tests/core/startTestEvidenceRouting.test.ts`.
+
+Kept change: one test-evidence start test split, this persona note, and no
+release action in this slice.
