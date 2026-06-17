@@ -8221,3 +8221,50 @@ coverage count while reducing the original hotspot file.
 
 Kept change: one intent-router test split, this persona note, and no release
 action.
+
+## One Hundred Seventy Second Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, CLI Workflow
+Maintainer, Test Steward, and Agent-Orchestrating Senior Engineer.
+
+Reason: `tests/cli/start.test.ts` remained a high-churn hotspot at 243 lines.
+Its tests mixed machine-readable JSON orientation, mode inference, console
+first-ten-minutes guidance, AgentLoop/AgentFlight coordination hints, route
+shortcuts, and unsupported-format handling in one file.
+
+Smallest fix: keep JSON orientation and workflow-mode inference in
+`tests/cli/start.test.ts`, move first-ten-minutes plus AgentLoop/AgentFlight
+console guidance into `tests/cli/startConsoleGuidance.test.ts`, and move
+file-path impact, mixed-route alternatives, and unsupported-format console
+checks into `tests/cli/startConsoleRouting.test.ts`. The split preserves all 10
+CLI start tests while dropping the original hotspot file from 243 lines to 138
+lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts
+npm run test -- tests/cli/start.test.ts tests/cli/startConsoleGuidance.test.ts tests/cli/startConsoleRouting.test.ts
+npm exec projscan -- file tests/cli/start.test.ts --format json
+```
+
+## Review Guardrails: CLI Start Test Split
+
+Delete-list after this slice:
+
+- Do not change CLI output, JSON schema, mode inference, route scoring, MCP
+  behavior, package version, release artifacts, publish behavior, deploy
+  behavior, push behavior, or merge behavior.
+- Do not remove coverage for bug-hunt/release intent inference,
+  before-commit safety inference, explicit mode precedence, first-ten-minutes
+  console output, AgentLoop hints, AgentFlight hints, direct file-path impact
+  routing, mixed-intent alternatives, or unsupported format errors.
+- Do not move shortcut, handoff, mission bundle, or mission-output tests; those
+  already live in focused CLI start files.
+
+Reviewer edge case: the focused CLI start run should still report 10 tests
+across `tests/cli/start.test.ts`, `tests/cli/startConsoleGuidance.test.ts`, and
+`tests/cli/startConsoleRouting.test.ts`, preserving the pre-split coverage count
+while reducing the original hotspot file.
+
+Kept change: one CLI start test split, this persona note, and no release action.
