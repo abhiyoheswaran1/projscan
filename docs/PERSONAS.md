@@ -8360,3 +8360,50 @@ count while shrinking the original hotspot file.
 
 Kept change: one review test split, one shared local git fixture, this persona
 note, and no release action.
+
+## One Hundred Seventy Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform Review Owner,
+Maintainability-Focused Platform Engineer, and OSS Maintainer.
+
+Reason: quality-scorecard now points at the start surface again, while
+`src/core/start.ts` is already a small orchestration module. The concrete
+maintainability risk is still `tests/core/start.test.ts`: it mixed general
+mission-control routing with agent handoff, workplan, session-resume, and
+remembered-session context assertions.
+
+Smallest fix: move the agent-planning and session-context start scenarios into
+`tests/core/startAgentPlanning.test.ts`, keep the rest of the broad routing
+matrix in `tests/core/start.test.ts`, and remove the session helper imports from
+the original file. This preserves all 90 affected start tests while reducing
+the original start test file from 3,702 lines to 3,341 lines.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts -t "handoff requests|open-ended next-step|session resume|leave-off|changed-while-away|wake-up|last-agent status|separates current worktree"
+npm run test -- tests/core/start.test.ts tests/core/startAgentPlanning.test.ts
+npm exec projscan -- file tests/core/start.test.ts --format json
+```
+
+## Review Guardrails: Start Agent Planning Test Split
+
+Delete-list after this slice:
+
+- Do not change start routing behavior, mode inference, mission-control
+  schemas, session-memory semantics, agent-brief commands, workplan commands,
+  proof queue shaping, package version, release artifacts, publish behavior,
+  deploy behavior, push behavior, or merge behavior.
+- Do not weaken coverage for handoff routing, open-ended next-step routing,
+  session touched-file routing, changed-while-away routing, offline wording,
+  wake-up wording, last-agent wording, or current-worktree versus remembered
+  session separation.
+- Do not broaden this split into production start orchestration changes; the
+  production file is already small enough for this slice.
+
+Reviewer edge case: the focused start test run should still report 90 tests
+across `tests/core/start.test.ts` and
+`tests/core/startAgentPlanning.test.ts`, preserving the pre-split coverage count
+while reducing the original hotspot file.
+
+Kept change: one start test split, this persona note, and no release action.
