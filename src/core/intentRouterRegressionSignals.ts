@@ -225,3 +225,25 @@ export function proofCommandContextMatches(tokens: Set<string>): boolean {
     'pushing',
   ].some((token) => tokens.has(token));
 }
+
+export function harnessProofContextMatches(tokens: Set<string>): boolean {
+  const harnessSubject = ['agentflight', 'agentloop', 'agentloopkit', 'harness'].some((token) =>
+    tokens.has(token),
+  );
+  if (!harnessSubject) return false;
+  return [
+    'proof',
+    'prove',
+    'verify',
+    'verification',
+    'check',
+    'checks',
+    'evidence',
+    'run',
+    'rerun',
+    'status',
+    'handoff',
+    'use',
+    'using',
+  ].some((token) => tokens.has(token));
+}

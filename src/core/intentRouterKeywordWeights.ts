@@ -1005,6 +1005,11 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     ].includes(keyword)
   )
     return 2;
+  if (
+    entry.tool === 'projscan_regression_plan' &&
+    ['agentflight', 'agentloop', 'agentloopkit', 'harness'].includes(keyword)
+  )
+    return 4;
   if (entry.tool === 'projscan_agent_brief' && ['brief', 'handoff', 'agent'].includes(keyword))
     return 2;
   if (

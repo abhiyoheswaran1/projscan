@@ -293,6 +293,36 @@ describe('routeIntent', () => {
     expect(enoent.matches.find((match) => match.tool === 'projscan_upgrade')).toBeUndefined();
   });
 
+  it('routes agent harness verification requests to regression proof planning', () => {
+    const agentflight = routeIntent('run agentflight verification');
+    expect(agentflight.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Regression',
+        tool: 'projscan_regression_plan',
+        cli: 'projscan regression-plan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['agentflight', 'verification']),
+      }),
+    );
+
+    const agentloopkit = routeIntent('agentloopkit proof before handoff');
+    expect(agentloopkit.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_regression_plan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['agentloopkit', 'proof']),
+      }),
+    );
+
+    const planning = routeIntent('what should we build next with agentloop');
+    expect(planning.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        matchedKeywords: expect.arrayContaining(['next', 'build']),
+      }),
+    );
+  });
+
   it('routes bundle-size and package-bloat questions to dependency inventory', () => {
     const bundle = routeIntent('why is the bundle so large');
     expect(bundle.matches[0]).toEqual(

@@ -43,6 +43,7 @@ import {
   regressionCiPlatformContextMatches,
   regressionFailureContextMatches,
   regressionFlakeContextMatches,
+  harnessProofContextMatches,
   regressionLocalSetupContextMatches,
   regressionPerformanceContextMatches,
   styleSystemFailureContextMatches,
@@ -1412,7 +1413,17 @@ export function routeKeywordMatches(
     return false;
   if (entry.tool === 'projscan_regression_plan' && searchStyleSystemContextMatches(tokens))
     return false;
-  if (entry.tool === 'projscan_regression_plan' && verificationPlanningContextMatches(tokens))
+  if (
+    entry.tool === 'projscan_regression_plan' &&
+    verificationPlanningContextMatches(tokens) &&
+    !harnessProofContextMatches(tokens)
+  )
+    return false;
+  if (
+    entry.tool === 'projscan_regression_plan' &&
+    ['agentflight', 'agentloop', 'agentloopkit', 'harness'].includes(keyword) &&
+    !harnessProofContextMatches(tokens)
+  )
     return false;
   if (entry.tool === 'projscan_regression_plan' && packageScriptDiscoveryContextMatches(tokens))
     return false;
@@ -1488,7 +1499,8 @@ export function routeKeywordMatches(
   if (
     entry.tool === 'projscan_regression_plan' &&
     ['run', 'rerun'].includes(keyword) &&
-    !testRunContextMatches(tokens)
+    !testRunContextMatches(tokens) &&
+    !harnessProofContextMatches(tokens)
   )
     return false;
   if (
