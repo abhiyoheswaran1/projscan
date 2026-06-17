@@ -7120,3 +7120,54 @@ the same file should remain quiet.
 Kept change: one additive framework source value, one false-positive fixture,
 one review-packet note, one architecture decision, this persona note, and no
 release action.
+
+## One Hundred Forty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer and Platform And Release
+Owner.
+
+Reason: `projscan review --format json` flagged
+`src/core/intentRouterKeywordMatches.ts` as a branch-heavy review hotspot. The
+dispatcher is the route agents depend on before choosing tools, so security and
+understand/dataflow exclusion rules need a focused owner without changing route
+results.
+
+Smallest fix: move the early privacy, understand, review, coupling, evidence
+pack, explain-issue, and dataflow rejection rules into
+`src/core/intentRouterKeywordEarlyGuards.ts`, with a small shared context type.
+Keep route scoring, keyword weighting, catalog entries, command names, and
+public result shapes unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterSearchArchitecture.test.ts -t "early keyword rejection guards"
+npm run test -- tests/core/intentRouterSearchArchitecture.test.ts tests/core/intentRouterSearchImpact.test.ts tests/core/intentRouterRegressionSecurity.test.ts tests/core/intentRouter.test.ts
+npm exec agentflight -- verify npm run test -- tests/core/intentRouterSearchArchitecture.test.ts tests/core/intentRouterSearchImpact.test.ts tests/core/intentRouterRegressionSecurity.test.ts tests/core/intentRouter.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouterKeywordMatches.ts --format json
+npm exec projscan -- file src/core/intentRouterKeywordEarlyGuards.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Intent Router Early Guards
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, route confidence scoring, keyword weights, MCP
+  tool names, CLI command strings, or public route result schemas.
+- Do not widen dataflow, privacy, understand, review, coupling, or evidence
+  pack matching while extracting the guards.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: privacy and dataflow prompts should keep their existing
+specialized routes, while env/config, quoted text, UI, integration, search,
+setup, and data-contract lookup prompts should still avoid generic understand or
+dataflow matches unless the explicit risk wording is present.
+
+Kept change: one early-guard module, one shared context type, one architecture
+boundary regression, existing behavior coverage, this persona note, and no
+release action.

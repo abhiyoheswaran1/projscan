@@ -11,7 +11,11 @@ describe('routeIntent search architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(keywordMatchesSource()).toContain("from './intentRouterSecuritySignals.js'");
+    const earlyGuardsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterKeywordEarlyGuards.ts'),
+      'utf8',
+    );
+    expect(earlyGuardsSource).toContain("from './intentRouterSecuritySignals.js'");
     expect(routerSource).not.toContain('function dataflowKeywordMatches');
     expect(routerSource).not.toContain('function privacyCheckKeywordMatches');
     expect(routerSource).not.toContain('function explicitDataflowContextMatches');
@@ -25,6 +29,22 @@ describe('routeIntent search architecture', () => {
     expect(securitySignalsSource).toContain('export function privacyCheckKeywordMatches');
     expect(securitySignalsSource).toContain('export function explicitDataflowContextMatches');
     expect(securitySignalsSource).toContain('export function explicitDataflowRiskContextMatches');
+  });
+
+  it('keeps early keyword rejection guards isolated from the keyword dispatcher', () => {
+    const keywordSource = keywordMatchesSource();
+
+    expect(keywordSource).toContain("from './intentRouterKeywordEarlyGuards.js'");
+    expect(keywordSource).not.toContain('function understandKeywordRejected');
+    expect(keywordSource).not.toContain('function dataflowKeywordRejected');
+
+    const earlyGuardsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterKeywordEarlyGuards.ts'),
+      'utf8',
+    );
+    expect(earlyGuardsSource).toContain('export function routeKeywordRejectedByEarlyGuards');
+    expect(earlyGuardsSource).toContain('function understandKeywordRejected');
+    expect(earlyGuardsSource).toContain('function dataflowKeywordRejected');
   });
 
   it('keeps infra artifact search routing isolated from the main router', () => {

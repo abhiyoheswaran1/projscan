@@ -14,7 +14,6 @@ import {
 } from './intentRouterCoordinationSignals.js';
 import {
   auditKeywordMatches,
-  couplingKeywordMatches,
   dependenciesKeywordMatches,
   dependencyCycleContextMatches,
   outdatedNpmContextMatches,
@@ -22,28 +21,17 @@ import {
   packageImporterContextMatches,
   workspacesKeywordMatches,
 } from './intentRouterDependencySignals.js';
-import {
-  evidencePackKeywordMatches,
-  reviewKeywordMatches,
-} from './intentRouterReviewSignals.js';
-import {
-  dataAccessPlanningContextMatches,
-  domainWorkflowPlanningContextMatches,
-  stateManagementPlanningContextMatches,
-} from './intentRouterPlanningSignals.js';
+import { routeKeywordRejectedByEarlyGuards } from './intentRouterKeywordEarlyGuards.js';
+import type { KeywordMatchRouteEntry } from './intentRouterKeywordContext.js';
+import { evidencePackKeywordMatches } from './intentRouterReviewSignals.js';
 import {
   preflightBranchRecoveryContextMatches,
   preflightReadyContextMatches,
   preflightRiskContextMatches,
 } from './intentRouterPreflightSignals.js';
 import { prDiffKeywordMatches } from './intentRouterPrDiffSignals.js';
-import {
-  regressionLocalSetupContextMatches,
-  styleSystemFailureContextMatches,
-  toolingFailureContextMatches,
-} from './intentRouterRegressionSignals.js';
+import { regressionLocalSetupContextMatches } from './intentRouterRegressionSignals.js';
 import { regressionKeywordMatches } from './intentRouterRegressionKeywordMatches.js';
-import { localServiceSetupCommandContextMatches } from './intentRouterRepoSignals.js';
 import { releaseTrainKeywordMatches } from './intentRouterReleaseSignals.js';
 import {
   doctorCleanupDeleteContextMatches,
@@ -59,12 +47,6 @@ import {
   impactDeleteContextMatches,
   impactRollbackContextMatches,
 } from './intentRouterRiskSignals.js';
-import {
-  dataflowKeywordMatches,
-  explicitDataflowContextMatches,
-  explicitDataflowRiskContextMatches,
-  privacyCheckKeywordMatches,
-} from './intentRouterSecuritySignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
 import { searchBackgroundWorkContextMatches } from './intentRouterSearchBackgroundSignals.js';
 import { searchCommunicationArtifactContextMatches } from './intentRouterSearchCommunicationSignals.js';
@@ -107,11 +89,8 @@ import {
   protectedImproveNextContextMatches,
   workplanKeywordMatches,
 } from './intentRouterWorkSignals.js';
-import { understandKeywordMatches } from './intentRouterUnderstandSignals.js';
 
-export interface KeywordMatchRouteEntry {
-  tool: string;
-}
+export type { KeywordMatchRouteEntry };
 
 export function routeKeywordMatches(
   entry: KeywordMatchRouteEntry,
@@ -124,147 +103,19 @@ export function routeKeywordMatches(
   hasQuotedText: boolean,
 ): boolean {
   if (!tokens.has(keyword)) return false;
-  if (entry.tool === 'projscan_privacy_check' && searchIntegrationContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_privacy_check' && searchUiInteractionContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_privacy_check' && !privacyCheckKeywordMatches(keyword, tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && !understandKeywordMatches(keyword, tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchEnvLookupContextMatches(tokens, hasEnvVar))
-    return false;
   if (
-    entry.tool === 'projscan_understand' &&
-    searchQuotedDebugTextContextMatches(tokens, hasQuotedText)
+    routeKeywordRejectedByEarlyGuards({
+      entry,
+      keyword,
+      tokens,
+      hasFilePath,
+      hasPackageRemoval,
+      hasPackageChange,
+      hasEnvVar,
+      hasQuotedText,
+    })
   )
     return false;
-  if (entry.tool === 'projscan_understand' && searchTestDataContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_understand' && searchDataContractContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchUiInteractionContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchIntegrationContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_understand' && searchApiContractContextMatches(tokens)) return false;
-  if (
-    entry.tool === 'projscan_understand' &&
-    searchInfraArtifactContextMatches(tokens) &&
-    !localServiceSetupCommandContextMatches(tokens)
-  )
-    return false;
-  if (entry.tool === 'projscan_understand' && searchDomainWorkflowContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchCommunicationArtifactContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchStateManagementContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchDataAccessContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_understand' && searchNavigationLayoutContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchFrontendPageRouteContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_understand' && searchStyleSystemContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_review' && !reviewKeywordMatches(keyword, tokens)) return false;
-  if (entry.tool === 'projscan_coupling' && !couplingKeywordMatches(keyword, tokens)) return false;
-  if (entry.tool === 'projscan_explain_issue' && styleSystemFailureContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_explain_issue' && toolingFailureContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_dataflow' && !dataflowKeywordMatches(keyword, tokens)) return false;
-  if (entry.tool === 'projscan_dataflow' && domainWorkflowPlanningContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_dataflow' && stateManagementPlanningContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_dataflow' && dataAccessPlanningContextMatches(tokens)) return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    ['process', 'processes'].includes(keyword) &&
-    searchEnvLookupContextMatches(tokens, hasEnvVar)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchQuotedDebugTextContextMatches(tokens, hasQuotedText) &&
-    !explicitDataflowContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchBackgroundWorkContextMatches(tokens) &&
-    !explicitDataflowContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchObservabilityContextMatches(tokens) &&
-    !explicitDataflowContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchTestDataContextMatches(tokens) &&
-    !explicitDataflowContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchReliabilityContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchDataContractContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchUiInteractionContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchIntegrationContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchApiContractContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchInfraArtifactContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchDomainWorkflowContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchCommunicationArtifactContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    searchStateManagementContextMatches(tokens) &&
-    !explicitDataflowRiskContextMatches(tokens)
-  )
-    return false;
-  if (entry.tool === 'projscan_dataflow' && searchDataAccessContextMatches(tokens)) return false;
-  if (entry.tool === 'projscan_dataflow' && searchNavigationLayoutContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_dataflow' && searchFrontendPageRouteContextMatches(tokens))
-    return false;
-  if (entry.tool === 'projscan_dataflow' && searchStyleSystemContextMatches(tokens)) return false;
   if (
     hasFilePath &&
     keyword === 'start' &&
