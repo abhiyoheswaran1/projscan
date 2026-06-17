@@ -11,6 +11,7 @@ export interface ChangedFilesResult {
   reason?: string;
   baseRef: string | null;
   files: string[];
+  uncommittedFiles: string[];
 }
 
 /**
@@ -31,6 +32,7 @@ export async function getChangedFiles(
       reason: 'not a git repository',
       baseRef: null,
       files: [],
+      uncommittedFiles: [],
     };
   }
 
@@ -44,8 +46,8 @@ export async function getChangedFiles(
       continue;
     }
     try {
-      const files = await diffNames(rootPath, ref);
-      return { available: true, baseRef: ref, files };
+      const { files, uncommittedFiles } = await diffNames(rootPath, ref);
+      return { available: true, baseRef: ref, files, uncommittedFiles };
     } catch (err) {
       // 1.10+ — surface stdio-too-large explicitly instead of letting it
       // fall through to the generic "no usable base ref" path. The ref
@@ -61,6 +63,7 @@ export async function getChangedFiles(
             '(typically > 100K files changed). Use --base-ref to pin a closer ref.',
           baseRef: null,
           files: [],
+          uncommittedFiles: [],
         };
       }
       lastError = err instanceof Error ? err.message : String(err);
@@ -71,7 +74,7 @@ export async function getChangedFiles(
   try {
     const files = await statusNames(rootPath);
     if (files.length > 0) {
-      return { available: true, baseRef: '(working tree)', files };
+      return { available: true, baseRef: '(working tree)', files, uncommittedFiles: files };
     }
   } catch (err) {
     lastError = err instanceof Error ? err.message : String(err);
@@ -82,6 +85,7 @@ export async function getChangedFiles(
     reason: lastError ?? 'no usable base ref found',
     baseRef: null,
     files: [],
+    uncommittedFiles: [],
   };
 }
 
@@ -103,7 +107,10 @@ async function refExists(rootPath: string, ref: string): Promise<boolean> {
   }
 }
 
-async function diffNames(rootPath: string, baseRef: string): Promise<string[]> {
+async function diffNames(
+  rootPath: string,
+  baseRef: string,
+): Promise<{ files: string[]; uncommittedFiles: string[] }> {
   const { stdout } = await execFileAsync(
     'git',
     ['diff', '--name-only', '--diff-filter=d', `${baseRef}...HEAD`],
@@ -125,7 +132,7 @@ async function diffNames(rootPath: string, baseRef: string): Promise<string[]> {
   }
   for (const f of uncommitted) set.add(f);
 
-  return [...set].sort();
+  return { files: [...set].sort(), uncommittedFiles: uncommitted };
 }
 
 async function statusNames(rootPath: string): Promise<string[]> {

@@ -9559,3 +9559,47 @@ quiet.
 Kept change: one shared matcher module for handler-based adapters, a structural
 guard test, focused framework dataflow regressions, this persona note, and no
 release action in this slice.
+
+## Two Hundred First Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and Maintainer Preparing Review.
+
+Reason: live `projscan coordinate --format json` evidence showed
+`changedFileCount: 8` after the local framework-source commit even though
+`git status` was clean. That count is correct as a branch/base delta, but the
+next agent needs to know whether it is looking at committed local work or dirty
+uncommitted files before continuing in a parallel worktree.
+
+Smallest fix: keep the existing `changedFileCount` field and add
+`uncommittedChangedFileCount` to coordination worktree evidence. Update
+agent-brief wording and the swarm coordination workflow to explain branch-delta
+versus dirty-worktree evidence.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/collisionDetector.test.ts tests/core/agentBrief.test.ts
+npm exec projscan -- collisions --format json
+npm exec projscan -- coordinate --format json
+npm exec projscan -- agent-brief --format json
+```
+
+## Review Guardrails: Coordination Dirty Evidence
+
+Delete-list after this slice:
+
+- Do not rename or remove `changedFileCount`; existing JSON consumers may depend
+  on it.
+- Do not add network calls, daemon state, telemetry, secret reads, release
+  artifacts, publish behavior, deploy behavior, push behavior, or merge
+  behavior.
+- Do not change collision readiness, claim contention, merge-risk ordering, or
+  watch semantics.
+
+Reviewer edge case: a clean local commit ahead of `origin/main` should report a
+nonzero `changedFileCount` and `0` uncommitted files.
+
+Kept change: one additive evidence field, focused collision and agent-brief
+regressions, docs for how to read the two counts, this persona note, and no
+release action in this slice.

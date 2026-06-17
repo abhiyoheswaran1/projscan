@@ -2177,3 +2177,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add `src/core/frameworkSourceMatching.ts` for shared source matching primitives and route the handler-based framework adapters through it while preserving the existing framework-specific gating and source labels.
 - Consequences: Dataflow request-source behavior remains unchanged, but future handler-based framework additions now review against one matching helper instead of several duplicated loops. The framework adapter guard prevents reintroducing per-adapter `bareName` and member-set loops in those adapters.
 - Verification: `npm run test -- tests/core/frameworkSources.test.ts -t "shared helpers"` failed before the helper existed, then passed. The full framework source and framework dataflow suites passed after extraction.
+
+## 2026-06-18: Separate coordination branch-delta and dirty-worktree counts
+
+- Status: accepted
+- Context: Coordination evidence used `changedFileCount` for files changed against the base ref. In a clean local branch ahead of `origin/main`, that count is nonzero even though there are no uncommitted files, which can mislead next-agent handoffs.
+- Decision: Add `uncommittedChangedFileCount` to coordination worktree summaries and evidence while preserving `changedFileCount` as the branch/base delta field.
+- Consequences: `projscan collisions`, `projscan coordinate`, and agent-brief coordination hints can now distinguish committed local work from dirty files without removing or renaming existing JSON fields.
+- Verification: `npm run test -- tests/core/collisionDetector.test.ts tests/core/agentBrief.test.ts` failed before the additive field and hint wording, then passed after the change.

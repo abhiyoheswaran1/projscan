@@ -5,6 +5,7 @@ export interface CoordinationEvidenceWorktree {
   path: string;
   branch: string | null;
   changedFileCount: number;
+  uncommittedChangedFileCount: number;
   baseRef: string | null;
 }
 

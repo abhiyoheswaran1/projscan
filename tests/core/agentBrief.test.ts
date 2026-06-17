@@ -81,7 +81,7 @@ test('agent brief carries swarm coordination evidence boundaries for the next ag
     }),
   );
   expect(hint?.message).toContain(
-    '`projscan coordinate` local-only evidence sees current worktree main with 2 changed file(s) against origin/main',
+    '`projscan coordinate` local-only evidence sees current worktree main with 2 changed file(s) against origin/main and 0 uncommitted file(s)',
   );
   expect(hint?.message).toContain('`projscan coordinate --watch --interval 5 --format json`');
   expect(hint?.message).toContain('Remembered session context is read separately');
@@ -126,6 +126,7 @@ function clearMultiWorktreeCoordination(root: string): CoordinationSummary {
         path: root,
         branch: 'main',
         changedFileCount: 2,
+        uncommittedChangedFileCount: 0,
         baseRef: 'origin/main',
       },
       activeSignals: [

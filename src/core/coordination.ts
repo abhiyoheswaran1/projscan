@@ -157,7 +157,10 @@ function currentWorktreeState(
   if (!current) return `${evidence.worktreeCount} worktree(s)`;
   const label = current.branch ?? current.path;
   const base = current.baseRef ?? 'working tree';
-  return `current worktree ${label} with ${current.changedFileCount} changed file(s) against ${base}`;
+  return (
+    `current worktree ${label} with ${current.changedFileCount} changed file(s) against ` +
+    `${base} and ${current.uncommittedChangedFileCount} uncommitted file(s)`
+  );
 }
 
 function coordinationValidationWorkflow(summary: CoordinationSummary): string {

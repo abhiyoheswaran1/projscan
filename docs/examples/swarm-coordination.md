@@ -56,6 +56,11 @@ with the active command path, current worktree state, local-only source signals,
 the validation workflow above, and a reminder that session memory is separate
 from current Git/worktree evidence. The default `coordinate` console view prints
 the same session-boundary reminder inside its `Evidence` section.
+Read `currentWorktree.changedFileCount` as the branch/base delta used for
+collision detection, including local commits and any dirty files. Read
+`currentWorktree.uncommittedChangedFileCount` as the current dirty worktree
+count from `git status`. A clean worktree can therefore show changed files
+against `origin/main` while still reporting `0` uncommitted files.
 When multiple worktrees are present, `agent-brief` also carries a
 `context.coordinationHints` entry even for a clear swarm, so the next agent knows
 to validate locally with `projscan coordinate --format json`,

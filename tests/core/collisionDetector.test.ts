@@ -96,6 +96,7 @@ describe('detectCollisions', () => {
         path: await fs.realpath(root),
         branch: 'main',
         changedFileCount: 1,
+        uncommittedChangedFileCount: 1,
         baseRef: 'main',
       },
     });
@@ -109,6 +110,36 @@ describe('detectCollisions', () => {
     ]);
     const sameFile = report.collisions.filter((c) => c.kind === 'same-file');
     expect(sameFile.some((c) => c.fileA === 'src/db.ts' && c.severity === 'high')).toBe(true);
+  });
+
+  it('separates branch delta from uncommitted worktree changes', async () => {
+    await fs.writeFile(
+      path.join(root, 'src', 'db.ts'),
+      'export function query(sql: string) { return sql.trim(); }\n',
+    );
+    await git(root, 'commit', '-qam', 'main edits db');
+
+    const report = await detectCollisions(root, { baseRef: 'HEAD~1' });
+    const realRoot = await fs.realpath(root);
+
+    expect(report.available).toBe(true);
+    expect(report.evidence?.currentWorktree).toEqual(
+      expect.objectContaining({
+        path: realRoot,
+        branch: 'main',
+        changedFileCount: 1,
+        uncommittedChangedFileCount: 0,
+        baseRef: 'HEAD~1',
+      }),
+    );
+    expect(
+      report.worktrees.find((worktree) => worktree.path === realRoot),
+    ).toEqual(
+      expect.objectContaining({
+        changedFileCount: 1,
+        uncommittedChangedFileCount: 0,
+      }),
+    );
   });
 
   it('flags a dependency collision when one worktree edits a file the other imports', async () => {

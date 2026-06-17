@@ -50,6 +50,7 @@ export interface CollisionWorktreeSummary {
   path: string;
   branch: string | null;
   changedFileCount: number;
+  uncommittedChangedFileCount: number;
   baseRef: string | null;
 }
 
@@ -131,6 +132,7 @@ export async function detectCollisions(
       path: w.path,
       branch: w.branch,
       changedFileCount: 0,
+      uncommittedChangedFileCount: 0,
       baseRef: null,
     }));
     return {
@@ -153,6 +155,7 @@ export async function detectCollisions(
       return {
         ref: w,
         files: result.available ? result.files : [],
+        uncommittedFiles: result.available ? result.uncommittedFiles : [],
         baseRef: result.baseRef,
       };
     }),
@@ -275,6 +278,7 @@ export async function detectCollisions(
     path: c.ref.path,
     branch: c.ref.branch,
     changedFileCount: c.files.length,
+    uncommittedChangedFileCount: c.uncommittedFiles.length,
     baseRef: c.baseRef,
   }));
 
