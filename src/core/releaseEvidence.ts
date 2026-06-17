@@ -130,7 +130,3 @@ function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedA
   }
   return result.slice(0, 12);
 }
-
-function dedupeStrings(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))];
-}

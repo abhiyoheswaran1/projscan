@@ -11,7 +11,7 @@ import { showBanner, showCompactBanner } from '../utils/banner.js';
 import { recordCommandTelemetry } from '../core/telemetry.js';
 import { enableOfflineMode } from '../core/privacy.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
-import { OUTPUT_FORMATS, formatList, getCommandFormatSupport } from '../utils/formatSupport.js';
+import { formatList } from '../utils/formatSupport.js';
 import type { PluginReporterCommand } from '../core/plugins.js';
 import {
   changedFilesAvailableMessage,
@@ -23,6 +23,7 @@ import { loadCliProjectConfig } from './projectConfig.js';
 import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import { cliCommandPath } from './commandPath.js';
 import { renderCliBanner } from './bannerDisplay.js';
+import { assertCliFormatSupported, resolveCliFormat } from './formatOptions.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue } from '../types.js';
 
@@ -72,27 +73,11 @@ program.hook('postAction', async (_thisCommand, actionCommand) => {
 });
 
 export function getFormat(): ReportFormat {
-  const opts = program.opts();
-  const f = opts.format as string;
-  if ((OUTPUT_FORMATS as readonly string[]).includes(f)) return f as ReportFormat;
-  console.error(chalk.red(`Unsupported --format ${f}.`));
-  console.error(chalk.dim(`Supported formats: ${formatList()}`));
-  process.exit(1);
+  return resolveCliFormat(program.opts().format);
 }
 
 export function assertFormatSupported(commandName: string): ReportFormat {
-  const format = getFormat();
-  const supported = getCommandFormatSupport(commandName);
-  if (!supported) {
-    console.error(
-      chalk.red(`Internal error: no --format support metadata for projscan ${commandName}.`),
-    );
-    process.exit(1);
-  }
-  if (supported.includes(format)) return format;
-  console.error(chalk.red(`projscan ${commandName} does not support --format ${format}.`));
-  console.error(chalk.dim(`Supported formats: ${formatList(supported)}`));
-  process.exit(1);
+  return assertCliFormatSupported(commandName, program.opts().format);
 }
 
 export function getRootPath(): string {
