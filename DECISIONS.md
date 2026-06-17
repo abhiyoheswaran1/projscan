@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-17: Extract preflight policy issue reasons
+
+- Status: accepted
+- Context: `buildPreflightReasons` in `src/core/preflight.ts` owned supply-chain and plugin policy issue reason formatting alongside changed-file, review, release-scale, session, health, and coordination reason assembly.
+- Decision: Move supply-chain and plugin policy reason formatting into `src/core/preflightIssueReasons.ts`.
+- Consequences: Preflight reason order, messages, tools, and verdict behavior stay unchanged, while `buildPreflightReasons` drops from CC 35 to CC 29 and policy issue wording is isolated for review.
+- Verification: `npm run test -- tests/core/preflight.test.ts -t "policy issue reason"` plus the full preflight test file.
+
 ## 2026-06-17: Add Express originalUrl dataflow source
 
 - Status: accepted

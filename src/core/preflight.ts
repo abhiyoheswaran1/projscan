@@ -5,6 +5,7 @@ import { computeReview } from './review.js';
 import { loadSession } from './session.js';
 import { pluginsEnabled } from './plugins.js';
 import { computeCoordination, type CoordinationSummary } from './coordination.js';
+import { policyIssueReasons } from './preflightIssueReasons.js';
 import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -286,30 +287,7 @@ function buildPreflightReasons(input: {
   const reasons: PreflightReason[] = [];
   const changedSet = new Set(input.changedFiles.files);
   const changedOnly = input.mode !== 'before_edit' && input.changedFiles.available;
-
-  for (const issue of input.issues) {
-    if (issue.category !== 'supply-chain') continue;
-    reasons.push({
-      severity: issue.severity,
-      source: 'supply-chain',
-      issueId: issue.id,
-      file: firstIssueFile(issue),
-      message: `${issue.severity === 'error' ? 'Supply-chain gate blocks' : 'Supply-chain gate flags'} ${issue.id}: ${issue.title}`,
-      tool: 'projscan_doctor',
-    });
-  }
-
-  for (const issue of input.issues) {
-    if (!issue.id.startsWith('plugin:')) continue;
-    reasons.push({
-      severity: issue.severity,
-      source: 'plugin',
-      issueId: issue.id,
-      file: firstIssueFile(issue),
-      message: `${issue.severity === 'error' ? 'Plugin policy blocks' : 'Plugin policy flags'} ${issue.id}: ${issue.title}`,
-      tool: 'projscan_plugin',
-    });
-  }
+  reasons.push(...policyIssueReasons(input.issues));
 
   if (changedOnly) {
     const changedIssues = input.issues.filter((issue) =>

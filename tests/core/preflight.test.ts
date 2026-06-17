@@ -10,8 +10,11 @@ import {
   decidePreflightVerdict,
   summarizePreflight,
 } from '../../src/core/preflight.js';
+import { buildCodeGraph } from '../../src/core/codeGraph.js';
+import { inspectFile } from '../../src/core/fileInspector.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import { PLUGIN_TRUST_HOME_ENV, trustPlugin } from '../../src/core/pluginTrust.js';
+import type { FileEntry } from '../../src/types.js';
 
 const tempRoots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -75,6 +78,28 @@ test('preflight summary is compact and agent-ready', () => {
   };
 
   expect(summarizePreflight(report)).toBe('proceed: no blocking or cautionary signals found');
+});
+
+test('preflight keeps policy issue reason formatting isolated from the reason orchestrator', async () => {
+  const preflightSource = await fs.readFile(path.join(process.cwd(), 'src/core/preflight.ts'), 'utf-8');
+  expect(preflightSource).not.toContain('Supply-chain gate blocks');
+  expect(preflightSource).not.toContain('Plugin policy blocks');
+
+  const issueReasons = await inspectRepoSourceFile('src/core/preflightIssueReasons.ts');
+  const policyIssueReasons = issueReasons.functions?.find(
+    (fn) => fn.name === 'policyIssueReasons',
+  );
+  const supplyChainIssueReason = issueReasons.functions?.find(
+    (fn) => fn.name === 'supplyChainIssueReason',
+  );
+  const pluginIssueReason = issueReasons.functions?.find((fn) => fn.name === 'pluginIssueReason');
+
+  expect(policyIssueReasons).toBeDefined();
+  expect(policyIssueReasons!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  expect(supplyChainIssueReason).toBeDefined();
+  expect(supplyChainIssueReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(pluginIssueReason).toBeDefined();
+  expect(pluginIssueReason!.cyclomaticComplexity).toBeLessThanOrEqual(3);
 });
 
 test('before_edit works outside git and returns a complete report', async () => {
@@ -462,6 +487,21 @@ async function makeTempProject(): Promise<string> {
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function inspectRepoSourceFile(rel: string) {
+  const root = process.cwd();
+  const abs = path.join(root, rel);
+  const stat = await fs.stat(abs);
+  const file: FileEntry = {
+    relativePath: rel,
+    absolutePath: abs,
+    extension: path.extname(rel).toLowerCase(),
+    sizeBytes: stat.size,
+    directory: path.posix.dirname(rel),
+  };
+  const graph = await buildCodeGraph(root, [file]);
+  return inspectFile(root, rel, { scan: { files: [file] }, issues: [], graph });
 }
 
 async function writeMarkerPlugin(root: string, markerPath: string): Promise<void> {

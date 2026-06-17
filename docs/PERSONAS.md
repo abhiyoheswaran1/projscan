@@ -4392,3 +4392,52 @@ a helper parameter with `originalUrl` outside a route should stay quiet.
 Kept change: one additive Express source label, one positive dataflow fixture,
 lookalike guards, existing framework/dataflow coverage, this persona note, and
 no breaking schema change.
+
+## Ninety-Second Slice Decision
+
+Selected personas: Platform/Release Owner and Security-Conscious Reviewer.
+
+Reason: preflight is the local release/review gate that turns health,
+supply-chain, plugin, review, session, and coordination signals into agent
+actions. Its largest reason builder mixed policy issue wording with every
+other gate. Policy issue wording is security-sensitive and should be easy to
+audit independently.
+
+Smallest fix: move supply-chain and plugin policy reason formatting into
+`preflightIssueReasons.ts`; keep `buildPreflightReasons` responsible for
+combining policy reasons with changed-file, review, release-scale, session,
+health, and coordination reasons.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflight.test.ts -t "policy issue reason"
+npm run test -- tests/core/preflight.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightIssueReasons.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Preflight Policy Reason Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight reason order, severity, source, issue id, file,
+  message text, tool routing, verdict logic, required checks, or release-scale
+  sign-off behavior.
+- Do not change plugin execution trust behavior, supply-chain analyzer output,
+  review computation, changed-file detection, session evidence, or coordination
+  evidence.
+- Do not add release, publish, tag, push, version, dependency, network, or
+  secret-reading behavior.
+
+Reviewer edge case: supply-chain errors should still block; supply-chain
+warnings should still caution; trusted plugin errors should still block and
+untrusted preview-disabled plugins should still not execute.
+
+Kept change: one preflight policy-reason helper module, one maintainability
+regression, existing preflight behavior coverage, this persona note, and no
+public schema change.
