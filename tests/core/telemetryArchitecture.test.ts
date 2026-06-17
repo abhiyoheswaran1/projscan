@@ -115,6 +115,30 @@ describe('telemetry maintainability', () => {
     expect(defaultSender!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   });
 
+  it('keeps telemetry flushing in a focused helper module', async () => {
+    const telemetrySource = await readRepoSourceFile('src/core/telemetry.ts');
+    expect(telemetrySource).toContain("from './telemetryFlushing.js'");
+    expect(telemetrySource).not.toContain('readTelemetryQueue');
+    expect(telemetrySource).not.toContain('sendQueuedTelemetry');
+    expect(telemetrySource).not.toContain('defaultTelemetrySender');
+
+    const telemetry = await inspectRepoSourceFile('src/core/telemetry.ts');
+    const flushFacade = telemetry.functions?.find((fn) => fn.name === 'flushTelemetry');
+    expect(flushFacade).toBeDefined();
+    expect(flushFacade!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+
+    const flushingSource = await readRepoSourceFile('src/core/telemetryFlushing.ts');
+    expect(flushingSource).toContain('readTelemetryQueue');
+    expect(flushingSource).toContain('clearTelemetryQueue');
+    expect(flushingSource).toContain('defaultTelemetrySender');
+    expect(flushingSource).toContain('sendQueuedTelemetry');
+
+    const flushing = await inspectRepoSourceFile('src/core/telemetryFlushing.ts');
+    const flushHelper = flushing.functions?.find((fn) => fn.name === 'flushTelemetry');
+    expect(flushHelper).toBeDefined();
+    expect(flushHelper!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
   it('keeps telemetry event recording in a focused helper module', async () => {
     const telemetrySource = await readRepoSourceFile('src/core/telemetry.ts');
     expect(telemetrySource).toContain("from './telemetryRecording.js'");

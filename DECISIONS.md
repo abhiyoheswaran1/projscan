@@ -2297,3 +2297,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move command and feedback recording into `src/core/telemetryRecording.ts`, keep `src/core/telemetry.ts` as the public facade, and pass the existing runtime guard functions into the helper instead of changing their behavior.
 - Consequences: Public telemetry imports, opt-in policy, event payload shape, queue semantics, flush behavior, and offline/no-network/disabled guards remain stable. Recording-specific privacy review now has one focused module.
 - Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the helper existed and `telemetry.ts` stopped owning recording internals, then passed after extraction. Existing telemetry behavior tests also passed.
+
+## 2026-06-18: Extract telemetry flush helper
+
+- Status: accepted
+- Context: After the sender and recording splits, `src/core/telemetry.ts` still owned flush orchestration, queued-event reads, default sender selection, queue clearing, and send-result mapping beside policy/status APIs.
+- Decision: Move flush orchestration into `src/core/telemetryFlushing.ts`, keep `flushTelemetry` as a public facade in `src/core/telemetry.ts`, and pass the existing runtime guard functions into the helper.
+- Consequences: Public telemetry imports, sender selection, queue clearing after successful sends, skipped/queued/failed result shapes, and offline/no-network/disabled guard behavior remain stable. The public telemetry facade drops to low complexity while flush review has one focused module.
+- Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the helper existed and `telemetry.ts` stopped owning flush internals, then passed after extraction. Existing telemetry behavior tests also passed.

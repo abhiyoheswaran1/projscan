@@ -9970,3 +9970,49 @@ flush result when the supplied sender succeeds.
 
 Kept change: one focused telemetry recording module, public facade wrappers,
 architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Tenth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: after the sender and recording splits, `src/core/telemetry.ts` still
+owned queued-event reads, default sender selection, queue clearing, and
+send-result mapping. That logic is network-adjacent and should be reviewed in a
+focused flush module instead of inside the broader public telemetry facade.
+
+Smallest fix: move flush orchestration into `src/core/telemetryFlushing.ts`,
+keep public `flushTelemetry` as a wrapper in `src/core/telemetry.ts`, and pass
+the existing offline/no-network/disabled runtime guards into the helper without
+changing their behavior.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/telemetryArchitecture.test.ts
+npm run test -- tests/core/telemetry.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/telemetry.ts --format json
+npm exec projscan -- file src/core/telemetryFlushing.ts --format json
+```
+
+## Review Guardrails: Telemetry Flush Extraction
+
+Delete-list after this slice:
+
+- Do not change telemetry policy, default-off behavior, endpoint constants, event
+  schema version, event payload fields, anonymous id generation, queue behavior,
+  sender behavior, queue clearing semantics, or offline/no-network/disabled env
+  guard behavior.
+- Do not add dependencies, read `.env` values, add hidden network calls, change
+  lockfiles, publish, deploy, push, merge, tag, or cut a release.
+- Do not move config storage, event shaping internals, recording behavior, or
+  runtime env guards in the same slice.
+
+Reviewer edge case: `flushTelemetry` should still skip when disabled or empty,
+queue when telemetry network is disabled, clear the queue only after an ok send,
+and preserve `failed` status for sender errors or non-ok HTTP statuses.
+
+Kept change: one focused telemetry flushing module, public facade wrapper,
+architecture guard, this persona note, and no release action in this slice.

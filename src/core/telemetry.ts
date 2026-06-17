@@ -7,7 +7,6 @@ import {
   DEFAULT_TELEMETRY_ENDPOINT,
   getDefaultEndpoint,
   readTelemetryConfig,
-  readTelemetryQueue,
   resolveTelemetryPaths,
   TELEMETRY_COLLECTED,
   TELEMETRY_ENDPOINT_ENV,
@@ -31,13 +30,16 @@ import {
   type TelemetryFeedbackSummary,
 } from './telemetryEvents.js';
 import {
+  flushTelemetry as flushQueuedTelemetry,
+  type TelemetryFlushRuntime,
+} from './telemetryFlushing.js';
+import {
   recordCommandTelemetry as recordTelemetryCommand,
   recordFeedbackTelemetry as recordTelemetryFeedback,
   type RecordTelemetryResult,
   type TelemetryOptions,
   type TelemetryRecordingRuntime,
 } from './telemetryRecording.js';
-import { defaultTelemetrySender, type TelemetrySender } from './telemetrySender.js';
 
 export {
   DEFAULT_TELEMETRY_ENDPOINT,
@@ -47,6 +49,7 @@ export {
   TELEMETRY_NEVER_COLLECTED,
 };
 export { buildFeedbackTelemetry } from './telemetryEvents.js';
+export type { TelemetrySender } from './telemetrySender.js';
 export type {
   CommandTelemetryInput,
   CountBucket,
@@ -75,7 +78,6 @@ export interface TelemetryPolicy {
   notes: string[];
 }
 
-export type { TelemetrySender };
 export type { RecordTelemetryResult, TelemetryOptions };
 
 export function explainTelemetryPolicy(): TelemetryPolicy {
@@ -167,44 +169,7 @@ export async function recordFeedbackTelemetry(
 export async function flushTelemetry(
   options: TelemetryOptions = {},
 ): Promise<RecordTelemetryResult> {
-  const blocked = flushBlockedResult();
-  if (blocked) return blocked;
-  const paths = resolveTelemetryPaths(options);
-  const loaded = await readTelemetryConfig(paths.configPath, options.now);
-  if (!loaded.config.enabled || !loaded.config.anonymousId)
-    return { status: 'skipped', reason: 'disabled' };
-  const events = await readTelemetryQueue<TelemetryEvent>(paths.queuePath);
-  if (events.length === 0) return { status: 'skipped', reason: 'empty' };
-  const sender = options.sender ?? defaultTelemetrySender;
-  return sendQueuedTelemetry(events, loaded.config.endpoint, sender, paths.queuePath);
-}
-
-function flushBlockedResult(): RecordTelemetryResult | null {
-  if (isOfflineMode()) return { status: 'skipped', reason: OFFLINE_ENV };
-  if (isRuntimeTelemetryDisabled()) return { status: 'skipped', reason: TELEMETRY_DISABLED_ENV };
-  if (isTelemetryNetworkDisabled()) return { status: 'queued', reason: TELEMETRY_NO_NETWORK_ENV };
-  return null;
-}
-
-async function sendQueuedTelemetry(
-  events: TelemetryEvent[],
-  endpoint: string,
-  sender: TelemetrySender,
-  queuePath: string,
-): Promise<RecordTelemetryResult> {
-  try {
-    const result = await sender(events, endpoint);
-    if (!result.ok)
-      return { status: 'failed', reason: 'http_' + result.status, queued: events.length };
-    await clearTelemetryQueue(queuePath);
-    return { status: 'sent', queued: 0 };
-  } catch (error) {
-    return {
-      status: 'failed',
-      reason: error instanceof Error ? error.message : String(error),
-      queued: events.length,
-    };
-  }
+  return flushQueuedTelemetry(options, telemetryFlushRuntime());
 }
 
 function telemetryRecordingRuntime(): TelemetryRecordingRuntime {
@@ -215,6 +180,17 @@ function telemetryRecordingRuntime(): TelemetryRecordingRuntime {
     isTelemetryNetworkDisabled,
     offlineReason: OFFLINE_ENV,
     disabledReason: TELEMETRY_DISABLED_ENV,
+  };
+}
+
+function telemetryFlushRuntime(): TelemetryFlushRuntime {
+  return {
+    isOfflineMode,
+    isRuntimeTelemetryDisabled,
+    isTelemetryNetworkDisabled,
+    offlineReason: OFFLINE_ENV,
+    disabledReason: TELEMETRY_DISABLED_ENV,
+    noNetworkReason: TELEMETRY_NO_NETWORK_ENV,
   };
 }
 
