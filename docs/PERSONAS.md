@@ -7939,3 +7939,45 @@ longer show duplicate import edges for those source modules.
 
 Kept change: one package entrypoint export-edge cleanup, one public type source
 regression, this persona note, and no release action.
+
+## One Hundred Sixty Sixth Slice Decision
+
+Selected personas: Maintainability-Focused Platform Engineer, Test Steward,
+and Agent Workflow Maintainer.
+
+Reason: `projscan quality-scorecard --format json` still placed the `start`
+test surface on maintainability watch. The CLI and MCP start suites duplicated
+the same temp project fixture even though `tests/helpers/startProject.ts`
+already owns that setup and cleanup pattern for start-oriented core tests.
+
+Smallest fix: route `tests/cli/start.test.ts` and `tests/mcp/start.test.ts`
+through `makeTempProject()` so future AgentLoop, AgentFlight, and start-router
+coverage changes share one fixture contract instead of re-creating package,
+README, and `src/index.ts` setup in each test file.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts tests/mcp/start.test.ts
+npm exec projscan -- file tests/cli/start.test.ts --format json
+npm exec projscan -- file tests/mcp/start.test.ts --format json
+```
+
+## Review Guardrails: Start Test Fixture Sharing
+
+Delete-list after this slice:
+
+- Do not change `projscan start` runtime behavior, MCP tool behavior, CLI
+  output text, router scoring, package version, release artifacts, publish
+  behavior, deploy behavior, push behavior, or merge behavior.
+- Do not add another start fixture helper unless it represents a different
+  fixture shape than the shared package/README/src project.
+- Do not treat the remaining `tests/mcp/start.test.ts` large-file warning as
+  resolved; this slice only removes duplicated fixture setup.
+
+Reviewer edge case: AgentLoop and AgentFlight harness-hint tests still write
+their marker files into the temp root after `makeTempProject()` returns, and
+MCP handoff/session tests still persist session state under the same temp root.
+
+Kept change: one test fixture cleanup across CLI and MCP start suites, this
+persona note, and no release action.

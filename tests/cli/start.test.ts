@@ -1,24 +1,13 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { beforeEach, expect, test } from 'vitest';
 import { extractNextCommands, runStartCli } from '../helpers/startCli.js';
+import { makeTempProject } from '../helpers/startProject.js';
 
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-cli-start-'));
-  await fs.writeFile(
-    path.join(tmp, 'package.json'),
-    JSON.stringify({ name: 'fixture', version: '0.0.0', type: 'module' }),
-  );
-  await fs.writeFile(path.join(tmp, 'README.md'), '# fixture\n');
-  await fs.mkdir(path.join(tmp, 'src'), { recursive: true });
-  await fs.writeFile(path.join(tmp, 'src', 'index.ts'), 'export const value = 1;\n');
-});
-
-afterEach(async () => {
-  await fs.rm(tmp, { recursive: true, force: true });
+  tmp = await makeTempProject();
 });
 
 test('start renders machine-readable orientation JSON', async () => {
