@@ -1,10 +1,10 @@
 import type { FileEntry, HotspotReport, Issue } from '../types.js';
 import type { CodeGraph } from './codeGraph.js';
-import { buildFileHotspot } from './hotspotBuilder.js';
 import { collectHotspotCandidateEvidence } from './hotspotCandidates.js';
 import { collectGitChurn, countCommits, isGitRepository } from './hotspotGit.js';
 import { indexIssuesByFile } from './hotspotIssues.js';
 import { markAcceptedHotspots } from './hotspotMemory.js';
+import { rankHotspotFiles } from './hotspotRanking.js';
 
 export { computeRiskScore } from './hotspotScoring.js';
 
@@ -47,31 +47,15 @@ export async function analyzeHotspots(
 
   const issueIndex = indexIssuesByFile(issues, files);
 
-  const now = Date.now();
-  const hotspots = candidates.map((file) => {
-    const churnEntry = churnMap.get(file.relativePath);
-
-    // Prefer AST cyclomatic complexity when the graph parsed this file.
-    // Files in the graph but with parseOk:false fall back to LOC too - a
-    // failed parse means we can't trust the (zero) CC value.
-    const graphEntry = options.graph?.files.get(file.relativePath);
-    return buildFileHotspot({
-      file,
-      churn: churnEntry?.churn ?? 0,
-      distinctAuthors: churnEntry?.authors.size ?? 0,
-      authorCommits: churnEntry?.authorCommits,
-      lastTimestampMs: churnEntry?.lastTimestampMs ?? null,
-      lineCount: lineCounts.get(file.relativePath),
-      issueIds: issueIndex.get(file.relativePath) ?? [],
-      nowMs: now,
-      coverage: options.coverage?.get(file.relativePath),
-      complexity: graphEntry?.parseOk ? graphEntry.cyclomaticComplexity : null,
-    });
+  const ranked = rankHotspotFiles({
+    candidates,
+    churnMap,
+    lineCounts,
+    issueIndex,
+    nowMs: Date.now(),
+    coverage: options.coverage,
+    graph: options.graph,
   });
-
-  hotspots.sort((a, b) => b.riskScore - a.riskScore);
-
-  const ranked = hotspots.filter((h) => h.riskScore > 0);
   const top = ranked.slice(0, limit);
 
   // 1.5+ — Project Memory hotspot loop. Record the top-K into memory

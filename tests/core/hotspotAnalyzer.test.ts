@@ -114,6 +114,26 @@ describe('computeRiskScore', () => {
     expect(summarizeAuthors!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 
+  it('keeps per-file hotspot ranking isolated from the analyzer orchestrator', async () => {
+    const analyzerSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/hotspotAnalyzer.ts'),
+      'utf-8',
+    );
+    expect(analyzerSource).not.toContain('candidates.map');
+    expect(analyzerSource).not.toContain('buildRankedFileHotspot');
+
+    const ranking = await inspectRepoSourceFile('src/core/hotspotRanking.ts');
+    const rankHotspotFiles = ranking.functions?.find((fn) => fn.name === 'rankHotspotFiles');
+    const buildRankedFileHotspot = ranking.functions?.find(
+      (fn) => fn.name === 'buildRankedFileHotspot',
+    );
+
+    expect(rankHotspotFiles).toBeDefined();
+    expect(rankHotspotFiles!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(buildRankedFileHotspot).toBeDefined();
+    expect(buildRankedFileHotspot!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('returns 0 for untouched files with no issues', () => {
     const score = computeRiskScore({
       churn: 0,
