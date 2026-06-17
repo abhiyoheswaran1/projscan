@@ -1913,3 +1913,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move test-data search matching into `src/core/intentRouterSearchTestSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6519 lines / CC 978 to 6482 lines / CC 959. The extracted helper has no hotspot history, preserves existing setup/script blocker semantics through `intentRouterRepoSignals.ts`, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "test-data search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract data lookup search route signals
+
+- Status: accepted
+- Context: Data contract and data access lookup routing for validation schemas, request parsing, JSON serialization, transactions, locking, pagination, ORM models, SQL queries, repositories, and DAOs were adjacent cohesive search matchers inside the intent-router hotspot.
+- Decision: Move data lookup search matching into `src/core/intentRouterSearchDataSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6482 lines / CC 959 to 6358 lines / CC 929. The extracted helper has no hotspot history, preserves existing package-script blocker semantics through `intentRouterRepoSignals.ts`, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "data lookup search routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

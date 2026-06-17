@@ -6427,3 +6427,53 @@ with regression planning.
 Kept change: one test-data search route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Thirty Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: data lookup routing helps agents find validation schemas, request
+parsing, serialization, transactions, locking, pagination, ORM models, SQL
+queries, repositories, and DAOs without turning lookup questions into
+implementation, security, or dataflow work. Maintainers need the adjacent data
+contract and access matchers isolated together because they share lookup
+semantics and data-related keyword ownership.
+
+Smallest fix: move data contract and data access search matching into
+`intentRouterSearchDataSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "data lookup search routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterSearchDataSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Data Lookup Search Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, search route entries, dataflow routing,
+  repo setup/script discovery routing, regression planning, route confidence
+  scoring, `routeIntent`, or public route result shape.
+- Do not change data contract or data access keyword semantics except by moving
+  the existing matchers and preserving the package-script blocker through
+  `intentRouterRepoSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "where is the Zod schema defined", "find SQL queries for
+orders", and "which repository saves payments" should still route to search,
+while "add a Prisma model" should stay out of lookup routing and "does request
+taint reach SQL" should stay with dataflow/security routing.
+
+Kept change: one data lookup search route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.

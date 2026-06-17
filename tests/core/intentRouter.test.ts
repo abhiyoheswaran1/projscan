@@ -151,6 +151,23 @@ describe('routeIntent', () => {
     expect(testSignalsSource).toContain('export function searchTestDataContextMatches');
   });
 
+  it('keeps data lookup search routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterSearchDataSignals.js'");
+    expect(routerSource).not.toContain('function searchDataContractContextMatches');
+    expect(routerSource).not.toContain('function searchDataAccessContextMatches');
+
+    const dataSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterSearchDataSignals.ts'),
+      'utf8',
+    );
+    expect(dataSignalsSource).toContain('export function searchDataContractContextMatches');
+    expect(dataSignalsSource).toContain('export function searchDataAccessContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
