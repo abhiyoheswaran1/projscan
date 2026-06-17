@@ -91,6 +91,7 @@ export function applyReportControlsToAnalysis(
     redactFileEntry(file, redactor),
   );
   const issues = applyReportControlsToIssuesWithRedactor(report.issues, scopes, redactor);
+  const dependencies = applyReportControlsToDependencies(report.dependencies, scopes, redactor);
   const redactedRoot = redactor ? '<redacted-root>' : report.rootPath;
 
   return {
@@ -107,8 +108,32 @@ export function applyReportControlsToAnalysis(
           ? buildDirectoryTree(redactor ? '<redacted-root>' : report.scan.directoryTree.name, files)
           : report.scan.directoryTree,
     },
+    dependencies,
     issues,
   };
+}
+
+function applyReportControlsToDependencies(
+  dependencies: AnalysisReport['dependencies'],
+  scopes: string[],
+  redactor: PathRedactor | null,
+): AnalysisReport['dependencies'] {
+  if (!dependencies?.byWorkspace) return dependencies;
+  return {
+    ...dependencies,
+    byWorkspace: dependencies.byWorkspace
+      .filter((workspace) => dependencyWorkspaceInScope(workspace.relativePath, scopes))
+      .map((workspace) => ({
+        ...workspace,
+        relativePath:
+          redactor && workspace.relativePath ? redactor(workspace.relativePath) : workspace.relativePath,
+      })),
+  };
+}
+
+function dependencyWorkspaceInScope(relativePath: string, scopes: string[]): boolean {
+  if (scopes.length === 0) return true;
+  return isInScope(relativePath, scopes);
 }
 
 function applyReportControlsToIssuesWithRedactor(

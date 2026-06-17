@@ -162,6 +162,90 @@ describe('reportScope', () => {
     expect(serialized).not.toContain('src/public/index.ts');
   });
 
+  it('redacts and scopes dependency workspace paths in analysis reports', () => {
+    const report: AnalysisReport = {
+      projectName: 'fixture',
+      rootPath: '/Users/alice/work/company/repo',
+      scan: {
+        rootPath: '/Users/alice/work/company/repo',
+        totalFiles: 2,
+        totalDirectories: 2,
+        scanDurationMs: 10,
+        scanBoundary: {
+          source: 'glob',
+          gitignoreRespected: true,
+          includeIgnored: false,
+          ignoredFileCount: 0,
+        },
+        files: [
+          {
+            relativePath: 'packages/private/package.json',
+            absolutePath: '/Users/alice/work/company/repo/packages/private/package.json',
+            extension: '.json',
+            sizeBytes: 42,
+            directory: 'packages/private',
+          },
+          {
+            relativePath: 'packages/public/package.json',
+            absolutePath: '/Users/alice/work/company/repo/packages/public/package.json',
+            extension: '.json',
+            sizeBytes: 7,
+            directory: 'packages/public',
+          },
+        ],
+        directoryTree: {
+          name: 'repo',
+          path: '/Users/alice/work/company/repo',
+          fileCount: 0,
+          totalFileCount: 2,
+          children: [],
+        },
+      },
+      languages: { primary: 'JSON', languages: {} },
+      frameworks: { frameworks: [], buildTools: [], packageManager: 'npm' },
+      dependencies: {
+        totalDependencies: 2,
+        totalDevDependencies: 0,
+        dependencies: {},
+        devDependencies: {},
+        risks: [],
+        byWorkspace: [
+          {
+            workspace: 'private',
+            relativePath: 'packages/private',
+            isRoot: false,
+            totalDependencies: 1,
+            totalDevDependencies: 0,
+            risks: [],
+          },
+          {
+            workspace: 'public',
+            relativePath: 'packages/public',
+            isRoot: false,
+            totalDependencies: 1,
+            totalDevDependencies: 0,
+            risks: [],
+          },
+        ],
+      },
+      issues: [],
+      timestamp: '2026-06-16T00:00:00.000Z',
+    };
+
+    const scoped = applyReportControlsToAnalysis(report, {
+      scopes: ['packages/private'],
+      redactPaths: true,
+    });
+    const serialized = JSON.stringify(scoped);
+
+    expect(scoped.dependencies?.byWorkspace).toHaveLength(1);
+    expect(scoped.dependencies?.byWorkspace?.[0].workspace).toBe('private');
+    expect(scoped.dependencies?.byWorkspace?.[0].relativePath).toMatch(/^redacted-path-\d+$/);
+    expect(serialized).not.toContain('packages/private');
+    expect(serialized).not.toContain('packages/public');
+    expect(serialized).not.toContain('/Users/alice');
+  });
+
   it('redacts file paths embedded in issue text with the same stable labels', () => {
     const scoped = applyReportControlsToIssues(
       [
