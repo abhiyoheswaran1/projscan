@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import type {
   DataflowReport,
@@ -25,6 +26,10 @@ import type {
   SemanticGraphNodeKind as BarrelSemanticGraphNodeKind,
   SemanticGraphReport as BarrelSemanticGraphReport,
 } from '../../src/types.js';
+import type {
+  CodeGraph as EntrypointCodeGraph,
+  GraphFile as EntrypointGraphFile,
+} from '../../src/index.js';
 
 const graphEvidence: GraphEvidenceSummary = {
   schemaVersion: 1,
@@ -168,6 +173,25 @@ const barrelDataflowReport: BarrelDataflowReport = {
   truncatedSources: dataflowReport.truncatedSources,
   maxDepth: dataflowReport.maxDepth,
 };
+const entrypointGraphFile: EntrypointGraphFile = {
+  relativePath: 'src/index.ts',
+  imports: [],
+  exports: [],
+  callSites: [],
+  lineCount: 1,
+  cyclomaticComplexity: 1,
+  functions: [],
+  mtimeMs: 1,
+  parseOk: true,
+  adapterId: 'javascript',
+};
+const entrypointCodeGraph: EntrypointCodeGraph = {
+  files: new Map([[entrypointGraphFile.relativePath, entrypointGraphFile]]),
+  packageImporters: new Map(),
+  localImporters: new Map(),
+  symbolDefs: new Map(),
+  scannedFiles: 1,
+};
 
 void [
   barrelGraphEvidence,
@@ -176,8 +200,18 @@ void [
   barrelSemanticGraph,
   barrelDataflowRisk,
   barrelDataflowReport,
+  entrypointCodeGraph,
 ];
 
 test('graph public types compile from the module and legacy barrel', () => {
   expect(barrelDataflowReport.risks).toHaveLength(1);
+});
+
+test('package entrypoint exports code graph construction result types', () => {
+  const indexSource = readFileSync(new URL('../../src/index.ts', import.meta.url), 'utf-8');
+
+  expect(entrypointCodeGraph.scannedFiles).toBe(1);
+  expect(indexSource).toContain('type CodeGraph,');
+  expect(indexSource).toContain('type GraphFile,');
+  expect(indexSource).not.toContain("export type { CodeGraph, GraphFile } from './core/codeGraph.js';");
 });

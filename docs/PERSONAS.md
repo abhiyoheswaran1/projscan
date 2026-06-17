@@ -7677,3 +7677,53 @@ show a single `startOptions.js` import edge.
 Kept change: one local type re-export cleanup, one architecture-boundary
 regression, focused start behavior coverage, this persona note, and no release
 action.
+
+## One Hundred Sixtieth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer.
+
+Reason: `buildCodeGraph` is exported from the package entrypoint, but the
+matching `CodeGraph` and `GraphFile` result types were only available from the
+core module path. That makes external agent integrations reach into internals
+for the type shape they need to store graph snapshots, inspect files, or pass
+graphs to exported helpers. After the internal type extraction, an additive
+entrypoint type export is the smallest public-surface improvement.
+
+Smallest fix: export `CodeGraph` and `GraphFile` as type-only package
+entrypoint exports from `src/index.ts`, keeping runtime behavior, graph
+construction, CLI output, MCP output, and existing public schemas unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/types/public-graph-types.test.ts
+npm run typecheck:public-types
+npm exec agentflight -- verify -- npm run test -- tests/types/public-graph-types.test.ts
+npm exec agentflight -- verify -- npm run typecheck:public-types
+npm exec agentflight -- verify -- npm run typecheck
+npm exec agentflight -- verify -- npm run lint
+npm exec agentflight -- verify -- npm run build
+npm exec projscan -- file src/index.ts --format json
+npm exec projscan -- file tests/types/public-graph-types.test.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Code Graph Entrypoint Types
+
+Delete-list after this slice:
+
+- Do not change `buildCodeGraph`, graph construction behavior, code-graph
+  runtime exports, CLI commands, MCP tools, output schemas, package version, or
+  release artifacts.
+- Do not move `CodeGraph` or `GraphFile` into the legacy `types.ts` barrel in a
+  way that duplicates the graph shape or drifts from the core graph result.
+- Do not add dependencies, network behavior, telemetry, daemon behavior,
+  release actions, version changes, or secret-reading behavior.
+
+Reviewer edge case: `import { buildCodeGraph, type CodeGraph, type GraphFile }
+from 'projscan'` should compile, while existing imports from
+`src/core/codeGraph` remain valid.
+
+Kept change: one additive entrypoint type export, one public-type regression,
+one architecture decision note, this persona note, and no release action.

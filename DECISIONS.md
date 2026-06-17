@@ -2033,3 +2033,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Replace broad `test`/`spec` substring matching with separator-aware filename tokens: `test`, `tests`, `spec`, and `specs`.
 - Consequences: Real `*.test.*` and `*.spec.*` files still classify as test files, while source files such as `fileInspector.ts` and `testCheck.ts` fall back to normal purpose inference.
 - Verification: `npm run test -- tests/core/fileInspector.test.ts -t "words containing spec"` failed before the matcher change, then passed. A rebuilt `projscan file src/core/fileInspector.ts --format json` smoke reported `purpose: "Source module"`.
+
+## 2026-06-17: Export code graph result types from package entrypoint
+
+- Status: accepted
+- Context: The package entrypoint exports `buildCodeGraph`, but consumers had to reach into `src/core/codeGraph` for the corresponding `CodeGraph` and `GraphFile` result types. After the internal code-graph type extraction, those types have a stable cycle-safe home and can be re-exported without changing runtime behavior.
+- Decision: Add an additive type-only export for `CodeGraph` and `GraphFile` from `src/index.ts`, backed by public type tests.
+- Consequences: Consumers can import `type CodeGraph` and `type GraphFile` from the package entrypoint alongside `buildCodeGraph`. Runtime output, CLI behavior, MCP behavior, and existing public schemas do not change.
+- Verification: `npm run test -- tests/types/public-graph-types.test.ts` failed before the entrypoint export, then passed.

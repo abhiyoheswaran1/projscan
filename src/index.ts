@@ -27,6 +27,8 @@ export {
   exportsOf,
   importsOf,
   importersOf,
+  type CodeGraph,
+  type GraphFile,
 } from './core/codeGraph.js';
 export { startWatcher } from './core/watcher.js';
 export type { WatchEvent, WatchOptions, WatchHandle } from './core/watcher.js';
