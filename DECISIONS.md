@@ -1945,3 +1945,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move that matcher cluster into `src/core/intentRouterRegressionSignals.ts`, while keeping route catalog data, scoring, release routing, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 6280 lines / CC 910 to 6063 lines / CC 838. The extracted helper has no imports, no hotspot history, preserves the existing regression/failure keyword semantics, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "regression and failure routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract verification and coverage route signals
+
+- Status: accepted
+- Context: Verification planning, test-location lookup, coverage-gap routing, code-location lookup, and test-run guards were another cohesive matcher cluster inside the intent-router hotspot.
+- Decision: Move that matcher cluster into `src/core/intentRouterVerificationSignals.ts`, while keeping route catalog data, route scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 6063 lines / CC 838 to 5928 lines / CC 800. The extracted helper imports only existing repo and regression signal helpers, has no hotspot history, preserves the existing verification/coverage keyword semantics, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "verification and coverage routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

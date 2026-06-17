@@ -222,6 +222,31 @@ describe('routeIntent', () => {
     expect(regressionSignalsSource).toContain('export function regressionFlakeContextMatches');
   });
 
+  it('keeps verification and coverage routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterVerificationSignals.js'");
+    expect(routerSource).not.toContain('function verificationPlanningContextMatches');
+    expect(routerSource).not.toContain('function searchTestLocationContextMatches');
+    expect(routerSource).not.toContain('function testCoverageLookupContextMatches');
+    expect(routerSource).not.toContain('function coverageKeywordMatches');
+    expect(routerSource).not.toContain('function coverageGapContextMatches');
+    expect(routerSource).not.toContain('function missingTestCoverageContextMatches');
+    expect(routerSource).not.toContain('function searchCodeLocationContextMatches');
+    expect(routerSource).not.toContain('function testRunContextMatches');
+
+    const verificationSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterVerificationSignals.ts'),
+      'utf8',
+    );
+    expect(verificationSignalsSource).toContain(
+      'export function verificationPlanningContextMatches',
+    );
+    expect(verificationSignalsSource).toContain('export function coverageKeywordMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

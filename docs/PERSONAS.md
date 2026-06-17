@@ -6619,3 +6619,55 @@ requests should stay on release readiness.
 Kept change: one regression/failure route-signal helper module, one router
 boundary regression, existing route/start behavior coverage, this persona note,
 and no public API change.
+
+## One Hundred Thirty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and QA Lead.
+
+Reason: verification and coverage routing tells agents which tests, proof
+commands, coverage lookups, and code-location searches belong in a work plan
+without stealing regression failures or package-script discovery. QA leads need
+this logic isolated because it decides whether a request asks for verification
+planning, coverage evidence, or plain code navigation.
+
+Smallest fix: move verification, test-location, coverage-gap,
+code-location, and test-run matching into
+`intentRouterVerificationSignals.ts`; leave route catalog data, route scoring,
+confidence, start-mode handling, and dispatch composition inside
+`intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "verification and coverage routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterVerificationSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Verification And Coverage Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, verification route entries,
+  coverage route entries, regression-plan route entries, package-script
+  discovery routing, route confidence scoring, `routeIntent`, start-mode
+  behavior, or public route result shape.
+- Do not change verification, test-location, coverage, or code-location
+  keyword semantics except by moving the existing matcher cluster into
+  `intentRouterVerificationSignals.ts`.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "which tests should I run before review" should still route
+to work planning, "which tests cover src/foo.ts" should still route to coverage,
+"find tests for src/foo.ts" should still route to search, and failing CI/test
+language should still route to regression planning.
+
+Kept change: one verification/coverage route-signal helper module, one router
+boundary regression, existing route/start behavior coverage, this persona note,
+and no public API change.
