@@ -180,4 +180,28 @@ test('start report routes release-note and changelog requests to release readine
       matchedKeywords: expect.arrayContaining(['changed', 'since', 'deploy']),
     }),
   );
+
+  const builtSinceRelease = await computeStartReport(root, {
+    intent: 'what have you built since the last release',
+  });
+  expect(builtSinceRelease.mode).toBe('release');
+  expect(builtSinceRelease.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_release_train',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['built', 'since', 'release']),
+    }),
+  );
+
+  const versionCandidate = await computeStartReport(root, {
+    intent: 'is it worth cutting a version',
+  });
+  expect(versionCandidate.mode).toBe('release');
+  expect(versionCandidate.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_release_train',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['cutting', 'version']),
+    }),
+  );
 });

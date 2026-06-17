@@ -35,7 +35,8 @@ export function prohibitedWorkflowKeywordMatches(
   hasProhibitedVersionBump: boolean,
 ): boolean {
   return (
-    (entry.tool === 'projscan_release_train' && hasProhibitedReleaseAction) ||
+    (entry.tool === 'projscan_release_train' &&
+      (hasProhibitedReleaseAction || hasProhibitedVersionBump)) ||
     (entry.tool === 'projscan_upgrade' && hasProhibitedVersionBump)
   );
 }
@@ -60,10 +61,14 @@ function releaseReadinessContextMatches(tokens: Set<string>): boolean {
 
 export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>): boolean {
   if (keyword === 'check') return releaseReadinessContextMatches(tokens);
-  if (['changed', 'since', 'last'].includes(keyword)) {
+  if (['build', 'built', 'changed', 'since', 'last'].includes(keyword)) {
     return (
       releaseCommunicationContextMatches(tokens) &&
-      (tokens.has('changed') || tokens.has('change') || tokens.has('changes'))
+      (tokens.has('build') ||
+        tokens.has('built') ||
+        tokens.has('changed') ||
+        tokens.has('change') ||
+        tokens.has('changes'))
     );
   }
   if (
@@ -72,6 +77,9 @@ export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>)
     )
   ) {
     return releaseCommunicationContextMatches(tokens);
+  }
+  if (['cut', 'cutting', 'version', 'versions', 'candidate', 'worth'].includes(keyword)) {
+    return releaseVersionCandidateContextMatches(tokens);
   }
   return true;
 }
@@ -90,4 +98,15 @@ function releaseCommunicationContextMatches(tokens: Set<string>): boolean {
     'tag',
     'changelog',
   ].some((token) => tokens.has(token));
+}
+
+function releaseVersionCandidateContextMatches(tokens: Set<string>): boolean {
+  return (
+    releaseCommunicationContextMatches(tokens) ||
+    ((tokens.has('version') || tokens.has('versions')) &&
+      (tokens.has('cut') ||
+        tokens.has('cutting') ||
+        tokens.has('candidate') ||
+        tokens.has('worth')))
+  );
 }
