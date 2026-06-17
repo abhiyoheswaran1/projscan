@@ -127,18 +127,18 @@ function resolveSourceHit(
   customSources: Set<string>,
 ): string | null {
   return (
-    frameworkRequestSourceForFunction(
+    frameworkRequestSourceForFunction({
       file,
-      fn.name,
+      functionName: fn.name,
       memberCallSites,
       memberReferences,
-      fn.parameters ?? [],
-      sources,
+      parameters: fn.parameters ?? [],
+      enabledSources: sources,
       references,
-      fn.contextualCallSite,
-      graphFile.imports,
+      contextualCallSite: fn.contextualCallSite,
+      imports: graphFile.imports,
       directCallSites,
-    ) ?? pickSourceHit(callees, references, sources, customSources)
+    }) ?? pickSourceHit(callees, references, sources, customSources)
   );
 }
 

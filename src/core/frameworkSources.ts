@@ -15,18 +15,35 @@ export const FRAMEWORK_REQUEST_SOURCES = [
   ...KOA_REQUEST_SOURCES,
 ];
 
+export interface FrameworkRequestSourceContext {
+  file: string;
+  functionName: string;
+  memberCallSites: string[];
+  memberReferences: string[];
+  parameters: string[];
+  enabledSources: Set<string>;
+  references?: string[];
+  contextualCallSite?: string;
+  imports?: Array<{ source: string }>;
+  directCallSites?: string[];
+}
+
 export function frameworkRequestSourceForFunction(
-  file: string,
-  functionName: string,
-  memberCallSites: string[],
-  memberReferences: string[],
-  parameters: string[],
-  enabledSources: Set<string>,
-  references: string[] = [],
-  contextualCallSite?: string,
-  imports: Array<{ source: string }> = [],
-  directCallSites: string[] = [],
+  context: FrameworkRequestSourceContext,
 ): string | null {
+  const {
+    file,
+    functionName,
+    memberCallSites,
+    memberReferences,
+    parameters,
+    enabledSources,
+    references = [],
+    contextualCallSite,
+    imports = [],
+    directCallSites = [],
+  } = context;
+
   const nextSource = nextRouteRequestSource(
     file,
     functionName,

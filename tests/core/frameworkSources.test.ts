@@ -21,6 +21,28 @@ async function inspectRepoSourceFile(rel: string) {
 }
 
 describe('framework source maintainability', () => {
+  it('uses a named context object for shared framework source dispatch', async () => {
+    const shared = await fs.readFile(
+      path.join(process.cwd(), 'src/core/frameworkSources.ts'),
+      'utf-8',
+    );
+    const dataflow = await fs.readFile(path.join(process.cwd(), 'src/core/dataflow.ts'), 'utf-8');
+    const taintIndex = await fs.readFile(
+      path.join(process.cwd(), 'src/core/taintIndex.ts'),
+      'utf-8',
+    );
+
+    expect(shared).toContain('export interface FrameworkRequestSourceContext');
+    expect(shared).toMatch(
+      /frameworkRequestSourceForFunction\(\s*context: FrameworkRequestSourceContext,\s*\): string \| null/,
+    );
+    expect(shared).not.toContain('functionName: string,\n  memberCallSites: string[]');
+    expect(dataflow).toContain('frameworkRequestSourceForFunction({');
+    expect(dataflow).toContain('functionName: fn.name');
+    expect(taintIndex).toContain('frameworkRequestSourceForFunction({');
+    expect(taintIndex).toContain('functionName: fn.name');
+  });
+
   it('keeps Next route source matching out of the shared framework source orchestrator', async () => {
     const shared = await inspectRepoSourceFile('src/core/frameworkSources.ts');
     const sharedFunctions = new Set(shared.functions?.map((fn) => fn.name));
