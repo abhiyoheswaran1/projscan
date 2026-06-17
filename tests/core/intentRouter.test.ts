@@ -76,6 +76,37 @@ describe('routeIntent', () => {
     );
   });
 
+  it('keeps planning route routing isolated from the main router', () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+    expect(routerSource).toContain("from './intentRouterPlanningSignals.js'");
+    expect(routerSource).not.toContain('function featurePlacementContextMatches');
+    expect(routerSource).not.toContain('function domainWorkflowPlanningContextMatches');
+    expect(routerSource).not.toContain('function stateManagementPlanningContextMatches');
+    expect(routerSource).not.toContain('function dataAccessPlanningContextMatches');
+    expect(routerSource).not.toContain('function documentationPlanningContextMatches');
+    expect(routerSource).not.toContain('function databaseChangePlanningContextMatches');
+    expect(routerSource).not.toContain('function apiChangePlanningContextMatches');
+
+    const planningSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterPlanningSignals.ts'),
+      'utf8',
+    );
+    expect(planningSignalsSource).toContain('export function featurePlacementContextMatches');
+    expect(planningSignalsSource).toContain(
+      'export function domainWorkflowPlanningContextMatches',
+    );
+    expect(planningSignalsSource).toContain(
+      'export function stateManagementPlanningContextMatches',
+    );
+    expect(planningSignalsSource).toContain('export function dataAccessPlanningContextMatches');
+    expect(planningSignalsSource).toContain('export function documentationPlanningContextMatches');
+    expect(planningSignalsSource).toContain('export function databaseChangePlanningContextMatches');
+    expect(planningSignalsSource).toContain('export function apiChangePlanningContextMatches');
+  });
+
   it('keeps dataflow and privacy keyword routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

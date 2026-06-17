@@ -1889,3 +1889,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move preflight ready, risk, and branch-recovery matching into `src/core/intentRouterPreflightSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
 - Consequences: `src/core/intentRouter.ts` drops from 7086 lines / CC 1102 to 7033 lines / CC 1086. The extracted helper has no imports, no hotspot history, and no public route schema change.
 - Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "preflight route routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.
+
+## 2026-06-17: Extract planning route signals
+
+- Status: accepted
+- Context: Feature placement and change-planning routing for domain workflows, state management, data access, navigation, style-system, documentation, database, and API changes was a contiguous helper group inside the intent-router hotspot.
+- Decision: Move the planning helper group into `src/core/intentRouterPlanningSignals.ts`, while keeping route catalog data, scoring, confidence, and dispatch composition inside `intentRouter.ts`.
+- Consequences: `src/core/intentRouter.ts` drops from 7033 lines / CC 1086 to 6767 lines / CC 1033. The extracted helper has no imports, no hotspot history, and no public route schema change.
+- Verification: `npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "planning route routing"` failed before extraction, then passed. Full slice verification is recorded in the AgentLoop report for this slice.

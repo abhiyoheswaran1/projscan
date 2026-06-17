@@ -6281,3 +6281,52 @@ conflicts" should stay led by regression planning.
 Kept change: one preflight route-signal helper module, one router boundary
 regression, existing route/start behavior coverage, this persona note, and no
 public API change.
+
+## One Hundred Thirty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer and OSS Maintainer.
+
+Reason: planning routing helps agents ask where to put a feature, endpoint,
+database migration, API change, documentation update, state-management change,
+or domain workflow without dropping into generic search. Maintainers need the
+adjacent planning helpers moved together because `featurePlacementContextMatches`
+delegates to the specialized planning checks.
+
+Smallest fix: move the planning helper group into
+`intentRouterPlanningSignals.ts`; leave route catalog data, route scoring,
+confidence, and dispatch composition inside `intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts -- -t "planning route routing"
+npm exec agentflight -- verify npm run test -- tests/core/intentRouter.test.ts tests/core/startRouteActions.test.ts tests/core/startMode.test.ts tests/core/start.test.ts
+npm exec agentflight -- verify npm run typecheck
+npm exec agentflight -- verify npm run lint
+npm exec agentflight -- verify npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterPlanningSignals.ts --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Planning Route Signals Extraction
+
+Delete-list after this slice:
+
+- Do not change `ROUTE_CATALOG`, understand route entries, dataflow routing,
+  search routing, regression planning, route confidence scoring, `routeIntent`,
+  or public route result shape.
+- Do not change planning keyword semantics except by moving the existing
+  feature-placement and specialized planning checks into the helper module.
+- Do not split off new behavior for navigation, style-system, docs, database,
+  API, data-access, state-management, or domain-workflow planning.
+- Do not add release, publish, tag, push, version, dependency, network,
+  telemetry, daemon, or secret-reading behavior.
+
+Reviewer edge case: "where should I add a new endpoint" and "what docs should I
+update for this change" should still route to `projscan_understand`, while "add
+tests for auth" should stay with regression planning.
+
+Kept change: one planning route-signal helper module, one router boundary
+regression, existing route/start behavior coverage, this persona note, and no
+public API change.
