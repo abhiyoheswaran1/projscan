@@ -34,6 +34,7 @@ import {
   compareStableSurface,
   createStableSurface as createSurfaceFromManifest,
 } from './stability-surface.mjs';
+import { printStabilityReport } from './stability-report.mjs';
 
 export { compareStableSurface };
 
@@ -179,28 +180,6 @@ async function readBaseline(baselinePath, root) {
     }
     throw new Error(`Could not parse baseline: ${err.message}`);
   }
-}
-
-function printStabilityReport(report) {
-  if (report.additions.length > 0) {
-    console.log('Stable-surface additions (allowed on minor/patch):');
-    for (const addition of report.additions) console.log(`  ${addition}`);
-    console.log('');
-  }
-
-  if (report.issues.length === 0) {
-    console.log(`✓ stable surface holds against ${report.baselinePath}`);
-    return;
-  }
-
-  console.error('✗ stable-surface regressions detected:');
-  for (const issue of report.issues) console.error(`  ${issue}`);
-  console.error('');
-  console.error(
-    'These changes require a major version bump. If that is intentional, run:\n' +
-      '  node scripts/check-stability.mjs --update\n' +
-      'to refresh the baseline. Otherwise, restore the removed/renamed surface.',
-  );
 }
 
 if (path.resolve(process.argv[1] ?? '') === scriptPath) {
