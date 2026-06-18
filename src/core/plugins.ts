@@ -1,11 +1,6 @@
 import path from 'node:path';
-import type { CodeGraph } from './codeGraph.js';
-import type {
-  FileEntry,
-  Issue,
-  DataflowReport,
-  SemanticGraphReport,
-} from '../types.js';
+import type { FileEntry, Issue } from '../types.js';
+import { loadAnalyzerPluginEntry } from './pluginAnalyzerLoading.js';
 import { isWellShapedIssue } from './pluginIssueValidation.js';
 import {
   assertPluginModuleReadable,
@@ -14,9 +9,9 @@ import {
 } from './pluginModuleLoading.js';
 import { discoverPluginManifests } from './pluginManifestDiscovery.js';
 import type { PluginDiscoveryEntry } from './pluginManifestDiscovery.js';
+import type { LoadedPlugin, PluginAnalyzerContext } from './pluginRuntimeTypes.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
 import type {
-  PluginAnalyzerManifest,
   PluginDiagnostic,
   PluginReporterCommand,
   PluginReporterManifest,
@@ -45,6 +40,11 @@ export {
   readPluginManifestFile,
 } from './pluginManifestDiscovery.js';
 export type { PluginDiscoveryEntry, PluginManifestFileResult } from './pluginManifestDiscovery.js';
+export type {
+  LoadedPlugin,
+  PluginAnalyzerContext,
+  PluginAnalyzerExports,
+} from './pluginRuntimeTypes.js';
 export {
   PLUGIN_REPORTER_COMMANDS,
   PLUGIN_SCHEMA_VERSION,
@@ -59,21 +59,6 @@ export type {
   PluginReporterManifest,
 } from './pluginManifestValidation.js';
 
-export interface PluginAnalyzerContext {
-  schemaVersion: 1;
-  getCodeGraph: () => Promise<CodeGraph>;
-  getSemanticGraph: () => Promise<SemanticGraphReport>;
-  getDataflow: () => Promise<DataflowReport>;
-}
-
-export interface PluginAnalyzerExports {
-  check: (
-    rootPath: string,
-    files: FileEntry[],
-    context?: PluginAnalyzerContext,
-  ) => Promise<Issue[]> | Issue[];
-}
-
 export interface PluginReporterContext<TPayload = unknown> {
   command: PluginReporterCommand;
   rootPath: string;
@@ -83,15 +68,6 @@ export interface PluginReporterContext<TPayload = unknown> {
 
 export interface PluginReporterExports {
   render: (context: PluginReporterContext) => Promise<string> | string;
-}
-
-export interface LoadedPlugin {
-  manifest: PluginAnalyzerManifest;
-  /** Absolute path to the manifest file on disk. */
-  manifestPath: string;
-  /** Absolute path to the resolved module entry point. */
-  modulePath: string;
-  exports: PluginAnalyzerExports;
 }
 
 export interface LoadedReporterPlugin {
@@ -129,44 +105,8 @@ export async function loadPlugins(rootPath: string): Promise<LoadedPlugin[]> {
   const discovered = await discoverPluginManifests(rootPath);
   const loaded: LoadedPlugin[] = [];
   for (const entry of discovered) {
-    if (!entry.manifest) continue;
-    if (entry.manifest.kind !== 'analyzer') continue;
-    const modulePath = path.resolve(path.dirname(entry.manifestPath), entry.manifest.module);
-    try {
-      await assertPluginModuleReadable(entry.manifest.module, modulePath);
-      // Trust-on-first-use gate: never import (execute) a module the user
-      // hasn't explicitly approved. The preview flag opts a user into the
-      // plugin *system*; trust opts them into each specific module's bytes.
-      const trust = await getPluginTrustStatus(modulePath);
-      if (trust.status !== 'trusted') {
-        process.stderr.write(untrustedAnalyzerWarning(entry.manifest.name, trust.status));
-        continue;
-      }
-      const mod = await importPluginModule(modulePath);
-      const exportsObj = (mod.default ?? mod) as Partial<PluginAnalyzerExports>;
-      if (typeof exportsObj.check !== 'function') {
-        process.stderr.write(
-          `[projscan] plugin "${entry.manifest.name}" missing required export "check"; export default { check(rootPath, files) { ... } } or export a named check function. skipped.\n`,
-        );
-        continue;
-      }
-      loaded.push({
-        manifest: entry.manifest,
-        manifestPath: entry.manifestPath,
-        modulePath,
-        exports: { check: exportsObj.check as PluginAnalyzerExports['check'] },
-      });
-    } catch (err) {
-      const detail = describePluginModuleLoadError(
-        err,
-        entry.manifest.module,
-        modulePath,
-        'manifest',
-      );
-      process.stderr.write(
-        `[projscan] plugin "${entry.manifest.name}" failed to load: ${detail.message}${detail.hint ? ` ${detail.hint}` : ''}. skipped.\n`,
-      );
-    }
+    const plugin = await loadAnalyzerPluginEntry(entry);
+    if (plugin) loaded.push(plugin);
   }
   return loaded;
 }
@@ -277,13 +217,6 @@ async function loadReporterPlugin(
       hint: detail.hint ?? 'Check the reporter module path and module syntax.',
     });
   }
-}
-
-function untrustedAnalyzerWarning(name: string, status: PluginTrustStatus): string {
-  const reason =
-    status === 'changed' ? 'module changed since it was trusted' : 'module is not trusted';
-  const verb = status === 'changed' ? 'Re-run' : 'Run';
-  return `[projscan] plugin "${name}" ${reason}; skipped (not executed). ${verb} \`projscan plugin trust ${name}\` to approve this module.\n`;
 }
 
 function untrustedReporterDiagnostic(name: string, status: PluginTrustStatus): PluginDiagnostic {

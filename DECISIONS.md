@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract analyzer plugin loading helper
+
+- Status: accepted
+- Context: `src/core/plugins.ts` remained the top hotspot and still owned analyzer plugin entry filtering, module readability checks, trust-status decisions, dynamic import validation, missing-export warning text, and load failure handling inside `loadPlugins`.
+- Decision: Move analyzer plugin entry loading into `src/core/pluginAnalyzerLoading.ts` and move shared analyzer runtime types into leaf module `src/core/pluginRuntimeTypes.ts`; keep `loadPlugins(rootPath)` as the public facade in `src/core/plugins.ts`.
+- Consequences: Analyzer plugins still require the preview flag plus trust-on-first-use approval before import, untrusted/changed/missing/syntax-error/missing-check-export behavior stays unchanged, public plugin type imports stay re-exported from `src/core/plugins.ts`, and `src/core/plugins.ts` drops from 345 lines / CC 33 to 278 lines / CC 25 without creating an import cycle.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts`, `npm run test -- tests/core/plugins.test.ts`, and `npm run test -- tests/core/pluginTrustGate.test.ts`.
+
 ## 2026-06-18: Extract plugin manifest discovery helpers
 
 - Status: accepted

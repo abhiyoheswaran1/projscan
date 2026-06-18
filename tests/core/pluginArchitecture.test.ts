@@ -75,6 +75,29 @@ describe('plugin runtime maintainability', () => {
     expect(describeLoadError).toBeDefined();
     expect(describeLoadError!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
+
+  it('keeps analyzer plugin entry loading out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginAnalyzerLoading.js'");
+    expect(runtimeSource).not.toContain('function untrustedAnalyzerWarning');
+    expect(runtimeSource).not.toContain('missing required export "check"');
+    expect(runtimeSource).not.toContain('assertPluginModuleReadable(entry.manifest.module');
+    expect(runtimeSource).not.toContain('entry.manifest.kind !== \'analyzer\'');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginAnalyzerLoading.ts');
+    const analyzerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/pluginAnalyzerLoading.ts'),
+      'utf8',
+    );
+    const loadAnalyzerEntry = inspection.functions?.find(
+      (fn) => fn.name === 'loadAnalyzerPluginEntry',
+    );
+
+    expect(analyzerSource).toContain("from './pluginRuntimeTypes.js'");
+    expect(analyzerSource).not.toContain("from './plugins.js'");
+    expect(loadAnalyzerEntry).toBeDefined();
+    expect(loadAnalyzerEntry!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {

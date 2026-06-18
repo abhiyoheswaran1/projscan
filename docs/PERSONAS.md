@@ -10157,3 +10157,53 @@ should still be discovered in sorted filename order through the public
 
 Kept change: one focused plugin manifest discovery helper, facade re-exports,
 one architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Fourteenth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: after manifest discovery moved out, `src/core/plugins.ts` still owned the
+analyzer plugin entry loading path: analyzer filtering, module readability
+checks, trust-status decisions, dynamic import validation, missing-check warning
+text, and load failure handling. This is local-code execution code, so it should
+be reviewed in a narrow helper while the public `loadPlugins(rootPath)` facade
+continues to provide the stable API.
+
+Smallest fix: move analyzer entry loading into
+`src/core/pluginAnalyzerLoading.ts`, keep `loadPlugins` in `src/core/plugins.ts`,
+and move shared analyzer runtime types into `src/core/pluginRuntimeTypes.ts` so
+the helper does not import from the public facade.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/plugins.test.ts
+npm run test -- tests/core/pluginTrustGate.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginAnalyzerLoading.ts --format json
+```
+
+## Review Guardrails: Analyzer Plugin Loading Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin manifest discovery, manifest validation, trust storage,
+  trust-on-first-use behavior, preview flag behavior, reporter loading,
+  reporter rendering, CLI/MCP schemas, dependencies, lockfiles, publish behavior,
+  push behavior, tags, or releases.
+- Do not import from `src/core/plugins.ts` inside the analyzer loading helper;
+  shared analyzer runtime types must stay in the leaf type module to avoid a
+  facade/helper cycle.
+
+Reviewer edge case: untrusted and changed analyzer modules should still be
+skipped before import, trusted analyzer modules should still load, missing
+modules and syntax errors should still warn with the same load details, and
+modules that omit `check` should still be skipped with the same warning.
+
+Kept change: one focused analyzer loading helper, one analyzer runtime type
+module, one architecture guard, this persona note, and no release action in this
+slice.
