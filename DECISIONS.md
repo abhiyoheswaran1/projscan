@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start impact route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` stayed on the current hotspot list after preflight extraction, and impact-route guidance was a self-contained rule set for fuzzy search-to-impact workflows.
+- Decision: Move impact success-criteria assembly into `src/core/startImpactRouteCriteria.ts`, while keeping resolver ordering and `impactSuccessCriteria` dispatch in `src/core/startSuccessCriteria.ts`.
+- Consequences: Fuzzy impact routes still require exact symbol or file selection before impact analysis, and default impact criteria wording and ordering stay unchanged.
+- Verification: Architecture coverage failed before the helper existed and passed after extraction; focused success-criteria tests preserve fuzzy impact search gating.
+
 ## 2026-06-18: Extract start preflight route criteria helper
 
 - Status: accepted

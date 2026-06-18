@@ -11365,3 +11365,50 @@ or merge workflows map to `before_merge`.
 Kept change: one preflight-route criteria helper, one architecture guard,
 existing preflight behavior coverage, this persona note, and no release action
 in this slice.
+
+## Two Hundred Thirty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: impact routing is the handoff path for agents asking "what breaks if I
+change this?" or using a fuzzy phrase that must become an exact symbol or file
+before analysis. Keeping that route-specific guidance inside
+`src/core/startSuccessCriteria.ts` kept the Mission Control resolver on the
+current hotspot list after preflight criteria were extracted.
+
+Smallest fix: move impact-route success-criteria assembly into
+`src/core/startImpactRouteCriteria.ts`; keep `projscan_impact` dispatch and
+resolver ordering in `src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startImpactRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Impact Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change impact criteria wording, fuzzy-search gating, resolver
+  ordering, route ranking, Mission Control schemas, workplan behavior, public
+  types, dependencies, lockfiles, package version, publish behavior, push
+  behavior, tags, or releases.
+- Do not move unrelated dynamic criteria for product planning, claim,
+  preflight, dependencies, regression, file, understand, fixed routes, or
+  coupling into the impact helper.
+- Do not broaden this into Mission Control redesign or impact analysis changes.
+
+Reviewer edge case: an impact route whose primary action is `projscan_search`
+must still prepend the exact-symbol-or-file selection criterion before the two
+general impact review criteria.
+
+Kept change: one impact-route criteria helper, one architecture guard, existing
+impact behavior coverage, this persona note, and no release action in this
+slice.

@@ -2,6 +2,7 @@ import { couplingSuccessCriteria } from './startCouplingRouteCriteria.js';
 import { dependencySuccessCriteria } from './startDependencyRouteCriteria.js';
 import { FIXED_ROUTE_CRITERIA } from './startFixedRouteCriteria.js';
 import { fileSuccessCriteria } from './startFileRouteCriteria.js';
+import { impactSuccessCriteria } from './startImpactRouteCriteria.js';
 import { preflightSuccessCriteria } from './startPreflightRouteCriteria.js';
 import { regressionSuccessCriteria } from './startRegressionRouteCriteria.js';
 import { understandSuccessCriteria } from './startUnderstandRouteCriteria.js';
@@ -96,19 +97,6 @@ function defaultSuccessCriteria(): string[] {
   return [
     'The primary action returns useful JSON and identifies the next concrete developer step.',
     'At least one proof command is available before handing work to the next agent or human.',
-  ];
-}
-
-function impactSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
-  if (context.route?.tool !== 'projscan_impact') return undefined;
-  return [
-    ...(context.primaryAction?.tool === 'projscan_search'
-      ? [
-          'An exact symbol or file path is selected from search results before impact analysis continues.',
-        ]
-      : []),
-    'The impact report is reviewed for direct and transitive dependents before editing starts.',
-    'Affected call sites, tests, or owners are added to the workplan before code changes begin.',
   ];
 }
 

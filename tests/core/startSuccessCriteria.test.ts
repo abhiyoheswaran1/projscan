@@ -148,6 +148,28 @@ describe('Mission Control success criteria', () => {
     expect(preflightCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps impact route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const impactCriteriaPath = path.join(process.cwd(), 'src/core/startImpactRouteCriteria.ts');
+    const helperExists = await fs
+      .access(impactCriteriaPath)
+      .then(() => true)
+      .catch(() => false);
+
+    expect(helperExists).toBe(true);
+    if (!helperExists) return;
+
+    const impactCriteria = await fs.readFile(impactCriteriaPath, 'utf-8');
+    expect(source).toContain("from './startImpactRouteCriteria.js'");
+    expect(source).not.toContain('function impactSuccessCriteria');
+    expect(impactCriteria).toContain('export function impactSuccessCriteria');
+    expect(impactCriteria).toContain('An exact symbol or file path is selected');
+    expect(impactCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
