@@ -36,7 +36,11 @@ export function workplanKeywordMatches(keyword: string, tokens: Set<string>): bo
 }
 
 function ongoingWorkplanContextMatches(tokens: Set<string>): boolean {
-  if (tokens.has('keep') && tokens.has('going')) return true;
+  if (
+    tokens.has('keep') &&
+    ['going', 'improving', 'working', 'implementing'].some((token) => tokens.has(token))
+  )
+    return true;
   const planningSignal = [
     'continue',
     'plan',
@@ -47,8 +51,9 @@ function ongoingWorkplanContextMatches(tokens: Set<string>): boolean {
     'roadmap',
     'implementation',
     'implementing',
+    'improving',
   ].some((token) => tokens.has(token));
-  const ongoingSignal = ['continue', 'implementation', 'implementing'].some((token) =>
+  const ongoingSignal = ['continue', 'implementation', 'implementing', 'improving'].some((token) =>
     tokens.has(token),
   );
   return planningSignal && ongoingSignal;

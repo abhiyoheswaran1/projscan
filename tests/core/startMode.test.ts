@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import {
+  hasProhibitedWorkflowModeAction,
   preflightModeFromIntent,
   resolveStartMode,
   routesForIntent,
@@ -41,6 +42,18 @@ test('start mode resolution uses preflight alternatives when the primary route h
     mode: 'before_commit',
     source: 'intent',
     reason: `Intent "${intent}" maps to the before_commit workflow.`,
+  });
+});
+
+test('start mode resolution keeps no-more-release continuation intents out of release workflow', () => {
+  const intent =
+    'keep improving projscan after 4.8.0 with user research and no more release today';
+
+  expect(hasProhibitedWorkflowModeAction(intent)).toBe(true);
+  expect(resolveStartMode(undefined, intent)).toEqual({
+    mode: 'before_edit',
+    source: 'intent',
+    reason: `Intent "${intent}" maps to the before_edit workflow.`,
   });
 });
 

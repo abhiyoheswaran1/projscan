@@ -23,6 +23,7 @@ const MODE_RESOLVERS: readonly ModeResolver[] = [
   bugHuntMode,
   productPlanningMode,
   agentPlanningMode,
+  prohibitedContinuationMode,
   hardeningMode,
   evidencePackMode,
   reviewMode,
@@ -117,7 +118,8 @@ function routeEntryToStartIntent(entry: RouteMatch): StartRoutedIntent {
   };
 }
 
-function releaseMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
+function releaseMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
+  if (hasProhibitedWorkflowModeAction(intent)) return undefined;
   return primaryRoute?.tool === 'projscan_release_train' ? 'release' : undefined;
 }
 
@@ -135,6 +137,11 @@ function agentPlanningMode({ primaryRoute }: ModeResolverContext): WorkplanMode 
   return primaryRoute?.tool === 'projscan_workplan' && primaryRoute.confidence === 'high'
     ? 'before_edit'
     : undefined;
+}
+
+function prohibitedContinuationMode({ intent }: ModeResolverContext): WorkplanMode | undefined {
+  if (!hasProhibitedWorkflowModeAction(intent)) return undefined;
+  return hasContinuationPlanningHint(intent) ? 'before_edit' : undefined;
 }
 
 function hardeningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
@@ -187,9 +194,15 @@ function hasPreflightModeHint(intent: string): boolean {
   );
 }
 
+function hasContinuationPlanningHint(intent: string): boolean {
+  return /\b(?:keep\s+going|keep\s+(?:improving|working|implementing)|continue|continuing|go\s+on|improve|improving|implement|implementing|implementation|roadmap|user\s+research)\b/i.test(
+    intent,
+  );
+}
+
 export function hasProhibitedWorkflowModeAction(intent: string): boolean {
   return (
-    /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|version[-\s]+bump|bump)\b/i.test(
+    /\bno(?:[-\s]+more)?[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|version[-\s]+bump|bump)\b/i.test(
       intent,
     ) ||
     /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|bump(?:ing)?(?:\s+the)?\s+version|version\s+bump)\b/i.test(

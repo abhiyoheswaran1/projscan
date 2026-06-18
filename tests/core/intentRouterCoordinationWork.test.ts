@@ -311,6 +311,20 @@ describe('routeIntent coordination and work routing', () => {
       'projscan_upgrade',
     );
 
+    const noMoreReleaseToday = routeIntent(
+      'keep improving projscan after 4.8.0 with user research and no more release today',
+    );
+    expect(noMoreReleaseToday.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_workplan',
+        confidence: 'medium',
+        matchedKeywords: expect.arrayContaining(['keep']),
+      }),
+    );
+    expect(noMoreReleaseToday.matches.map((match) => match.tool)).not.toContain(
+      'projscan_release_train',
+    );
+
     const versionCandidateReview = routeIntent(
       'prepare a version-candidate review only. do not publish deploy push merge or bump the version',
     );

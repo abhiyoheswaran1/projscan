@@ -97,7 +97,7 @@ const RELEASE_TRAIN_KEYWORD_RULES: KeywordRule[] = [
 
 export function hasProhibitedReleaseWorkflowAction(intent: string): boolean {
   return (
-    /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
+    /\bno(?:[-\s]+more)?[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
       intent,
     ) ||
     /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping)\b/i.test(
@@ -111,7 +111,7 @@ export function hasProhibitedReleaseWorkflowAction(intent: string): boolean {
 
 export function hasProhibitedVersionBumpAction(intent: string): boolean {
   return (
-    /\bno[-\s]+(?:version[-\s]+)?(?:bump|cut)\b/i.test(intent) ||
+    /\bno(?:[-\s]+more)?[-\s]+(?:version[-\s]+)?(?:bump|cut)\b/i.test(intent) ||
     /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:bump(?:ing)?(?:\s+the)?\s+version|version\s+bump|cut(?:ting)?(?:\s+a)?\s+version)\b/i.test(
       intent,
     ) ||

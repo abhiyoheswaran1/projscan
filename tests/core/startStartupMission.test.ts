@@ -651,3 +651,35 @@ test('start report allows keep-going no-release implementation loops to continue
     }),
   );
 });
+
+test('start report keeps no-more-release continuation wording in the workplan workflow', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'keep improving projscan after 4.8.0 with user research and no more release today',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.recommendedWorkflow.id).toBe('before_edit');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_workplan',
+      confidence: 'medium',
+      matchedKeywords: expect.arrayContaining(['keep']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode before_edit --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'before_edit' },
+    }),
+  );
+  expect(report.missionControl.whyNow).not.toContain('projscan_release_train');
+  expect(report.missionControl.successCriteria).not.toEqual(
+    expect.arrayContaining([
+      'Release train readiness has no blockers before packaging or publishing continues.',
+    ]),
+  );
+});
