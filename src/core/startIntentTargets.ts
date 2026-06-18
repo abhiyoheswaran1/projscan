@@ -4,7 +4,8 @@ import { extractEnvVarTarget } from './startEnvTargets.js';
 import { extractFileTarget } from './startFileTargets.js';
 import { isPackageNameTarget, normalizePackageName } from './startPackageTargets.js';
 import { extractSymbolTarget } from './startSymbolTargets.js';
-import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';
+import { unwrapTarget } from './startIntentTargetText.js';
+import { extractQuotedTextTarget } from './startQuotedTextTargets.js';
 import { extractApiContractQuery } from './startIntentApiContractQueries.js';
 import { extractAuthorizationQuery } from './startIntentAuthorizationQueries.js';
 import { extractBackgroundWorkQuery } from './startIntentBackgroundWorkQueries.js';
@@ -300,10 +301,4 @@ function extractGraphPackageTarget(intent: string): string | undefined {
   if (installedMatch?.[1] && isPackageNameTarget(installedMatch[1]))
     return normalizePackageName(installedMatch[1]);
   return undefined;
-}
-
-function extractQuotedTextTarget(intent: string): string | undefined {
-  const quoted = intent.match(/(["'`])(.{2,200}?)\1/);
-  const target = quoted?.[2]?.trim();
-  return target && !isGenericReferenceTarget(target) ? target : undefined;
 }

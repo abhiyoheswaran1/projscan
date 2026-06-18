@@ -26,9 +26,8 @@ describe('Mission Control intent target helper architecture', () => {
     const targetSource = readTargetSource();
     const targetTextPath = path.join(process.cwd(), 'src/core/startIntentTargetText.ts');
 
-    expect(targetSource).toContain(
-      "import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';",
-    );
+    expect(targetSource).toContain("import { unwrapTarget } from './startIntentTargetText.js';");
+    expect(targetSource).not.toContain('isGenericReferenceTarget');
     expect(targetSource).not.toContain('function unwrapTarget');
     expect(targetSource).not.toContain('function isGenericReferenceTarget');
 
@@ -151,6 +150,21 @@ describe('Mission Control intent target helper architecture', () => {
     expect(claimTargetsSource).toContain('export function extractClaimTarget');
     expect(claimTargetsSource).toContain('export function extractClaimAgent');
     expect(claimTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
+
+  it('keeps quoted text target parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const quotedTargetsPath = path.join(process.cwd(), 'src/core/startQuotedTextTargets.ts');
+
+    expect(targetSource).toContain(
+      "import { extractQuotedTextTarget } from './startQuotedTextTargets.js';",
+    );
+    expect(targetSource).not.toContain('function extractQuotedTextTarget');
+
+    expect(existsSync(quotedTargetsPath)).toBe(true);
+    const quotedTargetsSource = readFileSync(quotedTargetsPath, 'utf8');
+    expect(quotedTargetsSource).toContain('export function extractQuotedTextTarget');
+    expect(quotedTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
 });
 
