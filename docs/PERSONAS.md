@@ -11270,3 +11270,49 @@ must still default to the same post-4.4 lines and remain read-only; only the
 Kept change: one release-train catalog command insertion, one focused
 release-train behavior guard, this persona note, and no release action in this
 slice.
+
+## Two Hundred Thirty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: the roadmap catalog is a reviewer-facing planning source, and the
+post-4.4 product train is changing more often than the older shipped 3.x train.
+Keeping both in one large file made small roadmap updates force reviewers to
+scan stale catalog data and triggered a large-file warning during focused file
+review.
+
+Smallest fix: move the 4.5.x through 4.9.x catalog entries into
+`src/core/roadmapCatalogPost44.ts`, share the catalog-entry shape through
+`src/core/roadmapCatalogTypes.ts`, and keep `src/core/roadmapCatalog.ts` as the
+combined lookup facade.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/releaseTrain.test.ts
+npm exec projscan -- release-train --format json
+npm exec projscan -- file src/core/roadmapCatalog.ts --format json
+npm exec projscan -- file src/core/roadmapCatalogPost44.ts --format json
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Review Guardrails: Post-4.4 Roadmap Catalog Extraction
+
+Delete-list after this slice:
+
+- Do not change roadmap task content, task IDs, ordering, release-train
+  ranking, preflight behavior, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not move fallback release-train tracks into the roadmap catalog helper.
+- Do not make the post-4.4 helper import from the main catalog facade.
+
+Reviewer edge case: `projscan release-train --format json` for 4.4 and newer
+must still return the same five post-4.4 lines, including the 4.6 swarm task's
+preflight proof command.
+
+Kept change: one catalog helper extraction, one shared type helper, one
+release-train architecture guard, this persona note, and no release action in
+this slice.

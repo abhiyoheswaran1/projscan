@@ -228,6 +228,29 @@ test('release train keeps fallback tracks and tasks out of the core planner', as
   expect(fallbacks).toContain('fallbackTasksForTrack');
 });
 
+test('roadmap catalog keeps post-4.4 entries in a focused helper', async () => {
+  const catalog = await fs.readFile(
+    path.join(process.cwd(), 'src/core/roadmapCatalog.ts'),
+    'utf-8',
+  );
+  const post44Path = path.join(process.cwd(), 'src/core/roadmapCatalogPost44.ts');
+  const helperExists = await fs
+    .access(post44Path)
+    .then(() => true)
+    .catch(() => false);
+
+  expect(helperExists).toBe(true);
+  if (!helperExists) return;
+
+  const post44 = await fs.readFile(post44Path, 'utf-8');
+  expect(catalog).toContain("from './roadmapCatalogPost44.js'");
+  expect(catalog).not.toContain('rt-4-6-swarm-coordination-validation');
+  expect(catalog).not.toContain('rt-4-9-python-upgrade-and-hotspot-maintainability');
+  expect(post44).toContain('rt-4-6-swarm-coordination-validation');
+  expect(post44).toContain('rt-4-9-python-upgrade-and-hotspot-maintainability');
+  expect(post44).toContain('projscan preflight --mode before_edit --format json');
+});
+
 test('release train marks blockers when preflight blocks', async () => {
   const root = await makeTempProject('2.2.0');
   await writeJson(path.join(root, 'package.json'), {

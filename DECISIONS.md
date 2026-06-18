@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract post-4.4 roadmap catalog entries
+
+- Status: accepted
+- Context: `src/core/roadmapCatalog.ts` mixed shipped 3.x catalog entries with the actively changing post-4.4 product train, and focused file review flagged it as a large catalog file.
+- Decision: Move the 4.5.x through 4.9.x catalog entries into `src/core/roadmapCatalogPost44.ts` with a shared `RoadmapCatalogEntry` type, and compose the combined catalog in `src/core/roadmapCatalog.ts`.
+- Consequences: Release-train output, default lines, task IDs, task ordering, and verification commands remain unchanged while current roadmap edits can land in the post-4.4 helper.
+- Verification: Release-train architecture coverage failed before the helper existed and passed after extraction; focused file scans showed no remaining large-file warning for the main catalog or helper.
+
 ## 2026-06-18: Align release-train swarm proof with preflight coordination evidence
 
 - Status: accepted
