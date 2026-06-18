@@ -8,6 +8,7 @@ import type {
 } from '../../src/types.js';
 
 const verdict: BugHuntVerdict = 'fix';
+const reviewVerdict: BugHuntVerdict = 'review';
 
 const finding: BugHuntFinding = {
   id: 'bh-public-types',
@@ -79,7 +80,7 @@ const barrelVerdict: BarrelBugHuntVerdict = verdict;
 const barrelFinding: BarrelBugHuntFinding = finding;
 const barrelReport: BarrelBugHuntReport = report;
 
-void [barrelVerdict, barrelFinding];
+void [barrelVerdict, barrelFinding, reviewVerdict];
 
 test('bug hunt public types compile from the module and legacy barrel', () => {
   expect(barrelReport).toBe(report);

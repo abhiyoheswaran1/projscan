@@ -61,16 +61,20 @@ export async function computeBugHunt(
   ]);
 
   const immediateFixes = findings.filter(isImmediateFixFinding);
-  const fixQueue =
-    immediateFixes.length > 0 ? immediateFixes.slice(0, maxFindings) : [cleanVerificationFinding()];
-  const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
   const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
+  const fixQueue =
+    immediateFixes.length > 0 && verdict !== 'review'
+      ? immediateFixes.slice(0, maxFindings)
+      : verdict === 'clean'
+        ? [cleanVerificationFinding()]
+        : [];
+  const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
   const fixFirst = fixFirstFromBugHuntFinding(fixQueue[0]);
 
   return {
     schemaVersion: 1,
     verdict,
-    summary: summarize(verdict, fixQueue),
+    summary: summarize(verdict, fixQueue, immediateFixes),
     health,
     evidence: {
       issueCounts: {
@@ -87,7 +91,8 @@ export async function computeBugHunt(
     fixQueue,
     ...(fixFirst ? { fixFirst } : {}),
     verificationMatrix: buildVerificationMatrix(verdict, fixQueue),
-    ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length
+    ...(findings.length > topSuspects.length ||
+    (verdict !== 'review' && immediateFixes.length > fixQueue.length)
       ? { truncated: true }
       : {}),
   };
@@ -185,7 +190,7 @@ function buildVerificationMatrix(
   verdict: BugHuntVerdict,
   fixQueue: BugHuntFinding[],
 ): BugHuntReport['verificationMatrix'] {
-  if (fixQueue.length > 0 && fixQueue.every(isReleaseSignoffFinding)) {
+  if (verdict === 'review' || (fixQueue.length > 0 && fixQueue.every(isReleaseSignoffFinding))) {
     return [
       {
         command: 'projscan preflight --mode before_commit --format json',
@@ -242,7 +247,11 @@ function bugHuntVerdict(
   ) {
     return 'block';
   }
-  if (findings.length > 0 || actionablePreflightReasons.length > 0) return 'fix';
+  if (findings.length > 0) {
+    if (findings.every(isReleaseSignoffFinding)) return 'review';
+    return 'fix';
+  }
+  if (actionablePreflightReasons.length > 0) return 'fix';
   return 'clean';
 }
 
@@ -269,14 +278,19 @@ async function safeRiskNow(
   }
 }
 
-function summarize(verdict: BugHuntVerdict, fixQueue: BugHuntFinding[]): string {
+function summarize(
+  verdict: BugHuntVerdict,
+  fixQueue: BugHuntFinding[],
+  findings: BugHuntFinding[],
+): string {
   const queueLength = fixQueue.length;
   if (verdict === 'clean')
     return 'clean: bug hunt found no immediate fix targets; verify the baseline';
   if (verdict === 'block')
     return `block: bug hunt found ${queueLength} high-priority fix target(s)`;
-  if (fixQueue.every(isReleaseSignoffFinding)) {
-    return `review: bug hunt found ${queueLength} manual sign-off action(s)`;
+  if (verdict === 'review' || (fixQueue.length > 0 && fixQueue.every(isReleaseSignoffFinding))) {
+    const reviewCount = findings.filter(isReleaseSignoffFinding).length || queueLength;
+    return `review: bug hunt found ${reviewCount} manual sign-off action(s)`;
   }
   return `fix: bug hunt found ${queueLength} prioritized fix target(s)`;
 }

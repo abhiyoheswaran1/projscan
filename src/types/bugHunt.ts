@@ -7,7 +7,7 @@ import type {
   WorkplanVerification,
 } from './workplan.js';
 
-export type BugHuntVerdict = 'clean' | 'fix' | 'block';
+export type BugHuntVerdict = 'clean' | 'review' | 'fix' | 'block';
 
 export interface BugHuntFinding {
   id: string;
