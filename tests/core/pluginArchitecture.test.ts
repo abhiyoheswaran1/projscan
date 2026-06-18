@@ -19,6 +19,27 @@ describe('plugin runtime maintainability', () => {
     expect(validateManifest!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps manifest discovery IO out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginManifestDiscovery.js'");
+    expect(runtimeSource).not.toContain('async function readPluginManifestFile');
+    expect(runtimeSource).not.toContain('async function discoverPluginManifests');
+    expect(runtimeSource).not.toContain('JSON.parse');
+    expect(runtimeSource).not.toContain('fs.readFile');
+    expect(runtimeSource).not.toContain('fs.readdir');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginManifestDiscovery.ts');
+    const readManifest = inspection.functions?.find((fn) => fn.name === 'readPluginManifestFile');
+    const discoverManifests = inspection.functions?.find(
+      (fn) => fn.name === 'discoverPluginManifests',
+    );
+
+    expect(readManifest).toBeDefined();
+    expect(readManifest!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+    expect(discoverManifests).toBeDefined();
+    expect(discoverManifests!.cyclomaticComplexity).toBeLessThanOrEqual(5);
+  });
+
   it('keeps analyzer issue shape validation out of the plugin runtime hotspot', async () => {
     const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
     expect(runtimeSource).toContain("from './pluginIssueValidation.js'");

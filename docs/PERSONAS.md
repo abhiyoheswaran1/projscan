@@ -10108,3 +10108,52 @@ untrusted modules should still stop before import.
 
 Kept change: one focused plugin module-loading helper, one architecture guard,
 this persona note, and no release action in this slice.
+
+## Two Hundred Thirteenth Slice Decision
+
+Selected personas: Platform And Release Owner, OSS Maintainer Evaluating MCP
+Adoption, and Security-Conscious Reviewer.
+
+Reason: after module loading moved out, `src/core/plugins.ts` still owned
+manifest file reads, JSON parsing, validation-result wrapping, and plugin
+directory discovery. Those details feed CLI, MCP, plugin DX, privacy, and
+adoption surfaces through the public `plugins.ts` facade, so the safer move is a
+behavior-preserving extraction that keeps the facade stable.
+
+Smallest fix: move plugin manifest constants, manifest file reading, JSON parse
+diagnostics, and directory discovery into `src/core/pluginManifestDiscovery.ts`;
+re-export the same constants, types, and discovery functions from
+`src/core/plugins.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/plugins.test.ts -t "discoverPluginManifests|readPluginManifestFile"
+npm run test -- tests/mcp/plugin.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginManifestDiscovery.ts --format json
+```
+
+## Review Guardrails: Plugin Manifest Discovery Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin manifest schema validation, trust storage,
+  trust-on-first-use behavior, preview flag behavior, module loading, reporter or
+  analyzer schemas, CLI/MCP output shapes, dependencies, lockfiles, publish
+  behavior, push behavior, tags, or releases.
+- Do not move plugin execution, plugin init/test scaffolding, MCP manifest path
+  safety, or reporter rendering in the same slice.
+
+Reviewer edge case: invalid JSON should still produce `invalid-json`, unreadable
+manifests should still produce `read-error`, missing `.projscan-plugins/`
+directories should still return an empty discovery list, and valid manifests
+should still be discovered in sorted filename order through the public
+`src/core/plugins.ts` exports.
+
+Kept change: one focused plugin manifest discovery helper, facade re-exports,
+one architecture guard, this persona note, and no release action in this slice.

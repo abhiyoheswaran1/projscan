@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CodeGraph } from './codeGraph.js';
 import type {
@@ -13,12 +12,12 @@ import {
   describePluginModuleLoadError,
   importPluginModule,
 } from './pluginModuleLoading.js';
+import { discoverPluginManifests } from './pluginManifestDiscovery.js';
+import type { PluginDiscoveryEntry } from './pluginManifestDiscovery.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
-import { validateManifest } from './pluginManifestValidation.js';
 import type {
   PluginAnalyzerManifest,
   PluginDiagnostic,
-  PluginManifest,
   PluginReporterCommand,
   PluginReporterManifest,
 } from './pluginManifestValidation.js';
@@ -39,8 +38,13 @@ import type {
  */
 
 export const PLUGIN_PREVIEW_FLAG = 'PROJSCAN_PLUGINS_PREVIEW';
-export const PLUGIN_DIR = '.projscan-plugins';
-export const PLUGIN_MANIFEST_EXT = '.projscan-plugin.json';
+export {
+  PLUGIN_DIR,
+  PLUGIN_MANIFEST_EXT,
+  discoverPluginManifests,
+  readPluginManifestFile,
+} from './pluginManifestDiscovery.js';
+export type { PluginDiscoveryEntry, PluginManifestFileResult } from './pluginManifestDiscovery.js';
 export {
   PLUGIN_REPORTER_COMMANDS,
   PLUGIN_SCHEMA_VERSION,
@@ -99,18 +103,6 @@ export interface LoadedReporterPlugin {
   exports: PluginReporterExports;
 }
 
-export interface PluginDiscoveryEntry {
-  manifestPath: string;
-  manifest: PluginManifest | null;
-  /** Set when the manifest failed to parse or validate. */
-  error?: string;
-  diagnostic?: PluginDiagnostic;
-}
-
-export type PluginManifestFileResult =
-  | { ok: true; manifest: PluginManifest }
-  | { ok: false; reason: string; diagnostic: PluginDiagnostic };
-
 export type PluginReporterResolveResult =
   | { ok: true; plugin: LoadedReporterPlugin }
   | { ok: false; reason: string; diagnostic: PluginDiagnostic };
@@ -122,79 +114,6 @@ export type PluginReporterRenderResult =
 export function pluginsEnabled(): boolean {
   const v = process.env[PLUGIN_PREVIEW_FLAG];
   return v === '1' || v === 'true';
-}
-
-export async function readPluginManifestFile(
-  manifestPath: string,
-): Promise<PluginManifestFileResult> {
-  let raw: string;
-  try {
-    raw = await fs.readFile(manifestPath, 'utf-8');
-  } catch (err) {
-    const message = `unable to read manifest: ${err instanceof Error ? err.message : String(err)}`;
-    return {
-      ok: false,
-      reason: message,
-      diagnostic: {
-        code: 'read-error',
-        message,
-        hint: 'Check file permissions and try again.',
-      },
-    };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    const message = `invalid JSON: ${err instanceof Error ? err.message : String(err)}`;
-    return {
-      ok: false,
-      reason: message,
-      diagnostic: {
-        code: 'invalid-json',
-        message,
-        hint: 'Fix the manifest so it is valid JSON.',
-      },
-    };
-  }
-
-  const validation = validateManifest(parsed);
-  return validation.ok
-    ? { ok: true, manifest: validation.manifest }
-    : { ok: false, reason: validation.reason, diagnostic: validation.diagnostic };
-}
-
-/**
- * Discover every plugin manifest under `<root>/.projscan-plugins/`. Manifests
- * that fail to parse or validate are returned with `manifest: null` and an
- * `error` so the CLI / MCP tool can surface them without throwing.
- */
-export async function discoverPluginManifests(rootPath: string): Promise<PluginDiscoveryEntry[]> {
-  const dir = path.join(rootPath, PLUGIN_DIR);
-  let entries: string[];
-  try {
-    entries = await fs.readdir(dir);
-  } catch {
-    return [];
-  }
-  const out: PluginDiscoveryEntry[] = [];
-  for (const name of entries.sort()) {
-    if (!name.endsWith(PLUGIN_MANIFEST_EXT)) continue;
-    const manifestPath = path.join(dir, name);
-    const result = await readPluginManifestFile(manifestPath);
-    if (!result.ok) {
-      out.push({
-        manifestPath,
-        manifest: null,
-        error: result.reason,
-        diagnostic: result.diagnostic,
-      });
-      continue;
-    }
-    out.push({ manifestPath, manifest: result.manifest });
-  }
-  return out;
 }
 
 /**

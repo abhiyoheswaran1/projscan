@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract plugin manifest discovery helpers
+
+- Status: accepted
+- Context: `src/core/plugins.ts` remained the top hotspot after module-loading extraction and still owned manifest file reads, JSON parse diagnostics, and plugin directory discovery alongside analyzer/reporter runtime orchestration.
+- Decision: Move plugin manifest constants, manifest file reading, JSON parse diagnostics, and directory discovery into `src/core/pluginManifestDiscovery.ts`, while re-exporting the existing public plugin constants and discovery functions from `src/core/plugins.ts`.
+- Consequences: Public imports from `src/core/plugins.ts` stay unchanged, invalid JSON/read/validation diagnostics and sorted discovery behavior stay unchanged, CLI/MCP/plugin-DX callers keep the same facade, and `src/core/plugins.ts` drops from 426 lines / CC 42 to 345 lines / CC 33.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts`, `npm run test -- tests/core/plugins.test.ts -t "discoverPluginManifests|readPluginManifestFile"`, and `npm run test -- tests/mcp/plugin.test.ts`.
+
 ## 2026-06-18: Extract plugin module loading helpers
 
 - Status: accepted
