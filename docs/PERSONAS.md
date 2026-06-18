@@ -10261,3 +10261,53 @@ errors.
 
 Kept change: one focused reporter loading helper, facade re-exports, one
 architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Sixteenth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, OSS Maintainer
+Evaluating MCP Adoption, and Platform And Release Owner.
+
+Reason: `src/cli/commands/start.ts` is a high-churn Mission Control command
+hotspot. It is not computationally complex, but every new start output shortcut
+or resume option makes reviewers inspect the command facade again. Agents and
+maintainers need the `start` entrypoint to stay stable while option-list churn
+lands in a narrow file.
+
+Smallest fix: move only the Commander `.option(...)` chain into
+`src/cli/commands/startOptionsRegistration.ts`; keep `registerStart()` as the
+public command registration facade and keep `runStartCommandAction` plus
+`parsePositiveInt` behavior unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/startCommandArchitecture.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm run test -- tests/cli/start.test.ts
+npm run test -- tests/cli/startShortcutCurrentCli.test.ts
+npm exec projscan -- file src/cli/commands/start.ts --format json
+npm exec projscan -- file src/cli/commands/startOptionsRegistration.ts --format json
+```
+
+## Review Guardrails: Start Option Registration Extraction
+
+Delete-list after this slice:
+
+- Do not change start option names, descriptions, parser callbacks, action
+  wiring, output shortcuts, Mission Control routing, output schemas,
+  dependencies, lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/cli/commands/start.ts` inside the option-registration
+  helper; the helper must remain leaf-side of the facade.
+- Do not broaden this into `startAction`, `startOutput`, `startShortcuts`, or
+  core routing refactors.
+
+Reviewer edge case: `--max-tasks` and `--max-risks` should still use
+`parsePositiveInt`, shortcut flags such as `--handoff-prompt` and
+`--review-gate-json` should remain available after rebuilding `dist/cli`, and
+`projscan start --format json` should preserve the same machine-readable
+orientation payload.
+
+Kept change: one focused start option-registration helper, one architecture
+guard, this persona note, and no release action in this slice.
