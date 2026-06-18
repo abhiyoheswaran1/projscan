@@ -57,18 +57,13 @@ export async function computeBugHunt(
       preflightReasonToFinding(reason, index, preflightChangedFiles),
     ),
     ...riskNow.conflicts.map(conflictToFinding),
-    ...(hotspots.available ? hotspots.hotspots.map(hotspotToFinding) : []),
+    ...hotspotFindings(hotspots),
   ]);
 
   const immediateFixes = findings.filter(isImmediateFixFinding);
   const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
-  const fixQueue =
-    immediateFixes.length > 0 && verdict !== 'review'
-      ? immediateFixes.slice(0, maxFindings)
-      : verdict === 'clean'
-        ? [cleanVerificationFinding()]
-        : [];
-  const topSuspects = findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
+  const fixQueue = bugHuntFixQueue(verdict, immediateFixes, maxFindings);
+  const topSuspects = bugHuntTopSuspects(findings, fixQueue, maxFindings);
   const fixFirst = fixFirstFromBugHuntFinding(fixQueue[0]);
 
   return {
@@ -76,26 +71,76 @@ export async function computeBugHunt(
     verdict,
     summary: summarize(verdict, fixQueue, immediateFixes),
     health,
-    evidence: {
-      issueCounts: {
-        errors: health.errors,
-        warnings: health.warnings,
-        infos: health.infos,
-      },
-      hotspotCount: hotspots.available ? hotspots.hotspots.length : 0,
-      preflightVerdict: preflight.verdict,
-      touchedFiles: riskNow.touchedFiles,
-      conflicts: riskNow.conflicts.length,
-    },
+    evidence: bugHuntEvidence(
+      health,
+      hotspots.available ? hotspots.hotspots.length : 0,
+      preflight.verdict,
+      riskNow,
+    ),
     topSuspects,
     fixQueue,
     ...(fixFirst ? { fixFirst } : {}),
     verificationMatrix: buildVerificationMatrix(verdict, fixQueue),
-    ...(findings.length > topSuspects.length ||
-    (verdict !== 'review' && immediateFixes.length > fixQueue.length)
+    ...(bugHuntIsTruncated(findings, topSuspects, verdict, immediateFixes, fixQueue)
       ? { truncated: true }
       : {}),
   };
+}
+
+function hotspotFindings(
+  hotspots: Awaited<ReturnType<typeof analyzeHotspots>>,
+): BugHuntFinding[] {
+  return hotspots.available ? hotspots.hotspots.map(hotspotToFinding) : [];
+}
+
+function bugHuntFixQueue(
+  verdict: BugHuntVerdict,
+  immediateFixes: BugHuntFinding[],
+  maxFindings: number,
+): BugHuntFinding[] {
+  if (verdict === 'review') return [];
+  if (immediateFixes.length > 0) return immediateFixes.slice(0, maxFindings);
+  return verdict === 'clean' ? [cleanVerificationFinding()] : [];
+}
+
+function bugHuntTopSuspects(
+  findings: BugHuntFinding[],
+  fixQueue: BugHuntFinding[],
+  maxFindings: number,
+): BugHuntFinding[] {
+  return findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
+}
+
+function bugHuntEvidence(
+  health: BugHuntReport['health'],
+  hotspotCount: number,
+  preflightVerdict: BugHuntReport['evidence']['preflightVerdict'],
+  riskNow: { touchedFiles: string[]; conflicts: SessionConflict[] },
+): BugHuntReport['evidence'] {
+  return {
+    issueCounts: {
+      errors: health.errors,
+      warnings: health.warnings,
+      infos: health.infos,
+    },
+    hotspotCount,
+    preflightVerdict,
+    touchedFiles: riskNow.touchedFiles,
+    conflicts: riskNow.conflicts.length,
+  };
+}
+
+function bugHuntIsTruncated(
+  findings: BugHuntFinding[],
+  topSuspects: BugHuntFinding[],
+  verdict: BugHuntVerdict,
+  immediateFixes: BugHuntFinding[],
+  fixQueue: BugHuntFinding[],
+): boolean {
+  return (
+    findings.length > topSuspects.length ||
+    (verdict !== 'review' && immediateFixes.length > fixQueue.length)
+  );
 }
 
 function issueToFinding(issue: Issue): BugHuntFinding {
