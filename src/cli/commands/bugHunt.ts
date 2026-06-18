@@ -48,10 +48,7 @@ function printBugHunt(report: BugHuntReport): void {
   console.log(color(`Bug Hunt: ${displayVerdict}`));
   console.log(report.summary);
   console.log('');
-  console.log(chalk.bold('Action Queue'));
-  for (const finding of report.fixQueue) {
-    printFinding(finding);
-  }
+  printFindingSection(report);
   console.log('');
   console.log(chalk.bold('Verify'));
   for (const entry of report.verificationMatrix) {
@@ -59,11 +56,31 @@ function printBugHunt(report: BugHuntReport): void {
   }
 }
 
+function printFindingSection(report: BugHuntReport): void {
+  if (report.fixQueue.length > 0) {
+    console.log(chalk.bold('Action Queue'));
+    for (const finding of report.fixQueue) printFinding(finding);
+    return;
+  }
+
+  const reviewSignals = report.verdict === 'review' ? report.topSuspects.filter(isReviewSignal) : [];
+  if (reviewSignals.length === 0) return;
+
+  console.log(chalk.bold('Review Signals'));
+  for (const finding of reviewSignals) printFinding(finding);
+}
+
 function printFinding(finding: BugHuntFinding): void {
   const files = finding.files.length > 0 ? ` (${finding.files.join(', ')})` : '';
   console.log(`- ${chalk.bold(`[${finding.priority}] ${finding.title}`)}${files}`);
   console.log(`  ${finding.why}`);
   console.log(`  verify: ${finding.verification.commands.join(' && ')}`);
+}
+
+function isReviewSignal(finding: BugHuntFinding): boolean {
+  return (
+    finding.source === 'preflight' && finding.evidence.some((entry) => entry.source === 'release')
+  );
 }
 
 function bugHuntDisplayVerdict(report: BugHuntReport): BugHuntReport['verdict'] | 'review' {

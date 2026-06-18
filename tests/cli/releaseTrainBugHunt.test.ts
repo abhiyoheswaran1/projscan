@@ -68,11 +68,20 @@ test('bug-hunt renders JSON fix queue', async () => {
   expect(report.fixQueue.length).toBeLessThanOrEqual(3);
 });
 
+test('bug-hunt console keeps action queue for concrete fixes', async () => {
+  const result = await runCli(['bug-hunt', '--max-findings', '1', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Bug Hunt: fix');
+  expect(result.stdout).toContain('Action Queue');
+});
+
 test('bug-hunt CLI metadata describes an action queue', async () => {
   const source = await fs.readFile(path.join(repoRoot, 'src/cli/commands/bugHunt.ts'), 'utf-8');
 
   expect(source).toContain('Prioritize a bug-hunt action queue');
   expect(source).toContain("chalk.bold('Action Queue')");
+  expect(source).toContain("chalk.bold('Review Signals')");
   expect(source).not.toContain('bug-hunt fix queue');
   expect(source).not.toContain("chalk.bold('Fix Queue')");
 });
@@ -143,9 +152,10 @@ test('bug-hunt JSON orders preflight fallback files for review routing', async (
 
   expect(result.exitCode).toBe(0);
   const report = JSON.parse(result.stdout);
-  const preflightFinding = report.fixQueue.find(
+  const preflightFinding = report.topSuspects.find(
     (finding: { source: string; files: string[] }) => finding.source === 'preflight',
   );
+  expect(report.fixQueue).toEqual([]);
   expect(preflightFinding?.files.slice(0, 4)).toEqual([
     'package.json',
     'package-lock.json',
@@ -217,6 +227,8 @@ test('bug-hunt console labels release-scale sign-off queues as review work', asy
   expect(result.stdout).toContain('Bug Hunt: review');
   expect(result.stdout).toContain('review: bug hunt found 1 manual sign-off action(s)');
   expect(result.stdout).toContain('Review preflight release sign-off');
+  expect(result.stdout).toContain('Review Signals');
+  expect(result.stdout).not.toContain('Action Queue');
   expect(result.stdout).not.toContain('Bug Hunt: fix');
 }, 120_000);
 
