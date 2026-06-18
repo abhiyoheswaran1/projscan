@@ -1,12 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import { previewUpgrade, isValidPackageName } from '../../src/core/upgradePreview.js';
-
-async function makeTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'projscan-upgrade-'));
-}
+import { makeUpgradePreviewTempDir } from '../helpers/upgradePreview.js';
 
 describe('isValidPackageName (path-traversal guard)', () => {
   it('accepts typical package names', () => {
@@ -41,7 +37,7 @@ describe('previewUpgrade refuses invalid / traversal package names', () => {
   let tmp: string;
 
   beforeEach(async () => {
-    tmp = await makeTempDir();
+    tmp = await makeUpgradePreviewTempDir();
   });
 
   afterEach(async () => {
