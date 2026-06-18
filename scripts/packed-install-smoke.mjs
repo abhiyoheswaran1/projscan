@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +10,15 @@ const projectDir = path.join(tmpRoot, 'project');
 const trustHome = path.join(tmpRoot, 'plugin-trust');
 const npmCacheDir =
   process.env.PROJSCAN_NPM_CACHE ?? path.join(os.tmpdir(), 'projscan-packed-install-npm-cache');
+const installScriptGrammarPackages = [
+  'tree-sitter-c-sharp',
+  'tree-sitter-go',
+  'tree-sitter-java',
+  'tree-sitter-php',
+  'tree-sitter-python',
+  'tree-sitter-ruby',
+  'tree-sitter-rust',
+];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -25,6 +34,45 @@ function exec(cmd, args, options = {}) {
     timeout: 300_000,
     ...rest,
   });
+}
+
+function spawn(cmd, args, options = {}) {
+  const { env, ...rest } = options;
+  const result = spawnSync(cmd, args, {
+    cwd: repoRoot,
+    encoding: 'utf-8',
+    env: { ...process.env, npm_config_cache: npmCacheDir, ...env },
+    maxBuffer: 20 * 1024 * 1024,
+    timeout: 300_000,
+    ...rest,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`${cmd} ${args.join(' ')} failed with exit ${result.status}\n${output}`);
+  }
+  return output;
+}
+
+function assertNoInstallScriptApprovalWarnings(output) {
+  if (/allow-scripts/i.test(output)) {
+    throw new Error(`packed npm install emitted allow-scripts warning\n${output}`);
+  }
+  const nativeGrammarWarning = installScriptGrammarPackages.some(
+    (packageName) => output.includes(packageName) && /install scripts|node-gyp-build/i.test(output),
+  );
+  if (nativeGrammarWarning) {
+    throw new Error(`packed npm install emitted native tree-sitter install-script warning\n${output}`);
+  }
+}
+
+function installPackedTarball(tarballPath) {
+  const output = spawn('npm', ['install', '--no-audit', '--no-fund', tarballPath], {
+    cwd: projectDir,
+    timeout: 180_000,
+  });
+  assertNoInstallScriptApprovalWarnings(output);
+  return output;
 }
 
 function runProjscan(binPath, args, options = {}) {
@@ -148,10 +196,7 @@ try {
   assert(existsSync(tarballPath), `packed tarball missing at ${tarballPath}`);
 
   writeFixtureProject();
-  exec('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', tarballPath], {
-    cwd: projectDir,
-    timeout: 180_000,
-  });
+  installPackedTarball(tarballPath);
 
   const binPath = path.join(projectDir, 'node_modules', '.bin', 'projscan');
   assert(existsSync(binPath), `installed projscan binary missing at ${binPath}`);

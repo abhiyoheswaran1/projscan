@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readdirSync, statSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import pkg from '../../package.json' with { type: 'json' };
@@ -48,6 +48,18 @@ describe('npm pack smoke test', () => {
     expect(pkg.scripts).not.toHaveProperty('install');
     expect(pkg.scripts).not.toHaveProperty('postinstall');
     expect(pkg.scripts).toHaveProperty('prepack', 'npm run build');
+  });
+
+  it('runs packed install smoke through normal npm install and guards allow-scripts warnings', () => {
+    const repoRoot = path.resolve(__dirname, '..', '..');
+    const script = readFileSync(path.join(repoRoot, 'scripts', 'packed-install-smoke.mjs'), 'utf-8');
+
+    expect(script).toContain('function installPackedTarball');
+    expect(script).toContain('allow-scripts');
+    for (const packageName of installScriptGrammarPackages) {
+      expect(script).toContain(packageName);
+    }
+    expect(script).not.toMatch(/'install',\s*'--ignore-scripts'/);
   });
 
   it('packs dist/ including grammar wasm files', () => {
