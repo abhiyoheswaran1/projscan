@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start claim route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still owned claim-route success criteria after other route-specific helper extractions, even though claim add/list criteria only depend on the routed tool and action-plan shape.
+- Decision: Move claim add/list success-criteria assembly into `src/core/startClaimRouteCriteria.ts`, while keeping resolver ordering and dispatch in `src/core/startSuccessCriteria.ts`.
+- Consequences: Claim-add routes still require active-claim review before adding a claim, claim-list routes still use active-claim review criteria, and Mission Control wording remains unchanged.
+- Verification: Architecture coverage failed before the helper existed and passed after extraction; focused coordination-routing tests cover claim add and list success criteria.
+
 ## 2026-06-18: Extract start product-planning route criteria helper
 
 - Status: accepted

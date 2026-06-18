@@ -1,3 +1,4 @@
+import { claimRouteSuccessCriteria } from './startClaimRouteCriteria.js';
 import { couplingSuccessCriteria } from './startCouplingRouteCriteria.js';
 import { dependencySuccessCriteria } from './startDependencyRouteCriteria.js';
 import { FIXED_ROUTE_CRITERIA } from './startFixedRouteCriteria.js';
@@ -88,23 +89,6 @@ function fixedRouteSuccessCriteria(context: MissionCriteriaContext): string[] | 
 function understandRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
   if (context.route?.tool !== 'projscan_understand') return undefined;
   return understandSuccessCriteria(context.primaryAction, context.route);
-}
-
-function claimRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
-  if (context.route?.tool !== 'projscan_claim') return undefined;
-  const hasAddAction = context.actionPlan.some(
-    (action) => action.args && 'action' in action.args && action.args.action === 'add',
-  );
-  if (hasAddAction) {
-    return [
-      'Active claims are reviewed before a new file, directory, or symbol claim is added.',
-      'The target is claimed with a real agent name, and any returned contention is assigned or resolved before parallel editing continues.',
-    ];
-  }
-  return [
-    'Active claims, owners, leases, and contention warnings are reviewed before parallel work continues.',
-    'Any stale or contended claim has a release, owner, or coordination follow-up before editing resumes.',
-  ];
 }
 
 function dependenciesRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {

@@ -197,6 +197,28 @@ describe('Mission Control success criteria', () => {
     expect(productPlanningCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps claim route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const claimCriteriaPath = path.join(process.cwd(), 'src/core/startClaimRouteCriteria.ts');
+    const helperExists = await fs
+      .access(claimCriteriaPath)
+      .then(() => true)
+      .catch(() => false);
+
+    expect(helperExists).toBe(true);
+    if (!helperExists) return;
+
+    const claimCriteria = await fs.readFile(claimCriteriaPath, 'utf-8');
+    expect(source).toContain("from './startClaimRouteCriteria.js'");
+    expect(source).not.toContain('function claimRouteSuccessCriteria');
+    expect(claimCriteria).toContain('export function claimRouteSuccessCriteria');
+    expect(claimCriteria).toContain('Active claims are reviewed before a new file');
+    expect(claimCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',

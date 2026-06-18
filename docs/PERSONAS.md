@@ -11461,3 +11461,49 @@ bug-hunt mode must still get the accept/defer/split success criteria.
 Kept change: one product-planning criteria helper, one architecture guard,
 existing planning-route behavior coverage, this persona note, and no release
 action in this slice.
+
+## Two Hundred Forty First Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: claim routing is coordination guidance for parallel agents. It has two
+clear behaviors, claim-add and claim-list, and does not need to live inside the
+Mission Control resolver once the action plan is available.
+
+Smallest fix: move claim-route success-criteria assembly into
+`src/core/startClaimRouteCriteria.ts`; keep `projscan_claim` dispatch and
+resolver ordering in `src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startCoordinationRouting.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startClaimRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Claim Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change claim criteria wording, claim add/list action planning,
+  coordination routing, resolver ordering, route ranking, Mission Control
+  schemas, public types, dependencies, lockfiles, package version, publish
+  behavior, push behavior, tags, or releases.
+- Do not move unrelated dynamic criteria for impact, preflight, product
+  planning, dependencies, regression, file, understand, fixed routes, or
+  coupling into the claim helper.
+- Do not broaden this into claims storage, lease, contention, or coordination
+  algorithm changes.
+
+Reviewer edge case: claim-add routes must still require active-claim review
+before adding a new claim, while active-claims/list routes must still use the
+parallel-work review criteria.
+
+Kept change: one claim-route criteria helper, one architecture guard, existing
+coordination-routing behavior coverage, this persona note, and no release
+action in this slice.
