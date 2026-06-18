@@ -47,8 +47,10 @@ test('start console prints trusted daily workflows before broad onboarding', asy
 
   expect(result.exitCode).toBe(0);
   const dailyIndex = result.stdout.indexOf('Daily Workflows');
+  const missionIndex = result.stdout.indexOf('Mission Control');
   const firstTenIndex = result.stdout.indexOf('First 10 Minutes');
   expect(dailyIndex).toBeGreaterThanOrEqual(0);
+  expect(missionIndex).toBeGreaterThan(dailyIndex);
   expect(firstTenIndex).toBeGreaterThan(dailyIndex);
   expect(result.stdout).toContain('Before handoff or commit: projscan bug-hunt --format json');
   expect(result.stdout).toContain(

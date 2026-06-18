@@ -22,13 +22,12 @@ export function printStart(report: StartReport, context: StartConsoleContext): v
   console.log(`Health: ${report.evidence.healthScore}/100 (${report.evidence.qualityVerdict})`);
   console.log(`Workflow: ${report.recommendedWorkflow.name}`);
   console.log('');
+  if (printDailyWorkflows(report)) console.log('');
   printMissionControl(report, context);
   if (report.handoff) {
     console.log('');
     printAgentRunbook(report);
   }
-  console.log('');
-  printDailyWorkflows(report);
   console.log('');
   printFirstTenMinutes(report);
   console.log('');
@@ -52,12 +51,13 @@ export function formatConsoleChecklistItem(item: StartMissionResumeChecklistItem
   return `[${item.status}] ${item.kind} ${item.stepId}: ${action}${formatConsoleChecklistAnnotation(item)}`;
 }
 
-function printDailyWorkflows(report: StartReport): void {
-  if (!report.dailyWorkflows || report.dailyWorkflows.length === 0) return;
+function printDailyWorkflows(report: StartReport): boolean {
+  if (!report.dailyWorkflows || report.dailyWorkflows.length === 0) return false;
   console.log(chalk.bold('Daily Workflows'));
   for (const workflow of report.dailyWorkflows) {
     console.log(`- ${workflow.name}: ${workflow.commands[0]}`);
   }
+  return true;
 }
 
 function printFirstTenMinutes(report: StartReport): void {

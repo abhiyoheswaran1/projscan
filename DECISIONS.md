@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Promote daily workflows in start console
+
+- Status: accepted
+- Context: `projscan start` included trusted daily workflows, but the normal console printed them after Mission Control, execution plans, proof queues, review gates, risks, and onboarding, so feature breadth still dominated the first screen.
+- Decision: Move the existing `Daily Workflows` console section immediately after the workflow header and before Mission Control. Keep the section content and `StartReport` JSON unchanged.
+- Consequences: Human console users see the three repeatable workflows before the broader mission/proof surface, while JSON clients and daily workflow definitions remain stable.
+- Verification: CLI ordering coverage failed before the move and passed after rebuilding the CLI output.
+
 ## 2026-06-18: Ground roadmap positioning in daily workflows
 
 - Status: accepted

@@ -11875,3 +11875,47 @@ daily workflows instead of proof that the product is already a broad platform.
 
 Kept change: one roadmap positioning rewrite, one docs regression guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fiftieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: `projscan start` now exposes the three daily workflows, but the normal
+console still printed them after Mission Control, execution plans, proof queues,
+review gates, risks, and onboarding. For humans, that meant feature breadth
+still arrived before the workflows engineers should repeat every day.
+
+Smallest fix: move the existing `Daily Workflows` console section immediately
+after the workflow header and before Mission Control. Keep the workflow content
+and `StartReport` JSON shape unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts tests/core/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Console Workflow Priority
+
+Delete-list after this slice:
+
+- Do not change route selection, scoring, Mission Control, proof semantics, or
+  daily workflow definitions.
+- Do not remove Mission Control, review gates, top risks, onboarding, or proof
+  queues; only reorder the existing console section.
+- Do not add a new JSON field, command, dependency, release action, telemetry,
+  or schema change.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: console output should show `Daily Workflows` before
+`Mission Control` and still before `First 10 Minutes`; JSON output should keep
+the same report structure.
+
+Kept change: one console ordering adjustment, one CLI ordering assertion, this
+persona note, and no release action in this slice.
