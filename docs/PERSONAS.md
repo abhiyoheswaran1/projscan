@@ -11223,3 +11223,50 @@ preflight verdict into a block by itself.
 Kept change: additive preflight coordination proof fields, one focused
 preflight coordination behavior guard, this persona note, and no release action
 in this slice.
+
+## Two Hundred Thirty Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: release-train is the planning surface agents use to decide which proof
+commands belong to a product line. The 4.6 swarm task said preflight evidence
+must stay separated from session memory, but its verification commands skipped
+preflight, so agents could miss the pre-edit safety gate while following the
+roadmap output.
+
+Smallest fix: add `projscan preflight --mode before_edit --format json` to the
+4.6 swarm coordination task after `projscan coordinate --format json` and before
+`projscan agent-brief --format json`; leave all existing commands and the
+read-only release-train plan intact.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/releaseTrain.test.ts
+npm exec projscan -- release-train --format json
+npm exec projscan -- file src/core/roadmapCatalog.ts --format json
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Review Guardrails: Release-Train Preflight Coordination Proof
+
+Delete-list after this slice:
+
+- Do not change preflight, collision, coordinate, claim, merge-risk, or
+  agent-brief algorithms.
+- Do not remove or reorder the existing collision, coordinate, or agent-brief
+  verification commands except to insert the preflight proof gate between
+  coordinate and agent-brief.
+- Do not change release-train schema, package version, publish behavior, push
+  behavior, tags, or releases.
+
+Reviewer edge case: `projscan release-train --format json` for 4.4 and newer
+must still default to the same post-4.4 lines and remain read-only; only the
+4.6 swarm task's verification command list changes.
+
+Kept change: one release-train catalog command insertion, one focused
+release-train behavior guard, this persona note, and no release action in this
+slice.

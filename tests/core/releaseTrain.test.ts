@@ -203,6 +203,15 @@ test('release train defaults to the post-4.4 product plan for 4.4 and newer', as
   expect(report.tasks.find((task) => task.id === 'rt-4-8-scoped-redacted-evidence')?.files).toEqual(
     expect.arrayContaining(['src/core/reportScope.ts', 'src/reporters/sarifReporter.ts']),
   );
+  expect(
+    report.tasks.find((task) => task.id === 'rt-4-6-swarm-coordination-validation')?.verification
+      .commands,
+  ).toEqual([
+    'projscan collisions --format json',
+    'projscan coordinate --format json',
+    'projscan preflight --mode before_edit --format json',
+    'projscan agent-brief --format json',
+  ]);
 });
 
 test('release train keeps fallback tracks and tasks out of the core planner', async () => {

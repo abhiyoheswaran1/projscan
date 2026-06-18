@@ -400,10 +400,11 @@ const ROADMAP_3_2_CATALOG: Record<string, RoadmapCatalogEntry> = {
           commands: [
             'projscan collisions --format json',
             'projscan coordinate --format json',
+            'projscan preflight --mode before_edit --format json',
             'projscan agent-brief --format json',
           ],
           expected:
-            'Coordination evidence names the active command path, current worktree state, and local-only validation workflow.',
+            'Coordination evidence names the active command path, current worktree state, preflight proof path, and local-only validation workflow.',
         },
       },
     ],

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Align release-train swarm proof with preflight coordination evidence
+
+- Status: accepted
+- Context: The post-4.4 release-train swarm coordination task already required preflight coordination evidence to stay separated from remembered session context, but its verification command list only named collisions, coordinate, and agent-brief.
+- Decision: Add `projscan preflight --mode before_edit --format json` to the 4.6 swarm coordination validation task between the one-call coordination verdict and the agent handoff packet.
+- Consequences: Release-train planning stays read-only and keeps existing commands while making the pre-edit safety gate part of the swarm proof path agents follow from roadmap guidance.
+- Verification: Release-train coverage failed before the preflight command was present in the 4.6 task and passed after the catalog update.
+
 ## 2026-06-18: Add preflight coordination proof path
 
 - Status: accepted
