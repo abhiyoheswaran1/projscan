@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start product-planning route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still owned product-planning workplan route detection and bug-hunt criteria after other route-specific helper extractions, while `startMode` depended on the route detector through the main facade.
+- Decision: Move `isProductPlanningWorkplanRoute` and product-planning success-criteria assembly into `src/core/startProductPlanningRouteCriteria.ts`, while re-exporting the detector from `src/core/startSuccessCriteria.ts`.
+- Consequences: High-confidence product workplan routes still infer bug-hunt mode and get the same accept/defer/split criteria only in bug-hunt mode. Existing internal imports stay stable.
+- Verification: Architecture coverage failed before the helper existed and passed after extraction; focused start planning and success-criteria tests preserve generic build-next and product-roadmap routing behavior.
+
 ## 2026-06-18: Extract start impact route criteria helper
 
 - Status: accepted

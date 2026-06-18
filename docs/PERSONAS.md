@@ -11412,3 +11412,52 @@ general impact review criteria.
 Kept change: one impact-route criteria helper, one architecture guard, existing
 impact behavior coverage, this persona note, and no release action in this
 slice.
+
+## Two Hundred Fortieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: product-planning routing is where broad "what should we build next?"
+and explicit roadmap questions diverge. The route detector is also used by
+workflow-mode inference, so it should be small and reviewable rather than
+buried in the Mission Control criteria resolver.
+
+Smallest fix: move product-planning workplan route detection and the
+bug-hunt-only product-planning success criteria into
+`src/core/startProductPlanningRouteCriteria.ts`; re-export
+`isProductPlanningWorkplanRoute` from `src/core/startSuccessCriteria.ts` so
+current imports remain stable.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startProductPlanningRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Product-Planning Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change product-planning criteria wording, bug-hunt gating, generic
+  build-next routing, product-roadmap routing, workflow-mode inference,
+  resolver ordering, route ranking, Mission Control schemas, public types,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not move unrelated dynamic criteria for claim, impact, preflight,
+  dependencies, regression, file, understand, fixed routes, or coupling into
+  the product-planning helper.
+- Do not broaden this into Mission Control redesign or roadmap catalog changes.
+
+Reviewer edge case: `what should we build next?` must still route to a
+before-edit workplan, while explicit product-planning workplan routes in
+bug-hunt mode must still get the accept/defer/split success criteria.
+
+Kept change: one product-planning criteria helper, one architecture guard,
+existing planning-route behavior coverage, this persona note, and no release
+action in this slice.

@@ -170,6 +170,33 @@ describe('Mission Control success criteria', () => {
     expect(impactCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps product-planning criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const productPlanningCriteriaPath = path.join(
+      process.cwd(),
+      'src/core/startProductPlanningRouteCriteria.ts',
+    );
+    const helperExists = await fs
+      .access(productPlanningCriteriaPath)
+      .then(() => true)
+      .catch(() => false);
+
+    expect(helperExists).toBe(true);
+    if (!helperExists) return;
+
+    const productPlanningCriteria = await fs.readFile(productPlanningCriteriaPath, 'utf-8');
+    expect(source).toContain("from './startProductPlanningRouteCriteria.js'");
+    expect(source).toContain('export { isProductPlanningWorkplanRoute }');
+    expect(source).not.toContain('function isProductPlanningWorkplanRoute');
+    expect(source).not.toContain('function productPlanningSuccessCriteria');
+    expect(productPlanningCriteria).toContain('export function isProductPlanningWorkplanRoute');
+    expect(productPlanningCriteria).toContain('export function productPlanningSuccessCriteria');
+    expect(productPlanningCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
