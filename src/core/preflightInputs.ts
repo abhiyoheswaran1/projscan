@@ -42,6 +42,8 @@ export async function loadPreflightInputs(
   };
 }
 
+export type PreflightInputs = Awaited<ReturnType<typeof loadPreflightInputs>>;
+
 async function collectIssuesWithPluginOption(
   rootPath: string,
   files: FileEntry[],

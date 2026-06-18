@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract preflight report assembly helper
+
+- Status: accepted
+- Context: `src/core/preflight.ts` remained a high-churn safety-gate hotspot and still owned release-scale evidence, reason assembly, verdict/evidence/report shaping, truncation, required checks, suggested actions, tool calls, and summary assembly inside `computePreflight`.
+- Decision: Move preflight report assembly into `src/core/preflightReport.ts`, while keeping mode/default option handling, input loading, `computePreflight(rootPath, options)`, `ComputePreflightOptions`, and preflight verdict re-exports in `src/core/preflight.ts`.
+- Consequences: Input collection, mode defaults, max changed-file defaults, release-scale manual sign-off handling, required checks, suggested actions, tool calls, truncation, summary text, and report schema stay unchanged. The public preflight facade no longer imports report-shaping dependencies directly.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused preflight behavior and release-scale tests passed, and focused `projscan file` checks showed no issues in `src/core/preflight.ts` or `src/core/preflightReport.ts`.
+
 ## 2026-06-18: Extract review computation helper
 
 - Status: accepted

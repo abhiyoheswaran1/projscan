@@ -10754,3 +10754,53 @@ annotation before returning.
 
 Kept change: one review computation helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Twenty Sixth Slice Decision
+
+Selected personas: Platform And Release Owner, Security-Conscious Reviewer, and
+Agent-Orchestrating Engineer.
+
+Reason: `computePreflight` is the local safety gate agents run before edits,
+commits, and merge handoffs. Input collection was already isolated, but the
+public preflight facade still assembled release-scale evidence, reasons,
+verdicts, evidence, required checks, suggested actions, tool calls, truncation,
+and summary text in one hotspot.
+
+Smallest fix: move final report assembly into `src/core/preflightReport.ts`;
+keep mode defaults, `maxChangedFiles` defaults, input loading, public
+`computePreflight(rootPath, options)`, `ComputePreflightOptions`, and preflight
+verdict re-exports in `src/core/preflight.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflightArchitecture.test.ts
+npm run test -- tests/core/preflight.test.ts
+npm run test -- tests/core/preflightReleaseScale.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightReport.ts --format json
+```
+
+## Review Guardrails: Preflight Report Assembly Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight input collection, issue collection, plugin execution
+  policy, changed-file detection, review evidence, coordination evidence,
+  release-scale thresholds, verdict rules, required check semantics, suggested
+  action text, tool-call shapes, output schemas, dependencies, lockfiles,
+  publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/preflight.ts` inside the report helper; the
+  helper must remain leaf-side of the public preflight facade.
+- Do not broaden this into bug-hunt conversion, release evidence, MCP/CLI
+  payloads, or AgentLoop/AgentFlight harness behavior.
+
+Reviewer edge case: before-commit and before-merge scale-only review blocks
+must still become manual sign-off cautions, not hard blocks, and large evidence
+payloads must still set `truncated: true`.
+
+Kept change: one preflight report helper, one architecture guard, this persona
+note, and no release action in this slice.

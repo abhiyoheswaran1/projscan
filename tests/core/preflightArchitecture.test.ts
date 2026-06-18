@@ -5,6 +5,36 @@ import { buildCodeGraph } from '../../src/core/codeGraph.js';
 import { inspectFile } from '../../src/core/fileInspector.js';
 import type { FileEntry } from '../../src/types.js';
 
+test('preflight keeps report assembly isolated from the public preflight facade', async () => {
+  const preflightSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflight.ts'),
+    'utf-8',
+  );
+  expect(preflightSource).toContain("from './preflightReport.js'");
+  expect(preflightSource).not.toContain('buildReleaseScaleEvidence(');
+  expect(preflightSource).not.toContain('buildPreflightReasons(');
+  expect(preflightSource).not.toContain('buildEvidence(');
+  expect(preflightSource).not.toContain('buildRequiredChecks(');
+  expect(preflightSource).not.toContain('buildSuggestedActions(');
+  expect(preflightSource).not.toContain('buildToolCalls(');
+  expect(preflightSource).not.toContain('summarizePreflight(report)');
+
+  const reportSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflightReport.ts'),
+    'utf-8',
+  );
+  expect(reportSource).toContain("from './preflightEvidence.js'");
+  expect(reportSource).toContain("from './preflightReasons.js'");
+  expect(reportSource).toContain("from './preflightReleaseScale.js'");
+  expect(reportSource).toContain("from './preflightVerdict.js'");
+  expect(reportSource).not.toContain("from './preflight.js'");
+
+  const report = await inspectRepoSourceFile('src/core/preflightReport.ts');
+  const build = report.functions?.find((fn) => fn.name === 'buildPreflightReport');
+  expect(build).toBeDefined();
+  expect(build!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+});
+
 test('preflight keeps policy issue reason formatting isolated from the reason orchestrator', async () => {
   const preflightSource = await fs.readFile(
     path.join(process.cwd(), 'src/core/preflight.ts'),
@@ -122,7 +152,12 @@ test('preflight keeps reason assembly isolated from the main preflight module', 
     path.join(process.cwd(), 'src/core/preflight.ts'),
     'utf-8',
   );
-  expect(preflightSource).toContain("from './preflightReasons.js'");
+  const reportSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflightReport.ts'),
+    'utf-8',
+  );
+  expect(reportSource).toContain("from './preflightReasons.js'");
+  expect(preflightSource).not.toContain("from './preflightReasons.js'");
   expect(preflightSource).not.toContain('function buildPreflightReasons');
   expect(preflightSource).not.toContain('function countSupplyChainIssues');
 
@@ -204,9 +239,14 @@ test('preflight keeps report truncation policy isolated from the main preflight 
     path.join(process.cwd(), 'src/core/preflight.ts'),
     'utf-8',
   );
+  const reportSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflightReport.ts'),
+    'utf-8',
+  );
   expect(preflightSource).not.toContain('MAX_PREFLIGHT_EVIDENCE_FILES');
   expect(preflightSource).not.toContain('evidence.session?.truncated');
-  expect(preflightSource).toContain('isPreflightReportTruncated({ evidence, changedFiles })');
+  expect(preflightSource).not.toContain('isPreflightReportTruncated(');
+  expect(reportSource).toContain('isPreflightReportTruncated({ evidence, changedFiles })');
 
   const truncation = await inspectRepoSourceFile('src/core/preflightTruncation.ts');
   const entrypoint = truncation.functions?.find((fn) => fn.name === 'isPreflightReportTruncated');
