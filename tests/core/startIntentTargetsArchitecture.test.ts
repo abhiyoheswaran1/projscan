@@ -191,4 +191,26 @@ describe('Mission Control intent target architecture', () => {
     expect(infraSource).toContain('export function extractInfraArtifactQuery');
     expect(infraSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps tooling config search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const toolingPath = path.join(
+      process.cwd(),
+      'src/core/startIntentToolingConfigQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractToolingConfigQuery } from './startIntentToolingConfigQueries.js';",
+    );
+    expect(targetSource).not.toContain('TOOLING_CONFIG_RULES');
+    expect(targetSource).not.toContain('function lockfileQuery');
+
+    expect(existsSync(toolingPath)).toBe(true);
+    const toolingSource = readFileSync(toolingPath, 'utf8');
+    expect(toolingSource).toContain('export function extractToolingConfigQuery');
+    expect(toolingSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

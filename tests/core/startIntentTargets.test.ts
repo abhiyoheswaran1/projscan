@@ -43,6 +43,7 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is Terraform module for S3?')).toBe(
       'S3 Terraform module',
     );
+    expect(extractSearchQuery('where is pnpm lockfile?')).toBe('pnpm lockfile');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
