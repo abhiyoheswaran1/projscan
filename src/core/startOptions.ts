@@ -1,8 +1,12 @@
-import { resolveStartMode, type StartModeResolution } from './startMode.js';
+import {
+  resolveStartMode,
+  type StartModeInput,
+  type StartModeResolution,
+} from './startMode.js';
 import type { WorkplanMode } from '../types.js';
 
 export interface ComputeStartOptions {
-  mode?: WorkplanMode;
+  mode?: StartModeInput;
   intent?: string;
   missionDir?: string;
   maxTasks?: number;

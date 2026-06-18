@@ -5,7 +5,7 @@ export function registerStartOptions(command: Command): Command {
   return command
     .option(
       '--mode <mode>',
-      'before_edit, before_commit, before_merge, refactor, release, bug_hunt, or hardening',
+      'before_edit, before_handoff, before_commit, before_merge, refactor, release, bug_hunt, or hardening',
     )
     .option('--intent <text>', 'plain-language goal to route into the next best action')
     .option('--mission <dir>', 'read an existing Mission Control bundle and include proof outcome')

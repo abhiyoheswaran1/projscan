@@ -18,6 +18,8 @@ interface ModeResolverContext {
 
 type ModeResolver = (context: ModeResolverContext) => WorkplanMode | undefined;
 
+export type StartModeInput = WorkplanMode | 'before_handoff';
+
 const MODE_RESOLVERS: readonly ModeResolver[] = [
   releaseMode,
   bugHuntMode,
@@ -36,14 +38,18 @@ const MODE_RESOLVERS: readonly ModeResolver[] = [
 ];
 
 export function resolveStartMode(
-  value: WorkplanMode | undefined,
+  value: StartModeInput | undefined,
   intent: string | undefined,
 ): StartModeResolution {
-  if (typeof value === 'string' && isWorkplanMode(value)) {
+  const explicitMode = typeof value === 'string' ? normalizeStartModeInput(value) : undefined;
+  if (explicitMode) {
     return {
-      mode: value,
+      mode: explicitMode,
       source: 'explicit',
-      reason: `Mode ${value} was provided explicitly.`,
+      reason:
+        explicitMode === value
+          ? `Mode ${value} was provided explicitly.`
+          : `Mode ${value} was provided explicitly and maps to ${explicitMode}.`,
     };
   }
   const inferred = inferModeFromIntent(intent);
@@ -59,6 +65,15 @@ export function resolveStartMode(
     source: 'default',
     reason: defaultModeReason(intent, routesForIntent(intent).length > 0),
   };
+}
+
+export function isStartModeInput(value: string): value is StartModeInput {
+  return normalizeStartModeInput(value) !== undefined;
+}
+
+function normalizeStartModeInput(value: string): WorkplanMode | undefined {
+  if (value === 'before_handoff') return 'before_commit';
+  return isWorkplanMode(value) ? value : undefined;
 }
 
 export function inferModeFromIntent(intent: string | undefined): WorkplanMode | undefined {

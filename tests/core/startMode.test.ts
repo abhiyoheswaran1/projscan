@@ -14,6 +14,14 @@ test('start mode resolution preserves explicit mode and reason text', () => {
   });
 });
 
+test('start mode resolution treats before_handoff as the before_commit workflow alias', () => {
+  expect(resolveStartMode('before_handoff', undefined)).toEqual({
+    mode: 'before_commit',
+    source: 'explicit',
+    reason: 'Mode before_handoff was provided explicitly and maps to before_commit.',
+  });
+});
+
 test('start mode resolution infers workflows from routed intent', () => {
   const cases = [
     ['prepare this branch for release', 'release'],

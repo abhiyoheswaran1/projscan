@@ -7,7 +7,7 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeStartReport, type ComputeStartOptions } from '../../core/start.js';
-import { isWorkplanMode } from '../../core/workplan.js';
+import { isStartModeInput, type StartModeInput } from '../../core/startMode.js';
 import { handleStartOutput, type StartOutputOptions } from './startOutput.js';
 import type { ReportFormat } from '../../types.js';
 import type { StartReport } from '../../types/start.js';
@@ -88,7 +88,7 @@ export async function runStartAction(
     await deps.handleStartOutput(report, {
       rootPath,
       format,
-      mode,
+      mode: report.mode,
       intent,
       options: cmdOpts,
     });
@@ -101,13 +101,13 @@ export async function runStartAction(
 export function parseStartMode(
   value: unknown,
   deps: StartExitDependencies = defaultExitDependencies,
-): WorkplanMode | undefined {
+): StartModeInput | undefined {
   if (typeof value === 'undefined') return undefined;
-  if (typeof value === 'string' && isWorkplanMode(value)) return value;
+  if (typeof value === 'string' && isStartModeInput(value)) return value;
   deps.logError(chalk.red(`Unsupported --mode ${String(value)}.`));
   deps.logError(
     chalk.dim(
-      'Supported modes: before_edit, before_commit, before_merge, refactor, release, bug_hunt, hardening',
+      'Supported modes: before_edit, before_handoff, before_commit, before_merge, refactor, release, bug_hunt, hardening',
     ),
   );
   deps.exit(1);

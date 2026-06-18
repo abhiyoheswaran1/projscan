@@ -42,6 +42,19 @@ test('start renders machine-readable orientation JSON', async () => {
   expect(report.nextActions.length).toBeGreaterThan(0);
 });
 
+test('start accepts before_handoff as the before_commit workflow alias', async () => {
+  const result = await runCli(['start', '--mode', 'before_handoff', '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('explicit');
+  expect(report.modeReason).toBe(
+    'Mode before_handoff was provided explicitly and maps to before_commit.',
+  );
+  expect(report.recommendedWorkflow.id).toBe('before_handoff');
+});
+
 test('start console prints trusted daily workflows before broad onboarding', async () => {
   const result = await runCli(['start', '--mode', 'before_edit', '--quiet']);
 
