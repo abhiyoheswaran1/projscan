@@ -38,7 +38,11 @@ import {
   resolveStabilityPaths,
   writeBaseline,
 } from './stability-files.mjs';
-import { printStabilityReport } from './stability-report.mjs';
+import {
+  printStabilityError,
+  printStabilityReport,
+  printStabilityUpdateReport,
+} from './stability-report.mjs';
 
 export { compareStableSurface, createStableSurface };
 
@@ -73,9 +77,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   const args = new Set(argv);
   if (args.has('--update')) {
     const report = await updateStabilityBaseline();
-    console.log(`✓ stability baseline updated at ${report.baselinePath}`);
-    console.log('  Only do this on a deliberate major version bump or when intentionally');
-    console.log('  expanding the stable surface (e.g. promoting a tool to GA).');
+    printStabilityUpdateReport(report);
     return 0;
   }
 
@@ -88,7 +90,7 @@ if (path.resolve(process.argv[1] ?? '') === scriptPath) {
   try {
     process.exit(await runCli());
   } catch (err) {
-    console.error(err instanceof Error ? err.message : String(err));
+    printStabilityError(err);
     process.exit(1);
   }
 }

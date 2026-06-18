@@ -19,3 +19,13 @@ export function printStabilityReport(report) {
       'to refresh the baseline. Otherwise, restore the removed/renamed surface.',
   );
 }
+
+export function printStabilityUpdateReport(report) {
+  console.log(`✓ stability baseline updated at ${report.baselinePath}`);
+  console.log('  Only do this on a deliberate major version bump or when intentionally');
+  console.log('  expanding the stable surface (e.g. promoting a tool to GA).');
+}
+
+export function printStabilityError(err) {
+  console.error(err instanceof Error ? err.message : String(err));
+}

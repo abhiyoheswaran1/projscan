@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { compareStableSurface, createStableSurface } from '../../scripts/check-stability.mjs';
+import { printStabilityError, printStabilityUpdateReport } from '../../scripts/stability-report.mjs';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('stable surface check', () => {
   it('builds the default stable CLI and exit-code contract', () => {
@@ -103,5 +108,32 @@ describe('stable surface check', () => {
       'REMOVED CLI command: taint',
       'exit code "issues" changed: 1 → 2',
     ]);
+  });
+
+  it('prints update guidance from the stability reporter', () => {
+    const messages: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((message = '') => {
+      messages.push(String(message));
+    });
+
+    printStabilityUpdateReport({ baselinePath: 'stability-baseline.json' });
+
+    expect(messages).toEqual([
+      '✓ stability baseline updated at stability-baseline.json',
+      '  Only do this on a deliberate major version bump or when intentionally',
+      '  expanding the stable surface (e.g. promoting a tool to GA).',
+    ]);
+  });
+
+  it('prints thrown errors from the stability reporter', () => {
+    const errors: string[] = [];
+    vi.spyOn(console, 'error').mockImplementation((message = '') => {
+      errors.push(String(message));
+    });
+
+    printStabilityError(new Error('manifest missing'));
+    printStabilityError('plain failure');
+
+    expect(errors).toEqual(['manifest missing', 'plain failure']);
   });
 });
