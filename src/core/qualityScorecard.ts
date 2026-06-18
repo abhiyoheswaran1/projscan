@@ -23,6 +23,8 @@ export interface ComputeQualityScorecardOptions {
 }
 
 const DEFAULT_MAX_RISKS = 8;
+const MAINTAINABILITY_HOTSPOT_LINE_THRESHOLD = 300;
+const MAINTAINABILITY_HOTSPOT_COMPLEXITY_THRESHOLD = 15;
 
 export async function computeQualityScorecard(
   rootPath: string,
@@ -122,28 +124,7 @@ function buildDimensions(
       'projscan doctor --format json',
       'npm test',
     ]),
-    {
-      id: 'maintainability',
-      label: 'Maintainability',
-      status: maintainabilityIssues.some((issue) => issue.severity === 'error')
-        ? 'fail'
-        : hotspots.length > 0 || maintainabilityIssues.length > 0
-          ? 'watch'
-          : 'pass',
-      score: clampScore(
-        100 -
-          maintainabilityIssues.length * 10 -
-          hotspots.filter((hotspot) => hotspot.riskScore >= 70).length * 12,
-      ),
-      summary: `${maintainabilityIssues.length} maintainability issue(s), ${hotspots.length} hotspot(s)`,
-      evidence: [
-        ...maintainabilityIssues.slice(0, 3).map((issue) => issue.title),
-        ...hotspots
-          .slice(0, 3)
-          .map((hotspot) => `${hotspot.relativePath}: risk ${Math.round(hotspot.riskScore)}`),
-      ],
-      commands: ['projscan hotspots --format json', 'projscan quality-scorecard --format json'],
-    },
+    buildMaintainabilityDimension(maintainabilityIssues, hotspots),
     {
       id: 'coordination',
       label: 'Coordination',
@@ -162,6 +143,39 @@ function buildDimensions(
       commands: ['projscan session touched --format json', 'projscan agent-brief --format json'],
     },
   ];
+}
+
+function buildMaintainabilityDimension(
+  maintainabilityIssues: Issue[],
+  hotspots: FileHotspot[],
+): QualityScorecardDimension {
+  const penaltyHotspots = hotspots.filter(isMaintainabilityPenaltyHotspot);
+  return {
+    id: 'maintainability',
+    label: 'Maintainability',
+    status: maintainabilityIssues.some((issue) => issue.severity === 'error')
+      ? 'fail'
+      : hotspots.length > 0 || maintainabilityIssues.length > 0
+        ? 'watch'
+        : 'pass',
+    score: clampScore(100 - maintainabilityIssues.length * 10 - penaltyHotspots.length * 12),
+    summary: `${maintainabilityIssues.length} maintainability issue(s), ${hotspots.length} hotspot(s)`,
+    evidence: [
+      ...maintainabilityIssues.slice(0, 3).map((issue) => issue.title),
+      ...hotspots
+        .slice(0, 3)
+        .map((hotspot) => `${hotspot.relativePath}: risk ${Math.round(hotspot.riskScore)}`),
+    ],
+    commands: ['projscan hotspots --format json', 'projscan quality-scorecard --format json'],
+  };
+}
+
+function isMaintainabilityPenaltyHotspot(hotspot: FileHotspot): boolean {
+  return (
+    hotspot.issueCount > 0 ||
+    hotspot.lineCount >= MAINTAINABILITY_HOTSPOT_LINE_THRESHOLD ||
+    (hotspot.cyclomaticComplexity ?? 0) >= MAINTAINABILITY_HOTSPOT_COMPLEXITY_THRESHOLD
+  );
 }
 
 function issueDimension(
