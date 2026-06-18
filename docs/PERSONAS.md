@@ -11507,3 +11507,52 @@ parallel-work review criteria.
 Kept change: one claim-route criteria helper, one architecture guard, existing
 coordination-routing behavior coverage, this persona note, and no release
 action in this slice.
+
+## Two Hundred Forty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: `src/types/start.ts` is the public Mission Control contract surface and
+had grown to 515 lines with high fan-in. Downstream users need stable imports,
+while maintainers need smaller files for reviewing proof, review-gate, resume,
+execution-plan, and final-report shape changes.
+
+Smallest fix: split the declarations into type-only modules for common start
+metadata, execution plans, Mission Control, proof reports, resume/runbook
+contracts, review gates, and tool calls; keep `src/types/start.ts` as a
+compatibility re-export module.
+
+Proof commands:
+
+```bash
+npm run test -- tests/types/public-start-quality-types.test.ts
+npm run typecheck:public-types
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/types/start.ts --format json
+npm exec projscan -- file src/types/startMissionControl.ts --format json
+npm exec projscan -- file src/types/startCommon.ts --format json
+```
+
+## Review Guardrails: Start Public Type Module Extraction
+
+Delete-list after this slice:
+
+- Do not rename, remove, or reshape public start types exported from
+  `src/types/start.ts`, `src/types.ts`, or `src/index.ts`.
+- Do not change Mission Control JSON, CLI output, MCP output, generated
+  manifests, runtime behavior, dependencies, lockfiles, package version,
+  publish behavior, push behavior, tags, or releases.
+- Do not broaden this into a public schema redesign; this is a compatibility
+  extraction only.
+
+Reviewer edge case: imports of `StartReport`, `MissionOutcome`,
+`MissionProofReport`, `StartMissionReviewGate`, and tool-call contracts must
+still compile from `src/types/start.ts`, the legacy barrel, and the package
+entrypoint.
+
+Kept change: focused start type modules, one public-type architecture guard,
+existing public type compatibility coverage, this persona note, and no release
+action in this slice.

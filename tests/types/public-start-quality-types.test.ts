@@ -1,4 +1,6 @@
 import { expect, test } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import '../../src/types/start.js';
 import '../../src/types/qualityScorecard.js';
 import type {
@@ -420,4 +422,16 @@ test('start and quality public types compile from focused modules and compatibil
   expect(barrelMissionOutcome.status).toBe('passed');
   expect(barrelMissionProofReport.missionControl.totals.passed).toBe(1);
   expect(entryQualityReport.verdict).toBe('needs_attention');
+});
+
+test('start public type compatibility module delegates to focused type modules', async () => {
+  const source = await fs.readFile(path.join(process.cwd(), 'src/types/start.ts'), 'utf-8');
+
+  expect(source).toContain("export type * from './startExecution.js'");
+  expect(source).toContain("export type * from './startMissionControl.js'");
+  expect(source).toContain("export type * from './startMissionProof.js'");
+  expect(source).toContain("export type * from './startMissionReview.js'");
+  expect(source).not.toContain('export interface StartReport');
+  expect(source).not.toContain('export interface MissionOutcome');
+  expect(source.split('\n').length).toBeLessThan(80);
 });

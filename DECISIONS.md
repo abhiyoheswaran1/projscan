@@ -2553,3 +2553,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the Commander `.option(...)` chain into `src/cli/commands/startOptionsRegistration.ts`. Keep `registerStart()` as the command facade that creates the `start` command, sets its description, applies the option helper, and wires `runStartCommandAction`.
 - Consequences: Start option names, descriptions, parser callbacks, action wiring, CLI help, Mission Control routing, and output schemas remain unchanged. Future option-list changes can land in one focused helper while the command facade stays stable.
 - Verification: `npm run test -- tests/cli/startCommandArchitecture.test.ts` failed before the helper existed and `start.ts` delegated option registration, then passed after extraction. AgentLoop task verification passed for the architecture guard, typecheck, lint, build, rebuilt start CLI JSON behavior, rebuilt shortcut CLI behavior, and `projscan file` checks. Post-slice bug pass reported a clean doctor result and no concrete new review defects; remaining bug-hunt output is the known release-scale manual sign-off only.
+
+## 2026-06-18: Extract start public type modules
+
+- Status: accepted
+- Context: `src/types/start.ts` had grown into a 515-line public type surface with 47 fan-in, making Mission Control, proof, review-gate, and final report contracts hard to audit in one file.
+- Decision: Split the declarations into focused type-only modules for common start metadata, execution plans, Mission Control, proof reports, resume/runbook contracts, review gates, and tool calls. Keep `src/types/start.ts` as the compatibility re-export surface.
+- Consequences: Existing imports from `src/types/start.ts`, the legacy `src/types.ts` barrel, and the package entrypoint keep the same exported type names and shapes. Future public type changes can be reviewed in smaller files.
+- Verification: `npm run test -- tests/types/public-start-quality-types.test.ts` failed before `src/types/start.ts` delegated to focused modules, then passed after extraction. `npm run typecheck:public-types` and `npm run typecheck` also passed during implementation.
