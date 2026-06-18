@@ -11177,3 +11177,49 @@ fan-in/fan-out/instability criteria.
 Kept change: one coupling-route criteria helper, one architecture guard, one
 coupling criteria matrix, this persona note, and no release action in this
 slice.
+
+## Two Hundred Thirty Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: preflight is the command agents already run before edits, commits, and
+merges. It had coordination readiness counts, but not the local-only proof path
+that `coordinate` and agent-brief already expose, which made swarm handoffs ask
+reviewers to trust a count without seeing the validation commands and
+session-boundary reminder.
+
+Smallest fix: copy optional coordination proof fields from
+`CoordinationSummary.evidence` into `preflight.evidence.coordination` while
+leaving the existing readiness and count fields unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflightCoordination.test.ts tests/core/agentBrief.test.ts tests/core/preflightArchitecture.test.ts
+npm exec projscan -- preflight --mode before_edit --format json
+npm exec projscan -- coordinate --format json
+npm exec projscan -- file src/core/preflightEvidence.ts --format json
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Review Guardrails: Preflight Coordination Proof Path
+
+Delete-list after this slice:
+
+- Do not change preflight verdict thresholds, coordination/collision algorithms,
+  route ranking, schema version, dependencies, lockfiles, package version,
+  publish behavior, push behavior, tags, or releases.
+- Do not remove or rename existing `evidence.coordination` fields.
+- Do not make coordination evidence mandatory when the coordination summary is
+  unavailable or degraded.
+
+Reviewer edge case: preflight must remain advisory for coordination findings;
+swarm coordination can produce a caution reason, but it must not turn the
+preflight verdict into a block by itself.
+
+Kept change: additive preflight coordination proof fields, one focused
+preflight coordination behavior guard, this persona note, and no release action
+in this slice.

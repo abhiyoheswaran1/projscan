@@ -181,6 +181,7 @@ function supplyChainEvidence(issues: Issue[]): NonNullable<PreflightEvidence['su
 function coordinationEvidence(
   coordination: CoordinationSummary,
 ): NonNullable<PreflightEvidence['coordination']> {
+  const evidence = coordination.evidence;
   return {
     available: true,
     readiness: coordination.readiness,
@@ -190,5 +191,15 @@ function coordinationEvidence(
       medium: coordination.collisions.medium,
     },
     contendedClaims: coordination.claims.contendedTargets,
+    ...(evidence
+      ? {
+          commandPath: evidence.commandPath,
+          command: evidence.command,
+          localOnly: evidence.localOnly,
+          currentWorktree: evidence.currentWorktree,
+          validationWorkflow: evidence.validationWorkflow,
+          sessionSeparation: evidence.sessionSeparation,
+        }
+      : {}),
   };
 }

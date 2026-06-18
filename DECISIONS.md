@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Add preflight coordination proof path
+
+- Status: accepted
+- Context: `projscan preflight` exposed compact coordination readiness counts, but not the command path, local-only source marker, current worktree summary, validation workflow, or session-boundary reminder already emitted by `projscan coordinate` and agent-brief coordination hints.
+- Decision: Preserve the existing `evidence.coordination` fields and add optional proof fields copied from `CoordinationSummary.evidence` when coordination evidence is available.
+- Consequences: Preflight JSON remains schema-compatible and additive while giving agent handoffs the same local-only coordination proof path before edits, commits, and merges.
+- Verification: Focused preflight coordination coverage failed before `commandPath` was present and passed after the additive fields were copied into preflight evidence.
+
 ## 2026-06-18: Extract start coupling route criteria helper
 
 - Status: accepted

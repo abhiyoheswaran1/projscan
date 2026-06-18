@@ -43,6 +43,23 @@ test('preflight surfaces swarm-coordination evidence and a caution (not block) a
   expect(report.evidence.coordination?.available).toBe(true);
   expect(report.evidence.coordination?.readiness).toBe('conflicted');
   expect(report.evidence.coordination?.collisions.high).toBeGreaterThanOrEqual(1);
+  expect(report.evidence.coordination?.commandPath).toBe('projscan coordinate');
+  expect(report.evidence.coordination?.command).toBe('projscan coordinate --format json');
+  expect(report.evidence.coordination?.localOnly).toBe(true);
+  expect(report.evidence.coordination?.currentWorktree?.branch).toBe('main');
+  expect(
+    report.evidence.coordination?.currentWorktree?.uncommittedChangedFileCount,
+  ).toBeGreaterThanOrEqual(1);
+  expect(report.evidence.coordination?.validationWorkflow?.map((step) => step.command)).toEqual(
+    expect.arrayContaining([
+      'projscan coordinate --format json',
+      'projscan coordinate --watch --interval 5 --format json',
+      'projscan agent-brief --format json',
+    ]),
+  );
+  expect(report.evidence.coordination?.sessionSeparation?.rememberedContext).toContain(
+    'Remembered session context',
+  );
   const coordReason = report.reasons.find((r) => r.source === 'coordination');
   expect(coordReason).toBeDefined();
   // Advisory only - coordination contributes a warning (caution), never an error/block.

@@ -122,6 +122,22 @@ export interface PreflightEvidence {
     worktreeCount: number;
     collisions: { high: number; medium: number };
     contendedClaims: number;
+    commandPath?: string;
+    command?: string;
+    localOnly?: true;
+    currentWorktree?: {
+      path: string;
+      branch: string | null;
+      changedFileCount: number;
+      uncommittedChangedFileCount: number;
+      baseRef: string | null;
+    } | null;
+    validationWorkflow?: Array<{ command: string; purpose: string }>;
+    sessionSeparation?: {
+      currentEvidence: string;
+      rememberedContext: string;
+      command: string;
+    };
   };
 }
 

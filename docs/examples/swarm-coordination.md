@@ -66,6 +66,10 @@ When multiple worktrees are present, `agent-brief` also carries a
 to validate locally with `projscan coordinate --format json`,
 `projscan coordinate --watch --interval 5 --format json`, and
 `projscan agent-brief --format json` before continuing parallel edits.
+`preflight` also carries this proof path under `evidence.coordination`: it keeps
+the compact readiness counts and adds the local-only command path, current
+worktree summary, validation workflow, and session-boundary reminder used by
+`coordinate`.
 
 For MCP clients that support long-running notifications, use the watch tool:
 
@@ -121,5 +125,5 @@ These are the next hardening targets for real swarm usage:
 - transitive collision recall: prove dependent-file conflicts are caught, not
   only same-file conflicts
 - live watch adoption: prove agents notice and act on coordination changes
-- preflight and agent-brief integration: prove the same coordination facts show
-  up where agents already look before editing or handing off
+- preflight and handoff adoption: prove agents consistently cite the shared
+  coordination proof path before editing, committing, and handing off
