@@ -7,7 +7,7 @@
 [![node](https://img.shields.io/node/v/projscan.svg)](https://nodejs.org)
 [![projscan health](https://img.shields.io/badge/projscan-A-brightgreen)](#quick-start)
 
-**Agent-first code intelligence.** An MCP server that lets AI coding agents (Claude Code, Codex, Cursor, Gemini, Windsurf, Cline, Continue, Zed — any MCP-aware client) query your codebase — with a CLI for humans and a local plugin layer for team-specific policy and reporting.
+**Local proof for AI-assisted engineering workflows.** An MCP server and CLI that helps agents and humans answer three review questions: what to read before editing, what to fix before handoff, and what needs review before a release candidate.
 
 [AI Agent Quick Start](#ai-agent-integration-mcp) · [CLI Quick Start](#quick-start) · [Commands](#commands) · [Full Guide](docs/GUIDE.md) · [Roadmap](docs/ROADMAP.md)
 
@@ -19,11 +19,13 @@
 
 ## Why?
 
-AI coding agents are becoming a common interface to code. When you ask an agent _"which files implement auth?"_ or _"what breaks if I bump React from 18 to 19?"_, it needs structured repo context, not raw grep output.
+AI coding agents are becoming a common interface to code. When you ask an agent _"which files implement auth?"_ or _"what breaks if I bump React from 18 to 19?"_, it needs structured repo context and proof commands, not a broad scan to summarize.
 
-**projscan is local code intelligence for agent-assisted engineering.** MCP clients and humans can query a fast, AST-backed, context-budget-aware view of a repo: cited repo understanding, semantic graph, dataflow risks, review verdicts, hotspots, ownership, preflight gates, fix prompts, impact analysis, and durable session context. The strongest workflows today are repo orientation before editing, evidence before handoff, release-candidate review, and local trust checks. Everything is local and offline.
+**projscan is a local evidence tool for agent-assisted engineering.** It is most useful in three daily workflows: before editing, before handoff or commit, and before release-candidate review. Start there before scanning the full command catalog.
 
-For teams, projscan can turn that context into a repeatable PR habit when the checks are wired into the local workflow. `projscan init team` creates policy, CI, ownership, and baseline memory. `projscan evidence-pack --pr-comment` gives reviewers a compact verdict with top risks, First Fix, owner routing, baseline trend memory, and exact next commands. `projscan feedback`, `projscan dogfood`, and `projscan trial` measure whether the loop actually saved time, prevented risky edits, and stayed trustworthy across real repos.
+MCP clients and humans can still query repo maps, semantic graph evidence, dataflow risks, review verdicts, hotspots, ownership, preflight gates, fix prompts, impact analysis, and session context. Those tools matter when they make one of the three workflows easier to verify.
+
+For teams, projscan can turn the workflow into a repeatable PR habit. `projscan init team` creates policy, CI, ownership, and baseline memory. `projscan evidence-pack --pr-comment` gives reviewers a compact verdict with top risks, First Fix, owner routing, baseline trend memory, and exact next commands. `projscan feedback`, `projscan dogfood`, and `projscan trial` measure whether the loop saved time, prevented risky edits, and stayed trustworthy across real repos.
 
 The local plugin platform lets teams add project-specific findings and render `doctor`, `analyze`, and `ci` in their own voice without changing the scan pipeline. Humans get the same information through the CLI.
 
