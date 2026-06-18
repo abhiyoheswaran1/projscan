@@ -430,4 +430,24 @@ describe('Mission Control intent target architecture', () => {
     expect(shellArgsSource).toContain('export function quoteShellArg');
     expect(shellArgsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps generic target text helpers in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const targetTextPath = path.join(process.cwd(), 'src/core/startIntentTargetText.ts');
+
+    expect(targetSource).toContain(
+      "import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';",
+    );
+    expect(targetSource).not.toContain('function unwrapTarget');
+    expect(targetSource).not.toContain('function isGenericReferenceTarget');
+
+    expect(existsSync(targetTextPath)).toBe(true);
+    const targetTextSource = readFileSync(targetTextPath, 'utf8');
+    expect(targetTextSource).toContain('export function unwrapTarget');
+    expect(targetTextSource).toContain('export function isGenericReferenceTarget');
+    expect(targetTextSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

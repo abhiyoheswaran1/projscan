@@ -1,5 +1,6 @@
 import type { GraphQueryDirection } from './graphQuery.js';
 import { isPlaceholder, quoteShellArg } from './startShellArgs.js';
+import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';
 import { extractApiContractQuery } from './startIntentApiContractQueries.js';
 import { extractAuthorizationQuery } from './startIntentAuthorizationQueries.js';
 import { extractBackgroundWorkQuery } from './startIntentBackgroundWorkQueries.js';
@@ -210,12 +211,6 @@ export function extractImpactTarget(intent: string): string | undefined {
     .trim();
   if (isGenericReferenceTarget(normalized)) return undefined;
   return normalized;
-}
-
-function isGenericReferenceTarget(target: string): boolean {
-  return /^(?:it|this|that|thing|symbol|function|method|file|change|changes|break|breaks|breaking|safely|safe|carefully)$/i.test(
-    target,
-  );
 }
 
 export function extractFileTarget(intent: string): string | undefined {
@@ -440,12 +435,6 @@ function isSymbolNameTarget(target: string): boolean {
     'declared',
     'implemented',
   ].includes(target.toLowerCase());
-}
-
-function unwrapTarget(value: string): string {
-  const trimmed = value.trim();
-  const wrapped = trimmed.match(/^([`'"])(.+)\1$/);
-  return (wrapped?.[2] ?? trimmed).trim();
 }
 
 function extractQuotedTextTarget(intent: string): string | undefined {
