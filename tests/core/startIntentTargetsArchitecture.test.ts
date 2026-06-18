@@ -386,4 +386,26 @@ describe('Mission Control intent target architecture', () => {
     expect(backgroundWorkSource).toContain('export function extractBackgroundWorkQuery');
     expect(backgroundWorkSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps observability search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const observabilityPath = path.join(
+      process.cwd(),
+      'src/core/startIntentObservabilityQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractObservabilityQuery } from './startIntentObservabilityQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractObservabilityQuery');
+    expect(targetSource).not.toContain('function isObservabilityTarget');
+
+    expect(existsSync(observabilityPath)).toBe(true);
+    const observabilitySource = readFileSync(observabilityPath, 'utf8');
+    expect(observabilitySource).toContain('export function extractObservabilityQuery');
+    expect(observabilitySource).not.toContain("from './startIntentTargets.js'");
+  });
 });

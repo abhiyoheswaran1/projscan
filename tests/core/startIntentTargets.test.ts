@@ -60,6 +60,7 @@ describe('Mission Control intent target parsing', () => {
     );
     expect(extractSearchQuery('where are fixtures for checkout?')).toBe('checkout fixtures');
     expect(extractSearchQuery('which queue processes invoices?')).toBe('invoices queue');
+    expect(extractSearchQuery('what logs should I check for checkout?')).toBe('checkout logs');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
