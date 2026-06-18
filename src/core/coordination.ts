@@ -118,10 +118,13 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
   if (!summary.available) return [];
   const validation = coordinationValidationWorkflow(summary);
   if (summary.readiness === 'clear') {
+    const mergeOrder = inlineMergeOrderHint(summary);
+    const clearValidation = mergeOrder ? capitalizeFirst(validation) : validation;
     return summary.worktreeCount > 1
       ? [
           `Swarm readiness: clear across ${summary.worktreeCount} worktrees - ` +
-            `${coordinationEvidenceBoundary(summary)}${validation} before parallel edits continue.`,
+            `${coordinationEvidenceBoundary(summary)}${mergeOrder}` +
+            `${clearValidation} before parallel edits continue.`,
         ]
       : [];
   }
@@ -139,9 +142,23 @@ export function coordinationHints(summary: CoordinationSummary): string[] {
   if (summary.claims.contendedTargets > 0) {
     hints.push(`${summary.claims.contendedTargets} claim target(s) contended by multiple agents.`);
   }
-  const first = summary.mergeRisk.integrationOrder[0];
-  if (first) hints.push(`Merge ${first.branch ?? first.worktree} first (lowest risk).`);
+  const mergeOrder = firstMergeOrderHint(summary);
+  if (mergeOrder) hints.push(mergeOrder);
   return hints;
+}
+
+function inlineMergeOrderHint(summary: CoordinationSummary): string {
+  const hint = firstMergeOrderHint(summary);
+  return hint ? `${hint} ` : '';
+}
+
+function firstMergeOrderHint(summary: CoordinationSummary): string | null {
+  const first = summary.mergeRisk.integrationOrder[0];
+  return first ? `Merge ${first.branch ?? first.worktree} first (lowest risk).` : null;
+}
+
+function capitalizeFirst(value: string): string {
+  return value.length === 0 ? value : `${value[0].toUpperCase()}${value.slice(1)}`;
 }
 
 function coordinationEvidenceBoundary(summary: CoordinationSummary): string {
@@ -157,9 +174,13 @@ function currentWorktreeState(
   if (!current) return `${evidence.worktreeCount} worktree(s)`;
   const label = current.branch ?? current.path;
   const base = current.baseRef ?? 'working tree';
+  const uncommitted =
+    current.uncommittedChangedFileCount === undefined
+      ? ''
+      : ` and ${current.uncommittedChangedFileCount} uncommitted file(s)`;
   return (
     `current worktree ${label} with ${current.changedFileCount} changed file(s) against ` +
-    `${base} and ${current.uncommittedChangedFileCount} uncommitted file(s)`
+    `${base}${uncommitted}`
   );
 }
 

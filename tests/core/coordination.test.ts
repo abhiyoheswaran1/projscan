@@ -259,6 +259,28 @@ describe('coordinationHints', () => {
     ]);
   });
 
+  it('includes merge order when multiple clear worktrees have an integration order', () => {
+    const clear = summarizeCoordination({
+      collisionReport: collisionReport({
+        worktrees: [
+          { path: '/a', branch: 'a', changedFileCount: 1, baseRef: 'main' },
+          { path: '/b', branch: 'b', changedFileCount: 1, baseRef: 'main' },
+        ],
+      }),
+      claims: [],
+      mergeRisk: mergeRisk({
+        integrationOrder: [
+          { worktree: '/b', branch: 'b', riskScore: 0 },
+          { worktree: '/a', branch: 'a', riskScore: 1 },
+        ],
+      }),
+    });
+
+    expect(coordinationHints(clear).join(' ')).toContain(
+      'Merge b first (lowest risk). Validate locally',
+    );
+  });
+
   it('summarizes collisions, contention, and merge order when conflicted', () => {
     const summary = summarizeCoordination({
       collisionReport: collisionReport({
