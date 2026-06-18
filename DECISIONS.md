@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Keep bug-hunt manual sign-off proof review-specific
+
+- Status: accepted
+- Context: Manual sign-off-only `projscan bug-hunt` output already used `review:` summary wording, but the verification matrix still told users to confirm the issue queue "after fixes" and run `npm test`. That made release-scale review gates sound like concrete code defects.
+- Decision: When the bug-hunt queue contains only release sign-off findings, render a review-specific verification matrix: rerun before-commit preflight to confirm/document the gate, then run doctor to ensure no concrete issue is hidden behind it.
+- Consequences: JSON verdict and queue shape stay compatible, while manual-review cautions no longer carry fix-oriented proof text. Concrete bug-hunt queues keep the generic fix verification matrix.
+- Verification: The manual sign-off fixture failed on the old generic matrix and passed after the review-specific branch; adjacent regression-plan, release-evidence, CLI, and public-type tests stayed green.
+
 ## 2026-06-18: Keep global installs free of native parser scripts
 
 - Status: accepted

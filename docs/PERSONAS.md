@@ -12362,3 +12362,46 @@ Kept change: moved seven grammar packages to devDependencies, replaced
 `prepare` with `prepack`, expanded pack/install regression coverage, updated
 README install/dependency wording, this persona note, and no release action in
 this slice.
+
+## Two Hundred Sixty First Slice Decision
+
+Selected personas: Platform And Release Owner, Security-Conscious Reviewer,
+OSS Maintainer, and Agent-Orchestrating Engineer.
+
+Reason: manual sign-off-only `projscan bug-hunt` output had already stopped
+printing `fix:` in the summary, but the verification matrix still said
+`after fixes` and asked for `npm test`. That mismatch makes release-scale
+review gates feel like concrete defects and teaches engineers to skim caution
+output.
+
+Smallest fix: when every queued bug-hunt item is the existing release sign-off
+finding, render a review-specific proof matrix: rerun before-commit preflight
+to confirm or clear the manual gate, then run doctor to confirm no concrete
+issue is hidden behind it.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/bugHunt.test.ts tests/core/regressionPlan.test.ts tests/core/releaseEvidence.test.ts tests/cli/releaseTrainBugHunt.test.ts tests/types/public-bug-hunt-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Manual Sign-Off Is Not A Fix Queue
+
+Delete-list after this slice:
+
+- Do not add a new `BugHuntVerdict` value or public field.
+- Do not remove release sign-off findings from `fixQueue` or `topSuspects`.
+- Do not hide release-scale cautions behind a clean baseline.
+- Do not change preflight, review, release-train, evidence-pack, package
+  version, release, tag, publish, deploy, push, or merge behavior.
+
+Reviewer edge case: concrete doctor, session, taint, or hotspot-backed bug-hunt
+queues should still use the generic fix verification matrix with doctor,
+preflight, and test proof.
+
+Kept change: one review-specific verification-matrix branch, one manual
+sign-off regression, this persona note, and no release action in this slice.

@@ -37,6 +37,18 @@ test('bug hunt ranks fix queue from doctor issues and verification commands', as
   expect(report.verificationMatrix.map((entry) => entry.command)).toEqual(
     expect.arrayContaining(['projscan doctor --format json', 'npm test']),
   );
+  expect(report.verificationMatrix[0]).toEqual(
+    expect.objectContaining({
+      command: 'projscan doctor --format json',
+      reason: 'Confirms the issue queue after fixes.',
+    }),
+  );
+  expect(report.verificationMatrix.at(-1)).toEqual(
+    expect.objectContaining({
+      command: 'npm test',
+      reason: 'Keeps the bug hunt tied to repeatable regression coverage.',
+    }),
+  );
 });
 
 test('bug hunt includes clean verification guidance when no issues are found', async () => {
@@ -188,6 +200,22 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   expect(report.summary).toBe('review: bug hunt found 1 manual sign-off action(s)');
   expect(report.summary).toContain('manual sign-off action');
   expect(report.summary).not.toContain('fix:');
+  expect(report.verificationMatrix).toEqual([
+    expect.objectContaining({
+      command: 'projscan preflight --mode before_commit --format json',
+      reason: 'Confirms the manual sign-off gate and any remaining concrete blockers.',
+      expected:
+        'Manual sign-off is documented, or the preflight verdict returns proceed after review.',
+    }),
+    expect.objectContaining({
+      command: 'projscan doctor --format json',
+      reason: 'Confirms no concrete doctor issue is hidden behind the review gate.',
+      expected: 'No unresolved error-level issues and expected warning count is explained.',
+    }),
+  ]);
+  expect(report.verificationMatrix.map((entry) => entry.reason).join(' ')).not.toContain(
+    'after fixes',
+  );
   expect(preflightFinding?.title).toBe('Review preflight release sign-off');
   expect(report.fixFirst?.whyFirst.match(/manual release sign-off/gi) ?? []).toHaveLength(1);
   expect(preflightFinding?.files.slice(0, 4)).toEqual([

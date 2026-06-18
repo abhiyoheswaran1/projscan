@@ -86,7 +86,7 @@ export async function computeBugHunt(
     topSuspects,
     fixQueue,
     ...(fixFirst ? { fixFirst } : {}),
-    verificationMatrix: buildVerificationMatrix(verdict),
+    verificationMatrix: buildVerificationMatrix(verdict, fixQueue),
     ...(findings.length > topSuspects.length || immediateFixes.length > fixQueue.length
       ? { truncated: true }
       : {}),
@@ -181,7 +181,26 @@ function rankFindings(findings: BugHuntFinding[]): BugHuntFinding[] {
     });
 }
 
-function buildVerificationMatrix(verdict: BugHuntVerdict): BugHuntReport['verificationMatrix'] {
+function buildVerificationMatrix(
+  verdict: BugHuntVerdict,
+  fixQueue: BugHuntFinding[],
+): BugHuntReport['verificationMatrix'] {
+  if (fixQueue.length > 0 && fixQueue.every(isReleaseSignoffFinding)) {
+    return [
+      {
+        command: 'projscan preflight --mode before_commit --format json',
+        reason: 'Confirms the manual sign-off gate and any remaining concrete blockers.',
+        expected:
+          'Manual sign-off is documented, or the preflight verdict returns proceed after review.',
+      },
+      {
+        command: 'projscan doctor --format json',
+        reason: 'Confirms no concrete doctor issue is hidden behind the review gate.',
+        expected: 'No unresolved error-level issues and expected warning count is explained.',
+      },
+    ];
+  }
+
   return [
     {
       command: 'projscan doctor --format json',
