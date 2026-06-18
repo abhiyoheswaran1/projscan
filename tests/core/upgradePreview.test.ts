@@ -154,6 +154,25 @@ describe('previewUpgrade', () => {
     expect(preview.importers).toEqual([]);
   });
 
+  it('previews numeric-leading Python dependencies from pyproject evidence', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'pyproject.toml',
+        ['[project]', 'name = "py-app"', 'dependencies = ["3to2>=1.1.1"]'].join('\n'),
+      ),
+    ];
+
+    const preview = await previewUpgrade(tmp, '3to2', files);
+
+    expect(preview.available).toBe(true);
+    expect(preview.ecosystem).toBe('python');
+    expect(preview.declared).toBe('>=1.1.1');
+    expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.declaredScope).toBe('main');
+    expect(preview.importers).toEqual([]);
+  });
+
   it('falls back to Python evidence when an npm declaration is not installed', async () => {
     await writeJson(path.join(tmp, 'package.json'), { dependencies: { requests: '^0.0.1' } });
     const files = [

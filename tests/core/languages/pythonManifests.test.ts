@@ -15,6 +15,10 @@ describe('splitPep508', () => {
     expect(splitPep508('django==4.2.1')).toEqual({ name: 'django', versionSpec: '==4.2.1' });
   });
 
+  it('splits numeric-leading distribution names', () => {
+    expect(splitPep508('3to2>=1.1.1')).toEqual({ name: '3to2', versionSpec: '>=1.1.1' });
+  });
+
   it('strips extras', () => {
     expect(splitPep508('requests[security,socks]>=2')).toEqual({
       name: 'requests',
@@ -55,6 +59,19 @@ describe('parseRequirements', () => {
     const out = parseRequirements(txt, 'r.txt', 'main');
     expect(out.find((d) => d.name === 'requests')?.line).toBe(2);
     expect(out.find((d) => d.name === 'flask')?.line).toBe(3);
+  });
+
+  it('reads numeric-leading distribution names', () => {
+    const out = parseRequirements('3to2==1.1.1\n', 'requirements.txt', 'main');
+    expect(out).toEqual([
+      {
+        name: '3to2',
+        versionSpec: '==1.1.1',
+        source: 'requirements.txt',
+        line: 1,
+        scope: 'main',
+      },
+    ]);
   });
 });
 
