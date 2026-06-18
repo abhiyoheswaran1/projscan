@@ -76,8 +76,16 @@ export function statusFromPreflight(verdict: PreflightVerdict): EvidencePackArti
 }
 
 function bugHuntQueueEvidence(bugHunt: BugHuntReport): string {
-  const queueLabel = bugHunt.summary.includes('manual sign-off action')
-    ? 'manual sign-off action(s)'
-    : 'fix target(s)';
-  return `${bugHunt.fixQueue.length} ${queueLabel} in queue`;
+  if (bugHunt.summary.includes('manual sign-off action')) {
+    const count = bugHunt.topSuspects.filter(isManualSignoffFinding).length;
+    return `${count} manual sign-off action(s) in queue`;
+  }
+  return `${bugHunt.fixQueue.length} fix target(s) in queue`;
+}
+
+function isManualSignoffFinding(finding: BugHuntReport['topSuspects'][number]): boolean {
+  return (
+    finding.source === 'preflight' &&
+    finding.evidence.some((entry) => entry.source === 'release')
+  );
 }
