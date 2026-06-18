@@ -19,7 +19,7 @@ import type {
   StartUnresolvedInput,
   StartWorkflowRecommendation,
 } from '../types/start.js';
-import type { QualityScorecardRisk } from '../types/qualityScorecard.js';
+import type { QualityScorecardRisk, QualityScorecardVerdict } from '../types/qualityScorecard.js';
 import type { SessionCoordinationHint } from '../types/session.js';
 import type { WorkplanMode, WorkplanReport, WorkplanTopRisk } from '../types/workplan.js';
 
@@ -318,6 +318,11 @@ export function summarize(
   qualityRisks: number,
   adoptionGaps: number,
   fixFirstTitle?: string,
+  qualityVerdict?: QualityScorecardVerdict,
 ): string {
-  return `start: ${mode} recommends ${fixFirstTitle ?? workplan.tasks[0]?.title ?? 'preserving the baseline'} with ${qualityRisks} quality risk(s) and ${adoptionGaps} adoption gap(s)`;
+  const qualityLabel =
+    qualityVerdict === 'excellent' || qualityVerdict === 'healthy'
+      ? 'quality watch item(s)'
+      : 'quality risk(s)';
+  return `start: ${mode} recommends ${fixFirstTitle ?? workplan.tasks[0]?.title ?? 'preserving the baseline'} with ${qualityRisks} ${qualityLabel} and ${adoptionGaps} adoption gap(s)`;
 }

@@ -11785,3 +11785,49 @@ typed fixtures without `dailyWorkflows` should still compile.
 Kept change: one focused daily-workflow helper, one additive StartReport field,
 one console section before broad onboarding, docs wording, regression tests,
 this persona note, and no release action in this slice.
+
+## Two Hundred Forty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: after daily workflows moved into `projscan start`, the summary could
+still say a healthy or excellent scorecard had `quality risk(s)`. That wording
+turns watch evidence into caution background noise and makes engineers work out
+whether the tool found a defect or is merely pointing at monitored hotspots.
+
+Smallest fix: pass the scorecard verdict into start summary wording and call
+healthy or excellent top-risk evidence `quality watch item(s)`, while preserving
+`quality risk(s)` for `needs_attention` and `blocked` verdicts.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startMissionPolicy.test.ts tests/core/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "what should we improve next to make projscan more trustworthy for daily engineering workflows?" --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Healthy Start Watch Wording
+
+Delete-list after this slice:
+
+- Do not change quality scoring, hotspot thresholds, top-risk shape, Mission
+  Control routing, or workflow selection.
+- Do not hide watch evidence from healthy output; rename it so it does not read
+  like a defect queue.
+- Do not add a new command, schema field, dependency, release action, or
+  telemetry behavior for this wording calibration.
+- Do not broaden docs into bigger productivity claims; keep trust tied to the
+  daily workflows and their proof commands.
+
+Reviewer edge case: a healthy or excellent scorecard with top risks should say
+`quality watch item(s)`, while needs-attention and blocked scorecards should
+continue to say `quality risk(s)`.
+
+Kept change: one verdict-aware summary label, one builder argument, focused
+policy regression tests, this persona note, and no release action in this
+slice.

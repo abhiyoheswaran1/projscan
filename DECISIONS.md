@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Calibrate healthy start summary watch wording
+
+- Status: accepted
+- Context: `projscan start` could report a healthy or excellent quality scorecard while its top-level summary still described scorecard hotspot evidence as `quality risk(s)`. That made normal watch items sound like a concrete defect queue.
+- Decision: Pass the quality scorecard verdict into start summary assembly and use `quality watch item(s)` for `excellent` or `healthy` verdicts. Keep `quality risk(s)` for `needs_attention` and `blocked` verdicts.
+- Consequences: Start JSON shape, `topRisks`, scoring, Mission Control routing, and workflow selection remain unchanged. Humans get less alarm wording when the scorecard is healthy, while degraded verdicts still keep risk language.
+- Verification: Focused Mission Control policy tests failed on the old summary wording and passed after the verdict-aware summary label was added.
+
 ## 2026-06-18: Calibrate bug-hunt manual sign-off wording
 
 - Status: accepted

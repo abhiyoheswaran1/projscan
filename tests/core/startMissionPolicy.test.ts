@@ -318,7 +318,24 @@ describe('Mission Control policy helpers', () => {
       files: [],
       command: 'projscan start --format json',
     });
-    expect(summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation')).toBe(
+    expect(
+      summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'healthy'),
+    ).toBe(
+      'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',
+    );
+    expect(
+      summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'excellent'),
+    ).toBe(
+      'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',
+    );
+    expect(
+      summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'needs_attention'),
+    ).toBe(
+      'start: before_edit recommends Fix first recommendation with 2 quality risk(s) and 1 adoption gap(s)',
+    );
+    expect(
+      summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'blocked'),
+    ).toBe(
       'start: before_edit recommends Fix first recommendation with 2 quality risk(s) and 1 adoption gap(s)',
     );
   });
