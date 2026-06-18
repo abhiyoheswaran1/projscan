@@ -100,6 +100,18 @@ test('start console omits duplicate action plan when ready actions match it', as
   expect(result.stdout).not.toContain('\nAction Plan\n');
 });
 
+test('start console omits duplicate execution next action when ready commands match it', async () => {
+  const result = await runCli(['start', '--intent', 'does projscan read .env values?', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const executionPlan = sectionBetween(result.stdout, 'Execution Plan', 'Run Cursor');
+  expect(executionPlan).toContain('- [ready] Ready Commands');
+  expect(executionPlan).toContain('projscan privacy-check --offline');
+  expect(executionPlan).not.toContain('- [ready] Next Action');
+  expect(result.stdout).toContain('Run Cursor');
+  expect(result.stdout).toContain('Ready Now');
+});
+
 test('start console labels healthy p2-only risks as a watch list', () => {
   expect(
     startRiskSectionTitle(
@@ -128,6 +140,14 @@ async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return runStartCli(tmp, args);
+}
+
+function sectionBetween(output: string, start: string, end: string): string {
+  const startIndex = output.indexOf(start);
+  const endIndex = output.indexOf(end, startIndex);
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(endIndex).toBeGreaterThan(startIndex);
+  return output.slice(startIndex, endIndex);
 }
 
 function startReportForRiskTitle(

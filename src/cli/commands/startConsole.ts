@@ -312,13 +312,39 @@ function printReviewReplies(replies: string[]): void {
 
 function printExecutionPlan(report: StartReport): void {
   const plan = report.missionControl.executionPlan;
+  const phases = visibleExecutionPhases(plan.phases);
   console.log(chalk.bold('Execution Plan'));
   console.log(chalk.dim(plan.summary));
-  for (const phase of plan.phases.slice(0, 6)) {
+  for (const phase of phases.slice(0, 6)) {
     console.log(`- [${phase.status}] ${phase.title}`);
     for (const step of phase.steps.slice(0, 4)) printExecutionStep(step);
   }
   printExecutionCursor(report);
+}
+
+function visibleExecutionPhases(
+  phases: StartReport['missionControl']['executionPlan']['phases'],
+): StartReport['missionControl']['executionPlan']['phases'] {
+  if (!hasDuplicateNextActionPhase(phases)) return phases;
+  return phases.filter((phase) => phase.id !== 'next_action');
+}
+
+function hasDuplicateNextActionPhase(
+  phases: StartReport['missionControl']['executionPlan']['phases'],
+): boolean {
+  const nextAction = phases.find((phase) => phase.id === 'next_action');
+  const readyNow = phases.find((phase) => phase.id === 'ready_now');
+  return Boolean(nextAction && readyNow && sameExecutionSteps(nextAction.steps, readyNow.steps));
+}
+
+function sameExecutionSteps(left: StartExecutionStep[], right: StartExecutionStep[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((step, index) => {
+      const other = right[index];
+      return step.label === other?.label && step.command === other.command && step.tool === other.tool;
+    })
+  );
 }
 
 function printExecutionStep(step: StartExecutionStep): void {
