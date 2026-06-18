@@ -169,4 +169,26 @@ describe('Mission Control intent target architecture', () => {
     expect(apiContractSource).toContain('export function extractApiContractQuery');
     expect(apiContractSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps infrastructure artifact search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const infraPath = path.join(
+      process.cwd(),
+      'src/core/startIntentInfraArtifactQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractInfraArtifactQuery } from './startIntentInfraArtifactQueries.js';",
+    );
+    expect(targetSource).not.toContain('INFRA_ARTIFACT_RULES');
+    expect(targetSource).not.toContain('function normalizeInfraTarget');
+
+    expect(existsSync(infraPath)).toBe(true);
+    const infraSource = readFileSync(infraPath, 'utf8');
+    expect(infraSource).toContain('export function extractInfraArtifactQuery');
+    expect(infraSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

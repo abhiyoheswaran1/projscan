@@ -40,6 +40,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is tRPC router for billing?')).toBe(
       'billing tRPC router',
     );
+    expect(extractSearchQuery('where is Terraform module for S3?')).toBe(
+      'S3 Terraform module',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
