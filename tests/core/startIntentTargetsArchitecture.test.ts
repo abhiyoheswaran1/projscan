@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -102,5 +102,27 @@ describe('Mission Control intent target architecture', () => {
 
     expect(stateSource).toContain('export function extractStateManagementQuery');
     expect(stateSource).not.toContain("from './startIntentTargets.js'");
+  });
+
+  it('keeps data-access search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const dataAccessPath = path.join(
+      process.cwd(),
+      'src/core/startIntentDataAccessQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractDataAccessQuery } from './startIntentDataAccessQueries.js';",
+    );
+    expect(targetSource).not.toContain('DATA_ACCESS_RULES');
+    expect(targetSource).not.toContain('function normalizeDataAccessFramework');
+
+    expect(existsSync(dataAccessPath)).toBe(true);
+    const dataAccessSource = readFileSync(dataAccessPath, 'utf8');
+    expect(dataAccessSource).toContain('export function extractDataAccessQuery');
+    expect(dataAccessSource).not.toContain("from './startIntentTargets.js'");
   });
 });

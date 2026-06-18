@@ -33,6 +33,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is the Zustand store for checkout?')).toBe(
       'checkout Zustand store',
     );
+    expect(extractSearchQuery('where are the Prisma models for checkout?')).toBe(
+      'checkout Prisma model',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
