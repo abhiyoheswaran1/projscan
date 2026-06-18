@@ -205,7 +205,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_preflight` / `projscan preflight`** — agent safety gate. Returns `proceed`, `caution`, or `block` with health, changed-file, review, remembered session, hotspot, plugin-policy, supply-chain, and release-scale evidence. `evidence.riskSources.currentWorktree` is current Git/worktree evidence; `evidence.riskSources.sessionMemory` is remembered handoff context. Use `--mode before_edit` at the start of work and `--mode before_commit` / `--mode before_merge` before handing off or merging; scale-only commit blocks are cautions, while merge gates still require manual release sign-off.
 - **`projscan_hotspots` / `projscan hotspots`** — files ranked by `git churn × AST cyclomatic complexity × open issues × ownership × coverage`. Pass `view: "functions"` for top-N risky individual functions across the repo (0.13+).
 - **`projscan_semantic_graph` / `projscan semantic-graph`** — stable v3 graph contract with file, function, package, and symbol nodes plus imports, exports, definitions, and calls edges. Use it when an agent needs one normalized graph shape instead of several targeted queries.
-- **`projscan_dataflow` / `projscan dataflow`** — direct, propagated, and bridge source-to-sink dataflow risks, including framework-aware Next.js route request body and URL sources. Use it for a focused safety pass before touching command execution, raw SQL, filesystem writes, or DOM sinks.
+- **`projscan_dataflow` / `projscan dataflow`** — direct, propagated, and bridge source-to-sink dataflow risks, including framework-aware Next.js, Remix, SvelteKit, Hono, Express, Fastify, and Koa request sources. Use it for a focused safety pass before touching command execution, raw SQL, filesystem writes, or DOM sinks.
 - **`projscan_coupling` / `projscan coupling`** — per-file fan-in / fan-out / instability plus circular-import cycles (Tarjan SCC). Use `direction: cycles_only` or `projscan coupling --cycles-only` to surface architectural debt directly.
 - **`projscan_analyze` / `projscan analyze`** — the everything report; useful at session start but verbose.
 
@@ -435,8 +435,9 @@ graph. Bridge risks are graph-backed dataflow additions: a wrapper that calls a 
 and a sink wrapper is surfaced even when legacy taint reachability cannot see a
 downstream call path from source to sink. By default, dataflow suppresses test-file paths,
 broad readFile/writeFile-style noise, and JavaScript RegExp.exec false positives.
-Framework request-source detection covers narrow tested patterns for Next.js, Hono,
-Express, Fastify, and Koa handlers, including Hono validator output,
+Framework request-source detection covers narrow tested patterns for Next.js, Remix,
+SvelteKit, Hono, Express, Fastify, and Koa handlers, including SvelteKit
+`RequestEvent` request/body/url/params/cookies evidence, Hono validator output,
 Express/Fastify/Koa request IP metadata, Fastify host/hostname and raw
 URL/header evidence, and Express/Koa header accessors plus Express
 `req.param(...)` and `req.originalUrl`, while

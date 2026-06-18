@@ -8,10 +8,12 @@ import { honoRequestSource } from './frameworkHonoSources.js';
 import { koaRequestSource } from './frameworkKoaSources.js';
 import { nextRouteRequestSource } from './frameworkNextRouteSources.js';
 import { remixRequestSource } from './frameworkRemixSources.js';
+import { svelteKitRequestSource } from './frameworkSvelteKitSources.js';
 
 export const FRAMEWORK_REQUEST_SOURCE_RESOLVERS: FrameworkRequestSourceResolver[] = [
   resolveNextRouteSource,
   resolveRemixSource,
+  resolveSvelteKitSource,
   resolveHonoSource,
   resolveExpressSource,
   resolveFastifySource,
@@ -46,6 +48,19 @@ function resolveRemixSource(context: FrameworkRequestSourceContext): string | nu
   const { file, functionName, parameters, memberCallSites, memberReferences, enabledSources } =
     context;
   return remixRequestSource(
+    file,
+    functionName,
+    parameters,
+    memberCallSites,
+    memberReferences,
+    enabledSources,
+  );
+}
+
+function resolveSvelteKitSource(context: FrameworkRequestSourceContext): string | null {
+  const { file, functionName, parameters, memberCallSites, memberReferences, enabledSources } =
+    context;
+  return svelteKitRequestSource(
     file,
     functionName,
     parameters,

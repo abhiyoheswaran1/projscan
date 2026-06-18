@@ -41,9 +41,9 @@ npx projscan
 framework dataflow precision, offline Python requirement include support,
 release-train roadmap routing, and lower-risk internal hotspots.
 
-- **Remix dataflow coverage.** Remix route actions and loaders now classify
-  request body readers, headers, URL, signal, and params through
-  framework-gated source patterns.
+- **Remix and SvelteKit dataflow coverage.** Remix route actions/loaders and
+  SvelteKit `RequestEvent` handlers now classify request body readers, headers,
+  URL, params, and cookies through framework-gated source patterns.
 - **Python requirements includes.** Upgrade previews follow local `-r`
   requirements and `-c` constraints without reading outside the scan or adding
   network access.
@@ -1347,7 +1347,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_start`** _(3.0.4)_ - first-60-seconds repo orientation. Composes setup diagnostics, `firstTenMinutes`, workflow recipes, workplan, quality scorecard, top risks, adoption gaps, next commands, and optional handoff payload.
 - **`projscan_understand`** _(3.4)_ - cited repo-comprehension report with `map`, `flow`, `contracts`, `change`, and `verify` views, read-first files, unknowns, change readiness, verification tiers, and exact next commands.
 - **`projscan_semantic_graph`** _(3.0; query mode 4.0)_ - the code graph, two ways. With no `query`: the stable v3 semantic graph contract (file, function, package, and symbol nodes plus `defines`, `imports`, `imports_package`, `exports`, and `calls` edges). With `query: { direction, file?, symbol? }`: one cheap targeted lookup — `imports`, `exports`, `importers`, `symbol_defs`, `package_importers` — with millisecond responses on a warm cache. (Subsumes the former `projscan_graph`, removed in 4.0.)
-- **`projscan_dataflow`** _(3.0)_ - focused direct, propagated, and bridge source-to-sink dataflow risks. Next.js route body readers and URL reads plus Hono, Express, Fastify, and Koa request sources are framework-aware, DB/write sinks are receiver-sensitive, and defaults suppress test-file paths, broad readFile/writeFile noise, JavaScript RegExp.exec false positives, and generated-code anxiety; opt into broader scans with `include_tests` / `include_broad_file_io` / `include_generated` or the matching CLI flags.
+- **`projscan_dataflow`** _(3.0)_ - focused direct, propagated, and bridge source-to-sink dataflow risks. Next.js route body readers and URL reads plus Remix, SvelteKit, Hono, Express, Fastify, and Koa request sources are framework-aware, DB/write sinks are receiver-sensitive, and defaults suppress test-file paths, broad readFile/writeFile noise, JavaScript RegExp.exec false positives, and generated-code anxiety; opt into broader scans with `include_tests` / `include_broad_file_io` / `include_generated` or the matching CLI flags.
 - **`projscan_search`** - fast search across `symbols` (exported names), `files` (path substring), or `content` (source substring with line + excerpt). Sub-file mode (`sub_file: true`) embeds per-function for sharper semantic results _(0.15)_.
 - **`projscan_coupling`** _(0.11)_ - per-file fan-in / fan-out / instability + circular-import cycles (Tarjan SCC). Filter by `direction: cycles_only | high_fan_in | high_fan_out`.
 - **`projscan_pr_diff`** _(0.11)_ - structural diff between two git refs. Returns added/removed/modified files with explicit lists of exports, imports, and call sites that changed, plus ΔCC and Δfan-in.

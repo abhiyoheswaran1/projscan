@@ -14,6 +14,7 @@ it('keeps framework dataflow coverage in focused companion suites', () => {
   const nextSuite = fs.readFileSync('tests/core/dataflowFrameworkNext.test.ts', 'utf8');
   const honoSuite = fs.readFileSync('tests/core/dataflowFrameworkHono.test.ts', 'utf8');
   const remixSuite = fs.readFileSync('tests/core/dataflowFrameworkRemix.test.ts', 'utf8');
+  const svelteKitSuite = fs.readFileSync('tests/core/dataflowFrameworkSvelteKit.test.ts', 'utf8');
 
   expect(nextSuite).toContain('Next route request.json');
   expect(nextSuite).not.toContain('Hono route');
@@ -24,6 +25,10 @@ it('keeps framework dataflow coverage in focused companion suites', () => {
   expect(remixSuite).toContain('Remix action request body readers');
   expect(remixSuite).not.toContain('Next route');
   expect(remixSuite.split('\n').length).toBeLessThanOrEqual(180);
+  expect(svelteKitSuite).toContain('SvelteKit +server request event sources');
+  expect(svelteKitSuite).toContain('non-route helpers');
+  expect(svelteKitSuite).not.toContain('Remix action');
+  expect(svelteKitSuite.split('\n').length).toBeLessThanOrEqual(180);
 });
 
 it('keeps database sink classification out of the dataflow traversal module', () => {

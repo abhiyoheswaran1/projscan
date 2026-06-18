@@ -11556,3 +11556,50 @@ entrypoint.
 Kept change: focused start type modules, one public-type architecture guard,
 existing public type compatibility coverage, this persona note, and no release
 action in this slice.
+
+## Two Hundred Forty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: SvelteKit apps use `RequestEvent` in `+server`, server `load`, and
+`hooks.server` entrypoints. Agents doing security review need the same narrow
+request-to-sink evidence already available for Next, Remix, Hono, Express,
+Fastify, and Koa, without turning ordinary helper functions into noisy
+framework findings.
+
+Smallest fix: add `src/core/frameworkSvelteKitSources.ts` with route/load/hook
+file gating, request/body/url/params/cookie source names, and helper-lookalike
+fixtures; register it through the existing framework source resolver.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/dataflowFrameworkSvelteKit.test.ts tests/core/dataflowSuiteStructure.test.ts
+npm run test -- tests/core/dataflowFrameworkNext.test.ts tests/core/dataflowFrameworkRemix.test.ts tests/core/dataflowFrameworkHono.test.ts tests/core/dataflowFrameworkExpress.test.ts tests/core/dataflowFrameworkFastify.test.ts tests/core/dataflowFrameworkKoa.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- dataflow --format json
+```
+
+## Review Guardrails: SvelteKit Framework Dataflow Sources
+
+Delete-list after this slice:
+
+- Do not change existing Next, Remix, Hono, Express, Fastify, or Koa source
+  names, route gating, dataflow output fields, default sink behavior,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not broaden SvelteKit matching to arbitrary functions named `POST`,
+  `load`, or `handle`; file conventions must gate source classification.
+- Do not add CFG, general variable-level dataflow, Svelte compiler integration,
+  telemetry, network behavior, or secret-reading behavior.
+
+Reviewer edge case: a non-route helper named `POST` with `request`, `params`,
+`url`, and `cookies` parameters must remain quiet, and `Response.json(...)` in
+a SvelteKit route must not be mistaken for `request.json()`.
+
+Kept change: one SvelteKit source matcher, one focused framework suite,
+structure guard coverage, docs/persona notes, and no release action in this
+slice.

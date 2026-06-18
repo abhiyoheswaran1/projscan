@@ -2561,3 +2561,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Split the declarations into focused type-only modules for common start metadata, execution plans, Mission Control, proof reports, resume/runbook contracts, review gates, and tool calls. Keep `src/types/start.ts` as the compatibility re-export surface.
 - Consequences: Existing imports from `src/types/start.ts`, the legacy `src/types.ts` barrel, and the package entrypoint keep the same exported type names and shapes. Future public type changes can be reviewed in smaller files.
 - Verification: `npm run test -- tests/types/public-start-quality-types.test.ts` failed before `src/types/start.ts` delegated to focused modules, then passed after extraction. `npm run typecheck:public-types` and `npm run typecheck` also passed during implementation.
+
+## 2026-06-18: Add SvelteKit framework dataflow sources
+
+- Status: accepted
+- Context: The 4.7 framework precision line covered Next, Remix, Hono, Express, Fastify, and Koa, but SvelteKit `RequestEvent` route handlers, server loads, and hooks were still invisible to the framework request-source resolver.
+- Decision: Add a SvelteKit request-source matcher gated by `src/routes/**/+server.*`, `+page.server.*`, `+layout.server.*`, and `hooks.server.*`, then register its source identifiers with the shared framework source list and resolver.
+- Consequences: Dataflow can now report SvelteKit request body readers, headers, params, URL fields/search params, and cookies flowing into default sinks. Non-route helpers and response builders remain quiet.
+- Verification: `npm run test -- tests/core/dataflowFrameworkSvelteKit.test.ts tests/core/dataflowSuiteStructure.test.ts` failed before the matcher was registered, then passed after the additive source module was wired in.
