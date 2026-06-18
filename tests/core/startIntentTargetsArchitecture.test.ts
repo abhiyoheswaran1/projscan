@@ -43,4 +43,24 @@ describe('Mission Control intent target architecture', () => {
     expect(reliabilitySource).toContain('export function extractReliabilityQuery');
     expect(reliabilitySource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps data-contract search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const dataContractSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentDataContractQueries.ts'),
+      'utf8',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractDataContractQuery } from './startIntentDataContractQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractValidationQuery');
+    expect(targetSource).not.toContain('function extractDatabaseConsistencyQuery');
+
+    expect(dataContractSource).toContain('export function extractDataContractQuery');
+    expect(dataContractSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
