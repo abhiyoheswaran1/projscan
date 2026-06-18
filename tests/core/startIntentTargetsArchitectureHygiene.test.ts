@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +9,14 @@ describe('Mission Control intent target architecture hygiene', () => {
       'utf8',
     );
 
-    expect(source.split(/\r?\n/).length).toBeLessThanOrEqual(450);
+    expect(source.split(/\r?\n/).length).toBeLessThanOrEqual(300);
+  });
+
+  it('keeps user-facing query architecture guards in a focused file', () => {
+    expect(
+      existsSync(
+        path.join(process.cwd(), 'tests/core/startIntentUserFacingQueryArchitecture.test.ts'),
+      ),
+    ).toBe(true);
   });
 });
