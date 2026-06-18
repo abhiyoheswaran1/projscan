@@ -8,11 +8,9 @@ describe('Mission Control intent target helper architecture', () => {
     const shellArgsPath = path.join(process.cwd(), 'src/core/startShellArgs.ts');
 
     expect(targetSource).toContain(
-      "import { isPlaceholder, quoteShellArg } from './startShellArgs.js';",
-    );
-    expect(targetSource).toContain(
       "export { escapeDoubleQuoted, isPlaceholder, quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';",
     );
+    expect(targetSource).not.toContain("import { isPlaceholder, quoteShellArg }");
     expect(targetSource).not.toContain('function escapeDoubleQuoted');
     expect(targetSource).not.toContain('function quoteShellArgOrPlaceholder');
 
@@ -75,8 +73,8 @@ describe('Mission Control intent target helper architecture', () => {
     const targetSource = readTargetSource();
     const symbolTargetsPath = path.join(process.cwd(), 'src/core/startSymbolTargets.ts');
 
-    expect(targetSource).toContain("import { extractSymbolTarget } from './startSymbolTargets.js';");
     expect(targetSource).toContain("export { isExactSymbolTarget } from './startSymbolTargets.js';");
+    expect(targetSource).not.toContain("import { extractSymbolTarget }");
     expect(targetSource).not.toContain('function extractSymbolTarget');
     expect(targetSource).not.toContain('function isSymbolNameTarget');
     expect(targetSource).not.toContain('function isExactSymbolTarget');
@@ -165,6 +163,27 @@ describe('Mission Control intent target helper architecture', () => {
     const quotedTargetsSource = readFileSync(quotedTargetsPath, 'utf8');
     expect(quotedTargetsSource).toContain('export function extractQuotedTextTarget');
     expect(quotedTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
+
+  it('keeps graph target parsing and commands in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const graphTargetsPath = path.join(process.cwd(), 'src/core/startGraphTargets.ts');
+
+    expect(targetSource).toContain("export type { StartGraphQuery } from './startGraphTargets.js';");
+    expect(targetSource).toContain(
+      "export { graphQueryFromIntent, graphQueryIsReady, semanticGraphCommand } from './startGraphTargets.js';",
+    );
+    expect(targetSource).not.toContain('function graphQueryFromIntent');
+    expect(targetSource).not.toContain('function graphQueryForDirection');
+    expect(targetSource).not.toContain('GRAPH_DIRECTION_RULES');
+    expect(targetSource).not.toContain('function semanticGraphCommand');
+
+    expect(existsSync(graphTargetsPath)).toBe(true);
+    const graphTargetsSource = readFileSync(graphTargetsPath, 'utf8');
+    expect(graphTargetsSource).toContain('export function graphQueryFromIntent');
+    expect(graphTargetsSource).toContain('export function graphQueryIsReady');
+    expect(graphTargetsSource).toContain('export function semanticGraphCommand');
+    expect(graphTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
 });
 
