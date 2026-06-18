@@ -128,13 +128,19 @@ function printMissionControl(report: StartReport, context: StartConsoleContext):
   console.log(chalk.dim(mission.whyNow));
   printExecutionPlan(report);
   printResumeChecklist(report);
-  printHandoffPrompt(report);
+  if (shouldPrintInlineHandoffSections(report)) {
+    printHandoffPrompt(report);
+    printReviewGate(report, context.reviewReplies);
+  }
   printMissionOutcome(report);
-  printReviewGate(report, context.reviewReplies);
   printMissionActionSections(report);
   printMissionAlternatives(report);
   printMissionSuccessCriteria(report);
   printMissionProof(report, context.proofCommands);
+}
+
+function shouldPrintInlineHandoffSections(report: StartReport): boolean {
+  return Boolean(report.handoff) || report.missionControl.unresolvedInputs.length > 0;
 }
 
 function printMissionRoute(report: StartReport): void {

@@ -64,6 +64,12 @@ test('start console prints trusted daily workflows before broad onboarding', asy
   expect(dailySection).toContain('  - projscan bug-hunt --format json');
   expect(dailySection).toContain('- Release-candidate review');
   expect(dailySection).toContain('  - projscan release-train --format json');
+  expect(result.stdout).not.toContain('Handoff Prompt');
+  expect(result.stdout).not.toContain('Review Gate');
+  expect(result.stdout).not.toContain('Reviewer Replies');
+  expect(result.stdout).toContain('Run Cursor');
+  expect(result.stdout).toContain('Resume Checklist');
+  expect(result.stdout).toContain('Ready Proof');
 });
 
 async function runCli(

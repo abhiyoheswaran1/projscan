@@ -12002,3 +12002,47 @@ workflow, but JSON output and workflow definitions should remain stable.
 
 Kept change: one console rendering adjustment, focused CLI assertions, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fifty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: the normal `start` console still printed full handoff and review-policy
+sections for linear missions with no unresolved inputs. That made caution and
+review text feel like background noise instead of a meaningful stop signal.
+
+Smallest fix: keep inline Handoff Prompt, Review Gate, and Reviewer Replies for
+explicit handoff output and unresolved-input flows, but omit them from the
+default linear console. Keep JSON, shortcuts, mission bundles, runbooks, and
+review-gate objects unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts tests/cli/startHandoff.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- start --intent 'what breaks if I rename the auth token loader'
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Inline Review Policy Must Stay Intentional
+
+Delete-list after this slice:
+
+- Do not remove Mission Control handoff or review-gate data from JSON output,
+  shortcuts, saved mission bundles, or runbooks.
+- Do not hide inline guidance when a mission has unresolved inputs.
+- Do not change route selection, scoring, workflow definitions, public schemas,
+  CLI options, dependencies, telemetry, or release behavior.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: a linear mission can still have setup warnings or cautions;
+the default console should stay focused unless it has unresolved inputs or the
+caller explicitly requested handoff output.
+
+Kept change: one console rendering guard, focused CLI regressions, this persona
+note, and no release action in this slice.

@@ -2625,3 +2625,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Render each daily workflow as a workflow name followed by all of its existing commands, while keeping the workflow definitions, JSON report shape, Mission Control routing, and section ordering unchanged.
 - Consequences: Engineers can copy a full before-edit, before-handoff, or release-candidate path from the first console screen. Console output grows by a few lines but stays limited to the existing daily workflow commands.
 - Verification: `npm run test -- tests/cli/start.test.ts` failed before the console printed all workflow commands, then `npm run build` and `npm run test -- tests/cli/start.test.ts tests/core/start.test.ts` passed after the formatter change.
+
+## 2026-06-18: Keep linear start console output focused
+
+- Status: accepted
+- Context: The default `projscan start` console printed inline Handoff Prompt, Review Gate, and Reviewer Replies sections even when Mission Control had a single runnable command and no unresolved inputs. That made routine daily workflows look more bureaucratic than the risk warranted.
+- Decision: Print inline handoff/review-gate sections only when the caller explicitly requested a handoff payload or Mission Control has unresolved inputs. Keep JSON, shortcuts, mission bundles, review-gate data, and runbook output unchanged.
+- Consequences: Normal start output stays focused on daily workflows, Mission Control, resume checklist, action plan, proof, risks, and next commands. Ambiguous/fuzzy flows still surface inline handoff and review guidance.
+- Verification: `npm run test -- tests/cli/start.test.ts` failed before the default console suppressed the heavy sections, then `npm run build` and `npm run test -- tests/cli/start.test.ts tests/cli/startHandoff.test.ts` passed after the rendering guard.
