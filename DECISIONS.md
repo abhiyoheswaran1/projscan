@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract AST parse result helper
+
+- Status: accepted
+- Context: `src/core/ast.ts` remained a high-churn core hotspot and still owned parsed AST result assembly after parser setup, module traversal, program-signal collection, and function collection were already split into helpers.
+- Decision: Move unparsed result shaping and parsed AST success-result assembly into `src/core/astResult.ts`, while keeping `parseSource`, `isParseable`, and public AST type re-exports available from `src/core/ast.ts`.
+- Consequences: Non-source results, parser failure results, import/export extraction, call-site deduplication, line count, file-level cyclomatic complexity, and function collection stay unchanged. `parseSource` now only decides whether to parse and delegates result construction.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused AST behavior tests passed, and focused `projscan file` checks showed no issues in `src/core/ast.ts` or `src/core/astResult.ts`.
+
 ## 2026-06-18: Extract MCP tool definition shaping helper
 
 - Status: accepted

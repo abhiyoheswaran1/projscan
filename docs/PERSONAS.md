@@ -10561,3 +10561,50 @@ in `tools/list`.
 Kept change: one MCP definition helper, one architecture guard, one future
 deprecation behavior assertion, this persona note, and no release action in this
 slice.
+
+## Two Hundred Twenty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and Security-Conscious Reviewer.
+
+Reason: `parseSource` feeds graph construction, review evidence, dataflow, and
+agent context. It was already surrounded by focused parser, traversal, signal,
+and function-collection helpers, but the AST facade still owned result assembly
+and unparsed result shaping. That kept a high-churn core hotspot larger than it
+needed to be.
+
+Smallest fix: move unparsed result shaping and parsed success-result assembly
+into `src/core/astResult.ts`; keep `parseSource`, `isParseable`, and AST type
+re-exports in `src/core/ast.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/ast.functions.test.ts
+npm run test -- tests/core/ast.test.ts tests/core/ast.cyclomatic.test.ts tests/core/ast.references.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/ast.ts --format json
+npm exec projscan -- file src/core/astResult.ts --format json
+```
+
+## Review Guardrails: AST Parse Result Extraction
+
+Delete-list after this slice:
+
+- Do not change Babel parser options, parseable extensions, AST traversal,
+  module import/export extraction, program-signal detection, call-site
+  deduplication, function collection, graph building, dataflow behavior,
+  dependencies, lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/ast.ts` inside the result helper; the helper must
+  remain leaf-side of the public AST facade.
+- Do not broaden this into parser, traversal, function collector, graph,
+  language-adapter, or dataflow refactors.
+
+Reviewer edge case: parser failures and non-source files must still return
+`ok: false` with empty arrays and zero complexity, while parsed files keep the
+same line count, deduped call sites, imports, exports, and function entries.
+
+Kept change: one AST result helper, one architecture guard, this persona note,
+and no release action in this slice.

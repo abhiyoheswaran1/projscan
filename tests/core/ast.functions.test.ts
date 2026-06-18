@@ -20,6 +20,30 @@ describe('per-function CC (JS/TS)', () => {
     expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
+  it('keeps parsed AST result assembly out of the AST parse facade', () => {
+    const astSource = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
+    expect(astSource).toContain("from './astResult.js'");
+    expect(astSource).not.toContain('const imports: AstImport[] = []');
+    expect(astSource).not.toContain('visitTopLevel(node, imports, exports)');
+    expect(astSource).not.toContain('collectProgramSignals(ast.program, imports, callSites)');
+    expect(astSource).not.toContain('extractFunctionsFromBabel(ast.program)');
+    expect(astSource).not.toContain('callSites: [...new Set(callSites)]');
+
+    const resultSource = readFileSync(join(process.cwd(), 'src/core/astResult.ts'), 'utf8');
+    expect(resultSource).toContain('export function unparsedAstResult(');
+    expect(resultSource).toContain('export function parsedAstResult(');
+    expect(resultSource).not.toContain("from './ast.js'");
+
+    const resultFns = fns(resultSource, 'src/core/astResult.ts');
+    const unparsedResult = resultFns.find((fn) => fn.name === 'unparsedAstResult');
+    const parsedResult = resultFns.find((fn) => fn.name === 'parsedAstResult');
+
+    expect(unparsedResult).toBeDefined();
+    expect(unparsedResult!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+    expect(parsedResult).toBeDefined();
+    expect(parsedResult!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('keeps high-complexity AST traversal logic out of anonymous callbacks', () => {
     const source = readFileSync(join(process.cwd(), 'src/core/ast.ts'), 'utf8');
     const out = fns(source, 'src/core/ast.ts');
