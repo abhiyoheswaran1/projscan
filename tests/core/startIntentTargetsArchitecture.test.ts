@@ -23,4 +23,24 @@ describe('Mission Control intent target architecture', () => {
     expect(reportScopeSource).toContain('export function extractReportScopeTarget');
     expect(reportScopeSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps reliability search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const reliabilitySource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentReliabilityQueries.ts'),
+      'utf8',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractReliabilityQuery } from './startIntentReliabilityQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractRateLimitQuery');
+    expect(targetSource).not.toContain('function extractResiliencePatternQuery');
+
+    expect(reliabilitySource).toContain('export function extractReliabilityQuery');
+    expect(reliabilitySource).not.toContain("from './startIntentTargets.js'");
+  });
 });
