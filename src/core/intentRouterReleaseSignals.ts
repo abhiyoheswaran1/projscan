@@ -148,24 +148,8 @@ function releaseCommunicationContextMatches(tokens: Set<string>): boolean {
 }
 
 function releasePlanningContextMatches(tokens: Set<string>): boolean {
-  const planningSignal = hasAnyToken(tokens, [
-    'next',
-    'roadmap',
-    'plan',
-    'workstream',
-    'workstreams',
-  ]);
-  const productSignal = hasAnyToken(tokens, [
-    'build',
-    'product',
-    'products',
-    'feature',
-    'features',
-    'roadmap',
-    'workstream',
-    'workstreams',
-  ]);
-  return planningSignal && productSignal;
+  if (hasAnyToken(tokens, ['roadmap', 'workstream', 'workstreams'])) return true;
+  return tokens.has('plan') && hasAnyToken(tokens, ['product', 'products', 'feature', 'features']);
 }
 
 function releaseVersionCandidateContextMatches(tokens: Set<string>): boolean {

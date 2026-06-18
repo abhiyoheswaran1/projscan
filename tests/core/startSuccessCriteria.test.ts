@@ -58,7 +58,7 @@ describe('Mission Control success criteria', () => {
     ]);
   });
 
-  it('keeps product-planning workplan criteria for build-next routes', () => {
+  it('keeps product-planning workplan criteria for explicit product routes', () => {
     const criteria = successCriteria({
       mode: 'bug_hunt',
       route: route('projscan_workplan', ['build', 'next', 'product'], 'high'),
@@ -78,6 +78,29 @@ describe('Mission Control success criteria', () => {
       'A prioritized product-planning slice is selected from the bug-hunt workplan with a clear accept, defer, or split decision.',
       'The selected slice has a runnable verification command before implementation starts.',
       'Deferred product ideas have an explicit reason or follow-up instead of staying in the active workplan.',
+      'The next task has a verification command: npm test -- tests/core/start.test.ts',
+    ]);
+  });
+
+  it('keeps generic build-next workplan criteria in before-edit mode', () => {
+    const criteria = successCriteria({
+      mode: 'before_edit',
+      route: route('projscan_workplan', ['build', 'next'], 'high'),
+      actionPlan: [
+        action(
+          'Use workplan',
+          'projscan workplan --mode before_edit --format json',
+          'projscan_workplan',
+          {
+            mode: 'before_edit',
+          },
+        ),
+      ],
+    });
+
+    expect(criteria).toEqual([
+      'The workplan identifies the first safe implementation or review step before edits begin.',
+      'The selected action has a focused verification command before handoff.',
       'The next task has a verification command: npm test -- tests/core/start.test.ts',
     ]);
   });

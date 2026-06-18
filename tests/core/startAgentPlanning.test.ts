@@ -167,7 +167,7 @@ test('start report turns open-ended next-step questions into a workplan', async 
   );
 });
 
-test('start report routes build-next product-planning questions to roadmap workstreams', async () => {
+test('start report routes generic build-next questions to before-edit workplans', async () => {
   const root = await makeTempProject();
   await fs.writeFile(
     path.join(root, 'package.json'),
@@ -178,13 +178,14 @@ test('start report routes build-next product-planning questions to roadmap works
     intent: 'what should we build next',
   });
 
-  expect(report.mode).toBe('release');
-  expect(report.modeSource).toBe('intent');
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('default');
   expect(report.modeReason).toContain('what should we build next');
-  expect(report.recommendedWorkflow.id).toBe('release_approval');
+  expect(report.recommendedWorkflow.id).toBe('before_edit');
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({
-      tool: 'projscan_release_train',
+      category: 'Agent planning',
+      tool: 'projscan_workplan',
       confidence: 'high',
       matchedKeywords: expect.arrayContaining(['build', 'next']),
     }),
@@ -192,26 +193,12 @@ test('start report routes build-next product-planning questions to roadmap works
   expect(report.missionControl.routedIntent?.matchedKeywords).not.toEqual(['next']);
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan release-train --format json',
-      tool: 'projscan_release_train',
-      args: {},
+      command: 'projscan workplan --mode before_edit --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'before_edit' },
     }),
   );
-  expect(report.evidence.roadmapPreview).toEqual(
-    expect.objectContaining({
-      readOnly: true,
-      lines: ['4.5.x', '4.6.x', '4.7.x', '4.8.x', '4.9.x'],
-    }),
-  );
-  expect(report.evidence.roadmapPreview?.workstreams.map((entry) => entry.title)).toEqual(
-    expect.arrayContaining([
-      'Refresh roadmap and release-train surfaces',
-      'Validate swarm coordination in real agent workflows',
-      'Broaden framework dataflow precision',
-      'Add scoped and redacted report export controls',
-      'Ship Python upgrade intelligence and keep reducing hotspots',
-    ]),
-  );
+  expect(report.evidence.roadmapPreview).toBeUndefined();
 
   const roadmap = await computeStartReport(root, {
     intent: 'plan the product roadmap',
@@ -222,6 +209,12 @@ test('start report routes build-next product-planning questions to roadmap works
       command: 'projscan release-train --format json',
       tool: 'projscan_release_train',
       args: {},
+    }),
+  );
+  expect(roadmap.evidence.roadmapPreview).toEqual(
+    expect.objectContaining({
+      readOnly: true,
+      lines: ['4.5.x', '4.6.x', '4.7.x', '4.8.x', '4.9.x'],
     }),
   );
   expect(roadmap.evidence.roadmapPreview?.workstreams.map((entry) => entry.id)).toContain(

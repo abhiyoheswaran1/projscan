@@ -25,8 +25,8 @@ export function isProductPlanningWorkplanRoute(route: StartRoutedIntent | undefi
     'strategy',
     'strategic',
   ].some((keyword) => keywords.has(keyword));
-  const productSignal = ['build', 'product', 'products', 'feature', 'features'].some((keyword) =>
-    keywords.has(keyword),
+  const productSignal = ['product', 'products', 'feature', 'features', 'strategy', 'strategic'].some(
+    (keyword) => keywords.has(keyword),
   );
   return planningSignal && productSignal;
 }
@@ -71,6 +71,10 @@ const FIXED_ROUTE_CRITERIA: Record<string, string[]> = {
   projscan_bug_hunt: [
     'Bug-hunt findings are triaged by severity with a first fix candidate selected.',
     'The selected fix has a runnable verification command before editing starts.',
+  ],
+  projscan_workplan: [
+    'The workplan identifies the first safe implementation or review step before edits begin.',
+    'The selected action has a focused verification command before handoff.',
   ],
   projscan_agent_brief: [
     'The agent brief summarizes focus items, repo context, guardrails, and suggested next actions for the next developer.',

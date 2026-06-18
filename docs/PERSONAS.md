@@ -10854,3 +10854,51 @@ stable.
 Kept change: one framework source context helper, one framework source resolver
 helper, one architecture guard, this persona note, and no release action in
 this slice.
+
+## Two Hundred Twenty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: a developer asking "what should we build next?" needs an actionable
+implementation plan, not release approval. The old release-planning guard
+treated `build + next` as enough evidence for release-train routing, which made
+no-release autonomous loops point at release gates before implementation work.
+
+Smallest fix: narrow release-train product planning to explicit roadmap or
+workstream wording, or `plan` plus product/feature wording. Keep generic
+`build + next` on `projscan_workplan --mode before_edit`, and add generic
+workplan success criteria so Mission Control still explains what done means.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startAgentPlanning.test.ts tests/core/intentRouterCoordinationWork.test.ts tests/core/intentRouterRegressionRouting.test.ts tests/core/startSuccessCriteria.test.ts tests/docs/startRoutingDocs.test.ts
+npm run test -- tests/cli/startIntentRouting.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "what should we build next?" --format json
+npm exec projscan -- start --intent "plan the product roadmap" --format json
+npm exec projscan -- release-train --format json
+```
+
+## Review Guardrails: Build-Next Workplan Routing
+
+Delete-list after this slice:
+
+- Do not change explicit release, deployment, changelog, version-candidate,
+  release-note, or roadmap/workstream routing.
+- Do not change workplan schemas, release-train schemas, roadmap catalog
+  contents, command names, dependencies, lockfiles, package version, publish
+  behavior, push behavior, tags, or releases.
+- Do not broaden this into Mission Control redesign, release readiness changes,
+  roadmap task changes, or bug-hunt ranking changes.
+
+Reviewer edge case: `plan the product roadmap` must still route to release-train
+and include `evidence.roadmapPreview`, while `what should we build next?` must
+route to a before-edit workplan and omit release roadmap evidence.
+
+Kept change: one release-intent guard, one generic workplan criteria addition,
+focused routing/docs tests, this persona note, and no release action in this
+slice.

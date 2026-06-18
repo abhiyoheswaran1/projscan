@@ -500,7 +500,7 @@ projscan start --intent "what should an intern work on?" # Routes to bug-hunt pr
 projscan start --intent "what is a low risk improvement?" # Routes to bug-hunt prioritization
 projscan start --intent "pick a small safe task" # Routes to bug-hunt prioritization
 projscan start --intent "what should I do next?" # Routes to an ordered before-edit workplan
-projscan start --intent "what should we build next?" # Routes to release-train roadmap planning
+projscan start --intent "what should we build next?" # Routes to a before-edit implementation workplan
 projscan start --intent "explain issue missing-test-framework" # Routes to deep issue context
 projscan start --intent "fix issue missing-test-framework" # Routes to a concrete fix suggestion
 projscan start --intent "is user input reaching SQL sinks?" # Routes to hardening dataflow analysis

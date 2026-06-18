@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Route generic build-next start intents to workplan
+
+- Status: accepted
+- Context: `projscan start --intent "what should we build next?"` still chose release approval as the primary workflow because `build + next` satisfied release-planning signals. In no-release implementation loops this pushes users toward release gates instead of the actionable before-edit workplan they asked for.
+- Decision: Narrow release-planning intent matches to explicit roadmap/workstream wording or `plan + product/feature` wording, and treat generic `build + next` prompts as `projscan_workplan --mode before_edit`.
+- Consequences: Generic build-next prompts now start with an implementation workplan and do not expose release `roadmapPreview` as primary evidence. Explicit product-roadmap and release-readiness prompts still route to `projscan_release_train`, and explicit bug-hunt prompts remain unchanged.
+- Verification: Focused intent-router, start, success-criteria, docs, and CLI-routing tests failed before the guard change and passed after it. Rebuilt CLI smoke checks verify generic build-next and explicit roadmap/release prompts separately.
+
 ## 2026-06-18: Extract framework source resolver helpers
 
 - Status: accepted
