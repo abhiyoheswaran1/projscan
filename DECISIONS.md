@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract framework source resolver helpers
+
+- Status: accepted
+- Context: `src/core/frameworkSources.ts` remained a high-churn framework dataflow hotspot and still owned per-framework resolver wrapper functions plus resolver ordering inside the public framework request-source facade.
+- Decision: Move the framework request-source context type into `src/core/frameworkSourceContext.ts` and move resolver ordering/wrappers into `src/core/frameworkSourceResolvers.ts`, while keeping `FRAMEWORK_REQUEST_SOURCES` and `frameworkRequestSourceForFunction(context)` exported from `src/core/frameworkSources.ts`.
+- Consequences: Public imports, request-source constants, resolver order, matcher inputs, taint/dataflow request-source detection, and framework-specific matcher behavior stay unchanged. The shared framework facade no longer imports matcher functions directly.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused framework source, dataflow, and taint tests passed, and focused `projscan file` checks showed no issues in `src/core/frameworkSources.ts` or `src/core/frameworkSourceResolvers.ts`.
+
 ## 2026-06-18: Extract preflight report assembly helper
 
 - Status: accepted

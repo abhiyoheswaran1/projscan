@@ -61,7 +61,9 @@ describe('framework source maintainability', () => {
       'utf-8',
     );
 
-    expect(shared).toContain('export interface FrameworkRequestSourceContext');
+    expect(shared).toContain(
+      "export type { FrameworkRequestSourceContext } from './frameworkSourceContext.js';",
+    );
     expect(shared).toMatch(
       /frameworkRequestSourceForFunction\(\s*context: FrameworkRequestSourceContext,\s*\): string \| null/,
     );
@@ -70,6 +72,34 @@ describe('framework source maintainability', () => {
     expect(dataflowTraversal).toContain('functionName: fn.name');
     expect(taintIndex).toContain('frameworkRequestSourceForFunction({');
     expect(taintIndex).toContain('functionName: fn.name');
+  });
+
+  it('keeps per-framework resolver wrappers out of the shared framework source facade', async () => {
+    const shared = await fs.readFile(
+      path.join(process.cwd(), 'src/core/frameworkSources.ts'),
+      'utf-8',
+    );
+    expect(shared).toContain("from './frameworkSourceResolvers.js'");
+    expect(shared).not.toContain('function resolveNextRouteSource');
+    expect(shared).not.toContain('function resolveRemixSource');
+    expect(shared).not.toContain('function resolveHonoSource');
+    expect(shared).not.toContain('function resolveExpressSource');
+    expect(shared).not.toContain('function resolveFastifySource');
+    expect(shared).not.toContain('function resolveKoaSource');
+
+    const resolversSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/frameworkSourceResolvers.ts'),
+      'utf-8',
+    );
+    expect(resolversSource).toContain('export const FRAMEWORK_REQUEST_SOURCE_RESOLVERS');
+    expect(resolversSource).toContain("from './frameworkNextRouteSources.js'");
+    expect(resolversSource).toContain("from './frameworkRemixSources.js'");
+    expect(resolversSource).not.toContain("from './frameworkSources.js'");
+
+    const resolvers = await inspectRepoSourceFile('src/core/frameworkSourceResolvers.ts');
+    const next = resolvers.functions?.find((fn) => fn.name === 'resolveNextRouteSource');
+    expect(next).toBeDefined();
+    expect(next!.cyclomaticComplexity).toBeLessThanOrEqual(1);
   });
 
   it('keeps the shared framework source dispatcher as a low-complexity orchestrator', async () => {

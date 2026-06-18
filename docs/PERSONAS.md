@@ -10804,3 +10804,53 @@ payloads must still set `truncated: true`.
 
 Kept change: one preflight report helper, one architecture guard, this persona
 note, and no release action in this slice.
+
+## Two Hundred Twenty Seventh Slice Decision
+
+Selected personas: Security-Conscious Reviewer, Agent-Orchestrating Engineer,
+and Platform And Release Owner.
+
+Reason: framework request-source detection feeds taint and dataflow evidence.
+The public `frameworkSources` module already delegates framework-specific
+matching, but it still carried the per-framework resolver wrappers and ordering
+beside the public request-source catalog and dispatcher.
+
+Smallest fix: move the request-source context type into
+`src/core/frameworkSourceContext.ts` and move resolver ordering/wrappers into
+`src/core/frameworkSourceResolvers.ts`; keep `FRAMEWORK_REQUEST_SOURCES` and
+`frameworkRequestSourceForFunction(context)` exported from
+`src/core/frameworkSources.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/frameworkSources.test.ts
+npm run test -- tests/core/dataflow.test.ts
+npm run test -- tests/core/taint.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/frameworkSources.ts --format json
+npm exec projscan -- file src/core/frameworkSourceResolvers.ts --format json
+```
+
+## Review Guardrails: Framework Source Resolver Extraction
+
+Delete-list after this slice:
+
+- Do not change request-source constants, resolver ordering, framework matcher
+  inputs, enabled-source filtering, framework-specific matcher internals,
+  taint semantics, dataflow semantics, false-positive fixtures, dependencies,
+  lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/frameworkSources.ts` inside resolver helpers;
+  helpers must remain leaf-side of the public framework source facade.
+- Do not broaden this into new framework patterns, new sinks, source precision
+  tuning, or report output changes.
+
+Reviewer edge case: Next, Remix, Hono, Express, Fastify, and Koa resolver order
+must remain unchanged so existing first-match request-source detection is
+stable.
+
+Kept change: one framework source context helper, one framework source resolver
+helper, one architecture guard, this persona note, and no release action in
+this slice.
