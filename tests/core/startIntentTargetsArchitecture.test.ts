@@ -364,4 +364,26 @@ describe('Mission Control intent target architecture', () => {
     expect(testDataSource).toContain('export function extractTestDataQuery');
     expect(testDataSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps background work search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const backgroundWorkPath = path.join(
+      process.cwd(),
+      'src/core/startIntentBackgroundWorkQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractBackgroundWorkQuery } from './startIntentBackgroundWorkQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractBackgroundWorkQuery');
+    expect(targetSource).not.toContain('function isBackgroundWorkTarget');
+
+    expect(existsSync(backgroundWorkPath)).toBe(true);
+    const backgroundWorkSource = readFileSync(backgroundWorkPath, 'utf8');
+    expect(backgroundWorkSource).toContain('export function extractBackgroundWorkQuery');
+    expect(backgroundWorkSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
