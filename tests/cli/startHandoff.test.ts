@@ -36,7 +36,8 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Action Plan');
   expect(result.stdout).toContain('Execution Plan');
-  expect(result.stdout).toContain('- [ready] Next Action');
+  expect(result.stdout).not.toContain('- [ready] Next Action');
+  expect(result.stdout).toContain('- [ready] Ready Commands');
   expect(result.stdout).toContain(
     '  - Find exact target for impact analysis: projscan search "auth token loader" --format json',
   );
