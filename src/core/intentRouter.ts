@@ -13,13 +13,8 @@
  */
 
 import { ROUTE_CATALOG } from './intentRouterCatalog.js';
-import {
-  buildCatalogRouteResult,
-  buildScoredRouteResult,
-  type RouteResult,
-} from './intentRouterResult.js';
-import { scoreRouteCatalog } from './intentRouterScoring.js';
-import { tokenizeIntent } from './intentRouterTokens.js';
+import type { RouteResult } from './intentRouterResult.js';
+import { routeIntentWithCatalog } from './intentRouterResolution.js';
 
 export { ROUTE_CATALOG };
 export type { RouteEntry } from './intentRouterCatalog.js';
@@ -31,10 +26,5 @@ export type { RouteConfidence, RouteMatch, RouteResult } from './intentRouterRes
  * ties keep catalog order (deterministic).
  */
 export function routeIntent(intent: string | undefined): RouteResult {
-  if (!intent || intent.trim() === '') {
-    return buildCatalogRouteResult(ROUTE_CATALOG);
-  }
-
-  const scored = scoreRouteCatalog(intent, ROUTE_CATALOG, new Set(tokenizeIntent(intent)));
-  return buildScoredRouteResult(intent, scored);
+  return routeIntentWithCatalog(intent, ROUTE_CATALOG);
 }

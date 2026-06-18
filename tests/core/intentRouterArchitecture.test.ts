@@ -16,6 +16,8 @@ describe('routeIntent architecture', () => {
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterKeywordToolGuards.ts'), 'utf8');
   const scoringSource = () =>
     readFileSync(path.join(process.cwd(), 'src/core/intentRouterScoring.ts'), 'utf8');
+  const resolutionSource = () =>
+    readFileSync(path.join(process.cwd(), 'src/core/intentRouterResolution.ts'), 'utf8');
 
   it('keeps the route catalog isolated from router scoring logic', () => {
     const routerSource = readFileSync(
@@ -30,6 +32,29 @@ describe('routeIntent architecture', () => {
     expect(routerSource).toContain("from './intentRouterCatalog.js'");
     expect(routerSource).not.toContain('export const ROUTE_CATALOG');
     expect(catalogSource).toContain('export const ROUTE_CATALOG');
+  });
+
+  it('keeps route resolution orchestration out of the intent router facade', async () => {
+    const routerSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouter.ts'),
+      'utf8',
+    );
+
+    expect(routerSource).toContain("from './intentRouterResolution.js'");
+    expect(routerSource).not.toContain('scoreRouteCatalog(');
+    expect(routerSource).not.toContain('tokenizeIntent(');
+    expect(routerSource).not.toContain('buildCatalogRouteResult(');
+    expect(routerSource).not.toContain('buildScoredRouteResult(');
+
+    expect(resolutionSource()).toContain("from './intentRouterResult.js'");
+    expect(resolutionSource()).toContain("from './intentRouterScoring.js'");
+    expect(resolutionSource()).toContain("from './intentRouterTokens.js'");
+    expect(resolutionSource()).not.toContain("from './intentRouter.js'");
+
+    const resolution = await inspectRepoSourceFile('src/core/intentRouterResolution.ts');
+    const resolve = resolution.functions?.find((fn) => fn.name === 'routeIntentWithCatalog');
+    expect(resolve).toBeDefined();
+    expect(resolve!.cyclomaticComplexity).toBeLessThanOrEqual(3);
   });
 
   it('keeps dependency and coupling keyword routing isolated from the main router', () => {
@@ -332,7 +357,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(routerSource).toContain("from './intentRouterScoring.js'");
+    expect(resolutionSource()).toContain("from './intentRouterScoring.js'");
     expect(scoringSource()).toContain("from './intentRouterReleaseSignals.js'");
     expect(routerSource).not.toContain('function hasProhibitedReleaseWorkflowAction');
     expect(routerSource).not.toContain('function hasProhibitedVersionBumpAction');
@@ -419,7 +444,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(routerSource).toContain("from './intentRouterScoring.js'");
+    expect(resolutionSource()).toContain("from './intentRouterScoring.js'");
     expect(scoringSource()).toContain("from './intentRouterTargetSignals.js'");
     expect(routerSource).not.toContain('function hasFilePathTarget');
     expect(routerSource).not.toContain('function hasEnvVarTarget');
@@ -456,7 +481,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(routerSource).toContain("from './intentRouterScoring.js'");
+    expect(resolutionSource()).toContain("from './intentRouterScoring.js'");
     expect(scoringSource()).toContain("from './intentRouterKeywordWeights.js'");
     expect(routerSource).not.toContain('function keywordWeight');
 
@@ -472,7 +497,7 @@ describe('routeIntent architecture', () => {
       path.join(process.cwd(), 'src/core/intentRouter.ts'),
       'utf8',
     );
-    expect(routerSource).toContain("from './intentRouterScoring.js'");
+    expect(resolutionSource()).toContain("from './intentRouterScoring.js'");
     expect(scoringSource()).toContain("from './intentRouterKeywordMatches.js'");
     expect(routerSource).not.toContain('function routeKeywordMatches');
 

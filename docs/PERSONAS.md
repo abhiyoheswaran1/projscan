@@ -10658,3 +10658,50 @@ response.
 
 Kept change: one MCP message-handler helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Twenty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, OSS Maintainer Evaluating MCP
+Adoption, and Platform And Release Owner.
+
+Reason: `routeIntent` is the discovery path that helps agents choose among the
+tool surface. It is also the current top hotspot. Catalog data, keyword
+matching, scoring, and result shaping already live in focused modules, but the
+public router facade still owned the final resolution orchestration.
+
+Smallest fix: move empty-intent fallback, tokenization, scoring, and scored
+result assembly into `src/core/intentRouterResolution.ts`; keep
+`ROUTE_CATALOG`, route types, and `routeIntent(intent)` exported from
+`src/core/intentRouter.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterArchitecture.test.ts
+npm run test -- tests/core/intentRouter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/intentRouter.ts --format json
+npm exec projscan -- file src/core/intentRouterResolution.ts --format json
+```
+
+## Review Guardrails: Intent Router Resolution Extraction
+
+Delete-list after this slice:
+
+- Do not change route catalog entries, keyword matching, keyword weights,
+  scoring order, tie behavior, confidence thresholds, MCP tool names, CLI
+  examples, result schemas, dependencies, lockfiles, publish behavior, push
+  behavior, tags, or releases.
+- Do not import from `src/core/intentRouter.ts` inside the resolution helper;
+  the helper must remain leaf-side of the public router facade.
+- Do not broaden this into catalog reshaping, MCP registry changes, CLI route
+  behavior, tool-surface trimming, or release-readiness work.
+
+Reviewer edge case: empty, undefined, and whitespace-only intents must still
+return the full catalog grouped by category, while scored intents must preserve
+deterministic ranking and result shape.
+
+Kept change: one intent-router resolution helper, one architecture guard, this
+persona note, and no release action in this slice.

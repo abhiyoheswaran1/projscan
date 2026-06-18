@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract intent router resolution helper
+
+- Status: accepted
+- Context: `src/core/intentRouter.ts` remained the top high-churn hotspot and still owned empty-intent catalog fallback, tokenization, route scoring, and result shaping inside the public `routeIntent` facade.
+- Decision: Move route resolution orchestration into `src/core/intentRouterResolution.ts`, while keeping `ROUTE_CATALOG`, route types, and public `routeIntent(intent)` exports in `src/core/intentRouter.ts`.
+- Consequences: Empty-intent catalog output, keyword tokenization, scoring order, tie behavior, confidence/result shaping, and public imports stay unchanged. The public router facade no longer imports tokenization, scoring, or result-builder helpers directly.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused intent-router behavior tests passed, and focused `projscan file` checks showed no issues in `src/core/intentRouter.ts` or `src/core/intentRouterResolution.ts`.
+
 ## 2026-06-18: Extract MCP server message handler helper
 
 - Status: accepted
