@@ -201,13 +201,23 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentToolingConfigQueries.ts',
     );
+    const generatedConfigPath = path.join(
+      process.cwd(),
+      'src/core/startGeneratedConfigSearchTargets.ts',
+    );
 
     expect(targetSource).toContain(
-      "import { extractToolingConfigQuery } from './startIntentToolingConfigQueries.js';",
+      "import { searchQueryFromGeneratedAndConfig } from './startGeneratedConfigSearchTargets.js';",
     );
+    expect(targetSource).not.toContain('extractToolingConfigQuery');
     expect(targetSource).not.toContain('TOOLING_CONFIG_RULES');
     expect(targetSource).not.toContain('function lockfileQuery');
 
+    expect(existsSync(generatedConfigPath)).toBe(true);
+    const generatedConfigSource = readFileSync(generatedConfigPath, 'utf8');
+    expect(generatedConfigSource).toContain(
+      "import { extractToolingConfigQuery } from './startIntentToolingConfigQueries.js';",
+    );
     expect(existsSync(toolingPath)).toBe(true);
     const toolingSource = readFileSync(toolingPath, 'utf8');
     expect(toolingSource).toContain('export function extractToolingConfigQuery');

@@ -204,6 +204,29 @@ describe('Mission Control intent target helper architecture', () => {
     expect(testRouteSearchSource).toContain('function migrationSearchQuery');
     expect(testRouteSearchSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps generated and config search parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const generatedConfigPath = path.join(
+      process.cwd(),
+      'src/core/startGeneratedConfigSearchTargets.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { searchQueryFromGeneratedAndConfig } from './startGeneratedConfigSearchTargets.js';",
+    );
+    expect(targetSource).not.toContain('function searchQueryFromGeneratedAndConfig');
+
+    expect(existsSync(generatedConfigPath)).toBe(true);
+    const generatedConfigSource = readFileSync(generatedConfigPath, 'utf8');
+    expect(generatedConfigSource).toContain(
+      'export function searchQueryFromGeneratedAndConfig',
+    );
+    expect(generatedConfigSource).toContain(
+      "import { extractToolingConfigQuery } from './startIntentToolingConfigQueries.js';",
+    );
+    expect(generatedConfigSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
 
 function readTargetSource(): string {
