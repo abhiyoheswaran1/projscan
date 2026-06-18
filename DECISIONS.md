@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start preflight route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` remained a current hotspot after route-specific helper extractions, and preflight route criteria owned the highest-complexity remaining function plus exported helper behavior used by Mission Control internals.
+- Decision: Move `isPreflightAction`, `preflightModeForMission`, and preflight success-criteria assembly into `src/core/startPreflightRouteCriteria.ts`, while re-exporting the helper names from `src/core/startSuccessCriteria.ts` for existing imports.
+- Consequences: Preflight criteria wording, routed-mode behavior, mode mapping, resolver order, and Mission Control output stay unchanged while the main resolver module owns less route-specific logic.
+- Verification: Architecture coverage failed before the helper existed and passed after extraction; focused success-criteria tests preserve routed preflight mode behavior.
+
 ## 2026-06-18: Extract post-4.4 roadmap catalog entries
 
 - Status: accepted

@@ -11316,3 +11316,52 @@ preflight proof command.
 Kept change: one catalog helper extraction, one shared type helper, one
 release-train architecture guard, this persona note, and no release action in
 this slice.
+
+## Two Hundred Thirty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: `src/core/startSuccessCriteria.ts` remained a current production
+hotspot after the route-specific criteria extractions, and preflight criteria
+still carried the highest-complexity remaining function in the module. This
+surface is user-facing handoff guidance for before-edit, before-commit,
+hardening, release, and merge workflows.
+
+Smallest fix: move preflight action detection, preflight mode selection, and
+preflight success-criteria assembly into
+`src/core/startPreflightRouteCriteria.ts`; re-export the existing helper names
+from `src/core/startSuccessCriteria.ts` so current internal imports remain
+stable.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startPreflightRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Preflight Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight criteria wording, mode mapping, resolver ordering,
+  route ranking, Mission Control schemas, workplan behavior, public types,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not move unrelated dynamic criteria for impact, product planning, claim,
+  dependencies, regression, file, understand, fixed routes, or coupling into
+  the preflight helper.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: routed preflight actions with explicit `mode` args must
+still use that routed mode, while hardening maps to `before_commit` and release
+or merge workflows map to `before_merge`.
+
+Kept change: one preflight-route criteria helper, one architecture guard,
+existing preflight behavior coverage, this persona note, and no release action
+in this slice.

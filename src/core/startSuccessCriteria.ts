@@ -2,11 +2,14 @@ import { couplingSuccessCriteria } from './startCouplingRouteCriteria.js';
 import { dependencySuccessCriteria } from './startDependencyRouteCriteria.js';
 import { FIXED_ROUTE_CRITERIA } from './startFixedRouteCriteria.js';
 import { fileSuccessCriteria } from './startFileRouteCriteria.js';
+import { preflightSuccessCriteria } from './startPreflightRouteCriteria.js';
 import { regressionSuccessCriteria } from './startRegressionRouteCriteria.js';
 import { understandSuccessCriteria } from './startUnderstandRouteCriteria.js';
 import type { PreflightSuggestedAction } from '../types/preflight.js';
 import type { StartRoutedIntent } from '../types/start.js';
 import type { WorkplanMode, WorkplanReport } from '../types/workplan.js';
+
+export { isPreflightAction, preflightModeForMission } from './startPreflightRouteCriteria.js';
 
 export interface MissionSuccessCriteriaInput {
   mode: WorkplanMode;
@@ -44,22 +47,6 @@ export function actionFromWorkplan(workplan: WorkplanReport): PreflightSuggested
     command: task.verification.commands[0],
     tool: task.suggestedTools.find((tool) => tool.startsWith('projscan_')),
   };
-}
-
-export function isPreflightAction(action: PreflightSuggestedAction): boolean {
-  return (
-    action.tool === 'projscan_preflight' ||
-    action.command?.startsWith('projscan preflight ') === true
-  );
-}
-
-export function preflightModeForMission(
-  mode: WorkplanMode,
-): 'before_edit' | 'before_commit' | 'before_merge' {
-  if (mode === 'before_commit') return 'before_commit';
-  if (mode === 'hardening') return 'before_commit';
-  if (mode === 'before_merge' || mode === 'release') return 'before_merge';
-  return 'before_edit';
 }
 
 interface MissionCriteriaContext extends MissionSuccessCriteriaInput {
@@ -109,25 +96,6 @@ function defaultSuccessCriteria(): string[] {
   return [
     'The primary action returns useful JSON and identifies the next concrete developer step.',
     'At least one proof command is available before handing work to the next agent or human.',
-  ];
-}
-
-function preflightSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
-  if (
-    context.route?.tool !== 'projscan_preflight' &&
-    !(context.primaryAction && isPreflightAction(context.primaryAction))
-  ) {
-    return undefined;
-  }
-  const preflightMode =
-    context.route?.tool === 'projscan_preflight' &&
-    context.primaryAction?.args &&
-    'mode' in context.primaryAction.args
-      ? String(context.primaryAction.args.mode)
-      : preflightModeForMission(context.mode);
-  return [
-    `projscan preflight --mode ${preflightMode} returns proceed or only documented manual-review items.`,
-    'Every blocker has an owner, linked file, or follow-up command before the developer continues.',
   ];
 }
 

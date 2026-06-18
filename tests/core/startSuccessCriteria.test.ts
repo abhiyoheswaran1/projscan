@@ -122,6 +122,32 @@ describe('Mission Control success criteria', () => {
     expect(couplingCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps preflight route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const preflightCriteriaPath = path.join(
+      process.cwd(),
+      'src/core/startPreflightRouteCriteria.ts',
+    );
+    const helperExists = await fs
+      .access(preflightCriteriaPath)
+      .then(() => true)
+      .catch(() => false);
+
+    expect(helperExists).toBe(true);
+    if (!helperExists) return;
+
+    const preflightCriteria = await fs.readFile(preflightCriteriaPath, 'utf-8');
+    expect(source).toContain("from './startPreflightRouteCriteria.js'");
+    expect(source).toContain('export { isPreflightAction, preflightModeForMission }');
+    expect(source).not.toContain('function preflightSuccessCriteria');
+    expect(preflightCriteria).toContain('export function preflightSuccessCriteria');
+    expect(preflightCriteria).toContain('export function preflightModeForMission');
+    expect(preflightCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
