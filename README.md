@@ -715,6 +715,7 @@ projscan mission-proof --format markdown # Mission proof report for handoffs
 projscan mission-proof --write reports/mission-proof.md # Save Markdown proof
 projscan ci --format sarif           # SARIF 2.1.0 for GitHub Code Scanning
 projscan analyze --report-scope src/api --redact-paths --format json # Scoped, redacted shareable evidence
+projscan analyze --report-scope "src/api,packages/backend" --redact-paths --format json # Multi-scope partner evidence
 projscan doctor --report-policy apiEvidence --format markdown # Reuse a configured evidence policy
 ```
 

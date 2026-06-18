@@ -104,8 +104,16 @@ projscan start --intent "share redacted evidence for src/api with a partner" --f
 The routed start output returns the three artifact commands below as ready
 actions, using the requested scope when one is present in the intent.
 
+For a partner review that spans more than one area, name both scopes in the
+intent:
+
+```bash
+projscan start --intent "share redacted evidence for src/api and packages/backend with a partner" --format json
+```
+
 ```bash
 projscan analyze --report-scope src/api --redact-paths --format json > reports/api-analysis.json
+projscan analyze --report-scope "src/api,packages/backend" --redact-paths --format json > reports/api-backend-analysis.json
 projscan doctor --report-scope src/api --redact-paths --format markdown > reports/api-health.md
 projscan ci --report-scope src/api --redact-paths --format sarif > reports/api.sarif
 ```

@@ -28,3 +28,20 @@ test('start routing docs separate generic build-next prompts from explicit roadm
     'For quick-win and low-risk improvement wording, such as `projscan start --intent "find a quick win"`',
   );
 });
+
+test('docs show multi-scope shareable evidence routing', () => {
+  const readme = fs.readFileSync('README.md', 'utf8');
+  const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
+  const adoption = fs.readFileSync('docs/examples/adoption-workflows.md', 'utf8');
+
+  const multiScopeIntent =
+    'projscan start --intent "share redacted evidence for src/api and packages/backend with a partner"';
+  const multiScopeAnalyze =
+    'projscan analyze --report-scope "src/api,packages/backend" --redact-paths --format json';
+
+  expect(readme).toContain(multiScopeAnalyze);
+  expect(guide).toContain(multiScopeIntent);
+  expect(guide).toContain(multiScopeAnalyze);
+  expect(adoption).toContain(multiScopeIntent);
+  expect(adoption).toContain(multiScopeAnalyze);
+});
