@@ -90,10 +90,10 @@ describe('Mission Control intent target helper architecture', () => {
     const targetSource = readTargetSource();
     const fileTargetsPath = path.join(process.cwd(), 'src/core/startFileTargets.ts');
 
-    expect(targetSource).toContain("import { extractFileTarget } from './startFileTargets.js';");
     expect(targetSource).toContain(
       "export { extractFileTarget, isFilePathTarget } from './startFileTargets.js';",
     );
+    expect(targetSource).not.toContain("import { extractFileTarget }");
     expect(targetSource).not.toContain('function extractFileTarget');
     expect(targetSource).not.toContain('function isFilePathTarget');
 
@@ -108,7 +108,7 @@ describe('Mission Control intent target helper architecture', () => {
     const targetSource = readTargetSource();
     const envTargetsPath = path.join(process.cwd(), 'src/core/startEnvTargets.ts');
 
-    expect(targetSource).toContain("import { extractEnvVarTarget } from './startEnvTargets.js';");
+    expect(targetSource).not.toContain("import { extractEnvVarTarget }");
     expect(targetSource).not.toContain('function extractEnvVarTarget');
 
     expect(existsSync(envTargetsPath)).toBe(true);
@@ -153,16 +153,25 @@ describe('Mission Control intent target helper architecture', () => {
   it('keeps quoted text target parsing in a focused helper', () => {
     const targetSource = readTargetSource();
     const quotedTargetsPath = path.join(process.cwd(), 'src/core/startQuotedTextTargets.ts');
+    const highPrioritySearchPath = path.join(
+      process.cwd(),
+      'src/core/startHighPrioritySearchTargets.ts',
+    );
 
     expect(targetSource).toContain(
-      "import { extractQuotedTextTarget } from './startQuotedTextTargets.js';",
+      "import { searchQueryFromHighPrioritySignals } from './startHighPrioritySearchTargets.js';",
     );
+    expect(targetSource).not.toContain("import { extractQuotedTextTarget }");
     expect(targetSource).not.toContain('function extractQuotedTextTarget');
 
     expect(existsSync(quotedTargetsPath)).toBe(true);
     const quotedTargetsSource = readFileSync(quotedTargetsPath, 'utf8');
     expect(quotedTargetsSource).toContain('export function extractQuotedTextTarget');
     expect(quotedTargetsSource).not.toContain("from './startIntentTargets.js'");
+    const highPrioritySearchSource = readFileSync(highPrioritySearchPath, 'utf8');
+    expect(highPrioritySearchSource).toContain(
+      "import { extractQuotedTextTarget } from './startQuotedTextTargets.js';",
+    );
   });
 
   it('keeps graph target parsing and commands in a focused helper', () => {
@@ -243,6 +252,32 @@ describe('Mission Control intent target helper architecture', () => {
     expect(ownershipSearchSource).toContain('export function searchQueryFromOwnership');
     expect(ownershipSearchSource).toContain('export function searchQueryFromImplementation');
     expect(ownershipSearchSource).not.toContain("from './startIntentTargets.js'");
+  });
+
+  it('keeps high-priority search parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const highPrioritySearchPath = path.join(
+      process.cwd(),
+      'src/core/startHighPrioritySearchTargets.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { searchQueryFromHighPrioritySignals } from './startHighPrioritySearchTargets.js';",
+    );
+    expect(targetSource).not.toContain('function searchQueryFromHighPrioritySignals');
+
+    expect(existsSync(highPrioritySearchPath)).toBe(true);
+    const highPrioritySearchSource = readFileSync(highPrioritySearchPath, 'utf8');
+    expect(highPrioritySearchSource).toContain(
+      'export function searchQueryFromHighPrioritySignals',
+    );
+    expect(highPrioritySearchSource).toContain(
+      "import { extractEnvVarTarget } from './startEnvTargets.js';",
+    );
+    expect(highPrioritySearchSource).toContain(
+      "import { extractFileTarget } from './startFileTargets.js';",
+    );
+    expect(highPrioritySearchSource).not.toContain("from './startIntentTargets.js'");
   });
 });
 
