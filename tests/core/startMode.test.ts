@@ -17,6 +17,7 @@ test('start mode resolution infers workflows from routed intent', () => {
   const cases = [
     ['prepare this branch for release', 'release'],
     ['find bugs to fix before the PR', 'bug_hunt'],
+    ['what should I do next', 'before_edit'],
     ['is user input reaching SQL sinks', 'hardening'],
     ['what full regression should I run before merge', 'before_merge'],
     ['how risky is this PR before merge', 'before_merge'],

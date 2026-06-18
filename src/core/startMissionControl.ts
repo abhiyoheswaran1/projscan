@@ -16,7 +16,7 @@ import {
   READY_PROOF_SUMMARY,
 } from './startReviewGate.js';
 import { buildMissionRunbook, buildMissionTaskCard } from './startRunbook.js';
-import { routesForIntent } from './startMode.js';
+import { hasProhibitedWorkflowModeAction, routesForIntent } from './startMode.js';
 import { missionResume } from './startResume.js';
 import { buildMissionSuccessCriteria } from './startSuccessCriteria.js';
 import type { PreflightSuggestedAction } from '../types/preflight.js';
@@ -161,7 +161,14 @@ export function buildMissionControl(input: BuildMissionControlInput): StartMissi
 function isAutonomousContinuationIntent(intent: string | undefined): boolean {
   if (!intent) return false;
   if (/\bautonom(?:ous|ously|osly|y)?\b/i.test(intent)) return true;
-  return /\b(?:go|continue|keep going)\b.*\buntil\s+i\s+tell\s+you\b/i.test(intent);
+  if (/\b(?:go|continue|keep going)\b.*\buntil\s+i\s+tell\s+you\b/i.test(intent)) {
+    return true;
+  }
+  return hasContinuationVerb(intent) && hasProhibitedWorkflowModeAction(intent);
+}
+
+function hasContinuationVerb(intent: string): boolean {
+  return /\b(?:keep\s+going|continue|continuing|go\s+on)\b/i.test(intent);
 }
 
 function missionHandoff(

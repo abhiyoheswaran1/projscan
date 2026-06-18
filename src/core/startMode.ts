@@ -22,6 +22,7 @@ const MODE_RESOLVERS: readonly ModeResolver[] = [
   releaseMode,
   bugHuntMode,
   productPlanningMode,
+  agentPlanningMode,
   hardeningMode,
   evidencePackMode,
   reviewMode,
@@ -130,6 +131,12 @@ function productPlanningMode({ primaryRoute }: ModeResolverContext): WorkplanMod
   return isProductPlanningWorkplanRoute(primaryRoute) ? 'bug_hunt' : undefined;
 }
 
+function agentPlanningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
+  return primaryRoute?.tool === 'projscan_workplan' && primaryRoute.confidence === 'high'
+    ? 'before_edit'
+    : undefined;
+}
+
 function hardeningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
   return primaryRoute?.tool === 'projscan_dataflow' && primaryRoute.confidence === 'high'
     ? 'hardening'
@@ -180,7 +187,7 @@ function hasPreflightModeHint(intent: string): boolean {
   );
 }
 
-function hasProhibitedWorkflowModeAction(intent: string): boolean {
+export function hasProhibitedWorkflowModeAction(intent: string): boolean {
   return (
     /\bno[-\s]+(?:release|releasing|publish|publishing|deploy|deploying|deployment|push|pushing|merge|merging|tag|tagging|ship|shipping|version[-\s]+bump|bump)\b/i.test(
       intent,

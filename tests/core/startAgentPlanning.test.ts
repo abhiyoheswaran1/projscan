@@ -142,7 +142,10 @@ test('start report turns open-ended next-step questions into a workplan', async 
   });
 
   expect(report.mode).toBe('before_edit');
-  expect(report.modeSource).toBe('default');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toBe(
+    'Intent "what should I do next" maps to the before_edit workflow.',
+  );
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({
       category: 'Agent planning',
@@ -179,8 +182,10 @@ test('start report routes generic build-next questions to before-edit workplans'
   });
 
   expect(report.mode).toBe('before_edit');
-  expect(report.modeSource).toBe('default');
-  expect(report.modeReason).toContain('what should we build next');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toBe(
+    'Intent "what should we build next" maps to the before_edit workflow.',
+  );
   expect(report.recommendedWorkflow.id).toBe('before_edit');
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({

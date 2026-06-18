@@ -519,3 +519,46 @@ test('start report keeps no-release autonomous roadmap intents out of release wo
     'version_bump',
   ]);
 });
+
+test('start report allows keep-going no-release implementation loops to continue bounded slices', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'keep going with user research improvement implementation without release',
+  });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain(
+    'keep going with user research improvement implementation without release',
+  );
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_workplan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['keep', 'going', 'implementation']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode before_edit --format json',
+      tool: 'projscan_workplan',
+      args: { mode: 'before_edit' },
+    }),
+  );
+  expect(report.missionControl.reviewGate.policy.blockedActions).toEqual([
+    'release',
+    'publish',
+    'deploy',
+    'push',
+    'merge',
+    'version_bump',
+  ]);
+  expect(report.missionControl.reviewGate.decisions[0]).toEqual(
+    expect.objectContaining({
+      label: 'Continue next slice',
+      reply:
+        'Continue: start one more bounded implementation slice. Do not release, publish, deploy, push, merge, or bump the version.',
+    }),
+  );
+});
