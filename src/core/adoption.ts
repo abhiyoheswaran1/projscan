@@ -351,6 +351,20 @@ export function getWorkflowRecipes(): WorkflowRecipeCatalog {
         handoff: 'Fix top-ranked targets first, then rerun the regression plan.',
       },
       {
+        id: 'before_handoff',
+        name: 'Before handoff or commit',
+        useWhen: 'Check a branch before committing or handing it to a reviewer.',
+        outcome: 'Concrete fix targets, manual review gates, and proof commands are separated.',
+        commands: [
+          'projscan bug-hunt --format json',
+          'projscan preflight --mode before_commit --format json',
+          'projscan evidence-pack --pr-comment',
+        ],
+        mcpTools: ['projscan_bug_hunt', 'projscan_preflight', 'projscan_evidence_pack'],
+        handoff:
+          'Fix concrete blockers first, document manual review gates, then share the evidence pack.',
+      },
+      {
         id: 'release_approval',
         name: 'Release Approval',
         useWhen: 'Prepare a maintainer or CI environment approval packet.',

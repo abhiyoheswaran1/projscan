@@ -266,6 +266,15 @@ describe('Mission Control policy helpers', () => {
         handoff: 'handoff',
       },
       {
+        id: 'before_handoff',
+        name: 'Before handoff or commit',
+        useWhen: 'Use before handoff.',
+        outcome: 'Prove handoff risk.',
+        commands: ['projscan preflight --mode before_commit --format json'],
+        mcpTools: ['projscan_preflight'],
+        handoff: 'handoff',
+      },
+      {
         id: 'bug_hunt',
         name: 'Bug Hunt',
         useWhen: 'Use for hardening.',
@@ -280,6 +289,13 @@ describe('Mission Control policy helpers', () => {
       name: 'Pre Merge',
       why: 'Use before merge. Gate merge risk.',
       commands: ['projscan preflight --mode before_merge --format json'],
+      mcpTools: ['projscan_preflight'],
+    });
+    expect(chooseWorkflow('before_commit', recipes)).toEqual({
+      id: 'before_handoff',
+      name: 'Before handoff or commit',
+      why: 'Use before handoff. Prove handoff risk.',
+      commands: ['projscan preflight --mode before_commit --format json'],
       mcpTools: ['projscan_preflight'],
     });
     expect(chooseWorkflow('hardening', recipes).id).toBe('bug_hunt');

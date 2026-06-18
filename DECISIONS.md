@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Split before-commit start workflow from pre-merge
+
+- Status: accepted
+- Context: `projscan start` inferred `before_commit` for handoff and commit-safety intents, but its recommended workflow still rendered as `Pre-Merge`. That made the daily before-handoff workflow look like an alias for release/merge review instead of a trusted PR handoff path.
+- Decision: Add a dedicated `before_handoff` workflow recipe and map `before_commit` starts to it. Keep `before_merge` mapped to the existing `Pre-Merge` recipe.
+- Consequences: Handoff and commit-safety starts now recommend `projscan bug-hunt`, `projscan preflight --mode before_commit`, and `projscan evidence-pack --pr-comment`, while merge/release-gate starts keep the before-merge preflight recipe.
+- Verification: Focused start/MCP/CLI regressions failed on the old `pre_merge` mapping and passed after the workflow split.
+
 ## 2026-06-18: Ground package metadata in daily workflows
 
 - Status: accepted

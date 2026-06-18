@@ -12219,3 +12219,47 @@ but only after the local daily workflow value is clear.
 
 Kept change: one concise package description, one docs regression guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fifty Eighth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: `projscan start --intent "is this branch ready to hand off?"`
+correctly inferred `before_commit`, but the recommended workflow still said
+`Pre-Merge`. That blurred two daily paths: handoff/commit proof for reviewers
+and release/merge sign-off for maintainers.
+
+Smallest fix: add a dedicated `before_handoff` workflow recipe and map
+`before_commit` starts to it, while preserving `before_merge` as `Pre-Merge`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startPreflightRouting.test.ts tests/cli/startConsoleGuidance.test.ts tests/mcp/startBasic.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "is this branch ready to hand off?" --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Handoff Is Not Pre-Merge
+
+Delete-list after this slice:
+
+- Do not change preflight, review, release-train, bug-hunt, or evidence-pack
+  verdict semantics.
+- Do not remove the existing `Pre-Merge` workflow; only reserve it for
+  `before_merge`.
+- Do not add a new command surface, dependency, telemetry behavior, release
+  action, package version bump, tag, publish, deploy, push, or merge.
+- Do not let the before-commit workflow drift from the daily workflow commands:
+  bug-hunt, before-commit preflight, and evidence-pack PR proof.
+
+Reviewer edge case: explicit `before_merge` start output should still show
+`Pre-Merge` and include `projscan preflight --mode before_merge --format json`.
+
+Kept change: one workflow recipe, one mode-to-recipe mapping split, focused
+core/CLI/MCP regressions, this persona note, and no release action in this
+slice.

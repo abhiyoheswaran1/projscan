@@ -234,7 +234,8 @@ export function chooseWorkflow(
 function recipeIdForMode(mode: WorkplanMode): string {
   if (mode === 'bug_hunt') return 'bug_hunt';
   if (mode === 'release') return 'release_approval';
-  if (mode === 'before_commit' || mode === 'before_merge') return 'pre_merge';
+  if (mode === 'before_commit') return 'before_handoff';
+  if (mode === 'before_merge') return 'pre_merge';
   if (mode === 'hardening') return 'bug_hunt';
   if (mode === 'refactor') return 'before_edit';
   return 'before_edit';

@@ -62,7 +62,7 @@ test('start infers the workflow mode from safety-gate intent when mode is omitte
   expect(report.mode).toBe('before_commit');
   expect(report.modeSource).toBe('intent');
   expect(report.modeReason).toContain('is it safe to commit this change');
-  expect(report.recommendedWorkflow.id).toBe('pre_merge');
+  expect(report.recommendedWorkflow.id).toBe('before_handoff');
   expect(report.missionControl.primaryAction.command).toBe(
     'projscan preflight --mode before_commit --format json',
   );

@@ -18,7 +18,7 @@ test('start console shows the full first-ten-minutes path and coordination hints
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Start: before_commit');
   expect(result.stdout).toContain('Mode: inferred from intent');
-  expect(result.stdout).toContain('Workflow: Pre-Merge');
+  expect(result.stdout).toContain('Workflow: Before handoff or commit');
   expect(result.stdout).toContain('Mission Control');
   expect(result.stdout).toContain('is it safe to commit this change');
   expect(result.stdout).toContain(

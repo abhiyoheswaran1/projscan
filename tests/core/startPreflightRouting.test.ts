@@ -35,7 +35,13 @@ test('mission control does not duplicate preflight proof when intent routes to a
   expect(report.mode).toBe('before_commit');
   expect(report.modeSource).toBe('intent');
   expect(report.modeReason).toContain('is it safe to commit this change');
-  expect(report.recommendedWorkflow.id).toBe('pre_merge');
+  expect(report.recommendedWorkflow.id).toBe('before_handoff');
+  expect(report.recommendedWorkflow.name).toBe('Before handoff or commit');
+  expect(report.recommendedWorkflow.commands).toEqual([
+    'projscan bug-hunt --format json',
+    'projscan preflight --mode before_commit --format json',
+    'projscan evidence-pack --pr-comment',
+  ]);
   expect(report.firstTenMinutes.commands.slice(0, 3).map((step) => step.command)).toEqual([
     'projscan privacy-check --offline',
     'projscan start --mode before_commit',
@@ -71,6 +77,22 @@ test('mission control does not duplicate preflight proof when intent routes to a
       'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
       'Every blocker has an owner, linked file, or follow-up command before the developer continues.',
     ]),
+  );
+});
+
+test('start report keeps pre-merge workflow for merge safety gates', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    mode: 'before_merge',
+    intent: 'is it safe to merge this branch',
+  });
+
+  expect(report.mode).toBe('before_merge');
+  expect(report.recommendedWorkflow.id).toBe('pre_merge');
+  expect(report.recommendedWorkflow.name).toBe('Pre-Merge');
+  expect(report.recommendedWorkflow.commands).toContain(
+    'projscan preflight --mode before_merge --format json',
   );
 });
 

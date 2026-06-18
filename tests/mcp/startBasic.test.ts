@@ -133,7 +133,7 @@ test('projscan_start infers mode from safety-gate intent when no mode is supplie
   expect(result.start.mode).toBe('before_commit');
   expect(result.start.modeSource).toBe('intent');
   expect(result.start.modeReason).toContain('is it safe to commit this change');
-  expect(result.start.recommendedWorkflow.id).toBe('pre_merge');
+  expect(result.start.recommendedWorkflow.id).toBe('before_handoff');
   expect(result.start.missionControl.primaryAction).toEqual(
     expect.objectContaining({
       command: 'projscan preflight --mode before_commit --format json',
