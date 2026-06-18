@@ -2713,3 +2713,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the ordered domain search query chain into `src/core/startIntentDomainSearchQueries.ts`. Keep `src/core/startIntentTargets.ts` as the facade that composes high-priority, domain, test/route, generated/config, ownership, implementation, and fallback target extraction.
 - Consequences: Search query behavior and domain extractor order remain unchanged, while future domain-query additions can be reviewed in a focused helper instead of the shared start facade.
 - Verification: `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts` failed before the facade delegated to the helper, then passed after extraction. `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/start.test.ts tests/core/startMode.test.ts` passed after the routing facade change.
+
+## 2026-06-18: Split start intent domain architecture tests
+
+- Status: accepted
+- Context: After extracting domain search-query ordering, `tests/core/startIntentTargetsArchitecture.test.ts` became the top maintainability hotspot because it mixed start facade architecture checks with domain helper boundary checks.
+- Decision: Move the domain search-query architecture assertions into `tests/core/startIntentDomainSearchArchitecture.test.ts`. Keep `tests/core/startIntentTargetsArchitecture.test.ts` focused on the facade and non-domain target boundaries.
+- Consequences: Architecture coverage remains in place, but future domain-query test edits no longer expand the shared facade architecture test file.
+- Verification: `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts` failed before the focused domain architecture test existed, then `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/startIntentDomainSearchArchitecture.test.ts` passed after the split.

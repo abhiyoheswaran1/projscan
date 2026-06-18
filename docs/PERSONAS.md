@@ -12447,3 +12447,46 @@ extractors win when an intent could match multiple domain concepts.
 
 Kept change: one focused domain-search helper, one architecture boundary
 regression, this persona note, and no release action in this slice.
+
+## Two Hundred Sixty Third Slice Decision
+
+Selected personas: OSS Maintainer, Agent-Orchestrating Engineer, and Platform
+And Release Owner.
+
+Reason: after the domain query extraction, the architecture test file became
+the next highest maintainability hotspot. The concrete issue was review shape:
+domain-query helper boundaries were mixed into the shared start facade
+architecture tests, so future domain routing changes would keep expanding the
+wrong file.
+
+Smallest fix: move the domain search-query architecture assertions into
+`tests/core/startIntentDomainSearchArchitecture.test.ts`, leaving
+`tests/core/startIntentTargetsArchitecture.test.ts` focused on the facade and
+non-domain target boundaries.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/startIntentDomainSearchArchitecture.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Domain Test Coverage Moves, It Does Not Shrink
+
+Delete-list after this slice:
+
+- Do not remove any domain helper architecture assertions while moving them.
+- Do not change production routing, search-query ordering, public schemas, or
+  command output.
+- Do not add new domain categories as part of a test organization slice.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: the facade architecture test should still prove
+`startIntentTargets.ts` delegates to the domain search helper, while the focused
+domain test proves helper imports and no back-imports from the facade.
+
+Kept change: one test-file split, one organization regression, this persona
+note, and no release action in this slice.
