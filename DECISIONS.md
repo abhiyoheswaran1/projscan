@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract MCP server message handler helper
+
+- Status: accepted
+- Context: `src/mcp/server.ts` remained a high-churn MCP server hotspot and still owned JSON-RPC line handling, parser/dispatch branching, and response serialization inside `createMcpServer`.
+- Decision: Move JSON-RPC line handling into `src/mcp/serverMessageHandling.ts`, while keeping server lifecycle/session/dispatch wiring and public `createMcpServer`/`runMcpServer` exports in `src/mcp/server.ts`.
+- Consequences: Parse errors, invalid-request errors, notification null responses, dispatch behavior, response serialization, server handle shape, and close behavior stay unchanged. `server.ts` no longer imports parser/dispatch helpers directly.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused MCP server tests passed, and focused `projscan file` checks showed no issues in `src/mcp/server.ts` or `src/mcp/serverMessageHandling.ts`.
+
 ## 2026-06-18: Extract AST parse result helper
 
 - Status: accepted

@@ -95,6 +95,34 @@ describe('MCP server maintainability', () => {
     expect(parser!.cyclomaticComplexity).toBeLessThanOrEqual(6);
   });
 
+  it('keeps JSON-RPC line handling out of server orchestration', async () => {
+    const serverSource = await fs.readFile(path.join(process.cwd(), 'src/mcp/server.ts'), 'utf-8');
+    expect(serverSource).toContain("from './serverMessageHandling.js'");
+    expect(serverSource).not.toContain('async function handleMessage');
+    expect(serverSource).not.toContain('parseJsonRpcMessage(line)');
+    expect(serverSource).not.toContain('dispatchMcpRequest(parsed.request');
+    expect(serverSource).not.toContain('JSON.stringify(response)');
+
+    const messageHandlerSource = await fs.readFile(
+      path.join(process.cwd(), 'src/mcp/serverMessageHandling.ts'),
+      'utf-8',
+    );
+    expect(messageHandlerSource).toContain("from './serverMessage.js'");
+    expect(messageHandlerSource).toContain("from './serverDispatch.js'");
+    expect(messageHandlerSource).not.toContain("from './server.js'");
+
+    const messageHandlerModule = await inspectRepoSourceFile('src/mcp/serverMessageHandling.ts');
+    const createHandler = messageHandlerModule.functions?.find(
+      (fn) => fn.name === 'createMcpMessageHandler',
+    );
+    const handleMessage = messageHandlerModule.functions?.find((fn) => fn.name === 'handleMessage');
+
+    expect(createHandler).toBeDefined();
+    expect(createHandler!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+    expect(handleMessage).toBeDefined();
+    expect(handleMessage!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
+
   it('keeps watcher lifecycle out of server orchestration', async () => {
     const server = await inspectRepoSourceFile('src/mcp/server.ts');
     const lifecycleFunctions = new Set(['startFileWatcher', 'close']);

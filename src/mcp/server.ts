@@ -1,8 +1,7 @@
-import { dispatchMcpRequest } from './serverDispatch.js';
-import { parseJsonRpcMessage } from './serverMessage.js';
 import { createMcpServerLifecycle } from './serverLifecycle.js';
 import { createServerSessionRecorder } from './serverSession.js';
 import { createMcpDispatchHandlers } from './serverHandlers.js';
+import { createMcpMessageHandler } from './serverMessageHandling.js';
 import { runMcpServerStdio, type RunMcpServerOptions } from './serverStdio.js';
 import type { McpServerHandle, McpServerOptions } from './serverTypes.js';
 import { readMcpPackageVersion } from './serverVersion.js';
@@ -38,16 +37,7 @@ export function createMcpServer(rootPath: string, options: McpServerOptions = {}
     lifecycle,
     sessionRecorder,
   });
-
-  async function handleMessage(line: string): Promise<string | null> {
-    const parsed = parseJsonRpcMessage(line);
-    if (parsed.kind === 'empty') return null;
-    if (parsed.kind === 'error') return JSON.stringify(parsed.response);
-
-    const response = await dispatchMcpRequest(parsed.request, dispatchHandlers);
-    if (!response) return null;
-    return JSON.stringify(response);
-  }
+  const handleMessage = createMcpMessageHandler(dispatchHandlers);
 
   return { handleMessage, close: lifecycle.close };
 }

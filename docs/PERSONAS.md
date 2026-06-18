@@ -10608,3 +10608,53 @@ same line count, deduped call sites, imports, exports, and function entries.
 
 Kept change: one AST result helper, one architecture guard, this persona note,
 and no release action in this slice.
+
+## Two Hundred Twenty Third Slice Decision
+
+Selected personas: OSS Maintainer Evaluating MCP Adoption, Agent-Orchestrating
+Engineer, and Platform And Release Owner.
+
+Reason: `createMcpServer` is a public MCP entry point and a high-churn hotspot.
+Parser validation and dispatch routing already lived in focused helpers, but the
+server facade still owned per-line JSON-RPC branching and response serialization.
+That makes protocol review noisier than necessary when the server needs
+lifecycle or session changes.
+
+Smallest fix: move JSON-RPC line handling into
+`src/mcp/serverMessageHandling.ts`; keep lifecycle, session recorder,
+dispatch-handler construction, public exports, and stdio wiring in
+`src/mcp/server.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/serverMaintainability.test.ts
+npm run test -- tests/mcp/server.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/server.ts --format json
+npm exec projscan -- file src/mcp/serverMessageHandling.ts --format json
+```
+
+## Review Guardrails: MCP Server Message Handler Extraction
+
+Delete-list after this slice:
+
+- Do not change JSON-RPC parser validation, dispatch routing, request handlers,
+  notification null behavior, parse/invalid-request error shapes, response
+  serialization, protocol capabilities, session recording, watch lifecycle,
+  stdio transport, dependencies, lockfiles, publish behavior, push behavior,
+  tags, or releases.
+- Do not import from `src/mcp/server.ts` inside the message-handler helper; the
+  helper must remain leaf-side of the public server facade.
+- Do not broaden this into server lifecycle, server handlers, prompt/resource
+  handling, tool payload shaping, progress, or transport refactors.
+
+Reviewer edge case: whitespace-only input should still return `null`, invalid
+JSON should still serialize a parse-error response, initialized notifications
+should stay silent, and normal requests should still serialize the dispatch
+response.
+
+Kept change: one MCP message-handler helper, one architecture guard, this
+persona note, and no release action in this slice.
