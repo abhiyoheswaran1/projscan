@@ -63,4 +63,24 @@ describe('Mission Control intent target architecture', () => {
     expect(dataContractSource).toContain('export function extractDataContractQuery');
     expect(dataContractSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps UI interaction search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const uiInteractionSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentUiInteractionQueries.ts'),
+      'utf8',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractUiInteractionQuery } from './startIntentUiInteractionQueries.js';",
+    );
+    expect(targetSource).not.toContain('UI_INTERACTION_RULES');
+    expect(targetSource).not.toContain('function fixedUiInteractionQuery');
+
+    expect(uiInteractionSource).toContain('export function extractUiInteractionQuery');
+    expect(uiInteractionSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
