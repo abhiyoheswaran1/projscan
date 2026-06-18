@@ -166,11 +166,34 @@ describe('MCP server maintainability', () => {
   it('keeps MCP tool definition shaping in a named helper', async () => {
     const registrySource = await fs.readFile(path.join(process.cwd(), 'src/mcp/tools.ts'), 'utf-8');
 
-    expect(registrySource).toContain('return mcpTools.map(toToolDefinition);');
-    expect(registrySource).toContain('function toToolDefinition(');
+    expect(registrySource).toContain("from './toolDefinitions.js'");
+    expect(registrySource).toContain('return toToolDefinitions(mcpTools);');
+    expect(registrySource).not.toContain('function toToolDefinition(');
+    expect(registrySource).not.toContain('deprecationDescriptionPrefix');
     expect(registrySource).not.toContain(
       'mcpTools.map(({ name, description, inputSchema, deprecated }) =>',
     );
+
+    const definitionSource = await fs.readFile(
+      path.join(process.cwd(), 'src/mcp/toolDefinitions.ts'),
+      'utf-8',
+    );
+    expect(definitionSource).toContain("from '../core/deprecations.js'");
+    expect(definitionSource).toContain('export function toToolDefinitions(');
+    expect(definitionSource).toContain('function toToolDefinition(');
+    expect(definitionSource).not.toContain("from './tools.js'");
+
+    const definitionModule = await inspectRepoSourceFile('src/mcp/toolDefinitions.ts');
+    const mapDefinitions = definitionModule.functions?.find(
+      (fn) => fn.name === 'toToolDefinitions',
+    );
+    const mapOneDefinition = definitionModule.functions?.find(
+      (fn) => fn.name === 'toToolDefinition',
+    );
+    expect(mapDefinitions).toBeDefined();
+    expect(mapDefinitions!.cyclomaticComplexity).toBeLessThanOrEqual(1);
+    expect(mapOneDefinition).toBeDefined();
+    expect(mapOneDefinition!.cyclomaticComplexity).toBeLessThanOrEqual(3);
   });
 
   it('keeps stdio transport wiring out of server orchestration', async () => {

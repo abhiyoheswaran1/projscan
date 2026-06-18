@@ -10513,3 +10513,51 @@ should survive and receive the same prefixed ids.
 
 Kept change: one analyzer execution helper, one architecture guard, this persona
 note, and no release action in this slice.
+
+## Two Hundred Twenty First Slice Decision
+
+Selected personas: OSS Maintainer Evaluating MCP Adoption, Platform And Release
+Owner, and Security-Conscious Reviewer.
+
+Reason: MCP tool definitions are a semver-protected public surface for agents.
+The tool registry facade was already compact, but it still owned the projection
+from internal tool catalog entries to public MCP metadata, including future
+deprecation description prefixing. That makes small registry edits harder to
+review because lookup behavior and public metadata shaping live together.
+
+Smallest fix: move definition projection into `src/mcp/toolDefinitions.ts`;
+keep `getToolDefinitions`, `getToolHandler`, and public MCP type re-exports in
+`src/mcp/tools.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/mcp/serverMaintainability.test.ts
+npm run test -- tests/mcp/deprecation.test.ts
+npm run test -- tests/mcp/server.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/mcp/tools.ts --format json
+npm exec projscan -- file src/mcp/toolDefinitions.ts --format json
+```
+
+## Review Guardrails: MCP Tool Definition Extraction
+
+Delete-list after this slice:
+
+- Do not change MCP tool names, handlers, input schemas, descriptions,
+  deprecation metadata, tool catalog ordering, server dispatch, stdio transport,
+  dependencies, lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/mcp/tools.ts` inside the definition helper; the helper
+  must remain leaf-side of the public registry facade.
+- Do not broaden this into tool catalog edits, handler refactors, MCP protocol
+  changes, prompt/resource handling, or server lifecycle work.
+
+Reviewer edge case: a future deprecated tool must still expose the same
+`deprecated` object and carry the standard `[DEPRECATED ...]` description prefix
+in `tools/list`.
+
+Kept change: one MCP definition helper, one architecture guard, one future
+deprecation behavior assertion, this persona note, and no release action in this
+slice.

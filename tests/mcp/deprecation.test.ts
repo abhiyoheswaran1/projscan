@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getToolDefinitions } from '../../src/mcp/tools.js';
+import { toToolDefinitions } from '../../src/mcp/toolDefinitions.js';
+import type { McpTool } from '../../src/mcp/tools.js';
 
 const defs = getToolDefinitions();
 const names = defs.map((d) => d.name);
@@ -24,5 +26,22 @@ describe('deprecation mechanism (retained for future deprecations)', () => {
 
   it('no live tool description carries a [DEPRECATED] prefix', () => {
     expect(defs.every((d) => !d.description.startsWith('[DEPRECATED'))).toBe(true);
+  });
+
+  it('keeps future deprecated tool metadata and description prefixing together', () => {
+    const deprecatedTool: McpTool = {
+      name: 'projscan_legacy',
+      description: 'Legacy tool description.',
+      inputSchema: { type: 'object', properties: {} },
+      deprecated: { since: '3.8.0', replacedBy: 'projscan_file' },
+      handler: async () => ({}),
+    };
+
+    const [definition] = toToolDefinitions([deprecatedTool]);
+
+    expect(definition.deprecated).toEqual(deprecatedTool.deprecated);
+    expect(definition.description.startsWith('[DEPRECATED since 3.8.0')).toBe(true);
+    expect(definition.description).toContain('use projscan_file');
+    expect(definition.description).toContain('Legacy tool description.');
   });
 });

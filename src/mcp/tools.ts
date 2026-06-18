@@ -8,32 +8,17 @@
  * directory split.
  */
 
-import { deprecationDescriptionPrefix } from '../core/deprecations.js';
 import type { McpToolDefinition } from '../types.js';
+import { toToolDefinitions } from './toolDefinitions.js';
 import { mcpTools } from './toolCatalog.js';
 import type { McpTool, McpToolHandler } from './tools/_shared.js';
 
 export type { McpTool, McpToolHandler };
 
 export function getToolDefinitions(): McpToolDefinition[] {
-  return mcpTools.map(toToolDefinition);
+  return toToolDefinitions(mcpTools);
 }
 
 export function getToolHandler(name: string): McpToolHandler | undefined {
   return mcpTools.find((tool) => tool.name === name)?.handler;
-}
-
-function toToolDefinition({
-  name,
-  description,
-  inputSchema,
-  deprecated,
-}: McpTool): McpToolDefinition {
-  const def: McpToolDefinition = {
-    name,
-    description: deprecated ? deprecationDescriptionPrefix(deprecated) + description : description,
-    inputSchema,
-  };
-  if (deprecated) def.deprecated = deprecated;
-  return def;
 }

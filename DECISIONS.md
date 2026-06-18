@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract MCP tool definition shaping helper
+
+- Status: accepted
+- Context: `src/mcp/tools.ts` is a high-churn MCP adoption hotspot and still owned deprecation-aware tool definition projection alongside public registry lookup helpers.
+- Decision: Move MCP tool definition projection into `src/mcp/toolDefinitions.ts`, while keeping `getToolDefinitions`, `getToolHandler`, and public MCP type re-exports in `src/mcp/tools.ts`.
+- Consequences: Public MCP tool names, handlers, input schemas, deprecation metadata, and description prefix behavior stay unchanged. The registry facade no longer imports deprecation rendering or owns per-tool definition shaping.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused MCP server/deprecation tests passed, and focused `projscan file` checks showed no issues in `src/mcp/tools.ts` or `src/mcp/toolDefinitions.ts`.
+
 ## 2026-06-18: Extract analyzer plugin execution helper
 
 - Status: accepted
