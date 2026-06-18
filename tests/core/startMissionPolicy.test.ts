@@ -326,6 +326,39 @@ describe('Mission Control policy helpers', () => {
         command: 'projscan file src/core/start.ts --format json',
       },
     ]);
+    expect(
+      combineRisks(
+        workplan({ topRisks: [] }),
+        [
+          {
+            id: 'qs-hotspot-src-types-ts',
+            priority: 'p2',
+            title: 'Hotspot src/types.ts',
+            source: 'hotspot',
+            files: ['src/types.ts'],
+            command: 'projscan file src/types.ts --format json',
+          },
+          {
+            id: 'qs-hotspot-tests-cli-start-test-ts',
+            priority: 'p2',
+            title: 'Hotspot tests/cli/start.test.ts',
+            source: 'hotspot',
+            files: ['tests/cli/start.test.ts'],
+            command: 'projscan file tests/cli/start.test.ts --format json',
+          },
+        ],
+        3,
+      ),
+    ).toEqual([
+      {
+        id: 'start-baseline',
+        priority: 'p2',
+        title: 'Preserve the clean baseline',
+        source: 'baseline',
+        files: [],
+        command: 'projscan start --format json',
+      },
+    ]);
     expect(combineRisks(workplan({ topRisks: [] }), [], 3)[0]).toEqual({
       id: 'start-baseline',
       priority: 'p2',

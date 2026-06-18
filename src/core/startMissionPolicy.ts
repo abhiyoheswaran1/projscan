@@ -274,7 +274,9 @@ export function combineRisks(
   maxRisks: number,
 ): StartRisk[] {
   const fromWorkplan = workplan.topRisks.map(workplanRiskToStartRisk);
-  const fromQuality = qualityRisks.map(qualityRiskToStartRisk);
+  const fromQuality = qualityRisks
+    .filter(isActionableStartQualityRisk)
+    .map(qualityRiskToStartRisk);
   const risks = dedupeRisks([...fromWorkplan, ...fromQuality]).slice(0, maxRisks);
   if (risks.length > 0) return risks;
   return [
@@ -323,6 +325,23 @@ function qualityRiskToStartRisk(risk: QualityScorecardRisk): StartRisk {
     files: risk.files,
     command: risk.command,
   };
+}
+
+function isActionableStartQualityRisk(risk: QualityScorecardRisk): boolean {
+  if (risk.source !== 'hotspot' || risk.priority !== 'p2') return true;
+  return risk.files.length === 0 || !risk.files.every(isLowSignalHotspotFile);
+}
+
+function isLowSignalHotspotFile(file: string): boolean {
+  return isTestFile(file) || isTypeBarrel(file);
+}
+
+function isTestFile(file: string): boolean {
+  return /(^|\/)(__tests__|test|tests)\//u.test(file) || /\.(spec|test)\.[cm]?[jt]sx?$/u.test(file);
+}
+
+function isTypeBarrel(file: string): boolean {
+  return /(^|\/)types(\.d)?\.ts$/u.test(file) || /(^|\/)types\/index(\.d)?\.ts$/u.test(file);
 }
 
 function dedupeRisks(risks: StartRisk[]): StartRisk[] {
