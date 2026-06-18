@@ -2649,3 +2649,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Keep the structured `firstTenMinutes` data unchanged, but render `feedback-capture` and `adoption-proof` under a separate `Adoption Follow-Up` console section.
 - Consequences: Human console output now keeps the first-ten section focused on trust boundary, orientation, preflight, MCP setup, and first PR evidence. Adoption proof remains visible without implying it belongs in the first ten minutes.
 - Verification: `npm run test -- tests/cli/startConsoleGuidance.test.ts` failed before the console split existed, then passed after adoption follow-up rendering.
+
+## 2026-06-18: Align start guide with focused console behavior
+
+- Status: accepted
+- Context: `docs/GUIDE.md` still described the normal start console as always printing Handoff Prompt and default review-gate replies, after the console had been narrowed for linear missions.
+- Decision: Update the guide to describe the demonstrated behavior: focused linear console sections, Watch List labeling for healthy p2 evidence, and explicit handoff/review shortcuts or unresolved-input flows for detailed policy text.
+- Consequences: Guide claims now match the product workflow instead of overstating default console breadth. Structured handoff/review data remains documented through shortcuts, runbooks, JSON, and saved bundles.
+- Verification: `npm run test -- tests/docs/startRoutingDocs.test.ts` failed before the new wording existed and passed after the guide correction.

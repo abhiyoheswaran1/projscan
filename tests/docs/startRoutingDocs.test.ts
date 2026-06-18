@@ -80,3 +80,21 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
   expect(roadmap).not.toContain('What we beat them on');
   expect(roadmap).not.toContain('Become the operator, not the advisor');
 });
+
+test('start guide matches focused console handoff behavior', () => {
+  const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
+
+  expect(guide).toContain(
+    'The normal console keeps linear missions focused on Daily Workflows, Mission Control, Resume Checklist, Ready Proof, first-ten commands, Adoption Follow-Up, and a Watch List when healthy p2-only evidence is visible.',
+  );
+  expect(guide).toContain(
+    'Inline `Handoff Prompt` and `Review Gate` sections appear when the mission has unresolved inputs or the caller explicitly requests handoff output.',
+  );
+  expect(guide).toContain(
+    'Use `--handoff-prompt`, `--review-gate`, `--review-replies`, `--handoff-json`, the Markdown runbook, or saved mission bundles when detailed handoff/review policy text is needed.',
+  );
+  expect(guide).not.toContain('The default console review gate');
+  expect(guide).not.toContain(
+    'the normal console prints that same value as `Handoff Prompt` without requiring JSON or `--include-handoff`',
+  );
+});

@@ -12130,3 +12130,48 @@ same command list.
 
 Kept change: one console rendering split, focused guidance coverage, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fifty Sixth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: `docs/GUIDE.md` still claimed the normal start console always printed
+Handoff Prompt and default review-gate replies. That made the docs sound larger
+and noisier than the demonstrated focused console workflow.
+
+Smallest fix: update the guide to say linear console output focuses on daily
+workflows, Mission Control, resume/proof, first-ten commands, Adoption
+Follow-Up, and Watch List when applicable. Keep detailed handoff/review policy
+text documented through explicit shortcuts, JSON, runbooks, saved bundles, and
+unresolved-input flows.
+
+Proof commands:
+
+```bash
+npm run test -- tests/docs/startRoutingDocs.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Docs Must Match The Default Console
+
+Delete-list after this slice:
+
+- Do not claim normal linear start output always prints Handoff Prompt, Review
+  Gate, or reviewer replies.
+- Do not remove documentation for handoff/review JSON, shortcuts, runbooks, or
+  saved mission bundles.
+- Do not change runtime behavior, schemas, commands, dependencies, telemetry, or
+  release behavior.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: unresolved-input missions can still print inline handoff and
+review gate guidance; linear missions keep those details behind explicit
+handoff/review surfaces.
+
+Kept change: one guide wording correction, docs regression coverage, this
+persona note, and no release action in this slice.
