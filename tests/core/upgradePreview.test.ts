@@ -108,6 +108,7 @@ describe('previewUpgrade', () => {
     expect(preview.latest).toBeNull();
     expect(preview.drift).toBe('unknown');
     expect(preview.declaredSource).toBe('pyproject.toml');
+    expect(preview.declaredLine).toBe(7);
     expect(preview.declaredScope).toBe('main');
     expect(preview.importers).toEqual(['pkg/client.py']);
   });

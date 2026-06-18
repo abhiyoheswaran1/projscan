@@ -143,7 +143,7 @@ function parsePoetryKv(
     if (!match) continue;
     const name = match[1];
     const versionSpec = poetryVersionSpec(match[2].trim());
-    out.push({ name, versionSpec, line: lineOffset + index + 1 });
+    out.push({ name, versionSpec, line: lineOffset + index });
   }
   return out;
 }

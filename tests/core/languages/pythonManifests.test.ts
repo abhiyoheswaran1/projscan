@@ -113,6 +113,8 @@ describe('parsePyproject (PEP 621)', () => {
     expect(deps.map((d) => d.name).sort()).toEqual(['requests', 'sqlalchemy']);
     expect(deps.find((d) => d.name === 'requests')?.versionSpec).toBe('^2.25');
     expect(deps.find((d) => d.name === 'sqlalchemy')?.versionSpec).toBe('^2.0');
+    expect(deps.find((d) => d.name === 'requests')?.line).toBe(3);
+    expect(deps.find((d) => d.name === 'sqlalchemy')?.line).toBe(4);
   });
 
   it('reads poetry group deps as dev scope', () => {
@@ -123,8 +125,10 @@ describe('parsePyproject (PEP 621)', () => {
       'black = "^23"',
     ].join('\n');
     const deps = parsePyproject(toml);
+    const lines = Object.fromEntries(deps.map((d) => [d.name, d.line]));
     expect(deps.every((d) => d.scope === 'dev')).toBe(true);
     expect(deps.map((d) => d.name).sort()).toEqual(['black', 'pytest']);
+    expect(lines).toMatchObject({ pytest: 2, black: 4 });
   });
 
   it('reads legacy poetry dev-dependencies as dev scope', () => {
@@ -138,12 +142,14 @@ describe('parsePyproject (PEP 621)', () => {
 
     const deps = parsePyproject(toml);
     const scopes = Object.fromEntries(deps.map((d) => [d.name, d.scope]));
+    const lines = Object.fromEntries(deps.map((d) => [d.name, d.line]));
 
     expect(scopes).toMatchObject({
       requests: 'main',
       pytest: 'dev',
       ruff: 'dev',
     });
+    expect(lines).toMatchObject({ requests: 2, pytest: 4, ruff: 5 });
   });
 
   it('reads PEP 735 dependency groups as dev scope without include-group entries', () => {
