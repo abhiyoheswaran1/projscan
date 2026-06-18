@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   escapeDoubleQuoted,
   extractAuditPackageTarget,
+  extractClaimAgent,
+  extractClaimTarget,
   extractFileTarget,
   extractImpactTarget,
   extractIssueIdTarget,
@@ -80,6 +82,11 @@ describe('Mission Control intent target parsing', () => {
     expect(
       extractReportScopeTarget('share redacted evidence for src/api and packages/backend'),
     ).toBe('src/api,packages/backend');
+    expect(extractClaimTarget('claim src/core/start.ts for agent alice')).toBe(
+      'src/core/start.ts',
+    );
+    expect(extractClaimAgent('claim src/core/start.ts for alice')).toBe('alice');
+    expect(extractClaimAgent('claim src/core/start.ts for me')).toBeUndefined();
   });
 
   it('builds graph queries and shell-safe command arguments', () => {

@@ -35,6 +35,7 @@ type QueryExtractor = (intent: string) => string | undefined;
 
 export { extractFileTarget, isFilePathTarget } from './startFileTargets.js';
 export { extractImpactTarget } from './startImpactTargets.js';
+export { extractClaimAgent, extractClaimTarget } from './startClaimTargets.js';
 export { extractReportScopeTarget } from './startReportScopeTargets.js';
 export { extractAuditPackageTarget, extractPackageTarget } from './startPackageTargets.js';
 export { extractIssueIdTarget } from './startIssueTargets.js';
@@ -201,18 +202,6 @@ function searchQueryFromImplementation(trimmed: string): string | undefined {
   );
   if (whereImplemented?.[1]) return unwrapTarget(whereImplemented[1].trim());
   return undefined;
-}
-
-export function extractClaimTarget(intent: string): string | undefined {
-  return extractFileTarget(intent) ?? extractSymbolTarget(intent);
-}
-
-export function extractClaimAgent(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const match = compactIntent.match(/\b(?:as|for|agent)\s+([A-Za-z0-9_.:@-]{2,64})\b/i);
-  const candidate = match?.[1];
-  if (!candidate || /^(?:me|myself|us|team|agent|owner)$/i.test(candidate)) return undefined;
-  return candidate;
 }
 
 export function graphQueryFromIntent(intent: string): StartGraphQuery | undefined {

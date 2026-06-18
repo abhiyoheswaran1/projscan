@@ -134,6 +134,24 @@ describe('Mission Control intent target helper architecture', () => {
     expect(impactTargetsSource).toContain('export function extractImpactTarget');
     expect(impactTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps claim target parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const claimTargetsPath = path.join(process.cwd(), 'src/core/startClaimTargets.ts');
+
+    expect(targetSource).toContain("from './startClaimTargets.js';");
+    expect(targetSource).toContain(
+      "export { extractClaimAgent, extractClaimTarget } from './startClaimTargets.js';",
+    );
+    expect(targetSource).not.toContain('function extractClaimTarget');
+    expect(targetSource).not.toContain('function extractClaimAgent');
+
+    expect(existsSync(claimTargetsPath)).toBe(true);
+    const claimTargetsSource = readFileSync(claimTargetsPath, 'utf8');
+    expect(claimTargetsSource).toContain('export function extractClaimTarget');
+    expect(claimTargetsSource).toContain('export function extractClaimAgent');
+    expect(claimTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
 
 function readTargetSource(): string {
