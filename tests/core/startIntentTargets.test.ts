@@ -6,6 +6,7 @@ import {
   extractImpactTarget,
   extractIssueIdTarget,
   extractPackageTarget,
+  extractReportScopeTarget,
   extractSearchQuery,
   graphQueryFromIntent,
   graphQueryIsReady,
@@ -34,6 +35,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractIssueIdTarget('explain issue no-console-log')).toBe('no-console-log');
     expect(extractPackageTarget('upgrade @babel/parser')).toBe('@babel/parser');
     expect(extractAuditPackageTarget('does chalk have vulnerabilities?')).toBe('chalk');
+    expect(
+      extractReportScopeTarget('share redacted evidence for src/api and packages/backend'),
+    ).toBe('src/api,packages/backend');
   });
 
   it('builds graph queries and shell-safe command arguments', () => {

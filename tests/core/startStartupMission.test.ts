@@ -508,6 +508,26 @@ test.each([
   );
 });
 
+test('start report preserves multiple shareable evidence scopes', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'share redacted evidence for src/api and packages/backend with a partner',
+  });
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      label: 'Generate scoped analysis evidence for src/api,packages/backend',
+      command:
+        'projscan analyze --report-scope "src/api,packages/backend" --redact-paths --format json',
+      args: { report_scope: 'src/api,packages/backend', redact_paths: true },
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan doctor --report-scope "src/api,packages/backend" --redact-paths --format markdown',
+  );
+});
+
 test('start report keeps unknown shareable evidence scopes as unresolved input', async () => {
   const root = await makeTempProject();
 
