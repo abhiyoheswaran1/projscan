@@ -1227,11 +1227,11 @@ Coverage is also automatically joined into `projscan hotspots` when one of those
 
 ## AI Agent Integration (MCP)
 
-**This is the primary way to use projscan.** `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio so AI coding agents can query your codebase with real structural accuracy - not regex, not grep.
+Use MCP when an AI coding agent should call projscan directly. `projscan mcp` starts an [MCP](https://modelcontextprotocol.io) server over stdio and exposes the same local proof behind the daily workflows: repo context, impact, hotspots, review gates, and next commands.
 
 <img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/projscan-agent-demo.gif" alt="projscan answering two agent questions: what breaks if I rename buildCodeGraph (impact analysis with definitions, direct callers, transitive reach), and where should I fix first (ranked hotspots with cyclomatic complexity)" width="700">
 
-Two questions an agent asks; structural answers in milliseconds. _"What breaks if I rename `buildCodeGraph`?"_ → 31 direct callers, 97 files reachable. _"Where should I fix first?"_ → ranked hotspots with AST cyclomatic complexity, churn, and ownership signals.
+Two common agent questions: _"What breaks if I rename `buildCodeGraph`?"_ → 31 direct callers, 97 files reachable. _"Where should I fix first?"_ → ranked hotspots with AST cyclomatic complexity, churn, and ownership signals.
 
 ### Claude Code
 
