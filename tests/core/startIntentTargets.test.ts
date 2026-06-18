@@ -58,6 +58,7 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('which page renders /account/settings?')).toBe(
       '/account/settings page',
     );
+    expect(extractSearchQuery('where are fixtures for checkout?')).toBe('checkout fixtures');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

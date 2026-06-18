@@ -345,4 +345,23 @@ describe('Mission Control intent target architecture', () => {
     expect(frontendRouteSource).toContain('export function extractFrontendPageRouteQuery');
     expect(frontendRouteSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps test data search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const testDataPath = path.join(process.cwd(), 'src/core/startIntentTestDataQueries.ts');
+
+    expect(targetSource).toContain(
+      "import { extractTestDataQuery } from './startIntentTestDataQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractTestDataQuery');
+    expect(targetSource).not.toContain('Storybook stories');
+
+    expect(existsSync(testDataPath)).toBe(true);
+    const testDataSource = readFileSync(testDataPath, 'utf8');
+    expect(testDataSource).toContain('export function extractTestDataQuery');
+    expect(testDataSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
