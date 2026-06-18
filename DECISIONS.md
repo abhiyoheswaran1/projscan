@@ -2337,3 +2337,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move analyzer plugin issue shape validation into `src/core/pluginIssueValidation.ts` and keep `runAnalyzerPlugins` responsible for execution, plugin-id prefixing, and category fallback.
 - Consequences: Plugin trust gating, dynamic import behavior, reporter behavior, manifest validation, malformed issue dropping, and public plugin exports remain unchanged. The runtime file sheds private validation complexity into a focused helper.
 - Verification: `npm run test -- tests/core/pluginArchitecture.test.ts` failed before the helper existed and `plugins.ts` stopped owning `isWellShapedIssue`, then passed after extraction. The malformed issue runtime test also passed.
+
+## 2026-06-18: Extract plugin reporter runtime helper
+
+- Status: accepted
+- Context: `src/core/plugins.ts` still owned reporter plugin discovery, command support checks, trust diagnostics, dynamic module loading, render validation, and render failure isolation after analyzer loading had already moved out. Reporter plugins execute local code and produce reviewer-facing output, so this path needs a narrow audit boundary.
+- Decision: Move reporter plugin resolution, reporter runtime types, trust-before-import loading, and render isolation into `src/core/pluginReporterLoading.ts`. Keep `src/core/plugins.ts` as the public facade by preserving `resolveReporterPlugin`, re-exporting `renderReporterPlugin`, and re-exporting reporter types.
+- Consequences: Preview flag behavior, trust-on-first-use behavior, reporter diagnostics, CLI reporter behavior, public plugin imports, and MCP/CLI schemas remain unchanged. The plugin facade drops reporter runtime complexity while the helper is guarded against importing back from the facade.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts` failed before the helper existed and `plugins.ts` stopped owning reporter internals, then passed after extraction. AgentLoop task verification passed for architecture tests, reporter runtime tests, rebuilt CLI reporter tests, typecheck, lint, build, and `projscan file` checks. Post-slice bug pass reported a clean doctor result and no concrete new review defects; remaining bug-hunt output is the known release-scale manual sign-off only.

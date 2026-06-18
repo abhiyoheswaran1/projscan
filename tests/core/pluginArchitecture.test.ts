@@ -55,7 +55,7 @@ describe('plugin runtime maintainability', () => {
 
   it('keeps module loading mechanics out of the plugin runtime hotspot', async () => {
     const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
-    expect(runtimeSource).toContain("from './pluginModuleLoading.js'");
+    expect(runtimeSource).not.toContain("from './pluginModuleLoading.js'");
     expect(runtimeSource).not.toContain('class PluginModuleMissingError');
     expect(runtimeSource).not.toContain('class PluginModuleReadError');
     expect(runtimeSource).not.toContain('function assertPluginModuleReadable');
@@ -97,6 +97,30 @@ describe('plugin runtime maintainability', () => {
     expect(analyzerSource).not.toContain("from './plugins.js'");
     expect(loadAnalyzerEntry).toBeDefined();
     expect(loadAnalyzerEntry!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps reporter plugin loading and rendering out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginReporterLoading.js'");
+    expect(runtimeSource).not.toContain('function loadReporterPlugin');
+    expect(runtimeSource).not.toContain('function untrustedReporterDiagnostic');
+    expect(runtimeSource).not.toContain('function pluginRuntimeFail');
+    expect(runtimeSource).not.toContain('missing required export "render"');
+    expect(runtimeSource).not.toContain('reporter plugin "${plugin.manifest.name}" failed during render');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginReporterLoading.ts');
+    const reporterSource = readFileSync(
+      path.join(process.cwd(), 'src/core/pluginReporterLoading.ts'),
+      'utf8',
+    );
+    const loadReporter = inspection.functions?.find((fn) => fn.name === 'loadReporterPlugin');
+    const renderReporter = inspection.functions?.find((fn) => fn.name === 'renderReporterPlugin');
+
+    expect(reporterSource).not.toContain("from './plugins.js'");
+    expect(loadReporter).toBeDefined();
+    expect(loadReporter!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+    expect(renderReporter).toBeDefined();
+    expect(renderReporter!.cyclomaticComplexity).toBeLessThanOrEqual(4);
   });
 });
 

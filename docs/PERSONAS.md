@@ -10207,3 +10207,57 @@ modules that omit `check` should still be skipped with the same warning.
 Kept change: one focused analyzer loading helper, one analyzer runtime type
 module, one architecture guard, this persona note, and no release action in this
 slice.
+
+## Two Hundred Fifteenth Slice Decision
+
+Selected personas: Security-Conscious Reviewer, Platform And Release Owner, and
+Agent-Orchestrating Senior Engineer.
+
+Reason: after analyzer loading moved out, `src/core/plugins.ts` still owned the
+reporter plugin runtime path: reporter discovery, unsupported-command
+diagnostics, trust-status decisions, dynamic import validation, render
+isolation, and failed-render diagnostics. Reporter plugins execute local code
+and render reviewer-facing output, so this trust-boundary code should be
+auditable without reading the public plugin facade.
+
+Smallest fix: move reporter loading, resolution diagnostics, reporter runtime
+types, and render isolation into `src/core/pluginReporterLoading.ts`; keep
+`resolveReporterPlugin(...)`, `renderReporterPlugin(...)`, and reporter types
+available from `src/core/plugins.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/plugins.test.ts -t "reporter runtime"
+npm run test -- tests/cli/pluginReporter.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginReporterLoading.ts --format json
+```
+
+## Review Guardrails: Reporter Plugin Loading Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin manifest discovery, manifest validation, analyzer
+  loading, trust storage, trust-on-first-use behavior, preview flag behavior,
+  CLI/MCP schemas, dependencies, lockfiles, publish behavior, push behavior,
+  tags, or releases.
+- Do not import from `src/core/plugins.ts` inside the reporter loading helper;
+  reporter runtime code must stay on the leaf side of the facade boundary.
+- Do not execute untrusted reporter modules, broaden dynamic import inputs, add
+  network calls, read `.env` values, or introduce new plugin capabilities.
+
+Reviewer edge case: disabled plugins should still report
+`PROJSCAN_PLUGINS_PREVIEW`, unsupported commands should still return the
+same structured diagnostic, untrusted and changed reporter modules should still
+stop before import, missing modules and syntax errors should still report load
+diagnostics, missing `render` exports should still be rejected, and reporter
+render throws or non-string returns should still be isolated as reporter render
+errors.
+
+Kept change: one focused reporter loading helper, facade re-exports, one
+architecture guard, this persona note, and no release action in this slice.
