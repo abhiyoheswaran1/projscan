@@ -106,6 +106,29 @@ test('maintainability score keeps tiny issue-free hotspots as watch evidence', a
   );
 });
 
+test('quality scorecard does not route tiny issue-free hotspots as p0 risks', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'src/types.ts', lineCount: 35, cyclomaticComplexity: 1 }),
+    hotspot({ relativePath: 'tests/cli/start.test.ts', lineCount: 50, cyclomaticComplexity: 1 }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeQualityScorecard(root);
+
+  expect(report.topRisks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'qs-hotspot-src-types-ts',
+        priority: 'p2',
+      }),
+      expect.objectContaining({
+        id: 'qs-hotspot-tests-cli-start-test-ts',
+        priority: 'p2',
+      }),
+    ]),
+  );
+});
+
 test('maintainability score penalizes large or complex hotspots', async () => {
   hotspotState.hotspots = [
     hotspot({ relativePath: 'src/large.ts', lineCount: 450, cyclomaticComplexity: 1 }),
@@ -119,6 +142,29 @@ test('maintainability score penalizes large or complex hotspots', async () => {
   expect(dimension).toBeDefined();
   expect(dimension.status).toBe('watch');
   expect(dimension.score).toBe(76);
+});
+
+test('quality scorecard keeps large and complex hotspots as p0 risks', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'src/large.ts', lineCount: 450, cyclomaticComplexity: 1 }),
+    hotspot({ relativePath: 'src/complex.ts', lineCount: 60, cyclomaticComplexity: 18 }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeQualityScorecard(root);
+
+  expect(report.topRisks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'qs-hotspot-src-large-ts',
+        priority: 'p0',
+      }),
+      expect.objectContaining({
+        id: 'qs-hotspot-src-complex-ts',
+        priority: 'p0',
+      }),
+    ]),
+  );
 });
 
 function dimension(

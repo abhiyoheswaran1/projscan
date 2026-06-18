@@ -218,12 +218,19 @@ function issueToRisk(issue: Issue): QualityScorecardRisk {
 function hotspotToRisk(hotspot: FileHotspot): QualityScorecardRisk {
   return {
     id: `qs-hotspot-${slug(hotspot.relativePath)}`,
-    priority: hotspot.riskScore >= 70 ? 'p0' : hotspot.riskScore >= 30 ? 'p1' : 'p2',
+    priority: hotspotRiskPriority(hotspot),
     title: `Hotspot ${hotspot.relativePath}`,
     files: [hotspot.relativePath],
     source: 'hotspot',
     command: `projscan file ${hotspot.relativePath} --format json`,
   };
+}
+
+function hotspotRiskPriority(hotspot: FileHotspot): WorkplanPriority {
+  if (!isMaintainabilityPenaltyHotspot(hotspot)) return 'p2';
+  if (hotspot.riskScore >= 70) return 'p0';
+  if (hotspot.riskScore >= 30) return 'p1';
+  return 'p2';
 }
 
 function conflictToRisk(conflict: SessionConflict, index: number): QualityScorecardRisk {
