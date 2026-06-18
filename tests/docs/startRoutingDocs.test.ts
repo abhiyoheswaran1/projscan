@@ -47,10 +47,21 @@ test('docs show multi-scope shareable evidence routing', () => {
 });
 
 test('docs lead with demonstrated daily workflows instead of inflated breadth', () => {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')) as { description: string };
   const readme = fs.readFileSync('README.md', 'utf8');
   const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
   const adoption = fs.readFileSync('docs/examples/adoption-workflows.md', 'utf8');
   const roadmap = fs.readFileSync('docs/ROADMAP.md', 'utf8');
+
+  expect(pkg.description.length).toBeLessThanOrEqual(360);
+  expect(pkg.description).toContain('Local code intelligence for agent-assisted engineering');
+  expect(pkg.description).toContain('repo orientation before edits');
+  expect(pkg.description).toContain('proof before handoff or commit');
+  expect(pkg.description).toContain('release-candidate review');
+  expect(pkg.description).not.toContain('projscan_');
+  expect(pkg.description).not.toContain('stable v3 semantic graph');
+  expect(pkg.description).not.toContain('mechanical apply layer');
+  expect(pkg.description).not.toContain('CLI on the side');
 
   expect(readme).toContain('## Daily workflows engineers can trust');
   expect(readme).toContain('Use these three workflows before scanning the full command catalog.');

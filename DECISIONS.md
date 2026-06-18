@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Ground package metadata in daily workflows
+
+- Status: accepted
+- Context: The npm package description was a 2,000+ character feature inventory with internal tool names and broad platform language, even though the strongest demonstrated product value is a small set of daily workflows.
+- Decision: Replace the package description with concise workflow-first positioning: repo orientation before edits, proof before handoff or commit, release-candidate review, local execution, and MCP/CLI access.
+- Consequences: npm metadata no longer sells breadth as the product. Command details remain in README and guide references, while package metadata now matches the trust-oriented docs and start workflow.
+- Verification: Docs regression coverage now enforces a concise package description, requires the three daily workflows, and rejects the old feature-inventory markers.
+
 ## 2026-06-18: Collapse duplicate preflight manual sign-off reasons
 
 - Status: accepted

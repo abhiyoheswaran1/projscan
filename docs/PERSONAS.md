@@ -12175,3 +12175,47 @@ handoff/review surfaces.
 
 Kept change: one guide wording correction, docs regression coverage, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fifty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: npm metadata is a first-contact surface for many evaluators. The old
+description listed nearly every command and internal proof surface, which made
+projscan sound like a broad platform before showing the daily workflows
+engineers can actually repeat and judge.
+
+Smallest fix: replace the package description with concise workflow-first
+positioning and add a docs regression that rejects the previous feature
+inventory style.
+
+Proof commands:
+
+```bash
+npm run test -- tests/docs/startRoutingDocs.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "is this branch ready to hand off?" --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Metadata Is Not The Feature Catalog
+
+Delete-list after this slice:
+
+- Do not change the package version, dependencies, lockfile, release behavior,
+  publishing, tags, deploys, pushes, or merges for metadata wording.
+- Do not remove command documentation from README or the guide; only keep the
+  npm description from acting as a full command catalog.
+- Do not reintroduce internal `projscan_` tool-name inventory, mechanical
+  apply claims, or graph-contract details into `package.json` description.
+- Do not make broad productivity claims unsupported by the three demonstrated
+  daily workflows.
+
+Reviewer edge case: package metadata should still mention MCP and CLI access,
+but only after the local daily workflow value is clear.
+
+Kept change: one concise package description, one docs regression guard, this
+persona note, and no release action in this slice.
