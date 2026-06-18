@@ -9549,8 +9549,8 @@ Delete-list after this slice:
   behavior.
 - Do not weaken framework file/import/handler gating or lookalike suppression.
 - Do not add dependencies, network calls, telemetry, or runtime plugin paths.
-- Do not treat this as release preparation; the release slot has already been
-  used for 4.7.0.
+- Do not treat this as release preparation; release actions belong in a
+  dedicated release task.
 
 Reviewer edge case: imported Next `headers` and `cookies` helpers still require
 real `next/headers` static imports, while same-shaped local helper calls remain

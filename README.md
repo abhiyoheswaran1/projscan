@@ -35,29 +35,29 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.7.0
+## What's New in 4.8.0
 
-4.7.0 turns the post-4.6 validation train into release-ready evidence: broader
-framework dataflow precision, offline Python requirement include support,
-release-train roadmap routing, and lower-risk internal hotspots.
+4.8.0 turns the post-4.7 agent-research loop into release-ready hardening:
+SvelteKit dataflow precision, safer continuation routing, clearer coordination
+handoffs, sharper Python dependency evidence, and smaller internal modules.
 
-- **Remix and SvelteKit dataflow coverage.** Remix route actions/loaders and
-  SvelteKit `RequestEvent` handlers now classify request body readers, headers,
-  URL, params, and cookies through framework-gated source patterns.
-- **Python requirements includes.** Upgrade previews follow local `-r`
-  requirements and `-c` constraints without reading outside the scan or adding
-  network access.
-- **Roadmap routing.** Build-next product-planning prompts now route to
-  release-train roadmap evidence with a read-only roadmap preview.
-- **Hotspot cleanup.** Dataflow risk assembly, plugin manifest validation,
-  telemetry flushing, search index helpers, release evidence, and bug-hunt
-  findings have been split into focused modules.
-- **Focused coverage.** Python lockfile, framework dataflow, intent router,
-  preflight, MCP, and start suites now carry smaller regression tests plus
-  architecture guards for high-risk entrypoints.
-- **Release readiness.** Large-train preflight warnings are now separated from
-  concrete taint, dataflow, health, plugin, and supply-chain defects so release
-  review can focus on scale sign-off.
+- **SvelteKit dataflow coverage.** `RequestEvent` handlers and hooks now
+  classify request body readers, headers, URL, params, and cookies through
+  framework-gated source patterns.
+- **No-release continuation routing.** Autonomous improvement prompts now route
+  to bounded workplans while release, publish, deploy, push, merge, and
+  version-bump actions stay blocked unless a release task is active.
+- **Scoped evidence prompts.** Shareable redacted evidence requests can infer
+  top-level directory scopes such as `tests` and produce concrete local
+  analyze/doctor/CI commands.
+- **Coordination handoffs.** Agent briefs now carry clearer merge-order hints
+  and preflight coordination proof paths for parallel-agent work.
+- **Python dependency evidence.** Upgrade previews handle numeric-looking
+  package names, Poetry dependency source lines, nested requirements, and nested
+  constraints more reliably.
+- **Maintainability cleanup.** Mission Control route criteria, public start
+  types, plugin loading, telemetry helpers, preflight/report assembly, code
+  graph indexing, and HTML reporters have been split into focused modules.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 

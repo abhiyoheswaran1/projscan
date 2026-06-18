@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.8.0]
+
+2026-06-18 - "Agent Research And Release Hardening"
+
+### Added
+
+- Added SvelteKit request-source coverage for `RequestEvent` handlers, hooks,
+  URL reads, params, cookies, and request body/header access in
+  framework-gated dataflow analysis.
+- Added clearer agent brief merge-order hints and coordination proof paths so
+  parallel-agent handoffs carry the local evidence behind merge sequencing.
+- Added user and team persona research notes for platform owners, security
+  reviewers, agent-orchestrating engineers, and OSS adopters.
+
+### Changed
+
+- Split Mission Control route criteria, public start types, framework source
+  resolution, plugin loading/runtime helpers, telemetry storage/flushing, review
+  computation, preflight reports, code graph indexing, AST parse results, and
+  HTML reporters into focused modules.
+- Updated build-next and no-release continuation routing so autonomous
+  improvement prompts produce bounded workplans without unlocking release,
+  publish, deploy, push, merge, or version-bump actions.
+- Improved scoped evidence routing so shareable redacted evidence prompts can
+  infer top-level directory scopes such as `tests`.
+
+### Fixed
+
+- Fixed Python dependency evidence for numeric-looking package names, Poetry
+  dependency source lines, nested requirements, and nested constraints.
+- Fixed SvelteKit dataflow coverage and the suite structure guard so the new
+  fixtures stay focused under the architecture threshold.
+- Fixed coordination dirty-worktree evidence wording and preflight coordination
+  proof paths for clearer release-scale review packets.
+
+### Security
+
+- SvelteKit request-source additions remain framework/import/handler gated with
+  focused false-positive coverage.
+- Scoped evidence routing remains local-only and path-redacted; it does not add
+  telemetry, network calls, or secret-value reads.
+- No-release continuation routing keeps release, publish, deploy, push, merge,
+  and version-bump actions blocked until an explicit release task is active.
+
 ## [4.7.0]
 
 2026-06-17 - "Roadmap Validation And Release Readiness"

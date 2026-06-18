@@ -6,10 +6,10 @@ Current live-site baseline from 2026-06-10; re-check before publishing:
 
 - `https://www.baseframelabs.com/apps/projscan` still shows Version `4.0.0`, `45` MCP tools, the nav label `Changelog 4.0.0`, and a release-notes section headed `Shipped in 4.0.0.`
 - `https://www.baseframelabs.com/apps/projscan/docs` does not yet document Mission Control outcome resume, local proof summaries, or `projscan mission-proof`.
-- This update should move the site from the 4.0.0 consolidation story to the 4.7.0 Roadmap Validation And Release Readiness story. Keep the 4.0 migration section as historical context.
+- This update should move the site from the 4.0.0 consolidation story to the 4.8.0 Agent Research And Release Hardening story. Keep the 4.0 migration section as historical context.
 
 ```text
-Update the projscan website for projscan 4.7.0.
+Update the projscan website for projscan 4.8.0.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -17,10 +17,10 @@ Pages to update:
 - The changelog/release-notes surface currently labelled "Changelog 4.0.0"
 
 Release headline:
-4.7.0: Roadmap Validation And Release Readiness
+4.8.0: Agent Research And Release Hardening
 
 Primary story:
-projscan now turns the post-4.6 validation train into release-ready evidence: broader framework dataflow precision, offline Python requirement include support, release-train roadmap routing, and lower-risk internal hotspots while preserving local-first review evidence.
+projscan now turns the post-4.7 agent-research loop into release-ready hardening: SvelteKit dataflow precision, safer no-release continuation routing, scoped redacted evidence prompts, clearer coordination handoffs, sharper Python dependency evidence, and smaller internal modules while preserving local-first review evidence.
 
 Do not change:
 - Keep the product name `projscan`.
@@ -31,12 +31,12 @@ Do not change:
 - Keep the 45 MCP tools count unless the release artifact says otherwise.
 - Describe language support as 11 AST adapters covering 12 named languages.
 - Keep Baseframe Labs as the umbrella brand/family only, not a legal company name with LLC/corp wording.
-- Keep 4.0 migration content, but move it below the new 4.7 release story.
+- Keep 4.0 migration content, but move it below the new 4.8 release story.
 
 Stale live-site claims to update:
-- Version: `4.0.0`, `4.3.1`, or `4.4.0` -> `4.7.0`.
-- Navigation/changelog label: `Changelog 4.0.0`, `Changelog 4.3.1`, or `Changelog 4.4.0` -> `Changelog 4.7.0`.
-- Release notes heading: `Shipped in 4.0.0.`, `Shipped in 4.3.1.`, or `Shipped in 4.4.0.` -> `Shipped in 4.7.0.`
+- Version: `4.0.0`, `4.3.1`, `4.4.0`, or `4.7.0` -> `4.8.0`.
+- Navigation/changelog label: `Changelog 4.0.0`, `Changelog 4.3.1`, `Changelog 4.4.0`, or `Changelog 4.7.0` -> `Changelog 4.8.0`.
+- Release notes heading: `Shipped in 4.0.0.`, `Shipped in 4.3.1.`, `Shipped in 4.4.0.`, or `Shipped in 4.7.0.` -> `Shipped in 4.8.0.`
 - Replace hero command examples that only show `npx projscan` or `npx projscan start` with `npx projscan start --intent "is it safe to commit this change?"`.
 - Add `npx projscan start --mission .projscan/mission` anywhere the page talks about resuming saved work.
 - Add `npx projscan mission-proof --mission .projscan/mission --format json` anywhere the page talks about measuring proof or adoption.
@@ -48,13 +48,13 @@ Above-the-fold update:
 - Mention that Mission Control returns inferred workflow mode, route confidence, ready actions, execution plan, current cursor, done criteria, proof commands, review gate, handoff prompt, and outcome summary.
 - Keep graph, dataflow, MCP, and local-first language, but make the goal-to-proof workflow the first story.
 
-New release-note bullets for 4.7.0:
-- Remix dataflow coverage: route actions and loaders now classify request body readers, headers, URL, signal, and params through framework-gated source patterns.
-- Python requirements includes: upgrade previews follow local `-r` requirements and `-c` constraints without reading outside the scan or adding network access.
-- Roadmap routing: build-next product-planning prompts route to release-train roadmap evidence with a read-only roadmap preview.
-- Hotspot cleanup: dataflow risk assembly, plugin manifest validation, telemetry flushing, search index helpers, release evidence, and bug-hunt findings are split into focused modules.
-- Focused coverage: Python lockfile, framework dataflow, intent router, preflight, MCP, and start suites now carry smaller regression tests plus architecture guards for high-risk entrypoints.
-- Release readiness: large-train preflight warnings are separated from concrete taint, dataflow, health, plugin, and supply-chain defects so release review can focus on scale sign-off.
+New release-note bullets for 4.8.0:
+- SvelteKit dataflow coverage: `RequestEvent` handlers and hooks now classify request body readers, headers, URL, params, and cookies through framework-gated source patterns.
+- No-release continuation routing: autonomous improvement prompts route to bounded workplans while release, publish, deploy, push, merge, and version-bump actions stay blocked unless a release task is active.
+- Scoped evidence prompts: shareable redacted evidence requests infer top-level directory scopes such as `tests` and produce concrete local analyze/doctor/CI commands.
+- Coordination handoffs: agent briefs now carry clearer merge-order hints and preflight coordination proof paths for parallel-agent work.
+- Python dependency evidence: upgrade previews handle numeric-looking package names, Poetry dependency source lines, nested requirements, and nested constraints more reliably.
+- Maintainability cleanup: Mission Control route criteria, public start types, plugin loading, telemetry helpers, preflight/report assembly, code graph indexing, and HTML reporters are split into focused modules.
 
 Keep the Mission Control handoff story as cumulative context:
 - `projscan start --intent "<goal>"` maps plain-language work to inferred mode, route confidence, matched keywords, ready actions, alternatives, done criteria, proof commands, and handoff prompt.
@@ -67,7 +67,7 @@ Main page feature-section edits:
 - Resume from proof: add a section for `projscan start --mission .projscan/mission`. Explain that resumed agents start from the saved pass/fail state instead of rereading the full report.
 - Local proof report: add a section for `projscan mission-proof`. Explain that it reports proof completion, reviewer approvals, reruns, failed gates, time saved, and risk avoided from local files only.
 - Deep graph platform: keep the graph-query story. Add that package importer questions such as "who uses lodash?" can route into semantic-graph package importer lookups.
-- Release trust: mention there are no MCP tool removals in 4.7.0. This release adds Remix request-source coverage, Python requirements include evidence, roadmap routing, hotspot cleanup, and release-review evidence around Mission Control.
+- Release trust: mention there are no MCP tool removals in 4.8.0. This release adds SvelteKit request-source coverage, no-release continuation routing, scoped evidence prompts, coordination handoffs, Python dependency evidence fixes, and maintainability cleanup around Mission Control.
 
 Docs page updates:
 - Add a "Start with an intent" section near "Orient your agent in 60 seconds".
@@ -79,14 +79,14 @@ Docs page updates:
 - Add a "Compare with local manual baseline" section for:
   - `npx projscan mission-proof --mission .projscan/mission --baseline manual-runs.json --format json`
 - Explain that the baseline stays local and may include minutes spent, reruns, failed gates, and reviewer approvals.
-- Keep the 4.0 migration section in place, and state that 4.7.0 is additive.
+- Keep the 4.0 migration section in place, and state that 4.8.0 is additive.
 
 Screenshots/media:
-- Use the README media after the `v4.7.0` tag is live:
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.7.0/docs/projscan-mission-control.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.7.0/docs/projscan-proof-router.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.7.0/docs/projscan-mission-control.gif`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.7.0/docs/projscan-mission-proof.gif`
+- Use the README media after the `v4.8.0` tag is live:
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.8.0/docs/projscan-mission-control.png`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.8.0/docs/projscan-proof-router.png`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.8.0/docs/projscan-mission-control.gif`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.8.0/docs/projscan-mission-proof.gif`
 - Use the Mission Control image as the hero/overview asset.
 - Use the proof-router image for docs or release-note detail.
 - Use the VHS GIFs when the page needs live terminal proof of the Mission Control and Mission Proof flows.
@@ -100,15 +100,15 @@ Calls to action:
 - Keep existing CTAs for MCP setup, privacy-check, evidence-pack, and swarm coordination.
 
 Suggested copy block:
-Ask projscan what you are trying to do, then keep the proof with the work. In 4.7.0, `projscan start --intent "<goal>"` adds release-train roadmap routing for build-next prompts, broader framework-aware dataflow checks, offline Python requirement include evidence, and lower-risk internal hotspots behind the same local AgentLoopKit proof loop. It stays local-first: no source upload, no API key, no hidden telemetry.
+Ask projscan what you are trying to do, then keep the proof with the work. In 4.8.0, `projscan start --intent "<goal>"` adds safer no-release continuation routing, scoped redacted evidence commands, clearer coordination handoffs, SvelteKit-aware dataflow checks, and sharper Python dependency evidence behind the same local AgentLoopKit proof loop. It stays local-first: no source upload, no API key, no hidden telemetry.
 
 Verification before publishing:
-- Confirm every visible version/changelog label reads 4.7.0.
+- Confirm every visible version/changelog label reads 4.8.0.
 - Confirm the tool count still reads 45.
 - Confirm language copy reads 11 AST adapters covering 12 named languages.
 - Confirm `projscan start --intent` appears on both overview and docs pages.
 - Confirm `--save-mission`, `--mission`, `mission.sh`, `status.sh`, `review.sh`, `--review-gate`, and `mission-proof` appear in the docs page.
-- Confirm the screenshots load from the `v4.7.0` raw GitHub URLs after the tag is pushed.
+- Confirm the screenshots load from the `v4.8.0` raw GitHub URLs after the tag is pushed.
 - Search the rendered site for `4.0.0`; remaining hits should be only historical migration context, not current-version labels.
 ```
 
@@ -121,4 +121,4 @@ Verification before publishing:
 - Regenerate screenshots: `npm run docs:screenshots`
 - Regenerate VHS demos: `npm run docs:demos`
 - Regenerate all README media: `npm run docs:assets`
-- Changelog source: `CHANGELOG.md` entry for `4.7.0`
+- Changelog source: `CHANGELOG.md` entry for `4.8.0`
