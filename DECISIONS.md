@@ -2305,3 +2305,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move flush orchestration into `src/core/telemetryFlushing.ts`, keep `flushTelemetry` as a public facade in `src/core/telemetry.ts`, and pass the existing runtime guard functions into the helper.
 - Consequences: Public telemetry imports, sender selection, queue clearing after successful sends, skipped/queued/failed result shapes, and offline/no-network/disabled guard behavior remain stable. The public telemetry facade drops to low complexity while flush review has one focused module.
 - Verification: `npm run test -- tests/core/telemetryArchitecture.test.ts` failed before the helper existed and `telemetry.ts` stopped owning flush internals, then passed after extraction. Existing telemetry behavior tests also passed.
+
+## 2026-06-18: Extract plugin issue validation helper
+
+- Status: accepted
+- Context: `src/core/plugins.ts` is a trust-boundary hotspot and still mixed plugin loading/execution with analyzer issue-shape validation and severity checks.
+- Decision: Move analyzer plugin issue shape validation into `src/core/pluginIssueValidation.ts` and keep `runAnalyzerPlugins` responsible for execution, plugin-id prefixing, and category fallback.
+- Consequences: Plugin trust gating, dynamic import behavior, reporter behavior, manifest validation, malformed issue dropping, and public plugin exports remain unchanged. The runtime file sheds private validation complexity into a focused helper.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts` failed before the helper existed and `plugins.ts` stopped owning `isWellShapedIssue`, then passed after extraction. The malformed issue runtime test also passed.

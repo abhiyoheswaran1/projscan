@@ -5,10 +5,10 @@ import type { CodeGraph } from './codeGraph.js';
 import type {
   FileEntry,
   Issue,
-  IssueSeverity,
   DataflowReport,
   SemanticGraphReport,
 } from '../types.js';
+import { isWellShapedIssue } from './pluginIssueValidation.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
 import { validateManifest } from './pluginManifestValidation.js';
 import type {
@@ -526,20 +526,4 @@ function pluginRuntimeFail(
 
 function formatError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function isWellShapedIssue(x: unknown): x is Issue {
-  if (!x || typeof x !== 'object') return false;
-  const obj = x as Record<string, unknown>;
-  if (typeof obj.id !== 'string' || obj.id.length === 0) return false;
-  if (typeof obj.title !== 'string') return false;
-  if (typeof obj.description !== 'string') return false;
-  if (!isSeverity(obj.severity)) return false;
-  if (typeof obj.category !== 'string') return false;
-  if (typeof obj.fixAvailable !== 'boolean') return false;
-  return true;
-}
-
-function isSeverity(x: unknown): x is IssueSeverity {
-  return x === 'error' || x === 'warning' || x === 'info';
 }

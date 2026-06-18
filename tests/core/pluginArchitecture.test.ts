@@ -18,6 +18,19 @@ describe('plugin runtime maintainability', () => {
     expect(validateManifest).toBeDefined();
     expect(validateManifest!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
+
+  it('keeps analyzer issue shape validation out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginIssueValidation.js'");
+    expect(runtimeSource).not.toContain('function isWellShapedIssue');
+    expect(runtimeSource).not.toContain('function isSeverity');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginIssueValidation.ts');
+    const validateIssue = inspection.functions?.find((fn) => fn.name === 'isWellShapedIssue');
+
+    expect(validateIssue).toBeDefined();
+    expect(validateIssue!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {

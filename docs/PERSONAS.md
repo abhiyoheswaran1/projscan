@@ -10016,3 +10016,47 @@ and preserve `failed` status for sender errors or non-ok HTTP statuses.
 
 Kept change: one focused telemetry flushing module, public facade wrapper,
 architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Eleventh Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: `src/core/plugins.ts` is a high-complexity local plugin trust-boundary
+hotspot. It should focus on discovery, trust gating, dynamic loading, and
+runtime isolation, while analyzer issue-shape validation lives in a narrow,
+auditable helper.
+
+Smallest fix: move `isWellShapedIssue` and severity validation into
+`src/core/pluginIssueValidation.ts`, keep `runAnalyzerPlugins` in
+`src/core/plugins.ts`, and preserve malformed issue dropping, plugin id
+prefixing, and manifest category fallback.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/plugins.test.ts -t "drops malformed Issues"
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginIssueValidation.ts --format json
+```
+
+## Review Guardrails: Plugin Issue Validation Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin manifest validation, trust-on-first-use behavior, dynamic
+  import behavior, reporter plugin behavior, CLI/MCP schemas, public plugin
+  exports, issue scoring, dependencies, lockfiles, publish behavior, push
+  behavior, tags, or releases.
+- Do not execute untrusted plugin modules, broaden the plugin preview flag, or
+  add new plugin capabilities.
+
+Reviewer edge case: malformed analyzer plugin output should still be dropped
+without crashing, while valid issues are still emitted as
+`plugin:<plugin-name>:<local-id>` with the manifest category as fallback.
+
+Kept change: one focused plugin issue validation module, one architecture guard,
+this persona note, and no release action in this slice.
