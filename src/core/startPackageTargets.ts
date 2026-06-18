@@ -6,7 +6,11 @@ export function extractPackageTarget(intent: string): string | undefined {
   const actionMatch = compactIntent.match(
     /\b(?:bump|upgrade|update|remove|drop|uninstall)\s+(?:the\s+)?(?:(?:package|dependency)\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
   );
-  if (actionMatch?.[1] && isPackageNameTarget(actionMatch[1]))
+  if (
+    actionMatch?.[1] &&
+    !isPythonUpgradeCoverageTopic(actionMatch[1], compactIntent) &&
+    isPackageNameTarget(actionMatch[1])
+  )
     return normalizePackageName(actionMatch[1]);
 
   const removalSubject = compactIntent.match(
@@ -39,6 +43,14 @@ export function extractAuditPackageTarget(intent: string): string | undefined {
   if (command?.[1] && isPackageNameTarget(command[1])) return normalizePackageName(command[1]);
 
   return undefined;
+}
+
+function isPythonUpgradeCoverageTopic(target: string, intent: string): boolean {
+  return (
+    target.toLowerCase() === 'coverage' &&
+    /\b(?:upgrade|upgrading|bump|update)\s+coverage\b/i.test(intent) &&
+    /\b(?:python|poetry|pyproject|requirements?|pip|pipenv|pinned)\b/i.test(intent)
+  );
 }
 
 export function isPackageNameTarget(target: string): boolean {

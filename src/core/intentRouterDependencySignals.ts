@@ -135,6 +135,23 @@ export function outdatedNpmContextMatches(tokens: Set<string>): boolean {
   ].some((token) => tokens.has(token));
 }
 
+export function pythonUpgradeCoverageContextMatches(tokens: Set<string>): boolean {
+  const upgradeSignal = ['upgrade', 'upgrading', 'bump', 'update'].some((token) =>
+    tokens.has(token),
+  );
+  const pythonDependencyContext = [
+    'python',
+    'poetry',
+    'pyproject',
+    'requirements',
+    'requirement',
+    'pip',
+    'pipenv',
+    'pinned',
+  ].some((token) => tokens.has(token));
+  return tokens.has('coverage') && upgradeSignal && pythonDependencyContext;
+}
+
 export function workspacesKeywordMatches(keyword: string, tokens: Set<string>): boolean {
   const workspaceContext = ['workspace', 'workspaces', 'monorepo'].some((token) =>
     tokens.has(token),

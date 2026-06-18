@@ -44,6 +44,23 @@ describe('routeIntent dependency and workspace routing', () => {
     );
   });
 
+  it('routes Python upgrade coverage validation to upgrade preview instead of test coverage', () => {
+    const result = routeIntent(
+      'validate Python upgrade coverage for Poetry and pinned requirements',
+    );
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Dependencies',
+        tool: 'projscan_upgrade',
+        cli: 'projscan upgrade',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['upgrade']),
+      }),
+    );
+    expect(result.matches.find((match) => match.tool === 'projscan_coverage')).toBeUndefined();
+  });
+
   it('routes rollback and revert questions to impact analysis', () => {
     const revert = routeIntent('how do I revert this change safely');
     expect(revert.matches[0]).toEqual(

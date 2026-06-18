@@ -1,3 +1,4 @@
+import { pythonUpgradeCoverageContextMatches } from './intentRouterDependencySignals.js';
 import {
   regressionFailureContextMatches,
   regressionFlakeContextMatches,
@@ -100,6 +101,7 @@ export function testCoverageLookupContextMatches(tokens: Set<string>): boolean {
 }
 
 export function coverageKeywordMatches(keyword: string, tokens: Set<string>): boolean {
+  if (pythonUpgradeCoverageContextMatches(tokens)) return false;
   if (['coverage', 'scariest', 'untested', 'uncovered', 'gap', 'gaps'].includes(keyword))
     return true;
   if (['test', 'tests'].includes(keyword)) return coverageGapContextMatches(tokens);
@@ -109,6 +111,7 @@ export function coverageKeywordMatches(keyword: string, tokens: Set<string>): bo
 }
 
 export function coverageGapContextMatches(tokens: Set<string>): boolean {
+  if (pythonUpgradeCoverageContextMatches(tokens)) return false;
   if (
     ['coverage', 'scariest', 'untested', 'uncovered', 'gap', 'gaps'].some((token) =>
       tokens.has(token),

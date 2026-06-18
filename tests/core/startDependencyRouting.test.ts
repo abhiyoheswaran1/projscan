@@ -68,6 +68,48 @@ test('start report turns package update intent into direct upgrade preview', asy
   expect(report.missionControl.proofCommands).toContain('projscan upgrade react --format json');
 });
 
+test('start report turns Python upgrade coverage validation into package discovery first', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'validate Python upgrade coverage for Poetry and pinned requirements',
+  });
+
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Dependencies',
+      tool: 'projscan_upgrade',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['upgrade']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      label: 'Find package candidates before previewing an upgrade',
+      command: 'projscan outdated --format json',
+      tool: 'projscan_outdated',
+    }),
+  );
+  expect(report.missionControl.actionPlan).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        command: 'projscan upgrade <package-from-outdated> --format json',
+        tool: 'projscan_upgrade',
+        args: { package: '<package-from-outdated>' },
+      }),
+    ]),
+  );
+  expect(report.missionControl.actionPlan.map((action) => action.command)).not.toContain(
+    'projscan upgrade coverage --format json',
+  );
+  expect(report.missionControl.unresolvedInputs).toEqual([
+    expect.objectContaining({
+      name: 'package',
+      placeholder: '<package-from-outdated>',
+    }),
+  ]);
+});
+
 test('start report turns package removal intent into direct upgrade preview', async () => {
   const root = await makeTempProject();
 
