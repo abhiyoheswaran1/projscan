@@ -56,9 +56,9 @@ We are _not_ trying to be:
 
 ## Now / Next / Later
 
-### Now — Post-4.6 Validation
+### Now — Post-4.8 Validation
 
-4.6.0 "Agent Coordination And Routing Hardening" packages the latest post-4.4 implementation train. The next work is validation and selective hardening from real use, not another broad feature push or another release push.
+4.8.0 "Agent Research And Release Hardening" packages the latest post-4.7 validation train. The next work is validation and selective hardening from real use, not another broad feature push or another release push.
 
 The active validation lines are:
 
@@ -70,7 +70,28 @@ The active validation lines are:
 
 Strictly **local-first** throughout: same-repo / same-machine evidence, no daemon, no cloud, no hidden network calls, no new telemetry, and no secret-value reads.
 
-Success signals: teams copy the adoption examples into real reviews, scoped/redacted artifacts are accepted by reviewers, Python upgrade previews identify useful local evidence, coordination evidence explains multi-agent decisions, dataflow additions stay quiet on lookalikes, and release bug-hunts remain free of concrete defects.
+Success signals: teams copy the adoption examples into real reviews, scoped/redacted artifacts are accepted by reviewers, Python upgrade previews identify useful local evidence, coordination evidence explains multi-agent decisions, dataflow additions stay quiet on lookalikes, no-release continuation prompts stay in bounded workplans, and release bug-hunts remain free of concrete defects.
+
+### Recently Completed — 4.8.0 (2026)
+
+**4.8.0 "Agent Research And Release Hardening"** turned the post-4.7 agent-research loop into release-ready hardening:
+
+- SvelteKit `RequestEvent` handlers, server `load`, and hooks are covered by framework-gated request-source fixtures.
+- No-release continuation prompts route to bounded workplans while release, publish, deploy, push, merge, and version-bump actions stay blocked.
+- Scoped evidence prompts infer useful directory scopes such as `tests` and produce local analyze/doctor/CI commands.
+- Agent briefs carry clearer merge-order hints and preflight coordination proof paths for parallel-agent handoffs.
+- Python upgrade evidence handles numeric-looking package names, Poetry source lines, nested requirements, and nested constraints more reliably.
+- Mission Control route criteria, public start types, plugin loading, telemetry helpers, preflight/report assembly, code graph indexing, and HTML reporters were split into focused modules.
+
+### Recently Completed — 4.7.0 (2026)
+
+**4.7.0 "Roadmap Validation And Release Readiness"** deepened the validation train after 4.6:
+
+- Remix route request-source coverage detects `request` body readers, headers, URL, signal, and params with framework-gated false-positive fixtures.
+- Python requirements include traversal follows local `-r` requirement files and `-c` constraint files for offline upgrade previews.
+- Release-train roadmap routing and read-only roadmap preview evidence support build-next product-planning prompts.
+- Dataflow traversal, plugin manifest validation, file inspection, fix-suggest previews, search indexing, release evidence, and bug-hunt helpers moved into smaller modules.
+- Python lockfile, framework dataflow, intent router, preflight, MCP, and start tests were split into focused suites with architecture guards.
 
 ### Recently Completed — 4.6.0 (2026)
 

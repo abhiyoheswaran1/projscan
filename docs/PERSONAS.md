@@ -11603,3 +11603,47 @@ a SvelteKit route must not be mistaken for `request.json()`.
 Kept change: one SvelteKit source matcher, one focused framework suite,
 structure guard coverage, docs/persona notes, and no release action in this
 slice.
+
+## Two Hundred Forty Fourth Slice Decision
+
+Selected personas: Platform And Release Owner, Agent-Orchestrating Engineer,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: after the `4.8.0` release, `docs/ROADMAP.md` still framed active work
+as "Post-4.6 Validation" and did not list the 4.7.0 or 4.8.0 completed
+context. That stale planning surface can make the next agent or maintainer
+treat shipped SvelteKit coverage, no-release routing, scoped evidence prompts,
+and Python evidence fixes as pending release-candidate work.
+
+Smallest fix: update the roadmap's current validation label to post-4.8 and add
+concise 4.8.0 and 4.7.0 completed sections. Do not change package metadata,
+release-train catalog ordering, changelog release entries, tags, pushes,
+publishing, deployment, or release behavior.
+
+Proof commands:
+
+```bash
+node -e "const fs=require('node:fs'); const text=fs.readFileSync('docs/ROADMAP.md','utf8'); if (!/Now . Post-4\\.8 Validation/.test(text) || !/Recently Completed . 4\\.8\\.0/.test(text) || !/Recently Completed . 4\\.7\\.0/.test(text) || /Now . Post-4\\.6 Validation/.test(text)) process.exit(1);"
+npm exec projscan -- release-train --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Post-4.8 Roadmap Cleanup
+
+Delete-list after this slice:
+
+- Do not bump versions, tag, push, publish, deploy, or prepare another release.
+- Do not change package metadata, changelog release entries, MCP registry
+  metadata, release workflows, or release-train line ordering.
+- Do not add product surfaces or implementation code while fixing planning
+  context.
+- Do not remove the active validation lines for swarm coordination, evidence
+  export adoption, Python upgrade coverage, framework dataflow precision, or
+  hotspot maintainability.
+
+Reviewer edge case: `projscan release-train --format json` must remain
+read-only and continue to return the approved 4.5.x through 4.9.x product train
+for 4.4 and newer package versions.
+
+Kept change: one roadmap planning cleanup, this persona note, and no release
+action in this slice.
