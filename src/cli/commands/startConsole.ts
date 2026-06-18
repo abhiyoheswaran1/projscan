@@ -14,6 +14,8 @@ export interface StartConsoleContext {
   reviewReplies: string[];
 }
 
+const ADOPTION_FOLLOW_UP_STEP_IDS = new Set(['feedback-capture', 'adoption-proof']);
+
 export function printStart(report: StartReport, context: StartConsoleContext): void {
   console.log(chalk.bold(`Start: ${report.mode}`));
   console.log(report.summary);
@@ -31,6 +33,7 @@ export function printStart(report: StartReport, context: StartConsoleContext): v
   console.log('');
   printFirstTenMinutes(report);
   console.log('');
+  if (printAdoptionFollowUp(report)) console.log('');
   printCoordinationHints(report);
   console.log('');
   printNextCommands(report);
@@ -63,9 +66,31 @@ function printDailyWorkflows(report: StartReport): boolean {
 
 function printFirstTenMinutes(report: StartReport): void {
   console.log(chalk.bold('First 10 Minutes'));
-  for (const step of report.firstTenMinutes.commands) {
+  for (const step of firstTenMinuteConsoleSteps(report)) {
     console.log(`- ${step.label}: ${step.command}`);
   }
+}
+
+function printAdoptionFollowUp(report: StartReport): boolean {
+  const steps = adoptionFollowUpConsoleSteps(report);
+  if (steps.length === 0) return false;
+  console.log(chalk.bold('Adoption Follow-Up'));
+  for (const step of steps) {
+    console.log(`- ${step.label}: ${step.command}`);
+  }
+  return true;
+}
+
+function firstTenMinuteConsoleSteps(
+  report: StartReport,
+): StartReport['firstTenMinutes']['commands'] {
+  return report.firstTenMinutes.commands.filter((step) => !ADOPTION_FOLLOW_UP_STEP_IDS.has(step.id));
+}
+
+function adoptionFollowUpConsoleSteps(
+  report: StartReport,
+): StartReport['firstTenMinutes']['commands'] {
+  return report.firstTenMinutes.commands.filter((step) => ADOPTION_FOLLOW_UP_STEP_IDS.has(step.id));
 }
 
 function printCoordinationHints(report: StartReport): void {

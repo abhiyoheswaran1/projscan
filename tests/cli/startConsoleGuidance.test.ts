@@ -30,11 +30,23 @@ test('start console shows the full first-ten-minutes path and coordination hints
     '- projscan preflight --mode before_commit returns proceed or only documented manual-review items.',
   );
   expect(result.stdout).toContain('First 10 Minutes');
+  expect(result.stdout).toContain('Adoption Follow-Up');
+  const firstTenIndex = result.stdout.indexOf('First 10 Minutes');
+  const adoptionFollowUpIndex = result.stdout.indexOf('Adoption Follow-Up');
+  const coordinationHintsIndex = result.stdout.indexOf('Coordination Hints');
+  expect(adoptionFollowUpIndex).toBeGreaterThan(firstTenIndex);
+  expect(coordinationHintsIndex).toBeGreaterThan(adoptionFollowUpIndex);
+  const firstTenSection = result.stdout.slice(firstTenIndex, adoptionFollowUpIndex);
+  const adoptionFollowUpSection = result.stdout.slice(adoptionFollowUpIndex, coordinationHintsIndex);
   expect(result.stdout).toContain('projscan privacy-check --offline');
   expect(result.stdout).toContain('projscan start --mode before_commit');
   expect(result.stdout).toContain('projscan preflight --mode before_commit --format json');
   expect(result.stdout).toContain('projscan evidence-pack --pr-comment');
-  expect(result.stdout).toContain(
+  expect(firstTenSection).not.toContain('Capture reviewer feedback');
+  expect(firstTenSection).not.toContain('Run adoption proof');
+  expect(adoptionFollowUpSection).toContain('Capture reviewer feedback');
+  expect(adoptionFollowUpSection).toContain('Run adoption proof');
+  expect(adoptionFollowUpSection).toContain(
     'projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json',
   );
   expect(result.stdout).toContain('Coordination Hints');

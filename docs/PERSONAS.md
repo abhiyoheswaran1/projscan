@@ -12087,3 +12087,46 @@ Commands` should accept both `Top Risks` and `Watch List`.
 
 Kept change: one console heading helper, one parser boundary update, focused
 guidance coverage, this persona note, and no release action in this slice.
+
+## Two Hundred Fifty Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: the normal start console put feedback capture and dogfood adoption proof
+inside `First 10 Minutes`. Those are useful follow-up loops, but labeling them
+as immediate onboarding makes the product sound broader than the workflow an
+engineer can trust on first use.
+
+Smallest fix: keep `firstTenMinutes` JSON and recipes unchanged, but split the
+normal console rendering so feedback capture and adoption proof appear under
+`Adoption Follow-Up` after `First 10 Minutes`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/startConsoleGuidance.test.ts tests/cli/start.test.ts tests/core/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: First Ten Means Immediate
+
+Delete-list after this slice:
+
+- Do not change `StartReport.firstTenMinutes`, JSON output, MCP output,
+  recipes, public schemas, feedback capture, dogfood, or adoption metrics.
+- Do not hide feedback or dogfood commands from the normal console; keep them
+  visible as follow-up.
+- Do not add new commands, dependencies, telemetry, or release behavior.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: console section order should be `First 10 Minutes`, then
+`Adoption Follow-Up`, then `Coordination Hints`; structured data should keep the
+same command list.
+
+Kept change: one console rendering split, focused guidance coverage, this
+persona note, and no release action in this slice.

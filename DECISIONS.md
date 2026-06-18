@@ -2641,3 +2641,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Use `Watch List` in the normal start console when the quality verdict is healthy or excellent and every visible risk is p2. Keep `Top Risks` for p0/p1 items or unhealthy output, and keep risk data unchanged.
 - Consequences: Healthy daily workflow output is less alarmist while still showing the same files and follow-up commands. JSON output, workplan output, evidence-pack comments, and risk scoring remain stable.
 - Verification: `npm run test -- tests/cli/startConsoleGuidance.test.ts` failed before the heading helper existed, then passed after the helper and parser update.
+
+## 2026-06-18: Split adoption follow-up from first-ten console output
+
+- Status: accepted
+- Context: The normal `projscan start` console placed feedback capture and dogfood adoption proof under `First 10 Minutes`. That made first-run onboarding sound broader than the immediate workflow engineers need to trust.
+- Decision: Keep the structured `firstTenMinutes` data unchanged, but render `feedback-capture` and `adoption-proof` under a separate `Adoption Follow-Up` console section.
+- Consequences: Human console output now keeps the first-ten section focused on trust boundary, orientation, preflight, MCP setup, and first PR evidence. Adoption proof remains visible without implying it belongs in the first ten minutes.
+- Verification: `npm run test -- tests/cli/startConsoleGuidance.test.ts` failed before the console split existed, then passed after adoption follow-up rendering.
