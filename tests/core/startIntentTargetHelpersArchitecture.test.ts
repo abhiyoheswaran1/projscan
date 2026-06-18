@@ -227,6 +227,23 @@ describe('Mission Control intent target helper architecture', () => {
     );
     expect(generatedConfigSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps ownership and implementation search parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const ownershipSearchPath = path.join(process.cwd(), 'src/core/startOwnershipSearchTargets.ts');
+
+    expect(targetSource).toContain(
+      "import { searchQueryFromImplementation, searchQueryFromOwnership } from './startOwnershipSearchTargets.js';",
+    );
+    expect(targetSource).not.toContain('function searchQueryFromOwnership');
+    expect(targetSource).not.toContain('function searchQueryFromImplementation');
+
+    expect(existsSync(ownershipSearchPath)).toBe(true);
+    const ownershipSearchSource = readFileSync(ownershipSearchPath, 'utf8');
+    expect(ownershipSearchSource).toContain('export function searchQueryFromOwnership');
+    expect(ownershipSearchSource).toContain('export function searchQueryFromImplementation');
+    expect(ownershipSearchSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
 
 function readTargetSource(): string {
