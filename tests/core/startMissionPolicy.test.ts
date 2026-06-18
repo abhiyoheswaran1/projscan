@@ -335,6 +335,31 @@ describe('Mission Control policy helpers', () => {
       command: 'projscan start --format json',
     });
     expect(
+      combineRisks(
+        workplan({
+          topRisks: [
+            {
+              priority: 'p1',
+              source: 'release',
+              severity: 'warning',
+              message:
+                'Large platform release risk: 151 changed files exceeds the preflight threshold of 50; review signal: Maximum changed-file risk score is 198.7. Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects. Treat this as a manual release sign-off gate.',
+              tool: 'projscan_review',
+            },
+          ],
+        }),
+        [],
+        3,
+      )[0],
+    ).toEqual({
+      id: 'start-workplan-1',
+      priority: 'p1',
+      title: 'Manual release sign-off required for large platform release risk',
+      source: 'release',
+      files: [],
+      command: 'projscan review --format json',
+    });
+    expect(
       summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'healthy'),
     ).toBe(
       'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',

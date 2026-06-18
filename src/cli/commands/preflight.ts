@@ -70,8 +70,8 @@ function printConsoleReport(report: PreflightReport): void {
       : report.verdict === 'caution'
         ? chalk.yellow
         : chalk.green;
-  console.log(color(`Preflight: ${report.verdict}`));
-  console.log(report.summary);
+  console.log(color(preflightHeadline(report)));
+  console.log(preflightSummary(report));
 
   if (report.requiredChecks.length > 0) {
     console.log('');
@@ -111,5 +111,24 @@ function printConsoleReport(report: PreflightReport): void {
     chalk.dim(
       'For agent workflows, run `projscan workplan --mode before_edit --format json` or `projscan recipes`.',
     ),
+  );
+}
+
+function preflightHeadline(report: PreflightReport): string {
+  if (isManualSignoffCaution(report)) return 'Preflight: manual sign-off';
+  return `Preflight: ${report.verdict}`;
+}
+
+function preflightSummary(report: PreflightReport): string {
+  if (!isManualSignoffCaution(report)) return report.summary;
+  return report.summary.replace(/^caution:\s*/iu, '');
+}
+
+function isManualSignoffCaution(report: PreflightReport): boolean {
+  return (
+    report.verdict === 'caution' &&
+    report.evidence.releaseScale?.detected === true &&
+    report.reasons.some((reason) => reason.source === 'release') &&
+    !report.reasons.some((reason) => reason.severity === 'error')
   );
 }

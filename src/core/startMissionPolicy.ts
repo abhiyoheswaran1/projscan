@@ -266,7 +266,7 @@ function workplanRiskToStartRisk(risk: WorkplanTopRisk, index: number): StartRis
   return {
     id: `start-workplan-${index + 1}`,
     priority: risk.priority,
-    title: risk.message,
+    title: startRiskTitle(risk),
     source: risk.source,
     files: risk.file ? [risk.file] : [],
     command:
@@ -274,6 +274,17 @@ function workplanRiskToStartRisk(risk: WorkplanTopRisk, index: number): StartRis
         ? 'projscan review --format json'
         : 'projscan preflight --format json',
   };
+}
+
+function startRiskTitle(risk: WorkplanTopRisk): string {
+  if (risk.source !== 'release') return risk.message;
+  if (/large handoff review risk|manual review sign-off/iu.test(risk.message)) {
+    return 'Manual review sign-off required for large handoff risk';
+  }
+  if (/large platform release risk|manual release sign-off/iu.test(risk.message)) {
+    return 'Manual release sign-off required for large platform release risk';
+  }
+  return risk.message;
 }
 
 function qualityRiskToStartRisk(risk: QualityScorecardRisk): StartRisk {
