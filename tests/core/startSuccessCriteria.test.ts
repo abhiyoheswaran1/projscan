@@ -50,6 +50,24 @@ describe('Mission Control success criteria', () => {
     expect(fileCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps understand route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const understandCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startUnderstandRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startUnderstandRouteCriteria.js'");
+    expect(source).not.toContain('UNDERSTAND_VIEW_CRITERIA');
+    expect(source).not.toContain('contractLocalServiceSetupCriteriaMatches');
+    expect(understandCriteria).toContain('export function understandSuccessCriteria');
+    expect(understandCriteria).toContain('contractDatabaseSetupCriteriaMatches');
+    expect(understandCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
@@ -195,6 +213,114 @@ describe('Mission Control success criteria', () => {
       'The developer knows the safest command to start local services plus any env, port, or dependency preconditions.',
       'The next task has a verification command: npm test -- tests/core/start.test.ts',
     ]);
+  });
+
+  it('keeps understand view criteria by selected view', () => {
+    const cases = [
+      {
+        view: 'flow',
+        expected: [
+          'Runtime entrypoints, flow paths, and side-effect evidence are reviewed before changing request or execution paths.',
+          'The developer knows which files sit on the relevant runtime path.',
+        ],
+      },
+      {
+        view: 'verify',
+        expected: [
+          'Verification tiers, direct-test gaps, and likely proof commands are reviewed before pushing or asking for review.',
+          'The developer has the smallest rerunnable command plus the fallback full gate for the intended change.',
+        ],
+      },
+      {
+        view: 'change',
+        expected: [
+          'Change-readiness risks, blast radius, and verification tiers are reviewed before editing starts.',
+          'The developer knows which follow-up impact, test, or preflight command gates the change.',
+        ],
+      },
+      {
+        view: 'map',
+        expected: [
+          'Read-first files, entrypoints, boundaries, risks, and unknowns are reviewed before editing starts.',
+          'The developer has a cited repo map and knows which files to inspect next.',
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const criteria = successCriteria({
+        route: route('projscan_understand', ['understand', testCase.view]),
+        actionPlan: [
+          action(
+            `Understand ${testCase.view}`,
+            `projscan understand --view ${testCase.view} --format json`,
+            'projscan_understand',
+            {
+              view: testCase.view,
+            },
+          ),
+        ],
+      });
+
+      expect(criteria).toEqual([
+        ...testCase.expected,
+        'The next task has a verification command: npm test -- tests/core/start.test.ts',
+      ]);
+    }
+  });
+
+  it('keeps understand contract criteria by matched setup signal', () => {
+    const cases = [
+      {
+        keywords: ['npm', 'script'],
+        expected: [
+          'Package scripts, test commands, and config contracts are reviewed before running local commands.',
+          'The developer knows the package-manager command for the requested script plus any required env or setup preconditions.',
+        ],
+      },
+      {
+        keywords: ['database', 'seed'],
+        expected: [
+          'Package scripts and config contracts identify the seed, reset, or migration command before shell commands are guessed.',
+          'The developer knows database setup preconditions, required env vars, and the safest local command to run.',
+        ],
+      },
+      {
+        keywords: ['env', 'required'],
+        expected: [
+          'Required environment variables and config contracts are identified before setup or runtime troubleshooting continues.',
+          'The developer knows which env names, defaults, or config files need local values before running the app.',
+        ],
+      },
+      {
+        keywords: ['public', 'api'],
+        expected: [
+          'Public exports, config contracts, and likely breaking-change risks are reviewed before touching API surfaces.',
+          'The developer knows which exported files or symbols need compatibility checks.',
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const criteria = successCriteria({
+        route: route('projscan_understand', testCase.keywords),
+        actionPlan: [
+          action(
+            'Understand contracts',
+            'projscan understand --view contracts --format json',
+            'projscan_understand',
+            {
+              view: 'contracts',
+            },
+          ),
+        ],
+      });
+
+      expect(criteria).toEqual([
+        ...testCase.expected,
+        'The next task has a verification command: npm test -- tests/core/start.test.ts',
+      ]);
+    }
   });
 
   it('keeps regression-plan level criteria', () => {

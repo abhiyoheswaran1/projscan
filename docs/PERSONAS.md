@@ -10994,3 +10994,49 @@ criteria in that order after the extraction.
 Kept change: one file-route criteria helper, one architecture guard, one
 expanded file-route ordering test, this persona note, and no release action in
 this slice.
+
+## Two Hundred Thirty First Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: understand-route criteria are the first guidance an agent sees when it
+asks for a repo map, runtime flow, verification plan, change readiness, or local
+contract/setup instructions. Those user-facing rules were independent from
+Mission Control resolver ordering and made the remaining hotspot harder to
+audit.
+
+Smallest fix: move understand view criteria, contract criteria, and contract
+keyword predicates into `src/core/startUnderstandRouteCriteria.ts`; keep the
+`projscan_understand` route dispatch in `src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startUnderstandRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Understand Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change understand criteria wording, order, view fallback behavior,
+  resolver ordering, route ranking, Mission Control schemas, workplan behavior,
+  public types, dependencies, lockfiles, package version, publish behavior, push
+  behavior, tags, or releases.
+- Do not move unrelated dynamic criteria for preflight, impact, product
+  planning, claim, dependencies, regression, file, or coupling into the
+  understand helper.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: `projscan_understand --view contracts` must still prefer
+local service setup over scripts, scripts over database setup, database setup
+over env setup, and env setup over the default public API contract guidance.
+
+Kept change: one understand-route criteria helper, one architecture guard, view
+and contracts matrices, this persona note, and no release action in this slice.

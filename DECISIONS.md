@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start understand route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still had high complexity after fixed-route and file-route extractions, and understand-route view and contract criteria were a self-contained user-facing rule set.
+- Decision: Move understand-route view criteria, contract criteria, and contract keyword predicates into `src/core/startUnderstandRouteCriteria.ts`, while keeping resolver ordering, `understandRouteSuccessCriteria`, `buildMissionSuccessCriteria`, and public helper exports in `src/core/startSuccessCriteria.ts`.
+- Consequences: Understand success-criteria wording and order stay unchanged for map, flow, verify, change, contracts, local service, script discovery, database setup, environment setup, and default public API contract cases. The resolver module keeps route dispatch without owning understand-specific keyword predicates.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria tests now cover understand view criteria and contract signal ordering across local service, scripts, database, env, and default API matches.
+
 ## 2026-06-18: Extract start file route criteria helper
 
 - Status: accepted
