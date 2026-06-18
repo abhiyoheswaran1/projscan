@@ -323,4 +323,26 @@ describe('Mission Control intent target architecture', () => {
     expect(navigationSource).toContain('export function extractNavigationLayoutQuery');
     expect(navigationSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps frontend page route search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const frontendRoutePath = path.join(
+      process.cwd(),
+      'src/core/startIntentFrontendPageRouteQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractFrontendPageRouteQuery } from './startIntentFrontendPageRouteQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractFrontendPageRouteQuery');
+    expect(targetSource).not.toContain('not-found page');
+
+    expect(existsSync(frontendRoutePath)).toBe(true);
+    const frontendRouteSource = readFileSync(frontendRoutePath, 'utf8');
+    expect(frontendRouteSource).toContain('export function extractFrontendPageRouteQuery');
+    expect(frontendRouteSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

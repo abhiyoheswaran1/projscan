@@ -55,6 +55,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is sidebar nav item for billing?')).toBe(
       'billing sidebar nav item',
     );
+    expect(extractSearchQuery('which page renders /account/settings?')).toBe(
+      '/account/settings page',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
