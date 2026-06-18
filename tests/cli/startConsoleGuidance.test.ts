@@ -92,6 +92,9 @@ test('start console omits duplicate action plan when ready actions match it', as
   const result = await runCli(['start', '--intent', 'prepare this branch for handoff', '--quiet']);
 
   expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Start: before_commit');
+  expect(result.stdout).toContain('Workflow: Before handoff or commit');
+  expect(result.stdout).toContain('Mode: inferred from intent');
   expect(result.stdout).toContain('Ready Now');
   expect(result.stdout).toContain('projscan agent-brief --intent next_agent --format json');
   expect(result.stdout).not.toContain('\nAction Plan\n');

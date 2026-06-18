@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Infer handoff starts as before-commit workflows
+
+- Status: accepted
+- Context: `projscan start --intent "prepare this branch for handoff"` correctly routed to `projscan agent-brief`, but the workflow mode stayed `before_edit`. That made a handoff request show the before-edit workflow and proof queue instead of the daily before-handoff/commit path.
+- Decision: Treat high-confidence agent-brief handoff wording as a `before_commit` workflow-mode hint. Keep the primary routed action as `projscan agent-brief --intent next_agent --format json`.
+- Consequences: Handoff starts now show `Start: before_commit`, `Workflow: Before handoff or commit`, and the before-commit proof context while preserving route selection and JSON action shape.
+- Verification: Core mode and CLI console regressions failed on the old default-mode behavior, then passed after the handoff mode resolver branch.
+
 ## 2026-06-18: Hide duplicate start console action plans
 
 - Status: accepted

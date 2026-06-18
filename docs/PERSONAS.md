@@ -12564,3 +12564,40 @@ ready actions, the console should still print both sections.
 
 Kept change: one console guard, one CLI regression, this persona note, and no
 release action in this slice.
+
+## Two Hundred Sixty Sixth Slice Decision
+
+Selected persona: Agent-Orchestrating Senior Engineer.
+
+Reason: a handoff request is a before-commit workflow, even when the next routed
+tool is `agent-brief` rather than `preflight`. Showing `before_edit` for
+`prepare this branch for handoff` sends the engineer back to orientation instead
+of the proof path they need before transferring work.
+
+Smallest fix: when handoff wording routes to `projscan_agent_brief`, infer
+`before_commit` mode while leaving the primary agent-brief action unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startMode.test.ts tests/cli/startConsoleGuidance.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Handoff Mode Inference
+
+Delete-list after this slice:
+
+- Do not change the routed primary action away from agent-brief.
+- Do not broaden release, merge, or prohibited-action mode inference.
+- Do not change preflight behavior or proof queue schemas.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: release or merge wording should continue to win through the
+existing earlier resolvers; this slice only covers agent-brief handoff routes.
+
+Kept change: one resolver branch, one core regression, one CLI regression, this
+persona note, and no release action in this slice.

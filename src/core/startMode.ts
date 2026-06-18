@@ -22,6 +22,7 @@ const MODE_RESOLVERS: readonly ModeResolver[] = [
   releaseMode,
   bugHuntMode,
   productPlanningMode,
+  handoffMode,
   agentPlanningMode,
   prohibitedContinuationMode,
   hardeningMode,
@@ -135,6 +136,12 @@ function bugHuntMode({ primaryRoute }: ModeResolverContext): WorkplanMode | unde
 
 function productPlanningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
   return isProductPlanningWorkplanRoute(primaryRoute) ? 'bug_hunt' : undefined;
+}
+
+function handoffMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
+  return primaryRoute?.tool === 'projscan_agent_brief' && handoffIntentMatches(intent)
+    ? 'before_commit'
+    : undefined;
 }
 
 function agentPlanningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
