@@ -55,7 +55,8 @@ function printDailyWorkflows(report: StartReport): boolean {
   if (!report.dailyWorkflows || report.dailyWorkflows.length === 0) return false;
   console.log(chalk.bold('Daily Workflows'));
   for (const workflow of report.dailyWorkflows) {
-    console.log(`- ${workflow.name}: ${workflow.commands[0]}`);
+    console.log(`- ${workflow.name}`);
+    for (const command of workflow.commands) console.log(`  - ${command}`);
   }
   return true;
 }

@@ -2617,3 +2617,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add a SvelteKit request-source matcher gated by `src/routes/**/+server.*`, `+page.server.*`, `+layout.server.*`, and `hooks.server.*`, then register its source identifiers with the shared framework source list and resolver.
 - Consequences: Dataflow can now report SvelteKit request body readers, headers, params, URL fields/search params, and cookies flowing into default sinks. Non-route helpers and response builders remain quiet.
 - Verification: `npm run test -- tests/core/dataflowFrameworkSvelteKit.test.ts tests/core/dataflowSuiteStructure.test.ts` failed before the matcher was registered, then passed after the additive source module was wired in.
+
+## 2026-06-18: Print complete daily workflow paths in start console
+
+- Status: accepted
+- Context: `projscan start` exposed trusted daily workflows near the top of the console, but each workflow only showed its first command. That made the section look like a feature sampler instead of a copyable daily operating path.
+- Decision: Render each daily workflow as a workflow name followed by all of its existing commands, while keeping the workflow definitions, JSON report shape, Mission Control routing, and section ordering unchanged.
+- Consequences: Engineers can copy a full before-edit, before-handoff, or release-candidate path from the first console screen. Console output grows by a few lines but stays limited to the existing daily workflow commands.
+- Verification: `npm run test -- tests/cli/start.test.ts` failed before the console printed all workflow commands, then `npm run build` and `npm run test -- tests/cli/start.test.ts tests/core/start.test.ts` passed after the formatter change.

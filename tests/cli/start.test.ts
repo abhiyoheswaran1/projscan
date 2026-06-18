@@ -52,10 +52,18 @@ test('start console prints trusted daily workflows before broad onboarding', asy
   expect(dailyIndex).toBeGreaterThanOrEqual(0);
   expect(missionIndex).toBeGreaterThan(dailyIndex);
   expect(firstTenIndex).toBeGreaterThan(dailyIndex);
-  expect(result.stdout).toContain('Before handoff or commit: projscan bug-hunt --format json');
-  expect(result.stdout).toContain(
-    'Release-candidate review: projscan release-train --format json',
+  const dailySection = result.stdout.slice(dailyIndex, missionIndex);
+  expect(dailySection).toContain(
+    '  - projscan understand --view change --intent "add auth token refresh" --format json',
   );
+  expect(dailySection).toContain('  - projscan preflight --mode before_edit --format json');
+  expect(dailySection).toContain('  - projscan preflight --mode before_commit --format json');
+  expect(dailySection).toContain('  - projscan evidence-pack --pr-comment');
+  expect(dailySection).toContain('  - projscan preflight --mode before_merge --format json');
+  expect(dailySection).toContain('- Before handoff or commit');
+  expect(dailySection).toContain('  - projscan bug-hunt --format json');
+  expect(dailySection).toContain('- Release-candidate review');
+  expect(dailySection).toContain('  - projscan release-train --format json');
 });
 
 async function runCli(

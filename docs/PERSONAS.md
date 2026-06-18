@@ -11961,3 +11961,44 @@ still list those adoption gaps; only `info` diagnostics should be omitted from
 
 Kept change: one adoption-gap filter, focused helper/start/CLI regressions,
 this persona note, and no release action in this slice.
+
+## Two Hundred Fifty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: the daily workflow section now appears before broad onboarding, but it
+still only printed the first command for each workflow. That can make the
+product feel wider than it is useful: engineers see a label, not a complete
+repeatable path they can run.
+
+Smallest fix: print every existing command under each Daily Workflow in the
+normal start console. Keep workflow definitions, JSON output, route selection,
+Mission Control, and review gates unchanged.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts tests/core/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Daily Workflows Are Action Paths
+
+Delete-list after this slice:
+
+- Do not add new workflows, commands, schemas, dependencies, telemetry, or
+  release behavior.
+- Do not move Daily Workflows below Mission Control or broad onboarding.
+- Do not inflate the workflow copy into marketing language; keep it executable.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: the console should show all commands for each existing daily
+workflow, but JSON output and workflow definitions should remain stable.
+
+Kept change: one console rendering adjustment, focused CLI assertions, this
+persona note, and no release action in this slice.
