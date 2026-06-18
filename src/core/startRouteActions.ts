@@ -7,6 +7,7 @@ import {
   extractImpactTarget,
   extractIssueIdTarget,
   extractPackageTarget,
+  extractReportScopeTarget,
   extractSearchQuery,
   graphQueryFromIntent,
   graphQueryIsReady,
@@ -460,7 +461,7 @@ function reportControlActionPlan(
 
 function reportControlArgsFromIntent(intent: string): Record<string, unknown> {
   return {
-    report_scope: extractFileTarget(intent) ?? '<report-scope>',
+    report_scope: extractReportScopeTarget(intent) ?? '<report-scope>',
     redact_paths: true,
   };
 }

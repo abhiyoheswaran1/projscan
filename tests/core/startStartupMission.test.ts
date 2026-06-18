@@ -443,6 +443,95 @@ test('start report routes a plain-language intent into mission control', async (
   expect(report.nextActions[0]).toEqual(report.missionControl.primaryAction);
 });
 
+test('start report extracts top-level directory scopes for shareable evidence', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'share redacted evidence for tests with a partner',
+  });
+
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_analyze',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['share', 'evidence', 'partner', 'redacted']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      label: 'Generate scoped analysis evidence for tests',
+      command: 'projscan analyze --report-scope tests --redact-paths --format json',
+      tool: 'projscan_analyze',
+      args: { report_scope: 'tests', redact_paths: true },
+    }),
+  );
+  expect(report.missionControl.readyActions.map((action) => action.command)).toEqual([
+    'projscan analyze --report-scope tests --redact-paths --format json',
+    'projscan doctor --report-scope tests --redact-paths --format markdown',
+    'projscan ci --report-scope tests --redact-paths --format sarif',
+  ]);
+  expect(report.missionControl.unresolvedInputs).toEqual([]);
+  for (const command of report.missionControl.readyActions.map((action) => action.command)) {
+    expect(report.missionControl.proofCommands).toContain(command);
+  }
+  expect(
+    report.missionControl.proofCommands.some((command) => command.includes('<report-scope>')),
+  ).toBe(false);
+});
+
+test.each([
+  [
+    'share redacted evidence for src/api with a partner',
+    'src/api',
+    'projscan analyze --report-scope src/api --redact-paths --format json',
+  ],
+  [
+    'export scoped redacted report for packages/api to security',
+    'packages/api',
+    'projscan analyze --report-scope packages/api --redact-paths --format json',
+  ],
+  [
+    'send path safe evidence for docs/GUIDE.md to vendor',
+    'docs/GUIDE.md',
+    'projscan analyze --report-scope docs/GUIDE.md --redact-paths --format json',
+  ],
+])('start report preserves shareable evidence scope extraction for %s', async (intent, scope, command) => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, { intent });
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command,
+      args: { report_scope: scope, redact_paths: true },
+    }),
+  );
+});
+
+test('start report keeps unknown shareable evidence scopes as unresolved input', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'share redacted evidence with a partner',
+  });
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      label: 'Generate scoped analysis evidence for <report-scope>',
+      command: 'projscan analyze --report-scope <report-scope> --redact-paths --format json',
+      tool: 'projscan_analyze',
+      args: { report_scope: '<report-scope>', redact_paths: true },
+    }),
+  );
+  expect(report.missionControl.readyActions).toEqual([]);
+  expect(report.missionControl.unresolvedInputs).toEqual([
+    expect.objectContaining({
+      name: 'report_scope',
+      placeholder: '<report-scope>',
+    }),
+  ]);
+});
+
 test('start report clarifies when intent routes but workflow mode defaults', async () => {
   const root = await makeTempProject();
 
