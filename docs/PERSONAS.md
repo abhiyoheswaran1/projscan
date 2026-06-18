@@ -12405,3 +12405,45 @@ preflight, and test proof.
 
 Kept change: one review-specific verification-matrix branch, one manual
 sign-off regression, this persona note, and no release action in this slice.
+
+## Two Hundred Sixty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, OSS Maintainer, and Platform
+And Release Owner.
+
+Reason: the hotspot scorecard pointed at `src/core/startIntentTargets.ts` as a
+high-churn, bus-factor-one start-routing facade. The concrete review risk was
+not another missing feature, but that every domain search-query addition had to
+edit the same shared facade and scan a long list of unrelated imports.
+
+Smallest fix: move the ordered domain search query chain into
+`src/core/startIntentDomainSearchQueries.ts` and leave `startIntentTargets.ts`
+as the small facade that composes the existing search-query layers.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/start.test.ts tests/core/startMode.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Domain Queries Stay Behind The Facade
+
+Delete-list after this slice:
+
+- Do not change intent routing scores, search-query fallback behavior, or
+  Mission Control workflow selection.
+- Do not add new domain query categories while doing this maintainability
+  extraction.
+- Do not move public re-exports out of `startIntentTargets.ts`; keep it as the
+  compatibility facade for existing imports.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: domain extractor order must remain stable because earlier
+extractors win when an intent could match multiple domain concepts.
+
+Kept change: one focused domain-search helper, one architecture boundary
+regression, this persona note, and no release action in this slice.

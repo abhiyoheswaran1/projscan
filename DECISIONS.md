@@ -2705,3 +2705,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Update the guide to describe the demonstrated behavior: focused linear console sections, Watch List labeling for healthy p2 evidence, and explicit handoff/review shortcuts or unresolved-input flows for detailed policy text.
 - Consequences: Guide claims now match the product workflow instead of overstating default console breadth. Structured handoff/review data remains documented through shortcuts, runbooks, JSON, and saved bundles.
 - Verification: `npm run test -- tests/docs/startRoutingDocs.test.ts` failed before the new wording existed and passed after the guide correction.
+
+## 2026-06-18: Extract start intent domain query ordering
+
+- Status: accepted
+- Context: `src/core/startIntentTargets.ts` was a high-churn start-routing facade with high fan-out because it owned the ordered domain search query chain and imported every domain query helper directly.
+- Decision: Move the ordered domain search query chain into `src/core/startIntentDomainSearchQueries.ts`. Keep `src/core/startIntentTargets.ts` as the facade that composes high-priority, domain, test/route, generated/config, ownership, implementation, and fallback target extraction.
+- Consequences: Search query behavior and domain extractor order remain unchanged, while future domain-query additions can be reviewed in a focused helper instead of the shared start facade.
+- Verification: `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts` failed before the facade delegated to the helper, then passed after extraction. `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/start.test.ts tests/core/startMode.test.ts` passed after the routing facade change.

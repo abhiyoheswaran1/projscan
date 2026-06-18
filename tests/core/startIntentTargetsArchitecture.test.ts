@@ -33,8 +33,9 @@ describe('Mission Control intent target architecture', () => {
       path.join(process.cwd(), 'src/core/startIntentReliabilityQueries.ts'),
       'utf8',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractReliabilityQuery } from './startIntentReliabilityQueries.js';",
     );
     expect(targetSource).not.toContain('function extractRateLimitQuery');
@@ -53,8 +54,9 @@ describe('Mission Control intent target architecture', () => {
       path.join(process.cwd(), 'src/core/startIntentDataContractQueries.ts'),
       'utf8',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractDataContractQuery } from './startIntentDataContractQueries.js';",
     );
     expect(targetSource).not.toContain('function extractValidationQuery');
@@ -73,8 +75,9 @@ describe('Mission Control intent target architecture', () => {
       path.join(process.cwd(), 'src/core/startIntentUiInteractionQueries.ts'),
       'utf8',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractUiInteractionQuery } from './startIntentUiInteractionQueries.js';",
     );
     expect(targetSource).not.toContain('UI_INTERACTION_RULES');
@@ -93,8 +96,9 @@ describe('Mission Control intent target architecture', () => {
       path.join(process.cwd(), 'src/core/startIntentStateManagementQueries.ts'),
       'utf8',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractStateManagementQuery } from './startIntentStateManagementQueries.js';",
     );
     expect(targetSource).not.toContain('STATE_MANAGEMENT_RULES');
@@ -113,8 +117,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentDataAccessQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractDataAccessQuery } from './startIntentDataAccessQueries.js';",
     );
     expect(targetSource).not.toContain('DATA_ACCESS_RULES');
@@ -135,8 +140,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentIntegrationQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractIntegrationQuery } from './startIntentIntegrationQueries.js';",
     );
     expect(targetSource).not.toContain('function serviceCallIntegrationQuery');
@@ -157,8 +163,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentApiContractQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractApiContractQuery } from './startIntentApiContractQueries.js';",
     );
     expect(targetSource).not.toContain('API_CONTRACT_RULES');
@@ -179,8 +186,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentInfraArtifactQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractInfraArtifactQuery } from './startIntentInfraArtifactQueries.js';",
     );
     expect(targetSource).not.toContain('INFRA_ARTIFACT_RULES');
@@ -233,8 +241,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentDomainWorkflowQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractDomainWorkflowQuery } from './startIntentDomainWorkflowQueries.js';",
     );
     expect(targetSource).not.toContain('function extractDomainWorkflowQuery');
@@ -255,8 +264,9 @@ describe('Mission Control intent target architecture', () => {
       process.cwd(),
       'src/core/startIntentCommunicationArtifactQueries.ts',
     );
+    const domainSearchSource = readDomainSearchSource();
 
-    expect(targetSource).toContain(
+    expect(domainSearchSource).toContain(
       "import { extractCommunicationArtifactQuery } from './startIntentCommunicationArtifactQueries.js';",
     );
     expect(targetSource).not.toContain('function extractCommunicationArtifactQuery');
@@ -268,4 +278,39 @@ describe('Mission Control intent target architecture', () => {
     expect(communicationSource).not.toContain("from './startIntentTargets.js'");
   });
 
+  it('delegates the ordered domain search query chain to a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const domainSearchPath = path.join(
+      process.cwd(),
+      'src/core/startIntentDomainSearchQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { searchQueryFromDomainSignals } from './startIntentDomainSearchQueries.js';",
+    );
+    expect(targetSource).not.toContain('type QueryExtractor');
+    expect(targetSource).not.toContain('function firstQuery');
+    expect(targetSource).not.toContain('function searchQueryFromDomainSignals');
+    expect(targetSource).not.toContain("from './startIntentReliabilityQueries.js'");
+    expect(targetSource).not.toContain("from './startIntentDomainWorkflowQueries.js'");
+
+    expect(existsSync(domainSearchPath)).toBe(true);
+    const domainSearchSource = readFileSync(domainSearchPath, 'utf8');
+    expect(domainSearchSource).toContain('export function searchQueryFromDomainSignals');
+    expect(domainSearchSource).toContain(
+      "import { extractReliabilityQuery } from './startIntentReliabilityQueries.js';",
+    );
+    expect(domainSearchSource).toContain(
+      "import { extractDomainWorkflowQuery } from './startIntentDomainWorkflowQueries.js';",
+    );
+    expect(domainSearchSource).not.toContain("from './startIntentTargets.js'");
+  });
+
 });
+
+function readDomainSearchSource(): string {
+  return readFileSync(path.join(process.cwd(), 'src/core/startIntentDomainSearchQueries.ts'), 'utf8');
+}
