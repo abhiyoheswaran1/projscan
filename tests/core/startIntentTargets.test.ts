@@ -51,6 +51,7 @@ describe('Mission Control intent target parsing', () => {
       'invites push notification copy',
     );
     expect(extractSearchQuery('which role can access admin?')).toBe('admin role access');
+    expect(extractSearchQuery('which CSS module styles Button?')).toBe('Button CSS module');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

@@ -279,4 +279,26 @@ describe('Mission Control intent target architecture', () => {
     expect(authorizationSource).toContain('export function extractAuthorizationQuery');
     expect(authorizationSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps style-system search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const stylePath = path.join(
+      process.cwd(),
+      'src/core/startIntentStyleSystemQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractStyleSystemQuery } from './startIntentStyleSystemQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractStyleSystemQuery');
+    expect(targetSource).not.toContain('Tailwind theme');
+
+    expect(existsSync(stylePath)).toBe(true);
+    const styleSource = readFileSync(stylePath, 'utf8');
+    expect(styleSource).toContain('export function extractStyleSystemQuery');
+    expect(styleSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

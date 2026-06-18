@@ -9,6 +9,7 @@ import { extractInfraArtifactQuery } from './startIntentInfraArtifactQueries.js'
 import { extractIntegrationQuery } from './startIntentIntegrationQueries.js';
 import { extractReliabilityQuery } from './startIntentReliabilityQueries.js';
 import { extractStateManagementQuery } from './startIntentStateManagementQueries.js';
+import { extractStyleSystemQuery } from './startIntentStyleSystemQueries.js';
 import { extractToolingConfigQuery } from './startIntentToolingConfigQueries.js';
 import { extractUiInteractionQuery } from './startIntentUiInteractionQueries.js';
 
@@ -550,29 +551,6 @@ function extractTestDataQuery(intent: string): string | undefined {
     /\b(?:find|locate|search(?:\s+for)?|lookup|where\s+(?:are|is))\s+(?:the\s+)?(?:factories?|factory)\s+(?:for|of)\s+(.+?)$/i,
   );
   if (factoryLookup?.[1]) return `${unwrapTarget(factoryLookup[1].trim())} factory`;
-  return undefined;
-}
-
-function extractStyleSystemQuery(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!.\s]+$/g, '');
-  if (
-    /\b(?:why|failing|failed|failure|failures|broken|error|errors|runtime|production|prod|outage|incident)\b/i.test(
-      compactIntent,
-    )
-  ) {
-    return undefined;
-  }
-
-  if (/\bdesign\s+tokens?\b/i.test(compactIntent)) return 'design tokens';
-  if (/\btailwind\s+themes?\b/i.test(compactIntent)) return 'Tailwind theme';
-  if (/\bglobal\s+css\b/i.test(compactIntent)) return 'global CSS';
-
-  const cssModule = compactIntent.match(/\b(?:which|what)\s+css\s+modules?\s+styles?\s+(.+?)$/i);
-  if (cssModule?.[1]) return `${unwrapTarget(cssModule[1].trim())} CSS module`;
-
-  if (/\bdark\s+mode\b/i.test(compactIntent)) return 'dark mode';
-  if (/\bbreakpoints?\b/i.test(compactIntent)) return 'breakpoints';
-
   return undefined;
 }
 
