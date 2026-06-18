@@ -65,7 +65,7 @@ The active validation lines are:
 - **Swarm coordination evidence.** Validate how real agents use `collisions`, `claim`, `merge-risk`, `coordinate`, and `coordinate --watch`; deepen only the coordination paths that prevent integration failures.
 - **Evidence export adoption.** Prove scoped/redacted report controls work for partner, security, and release-review handoffs without leaking unnecessary repo structure.
 - **Python upgrade coverage.** Extend lockfile support only after Poetry and pinned-requirement evidence prove useful in real repos.
-- **Framework dataflow precision.** Add more framework patterns only when each has a narrow request source, sink, and false-positive fixture; current validation includes Remix route data and SvelteKit `RequestEvent` coverage.
+- **Framework dataflow precision.** Add more framework patterns only when each has a narrow request source, sink, and false-positive fixture; current validation includes Remix route data, SvelteKit `RequestEvent` coverage, and Astro endpoint request/params evidence.
 - **Hotspot maintainability.** Continue extracting and covering high-churn start/review/type surfaces when they show concrete review or defect risk.
 
 Strictly **local-first** throughout: same-repo / same-machine evidence, no daemon, no cloud, no hidden network calls, no new telemetry, and no secret-value reads.

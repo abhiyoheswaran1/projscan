@@ -2,6 +2,7 @@ import type {
   FrameworkRequestSourceContext,
   FrameworkRequestSourceResolver,
 } from './frameworkSourceContext.js';
+import { astroRequestSource } from './frameworkAstroSources.js';
 import { expressRequestSource } from './frameworkExpressSources.js';
 import { fastifyRequestSource } from './frameworkFastifySources.js';
 import { honoRequestSource } from './frameworkHonoSources.js';
@@ -14,6 +15,7 @@ export const FRAMEWORK_REQUEST_SOURCE_RESOLVERS: FrameworkRequestSourceResolver[
   resolveNextRouteSource,
   resolveRemixSource,
   resolveSvelteKitSource,
+  resolveAstroSource,
   resolveHonoSource,
   resolveExpressSource,
   resolveFastifySource,
@@ -61,6 +63,19 @@ function resolveSvelteKitSource(context: FrameworkRequestSourceContext): string 
   const { file, functionName, parameters, memberCallSites, memberReferences, enabledSources } =
     context;
   return svelteKitRequestSource(
+    file,
+    functionName,
+    parameters,
+    memberCallSites,
+    memberReferences,
+    enabledSources,
+  );
+}
+
+function resolveAstroSource(context: FrameworkRequestSourceContext): string | null {
+  const { file, functionName, parameters, memberCallSites, memberReferences, enabledSources } =
+    context;
+  return astroRequestSource(
     file,
     functionName,
     parameters,

@@ -1,6 +1,7 @@
 import {
   NEXT_ROUTE_REQUEST_SOURCES,
 } from './frameworkNextRouteSources.js';
+import { ASTRO_REQUEST_SOURCES } from './frameworkAstroSources.js';
 import { EXPRESS_REQUEST_SOURCES } from './frameworkExpressSources.js';
 import { FASTIFY_REQUEST_SOURCES } from './frameworkFastifySources.js';
 import { HONO_REQUEST_SOURCES } from './frameworkHonoSources.js';
@@ -14,6 +15,7 @@ export const FRAMEWORK_REQUEST_SOURCES = [
   ...NEXT_ROUTE_REQUEST_SOURCES,
   ...REMIX_REQUEST_SOURCES,
   ...SVELTEKIT_REQUEST_SOURCES,
+  ...ASTRO_REQUEST_SOURCES,
   ...HONO_REQUEST_SOURCES,
   ...EXPRESS_REQUEST_SOURCES,
   ...FASTIFY_REQUEST_SOURCES,
