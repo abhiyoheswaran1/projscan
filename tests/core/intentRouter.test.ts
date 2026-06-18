@@ -61,4 +61,29 @@ describe('routeIntent', () => {
       }),
     );
   });
+
+  it('routes improve-next trust prompts to planning before privacy check', () => {
+    const result = routeIntent('what should we improve next to make engineers trust this daily');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_bug_hunt',
+        category: 'Agent planning',
+        confidence: 'high',
+        matchedKeywords: ['improve'],
+      }),
+    );
+    expect(result.matches.find((match) => match.tool === 'projscan_privacy_check')).toBeUndefined();
+  });
+
+  it('keeps explicit privacy and trust-boundary prompts on privacy check', () => {
+    const result = routeIntent('can projscan upload code or contact the network boundary');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_privacy_check',
+        confidence: 'high',
+      }),
+    );
+  });
 });

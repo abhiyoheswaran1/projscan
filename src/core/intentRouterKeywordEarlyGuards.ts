@@ -101,10 +101,32 @@ export function routeKeywordRejectedByEarlyGuards(context: KeywordMatchContext):
 function privacyKeywordRejected({ entry, keyword, tokens }: KeywordMatchContext): boolean {
   if (entry.tool !== 'projscan_privacy_check') return false;
   return (
+    improveNextTrustPlanningContextMatches(keyword, tokens) ||
     searchIntegrationContextMatches(tokens) ||
     searchUiInteractionContextMatches(tokens) ||
     !privacyCheckKeywordMatches(keyword, tokens)
   );
+}
+
+function improveNextTrustPlanningContextMatches(keyword: string, tokens: Set<string>): boolean {
+  if (keyword !== 'trust') return false;
+  if (!(tokens.has('improve') || tokens.has('improvement')) || !tokens.has('next')) return false;
+  return ![
+    'privacy',
+    'boundary',
+    'env',
+    'upload',
+    'telemetry',
+    'network',
+    'offline',
+    'leave',
+    'machine',
+    'contact',
+    'contacted',
+    'read',
+    'write',
+    'writes',
+  ].some((token) => tokens.has(token));
 }
 
 function understandKeywordRejected({

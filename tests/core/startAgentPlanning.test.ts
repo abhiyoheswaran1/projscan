@@ -15,8 +15,8 @@ test('start report turns handoff requests into an agent brief', async () => {
     intent: 'give the next agent a handoff',
   });
 
-  expect(report.mode).toBe('before_edit');
-  expect(report.modeSource).toBe('default');
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
   expect(report.missionControl.routedIntent).toEqual(
     expect.objectContaining({
       category: 'Agent planning',
@@ -42,7 +42,9 @@ test('start report turns handoff requests into an agent brief', async () => {
   expect(report.missionControl.proofCommands).toContain(
     'projscan agent-brief --intent next_agent --format json',
   );
-  expect(report.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
+  expect(report.missionControl.resume.remainingProofCommands).toContain(
+    'projscan preflight --mode before_commit --format json',
+  );
   expect(
     report.missionControl.resume.remainingProofToolCalls?.map((call) => call.command),
   ).not.toContain('projscan handoff');
@@ -54,59 +56,59 @@ test('start report turns handoff requests into an agent brief', async () => {
       expect.objectContaining({
         stepId: 'proof-2',
         status: 'ready',
-        command: 'projscan preflight --mode before_edit --format json',
+        command: 'projscan preflight --mode before_commit --format json',
         toolCall: {
           tool: 'projscan_preflight',
-          args: { mode: 'before_edit' },
+          args: { mode: 'before_commit' },
         },
       }),
       expect.objectContaining({
-        stepId: 'proof-6',
+        stepId: 'proof-4',
         status: 'ready',
-        label: 'projscan handoff',
-        command: 'projscan handoff',
+        label: 'projscan session touched --format json',
+        command: 'projscan session touched --format json',
+        toolCall: {
+          tool: 'projscan_session',
+          args: { action: 'touched' },
+        },
       }),
     ]),
   );
-  expect(
-    report.missionControl.resume.remainingProofItems?.find(
-      (item) => item.command === 'projscan handoff',
-    )?.toolCall,
-  ).toBeUndefined();
+  expect(report.missionControl.resume.remainingProofCommands).not.toContain('projscan handoff');
   expect(report.missionControl.resume.checklist).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         id: 'resume-proof-2',
         kind: 'run_proof',
-        command: 'projscan preflight --mode before_edit --format json',
+        command: 'projscan preflight --mode before_commit --format json',
         tool: 'projscan_preflight',
-        args: { mode: 'before_edit' },
+        args: { mode: 'before_commit' },
       }),
       expect.objectContaining({
-        id: 'resume-proof-6',
+        id: 'resume-proof-4',
         kind: 'run_proof',
-        command: 'projscan handoff',
+        command: 'projscan session touched --format json',
+        tool: 'projscan_session',
+        args: { action: 'touched' },
       }),
     ]),
   );
-  const handoffChecklistProof = report.missionControl.resume.checklist?.find(
-    (item) => item.id === 'resume-proof-6',
+  const sessionChecklistProof = report.missionControl.resume.checklist?.find(
+    (item) => item.id === 'resume-proof-4',
   );
-  expect(handoffChecklistProof).not.toHaveProperty('tool');
-  expect(handoffChecklistProof).not.toHaveProperty('args');
+  expect(sessionChecklistProof).toHaveProperty('tool', 'projscan_session');
+  expect(sessionChecklistProof).toHaveProperty('args', { action: 'touched' });
   expect(report.missionControl.handoff.readyProof.items).toEqual(
     report.missionControl.resume.remainingProofItems,
   );
   expect(report.missionControl.runbook.markdown).toContain('Proof queue:');
   expect(report.missionControl.runbook.markdown).toContain(
-    '- [ready] run_proof proof-6: projscan handoff (CLI only)',
+    '- [ready] run_proof proof-4: projscan session touched --format json (MCP: projscan_session {"action":"touched"})',
   );
   expect(report.missionControl.runbook.markdown).toContain(
-    '- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+    '- proof-2: `projscan preflight --mode before_commit --format json` (MCP: projscan_preflight {"mode":"before_commit"})',
   );
-  expect(report.missionControl.runbook.markdown).toContain(
-    '- proof-6: `projscan handoff` (CLI only)',
-  );
+  expect(report.missionControl.runbook.markdown).not.toContain('projscan handoff');
 });
 
 test('start report surfaces a swarm coordination hint for coordination intents', async () => {
@@ -231,6 +233,35 @@ test('start report routes generic build-next questions to before-edit workplans'
   });
   expect(bugHunt.mode).toBe('bug_hunt');
   expect(bugHunt.missionControl.primaryAction?.tool).toBe('projscan_bug_hunt');
+});
+
+test('start report routes improve-next trust prompts to planning instead of privacy check', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what should we improve next to make engineers trust this daily',
+  });
+
+  expect(report.mode).toBe('bug_hunt');
+  expect(report.modeSource).toBe('intent');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Agent planning',
+      tool: 'projscan_bug_hunt',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan bug-hunt --format json',
+      tool: 'projscan_bug_hunt',
+      args: {},
+    }),
+  );
+  expect(report.missionControl.guardrails.map((guardrail) => guardrail.command)).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
+  expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
 });
 
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {

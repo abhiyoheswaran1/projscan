@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Route improve-next trust prompts to planning
+
+- Status: accepted
+- Context: `projscan start --intent "what should we improve next to make engineers trust this daily"` routed to privacy-check because the single word `trust` outweighed improve-next planning language. That gave a trust-boundary action when the user was asking for product-improvement work.
+- Decision: Reject privacy-check's `trust` keyword when the prompt is an improve-next planning request and does not include explicit privacy, boundary, upload, telemetry, network, offline, read, write, or contact terms. Keep explicit privacy/trust-boundary prompts on `projscan_privacy_check`.
+- Consequences: Product-improvement trust prompts now route to agent-planning bug hunt/workplan behavior, while privacy-check remains the first-10-minutes trust-boundary step and explicit privacy prompts still route there directly.
+- Verification: Router and start-report regressions failed on the privacy-first ranking, then passed after the phrase-specific privacy rejection. Explicit privacy prompt coverage still chooses `projscan_privacy_check`.
+
 ## 2026-06-18: Use handoff wording for before-commit scale cautions
 
 - Status: accepted
