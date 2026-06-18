@@ -9,14 +9,20 @@ import {
   assertFormatSupported,
 } from '../_shared.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
-import { buildPrivacyCheckReport, type PrivacyCheckReport } from '../../core/privacy.js';
+import {
+  buildPrivacyCheckReport,
+  enableOfflineMode,
+  type PrivacyCheckReport,
+} from '../../core/privacy.js';
 
 export function registerPrivacyCheck(): void {
   program
     .command('privacy-check')
     .description('Show the local privacy, ignore, telemetry, and network boundary')
-    .action(async () => {
+    .option('--offline', 'block network-capable features for this privacy-check run')
+    .action(async (options: { offline?: boolean }) => {
       setupLogLevel();
+      if (options.offline) enableOfflineMode();
       maybeCompactBanner();
       const rootPath = getRootPath();
       const format = assertFormatSupported('privacy-check');

@@ -77,6 +77,24 @@ test('privacy-check reports the local trust boundary as JSON', async () => {
   );
 });
 
+test('privacy-check help shows the offline flag used by start guidance', async () => {
+  const result = await runCli(['privacy-check', '--help']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('--offline');
+});
+
+test('privacy-check offline flag enables offline mode in JSON output', async () => {
+  const result = await runCli(['privacy-check', '--offline', '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const payload = JSON.parse(result.stdout);
+  expect(payload.offline.enabled).toBe(true);
+  expect(payload.network.endpoints).toEqual(
+    expect.arrayContaining([expect.objectContaining({ blockedByOffline: true })]),
+  );
+});
+
 async function runCli(
   args: string[],
   env: Record<string, string> = {},
