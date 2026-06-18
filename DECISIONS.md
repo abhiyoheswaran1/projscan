@@ -2633,3 +2633,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Print inline handoff/review-gate sections only when the caller explicitly requested a handoff payload or Mission Control has unresolved inputs. Keep JSON, shortcuts, mission bundles, review-gate data, and runbook output unchanged.
 - Consequences: Normal start output stays focused on daily workflows, Mission Control, resume checklist, action plan, proof, risks, and next commands. Ambiguous/fuzzy flows still surface inline handoff and review guidance.
 - Verification: `npm run test -- tests/cli/start.test.ts` failed before the default console suppressed the heavy sections, then `npm run build` and `npm run test -- tests/cli/start.test.ts tests/cli/startHandoff.test.ts` passed after the rendering guard.
+
+## 2026-06-18: Label healthy p2 start risks as a watch list
+
+- Status: accepted
+- Context: Healthy `projscan start` console output still used the `Top Risks` heading for p2-only hotspot evidence. That made routine watch items sound like caution or blocker output.
+- Decision: Use `Watch List` in the normal start console when the quality verdict is healthy or excellent and every visible risk is p2. Keep `Top Risks` for p0/p1 items or unhealthy output, and keep risk data unchanged.
+- Consequences: Healthy daily workflow output is less alarmist while still showing the same files and follow-up commands. JSON output, workplan output, evidence-pack comments, and risk scoring remain stable.
+- Verification: `npm run test -- tests/cli/startConsoleGuidance.test.ts` failed before the heading helper existed, then passed after the helper and parser update.

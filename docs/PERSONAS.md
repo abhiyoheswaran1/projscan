@@ -12046,3 +12046,44 @@ caller explicitly requested handoff output.
 
 Kept change: one console rendering guard, focused CLI regressions, this persona
 note, and no release action in this slice.
+
+## Two Hundred Fifty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: healthy `start` output still used the heading `Top Risks` for p2-only
+hotspot evidence. That is accurate enough for risk data, but too loud for the
+default daily workflow console; it makes caution language easier to ignore.
+
+Smallest fix: keep the same risk rows, commands, ordering, and JSON data, but
+label healthy or excellent p2-only console output as `Watch List`. Preserve
+`Top Risks` for p0/p1 items and unhealthy start output.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/start.test.ts tests/cli/startHandoff.test.ts tests/cli/startConsoleGuidance.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Watch Is Not A Blocker
+
+Delete-list after this slice:
+
+- Do not change risk scoring, ranking, JSON shape, workplan output, evidence
+  pack comments, or quality scorecard output.
+- Do not hide low-priority risks; only calibrate the normal start console
+  heading for healthy p2-only evidence.
+- Do not soften p0/p1 or unhealthy output; those remain `Top Risks`.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: helper code that parses the console boundary after `Next
+Commands` should accept both `Top Risks` and `Watch List`.
+
+Kept change: one console heading helper, one parser boundary update, focused
+guidance coverage, this persona note, and no release action in this slice.

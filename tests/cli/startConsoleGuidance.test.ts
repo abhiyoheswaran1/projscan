@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, expect, test } from 'vitest';
+import { startRiskSectionTitle } from '../../src/cli/commands/startConsole.js';
+import type { StartReport } from '../../src/types/start.js';
 import { extractNextCommands, runStartCli } from '../helpers/startCli.js';
 import { makeTempProject } from '../helpers/startProject.js';
 
@@ -74,8 +76,42 @@ test('start console surfaces AgentFlight verification guidance when present', as
   );
 });
 
+test('start console labels healthy p2-only risks as a watch list', () => {
+  expect(
+    startRiskSectionTitle(
+      startReportForRiskTitle('healthy', [
+        { priority: 'p2', title: 'Hotspot src/types.ts' },
+        { priority: 'p2', title: 'Hotspot tests/cli/start.test.ts' },
+      ]),
+    ),
+  ).toBe('Watch List');
+
+  expect(
+    startRiskSectionTitle(
+      startReportForRiskTitle('healthy', [{ priority: 'p1', title: 'No test framework' }]),
+    ),
+  ).toBe('Top Risks');
+  expect(
+    startRiskSectionTitle(
+      startReportForRiskTitle('needs_attention', [
+        { priority: 'p2', title: 'Hotspot src/types.ts' },
+      ]),
+    ),
+  ).toBe('Top Risks');
+});
+
 async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return runStartCli(tmp, args);
+}
+
+function startReportForRiskTitle(
+  qualityVerdict: StartReport['evidence']['qualityVerdict'],
+  topRisks: Array<Pick<StartReport['topRisks'][number], 'priority' | 'title'>>,
+): StartReport {
+  return {
+    evidence: { qualityVerdict },
+    topRisks,
+  } as StartReport;
 }

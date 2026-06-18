@@ -39,7 +39,7 @@ export async function runScript(
 }
 
 export function extractNextCommands(stdout: string): string[] {
-  const match = stdout.match(/Next Commands\n(?<body>[\s\S]*?)\n\nTop Risks/);
+  const match = stdout.match(/Next Commands\n(?<body>[\s\S]*?)\n\n(?:Top Risks|Watch List)/);
   const body = match?.groups?.body ?? '';
   return body
     .split('\n')

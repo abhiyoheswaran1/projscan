@@ -83,8 +83,21 @@ function printNextCommands(report: StartReport): void {
 }
 
 function printTopRisks(report: StartReport): void {
-  console.log(chalk.bold('Top Risks'));
+  console.log(chalk.bold(startRiskSectionTitle(report)));
   for (const risk of report.topRisks.slice(0, 5)) printRisk(risk);
+}
+
+export function startRiskSectionTitle(report: StartReport): string {
+  const visibleRisks = report.topRisks.slice(0, 5);
+  const allVisibleRisksAreWatchItems =
+    visibleRisks.length > 0 && visibleRisks.every((risk) => risk.priority === 'p2');
+  if (
+    allVisibleRisksAreWatchItems &&
+    (report.evidence.qualityVerdict === 'healthy' || report.evidence.qualityVerdict === 'excellent')
+  ) {
+    return 'Watch List';
+  }
+  return 'Top Risks';
 }
 
 function printAdoptionLoop(report: StartReport): void {
