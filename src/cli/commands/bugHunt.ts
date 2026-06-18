@@ -10,6 +10,8 @@ import {
 import { computeBugHunt } from '../../core/bugHunt.js';
 import type { BugHuntFinding, BugHuntReport } from '../../types.js';
 
+const REVIEW_SIGNAL_FILE_PREVIEW_LIMIT = 3;
+
 export function registerBugHunt(): void {
   program
     .command('bug-hunt')
@@ -67,14 +69,24 @@ function printFindingSection(report: BugHuntReport): void {
   if (reviewSignals.length === 0) return;
 
   console.log(chalk.bold('Review Signals'));
-  for (const finding of reviewSignals) printFinding(finding);
+  for (const finding of reviewSignals)
+    printFinding(finding, { maxFiles: REVIEW_SIGNAL_FILE_PREVIEW_LIMIT });
 }
 
-function printFinding(finding: BugHuntFinding): void {
-  const files = finding.files.length > 0 ? ` (${finding.files.join(', ')})` : '';
+function printFinding(
+  finding: BugHuntFinding,
+  options: { maxFiles?: number } = {},
+): void {
+  const files = findingFileSummary(finding.files, options.maxFiles);
   console.log(`- ${chalk.bold(`[${finding.priority}] ${finding.title}`)}${files}`);
   console.log(`  ${finding.why}`);
   console.log(`  verify: ${finding.verification.commands.join(' && ')}`);
+}
+
+function findingFileSummary(files: string[], maxFiles?: number): string {
+  if (files.length === 0) return '';
+  if (!maxFiles || files.length <= maxFiles) return ` (${files.join(', ')})`;
+  return ` (${files.slice(0, maxFiles).join(', ')}, +${files.length - maxFiles} more)`;
 }
 
 function isReviewSignal(finding: BugHuntFinding): boolean {
