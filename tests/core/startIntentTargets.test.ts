@@ -47,6 +47,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is refund handling for payments?')).toBe(
       'payments refund handling',
     );
+    expect(extractSearchQuery('where is push notification copy for invites?')).toBe(
+      'invites push notification copy',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

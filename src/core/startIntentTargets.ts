@@ -1,5 +1,6 @@
 import type { GraphQueryDirection } from './graphQuery.js';
 import { extractApiContractQuery } from './startIntentApiContractQueries.js';
+import { extractCommunicationArtifactQuery } from './startIntentCommunicationArtifactQueries.js';
 import { extractDataAccessQuery } from './startIntentDataAccessQueries.js';
 import { extractDataContractQuery } from './startIntentDataContractQueries.js';
 import { extractDomainWorkflowQuery } from './startIntentDomainWorkflowQueries.js';
@@ -659,35 +660,6 @@ function extractFrontendPageRouteQuery(intent: string): string | undefined {
     return 'not-found page';
   if (/\b404\s+pages?\s+(?:handled|defined|located|live|lives)\b/i.test(compactIntent))
     return '404 page';
-
-  return undefined;
-}
-
-function extractCommunicationArtifactQuery(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!.\s]+$/g, '');
-
-  const welcomeEmail = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?(.+?\bemail\s+templates?)\b/i,
-  );
-  if (welcomeEmail?.[1]) return unwrapTarget(welcomeEmail[1].trim());
-
-  const emailCopy = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?(.+?\bemail\s+copy)\b/i,
-  );
-  if (emailCopy?.[1]) return unwrapTarget(emailCopy[1].trim());
-
-  const pushCopy = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?push\s+notifications?\s+copy\s+(?:for|of)\s+(.+?)$/i,
-  );
-  if (pushCopy?.[1]) return `${unwrapTarget(pushCopy[1].trim())} push notification copy`;
-
-  if (/\bsms\s+verification\s+templates?\b/i.test(compactIntent))
-    return 'SMS verification template';
-
-  if (/\breceipt\s+email\b/i.test(compactIntent) && /\btemplates?\b/i.test(compactIntent))
-    return 'receipt email template';
-
-  if (/\binvoice\s+pdf\b/i.test(compactIntent)) return 'invoice PDF';
 
   return undefined;
 }

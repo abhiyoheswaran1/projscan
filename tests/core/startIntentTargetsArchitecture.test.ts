@@ -235,4 +235,26 @@ describe('Mission Control intent target architecture', () => {
     expect(domainSource).toContain('export function extractDomainWorkflowQuery');
     expect(domainSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps communication artifact search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const communicationPath = path.join(
+      process.cwd(),
+      'src/core/startIntentCommunicationArtifactQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractCommunicationArtifactQuery } from './startIntentCommunicationArtifactQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractCommunicationArtifactQuery');
+    expect(targetSource).not.toContain('SMS verification template');
+
+    expect(existsSync(communicationPath)).toBe(true);
+    const communicationSource = readFileSync(communicationPath, 'utf8');
+    expect(communicationSource).toContain('export function extractCommunicationArtifactQuery');
+    expect(communicationSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
