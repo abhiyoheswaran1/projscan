@@ -36,6 +36,7 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where are the Prisma models for checkout?')).toBe(
       'checkout Prisma model',
     );
+    expect(extractSearchQuery('where do we call Stripe?')).toBe('Stripe API');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

@@ -125,4 +125,26 @@ describe('Mission Control intent target architecture', () => {
     expect(dataAccessSource).toContain('export function extractDataAccessQuery');
     expect(dataAccessSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps integration search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const integrationPath = path.join(
+      process.cwd(),
+      'src/core/startIntentIntegrationQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractIntegrationQuery } from './startIntentIntegrationQueries.js';",
+    );
+    expect(targetSource).not.toContain('function serviceCallIntegrationQuery');
+    expect(targetSource).not.toContain('function normalizeIntegrationPhrase');
+
+    expect(existsSync(integrationPath)).toBe(true);
+    const integrationSource = readFileSync(integrationPath, 'utf8');
+    expect(integrationSource).toContain('export function extractIntegrationQuery');
+    expect(integrationSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
