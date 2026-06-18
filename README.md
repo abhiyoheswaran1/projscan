@@ -922,7 +922,7 @@ For real-world numbers against larger codebases, `npm run bench:references` shal
 
 Run `npm run bench` against your own machine to recalibrate.
 
-- **Zero network requests** — everything runs locally
+- **Local by default** — core scans run without network; `audit`, registry checks, opt-in telemetry, and optional semantic embeddings are explicit network-capable paths
 - **7 direct runtime dependencies** — grammar packages are build-time sources, not global-install dependencies
 - **~21 MB of vendored tree-sitter WASM grammars**, broken down:
 
