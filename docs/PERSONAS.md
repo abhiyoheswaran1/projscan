@@ -11085,3 +11085,50 @@ before local setup wording before default CI/test wording.
 Kept change: one regression-route criteria helper, one architecture guard, one
 regression criteria matrix, this persona note, and no release action in this
 slice.
+
+## Two Hundred Thirty Third Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: dependency-route criteria are review-facing guidance for license,
+third-party notice, bundle-size, and dependency-inventory work. The keyword
+groups were independent from Mission Control resolver ordering and were the next
+small route-specific responsibility left in the start criteria hotspot.
+
+Smallest fix: move dependency success-criteria assembly plus license and
+bundle-size keyword groups into `src/core/startDependencyRouteCriteria.ts`;
+keep `projscan_dependencies` route dispatch in
+`src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startDependencyRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Dependency Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change dependency criteria wording, order, resolver ordering, route
+  ranking, Mission Control schemas, workplan behavior, public types,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not change dependency analysis, audit behavior, or dependency route
+  matching.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: combined license and bundle-size dependency intents must
+still surface license criteria before bundle-size criteria, then inventory and
+risk follow-up criteria, with the appended workplan command sliced off as
+before.
+
+Kept change: one dependency-route criteria helper, one architecture guard, one
+dependency criteria matrix, this persona note, and no release action in this
+slice.

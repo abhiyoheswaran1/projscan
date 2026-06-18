@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start dependency route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still owned dependency-route license and bundle-size keyword criteria beside Mission Control resolver orchestration.
+- Decision: Move dependency license and bundle keyword groups plus dependency success-criteria assembly into `src/core/startDependencyRouteCriteria.ts`, while keeping resolver ordering and `dependenciesRouteSuccessCriteria` dispatch in `src/core/startSuccessCriteria.ts`.
+- Consequences: Dependency criteria wording and order stay unchanged for license, bundle-size, combined, and default dependency inventory cases. The resolver module keeps route dispatch without owning dependency-specific keyword lists.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria tests now cover license, bundle, combined, and default dependency criteria.
+
 ## 2026-06-18: Extract start regression route criteria helper
 
 - Status: accepted

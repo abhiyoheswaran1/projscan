@@ -1,3 +1,4 @@
+import { dependencySuccessCriteria } from './startDependencyRouteCriteria.js';
 import { FIXED_ROUTE_CRITERIA } from './startFixedRouteCriteria.js';
 import { fileSuccessCriteria } from './startFileRouteCriteria.js';
 import { regressionSuccessCriteria } from './startRegressionRouteCriteria.js';
@@ -180,57 +181,7 @@ function claimRouteSuccessCriteria(context: MissionCriteriaContext): string[] | 
 
 function dependenciesRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
   if (context.route?.tool !== 'projscan_dependencies') return undefined;
-  const criteria: string[] = [];
-  if (
-    context.route.matchedKeywords.some((keyword) =>
-      [
-        'license',
-        'licenses',
-        'gpl',
-        'copyleft',
-        'notice',
-        'notices',
-        'third',
-        'party',
-        'open',
-        'source',
-        'compliance',
-      ].includes(keyword),
-    )
-  ) {
-    criteria.push(
-      'Dependency license counts, unknown licenses, and copyleft risks are reviewed before third-party notices or compliance sign-off.',
-    );
-  }
-  if (
-    context.route.matchedKeywords.some((keyword) =>
-      [
-        'bundle',
-        'bundles',
-        'size',
-        'sizes',
-        'large',
-        'heavy',
-        'bloat',
-        'bloated',
-        'weight',
-        'footprint',
-        'reduce',
-        'slim',
-      ].includes(keyword),
-    )
-  ) {
-    criteria.push(
-      'Installed package-size totals and largest packages are reviewed before bundle-size or dependency-bloat work starts.',
-    );
-  }
-  criteria.push(
-    'Declared production and development dependencies are inventoried before package changes are planned.',
-  );
-  criteria.push(
-    'Any dependency risks, workspace-specific counts, or missing lockfile signal has an owner or follow-up command.',
-  );
-  return criteria;
+  return dependencySuccessCriteria(context.route);
 }
 
 function regressionRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {

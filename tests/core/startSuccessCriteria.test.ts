@@ -86,6 +86,24 @@ describe('Mission Control success criteria', () => {
     expect(regressionCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps dependency route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const dependencyCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startDependencyRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startDependencyRouteCriteria.js'");
+    expect(source).not.toContain('DEPENDENCY_LICENSE_KEYWORDS');
+    expect(source).not.toContain('bundle-size or dependency-bloat');
+    expect(dependencyCriteria).toContain('export function dependencySuccessCriteria');
+    expect(dependencyCriteria).toContain('DEPENDENCY_BUNDLE_KEYWORDS');
+    expect(dependencyCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
@@ -407,6 +425,61 @@ describe('Mission Control success criteria', () => {
         'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
         'The next task has a verification command: npm test -- tests/core/start.test.ts',
       ]);
+    }
+  });
+
+  it('keeps dependency criteria by matched signal', () => {
+    const cases = [
+      {
+        keywords: ['license'],
+        expected: [
+          'Dependency license counts, unknown licenses, and copyleft risks are reviewed before third-party notices or compliance sign-off.',
+          'Declared production and development dependencies are inventoried before package changes are planned.',
+          'Any dependency risks, workspace-specific counts, or missing lockfile signal has an owner or follow-up command.',
+          'The next task has a verification command: npm test -- tests/core/start.test.ts',
+        ],
+      },
+      {
+        keywords: ['bundle'],
+        expected: [
+          'Installed package-size totals and largest packages are reviewed before bundle-size or dependency-bloat work starts.',
+          'Declared production and development dependencies are inventoried before package changes are planned.',
+          'Any dependency risks, workspace-specific counts, or missing lockfile signal has an owner or follow-up command.',
+          'The next task has a verification command: npm test -- tests/core/start.test.ts',
+        ],
+      },
+      {
+        keywords: ['license', 'bundle'],
+        expected: [
+          'Dependency license counts, unknown licenses, and copyleft risks are reviewed before third-party notices or compliance sign-off.',
+          'Installed package-size totals and largest packages are reviewed before bundle-size or dependency-bloat work starts.',
+          'Declared production and development dependencies are inventoried before package changes are planned.',
+          'Any dependency risks, workspace-specific counts, or missing lockfile signal has an owner or follow-up command.',
+        ],
+      },
+      {
+        keywords: ['dependencies'],
+        expected: [
+          'Declared production and development dependencies are inventoried before package changes are planned.',
+          'Any dependency risks, workspace-specific counts, or missing lockfile signal has an owner or follow-up command.',
+          'The next task has a verification command: npm test -- tests/core/start.test.ts',
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const criteria = successCriteria({
+        route: route('projscan_dependencies', testCase.keywords),
+        actionPlan: [
+          action(
+            'Inspect dependencies',
+            'projscan dependencies --format json',
+            'projscan_dependencies',
+          ),
+        ],
+      });
+
+      expect(criteria).toEqual(testCase.expected);
     }
   });
 });
