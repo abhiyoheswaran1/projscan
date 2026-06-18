@@ -83,4 +83,24 @@ describe('Mission Control intent target architecture', () => {
     expect(uiInteractionSource).toContain('export function extractUiInteractionQuery');
     expect(uiInteractionSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps state-management search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const stateSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentStateManagementQueries.ts'),
+      'utf8',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractStateManagementQuery } from './startIntentStateManagementQueries.js';",
+    );
+    expect(targetSource).not.toContain('STATE_MANAGEMENT_RULES');
+    expect(targetSource).not.toContain('function normalizeStateFramework');
+
+    expect(stateSource).toContain('export function extractStateManagementQuery');
+    expect(stateSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

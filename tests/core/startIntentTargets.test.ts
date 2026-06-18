@@ -30,6 +30,9 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('which component renders the checkout page?')).toBe(
       'checkout page component',
     );
+    expect(extractSearchQuery('where is the Zustand store for checkout?')).toBe(
+      'checkout Zustand store',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 
