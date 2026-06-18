@@ -10060,3 +10060,51 @@ without crashing, while valid issues are still emitted as
 
 Kept change: one focused plugin issue validation module, one architecture guard,
 this persona note, and no release action in this slice.
+
+## Two Hundred Twelfth Slice Decision
+
+Selected personas: Security-Conscious Reviewer and Platform And Release Owner.
+
+Reason: after analyzer issue validation moved out, `src/core/plugins.ts` still
+owned module readability checks, dynamic import fallback, and module load error
+shaping inside the same hotspot that performs plugin discovery, trust gating, and
+analyzer/reporter orchestration. Local plugin imports execute code, so the
+module-loading mechanics should be isolated without changing the preview flag or
+trust-on-first-use gates.
+
+Smallest fix: move module readability checks, dynamic import fallback, and
+module load error descriptions into `src/core/pluginModuleLoading.ts`; keep
+plugin discovery, trust decisions, reporter/analyzer resolution, and public
+exports in `src/core/plugins.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/pluginTrustGate.test.ts
+npm run test -- tests/core/plugins.test.ts -t "loads a plugin and runs it through runAnalyzerPlugins"
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginModuleLoading.ts --format json
+```
+
+## Review Guardrails: Plugin Module Loading Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin manifest validation, trust storage, trust-on-first-use
+  behavior, preview flag behavior, reporter/analyzer schemas, CLI/MCP schemas,
+  public plugin exports, dependencies, lockfiles, publish behavior, push
+  behavior, tags, or releases.
+- Do not execute untrusted plugin modules, broaden dynamic import inputs, add
+  network calls, read `.env` values, or introduce new plugin capabilities.
+
+Reviewer edge case: missing analyzer modules should still warn with the manifest
+module path, reporter module failures should still return structured
+diagnostics, syntax errors should still include the reproduction hint, and
+untrusted modules should still stop before import.
+
+Kept change: one focused plugin module-loading helper, one architecture guard,
+this persona note, and no release action in this slice.

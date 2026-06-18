@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract plugin module loading helpers
+
+- Status: accepted
+- Context: `src/core/plugins.ts` remained the top hotspot and still owned module readability checks, dynamic import fallback, and module load error shaping alongside discovery, trust gating, analyzer loading, and reporter loading.
+- Decision: Move plugin module readability checks, dynamic import fallback, and module load error descriptions into `src/core/pluginModuleLoading.ts`.
+- Consequences: Analyzer and reporter plugin execution still requires the preview flag plus trust-on-first-use approval, missing/syntax/read-error diagnostics stay unchanged, public plugin exports stay unchanged, and `src/core/plugins.ts` drops from 530 lines / CC 54 to 426 lines / CC 42.
+- Verification: `npm run test -- tests/core/pluginArchitecture.test.ts`, `npm run test -- tests/core/pluginTrustGate.test.ts`, and `npm run test -- tests/core/plugins.test.ts -t "loads a plugin and runs it through runAnalyzerPlugins"`.
+
 ## 2026-06-18: Read nested Python requirements manifests
 
 - Status: accepted

@@ -31,6 +31,29 @@ describe('plugin runtime maintainability', () => {
     expect(validateIssue).toBeDefined();
     expect(validateIssue!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
+
+  it('keeps module loading mechanics out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginModuleLoading.js'");
+    expect(runtimeSource).not.toContain('class PluginModuleMissingError');
+    expect(runtimeSource).not.toContain('class PluginModuleReadError');
+    expect(runtimeSource).not.toContain('function assertPluginModuleReadable');
+    expect(runtimeSource).not.toContain('function describePluginModuleLoadError');
+    expect(runtimeSource).not.toContain('function importPluginModule');
+    expect(runtimeSource).not.toContain('function isMissingDynamicImportCallback');
+    expect(runtimeSource).not.toContain('function importPluginModuleFromSource');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginModuleLoading.ts');
+    const importModule = inspection.functions?.find((fn) => fn.name === 'importPluginModule');
+    const describeLoadError = inspection.functions?.find(
+      (fn) => fn.name === 'describePluginModuleLoadError',
+    );
+
+    expect(importModule).toBeDefined();
+    expect(importModule!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(describeLoadError).toBeDefined();
+    expect(describeLoadError!.cyclomaticComplexity).toBeLessThanOrEqual(4);
+  });
 });
 
 async function inspectRepoSourceFile(relativePath: string) {

@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { CodeGraph } from './codeGraph.js';
 import type {
   FileEntry,
@@ -9,6 +8,11 @@ import type {
   SemanticGraphReport,
 } from '../types.js';
 import { isWellShapedIssue } from './pluginIssueValidation.js';
+import {
+  assertPluginModuleReadable,
+  describePluginModuleLoadError,
+  importPluginModule,
+} from './pluginModuleLoading.js';
 import { getPluginTrustStatus, type PluginTrustStatus } from './pluginTrust.js';
 import { validateManifest } from './pluginManifestValidation.js';
 import type {
@@ -50,10 +54,6 @@ export type {
   PluginReporterCommand,
   PluginReporterManifest,
 } from './pluginManifestValidation.js';
-
-type DynamicImport = (specifier: string) => Promise<Record<string, unknown>>;
-// Keep arbitrary plugin file URLs out of Vite/Vitest's static import transform.
-const dynamicImport = new Function('specifier', 'return import(specifier)') as DynamicImport;
 
 export interface PluginAnalyzerContext {
   schemaVersion: 1;
@@ -360,68 +360,6 @@ async function loadReporterPlugin(
   }
 }
 
-class PluginModuleMissingError extends Error {
-  constructor(
-    readonly manifestModule: string,
-    readonly modulePath: string,
-  ) {
-    super(`module "${manifestModule}" was not found at ${modulePath}`);
-  }
-}
-
-class PluginModuleReadError extends Error {
-  constructor(
-    readonly manifestModule: string,
-    readonly modulePath: string,
-    err: unknown,
-  ) {
-    super(`module "${manifestModule}" could not be read at ${modulePath}: ${formatError(err)}`);
-  }
-}
-
-async function assertPluginModuleReadable(
-  manifestModule: string,
-  modulePath: string,
-): Promise<void> {
-  try {
-    await fs.access(modulePath);
-  } catch (err) {
-    const code =
-      typeof err === 'object' && err !== null && 'code' in err
-        ? String((err as { code: unknown }).code)
-        : '';
-    if (code === 'ENOENT') throw new PluginModuleMissingError(manifestModule, modulePath);
-    throw new PluginModuleReadError(manifestModule, modulePath, err);
-  }
-}
-
-function describePluginModuleLoadError(
-  err: unknown,
-  manifestModule: string,
-  modulePath: string,
-  manifestLabel: 'manifest' | 'reporter manifest',
-): { message: string; hint?: string } {
-  if (err instanceof PluginModuleMissingError) {
-    return {
-      message: err.message,
-      hint: `Check the ${manifestLabel} "module" path.`,
-    };
-  }
-  if (err instanceof PluginModuleReadError) {
-    return {
-      message: err.message,
-      hint: `Check file permissions for the ${manifestLabel} "module" path.`,
-    };
-  }
-  if (err instanceof SyntaxError) {
-    return {
-      message: `syntax error in module "${manifestModule}": ${formatError(err)}`,
-      hint: `Run node "${modulePath}" to reproduce the syntax error.`,
-    };
-  }
-  return { message: formatError(err) };
-}
-
 function untrustedAnalyzerWarning(name: string, status: PluginTrustStatus): string {
   const reason =
     status === 'changed' ? 'module changed since it was trusted' : 'module is not trusted';
@@ -438,48 +376,6 @@ function untrustedReporterDiagnostic(name: string, status: PluginTrustStatus): P
       : `reporter plugin "${name}" is not trusted; not executed`,
     hint: `${changed ? 'Re-run' : 'Run'} \`projscan plugin trust ${name}\` to approve this reporter.`,
   };
-}
-
-function importPluginModule(modulePath: string): Promise<Record<string, unknown>> {
-  return dynamicImport(pathToFileURL(modulePath).href).catch(async (err) => {
-    if (!isMissingDynamicImportCallback(err)) throw err;
-    return importPluginModuleFromSource(modulePath);
-  });
-}
-
-function isMissingDynamicImportCallback(err: unknown): boolean {
-  return (
-    err instanceof TypeError && err.message.includes('dynamic import callback was not specified')
-  );
-}
-
-async function importPluginModuleFromSource(modulePath: string): Promise<Record<string, unknown>> {
-  const source = await fs.readFile(modulePath, 'utf-8');
-  const defaultMatch = source.match(/^\s*export\s+default\s+([\s\S]*?)\s*;?\s*$/);
-  if (defaultMatch) {
-    const expression = defaultMatch[1].trim().replace(/;$/, '');
-    return { default: new Function(`return (${expression});`)() as unknown };
-  }
-
-  const names: string[] = [];
-  let transformed = source.replace(
-    /\bexport\s+(async\s+function|function)\s+([A-Za-z_$][\w$]*)/g,
-    (_m, kind, name) => {
-      names.push(String(name));
-      return `${kind} ${name}`;
-    },
-  );
-  transformed = transformed.replace(/\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g, (_m, name) => {
-    names.push(String(name));
-    return `const ${name} =`;
-  });
-  if (names.length === 0) {
-    throw new Error('unsupported module syntax in Vitest VM fallback');
-  }
-  return new Function(`${transformed}\nreturn { ${names.join(', ')} };`)() as Record<
-    string,
-    unknown
-  >;
 }
 
 /**
