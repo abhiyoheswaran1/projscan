@@ -50,6 +50,7 @@ describe('Mission Control intent target parsing', () => {
     expect(extractSearchQuery('where is push notification copy for invites?')).toBe(
       'invites push notification copy',
     );
+    expect(extractSearchQuery('which role can access admin?')).toBe('admin role access');
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

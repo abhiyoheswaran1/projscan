@@ -257,4 +257,26 @@ describe('Mission Control intent target architecture', () => {
     expect(communicationSource).toContain('export function extractCommunicationArtifactQuery');
     expect(communicationSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps authorization search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const authorizationPath = path.join(
+      process.cwd(),
+      'src/core/startIntentAuthorizationQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractAuthorizationQuery } from './startIntentAuthorizationQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractAuthorizationQuery');
+    expect(targetSource).not.toContain('login routes');
+
+    expect(existsSync(authorizationPath)).toBe(true);
+    const authorizationSource = readFileSync(authorizationPath, 'utf8');
+    expect(authorizationSource).toContain('export function extractAuthorizationQuery');
+    expect(authorizationSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
