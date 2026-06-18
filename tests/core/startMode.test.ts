@@ -93,5 +93,6 @@ test('routesForIntent normalizes router matches into start routed intent shape',
 test('preflightModeFromIntent maps edit, commit, and merge wording to preflight levels', () => {
   expect(preflightModeFromIntent('can I start editing this file')).toBe('before_edit');
   expect(preflightModeFromIntent('is it safe to commit this change')).toBe('before_commit');
+  expect(preflightModeFromIntent('is this branch ready to hand off')).toBe('before_commit');
   expect(preflightModeFromIntent('is my branch ready to merge')).toBe('before_merge');
 });

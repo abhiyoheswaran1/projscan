@@ -189,3 +189,35 @@ test('start report routes merge-readiness questions to before-merge preflight', 
     'projscan preflight --mode before_merge --format json',
   );
 });
+
+test('start report routes handoff-readiness questions to before-commit preflight', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'is this branch ready to hand off',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.modeReason).toContain('is this branch ready to hand off');
+  expect(report.recommendedWorkflow.id).toBe('before_handoff');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Safety gate',
+      tool: 'projscan_preflight',
+      cli: 'projscan preflight',
+      confidence: 'high',
+      matchedKeywords: ['ready'],
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan preflight --mode before_commit --format json',
+      tool: 'projscan_preflight',
+      args: { mode: 'before_commit' },
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_commit --format json',
+  );
+});

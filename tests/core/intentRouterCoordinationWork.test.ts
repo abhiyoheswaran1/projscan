@@ -443,6 +443,36 @@ describe('routeIntent coordination and work routing', () => {
     ).toBeUndefined();
   });
 
+  it('routes handoff-readiness questions to preflight without hijacking next-agent handoffs', () => {
+    const result = routeIntent('is this branch ready to hand off');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Safety gate',
+        tool: 'projscan_preflight',
+        cli: 'projscan preflight',
+        confidence: 'high',
+        score: 2,
+        matchedKeywords: ['ready'],
+      }),
+    );
+    expect(result.matches.find((match) => match.tool === 'projscan_review')).toEqual(
+      expect.objectContaining({
+        confidence: 'medium',
+        matchedKeywords: ['branch'],
+      }),
+    );
+
+    const nextAgent = routeIntent('give the next agent a handoff');
+    expect(nextAgent.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_agent_brief',
+        matchedKeywords: ['handoff', 'next', 'agent'],
+      }),
+    );
+    expect(nextAgent.matches.find((match) => match.tool === 'projscan_preflight')).toBeUndefined();
+  });
+
   it('routes quality and risk picture questions to the scorecard', () => {
     const result = routeIntent('what is risky in this repo');
 

@@ -90,7 +90,11 @@ export function preflightModeFromIntent(
     )
   )
     return 'before_merge';
-  if (/\bcommit|committing|committed|pr|pull\s+request\b/.test(text)) return 'before_commit';
+  if (
+    /\b(?:commit|committing|committed|pr|pull\s+request)\b/.test(text) ||
+    handoffIntentMatches(text)
+  )
+    return 'before_commit';
   return 'before_edit';
 }
 
@@ -189,8 +193,10 @@ function fallbackPreflightMode({ intent, routes }: ModeResolverContext): Workpla
 }
 
 function hasPreflightModeHint(intent: string): boolean {
-  return /\b(?:safe|safety|gate|preflight|commit|committing|committed|merge|merged|merging|rebase|rebasing|conflict|conflicts|resolve|resolving|edit|proceed|block|blocked|blocker|blockers|blocking|allowed)\b/i.test(
-    intent,
+  return (
+    /\b(?:safe|safety|gate|preflight|commit|committing|committed|merge|merged|merging|rebase|rebasing|conflict|conflicts|resolve|resolving|edit|proceed|block|blocked|blocker|blockers|blocking|allowed)\b/i.test(
+      intent,
+    ) || handoffIntentMatches(intent)
   );
 }
 
@@ -198,6 +204,10 @@ function hasContinuationPlanningHint(intent: string): boolean {
   return /\b(?:keep\s+going|keep\s+(?:improving|working|implementing)|continue|continuing|go\s+on|improve|improving|implement|implementing|implementation|roadmap|user\s+research)\b/i.test(
     intent,
   );
+}
+
+function handoffIntentMatches(intent: string): boolean {
+  return /\b(?:handoff|handover|hand\s+off)\b/i.test(intent);
 }
 
 export function hasProhibitedWorkflowModeAction(intent: string): boolean {

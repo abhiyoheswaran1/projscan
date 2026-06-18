@@ -12263,3 +12263,52 @@ Reviewer edge case: explicit `before_merge` start output should still show
 Kept change: one workflow recipe, one mode-to-recipe mapping split, focused
 core/CLI/MCP regressions, this persona note, and no release action in this
 slice.
+
+## Two Hundred Fifty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: after the handoff workflow split, the same user-facing daily workflow
+still had a routing mismatch. `projscan start --intent "is this branch ready to
+hand off?"` recommended `before_handoff`, but Mission Control chose generic
+review because the router only matched `branch`. Engineers need the first
+runnable action to match the workflow they asked for.
+
+Smallest fix: treat handoff-readiness wording as preflight-ready context and
+infer `before_commit` for that preflight route, while leaving next-agent
+handoff requests on `projscan agent-brief`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/intentRouterCoordinationWork.test.ts tests/core/startPreflightRouting.test.ts tests/core/startMode.test.ts
+npm run test -- tests/core/intentRouter*.test.ts tests/core/startAgentPlanning.test.ts tests/mcp/startProofHandoff.test.ts tests/mcp/startBasic.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- route is this branch ready to hand off
+npm exec projscan -- start --intent "is this branch ready to hand off?" --format json
+npm exec agentflight -- verify -- npm run test -- tests/core/intentRouterCoordinationWork.test.ts tests/core/startPreflightRouting.test.ts
+```
+
+## Review Guardrails: Handoff Readiness Starts With A Gate
+
+Delete-list after this slice:
+
+- Do not make every handoff mention a preflight route; `give the next agent a
+  handoff` must still use `projscan agent-brief`.
+- Do not hijack PR-readiness wording such as `am I ready to open a PR`.
+- Do not change preflight verdicts, review findings, release readiness policy,
+  command names, public schemas, package version, tags, publish, deploy, push,
+  merge, or release behavior.
+- Do not add a new routing engine or LLM inference path; this remains a small
+  deterministic keyword guard.
+
+Reviewer edge case: `is my branch ready to merge` must still infer
+`before_merge`; handoff readiness maps to `before_commit` only because the user
+is asking whether the branch is ready to hand off.
+
+Kept change: one preflight-ready guard, one start-mode inference helper,
+focused router/start regressions, this persona note, and no release action in
+this slice.

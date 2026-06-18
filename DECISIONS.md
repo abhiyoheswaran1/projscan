@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Route handoff readiness to preflight
+
+- Status: accepted
+- Context: `projscan route/start` treated `is this branch ready to hand off?` as a generic review request because only the `branch` keyword matched. That undercut the daily before-handoff workflow after the UI already recommended the right `before_handoff` recipe.
+- Decision: Treat handoff-readiness wording (`handoff`, `handover`, or `hand off`) as preflight-ready context and infer `before_commit` for those preflight intents.
+- Consequences: Handoff readiness now starts with `projscan preflight --mode before_commit --format json`, while explicit next-agent handoff requests still route to `projscan agent-brief`.
+- Verification: Focused router/start-mode/start regressions failed on the old review/default-mode behavior and passed after the guard and mode inference update.
+
 ## 2026-06-18: Split before-commit start workflow from pre-merge
 
 - Status: accepted

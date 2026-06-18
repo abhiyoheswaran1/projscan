@@ -1,20 +1,22 @@
 export function preflightReadyContextMatches(tokens: Set<string>): boolean {
-  return [
-    'safe',
-    'safety',
-    'gate',
-    'preflight',
-    'commit',
-    'merge',
-    'edit',
-    'proceed',
-    'block',
-    'blocked',
-    'blocker',
-    'blockers',
-    'blocking',
-    'allowed',
-  ].some((token) => tokens.has(token));
+  return (
+    [
+      'safe',
+      'safety',
+      'gate',
+      'preflight',
+      'commit',
+      'merge',
+      'edit',
+      'proceed',
+      'block',
+      'blocked',
+      'blocker',
+      'blockers',
+      'blocking',
+      'allowed',
+    ].some((token) => tokens.has(token)) || handoffContextMatches(tokens)
+  );
 }
 
 export function preflightRiskContextMatches(tokens: Set<string>): boolean {
@@ -53,5 +55,13 @@ export function preflightBranchRecoveryContextMatches(tokens: Set<string>): bool
     rebaseSignal ||
     ((conflictSignal || resolveSignal) && mergeSignal) ||
     (troubleSignal && (rebaseSignal || conflictSignal))
+  );
+}
+
+function handoffContextMatches(tokens: Set<string>): boolean {
+  return (
+    tokens.has('handoff') ||
+    tokens.has('handover') ||
+    (tokens.has('hand') && tokens.has('off'))
   );
 }
