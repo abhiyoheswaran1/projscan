@@ -10363,3 +10363,55 @@ root.
 
 Kept change: one focused pyproject evidence helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Eighteenth Slice Decision
+
+Selected personas: Platform And Release Owner, Agent-Orchestrating Senior
+Engineer, and Security-Conscious Reviewer.
+
+Reason: `projscan preflight` is a handoff gate for agent work, and
+`src/core/preflight.ts` is still a high-churn hotspot. The main orchestrator
+still owned reason assembly and supply-chain issue counting even though the
+individual reason formatters, evidence shapers, required checks, and suggested
+actions were already isolated. That kept review-sensitive release-scale and
+policy gate ordering harder to audit than necessary.
+
+Smallest fix: move reason assembly and supply-chain counting into
+`src/core/preflightReasons.ts`; keep `computePreflight(...)`,
+`decidePreflightVerdict`, and `summarizePreflight` exported from
+`src/core/preflight.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/preflightArchitecture.test.ts
+npm run test -- tests/core/preflight.test.ts
+npm run test -- tests/core/preflightReleaseScale.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/preflight.ts --format json
+npm exec projscan -- file src/core/preflightReasons.ts --format json
+```
+
+## Review Guardrails: Preflight Reason Assembly Extraction
+
+Delete-list after this slice:
+
+- Do not change preflight modes, report schema, reason text, reason order,
+  summary wording, required-check semantics, release-scale manual sign-off
+  behavior, plugin execution policy, telemetry, dependencies, lockfiles,
+  publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/preflight.ts` inside the reason helper; the
+  helper must remain leaf-side of the public preflight facade.
+- Do not broaden this into preflight input loading, evidence shaping, required
+  checks, suggested actions, review evidence, changed-file evidence, or local
+  coordination evidence refactors.
+
+Reviewer edge case: release-scale-only review blocks should still downgrade to
+manual sign-off caution, concrete review blockers should still block, and
+required-check review status should still receive the same supply-chain and
+release-scale inputs.
+
+Kept change: one focused preflight reason helper, one architecture guard, this
+persona note, and no release action in this slice.

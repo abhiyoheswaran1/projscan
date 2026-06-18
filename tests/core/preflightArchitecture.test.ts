@@ -36,7 +36,11 @@ test('preflight keeps changed-file reason formatting isolated from the reason or
   expect(preflightSource).not.toContain('Health error on changed file');
   expect(preflightSource).not.toContain('Health warning on changed file');
   expect(preflightSource).not.toContain('Changed files unavailable');
-  expect(preflightSource).toContain('changedFileReasons(input)');
+  const reasonSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflightReasons.ts'),
+    'utf-8',
+  );
+  expect(reasonSource).toContain('changedFileReasons(input)');
 
   const changedFileReasons = await inspectRepoSourceFile('src/core/preflightChangedFileReasons.ts');
   const entrypoint = changedFileReasons.functions?.find((fn) => fn.name === 'changedFileReasons');
@@ -111,6 +115,35 @@ test('preflight keeps release-scale evidence isolated from the main preflight mo
   expect(explanation!.cyclomaticComplexity).toBeLessThanOrEqual(2);
   expect(blockers).toBeDefined();
   expect(blockers!.cyclomaticComplexity).toBeLessThanOrEqual(8);
+});
+
+test('preflight keeps reason assembly isolated from the main preflight module', async () => {
+  const preflightSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflight.ts'),
+    'utf-8',
+  );
+  expect(preflightSource).toContain("from './preflightReasons.js'");
+  expect(preflightSource).not.toContain('function buildPreflightReasons');
+  expect(preflightSource).not.toContain('function countSupplyChainIssues');
+
+  const reasonSource = await fs.readFile(
+    path.join(process.cwd(), 'src/core/preflightReasons.ts'),
+    'utf-8',
+  );
+  expect(reasonSource).not.toContain("from './preflight.js'");
+
+  const reasons = await inspectRepoSourceFile('src/core/preflightReasons.ts');
+  const buildPreflightReasons = reasons.functions?.find(
+    (fn) => fn.name === 'buildPreflightReasons',
+  );
+  const countSupplyChainIssues = reasons.functions?.find(
+    (fn) => fn.name === 'countSupplyChainIssues',
+  );
+
+  expect(buildPreflightReasons).toBeDefined();
+  expect(buildPreflightReasons!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  expect(countSupplyChainIssues).toBeDefined();
+  expect(countSupplyChainIssues!.cyclomaticComplexity).toBeLessThanOrEqual(2);
 });
 
 test('preflight keeps review reason formatting isolated from the reason orchestrator', async () => {

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract preflight reason assembly helper
+
+- Status: accepted
+- Context: `src/core/preflight.ts` remained a high-churn preflight hotspot and still owned supply-chain issue counting plus reason assembly inside the main `computePreflight` orchestrator.
+- Decision: Move reason assembly and supply-chain issue counting into `src/core/preflightReasons.ts`, while keeping `computePreflight`, `decidePreflightVerdict`, and `summarizePreflight` exported from `src/core/preflight.ts`.
+- Consequences: Reason ordering, release-scale manual sign-off caution behavior, review/context/changed-file reason formatting, required-check inputs, summary/verdict behavior, and public preflight imports stay unchanged. `src/core/preflight.ts` drops to a smaller orchestration module with only `computePreflight` as an owned function.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused preflight behavior and release-scale tests passed, and focused `projscan file` checks showed no issues in `src/core/preflight.ts` or `src/core/preflightReasons.ts`.
+
 ## 2026-06-18: Extract Python pyproject evidence helper
 
 - Status: accepted

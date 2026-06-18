@@ -1,11 +1,7 @@
 import { pluginsEnabled } from './plugins.js';
-import { policyIssueReasons } from './preflightIssueReasons.js';
-import { changedFileReasons } from './preflightChangedFileReasons.js';
 import { buildRequiredChecks } from './preflightRequiredChecks.js';
 import { buildReleaseScaleEvidence } from './preflightReleaseScale.js';
-import { reviewReasons } from './preflightReviewReasons.js';
 import { buildEvidence } from './preflightEvidence.js';
-import { contextReasons } from './preflightContextReasons.js';
 import {
   buildSuggestedActions,
   buildToolCalls,
@@ -14,21 +10,14 @@ import {
   decidePreflightVerdict,
   summarizePreflight,
 } from './preflightVerdict.js';
-import type { PreflightReviewEvidence } from './preflightReviewEvidence.js';
-import type { PreflightChangedFiles } from './preflightChangedFiles.js';
 import {
-  type CoordinationSummary,
-  type PreflightSessionEvidence,
-} from './preflightLocalEvidence.js';
+  buildPreflightReasons,
+  countSupplyChainIssues,
+} from './preflightReasons.js';
 import { loadPreflightInputs } from './preflightInputs.js';
 import { isPreflightReportTruncated } from './preflightTruncation.js';
 import type {
-  HealthScore,
-  HotspotReport,
-  Issue,
   PreflightMode,
-  PreflightReason,
-  PreflightReleaseScaleEvidence,
   PreflightReport,
 } from '../types.js';
 
@@ -107,41 +96,4 @@ export async function computePreflight(
     ...(truncated ? { truncated: true } : {}),
   };
   return { ...report, summary: summarizePreflight(report) };
-}
-
-function countSupplyChainIssues(issues: Issue[]): { errorIssues: number; warningIssues: number } {
-  const supplyChainIssues = issues.filter((issue) => issue.category === 'supply-chain');
-  return {
-    errorIssues: supplyChainIssues.filter((issue) => issue.severity === 'error').length,
-    warningIssues: supplyChainIssues.filter((issue) => issue.severity === 'warning').length,
-  };
-}
-
-function buildPreflightReasons(input: {
-  mode: PreflightMode;
-  issues: Issue[];
-  changedFiles: PreflightChangedFiles;
-  health: HealthScore;
-  session: PreflightSessionEvidence;
-  hotspots: HotspotReport | null;
-  review: PreflightReviewEvidence;
-  releaseScale: PreflightReleaseScaleEvidence | null;
-  coordination: CoordinationSummary | null;
-  maxChangedFiles: number;
-}): PreflightReason[] {
-  const reasons: PreflightReason[] = [];
-  reasons.push(...policyIssueReasons(input.issues));
-  reasons.push(...changedFileReasons(input));
-  if (input.releaseScale?.detected) {
-    reasons.push({
-      severity: 'warning',
-      source: 'release',
-      message: input.releaseScale.explanation,
-      tool: 'projscan_review',
-    });
-  }
-
-  reasons.push(...reviewReasons(input));
-  reasons.push(...contextReasons(input));
-  return reasons;
 }
