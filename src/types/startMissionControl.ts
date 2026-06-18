@@ -4,6 +4,7 @@ import type { SessionCoordinationHint } from './session.js';
 import type {
   StartAdoptionGap,
   StartAdoptionLoop,
+  StartDailyWorkflow,
   StartFirstTenMinutes,
   StartModeSource,
   StartMissionControlStatus,
@@ -70,6 +71,7 @@ export interface StartReport {
     }>;
   };
   recommendedWorkflow: StartWorkflowRecommendation;
+  dailyWorkflows?: StartDailyWorkflow[];
   firstTenMinutes: StartFirstTenMinutes;
   missionControl: StartMissionControl;
   coordinationHints: SessionCoordinationHint[];

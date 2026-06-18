@@ -16,6 +16,7 @@ export interface BuildStartReportInput {
   riskSources: StartReport['evidence']['riskSources'];
   roadmapPreview?: StartReport['evidence']['roadmapPreview'];
   workflow: StartReport['recommendedWorkflow'];
+  dailyWorkflows: NonNullable<StartReport['dailyWorkflows']>;
   firstTenMinutes: StartReport['firstTenMinutes'];
   missionControl: StartReport['missionControl'];
   coordinationHints: StartReport['coordinationHints'];
@@ -47,6 +48,7 @@ export function buildStartReport(input: BuildStartReportInput): StartReport {
       diagnostics: input.setup.diagnostics,
     },
     recommendedWorkflow: input.workflow,
+    dailyWorkflows: input.dailyWorkflows,
     firstTenMinutes: input.firstTenMinutes,
     missionControl: input.missionControl,
     coordinationHints: input.coordinationHints,

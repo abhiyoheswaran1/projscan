@@ -11740,3 +11740,48 @@ default console headline should say `Bug Hunt: review`.
 Kept change: one summary branch, one console display label, focused core/CLI
 regressions, docs wording, this persona note, and no release action in this
 slice.
+
+## Two Hundred Forty Seventh Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: docs now name three daily workflows engineers can repeat, but the
+product's first orientation output still led with a broad first-ten-minutes
+ladder. That keeps feature breadth visible before the few workflows engineers
+should trust every day.
+
+Smallest fix: add an optional `dailyWorkflows` field to `StartReport`, populate
+it from a focused helper, and print `Daily Workflows` before `First 10 Minutes`
+in the console output.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/start.test.ts tests/cli/start.test.ts tests/types/public-start-quality-types.test.ts tests/core/adoption.test.ts tests/cli/adoption.test.ts tests/mcp/startBasic.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --mode before_edit --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Start Daily Workflows
+
+Delete-list after this slice:
+
+- Do not replace or remove `firstTenMinutes`; it remains the broader onboarding
+  ladder.
+- Do not make `dailyWorkflows` required in public types; keep source
+  compatibility for callers constructing `StartReport`.
+- Do not add a new command, dependency, daemon, cloud service, telemetry
+  expansion, or secret-reading behavior.
+- Do not rewrite Mission Control, route selection, or proof semantics.
+
+Reviewer edge case: computed start JSON should always include exactly
+`before_edit`, `before_handoff`, and `release_candidate_review`, while older
+typed fixtures without `dailyWorkflows` should still compile.
+
+Kept change: one focused daily-workflow helper, one additive StartReport field,
+one console section before broad onboarding, docs wording, regression tests,
+this persona note, and no release action in this slice.

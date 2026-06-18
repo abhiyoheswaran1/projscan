@@ -42,6 +42,20 @@ test('start renders machine-readable orientation JSON', async () => {
   expect(report.nextActions.length).toBeGreaterThan(0);
 });
 
+test('start console prints trusted daily workflows before broad onboarding', async () => {
+  const result = await runCli(['start', '--mode', 'before_edit', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const dailyIndex = result.stdout.indexOf('Daily Workflows');
+  const firstTenIndex = result.stdout.indexOf('First 10 Minutes');
+  expect(dailyIndex).toBeGreaterThanOrEqual(0);
+  expect(firstTenIndex).toBeGreaterThan(dailyIndex);
+  expect(result.stdout).toContain('Before handoff or commit: projscan bug-hunt --format json');
+  expect(result.stdout).toContain(
+    'Release-candidate review: projscan release-train --format json',
+  );
+});
+
 async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {

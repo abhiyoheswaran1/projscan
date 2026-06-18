@@ -10,6 +10,14 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Consequences: JSON consumers that branch on `verdict: "fix"` continue to work, regression-plan and evidence-pack sign-off detection still uses the manual sign-off summary text, and humans see review/sign-off wording instead of a defect-fix headline.
 - Verification: Focused core and CLI regressions failed on the old wording, then passed after the summary and console calibration.
 
+## 2026-06-18: Expose start daily workflows
+
+- Status: accepted
+- Context: README and guide now lead with three daily workflows, but `projscan start` still emphasized a broader onboarding ladder before those repeatable work paths.
+- Decision: Add an optional `dailyWorkflows` public field to `StartReport`, populate it for computed start reports, and print a `Daily Workflows` console section before `First 10 Minutes`.
+- Consequences: Existing `StartReport` consumers remain source-compatible because the field is optional, while JSON and console users get the three demonstrated workflows for before-edit, before-handoff/commit, and release-candidate review.
+- Verification: Core and CLI regressions failed before the field and console section existed, then passed after the additive start output change.
+
 ## 2026-06-18: Extract start claim route criteria helper
 
 - Status: accepted

@@ -3,6 +3,7 @@ import { fixFirstFromStartRisk } from './fixFirst.js';
 import { buildFirstTenMinutes } from './onboarding.js';
 import { buildAdoptionLoop } from './startAdoptionLoop.js';
 import { buildStartAdoptionGaps } from './startAdoptionGaps.js';
+import { buildStartDailyWorkflows } from './startDailyWorkflows.js';
 import { buildStartCoordinationHints } from './startEvidence.js';
 import type { loadStartInputs } from './startInputs.js';
 import { buildMissionControl } from './startMissionControl.js';
@@ -21,6 +22,7 @@ export interface BuildStartReportContextInput extends LoadedStartInputs {
 
 export interface StartReportContext {
   workflow: StartReport['recommendedWorkflow'];
+  dailyWorkflows: NonNullable<StartReport['dailyWorkflows']>;
   firstTenMinutes: StartReport['firstTenMinutes'];
   missionControl: StartReport['missionControl'];
   coordinationHints: StartReport['coordinationHints'];
@@ -38,6 +40,7 @@ export function buildStartReportContext(input: BuildStartReportContextInput): St
   const fixFirst = input.workplan.fixFirst ?? fixFirstFromStartRisk(topRisks[0]);
   const adoptionGaps = buildStartAdoptionGaps(input.setup.diagnostics);
   const adoptionLoop = buildAdoptionLoop();
+  const dailyWorkflows = buildStartDailyWorkflows();
   const firstTenMinutes = buildFirstTenMinutes(input.mode);
   const coordinationHints = buildStartCoordinationHints(
     input.riskSources,
@@ -67,6 +70,7 @@ export function buildStartReportContext(input: BuildStartReportContextInput): St
   });
   return {
     workflow,
+    dailyWorkflows,
     firstTenMinutes,
     missionControl,
     coordinationHints,

@@ -17,6 +17,7 @@ import type {
   StartExecutionStatus,
   StartExecutionStep,
   StartExecutionStepKind,
+  StartDailyWorkflow,
   StartFirstTenMinutes,
   StartMissionControl,
   StartMissionControlStatus,
@@ -271,6 +272,21 @@ const firstTenMinutes: StartFirstTenMinutes = {
   ],
 };
 
+const dailyWorkflow: StartDailyWorkflow = {
+  id: 'before_handoff',
+  name: 'Before handoff or commit',
+  outcome: 'The reviewer sees proof instead of an agent transcript.',
+  commands: [
+    'projscan bug-hunt --format json',
+    'projscan preflight --mode before_commit --format json',
+    'projscan evidence-pack --pr-comment',
+  ],
+  successCriteria: [
+    'Concrete fix targets and manual review gates are separated.',
+    'Reviewer-facing evidence includes exact proof commands.',
+  ],
+};
+
 const startRisk: StartRisk = {
   id: 'risk-hotspot',
   priority: 'p0',
@@ -373,6 +389,7 @@ const startReport: StartReport = {
     ],
   },
   recommendedWorkflow,
+  dailyWorkflows: [dailyWorkflow],
   firstTenMinutes,
   missionControl,
   coordinationHints: [

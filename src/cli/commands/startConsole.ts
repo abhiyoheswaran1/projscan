@@ -28,6 +28,8 @@ export function printStart(report: StartReport, context: StartConsoleContext): v
     printAgentRunbook(report);
   }
   console.log('');
+  printDailyWorkflows(report);
+  console.log('');
   printFirstTenMinutes(report);
   console.log('');
   printCoordinationHints(report);
@@ -48,6 +50,14 @@ export function formatConsoleChecklistItem(item: StartMissionResumeChecklistItem
     item.instruction ??
     item.label;
   return `[${item.status}] ${item.kind} ${item.stepId}: ${action}${formatConsoleChecklistAnnotation(item)}`;
+}
+
+function printDailyWorkflows(report: StartReport): void {
+  if (!report.dailyWorkflows || report.dailyWorkflows.length === 0) return;
+  console.log(chalk.bold('Daily Workflows'));
+  for (const workflow of report.dailyWorkflows) {
+    console.log(`- ${workflow.name}: ${workflow.commands[0]}`);
+  }
 }
 
 function printFirstTenMinutes(report: StartReport): void {

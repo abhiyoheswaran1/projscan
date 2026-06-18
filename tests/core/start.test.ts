@@ -11,3 +11,39 @@ test('start report marks default mode when neither mode nor mode-specific intent
   expect(report.modeSource).toBe('default');
   expect(report.modeReason).toContain('No mode-specific intent');
 });
+
+test('start report exposes three trusted daily workflows before broad onboarding', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root);
+
+  expect(report.dailyWorkflows.map((workflow) => workflow.id)).toEqual([
+    'before_edit',
+    'before_handoff',
+    'release_candidate_review',
+  ]);
+  expect(report.dailyWorkflows[0]).toEqual(
+    expect.objectContaining({
+      name: 'Before editing a feature',
+      commands: [
+        'projscan start --intent "what files do I need to change for auth?"',
+        'projscan understand --view change --intent "add auth token refresh" --format json',
+        'projscan preflight --mode before_edit --format json',
+      ],
+      successCriteria: expect.arrayContaining([
+        'Agent has cited change context before editing.',
+      ]),
+    }),
+  );
+  expect(report.dailyWorkflows[1].commands).toEqual([
+    'projscan bug-hunt --format json',
+    'projscan preflight --mode before_commit --format json',
+    'projscan evidence-pack --pr-comment',
+  ]);
+  expect(report.dailyWorkflows[2].commands).toEqual([
+    'projscan release-train --format json',
+    'projscan preflight --mode before_merge --format json',
+    'projscan evidence-pack --pr-comment',
+  ]);
+  expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
+});

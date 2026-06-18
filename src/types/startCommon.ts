@@ -67,6 +67,19 @@ export interface StartFirstTenMinutes {
   commands: StartFirstTenMinutesStep[];
 }
 
+export type StartDailyWorkflowId =
+  | 'before_edit'
+  | 'before_handoff'
+  | 'release_candidate_review';
+
+export interface StartDailyWorkflow {
+  id: StartDailyWorkflowId;
+  name: string;
+  outcome: string;
+  commands: string[];
+  successCriteria: string[];
+}
+
 export type StartModeSource = 'explicit' | 'intent' | 'default';
 
 export type StartMissionControlStatus = 'ready' | 'needs_setup' | 'needs_attention' | 'blocked';
