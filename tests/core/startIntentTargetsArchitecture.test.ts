@@ -472,4 +472,21 @@ describe('Mission Control intent target architecture', () => {
     expect(packageTargetsSource).toContain('export function extractAuditPackageTarget');
     expect(packageTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps issue id target parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const issueTargetsPath = path.join(process.cwd(), 'src/core/startIssueTargets.ts');
+
+    expect(targetSource).toContain("export { extractIssueIdTarget } from './startIssueTargets.js';");
+    expect(targetSource).not.toContain('function extractIssueIdTarget');
+    expect(targetSource).not.toContain('function isIssueIdTarget');
+
+    expect(existsSync(issueTargetsPath)).toBe(true);
+    const issueTargetsSource = readFileSync(issueTargetsPath, 'utf8');
+    expect(issueTargetsSource).toContain('export function extractIssueIdTarget');
+    expect(issueTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
