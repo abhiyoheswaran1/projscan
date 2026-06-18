@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start coupling route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still owned coupling-route success criteria after earlier route-specific extractions, even though the criteria only branch on coupling direction.
+- Decision: Move coupling direction handling and coupling success-criteria assembly into `src/core/startCouplingRouteCriteria.ts`, while keeping resolver ordering and `couplingRouteSuccessCriteria` dispatch in `src/core/startSuccessCriteria.ts`.
+- Consequences: Coupling criteria wording and order stay unchanged for cycles-only and default/all directions. Architecture-routing tests and direct success-criteria tests cover the same user-facing strings.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria tests cover cycles-only and default/all coupling criteria.
+
 ## 2026-06-18: Extract start dependency route criteria helper
 
 - Status: accepted

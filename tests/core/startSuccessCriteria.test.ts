@@ -104,6 +104,24 @@ describe('Mission Control success criteria', () => {
     expect(dependencyCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps coupling route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const couplingCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startCouplingRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startCouplingRouteCriteria.js'");
+    expect(source).not.toContain('COUPLING_FOLLOW_UP_CRITERION');
+    expect(source).not.toContain('Fan-in, fan-out, instability');
+    expect(couplingCriteria).toContain('export function couplingSuccessCriteria');
+    expect(couplingCriteria).toContain('COUPLING_FOLLOW_UP_CRITERION');
+    expect(couplingCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
@@ -475,6 +493,43 @@ describe('Mission Control success criteria', () => {
             'Inspect dependencies',
             'projscan dependencies --format json',
             'projscan_dependencies',
+          ),
+        ],
+      });
+
+      expect(criteria).toEqual(testCase.expected);
+    }
+  });
+
+  it('keeps coupling criteria by selected direction', () => {
+    const cases = [
+      {
+        args: { direction: 'cycles_only' },
+        expected: [
+          'Circular-import cycles are reviewed with the exact files participating in each strongly connected component.',
+          'Every high-coupling or circular-import target has an owner, refactor decision, or verification follow-up before architecture work starts.',
+          'The next task has a verification command: npm test -- tests/core/start.test.ts',
+        ],
+      },
+      {
+        args: undefined,
+        expected: [
+          'Fan-in, fan-out, instability, cross-package edges, and circular-import cycles are reviewed before refactoring boundaries.',
+          'Every high-coupling or circular-import target has an owner, refactor decision, or verification follow-up before architecture work starts.',
+          'The next task has a verification command: npm test -- tests/core/start.test.ts',
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const criteria = successCriteria({
+        route: route('projscan_coupling', ['coupling']),
+        actionPlan: [
+          action(
+            'Inspect coupling',
+            'projscan coupling --format json',
+            'projscan_coupling',
+            testCase.args,
           ),
         ],
       });

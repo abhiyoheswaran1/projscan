@@ -1,3 +1,4 @@
+import { couplingSuccessCriteria } from './startCouplingRouteCriteria.js';
 import { dependencySuccessCriteria } from './startDependencyRouteCriteria.js';
 import { FIXED_ROUTE_CRITERIA } from './startFixedRouteCriteria.js';
 import { fileSuccessCriteria } from './startFileRouteCriteria.js';
@@ -195,16 +196,7 @@ function fileRouteSuccessCriteria(context: MissionCriteriaContext): string[] | u
 
 function couplingRouteSuccessCriteria(context: MissionCriteriaContext): string[] | undefined {
   if (context.route?.tool !== 'projscan_coupling') return undefined;
-  const direction =
-    context.primaryAction?.args && 'direction' in context.primaryAction.args
-      ? String(context.primaryAction.args.direction)
-      : 'all';
-  return [
-    direction === 'cycles_only'
-      ? 'Circular-import cycles are reviewed with the exact files participating in each strongly connected component.'
-      : 'Fan-in, fan-out, instability, cross-package edges, and circular-import cycles are reviewed before refactoring boundaries.',
-    'Every high-coupling or circular-import target has an owner, refactor decision, or verification follow-up before architecture work starts.',
-  ];
+  return couplingSuccessCriteria(context.primaryAction);
 }
 
 function uniqueStrings(values: string[]): string[] {

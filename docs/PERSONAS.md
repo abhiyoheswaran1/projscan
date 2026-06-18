@@ -11132,3 +11132,48 @@ before.
 Kept change: one dependency-route criteria helper, one architecture guard, one
 dependency criteria matrix, this persona note, and no release action in this
 slice.
+
+## Two Hundred Thirty Fourth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: coupling-route criteria tell agents what architecture proof matters for
+cycle-only reviews versus broader fan-in/fan-out/instability reviews. That
+direction handling was independent from Mission Control resolver ordering and
+small enough to extract without changing route behavior.
+
+Smallest fix: move coupling success-criteria assembly and direction handling
+into `src/core/startCouplingRouteCriteria.ts`; keep `projscan_coupling` route
+dispatch in `src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts tests/core/startArchitectureRouting.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startCouplingRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Coupling Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change coupling criteria wording, order, direction fallback behavior,
+  resolver ordering, route ranking, Mission Control schemas, workplan behavior,
+  public types, dependencies, lockfiles, package version, publish behavior, push
+  behavior, tags, or releases.
+- Do not change coupling analysis, coupling route matching, or architecture
+  report wording outside Mission Control success criteria.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: `direction: "cycles_only"` must still use circular-import
+criteria, while missing or non-cycles directions must still use the broader
+fan-in/fan-out/instability criteria.
+
+Kept change: one coupling-route criteria helper, one architecture guard, one
+coupling criteria matrix, this persona note, and no release action in this
+slice.
