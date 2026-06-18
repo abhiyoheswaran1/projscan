@@ -450,4 +450,26 @@ describe('Mission Control intent target architecture', () => {
     expect(targetTextSource).toContain('export function isGenericReferenceTarget');
     expect(targetTextSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps package target parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const packageTargetsPath = path.join(process.cwd(), 'src/core/startPackageTargets.ts');
+
+    expect(targetSource).toContain("from './startPackageTargets.js';");
+    expect(targetSource).toContain(
+      "export { extractAuditPackageTarget, extractPackageTarget } from './startPackageTargets.js';",
+    );
+    expect(targetSource).not.toContain('function extractPackageTarget');
+    expect(targetSource).not.toContain('function extractAuditPackageTarget');
+    expect(targetSource).not.toContain('function isPackageNameTarget');
+
+    expect(existsSync(packageTargetsPath)).toBe(true);
+    const packageTargetsSource = readFileSync(packageTargetsPath, 'utf8');
+    expect(packageTargetsSource).toContain('export function extractPackageTarget');
+    expect(packageTargetsSource).toContain('export function extractAuditPackageTarget');
+    expect(packageTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
