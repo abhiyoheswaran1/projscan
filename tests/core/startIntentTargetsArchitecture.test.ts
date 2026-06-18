@@ -408,4 +408,26 @@ describe('Mission Control intent target architecture', () => {
     expect(observabilitySource).toContain('export function extractObservabilityQuery');
     expect(observabilitySource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps shell argument helpers in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const shellArgsPath = path.join(process.cwd(), 'src/core/startShellArgs.ts');
+
+    expect(targetSource).toContain(
+      "import { isPlaceholder, quoteShellArg } from './startShellArgs.js';",
+    );
+    expect(targetSource).toContain(
+      "export { escapeDoubleQuoted, isPlaceholder, quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';",
+    );
+    expect(targetSource).not.toContain('function escapeDoubleQuoted');
+    expect(targetSource).not.toContain('function quoteShellArgOrPlaceholder');
+
+    expect(existsSync(shellArgsPath)).toBe(true);
+    const shellArgsSource = readFileSync(shellArgsPath, 'utf8');
+    expect(shellArgsSource).toContain('export function quoteShellArg');
+    expect(shellArgsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

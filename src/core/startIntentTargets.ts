@@ -1,4 +1,5 @@
 import type { GraphQueryDirection } from './graphQuery.js';
+import { isPlaceholder, quoteShellArg } from './startShellArgs.js';
 import { extractApiContractQuery } from './startIntentApiContractQueries.js';
 import { extractAuthorizationQuery } from './startIntentAuthorizationQueries.js';
 import { extractBackgroundWorkQuery } from './startIntentBackgroundWorkQueries.js';
@@ -28,6 +29,7 @@ export type StartGraphQuery = {
 type QueryExtractor = (intent: string) => string | undefined;
 
 export { extractReportScopeTarget } from './startReportScopeTargets.js';
+export { escapeDoubleQuoted, isPlaceholder, quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';
 
 function firstQuery(intent: string, extractors: readonly QueryExtractor[]): string | undefined {
   for (const extract of extractors) {
@@ -515,25 +517,4 @@ function isPackageNameTarget(target: string): boolean {
 
 function normalizePackageName(target: string): string {
   return target.toLowerCase();
-}
-
-export function isPlaceholder(value: string): boolean {
-  return /^<[^<>]+>$/.test(value);
-}
-
-export function escapeDoubleQuoted(value: string): string {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`');
-}
-
-export function quoteShellArg(value: string): string {
-  return /^[A-Za-z0-9_./:@-]+$/.test(value) ? value : `"${escapeDoubleQuoted(value)}"`;
-}
-
-export function quoteShellArgOrPlaceholder(value: string): string {
-  if (isPlaceholder(value)) return value;
-  return quoteShellArg(value);
 }

@@ -10,7 +10,9 @@ import {
   extractSearchQuery,
   graphQueryFromIntent,
   graphQueryIsReady,
+  isPlaceholder,
   quoteShellArg,
+  quoteShellArgOrPlaceholder,
   semanticGraphCommand,
 } from '../../src/core/startIntentTargets.js';
 
@@ -86,6 +88,8 @@ describe('Mission Control intent target parsing', () => {
       'projscan semantic-graph --query importers --file src/core/start.ts --format json',
     );
     expect(escapeDoubleQuoted('auth $(echo boom) `token`')).toBe('auth \\$(echo boom) \\`token\\`');
+    expect(isPlaceholder('<file>')).toBe(true);
+    expect(quoteShellArgOrPlaceholder('<file>')).toBe('<file>');
     expect(quoteShellArg('auth token loader')).toBe('"auth token loader"');
   });
 });
