@@ -17,9 +17,10 @@ test('start console runs impact directly for file path intents', async () => {
   ]);
 
   expect(result.exitCode).toBe(0);
-  expect(result.stdout).toContain('Action Plan');
+  expect(result.stdout).toContain('Ready Now');
   expect(result.stdout).toContain('projscan impact src/core/start.ts --format json');
   expect(result.stdout).not.toContain('projscan search "src/core/start.ts" --format json');
+  expect(result.stdout).not.toContain('\nAction Plan\n');
 });
 
 test('start console shows alternative routes for mixed intents', async () => {

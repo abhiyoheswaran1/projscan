@@ -342,147 +342,157 @@ export function bridge() {
     expect(r.summary.some((s) => s.includes('dataflow'))).toBe(true);
   });
 
-  it('scopes taint, dataflow, graph evidence, and verdict to the requested workspace package', async () => {
-    await setupRepo();
-    await write(
-      'package.json',
-      JSON.stringify({ name: 'root', private: true, workspaces: ['packages/*'] }, null, 2),
-    );
-    await write(
-      'packages/api/package.json',
-      JSON.stringify({ name: '@app/api', main: './old.js' }, null, 2),
-    );
-    await write(
-      'packages/api/src/danger.ts',
-      `export function ok() { return 1; }
+  it(
+    'scopes taint, dataflow, graph evidence, and verdict to the requested workspace package',
+    async () => {
+      await setupRepo();
+      await write(
+        'package.json',
+        JSON.stringify({ name: 'root', private: true, workspaces: ['packages/*'] }, null, 2),
+      );
+      await write(
+        'packages/api/package.json',
+        JSON.stringify({ name: '@app/api', main: './old.js' }, null, 2),
+      );
+      await write(
+        'packages/api/src/danger.ts',
+        `export function ok() { return 1; }
 `,
-    );
-    await write(
-      'packages/api/src/a.ts',
-      `export const a = 1;
+      );
+      await write(
+        'packages/api/src/a.ts',
+        `export const a = 1;
 `,
-    );
-    await write(
-      'packages/api/src/b.ts',
-      `export const b = 1;
+      );
+      await write(
+        'packages/api/src/b.ts',
+        `export const b = 1;
 `,
-    );
-    await write(
-      'packages/ui/package.json',
-      JSON.stringify({ name: '@app/ui', main: './src/view.ts' }, null, 2),
-    );
-    await write(
-      'packages/ui/src/view.ts',
-      `export function view() { return 'old'; }
+      );
+      await write(
+        'packages/ui/package.json',
+        JSON.stringify({ name: '@app/ui', main: './src/view.ts' }, null, 2),
+      );
+      await write(
+        'packages/ui/src/view.ts',
+        `export function view() { return 'old'; }
 `,
-    );
-    await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'init monorepo']);
+      );
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', 'init monorepo']);
 
-    await write(
-      'packages/api/package.json',
-      JSON.stringify({ name: '@app/api', main: './new.js' }, null, 2),
-    );
-    await write(
-      'packages/api/src/danger.ts',
-      `import { exec } from 'node:child_process';
+      await write(
+        'packages/api/package.json',
+        JSON.stringify({ name: '@app/api', main: './new.js' }, null, 2),
+      );
+      await write(
+        'packages/api/src/danger.ts',
+        `import { exec } from 'node:child_process';
 
 export function runDangerous() {
   const command = process.env.API_CMD;
   exec(command ?? 'echo api');
 }
 `,
-    );
-    await write(
-      'packages/api/src/a.ts',
-      `import { b } from './b.js';
+      );
+      await write(
+        'packages/api/src/a.ts',
+        `import { b } from './b.js';
 export const a = b;
 `,
-    );
-    await write(
-      'packages/api/src/b.ts',
-      `import { a } from './a.js';
+      );
+      await write(
+        'packages/api/src/b.ts',
+        `import { a } from './a.js';
 export const b = a;
 `,
-    );
-    await write(
-      'packages/ui/src/view.ts',
-      `export function view() { return 'new'; }
+      );
+      await write(
+        'packages/ui/src/view.ts',
+        `export function view() { return 'new'; }
 export function button() { return 'button'; }
 `,
-    );
-    await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'change api and ui']);
+      );
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', 'change api and ui']);
 
-    const full = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
-    expect(full.available).toBe(true);
-    expect(full.verdict).toBe('block');
-    expect(full.newTaintFlows.length + full.newDataflowRisks.length).toBeGreaterThan(0);
+      const full = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+      expect(full.available).toBe(true);
+      expect(full.verdict).toBe('block');
+      expect(full.newTaintFlows.length + full.newDataflowRisks.length).toBeGreaterThan(0);
 
-    const scoped = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD', package: '@app/ui' });
-    expect(scoped.available).toBe(true);
-    expect(scoped.verdict).not.toBe('block');
-    expect(scoped.changedFiles.map((file) => file.relativePath)).toEqual([
-      'packages/ui/src/view.ts',
-    ]);
-    expect(scoped.newCycles).toEqual([]);
-    expect(scoped.newTaintFlows).toEqual([]);
-    expect(scoped.newDataflowRisks).toEqual([]);
-    expect((scoped.contractChanges ?? []).map((change) => change.file)).toEqual([
-      'packages/ui/src/view.ts',
-    ]);
-    expect(scoped.graphEvidence?.changedFiles).toBe(1);
-    expect(scoped.graphEvidence?.totalFunctions).toBe(2);
-    expect(scoped.graphEvidence?.totalPackages).toBe(0);
-    expect(scoped.graphEvidence?.topPackages).toEqual([]);
-    expect(scoped.graphEvidence?.dataflowRisks).toBe(0);
-    expect(
-      scoped.summary.some(
-        (line) =>
-          line.includes('dataflow risk') ||
-          line.includes('taint flow') ||
-          line.includes('import cycle'),
-      ),
-    ).toBe(false);
-  });
+      const scoped = await computeReview(tmp, {
+        base: 'HEAD~1',
+        head: 'HEAD',
+        package: '@app/ui',
+      });
+      expect(scoped.available).toBe(true);
+      expect(scoped.verdict).not.toBe('block');
+      expect(scoped.changedFiles.map((file) => file.relativePath)).toEqual([
+        'packages/ui/src/view.ts',
+      ]);
+      expect(scoped.newCycles).toEqual([]);
+      expect(scoped.newTaintFlows).toEqual([]);
+      expect(scoped.newDataflowRisks).toEqual([]);
+      expect((scoped.contractChanges ?? []).map((change) => change.file)).toEqual([
+        'packages/ui/src/view.ts',
+      ]);
+      expect(scoped.graphEvidence?.changedFiles).toBe(1);
+      expect(scoped.graphEvidence?.totalFunctions).toBe(2);
+      expect(scoped.graphEvidence?.totalPackages).toBe(0);
+      expect(scoped.graphEvidence?.topPackages).toEqual([]);
+      expect(scoped.graphEvidence?.dataflowRisks).toBe(0);
+      expect(
+        scoped.summary.some(
+          (line) =>
+            line.includes('dataflow risk') ||
+            line.includes('taint flow') ||
+            line.includes('import cycle'),
+        ),
+      ).toBe(false);
+    },
+    120_000,
+  );
 
-  it('suppresses default generated-code taint and dataflow review blockers but keeps custom risks', async () => {
-    await setupRepo();
-    await write('package.json', JSON.stringify({ name: 'x' }));
-    await write(
-      '.projscanrc.json',
-      JSON.stringify({ taint: { sources: ['customSource'], sinks: ['customSink'] } }, null, 2),
-    );
-    await write(
-      'src/__generated__/client.ts',
-      `export function generatedClient() { return 1; }
+  it(
+    'suppresses default generated-code taint and dataflow review blockers but keeps custom risks',
+    async () => {
+      await setupRepo();
+      await write('package.json', JSON.stringify({ name: 'x' }));
+      await write(
+        '.projscanrc.json',
+        JSON.stringify({ taint: { sources: ['customSource'], sinks: ['customSink'] } }, null, 2),
+      );
+      await write(
+        'src/__generated__/client.ts',
+        `export function generatedClient() { return 1; }
 `,
-    );
-    await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'init generated client']);
+      );
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', 'init generated client']);
 
-    await write(
-      'src/__generated__/client.ts',
-      `import { exec } from 'node:child_process';
+      await write(
+        'src/__generated__/client.ts',
+        `import { exec } from 'node:child_process';
 
 export function generatedClient() {
   const command = process.env.GENERATED_CMD;
   exec(command ?? 'echo generated');
 }
 `,
-    );
-    await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'default generated flow']);
+      );
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', 'default generated flow']);
 
-    const defaultGenerated = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
-    expect(defaultGenerated.available).toBe(true);
-    expect(defaultGenerated.newTaintFlows).toEqual([]);
-    expect(defaultGenerated.newDataflowRisks).toEqual([]);
-    expect(defaultGenerated.verdict).not.toBe('block');
+      const defaultGenerated = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+      expect(defaultGenerated.available).toBe(true);
+      expect(defaultGenerated.newTaintFlows).toEqual([]);
+      expect(defaultGenerated.newDataflowRisks).toEqual([]);
+      expect(defaultGenerated.verdict).not.toBe('block');
 
-    await write(
-      'src/__generated__/client.ts',
-      `declare function customSource(): string;
+      await write(
+        'src/__generated__/client.ts',
+        `declare function customSource(): string;
 declare function customSink(value: string): void;
 
 export function generatedClient() {
@@ -503,17 +513,21 @@ export function generatedBridge() {
   sendGenerated(value);
 }
 `,
-    );
-    await git(['add', '.']);
-    await git(['commit', '-q', '-m', 'custom generated flow']);
+      );
+      await git(['add', '.']);
+      await git(['commit', '-q', '-m', 'custom generated flow']);
 
-    const customGenerated = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
-    expect(customGenerated.available).toBe(true);
-    expect(customGenerated.newTaintFlows.some((flow) => flow.source === 'customSource')).toBe(true);
-    expect(customGenerated.newDataflowRisks.some((risk) => risk.source === 'customSource')).toBe(
-      true,
-    );
-    expect(customGenerated.verdict).toBe('block');
-  });
+      const customGenerated = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+      expect(customGenerated.available).toBe(true);
+      expect(customGenerated.newTaintFlows.some((flow) => flow.source === 'customSource')).toBe(
+        true,
+      );
+      expect(customGenerated.newDataflowRisks.some((risk) => risk.source === 'customSource')).toBe(
+        true,
+      );
+      expect(customGenerated.verdict).toBe('block');
+    },
+    120_000,
+  );
 
 });

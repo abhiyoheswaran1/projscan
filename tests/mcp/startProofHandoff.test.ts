@@ -22,10 +22,12 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
     tmp,
   )) as { start: StartReport };
 
-  expect(result.start.missionControl.resume.remainingProofCommands).toContain('projscan handoff');
+  expect(result.start.missionControl.resume.remainingProofCommands).toContain(
+    'projscan semantic-graph --format json',
+  );
   expect(
     result.start.missionControl.resume.remainingProofToolCalls?.map((call) => call.command),
-  ).not.toContain('projscan handoff');
+  ).not.toContain('projscan semantic-graph --format json');
   expect(
     result.start.missionControl.resume.remainingProofItems?.map((item) => item.command),
   ).toEqual(result.start.missionControl.resume.remainingProofCommands);
@@ -33,21 +35,21 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
     expect.arrayContaining([
       expect.objectContaining({
         stepId: 'proof-2',
-        command: 'projscan preflight --mode before_edit --format json',
+        command: 'projscan preflight --mode before_commit --format json',
         toolCall: {
           tool: 'projscan_preflight',
-          args: { mode: 'before_edit' },
+          args: { mode: 'before_commit' },
         },
       }),
       expect.objectContaining({
-        stepId: 'proof-6',
-        command: 'projscan handoff',
+        stepId: 'proof-5',
+        command: 'projscan semantic-graph --format json',
       }),
     ]),
   );
   expect(
     result.start.missionControl.resume.remainingProofItems?.find(
-      (item) => item.command === 'projscan handoff',
+      (item) => item.command === 'projscan semantic-graph --format json',
     )?.toolCall,
   ).toBeUndefined();
   expect(result.start.missionControl.resume.checklist).toEqual(
@@ -55,19 +57,19 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
       expect.objectContaining({
         id: 'resume-proof-2',
         kind: 'run_proof',
-        command: 'projscan preflight --mode before_edit --format json',
+        command: 'projscan preflight --mode before_commit --format json',
         tool: 'projscan_preflight',
-        args: { mode: 'before_edit' },
+        args: { mode: 'before_commit' },
       }),
       expect.objectContaining({
-        id: 'resume-proof-6',
+        id: 'resume-proof-5',
         kind: 'run_proof',
-        command: 'projscan handoff',
+        command: 'projscan semantic-graph --format json',
       }),
     ]),
   );
   const handoffChecklistProof = result.start.missionControl.resume.checklist?.find(
-    (item) => item.id === 'resume-proof-6',
+    (item) => item.id === 'resume-proof-5',
   );
   expect(handoffChecklistProof).not.toHaveProperty('tool');
   expect(handoffChecklistProof).not.toHaveProperty('args');
@@ -76,15 +78,16 @@ test('projscan_start exposes complete remaining proof items for handoff intents'
   );
   expect(
     result.start.missionControl.handoff.readyProof.toolCalls?.map((call) => call.command),
-  ).not.toContain('projscan handoff');
+  ).not.toContain('projscan semantic-graph --format json');
   expect(result.start.missionControl.runbook.markdown).toContain('Proof queue:');
   expect(result.start.missionControl.runbook.markdown).toContain(
-    '- [ready] run_proof proof-6: projscan handoff (CLI only)',
+    '- [ready] run_proof proof-5: projscan semantic-graph --format json (CLI only)',
   );
   expect(result.start.missionControl.runbook.markdown).toContain(
-    '- proof-2: `projscan preflight --mode before_edit --format json` (MCP: projscan_preflight {"mode":"before_edit"})',
+    '- proof-2: `projscan preflight --mode before_commit --format json` (MCP: projscan_preflight {"mode":"before_commit"})',
   );
   expect(result.start.missionControl.runbook.markdown).toContain(
-    '- proof-6: `projscan handoff` (CLI only)',
+    '- proof-5: `projscan semantic-graph --format json` (CLI only)',
   );
+  expect(result.start.missionControl.runbook.markdown).not.toContain('projscan handoff');
 });

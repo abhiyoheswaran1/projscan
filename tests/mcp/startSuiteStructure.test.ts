@@ -14,7 +14,7 @@ describe('MCP start test suite structure', () => {
 
     const proofSource = readFileSync(proofPath, 'utf8');
     expect(proofSource).toContain('remainingProofItems');
-    expect(proofSource).toContain('projscan handoff');
+    expect(proofSource).toContain('projscan semantic-graph --format json');
     expect(proofSource).not.toContain("intent: 'is it safe to commit");
   });
 });

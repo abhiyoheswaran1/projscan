@@ -44,7 +44,7 @@ describe('start command action', () => {
       includeHandoff: true,
       nextCommand: true,
     };
-    const report = { schemaVersion: 1, rootPath: '/repo' } as StartReport;
+    const report = { schemaVersion: 1, rootPath: '/repo', mode: 'bug_hunt' } as StartReport;
     const deps = startActionDeps({ report });
 
     await runStartAction(options, deps);
