@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.9.0]
+
+2026-06-18 - "Daily Workflow Proof Hardening"
+
+### Added
+
+- Added Daily Workflows output to `projscan start` so agents see before-edit,
+  handoff, and release-candidate proof commands before the wider command
+  catalog.
+- Added visible `privacy-check --offline` support so the CLI help exposes the
+  local-only trust boundary.
+- Added release-train caution actions that separate read-only release review
+  from tag, publish, deploy, push, merge, and version-bump actions.
+
+### Changed
+
+- Focused Start console output around ready commands, proof queues, handoff
+  prompts, and review gates while removing duplicate ready-action sections.
+- Calibrated bug-hunt and preflight wording so large release trains report
+  manual sign-off as review work when no concrete health, supply-chain, plugin,
+  taint, or dataflow blocker remains.
+- Updated README copy and regenerated Playwright/VHS media so trust, network,
+  and dependency claims match demonstrated workflows.
+- Split Start intent routing, search target catalogs, bug-hunt report assembly,
+  and package-target extraction into smaller modules.
+
+### Fixed
+
+- Fixed global install parser warnings by keeping tree-sitter grammar packages
+  out of runtime dependencies.
+- Fixed stale Start handoff console expectations after duplicate ready sections
+  were removed.
+- Fixed install-warning, handoff-readiness, Python upgrade coverage, and
+  improvement-planning intents so they route to the right local proof workflow.
+
+### Security
+
+- Local-first trust wording now names the explicit network-capable paths:
+  `audit`, registry checks, opt-in telemetry, and optional semantic model
+  downloads.
+- Release-candidate proof remains read-only until an explicit reviewer action
+  approves tagging, publishing, deploying, pushing, merging, or version bumps.
+
 ## [4.8.0]
 
 2026-06-18 - "Agent Research And Release Hardening"
