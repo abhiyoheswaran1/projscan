@@ -509,4 +509,25 @@ describe('Mission Control intent target architecture', () => {
     expect(symbolTargetsSource).toContain('export function isExactSymbolTarget');
     expect(symbolTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps file target parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const fileTargetsPath = path.join(process.cwd(), 'src/core/startFileTargets.ts');
+
+    expect(targetSource).toContain("import { extractFileTarget } from './startFileTargets.js';");
+    expect(targetSource).toContain(
+      "export { extractFileTarget, isFilePathTarget } from './startFileTargets.js';",
+    );
+    expect(targetSource).not.toContain('function extractFileTarget');
+    expect(targetSource).not.toContain('function isFilePathTarget');
+
+    expect(existsSync(fileTargetsPath)).toBe(true);
+    const fileTargetsSource = readFileSync(fileTargetsPath, 'utf8');
+    expect(fileTargetsSource).toContain('export function extractFileTarget');
+    expect(fileTargetsSource).toContain('export function isFilePathTarget');
+    expect(fileTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });

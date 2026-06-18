@@ -1,5 +1,6 @@
 import type { GraphQueryDirection } from './graphQuery.js';
 import { isPlaceholder, quoteShellArg } from './startShellArgs.js';
+import { extractFileTarget } from './startFileTargets.js';
 import { isPackageNameTarget, normalizePackageName } from './startPackageTargets.js';
 import { extractSymbolTarget } from './startSymbolTargets.js';
 import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';
@@ -31,6 +32,7 @@ export type StartGraphQuery = {
 
 type QueryExtractor = (intent: string) => string | undefined;
 
+export { extractFileTarget, isFilePathTarget } from './startFileTargets.js';
 export { extractReportScopeTarget } from './startReportScopeTargets.js';
 export { extractAuditPackageTarget, extractPackageTarget } from './startPackageTargets.js';
 export { extractIssueIdTarget } from './startIssueTargets.js';
@@ -218,23 +220,6 @@ export function extractImpactTarget(intent: string): string | undefined {
   return normalized;
 }
 
-export function extractFileTarget(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const wrapped = compactIntent.match(/[`'"]([^`'"]+\.[A-Za-z0-9]{1,12})[`'"]/);
-  if (wrapped?.[1] && isFilePathTarget(wrapped[1])) return wrapped[1];
-
-  const pathMatch = compactIntent.match(/(?:^|\s)([A-Za-z0-9_./:@-]+\.[A-Za-z0-9]{1,12})(?:\s|$)/);
-  if (pathMatch?.[1] && isFilePathTarget(pathMatch[1])) return unwrapTarget(pathMatch[1]);
-
-  const slashPathMatch = compactIntent.match(
-    /(?:^|\s)([A-Za-z0-9_./:@-]+\/[A-Za-z0-9_./:@-]+)(?:\s|$)/,
-  );
-  if (slashPathMatch?.[1] && isFilePathTarget(slashPathMatch[1]))
-    return unwrapTarget(slashPathMatch[1]);
-
-  return undefined;
-}
-
 function extractEnvVarTarget(intent: string): string | undefined {
   const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
   const processMatch = compactIntent.match(/\bprocess\.env\.[A-Za-z_][A-Za-z0-9_]*\b/);
@@ -357,11 +342,4 @@ function extractQuotedTextTarget(intent: string): string | undefined {
   const quoted = intent.match(/(["'`])(.{2,200}?)\1/);
   const target = quoted?.[2]?.trim();
   return target && !isGenericReferenceTarget(target) ? target : undefined;
-}
-
-export function isFilePathTarget(target: string): boolean {
-  return (
-    (target.includes('/') || target.startsWith('.') || /\.[A-Za-z0-9]{1,12}$/.test(target)) &&
-    !/\s/.test(target)
-  );
 }
