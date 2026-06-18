@@ -11696,3 +11696,47 @@ Reviewer edge case: release-scale cautions should still make release-train
 Kept change: one additive release-train readiness action, console and
 evidence-pack surfacing, focused docs workflow examples, regression tests, this
 persona note, and no release action in this slice.
+
+## Two Hundred Forty Sixth Slice Decision
+
+Selected personas: Platform And Release Owner, Agent-Orchestrating Engineer,
+and OSS Maintainer.
+
+Reason: bug-hunt is a daily triage surface. When the only queued work is a
+release-scale manual sign-off, printing `fix:` and `Bug Hunt: fix` teaches
+engineers to ignore caution output or over-treat review gates as defects.
+
+Smallest fix: keep the existing `BugHuntReport.verdict` and `fixQueue` public
+shape, but make manual sign-off-only summaries start with `review:` and render
+the default console headline as `Bug Hunt: review` for that summary.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/bugHunt.test.ts tests/core/regressionPlan.test.ts tests/core/releaseEvidence.test.ts tests/cli/releaseTrainBugHunt.test.ts tests/types/public-bug-hunt-types.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+npm exec projscan -- release-train --format json
+```
+
+## Review Guardrails: Bug-Hunt Sign-Off Wording
+
+Delete-list after this slice:
+
+- Do not add a new `BugHuntReport` field or `BugHuntVerdict` value for this
+  wording calibration.
+- Do not remove manual sign-off findings from `fixQueue`; they remain
+  actionable handoff gates.
+- Do not change preflight thresholds, release policy, package version, tags,
+  publishing, deployment, or release behavior.
+- Do not hide release-scale cautions behind a clean baseline.
+
+Reviewer edge case: JSON consumers should still see `verdict: "fix"` for a
+manual sign-off-only queue, but the summary should start with `review:` and the
+default console headline should say `Bug Hunt: review`.
+
+Kept change: one summary branch, one console display label, focused core/CLI
+regressions, docs wording, this persona note, and no release action in this
+slice.

@@ -42,9 +42,10 @@ export function registerBugHunt(): void {
 }
 
 function printBugHunt(report: BugHuntReport): void {
+  const displayVerdict = bugHuntDisplayVerdict(report);
   const color =
-    report.verdict === 'block' ? chalk.red : report.verdict === 'fix' ? chalk.yellow : chalk.green;
-  console.log(color(`Bug Hunt: ${report.verdict}`));
+    report.verdict === 'block' ? chalk.red : displayVerdict === 'clean' ? chalk.green : chalk.yellow;
+  console.log(color(`Bug Hunt: ${displayVerdict}`));
   console.log(report.summary);
   console.log('');
   console.log(chalk.bold('Action Queue'));
@@ -63,6 +64,13 @@ function printFinding(finding: BugHuntFinding): void {
   console.log(`- ${chalk.bold(`[${finding.priority}] ${finding.title}`)}${files}`);
   console.log(`  ${finding.why}`);
   console.log(`  verify: ${finding.verification.commands.join(' && ')}`);
+}
+
+function bugHuntDisplayVerdict(report: BugHuntReport): BugHuntReport['verdict'] | 'review' {
+  if (report.summary.startsWith('review:') && report.summary.includes('manual sign-off action')) {
+    return 'review';
+  }
+  return report.verdict;
 }
 
 function parsePositiveInt(value: string): number {

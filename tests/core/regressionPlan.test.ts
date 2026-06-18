@@ -70,7 +70,7 @@ test('regression plan labels manual release sign-off queues as manual review gat
 
   expect(
     regressionTitleForBugHuntTarget(
-      { summary: 'fix: bug hunt found 1 manual sign-off action(s)' } as BugHuntReport,
+      { summary: 'review: bug hunt found 1 manual sign-off action(s)' } as BugHuntReport,
       finding,
     ),
   ).toBe('Manual-review bug-hunt gate: Review preflight release sign-off');

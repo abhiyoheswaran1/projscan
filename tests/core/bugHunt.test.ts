@@ -184,7 +184,10 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   const report = await computeBugHunt(root, { maxFindings: 5 });
   const preflightFinding = report.fixQueue.find((finding) => finding.source === 'preflight');
 
+  expect(report.verdict).toBe('fix');
+  expect(report.summary).toBe('review: bug hunt found 1 manual sign-off action(s)');
   expect(report.summary).toContain('manual sign-off action');
+  expect(report.summary).not.toContain('fix:');
   expect(preflightFinding?.title).toBe('Review preflight release sign-off');
   expect(report.fixFirst?.whyFirst.match(/manual release sign-off/gi) ?? []).toHaveLength(1);
   expect(preflightFinding?.files.slice(0, 4)).toEqual([

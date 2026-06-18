@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Calibrate bug-hunt manual sign-off wording
+
+- Status: accepted
+- Context: `projscan bug-hunt` kept release-scale manual sign-off gates visible, but manual sign-off-only queues still printed `fix:` in the summary and `Bug Hunt: fix` in console output. That made a review gate look like concrete defect work.
+- Decision: Keep `BugHuntReport.verdict` and `fixQueue` unchanged for public compatibility, but change manual sign-off-only summaries to `review:` and make the default console headline print `Bug Hunt: review` for that summary.
+- Consequences: JSON consumers that branch on `verdict: "fix"` continue to work, regression-plan and evidence-pack sign-off detection still uses the manual sign-off summary text, and humans see review/sign-off wording instead of a defect-fix headline.
+- Verification: Focused core and CLI regressions failed on the old wording, then passed after the summary and console calibration.
+
 ## 2026-06-18: Extract start claim route criteria helper
 
 - Status: accepted

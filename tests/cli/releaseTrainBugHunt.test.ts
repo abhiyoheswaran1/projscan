@@ -159,6 +159,67 @@ test('bug-hunt JSON orders preflight fallback files for review routing', async (
   expect(preflightFinding?.evidence[0]).toEqual(expect.objectContaining({ file: 'package.json' }));
 }, 120_000);
 
+test('bug-hunt console labels release-scale sign-off queues as review work', async () => {
+  await writeJson(path.join(tmp, 'package.json'), {
+    name: 'fixture',
+    version: '0.0.0',
+    type: 'module',
+    devDependencies: { vitest: '^3.0.0' },
+    eslintConfig: { root: true },
+    prettier: {},
+  });
+  await fs.writeFile(
+    path.join(tmp, 'README.md'),
+    '# fixture\n\nA focused fixture with setup notes, usage examples, and verification guidance.\n',
+  );
+  await fs.writeFile(path.join(tmp, '.gitignore'), '.env\nnode_modules\n');
+  await fs.writeFile(path.join(tmp, '.editorconfig'), 'root = true\n');
+  await fs.writeFile(path.join(tmp, 'src', 'index.test.ts'), 'export const ok = true;\n');
+  await git(['init']);
+  await git(['config', 'user.email', 'agent@example.com']);
+  await git(['config', 'user.name', 'Agent']);
+  await git(['add', '.']);
+  await git(['commit', '-m', 'baseline']);
+
+  await fs.mkdir(path.join(tmp, '.agentflight'), { recursive: true });
+  await writeJson(path.join(tmp, '.agentflight', 'config.json'), { localOnly: true });
+  await writeJson(path.join(tmp, 'package.json'), {
+    name: 'fixture',
+    version: '0.0.1',
+    type: 'module',
+    devDependencies: { vitest: '^3.0.0' },
+    eslintConfig: { root: true },
+    prettier: {},
+  });
+  await writeJson(path.join(tmp, 'package-lock.json'), {
+    name: 'fixture',
+    version: '0.0.1',
+    lockfileVersion: 3,
+    packages: {},
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src', 'index.ts'),
+    [
+      'export function complex(value: number) {',
+      ...Array.from(
+        { length: 90 },
+        (_, index) => `  if (value > ${index + 1}) return ${index + 1};`,
+      ),
+      '  return 0;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = await runCli(['bug-hunt', '--max-findings', '1', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Bug Hunt: review');
+  expect(result.stdout).toContain('review: bug hunt found 1 manual sign-off action(s)');
+  expect(result.stdout).toContain('Review preflight release sign-off');
+  expect(result.stdout).not.toContain('Bug Hunt: fix');
+}, 120_000);
+
 test('bug-hunt rejects unsupported formats through the shared matrix', async () => {
   const result = await runCli(['bug-hunt', '--format', 'sarif', '--quiet']);
 

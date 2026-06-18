@@ -257,7 +257,7 @@ function summarize(verdict: BugHuntVerdict, fixQueue: BugHuntFinding[]): string 
   if (verdict === 'block')
     return `block: bug hunt found ${queueLength} high-priority fix target(s)`;
   if (fixQueue.every(isReleaseSignoffFinding)) {
-    return `fix: bug hunt found ${queueLength} manual sign-off action(s)`;
+    return `review: bug hunt found ${queueLength} manual sign-off action(s)`;
   }
   return `fix: bug hunt found ${queueLength} prioritized fix target(s)`;
 }
