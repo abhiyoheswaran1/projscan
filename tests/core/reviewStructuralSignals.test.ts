@@ -207,6 +207,39 @@ export function helper() {
     expect(change.added).toContainEqual({ name: 'axios', version: '^1.0.0', kind: 'dep' });
   });
 
+  it('summarizes dependency kind moves separately from package additions and removals', async () => {
+    await setupRepo();
+    await write(
+      'package.json',
+      JSON.stringify({ name: 'x', dependencies: { axios: '^1.0.0' } }, null, 2),
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'init']);
+
+    await write(
+      'package.json',
+      JSON.stringify({ name: 'x', devDependencies: { axios: '^1.0.0' } }, null, 2),
+    );
+    await git(['add', '.']);
+    await git(['commit', '-q', '-m', 'move axios to dev']);
+
+    const r = await computeReview(tmp, { base: 'HEAD~1', head: 'HEAD' });
+
+    expect(r.available).toBe(true);
+    expect(r.dependencyChanges[0].added).toContainEqual({
+      name: 'axios',
+      version: '^1.0.0',
+      kind: 'dev',
+    });
+    expect(r.dependencyChanges[0].removed).toContainEqual({
+      name: 'axios',
+      version: '^1.0.0',
+      kind: 'dep',
+    });
+    expect(r.summary).toContain('Dependency changes: kind moves 1 runtime->dev.');
+    expect(r.summary).not.toContain('Dependency changes: +1 -1 ~0.');
+  });
+
   it('labels release-scale review blocks as manual sign-off', async () => {
     await setupRepo();
     await write('package.json', JSON.stringify({ name: 'x', dependencies: {} }, null, 2));

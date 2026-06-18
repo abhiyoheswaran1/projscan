@@ -122,24 +122,60 @@ function appendDependencySummary(
 ): void {
   if (depChanges.length === 0) return;
   const totals = dependencyTotals(depChanges);
-  if (totals.added + totals.removed + totals.bumped === 0) return;
-  summary.push(`Dependency changes: +${totals.added} -${totals.removed} ~${totals.bumped}.`);
+  const realChangeCount = totals.added + totals.removed + totals.bumped;
+  const moveCount = totals.runtimeToDev + totals.devToRuntime;
+  if (realChangeCount + moveCount === 0) return;
+  summary.push(`Dependency changes: ${dependencySummaryParts(totals).join('; ')}.`);
 }
 
 function dependencyTotals(depChanges: ReviewDependencyChange[]): {
   added: number;
   removed: number;
   bumped: number;
+  runtimeToDev: number;
+  devToRuntime: number;
 } {
   return depChanges.reduce(
     (acc, change) => {
-      acc.added += change.added.length;
-      acc.removed += change.removed.length;
+      const removed = [...change.removed];
+      for (const added of change.added) {
+        const moveIndex = removed.findIndex(
+          (entry) =>
+            entry.name === added.name &&
+            entry.version === added.version &&
+            entry.kind !== added.kind,
+        );
+        if (moveIndex === -1) {
+          acc.added += 1;
+          continue;
+        }
+        const [movedFrom] = removed.splice(moveIndex, 1);
+        if (movedFrom.kind === 'dep' && added.kind === 'dev') acc.runtimeToDev += 1;
+        if (movedFrom.kind === 'dev' && added.kind === 'dep') acc.devToRuntime += 1;
+      }
+      acc.removed += removed.length;
       acc.bumped += change.bumped.length;
       return acc;
     },
-    { added: 0, removed: 0, bumped: 0 },
+    { added: 0, removed: 0, bumped: 0, runtimeToDev: 0, devToRuntime: 0 },
   );
+}
+
+function dependencySummaryParts(totals: ReturnType<typeof dependencyTotals>): string[] {
+  const parts: string[] = [];
+  if (totals.added + totals.removed + totals.bumped > 0) {
+    parts.push(`+${totals.added} -${totals.removed} ~${totals.bumped}`);
+  }
+  const moves = dependencyMoveSummaryParts(totals);
+  if (moves.length > 0) parts.push(`kind moves ${moves.join(', ')}`);
+  return parts;
+}
+
+function dependencyMoveSummaryParts(totals: ReturnType<typeof dependencyTotals>): string[] {
+  return [
+    ...(totals.runtimeToDev > 0 ? [`${totals.runtimeToDev} runtime->dev`] : []),
+    ...(totals.devToRuntime > 0 ? [`${totals.devToRuntime} dev->runtime`] : []),
+  ];
 }
 
 function appendManualReleaseSignOff(

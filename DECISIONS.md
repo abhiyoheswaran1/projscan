@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Distinguish dependency kind moves in review summaries
+
+- Status: accepted
+- Context: Review and preflight summaries reported dependency kind moves as `+N -N`, even when the same packages and versions moved between `dependencies` and `devDependencies`. For the native grammar package move, that made the release caution sound like seven new packages and seven removals instead of a runtime-to-dev classification change.
+- Decision: Keep the existing `ReviewDependencyChange` JSON buckets for compatibility, but summarize same-name/same-version dep/dev add-remove pairs as dependency kind moves. Continue to report real additions, removals, and bumps with the existing `+N -N ~N` counts.
+- Consequences: Release and handoff cautions keep dependency evidence visible without overstating kind-only package changes. Reviewers can still inspect raw added and removed buckets when they need exact manifest details.
+- Verification: A review regression failed on `Dependency changes: +1 -1 ~0.` for a runtime-to-dev move, then passed with `Dependency changes: kind moves 1 runtime->dev.` The current branch review now reports `Dependency changes: kind moves 7 runtime->dev.`
+
 ## 2026-06-18: Keep workplan suggested commands tool-specific
 
 - Status: accepted
