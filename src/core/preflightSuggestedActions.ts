@@ -51,7 +51,9 @@ function shouldSuggestExplicitBase(
 }
 
 function reviewActionForReasons(reasons: PreflightReason[]): PreflightSuggestedAction | undefined {
-  return hasAnyReasonSource(reasons, ['review', 'taint']) ? reviewAction() : undefined;
+  return hasAnyReasonSource(reasons, ['review', 'taint', 'release'])
+    ? reviewAction()
+    : undefined;
 }
 
 function healthPolicyActionForReasons(

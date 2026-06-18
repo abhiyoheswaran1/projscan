@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { computePreflight } from '../../src/core/preflight.js';
+import { buildPreflightReport } from '../../src/core/preflightReport.js';
+import type { PreflightInputs } from '../../src/core/preflightInputs.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 
 const tempRoots: string[] = [];
@@ -82,6 +84,110 @@ test('preflight separates current worktree evidence from remembered session cont
     }),
   );
   expect(report.evidence.session?.kind).toBe('remembered-session');
+});
+
+test('preflight collapses release-scale-only manual signoff into one reason', () => {
+  const changedFiles = Array.from({ length: 51 }, (_, index) => `src/file-${index}.ts`);
+  const reviewSummary =
+    'Maximum changed-file risk score exceeds review threshold. Manual release sign-off recommended.';
+
+  const report = buildPreflightReport({
+    mode: 'before_merge',
+    maxChangedFiles: 50,
+    inputs: {
+      issues: [],
+      health: { score: 100, grade: 'A', errors: 0, warnings: 0, infos: 0 },
+      changedFiles: {
+        available: true,
+        count: changedFiles.length,
+        files: changedFiles,
+        baseRef: 'origin/main',
+      },
+      session: { id: 'test-session', touchedFiles: [], eventCount: 0 },
+      hotspots: null,
+      review: {
+        available: true,
+        verdict: 'block',
+        summary: reviewSummary,
+        newTaintFlows: 0,
+        newDataflowRisks: 0,
+      },
+      coordination: null,
+    } satisfies PreflightInputs,
+  });
+
+  expect(report.verdict).toBe('caution');
+  expect(report.reasons).toEqual([
+    expect.objectContaining({
+      severity: 'warning',
+      source: 'release',
+      message: expect.stringContaining('Large platform release risk'),
+    }),
+  ]);
+  expect(report.evidence.changedFiles?.count).toBe(51);
+  expect(report.evidence.review).toEqual(
+    expect.objectContaining({ available: true, verdict: 'block', summary: reviewSummary }),
+  );
+  expect(report.evidence.releaseScale).toEqual(
+    expect.objectContaining({
+      detected: true,
+      changedFiles: 51,
+      threshold: 50,
+      reviewVerdict: 'block',
+      reviewSummary,
+    }),
+  );
+  expect(report.suggestedNextActions).toEqual([
+    expect.objectContaining({
+      label: 'Inspect the full review before continuing',
+      command: 'projscan review --format json',
+    }),
+  ]);
+});
+
+test('preflight keeps separate review blocks visible during release-scale signoff', () => {
+  const changedFiles = Array.from({ length: 51 }, (_, index) => `src/file-${index}.ts`);
+  const reviewSummary =
+    'Maximum changed-file risk score is 120.0 (>= 80).; 1 new import cycle(s) introduced.';
+
+  const report = buildPreflightReport({
+    mode: 'before_merge',
+    maxChangedFiles: 50,
+    inputs: {
+      issues: [],
+      health: { score: 100, grade: 'A', errors: 0, warnings: 0, infos: 0 },
+      changedFiles: {
+        available: true,
+        count: changedFiles.length,
+        files: changedFiles,
+        baseRef: 'origin/main',
+      },
+      session: { id: 'test-session', touchedFiles: [], eventCount: 0 },
+      hotspots: null,
+      review: {
+        available: true,
+        verdict: 'block',
+        summary: reviewSummary,
+        newTaintFlows: 0,
+        newDataflowRisks: 0,
+      },
+      coordination: null,
+    } satisfies PreflightInputs,
+  });
+
+  expect(report.verdict).toBe('caution');
+  expect(report.reasons.map((reason) => reason.source)).toEqual(['release', 'review']);
+  expect(report.reasons[0]?.message).toContain('separate review block');
+  expect(report.reasons[0]?.message).not.toContain(
+    'Review blocks on scale/complexity rather than new taint',
+  );
+  expect(report.reasons[1]).toEqual(
+    expect.objectContaining({
+      severity: 'warning',
+      source: 'review',
+      message: expect.stringContaining(reviewSummary),
+    }),
+  );
 });
 
 async function makeTempProject(): Promise<string> {

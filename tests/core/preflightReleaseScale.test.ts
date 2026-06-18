@@ -41,12 +41,14 @@ test('before_commit treats scale-only review blocks as manual sign-off caution',
   expect(report.reasons).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        source: 'review',
+        source: 'release',
         severity: 'warning',
-        message: expect.stringContaining('scale/complexity'),
+        message: expect.stringContaining('Large platform release risk'),
       }),
     ]),
   );
+  expect(report.reasons.some((reason) => reason.source === 'review')).toBe(false);
+  expect(report.evidence.review?.verdict).toBe('block');
   expect(report.requiredChecks.find((check) => check.name === 'review')?.status).toBe('warn');
 }, 120_000);
 
@@ -80,13 +82,10 @@ test('before_merge treats scale-only review blocks as manual sign-off caution', 
         severity: 'warning',
         message: expect.stringContaining('Large platform release risk'),
       }),
-      expect.objectContaining({
-        source: 'review',
-        severity: 'warning',
-        message: expect.stringContaining('scale/complexity'),
-      }),
     ]),
   );
+  expect(report.reasons.some((reason) => reason.source === 'review')).toBe(false);
+  expect(report.evidence.review?.verdict).toBe('block');
   expect(report.evidence.releaseScale?.changedFiles).toBeGreaterThan(1);
   expect(report.summary).toContain('manual release sign-off');
   expect(report.summary).not.toContain('block:');

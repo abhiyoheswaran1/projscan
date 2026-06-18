@@ -126,8 +126,11 @@ function releaseScaleExplanation(signals: ReleaseScaleSignals): string {
 }
 
 function releaseScaleExplanationTail(signals: ReleaseScaleSignals): string {
-  if (signals.reviewBlocksOnScale) {
+  if (signals.reviewScaleOnly) {
     return 'Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects.';
+  }
+  if (signals.reviewBlocksOnScale) {
+    return 'Changed-file scale still needs manual release sign-off; inspect the separate review block before continuing.';
   }
   return 'This is a configured scale threshold/manual review signal, not a concrete taint, dataflow, health, plugin, or supply-chain defect.';
 }

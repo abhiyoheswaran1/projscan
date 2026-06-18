@@ -44,17 +44,56 @@ export function buildPreflightReasons(input: {
 }): PreflightReason[] {
   const reasons: PreflightReason[] = [];
   reasons.push(...policyIssueReasons(input.issues));
-  reasons.push(...changedFileReasons(input));
-  if (input.releaseScale?.detected) {
-    reasons.push({
-      severity: 'warning',
-      source: 'release',
-      message: input.releaseScale.explanation,
-      tool: 'projscan_review',
-    });
-  }
-
-  reasons.push(...reviewReasons(input));
+  reasons.push(...nonDuplicateChangedFileReasons(changedFileReasons(input), input.releaseScale));
+  reasons.push(...releaseReasons(input.releaseScale));
+  reasons.push(...nonDuplicateReviewReasons(reviewReasons(input), input.releaseScale));
   reasons.push(...contextReasons(input));
   return reasons;
+}
+
+function releaseReasons(
+  releaseScale: PreflightReleaseScaleEvidence | null,
+): PreflightReason[] {
+  if (!releaseScale?.detected) return [];
+  return [
+    {
+      severity: 'warning',
+      source: 'release',
+      message: releaseScale.explanation,
+      tool: 'projscan_review',
+    },
+  ];
+}
+
+function nonDuplicateChangedFileReasons(
+  reasons: PreflightReason[],
+  releaseScale: PreflightReleaseScaleEvidence | null,
+): PreflightReason[] {
+  if (!releaseScale?.detected) return reasons;
+  return reasons.filter((reason) => reason.source !== 'changed-files');
+}
+
+function nonDuplicateReviewReasons(
+  reasons: PreflightReason[],
+  releaseScale: PreflightReleaseScaleEvidence | null,
+): PreflightReason[] {
+  if (!releaseScale?.detected) return reasons;
+  return reasons.filter((reason) => !isReleaseScaleReviewDuplicate(reason, releaseScale));
+}
+
+function isReleaseScaleReviewDuplicate(
+  reason: PreflightReason,
+  releaseScale: PreflightReleaseScaleEvidence,
+): boolean {
+  return (
+    reason.source === 'review' &&
+    isScaleOnlyReviewSummary(releaseScale.reviewSummary) &&
+    reason.message.startsWith('Review verdict is block due to scale/complexity risk:') &&
+    reason.message.includes('Maximum changed-file risk score')
+  );
+}
+
+function isScaleOnlyReviewSummary(summary: string | undefined): boolean {
+  if (!summary?.includes('Maximum changed-file risk score')) return false;
+  return !summary.includes('new import cycle');
 }

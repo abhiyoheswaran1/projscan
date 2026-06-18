@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Collapse duplicate preflight manual sign-off reasons
+
+- Status: accepted
+- Context: `projscan preflight --mode before_merge` could report a large release-scale manual sign-off as separate `changed-files`, `release`, and `review` warning reasons. The verdict was correct, but the repeated caution made daily gate output noisier than the decision engineers needed to make.
+- Decision: When release-scale evidence is detected without concrete blockers, keep one actionable `release` warning reason and preserve changed-file and review details in `evidence`, required checks, and suggested review actions.
+- Consequences: Human preflight output is less repetitive, while JSON consumers can still inspect changed-file counts, review verdicts, review summaries, and release-scale evidence. If a large release also has a separate review block, that review reason remains visible and the release explanation tells users to inspect it.
+- Verification: Regression tests failed on the duplicate reason array and misleading separate-block wording, then passed after the reason filtering and release-scale explanation update.
+
 ## 2026-06-18: Keep info diagnostics out of start adoption gaps
 
 - Status: accepted
