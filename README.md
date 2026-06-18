@@ -921,22 +921,22 @@ For real-world numbers against larger codebases, `npm run bench:references` shal
 Run `npm run bench` against your own machine to recalibrate.
 
 - **Zero network requests** — everything runs locally
-- **14 runtime dependencies** — still minimal
-- **~21 MB of vendored tree-sitter grammars**, broken down:
+- **7 direct runtime dependencies** — grammar packages are build-time sources, not global-install dependencies
+- **~21 MB of vendored tree-sitter WASM grammars**, broken down:
 
-| Grammar               |    Size | Languages                          |
-| --------------------- | ------: | ---------------------------------- |
-| `web-tree-sitter`     | ~190 KB | runtime, all tree-sitter languages |
-| `tree-sitter-python`  | ~450 KB | Python                             |
-| `tree-sitter-go`      | ~210 KB | Go                                 |
-| `tree-sitter-java`    | ~405 KB | Java                               |
-| `tree-sitter-ruby`    | ~2.0 MB | Ruby                               |
-| `tree-sitter-rust`    | ~1.1 MB | Rust                               |
-| `tree-sitter-php`     | ~785 KB | PHP                                |
-| `tree-sitter-c-sharp` | ~5.2 MB | C#                                 |
-| `tree-sitter-cpp`     | ~3.3 MB | C, C++                             |
-| `tree-sitter-kotlin`  | ~3.9 MB | Kotlin                             |
-| `tree-sitter-swift`   | ~3.6 MB | Swift                              |
+| Vendored file              |    Size | Languages                          |
+| -------------------------- | ------: | ---------------------------------- |
+| `web-tree-sitter.wasm`     | ~190 KB | runtime, all tree-sitter languages |
+| `tree-sitter-python.wasm`  | ~450 KB | Python                             |
+| `tree-sitter-go.wasm`      | ~210 KB | Go                                 |
+| `tree-sitter-java.wasm`    | ~405 KB | Java                               |
+| `tree-sitter-ruby.wasm`    | ~2.0 MB | Ruby                               |
+| `tree-sitter-rust.wasm`    | ~1.1 MB | Rust                               |
+| `tree-sitter-php.wasm`     | ~785 KB | PHP                                |
+| `tree-sitter-c_sharp.wasm` | ~5.2 MB | C#                                 |
+| `tree-sitter-cpp.wasm`     | ~3.3 MB | C, C++                             |
+| `tree-sitter-kotlin.wasm`  | ~3.9 MB | Kotlin                             |
+| `tree-sitter-swift.wasm`   | ~3.6 MB | Swift                              |
 
 JavaScript and TypeScript use the bundled `@babel/parser` instead of a tree-sitter grammar, so they don't appear in this table.
 

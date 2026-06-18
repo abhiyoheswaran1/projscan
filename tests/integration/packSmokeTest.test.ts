@@ -3,9 +3,34 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import pkg from '../../package.json' with { type: 'json' };
 
 const maybePackedInstallSmoke =
   process.env.PROJSCAN_RUN_PACKED_INSTALL_SMOKE === '1' ? it : it.skip;
+
+const installScriptGrammarPackages = [
+  'tree-sitter-c-sharp',
+  'tree-sitter-go',
+  'tree-sitter-java',
+  'tree-sitter-php',
+  'tree-sitter-python',
+  'tree-sitter-ruby',
+  'tree-sitter-rust',
+] as const;
+
+const shippedGrammarFiles = [
+  'web-tree-sitter.wasm',
+  'tree-sitter-c_sharp.wasm',
+  'tree-sitter-cpp.wasm',
+  'tree-sitter-go.wasm',
+  'tree-sitter-java.wasm',
+  'tree-sitter-kotlin.wasm',
+  'tree-sitter-php.wasm',
+  'tree-sitter-python.wasm',
+  'tree-sitter-ruby.wasm',
+  'tree-sitter-rust.wasm',
+  'tree-sitter-swift.wasm',
+] as const;
 
 /**
  * Verifies that `npm pack` produces a tarball containing the compiled
@@ -13,17 +38,27 @@ const maybePackedInstallSmoke =
  * would ship a broken package that crashes on first .py file.
  */
 describe('npm pack smoke test', () => {
+  it('keeps native tree-sitter grammar packages out of runtime dependencies', () => {
+    for (const packageName of installScriptGrammarPackages) {
+      expect(pkg.dependencies).not.toHaveProperty(packageName);
+      expect(pkg.devDependencies).toHaveProperty(packageName);
+    }
+    expect(pkg.dependencies).toHaveProperty('web-tree-sitter');
+    expect(pkg.scripts).not.toHaveProperty('prepare');
+    expect(pkg.scripts).not.toHaveProperty('install');
+    expect(pkg.scripts).not.toHaveProperty('postinstall');
+    expect(pkg.scripts).toHaveProperty('prepack', 'npm run build');
+  });
+
   it('packs dist/ including grammar wasm files', () => {
     const repoRoot = path.resolve(__dirname, '..', '..');
 
     // Fail loudly if someone forgot to run build first.
     const distGrammars = path.join(repoRoot, 'dist/grammars');
     expect(existsSync(distGrammars), 'dist/grammars missing — run `npm run build`').toBe(true);
-    expect(existsSync(path.join(distGrammars, 'web-tree-sitter.wasm'))).toBe(true);
-    expect(existsSync(path.join(distGrammars, 'tree-sitter-python.wasm'))).toBe(true);
-    expect(existsSync(path.join(distGrammars, 'tree-sitter-go.wasm'))).toBe(true);
-    expect(existsSync(path.join(distGrammars, 'tree-sitter-java.wasm'))).toBe(true);
-    expect(existsSync(path.join(distGrammars, 'tree-sitter-ruby.wasm'))).toBe(true);
+    for (const grammarFile of shippedGrammarFiles) {
+      expect(existsSync(path.join(distGrammars, grammarFile))).toBe(true);
+    }
     // 0.11+: tool manifest for external consumers (e.g. website docs page).
     expect(existsSync(path.join(repoRoot, 'dist', 'tool-manifest.json'))).toBe(true);
 
@@ -41,11 +76,9 @@ describe('npm pack smoke test', () => {
       expect(statSync(tarballPath).size).toBeGreaterThan(0);
 
       const listing = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf-8' });
-      expect(listing).toContain('package/dist/grammars/web-tree-sitter.wasm');
-      expect(listing).toContain('package/dist/grammars/tree-sitter-python.wasm');
-      expect(listing).toContain('package/dist/grammars/tree-sitter-go.wasm');
-      expect(listing).toContain('package/dist/grammars/tree-sitter-java.wasm');
-      expect(listing).toContain('package/dist/grammars/tree-sitter-ruby.wasm');
+      for (const grammarFile of shippedGrammarFiles) {
+        expect(listing).toContain(`package/dist/grammars/${grammarFile}`);
+      }
       expect(listing).toContain('package/dist/tool-manifest.json');
       expect(listing).toContain('package/docs/plugin.schema.json');
       expect(listing).toContain('package/docs/PLUGIN-AUTHORING.md');

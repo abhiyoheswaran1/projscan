@@ -12312,3 +12312,53 @@ is asking whether the branch is ready to hand off.
 Kept change: one preflight-ready guard, one start-mode inference helper,
 focused router/start regressions, this persona note, and no release action in
 this slice.
+
+## Two Hundred Sixtieth Slice Decision
+
+Selected personas: OSS Maintainer, Security-Conscious Reviewer, Platform And
+Release Owner, and Agent-Orchestrating Engineer.
+
+Reason: the user's first global install printed npm `allow-scripts` warnings
+for seven tree-sitter language packages. That is exactly the wrong first
+impression for a local trust tool: it asks the engineer to approve native
+install hooks before they have run any workflow. The packed local install also
+revealed a second warning from projscan's own `prepare` lifecycle script.
+
+Smallest fix: ship the parser WASM files as package assets, keep the language
+grammar npm packages as build-time devDependencies, and use `prepack` rather
+than `prepare` so packaging still builds but installation has no approval
+scripts.
+
+Proof commands:
+
+```bash
+npm run test -- tests/integration/packSmokeTest.test.ts tests/docs/startRoutingDocs.test.ts tests/core/frameworkSources.test.ts tests/core/frameworkAstroSources.test.ts
+npm run test -- tests/analyzers/supplyChainCheck.test.ts tests/core/preflightPolicy.test.ts tests/integration/packSmokeTest.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm pack --json --pack-destination /tmp/projscan-pack-check
+npm install -g /tmp/projscan-pack-check/projscan-4.8.0.tgz --prefix /tmp/projscan-global-install-check --loglevel warn
+/tmp/projscan-global-install-check/bin/projscan --version
+```
+
+## Review Guardrails: First Install Must Be Quiet
+
+Delete-list after this slice:
+
+- Do not remove `web-tree-sitter` from runtime dependencies; compiled code
+  imports it.
+- Do not remove parser WASM assets from `dist/grammars` or npm package files.
+- Do not ask users to run `npm approve-scripts` as the product fix.
+- Do not add `postinstall`, `install`, or `prepare` scripts to the published
+  package.
+- Do not cut a version, release, tag, publish, deploy, push, or merge.
+
+Reviewer edge case: dev installs still need the grammar packages so
+`scripts/copy-wasm.mjs` can build and copy assets. Runtime installs should use
+the packaged WASM and should not install those grammar packages.
+
+Kept change: moved seven grammar packages to devDependencies, replaced
+`prepare` with `prepack`, expanded pack/install regression coverage, updated
+README install/dependency wording, this persona note, and no release action in
+this slice.

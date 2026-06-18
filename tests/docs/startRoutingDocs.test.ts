@@ -92,6 +92,20 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
   expect(roadmap).not.toContain('Become the operator, not the advisor');
 });
 
+test('readme describes vendored grammars without runtime install-script packages', () => {
+  const readme = fs.readFileSync('README.md', 'utf8');
+
+  expect(readme).toContain('7 direct runtime dependencies');
+  expect(readme).toContain(
+    'grammar packages are build-time sources, not global-install dependencies',
+  );
+  expect(readme).toContain('tree-sitter-python.wasm');
+  expect(readme).toContain('tree-sitter-c_sharp.wasm');
+  expect(readme).not.toContain('14 runtime dependencies');
+  expect(readme).not.toContain('| `tree-sitter-python`');
+  expect(readme).not.toContain('| `tree-sitter-c-sharp`');
+});
+
 test('start guide matches focused console handoff behavior', () => {
   const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
 

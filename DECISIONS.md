@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Keep global installs free of native parser scripts
+
+- Status: accepted
+- Context: `npm install -g projscan@latest` warned about seven tree-sitter language packages with native `node-gyp-build` install scripts. A packed local install also warned about projscan's own `prepare` script. Both warnings made the first install feel unsafe even though projscan ships generated WASM grammars in `dist/grammars`.
+- Decision: Keep `web-tree-sitter` as the runtime dependency, move tree-sitter language packages to devDependencies as build-time WASM sources, and replace the published `prepare` lifecycle with `prepack`.
+- Consequences: Global installs no longer need npm script approval for grammar packages or projscan itself. `npm pack` still builds and includes all grammar WASM files, and runtime parsing continues to load packaged assets.
+- Verification: Pack smoke tests now guard runtime dependencies and all shipped grammar WASM files; a local packed global install completed without `allow-scripts` warnings and parsed a Python file from the installed CLI.
+
 ## 2026-06-18: Route handoff readiness to preflight
 
 - Status: accepted
