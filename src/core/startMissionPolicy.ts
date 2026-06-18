@@ -210,10 +210,37 @@ export function missionProofCommands(
       .filter((command): command is string => typeof command === 'string'),
     ...workplan.tasks.flatMap((task) => task.verification.commands),
   ]).filter(isRunnableCommand);
-  if (!isPreflightAction(primaryAction)) return commands.slice(0, 8);
-  return commands
+  const proofCommands = releaseCandidateProofCommands(mode, commands);
+  if (!isPreflightAction(primaryAction)) return proofCommands.slice(0, 8);
+  return proofCommands
     .filter((command, index) => index === 0 || !command.startsWith('projscan preflight '))
     .slice(0, 8);
+}
+
+function releaseCandidateProofCommands(mode: WorkplanMode, commands: string[]): string[] {
+  if (mode !== 'release') return commands;
+  const localWebsitePrompt = 'projscan evidence-pack --website-prompt --format json';
+  const localOnly = commands.filter(
+    (command) =>
+      command !== 'npm view projscan version' &&
+      command !== 'gh release view vX.Y.Z --json assets',
+  );
+  const withWebsitePrompt = localOnly.includes(localWebsitePrompt)
+    ? localOnly
+    : [...localOnly, localWebsitePrompt];
+  const priority = [
+    'projscan release-train --format json',
+    'projscan preflight --mode before_merge --format json',
+    'projscan understand --view verify --format json',
+    'npm exec agentloop -- status',
+    'npm exec agentflight -- verify',
+    'npm run release:check',
+    localWebsitePrompt,
+  ];
+  return uniqueStrings([
+    ...priority.filter((command) => withWebsitePrompt.includes(command)),
+    ...withWebsitePrompt,
+  ]);
 }
 
 export function chooseWorkflow(

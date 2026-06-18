@@ -421,19 +421,19 @@ function modeTasks(
       makeTask({
         id: 'wp-release-website',
         priority: 'p2',
-        title: 'Prepare the website update handoff',
-        why: 'The website pins the release manifest and must be updated after the package, GitHub Release assets, and MCP Registry agree on the same version.',
+        title: 'Prepare the local website update prompt',
+        why: 'The website update starts as local handoff text; package, GitHub Release, and MCP Registry checks wait until release approval.',
         evidence: [
           {
             source: 'release',
-            message: 'website follow-up consumes GitHub Release assets and registry metadata',
+            message: 'website follow-up starts from local evidence-pack prompt text',
           },
         ],
         files: ['docs/WEBSITE-UPDATE-PROMPT.md'],
-        suggestedTools: ['GitHub Release assets', 'MCP Registry', 'npm view'],
-        commands: ['npm view projscan version', 'gh release view vX.Y.Z --json assets'],
+        suggestedTools: ['projscan_evidence_pack', 'website prompt'],
+        commands: ['projscan evidence-pack --website-prompt --format json'],
         expected:
-          'Website prompt references the shipped tag, manifest asset, SBOM asset, npm version, and MCP Registry latest version.',
+          'Website prompt is generated as local handoff text; final website update waits for release approval and shipped assets.',
       }),
     );
   }

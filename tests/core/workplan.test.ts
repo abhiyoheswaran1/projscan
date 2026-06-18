@@ -115,7 +115,7 @@ test('bug_hunt workplan suggested actions use commands that match their tools', 
   expect(fileAction?.command).toBeUndefined();
 });
 
-test('release workplan includes release check, registry, and website follow-up tasks without mutating version', async () => {
+test('release workplan includes release check and local website prompt without mutating version', async () => {
   const root = await makeTempProject();
 
   const report = await computeWorkplan(root, { mode: 'release' });
@@ -127,8 +127,14 @@ test('release workplan includes release check, registry, and website follow-up t
   expect(
     report.tasks.find((task) => task.id === 'wp-release-readiness')?.verification.commands,
   ).toContain('npm run release:check');
-  expect(report.tasks.find((task) => task.id === 'wp-release-website')?.suggestedTools).toContain(
-    'GitHub Release assets',
+  const websiteTask = report.tasks.find((task) => task.id === 'wp-release-website');
+  expect(websiteTask?.suggestedTools).toContain('projscan_evidence_pack');
+  expect(websiteTask?.verification.commands).toContain(
+    'projscan evidence-pack --website-prompt --format json',
+  );
+  expect(websiteTask?.verification.commands).not.toContain('npm view projscan version');
+  expect(websiteTask?.verification.commands).not.toContain(
+    'gh release view vX.Y.Z --json assets',
   );
 });
 

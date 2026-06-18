@@ -57,6 +57,22 @@ test('start report infers release mode from release-readiness intent', async () 
   );
 });
 
+test('start release-candidate proof stays local before a version is cut', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, { intent: 'is this ready to cut a version?' });
+
+  expect(report.mode).toBe('release');
+  expect(report.missionControl.proofCommands).toContain('npm run release:check');
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan evidence-pack --website-prompt --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain('npm view projscan version');
+  expect(report.missionControl.proofCommands).not.toContain(
+    'gh release view vX.Y.Z --json assets',
+  );
+});
+
 test('start report infers release mode from check-before-release phrasing', async () => {
   const root = await makeTempProject();
 
