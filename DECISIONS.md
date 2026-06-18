@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start regression route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` still carried route-specific complexity after fixed, file, and understand criteria extractions, and regression-plan level selection plus incident/setup keyword handling formed a self-contained rule set.
+- Decision: Move regression-plan level selection, keyword-specific criteria, and regression success-criteria assembly into `src/core/startRegressionRouteCriteria.ts`, while keeping resolver ordering and `regressionRouteSuccessCriteria` dispatch in `src/core/startSuccessCriteria.ts`.
+- Consequences: Regression criteria wording and order stay unchanged for smoke, focused, full, production/incident, local setup, and default focused cases. The resolver module keeps route dispatch without owning regression-level fallback or keyword groups.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria tests now cover smoke, incident, setup, invalid-level fallback, and existing full-level criteria.
+
 ## 2026-06-18: Extract start understand route criteria helper
 
 - Status: accepted

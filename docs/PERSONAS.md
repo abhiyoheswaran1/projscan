@@ -11040,3 +11040,48 @@ over env setup, and env setup over the default public API contract guidance.
 
 Kept change: one understand-route criteria helper, one architecture guard, view
 and contracts matrices, this persona note, and no release action in this slice.
+
+## Two Hundred Thirty Second Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: regression-plan criteria define how an agent proves a fix after
+incidents, local setup blockers, smoke checks, and release-grade full checks.
+The level fallback and keyword groups were independent from Mission Control
+resolver ordering and kept the remaining hotspot harder to audit.
+
+Smallest fix: move regression success-criteria assembly, level fallback, and
+incident/setup keyword groups into `src/core/startRegressionRouteCriteria.ts`;
+keep `projscan_regression_plan` route dispatch in
+`src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startRegressionRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Regression Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change regression criteria wording, order, level fallback behavior,
+  resolver ordering, route ranking, Mission Control schemas, workplan behavior,
+  public types, dependencies, lockfiles, package version, publish behavior, push
+  behavior, tags, or releases.
+- Do not add new regression levels or broaden incident/setup keyword handling.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: invalid regression levels must still fall back to focused
+criteria, and focused criteria must still prefer production/incident wording
+before local setup wording before default CI/test wording.
+
+Kept change: one regression-route criteria helper, one architecture guard, one
+regression criteria matrix, this persona note, and no release action in this
+slice.

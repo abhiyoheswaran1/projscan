@@ -68,6 +68,24 @@ describe('Mission Control success criteria', () => {
     expect(understandCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps regression route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const regressionCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startRegressionRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startRegressionRouteCriteria.js'");
+    expect(source).not.toContain('regressionLevelFromPrimaryAction');
+    expect(source).not.toContain('regressionPlanCriterion');
+    expect(regressionCriteria).toContain('export function regressionSuccessCriteria');
+    expect(regressionCriteria).toContain('regressionLevelFromPrimaryAction');
+    expect(regressionCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
@@ -343,6 +361,53 @@ describe('Mission Control success criteria', () => {
       'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
       'The next task has a verification command: npm test -- tests/core/start.test.ts',
     ]);
+  });
+
+  it('keeps regression-plan criteria by level and matched signal', () => {
+    const cases = [
+      {
+        keywords: ['regression', 'smoke'],
+        level: 'smoke',
+        expected:
+          'The smoke regression plan identifies the smallest health and preflight commands to rerun.',
+      },
+      {
+        keywords: ['production', 'incident'],
+        expected:
+          'The focused regression plan identifies the smallest high-signal commands to reproduce and verify the failure.',
+      },
+      {
+        keywords: ['connection', 'eaddrinuse'],
+        expected:
+          'The focused regression plan identifies the local setup command, environment symptom, and smallest rerun proof for the blocker.',
+      },
+      {
+        keywords: ['regression', 'invalid'],
+        level: 'wide',
+        expected:
+          'The focused regression plan identifies the failing CI or test signal and the smallest verification command to rerun.',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const criteria = successCriteria({
+        route: route('projscan_regression_plan', testCase.keywords),
+        actionPlan: [
+          action(
+            'Plan regression',
+            'projscan regression-plan --level focused --format json',
+            'projscan_regression_plan',
+            testCase.level ? { level: testCase.level } : undefined,
+          ),
+        ],
+      });
+
+      expect(criteria).toEqual([
+        testCase.expected,
+        'projscan ci --changed-only or the matching test command is rerun after the selected fix.',
+        'The next task has a verification command: npm test -- tests/core/start.test.ts',
+      ]);
+    }
   });
 });
 
