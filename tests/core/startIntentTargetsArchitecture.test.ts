@@ -147,4 +147,26 @@ describe('Mission Control intent target architecture', () => {
     expect(integrationSource).toContain('export function extractIntegrationQuery');
     expect(integrationSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps API contract search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const apiContractPath = path.join(
+      process.cwd(),
+      'src/core/startIntentApiContractQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractApiContractQuery } from './startIntentApiContractQueries.js';",
+    );
+    expect(targetSource).not.toContain('API_CONTRACT_RULES');
+    expect(targetSource).not.toContain('function graphQlSchemaQuery');
+
+    expect(existsSync(apiContractPath)).toBe(true);
+    const apiContractSource = readFileSync(apiContractPath, 'utf8');
+    expect(apiContractSource).toContain('export function extractApiContractQuery');
+    expect(apiContractSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
