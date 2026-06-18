@@ -74,6 +74,28 @@ test('start infers the workflow mode from safety-gate intent when mode is omitte
   );
 });
 
+test('start keeps no-more-release continuation intents in the workplan workflow', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'keep improving projscan after 4.8.0 with user research and no more release today',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_edit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.recommendedWorkflow.id).toBe('before_edit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_workplan');
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan workplan --mode before_edit --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain('projscan release-train --format json');
+});
+
 test('start keeps an explicit workflow mode even when intent routes elsewhere', async () => {
   const result = await runCli([
     'start',
