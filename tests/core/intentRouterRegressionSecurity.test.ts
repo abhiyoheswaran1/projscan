@@ -200,6 +200,7 @@ describe('routeIntent regression and security routing', () => {
     const installWarning = routeIntent('npm install -g projscan printed allow-scripts warnings');
     expect(installWarning.matches[0]).toEqual(
       expect.objectContaining({
+        intent: 'Diagnose failing CI, tests, or local setup',
         category: 'Regression',
         tool: 'projscan_regression_plan',
         cli: 'projscan regression-plan',

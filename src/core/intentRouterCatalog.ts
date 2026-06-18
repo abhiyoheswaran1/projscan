@@ -1385,12 +1385,12 @@ export const ROUTE_CATALOG: RouteEntry[] = [
     ],
   },
   {
-    intent: 'Diagnose failing CI or tests',
+    intent: 'Diagnose failing CI, tests, or local setup',
     category: 'Regression',
     tool: 'projscan_regression_plan',
     cli: 'projscan regression-plan',
-    what: 'Focused verification matrix for failing CI, tests, and regression signals.',
-    why: 'When a PR or branch has failing CI/tests, choose the smallest proof loop before editing.',
+    what: 'Focused verification matrix for failing CI, tests, local setup, and install-warning signals.',
+    why: 'When a PR, branch, or local setup command has a failure or warning, choose the smallest proof loop before editing.',
     example: 'projscan regression-plan --level focused --format json',
     keywords: [
       'ci',
