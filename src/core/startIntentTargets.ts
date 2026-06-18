@@ -1,5 +1,6 @@
 import type { GraphQueryDirection } from './graphQuery.js';
 import { isPlaceholder, quoteShellArg } from './startShellArgs.js';
+import { extractEnvVarTarget } from './startEnvTargets.js';
 import { extractFileTarget } from './startFileTargets.js';
 import { isPackageNameTarget, normalizePackageName } from './startPackageTargets.js';
 import { extractSymbolTarget } from './startSymbolTargets.js';
@@ -218,14 +219,6 @@ export function extractImpactTarget(intent: string): string | undefined {
     .trim();
   if (isGenericReferenceTarget(normalized)) return undefined;
   return normalized;
-}
-
-function extractEnvVarTarget(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const processMatch = compactIntent.match(/\bprocess\.env\.[A-Za-z_][A-Za-z0-9_]*\b/);
-  if (processMatch?.[0]) return processMatch[0];
-  const envMatch = compactIntent.match(/\b([A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/);
-  return envMatch?.[1];
 }
 
 export function extractClaimTarget(intent: string): string | undefined {

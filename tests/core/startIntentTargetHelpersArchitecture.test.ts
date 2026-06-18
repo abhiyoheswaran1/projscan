@@ -106,6 +106,19 @@ describe('Mission Control intent target helper architecture', () => {
     expect(fileTargetsSource).toContain('export function isFilePathTarget');
     expect(fileTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps env target parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const envTargetsPath = path.join(process.cwd(), 'src/core/startEnvTargets.ts');
+
+    expect(targetSource).toContain("import { extractEnvVarTarget } from './startEnvTargets.js';");
+    expect(targetSource).not.toContain('function extractEnvVarTarget');
+
+    expect(existsSync(envTargetsPath)).toBe(true);
+    const envTargetsSource = readFileSync(envTargetsPath, 'utf8');
+    expect(envTargetsSource).toContain('export function extractEnvVarTarget');
+    expect(envTargetsSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
 
 function readTargetSource(): string {
