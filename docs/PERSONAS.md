@@ -11647,3 +11647,52 @@ for 4.4 and newer package versions.
 
 Kept change: one roadmap planning cleanup, this persona note, and no release
 action in this slice.
+
+## Two Hundred Forty Fifth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: docs and release-readiness output should earn trust through a few
+daily workflows, not by listing every surface as equally important. The most
+urgent gaps were over-broad docs framing, release-train cautions without a
+specific next action, and adoption examples that did not first show the small
+set of workflows engineers can repeat every day.
+
+Smallest fix: add a `readiness.action` object to release-train output, render
+that action in CLI and evidence-pack surfaces, and update README, guide, and
+adoption docs to lead with three demonstrated daily workflows: before editing,
+before handoff/commit, and before release-candidate review.
+
+Proof commands:
+
+```bash
+npm run test -- tests/docs/startRoutingDocs.test.ts tests/core/releaseTrain.test.ts tests/cli/releaseTrainBugHunt.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+npm exec projscan -- release-train --format json
+```
+
+## Review Guardrails: Daily Workflow And Caution Hardening
+
+Delete-list after this slice:
+
+- Do not change release-train verdict semantics, preflight thresholds, release
+  policy, package version, tags, publishing, deployment, or release behavior.
+- Do not hide release-scale cautions; label them as manual sign-off actions
+  when no concrete defect blocker is present.
+- Do not add a new command surface for this wording problem; reuse existing
+  release-train, preflight, bug-hunt, evidence-pack, README, guide, and
+  adoption surfaces.
+- Do not expand docs into broader productivity claims; keep the workflow
+  examples tied to exact local commands and success criteria.
+
+Reviewer edge case: release-scale cautions should still make release-train
+`readiness.verdict` equal `caution`, but `readiness.action.kind` should say
+`manual-signoff` and explain that the signal is not a concrete defect blocker.
+
+Kept change: one additive release-train readiness action, console and
+evidence-pack surfacing, focused docs workflow examples, regression tests, this
+persona note, and no release action in this slice.

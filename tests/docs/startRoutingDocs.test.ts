@@ -45,3 +45,25 @@ test('docs show multi-scope shareable evidence routing', () => {
   expect(adoption).toContain(multiScopeIntent);
   expect(adoption).toContain(multiScopeAnalyze);
 });
+
+test('docs lead with demonstrated daily workflows instead of inflated breadth', () => {
+  const readme = fs.readFileSync('README.md', 'utf8');
+  const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
+  const adoption = fs.readFileSync('docs/examples/adoption-workflows.md', 'utf8');
+
+  expect(readme).toContain('## Daily workflows engineers can trust');
+  expect(readme).toContain('Use these three workflows before scanning the full command catalog.');
+  expect(readme).toContain('Before editing a feature');
+  expect(readme).toContain('Before handoff or commit');
+  expect(readme).toContain('Before release-candidate review');
+  expect(readme).toContain('Success criteria:');
+  expect(readme).not.toContain('five-command path above');
+
+  expect(guide).toContain(
+    'This guide starts with demonstrated workflows before the command reference.',
+  );
+  expect(guide).not.toContain('A deep dive into everything ProjScan can do.');
+
+  expect(adoption).toContain('## Daily workflows engineers can trust');
+  expect(adoption).toContain('Success criteria:');
+});

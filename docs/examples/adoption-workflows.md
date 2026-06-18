@@ -5,6 +5,46 @@ habit. They are written around the personas in `docs/PERSONAS.md`: skeptical
 senior reviewer, platform lead, product engineer, release owner, and security
 reviewer.
 
+## Daily workflows engineers can trust
+
+Start with the workflows below before adding team policy, plugin, or rollout
+machinery.
+
+### Before editing a feature
+
+```bash
+projscan start --intent "what files do I need to change for auth?"
+projscan understand --view change --intent "add auth token refresh" --format json
+projscan preflight --mode before_edit --format json
+```
+
+Success criteria: the product engineer and agent agree on likely touched files,
+read-first context, and before-edit risk before code changes begin.
+
+### Before handoff or commit
+
+```bash
+projscan bug-hunt --format json
+projscan preflight --mode before_commit --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: the senior reviewer sees concrete defects, manual review
+gates, owner routing, and proof commands without reading the whole agent
+transcript.
+
+### Before release-candidate review
+
+```bash
+projscan release-train --format json
+projscan preflight --mode before_merge --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: the release owner gets read-only readiness evidence and a
+specific next action for `caution`, including manual sign-off when the signal is
+release scale rather than a concrete defect.
+
 ## 1. Agent Orchestration
 
 Use this when a team is standardizing how agents start work, prove changes, and

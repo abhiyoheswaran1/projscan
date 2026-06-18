@@ -1,11 +1,13 @@
 import { expect, test } from 'vitest';
 import '../../src/types/releaseTrain.js';
 import type {
+  ReleaseTrainReadinessAction,
   ReleaseTrainReport,
   ReleaseTrainTask,
   ReleaseTrainTrack,
 } from '../../src/types/releaseTrain.js';
 import type {
+  ReleaseTrainReadinessAction as BarrelReleaseTrainReadinessAction,
   ReleaseTrainReport as BarrelReleaseTrainReport,
   ReleaseTrainTask as BarrelReleaseTrainTask,
   ReleaseTrainTrack as BarrelReleaseTrainTrack,
@@ -33,6 +35,13 @@ const task: ReleaseTrainTask = {
   },
 };
 
+const action: ReleaseTrainReadinessAction = {
+  kind: 'manual-signoff',
+  label: 'Manual release sign-off required',
+  command: 'projscan preflight --mode before_merge --format json',
+  detail: 'Release-scale caution needs human sign-off; it is not a concrete defect blocker.',
+};
+
 const report: ReleaseTrainReport = {
   schemaVersion: 1,
   currentVersion: '4.3.1',
@@ -46,6 +55,7 @@ const report: ReleaseTrainReport = {
     blockers: 0,
     cautions: 1,
     summary: 'Review public type compatibility before release.',
+    action,
   },
   tracks: [track],
   tasks: [task],
@@ -58,11 +68,12 @@ const report: ReleaseTrainReport = {
   ],
 };
 
+const barrelAction: BarrelReleaseTrainReadinessAction = action;
 const barrelTrack: BarrelReleaseTrainTrack = track;
 const barrelTask: BarrelReleaseTrainTask = task;
 const barrelReport: BarrelReleaseTrainReport = report;
 
-void [barrelTrack, barrelTask];
+void [barrelAction, barrelTrack, barrelTask];
 
 test('release train public types compile from the module and legacy barrel', () => {
   expect(barrelReport).toBe(report);

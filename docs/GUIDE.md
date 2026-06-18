@@ -1,8 +1,8 @@
 # ProjScan - Full Guide
 
-A deep dive into everything ProjScan can do. For a quick overview, see the [README](../README.md).
+This guide starts with demonstrated workflows before the command reference. For a quick overview, see the [README](../README.md).
 
-**ProjScan is agent-first**: the MCP server is the primary interface, and the CLI is a consumer of the same primitives. This guide covers both, but if you're integrating with Claude Code / Cursor / Windsurf / Codex, start with [MCP Server for AI Agents](#mcp-server-for-ai-agents).
+**ProjScan is agent-first where agents need local repo evidence**: the MCP server and CLI share the same primitives. This guide covers both, but if you're integrating with Claude Code / Cursor / Windsurf / Codex, start with [MCP Server for AI Agents](#mcp-server-for-ai-agents).
 
 ---
 
@@ -103,6 +103,44 @@ This runs the default `analyze` command. Within a second or two you'll see a ful
 3. **Frameworks detected** - with confidence levels and categories
 4. **Dependency summary** - production vs. dev count, package manager, lock file status
 5. **Issues found** - grouped by severity (error, warning, info)
+
+## Daily workflows engineers can trust
+
+Use these before the command reference when you want the product's most proven
+paths.
+
+### Before editing a feature
+
+```bash
+projscan start --intent "what files do I need to change for auth?"
+projscan understand --view change --intent "add auth token refresh" --format json
+projscan preflight --mode before_edit --format json
+```
+
+Success criteria: the agent starts with cited files, change-readiness evidence,
+and a before-edit gate instead of a free-form plan.
+
+### Before handoff or commit
+
+```bash
+projscan bug-hunt --format json
+projscan preflight --mode before_commit --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: concrete fix targets, manual review gates, and proof commands
+are separated before a reviewer sees the work.
+
+### Before release-candidate review
+
+```bash
+projscan release-train --format json
+projscan preflight --mode before_merge --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: release-train stays read-only, `caution` names the next
+action, and no version, publish, tag, or deploy step is implied.
 
 ---
 

@@ -10,7 +10,14 @@ import {
   renderEvidencePackPrComment,
   validateEvidencePackPrComment,
 } from '../../src/core/releaseEvidence.js';
-import type { EvidencePackReport, PreflightReport } from '../../src/types.js';
+import { buildEvidencePackArtifacts } from '../../src/core/releaseEvidenceArtifacts.js';
+import type {
+  BugHuntReport,
+  EvidencePackReport,
+  PreflightReport,
+  ReleaseTrainReport,
+  WorkplanReport,
+} from '../../src/types.js';
 
 const tempRoots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -151,6 +158,49 @@ test('evidence pack labels release-scale bug-hunt queues as sign-off actions', a
   expect(bugHuntArtifact?.evidence).not.toContain('1 fix target(s) in queue');
 }, 120_000);
 
+test('evidence pack tolerates legacy release-train readiness without action detail', () => {
+  const artifacts = buildEvidencePackArtifacts(
+    {
+      schemaVersion: 1,
+      currentVersion: '4.8.0',
+      plan: { policy: 'product-readiness-plan', lines: ['4.9.x'], readOnly: true },
+      readiness: {
+        verdict: 'caution',
+        blockers: 0,
+        cautions: 1,
+        summary: 'caution: review readiness cautions',
+      },
+      tracks: [],
+      tasks: [],
+      suggestedNextActions: [],
+    } as ReleaseTrainReport,
+    {
+      verdict: 'clean',
+      summary: 'clean',
+      health: { score: 100 },
+      fixQueue: [],
+      evidence: { preflightVerdict: 'proceed' },
+    } as BugHuntReport,
+    {
+      verdict: 'proceed',
+      summary: 'proceed',
+      tasks: [],
+      topRisks: [],
+      coordination: { recommendedNextAgent: 'none' },
+    } as WorkplanReport,
+    {
+      verdict: 'proceed',
+      summary: 'proceed',
+      requiredChecks: [],
+    } as unknown as PreflightReport,
+  );
+
+  const releaseTrainArtifact = artifacts.find((artifact) => artifact.id === 'ep-release-train');
+  expect(releaseTrainArtifact?.evidence).toContain(
+    'Review readiness cautions: projscan preflight --mode before_merge --format json',
+  );
+});
+
 test('PR comments label manual release gates without actual-defect blocker wording', () => {
   const report: EvidencePackReport = {
     schemaVersion: 1,
@@ -165,6 +215,13 @@ test('PR comments label manual release gates without actual-defect blocker wordi
         blockers: 1,
         cautions: 0,
         summary: 'manual release sign-off required',
+        action: {
+          kind: 'manual-signoff',
+          label: 'Manual release sign-off required',
+          command: 'projscan preflight --mode before_merge --format json',
+          detail:
+            'Release-scale caution needs human sign-off; it is not a concrete defect blocker.',
+        },
       },
     },
     approval: {

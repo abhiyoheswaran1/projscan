@@ -19,11 +19,11 @@
 
 ## Why?
 
-AI coding agents are becoming the primary interface to code. When you ask an agent _"which files implement auth?"_ or _"what breaks if I bump React from 18 to 19?"_, it needs structured repo context, not raw grep output.
+AI coding agents are becoming a common interface to code. When you ask an agent _"which files implement auth?"_ or _"what breaks if I bump React from 18 to 19?"_, it needs structured repo context, not raw grep output.
 
-**projscan is code intelligence built for agents.** MCP clients get a fast, AST-backed, context-budget-aware view of your codebase: cited repo understanding, semantic graph, dataflow risks, review verdicts, hotspots, ownership, preflight gates, fix prompts, impact analysis, and durable session context. Everything is local and offline.
+**projscan is local code intelligence for agent-assisted engineering.** MCP clients and humans can query a fast, AST-backed, context-budget-aware view of a repo: cited repo understanding, semantic graph, dataflow risks, review verdicts, hotspots, ownership, preflight gates, fix prompts, impact analysis, and durable session context. The strongest workflows today are repo orientation before editing, evidence before handoff, release-candidate review, and local trust checks. Everything is local and offline.
 
-For teams, projscan turns that context into a repeatable PR habit. `projscan init team` creates policy, CI, ownership, and baseline memory. `projscan evidence-pack --pr-comment` gives reviewers a compact verdict with top risks, First Fix, owner routing, baseline trend memory, and exact next commands. `projscan feedback`, `projscan dogfood`, and `projscan trial` measure whether the loop actually saved time, prevented risky edits, and stayed trustworthy across real repos.
+For teams, projscan can turn that context into a repeatable PR habit when the checks are wired into the local workflow. `projscan init team` creates policy, CI, ownership, and baseline memory. `projscan evidence-pack --pr-comment` gives reviewers a compact verdict with top risks, First Fix, owner routing, baseline trend memory, and exact next commands. `projscan feedback`, `projscan dogfood`, and `projscan trial` measure whether the loop actually saved time, prevented risky edits, and stayed trustworthy across real repos.
 
 The local plugin platform lets teams add project-specific findings and render `doctor`, `analyze`, and `ci` in their own voice without changing the scan pipeline. Humans get the same information through the CLI.
 
@@ -273,6 +273,45 @@ Or run directly without installing:
 ```bash
 npx projscan
 ```
+
+## Daily workflows engineers can trust
+
+Use these three workflows before scanning the full command catalog.
+
+### Before editing a feature
+
+```bash
+projscan start --intent "what files do I need to change for auth?"
+projscan understand --view change --intent "add auth token refresh" --format json
+projscan preflight --mode before_edit --format json
+```
+
+Success criteria: the agent has a cited change map, likely touched files,
+read-first context, and a before-edit gate before it writes code.
+
+### Before handoff or commit
+
+```bash
+projscan bug-hunt --format json
+projscan preflight --mode before_commit --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: concrete defects are separated from manual review gates, the
+handoff includes exact proof commands, and reviewers can see the next action
+without reading an agent transcript.
+
+### Before release-candidate review
+
+```bash
+projscan release-train --format json
+projscan preflight --mode before_merge --format json
+projscan evidence-pack --pr-comment
+```
+
+Success criteria: release-readiness output stays read-only, `caution` explains
+whether the work needs fixes or manual sign-off, and no version, publish, tag,
+or deploy step is implied.
 
 ## Quick Start
 
@@ -596,7 +635,7 @@ For maintainers changing trust-sensitive behavior:
 npm run test:trust-smoke
 ```
 
-The full command catalog is below. Most users should start with the five-command path above instead of scanning the catalog.
+The full command catalog is below. Most users should start with the daily workflows above instead of scanning the catalog.
 
 <img src="https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.3.1/docs/npx%20projscan%20--help.gif" alt="npx projscan --help" width="700">
 

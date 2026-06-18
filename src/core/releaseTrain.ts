@@ -10,6 +10,7 @@ import { fallbackTasksForTrack, fallbackTrackForLine } from './releaseTrainFallb
 import type {
   PreflightSuggestedAction,
   ReleaseTrainReport,
+  ReleaseTrainReadinessAction,
   ReleaseTrainTask,
   ReleaseTrainTrack,
   WorkplanPriority,
@@ -17,6 +18,15 @@ import type {
 
 export interface ComputeReleaseTrainOptions {
   lines?: string[];
+}
+
+interface ReleaseTrainReadinessActionInput {
+  verdict: ReleaseTrainReport['readiness']['verdict'];
+  blockers: number;
+  cautions: number;
+  summary: string;
+  action?: ReleaseTrainReadinessAction;
+  releaseScaleDetected?: boolean;
 }
 
 export async function computeReleaseTrain(
@@ -28,6 +38,13 @@ export async function computeReleaseTrain(
   const preflight = await computePreflight(rootPath, { mode: 'before_merge' });
   const blockers = preflight.reasons.filter((reason) => reason.severity === 'error').length;
   const cautions = preflight.reasons.filter((reason) => reason.severity === 'warning').length;
+  const readinessAction = resolveReleaseTrainReadinessAction({
+    verdict: preflight.verdict,
+    blockers,
+    cautions,
+    summary: preflight.summary,
+    releaseScaleDetected: preflight.evidence.releaseScale?.detected === true,
+  });
   const tracks = lines.map(trackForLine);
   const tasks = rankTasks([
     ...(blockers > 0
@@ -74,10 +91,11 @@ export async function computeReleaseTrain(
       blockers,
       cautions,
       summary: preflight.summary,
+      action: readinessAction,
     },
     tracks,
     tasks,
-    suggestedNextActions: suggestedActions(tasks, preflight.suggestedNextActions),
+    suggestedNextActions: suggestedActions(tasks, preflight.suggestedNextActions, readinessAction),
   };
 }
 
@@ -96,14 +114,62 @@ function tasksForTrack(track: ReleaseTrainTrack): ReleaseTrainTask[] {
 function suggestedActions(
   tasks: ReleaseTrainTask[],
   preflightActions: PreflightSuggestedAction[],
+  readinessAction: ReleaseTrainReadinessAction,
 ): PreflightSuggestedAction[] {
   return [
+    {
+      label: readinessAction.label,
+      command: readinessAction.command,
+    },
     ...tasks.slice(0, 5).map((task) => ({
       label: task.title,
       command: task.verification.commands[0],
     })),
     ...preflightActions,
   ].slice(0, 12);
+}
+
+export function resolveReleaseTrainReadinessAction(
+  readiness: ReleaseTrainReadinessActionInput,
+): ReleaseTrainReadinessAction {
+  if (readiness.action) return readiness.action;
+  const command = 'projscan preflight --mode before_merge --format json';
+  if (readiness.blockers > 0) {
+    return {
+      kind: 'fix-blockers',
+      label: 'Clear readiness blockers',
+      command,
+      detail: `${readiness.blockers} blocker(s) must be cleared or explicitly accepted before release review continues.`,
+    };
+  }
+  if (isManualReleaseSignoff(readiness)) {
+    return {
+      kind: 'manual-signoff',
+      label: 'Manual release sign-off required',
+      command,
+      detail:
+        'Release-scale caution needs human sign-off; it is not a concrete defect blocker.',
+    };
+  }
+  if (readiness.cautions > 0 || readiness.verdict === 'caution') {
+    return {
+      kind: 'review-cautions',
+      label: 'Review readiness cautions',
+      command,
+      detail: `${readiness.cautions} caution(s) need review before approval.`,
+    };
+  }
+  return {
+    kind: 'proceed',
+    label: 'Keep release evidence fresh',
+    command,
+    detail: 'No blocking or cautionary release-train signals were found.',
+  };
+}
+
+function isManualReleaseSignoff(readiness: ReleaseTrainReadinessActionInput): boolean {
+  if (readiness.releaseScaleDetected) return true;
+  return /manual release sign-off|large platform release risk/i.test(readiness.summary);
 }
 
 async function readPackageVersion(rootPath: string): Promise<string | null> {

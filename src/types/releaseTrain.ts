@@ -20,6 +20,13 @@ export interface ReleaseTrainTask {
   verification: WorkplanVerification;
 }
 
+export interface ReleaseTrainReadinessAction {
+  kind: 'fix-blockers' | 'manual-signoff' | 'review-cautions' | 'proceed';
+  label: string;
+  command: string;
+  detail: string;
+}
+
 export interface ReleaseTrainReport {
   schemaVersion: 1;
   currentVersion: string | null;
@@ -33,6 +40,7 @@ export interface ReleaseTrainReport {
     blockers: number;
     cautions: number;
     summary: string;
+    action?: ReleaseTrainReadinessAction;
   };
   tracks: ReleaseTrainTrack[];
   tasks: ReleaseTrainTask[];

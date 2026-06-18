@@ -7,6 +7,7 @@ import type {
   ReleaseTrainReport,
   WorkplanReport,
 } from '../types.js';
+import { resolveReleaseTrainReadinessAction } from './releaseTrain.js';
 
 export function buildEvidencePackArtifacts(
   train: ReleaseTrainReport,
@@ -14,6 +15,7 @@ export function buildEvidencePackArtifacts(
   workplan: WorkplanReport,
   preflight: PreflightReport,
 ): EvidencePackArtifact[] {
+  const readinessAction = resolveReleaseTrainReadinessAction(train.readiness);
   return [
     {
       id: 'ep-release-train',
@@ -23,6 +25,7 @@ export function buildEvidencePackArtifacts(
       evidence: [
         `${train.plan.lines.length} product line(s): ${train.plan.lines.join(', ')}`,
         `${train.readiness.blockers} blocker(s), ${train.readiness.cautions} caution(s)`,
+        `${readinessAction.label}: ${readinessAction.command}`,
         'read-only evidence: yes',
       ],
       commands: ['projscan release-train --format json'],

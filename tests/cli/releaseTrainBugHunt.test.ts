@@ -49,6 +49,15 @@ test('release-train renders JSON without changing package version', async () => 
   expect(pkg.version).toBe('2.2.0');
 });
 
+test('release-train console output includes the readiness action', async () => {
+  const result = await runCli(['release-train', '--line', '2.3.x', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Readiness');
+  expect(result.stdout).toContain('next:');
+  expect(result.stdout).toContain('projscan preflight --mode before_merge --format json');
+});
+
 test('bug-hunt renders JSON fix queue', async () => {
   const result = await runCli(['bug-hunt', '--max-findings', '3', '--format', 'json', '--quiet']);
 

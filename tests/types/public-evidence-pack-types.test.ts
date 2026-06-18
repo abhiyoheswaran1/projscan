@@ -118,6 +118,12 @@ const report: EvidencePackReport = {
       blockers: 0,
       cautions: 1,
       summary: 'Public type compatibility review.',
+      action: {
+        kind: 'review-cautions',
+        label: 'Review readiness cautions',
+        command: 'projscan preflight --mode before_merge --format json',
+        detail: '1 caution(s) need review before approval.',
+      },
     },
   },
   approval: {

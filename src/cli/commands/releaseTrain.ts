@@ -7,7 +7,10 @@ import {
   program,
   setupLogLevel,
 } from '../_shared.js';
-import { computeReleaseTrain } from '../../core/releaseTrain.js';
+import {
+  computeReleaseTrain,
+  resolveReleaseTrainReadinessAction,
+} from '../../core/releaseTrain.js';
 import type { ReleaseTrainReport, ReleaseTrainTask } from '../../types.js';
 
 export function registerReleaseTrain(): void {
@@ -47,6 +50,7 @@ function collectLine(value: string, previous: string[]): string[] {
 }
 
 function printReleaseTrain(report: ReleaseTrainReport): void {
+  const readinessAction = resolveReleaseTrainReadinessAction(report.readiness);
   const color =
     report.readiness.verdict === 'block'
       ? chalk.red
@@ -56,6 +60,13 @@ function printReleaseTrain(report: ReleaseTrainReport): void {
   console.log(color('Readiness Plan'));
   console.log(`Current version: ${report.currentVersion ?? 'unknown'}`);
   console.log(`Product lines: ${report.plan.lines.join(', ')}`);
+  console.log('');
+  console.log(chalk.bold('Readiness'));
+  console.log(`- verdict: ${report.readiness.verdict}`);
+  console.log(`- summary: ${report.readiness.summary}`);
+  console.log(`- next: ${readinessAction.label}`);
+  console.log(`  command: ${readinessAction.command}`);
+  console.log(`  detail: ${readinessAction.detail}`);
   console.log('');
   console.log(chalk.bold('Tracks'));
   for (const track of report.tracks) {

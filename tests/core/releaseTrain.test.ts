@@ -1,10 +1,13 @@
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { afterEach, expect, test } from 'vitest';
 import { computeReleaseTrain } from '../../src/core/releaseTrain.js';
 
 const tempRoots: string[] = [];
+const execFileAsync = promisify(execFile);
 
 afterEach(async () => {
   await Promise.all(
@@ -274,6 +277,33 @@ test('release train marks blockers when preflight blocks', async () => {
   );
 });
 
+test('release train labels release-scale cautions as manual sign-off actions', async () => {
+  const root = await makeCleanCommittedProject('4.8.0');
+
+  for (let i = 0; i < 55; i += 1) {
+    await fs.writeFile(path.join(root, 'src', `changed-${i}.ts`), `export const value${i} = ${i};\n`);
+  }
+
+  const report = await computeReleaseTrain(root, { lines: ['4.9.x'] });
+
+  expect(report.readiness.verdict).toBe('caution');
+  expect(report.readiness.blockers).toBe(0);
+  expect(report.readiness.action).toEqual(
+    expect.objectContaining({
+      kind: 'manual-signoff',
+      label: 'Manual release sign-off required',
+      command: 'projscan preflight --mode before_merge --format json',
+      detail: expect.stringContaining('not a concrete defect'),
+    }),
+  );
+  expect(report.suggestedNextActions[0]).toEqual(
+    expect.objectContaining({
+      label: 'Manual release sign-off required',
+      command: 'projscan preflight --mode before_merge --format json',
+    }),
+  );
+});
+
 async function makeTempProject(version: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-release-train-'));
   tempRoots.push(root);
@@ -282,6 +312,31 @@ async function makeTempProject(version: string): Promise<string> {
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
+}
+
+async function makeCleanCommittedProject(version: string): Promise<string> {
+  const root = await makeTempProject(version);
+  await writeJson(path.join(root, 'package.json'), {
+    name: 'fixture',
+    version,
+    type: 'module',
+    devDependencies: { vitest: '^3.0.0' },
+    eslintConfig: { root: true },
+    prettier: {},
+  });
+  await fs.writeFile(path.join(root, '.gitignore'), '.env\nnode_modules\n');
+  await fs.writeFile(path.join(root, '.editorconfig'), 'root = true\n');
+  await fs.writeFile(path.join(root, 'src', 'index.test.ts'), 'export const ok = true;\n');
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'agent@example.com']);
+  await git(root, ['config', 'user.name', 'Agent']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'baseline']);
+  return root;
+}
+
+async function git(root: string, args: string[]): Promise<void> {
+  await execFileAsync('git', args, { cwd: root });
 }
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
