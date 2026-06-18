@@ -5,7 +5,7 @@ export function buildStartAdoptionGaps(
   diagnostics: FirstRunDiagnostic[],
 ): StartAdoptionGap[] {
   return diagnostics
-    .filter((diagnostic) => diagnostic.status !== 'pass')
+    .filter((diagnostic) => diagnostic.status === 'warn' || diagnostic.status === 'fail')
     .map(
       (diagnostic): StartAdoptionGap => ({
         id: diagnostic.id,

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Keep info diagnostics out of start adoption gaps
+
+- Status: accepted
+- Context: A clean `projscan start` report could still summarize optional `info` diagnostics such as missing local plugin manifests as adoption gaps, which made ready daily workflows look incomplete.
+- Decision: Shape `StartReport.adoptionGaps` from warning and failure diagnostics only. Keep `info` diagnostics in setup diagnostics where they remain visible as optional context.
+- Consequences: Start summaries and console adoption gaps stop counting optional plugin setup as missing adoption work, while warning/failure setup gaps and mission status behavior remain unchanged.
+- Verification: Focused adoption-gap and start report tests failed when `plugins` info was counted and passed after filtering to `warn`/`fail`.
+
 ## 2026-06-18: Promote daily workflows in start console
 
 - Status: accepted

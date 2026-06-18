@@ -11919,3 +11919,45 @@ the same report structure.
 
 Kept change: one console ordering adjustment, one CLI ordering assertion, this
 persona note, and no release action in this slice.
+
+## Two Hundred Fifty First Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+and OSS Maintainer.
+
+Reason: a clean `projscan start` report could still say it had adoption gaps
+only because optional local plugin setup was reported as an `info` diagnostic.
+That makes ready daily workflows look incomplete and teaches engineers to skim
+past caution/setup language.
+
+Smallest fix: keep `info` diagnostics visible in setup diagnostics, but build
+`StartReport.adoptionGaps` only from `warn` and `fail` diagnostics.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startAdoptionGaps.test.ts tests/core/start.test.ts tests/cli/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "what should we improve next to make projscan more trustworthy for daily engineering workflows?" --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Optional Info Is Not A Gap
+
+Delete-list after this slice:
+
+- Do not remove plugin setup diagnostics from the setup section; they remain
+  useful optional context.
+- Do not hide `warn` or `fail` diagnostics from adoption gaps.
+- Do not change setup scoring, route selection, Mission Control status,
+  workflow definitions, public schemas, or CLI commands.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: a repo with warning or failing setup diagnostics should
+still list those adoption gaps; only `info` diagnostics should be omitted from
+`StartReport.adoptionGaps`.
+
+Kept change: one adoption-gap filter, focused helper/start/CLI regressions,
+this persona note, and no release action in this slice.

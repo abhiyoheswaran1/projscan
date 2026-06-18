@@ -47,3 +47,19 @@ test('start report exposes three trusted daily workflows before broad onboarding
   ]);
   expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
 });
+
+test('start report keeps optional plugin info out of adoption gaps', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root);
+
+  expect(report.setup.diagnostics).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'plugins',
+        status: 'info',
+      }),
+    ]),
+  );
+  expect(report.adoptionGaps.map((gap) => gap.id)).not.toContain('plugins');
+});
