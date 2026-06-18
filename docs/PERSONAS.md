@@ -10705,3 +10705,52 @@ deterministic ranking and result shape.
 
 Kept change: one intent-router resolution helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Twenty Fifth Slice Decision
+
+Selected personas: Platform And Release Owner, Security-Conscious Reviewer, and
+Agent-Orchestrating Engineer.
+
+Reason: `computeReview` is the merge-readiness surface that agents and humans
+use before deciding whether a change can land. The expensive review internals
+already live in focused modules, but the public review facade still owned the
+state-dispatch branch that selects unavailable, no-change, or changed-review
+paths.
+
+Smallest fix: move review state dispatch, no-change intent annotation, and
+changed-report delegation into `src/core/reviewComputation.ts`; keep
+`computeReview(rootPath, options)`, `ReviewOptions`, and review tier exports in
+`src/core/review.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/reviewArchitecture.test.ts
+npm run test -- tests/core/review.test.ts
+npm run test -- tests/core/reviewIntentIntegration.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/review.ts --format json
+npm exec projscan -- file src/core/reviewComputation.ts --format json
+```
+
+## Review Guardrails: Review Computation Extraction
+
+Delete-list after this slice:
+
+- Do not change review verdict logic, diff generation, graph snapshots,
+  manifest diffing, risky-function rules, taint/dataflow review behavior,
+  package scoping, output schemas, dependencies, lockfiles, publish behavior,
+  push behavior, tags, or releases.
+- Do not import from `src/core/review.ts` inside the computation helper; the
+  helper must remain leaf-side of the public review facade.
+- Do not broaden this into preflight, review watch, MCP review payloads,
+  release-readiness checks, or public type entrypoints.
+
+Reviewer edge case: unavailable refs and no-change refs must still return the
+same report shapes, and a no-change review with intent must still receive intent
+annotation before returning.
+
+Kept change: one review computation helper, one architecture guard, this
+persona note, and no release action in this slice.

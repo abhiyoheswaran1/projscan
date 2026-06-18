@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract review computation helper
+
+- Status: accepted
+- Context: `src/core/review.ts` remained a high-churn merge-readiness hotspot and still owned review state dispatch, no-change intent annotation, and changed-report delegation inside the public `computeReview` facade.
+- Decision: Move review computation dispatch into `src/core/reviewComputation.ts`, while keeping the public `computeReview(rootPath, options)`, `ReviewOptions`, and review tier exports in `src/core/review.ts`.
+- Consequences: Unavailable reports, no-change reports, dirty same-SHA review behavior, no-change intent annotation, changed-review report assembly, verdict logic, and public imports stay unchanged. The review facade no longer imports state, intent, or changed-report helpers directly.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused review behavior and intent integration tests passed, and focused `projscan file` checks showed no issues in `src/core/review.ts` or `src/core/reviewComputation.ts`.
+
 ## 2026-06-18: Extract intent router resolution helper
 
 - Status: accepted

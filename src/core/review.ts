@@ -1,6 +1,4 @@
-import { buildChangedReviewReport } from './reviewChangedReport.js';
-import { applyReviewIntent } from './reviewIntent.js';
-import { resolveReviewState } from './reviewState.js';
+import { computeReviewReport } from './reviewComputation.js';
 import type { ReviewReport } from '../types/review.js';
 
 export { selectReviewTier, shapeReviewForTier } from './reviewTier.js';
@@ -39,11 +37,5 @@ export async function computeReview(
   rootPath: string,
   options: ReviewOptions = {},
 ): Promise<ReviewReport> {
-  const state = await resolveReviewState(rootPath, options);
-  if (state.kind === 'unavailable') return state.report;
-  if (state.kind === 'no-change') {
-    applyReviewIntent(state.report, options.intent);
-    return state.report;
-  }
-  return buildChangedReviewReport(rootPath, options, state);
+  return computeReviewReport(rootPath, options);
 }

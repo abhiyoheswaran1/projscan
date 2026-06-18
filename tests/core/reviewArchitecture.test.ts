@@ -21,6 +21,29 @@ async function inspectRepoSourceFile(rel: string) {
 }
 
 describe('review architecture guards', () => {
+  it('keeps computeReview dispatch out of the public review facade', async () => {
+    const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
+    expect(reviewSource).toContain("from './reviewComputation.js'");
+    expect(reviewSource).not.toContain('resolveReviewState(');
+    expect(reviewSource).not.toContain('applyReviewIntent(');
+    expect(reviewSource).not.toContain('buildChangedReviewReport(');
+    expect(reviewSource).not.toContain("state.kind === 'no-change'");
+
+    const computationSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/reviewComputation.ts'),
+      'utf-8',
+    );
+    expect(computationSource).toContain("from './reviewChangedReport.js'");
+    expect(computationSource).toContain("from './reviewIntent.js'");
+    expect(computationSource).toContain("from './reviewState.js'");
+    expect(computationSource).not.toContain("from './review.js'");
+
+    const computation = await inspectRepoSourceFile('src/core/reviewComputation.ts');
+    const compute = computation.functions?.find((fn) => fn.name === 'computeReviewReport');
+    expect(compute).toBeDefined();
+    expect(compute!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+  });
+
   it('keeps risky-function matching isolated from the review orchestrator', async () => {
     const review = await inspectRepoSourceFile('src/core/review.ts');
     expect(review.functions?.some((fn) => fn.name === 'findRiskyFunctions')).toBe(false);
@@ -227,7 +250,12 @@ describe('review architecture guards', () => {
 
   it('keeps intent annotation isolated from the review orchestrator', async () => {
     const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
-    expect(reviewSource).toContain("from './reviewIntent.js'");
+    const computationSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/reviewComputation.ts'),
+      'utf-8',
+    );
+    expect(computationSource).toContain("from './reviewIntent.js'");
+    expect(reviewSource).not.toContain("from './reviewIntent.js'");
     expect(reviewSource).not.toContain("from './intent.js'");
     expect(reviewSource).not.toContain('function applyIntent');
     expect(reviewSource).not.toContain('annotateReviewWithIntent');
@@ -340,7 +368,12 @@ describe('review architecture guards', () => {
 
   it('keeps changed-review assembly isolated from the review dispatcher', async () => {
     const reviewSource = await fs.readFile(path.join(process.cwd(), 'src/core/review.ts'), 'utf-8');
-    expect(reviewSource).toContain("from './reviewChangedReport.js'");
+    const computationSource = await fs.readFile(
+      path.join(process.cwd(), 'src/core/reviewComputation.ts'),
+      'utf-8',
+    );
+    expect(computationSource).toContain("from './reviewChangedReport.js'");
+    expect(reviewSource).not.toContain("from './reviewChangedReport.js'");
     expect(reviewSource).not.toContain("from './reviewHeadSnapshot.js'");
     expect(reviewSource).not.toContain("from './reviewBaseSnapshot.js'");
     expect(reviewSource).not.toContain("from './reviewManifests.js'");
