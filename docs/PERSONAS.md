@@ -10902,3 +10902,49 @@ route to a before-edit workplan and omit release roadmap evidence.
 Kept change: one release-intent guard, one generic workplan criteria addition,
 focused routing/docs tests, this persona note, and no release action in this
 slice.
+
+## Two Hundred Twenty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: Mission Control success criteria are user-facing review guidance. The
+resolver module had grown into a mixed surface: dynamic criteria logic plus a
+large fixed per-tool criteria table. After adding generic workplan criteria, the
+static table was the smallest maintainability extraction that preserved behavior.
+
+Smallest fix: move fixed route criteria into
+`src/core/startFixedRouteCriteria.ts` and import it from
+`src/core/startSuccessCriteria.ts`; keep dynamic criteria resolvers and resolver
+ordering in the original module.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startFixedRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start Fixed Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change success-criteria wording, order, resolver ordering, route
+  ranking, Mission Control schemas, workplan behavior, public types,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not move dynamic criteria for preflight, impact, product planning,
+  understand, claim, dependencies, regression, file, or coupling into the fixed
+  helper.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: fixed `projscan_workplan` criteria must still appear for
+generic before-edit workplans, while product-planning workplans in bug-hunt
+mode must still use the specialized product-planning criteria.
+
+Kept change: one fixed-route criteria helper, one architecture guard, this
+persona note, and no release action in this slice.

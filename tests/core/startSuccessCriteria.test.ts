@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,6 +14,24 @@ import type {
 } from '../../src/types.js';
 
 describe('Mission Control success criteria', () => {
+  it('keeps fixed route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const fixedCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startFixedRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startFixedRouteCriteria.js'");
+    expect(source).not.toContain('const FIXED_ROUTE_CRITERIA');
+    expect(fixedCriteria).toContain('export const FIXED_ROUTE_CRITERIA');
+    expect(fixedCriteria).toContain('projscan_release_train');
+    expect(fixedCriteria).toContain('projscan_workplan');
+    expect(fixedCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',

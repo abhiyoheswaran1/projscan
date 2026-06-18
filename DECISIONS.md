@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start fixed route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` remained a large Mission Control helper and still owned the static per-tool success-criteria table beside dynamic criteria resolvers.
+- Decision: Move fixed route criteria into `src/core/startFixedRouteCriteria.ts`, while keeping resolver ordering, dynamic route-specific criteria, `buildMissionSuccessCriteria`, and public helper exports in `src/core/startSuccessCriteria.ts`.
+- Consequences: Success-criteria wording and order for fixed routes stay unchanged. Dynamic criteria for preflight, impact, product planning, understand, claim, dependencies, regression, file, and coupling stay in the resolver module.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria, start planning, and Mission Policy tests passed, and focused `projscan file` checks showed no issues in the helper or resolver.
+
 ## 2026-06-18: Route generic build-next start intents to workplan
 
 - Status: accepted
