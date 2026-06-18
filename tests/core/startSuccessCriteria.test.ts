@@ -32,6 +32,24 @@ describe('Mission Control success criteria', () => {
     expect(fixedCriteria).not.toContain('MissionCriteriaContext');
   });
 
+  it('keeps file route criteria in a focused helper', async () => {
+    const source = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startSuccessCriteria.ts'),
+      'utf-8',
+    );
+    const fileCriteria = await fs.readFile(
+      path.join(process.cwd(), 'src/core/startFileRouteCriteria.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain("from './startFileRouteCriteria.js'");
+    expect(source).not.toContain('interface FileCriteriaRule');
+    expect(source).not.toContain('FILE_CRITERIA_RULES');
+    expect(fileCriteria).toContain('export function fileSuccessCriteria');
+    expect(fileCriteria).toContain('matchesFileTestDesignCriteria');
+    expect(fileCriteria).not.toContain('MissionCriteriaContext');
+  });
+
   it('preserves preflight criteria with the routed mode', () => {
     const criteria = successCriteria({
       mode: 'before_edit',
@@ -138,6 +156,22 @@ describe('Mission Control success criteria', () => {
       'Coverage, hotspot risk, and related test evidence for the file are reviewed before editing starts.',
       'Ownership, primary author, hotspot risk, and related issues are reviewed before choosing a reviewer.',
       'The file purpose, imports, exports, ownership, and risk are reviewed before editing starts.',
+    ]);
+  });
+
+  it('keeps file history, read, and test-authoring criteria ordered', () => {
+    const criteria = successCriteria({
+      route: route('projscan_file', ['last', 'read', 'write', 'test']),
+      actionPlan: [
+        action('Inspect file', 'projscan file src/core/start.ts --format json', 'projscan_file'),
+      ],
+    });
+
+    expect(criteria).toEqual([
+      'Primary author, recent history, and ownership signals are reviewed before routing reviewers or changing the file.',
+      'Coverage, hotspot risk, and related test evidence for the file are reviewed before editing starts.',
+      'File purpose, risky functions, coverage, and existing test evidence are reviewed before designing a new test.',
+      'Purpose, imports, exports, ownership, tests, and risk are reviewed before changing the named file.',
     ]);
   });
 

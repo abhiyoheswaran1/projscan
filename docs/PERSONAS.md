@@ -10948,3 +10948,49 @@ mode must still use the specialized product-planning criteria.
 
 Kept change: one fixed-route criteria helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Thirtieth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: file-route success criteria are review-facing guidance for the moments
+when an agent asks whether a file is risky, covered, recently touched, or ready
+for a new test. Keeping those rules in the main Mission Control resolver made
+the hotspot harder to review after the fixed-route table was extracted.
+
+Smallest fix: move file-route criteria rules and helper predicates into
+`src/core/startFileRouteCriteria.ts`; keep resolver ordering and the
+`projscan_file` route dispatch in `src/core/startSuccessCriteria.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/startSuccessCriteria.test.ts tests/core/startAgentPlanning.test.ts tests/core/startMissionPolicy.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/startSuccessCriteria.ts --format json
+npm exec projscan -- file src/core/startFileRouteCriteria.ts --format json
+```
+
+## Review Guardrails: Start File Route Criteria Extraction
+
+Delete-list after this slice:
+
+- Do not change file-route criteria wording, order, resolver ordering, route
+  ranking, Mission Control schemas, workplan behavior, public types,
+  dependencies, lockfiles, package version, publish behavior, push behavior,
+  tags, or releases.
+- Do not move unrelated dynamic criteria for preflight, impact, product
+  planning, understand, claim, dependencies, regression, or coupling into the
+  file-route helper.
+- Do not broaden this into Mission Control redesign or routing changes.
+
+Reviewer edge case: a `projscan_file` route with `last`, `read`, `write`, and
+`test` signals must still preserve history, coverage, test-authoring, and read
+criteria in that order after the extraction.
+
+Kept change: one file-route criteria helper, one architecture guard, one
+expanded file-route ordering test, this persona note, and no release action in
+this slice.

@@ -2,12 +2,20 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract start file route criteria helper
+
+- Status: accepted
+- Context: `src/core/startSuccessCriteria.ts` remained a large Mission Control helper after the fixed-route extraction, and file-route criteria rules were a self-contained rule table with local helper predicates.
+- Decision: Move file-route criteria rules and helper predicates into `src/core/startFileRouteCriteria.ts`, while keeping resolver ordering, `fileRouteSuccessCriteria`, `buildMissionSuccessCriteria`, and public helper exports in `src/core/startSuccessCriteria.ts`.
+- Consequences: File-route success-criteria wording and order stay unchanged for risk, coverage, reviewer, read, history, and test-authoring matches. The resolver module keeps dynamic route dispatch without owning the file-specific rule table.
+- Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria tests now cover history, read, and test-authoring order in addition to the existing file-route criteria order.
+
 ## 2026-06-18: Extract start fixed route criteria helper
 
 - Status: accepted
 - Context: `src/core/startSuccessCriteria.ts` remained a large Mission Control helper and still owned the static per-tool success-criteria table beside dynamic criteria resolvers.
 - Decision: Move fixed route criteria into `src/core/startFixedRouteCriteria.ts`, while keeping resolver ordering, dynamic route-specific criteria, `buildMissionSuccessCriteria`, and public helper exports in `src/core/startSuccessCriteria.ts`.
-- Consequences: Success-criteria wording and order for fixed routes stay unchanged. Dynamic criteria for preflight, impact, product planning, understand, claim, dependencies, regression, file, and coupling stay in the resolver module.
+- Consequences: Success-criteria wording and order for fixed routes stay unchanged. Dynamic criteria for preflight, impact, product planning, understand, claim, dependencies, regression, file, and coupling stayed in the resolver module at the time of the extraction.
 - Verification: Architecture guard failed before extraction and passed after it. Focused success-criteria, start planning, and Mission Policy tests passed, and focused `projscan file` checks showed no issues in the helper or resolver.
 
 ## 2026-06-18: Route generic build-next start intents to workplan
