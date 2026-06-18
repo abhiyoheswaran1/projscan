@@ -109,6 +109,47 @@ export async function handle({ event, resolve }) {
     );
   });
 
+  it('treats SvelteKit request.url usage as a framework source', async () => {
+    await fs.mkdir(path.join(tmp, 'src', 'routes', 'api', 'search'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'src', 'routes', 'api', 'search', '+server.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function GET({ request }) {
+  return db.query(request.url);
+}
+`,
+    );
+    await fs.writeFile(
+      path.join(tmp, 'src', 'hooks.server.ts'),
+      `declare const db: { query(sql: string): unknown };
+
+export async function handle({ event, resolve }) {
+  db.query(event.request.url);
+  return resolve(event);
+}
+`,
+    );
+    const graph = await buildFixtureGraph();
+
+    const report = computeDataflow(graph, { sources: [], sinks: [] });
+
+    expect(report.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFn: 'GET',
+          source: 'sveltekit.request.url',
+          files: expect.arrayContaining(['src/routes/api/search/+server.ts']),
+        }),
+        expect.objectContaining({
+          sourceFn: 'handle',
+          source: 'sveltekit.request.url',
+          files: expect.arrayContaining(['src/hooks.server.ts']),
+        }),
+      ]),
+    );
+  });
+
   it('does not treat non-route helpers or response builders as SvelteKit request sources', async () => {
     await fs.mkdir(path.join(tmp, 'src', 'lib'), { recursive: true });
     await fs.writeFile(

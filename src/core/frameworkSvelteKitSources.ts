@@ -9,6 +9,7 @@ const SVELTEKIT_REQUEST_SOURCE_BY_MEMBER_CALL = new Map<string, string>([
 ]);
 
 const SVELTEKIT_REQUEST_SOURCE_BY_MEMBER_REFERENCE = new Map<string, string>([
+  ['url', 'sveltekit.request.url'],
   ['headers', 'sveltekit.request.headers'],
 ]);
 
