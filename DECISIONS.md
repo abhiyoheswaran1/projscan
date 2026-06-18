@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract code graph incremental update helper
+
+- Status: accepted
+- Context: `src/core/codeGraph.ts` remained a high-churn production hotspot and still mixed public graph build/query exports with watch-mode incremental update internals, local star re-export refresh, fake `FileEntry` shaping, and in-place index rebuilding.
+- Decision: Move adapter context preparation into `src/core/codeGraphAdapterContexts.ts` and move incremental graph update internals into `src/core/codeGraphIncremental.ts`, while re-exporting `incrementallyUpdateGraph` from `src/core/codeGraph.ts`.
+- Consequences: Public graph imports stay unchanged, build graph behavior keeps the same parse/index/fan metric flow, and incremental watch updates still reparse changed paths before refreshing adapter contexts so manifest/root changes are visible. `src/core/codeGraph.ts` drops to a smaller public facade and graph builder.
+- Verification: Architecture guard failed before extraction and passed after extraction. Focused code graph, incremental update, fan-in, and fan-out tests passed, and focused `projscan file` checks showed no issues in the facade or new helpers.
+
 ## 2026-06-18: Extract preflight reason assembly helper
 
 - Status: accepted

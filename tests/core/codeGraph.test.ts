@@ -89,6 +89,35 @@ describe('buildCodeGraph', () => {
     expect(parsing).not.toContain("from './codeGraph.js'");
   });
 
+  it('keeps incremental update implementation isolated from the graph facade', async () => {
+    const source = await fs.readFile(path.join(process.cwd(), 'src/core/codeGraph.ts'), 'utf-8');
+
+    expect(source).toContain("from './codeGraphIncremental.js'");
+    expect(source).toContain("from './codeGraphAdapterContexts.js'");
+    expect(source).toContain('export { incrementallyUpdateGraph }');
+    expect(source).not.toContain('export async function incrementallyUpdateGraph');
+    expect(source).not.toContain('function refreshLocalStarReexporters');
+    expect(source).not.toContain('function fakeFilesFromGraph');
+    expect(source).not.toContain('function rebuildIndexesIntoGraph');
+
+    const incremental = await fs.readFile(
+      path.join(process.cwd(), 'src/core/codeGraphIncremental.ts'),
+      'utf-8',
+    );
+    const adapterContexts = await fs.readFile(
+      path.join(process.cwd(), 'src/core/codeGraphAdapterContexts.ts'),
+      'utf-8',
+    );
+
+    expect(incremental).toContain('export async function incrementallyUpdateGraph');
+    expect(incremental).toContain('function refreshLocalStarReexporters');
+    expect(incremental).toContain('function fakeFilesFromGraph');
+    expect(incremental).toContain('function rebuildIndexesIntoGraph');
+    expect(incremental).not.toContain("from './codeGraph.js'");
+    expect(adapterContexts).toContain('export async function prepareAdapterContexts');
+    expect(adapterContexts).not.toContain("from './codeGraph.js'");
+  });
+
   it('keeps public query helpers isolated from the graph orchestrator', async () => {
     const source = await fs.readFile(path.join(process.cwd(), 'src/core/codeGraph.ts'), 'utf-8');
 

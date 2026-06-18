@@ -10415,3 +10415,53 @@ release-scale inputs.
 
 Kept change: one focused preflight reason helper, one architecture guard, this
 persona note, and no release action in this slice.
+
+## Two Hundred Nineteenth Slice Decision
+
+Selected personas: Agent-Orchestrating Senior Engineer, Platform And Release
+Owner, and OSS Maintainer Evaluating MCP Adoption.
+
+Reason: code graph construction is a shared substrate for review, impact,
+dataflow, file inspection, and MCP tools. `src/core/codeGraph.ts` remained a
+high-churn public facade while still owning watch-mode incremental update
+internals. That mixed two reviewer concerns: stable public graph exports and the
+subtle manifest/root refresh ordering that keeps incremental updates correct.
+
+Smallest fix: move adapter context preparation into
+`src/core/codeGraphAdapterContexts.ts` and move incremental update internals into
+`src/core/codeGraphIncremental.ts`; keep `incrementallyUpdateGraph` re-exported
+from `src/core/codeGraph.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/codeGraph.test.ts
+npm run test -- tests/core/codeGraph.incremental.test.ts
+npm run test -- tests/core/codeGraph.fanIn.test.ts
+npm run test -- tests/core/codeGraph.fanOut.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/codeGraph.ts --format json
+npm exec projscan -- file src/core/codeGraphIncremental.ts --format json
+npm exec projscan -- file src/core/codeGraphAdapterContexts.ts --format json
+```
+
+## Review Guardrails: Code Graph Incremental Extraction
+
+Delete-list after this slice:
+
+- Do not change graph schemas, public `codeGraph.ts` exports, query helpers,
+  parse behavior, adapter package-root behavior, fan-in/fan-out semantics,
+  dependencies, lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/codeGraph.ts` inside the incremental or adapter
+  context helpers; the helpers must remain leaf-side of the public facade.
+- Do not broaden this into graph parser, query, fan metric, search, dataflow, or
+  impact refactors.
+
+Reviewer edge case: incremental updates must still reparse changed paths before
+preparing adapter contexts from the post-update graph view, so batched manifest
+and source changes keep package-root-aware import resolution correct.
+
+Kept change: one incremental graph helper, one adapter-context helper, one
+architecture guard, this persona note, and no release action in this slice.
