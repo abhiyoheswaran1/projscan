@@ -49,10 +49,7 @@ export async function scanRepository(
   } else {
     const gitBoundary = await listGitVisibleFiles(rootPath);
     if (gitBoundary) {
-      const visible = new Set(gitBoundary.files);
-      files = (await walkWithProjscanIgnores(rootPath, ignore)).filter((file) =>
-        visible.has(file.relativePath),
-      );
+      files = await fileEntriesFromGitVisibleFiles(rootPath, gitBoundary.files, ignore);
       scanBoundary = {
         source: 'git',
         gitignoreRespected: true,
@@ -103,6 +100,15 @@ function mergeIgnorePatterns(
 async function walkWithProjscanIgnores(rootPath: string, ignore?: string[]): Promise<FileEntry[]> {
   const patterns = ignore?.length ? [...getDefaultIgnorePatterns(), ...ignore] : undefined;
   return walkFiles(rootPath, patterns ? { ignore: patterns } : undefined);
+}
+
+async function fileEntriesFromGitVisibleFiles(
+  rootPath: string,
+  files: string[],
+  ignore?: string[],
+): Promise<FileEntry[]> {
+  const patterns = ignore?.length ? [...getDefaultIgnorePatterns(), ...ignore] : undefined;
+  return walkFiles(rootPath, patterns ? { ignore: patterns, paths: files } : { paths: files });
 }
 
 async function listGitVisibleFiles(

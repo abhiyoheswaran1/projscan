@@ -30,6 +30,18 @@ async function git(args: string[]): Promise<void> {
 }
 
 describe('scanRepository git privacy boundary', () => {
+  it('uses git-visible paths as the scanner input instead of walking ignored trees', async () => {
+    const source = await fs.readFile(
+      path.resolve(process.cwd(), 'src/core/repositoryScanner.ts'),
+      'utf-8',
+    );
+
+    expect(source).toContain(
+      'files = await fileEntriesFromGitVisibleFiles(rootPath, gitBoundary.files, ignore);',
+    );
+    expect(source).not.toContain('(await walkWithProjscanIgnores(rootPath, ignore)).filter');
+  });
+
   it('respects .gitignore by default while keeping tracked and untracked non-ignored files', async () => {
     await git(['init', '-q']);
     await write('.gitignore', '.env\nsecrets/\nignored.ts\n');

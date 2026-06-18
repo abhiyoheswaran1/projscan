@@ -5,6 +5,7 @@ import type { FileEntry } from '../types.js';
 export interface WalkOptions {
   ignore?: string[];
   extensions?: string[];
+  paths?: string[];
 }
 
 const DEFAULT_IGNORE = [
@@ -41,8 +42,11 @@ const DEFAULT_IGNORE = [
 export async function walkFiles(rootPath: string, options?: WalkOptions): Promise<FileEntry[]> {
   const ignore = options?.ignore ?? DEFAULT_IGNORE;
 
-  let pattern = '**/*';
-  if (options?.extensions?.length) {
+  let pattern: string | string[] = '**/*';
+  if (options?.paths) {
+    if (options.paths.length === 0) return [];
+    pattern = options.paths.map((filePath) => fg.escapePath(filePath));
+  } else if (options?.extensions?.length) {
     const exts = options.extensions.map((e) => e.replace(/^\./, ''));
     pattern = exts.length === 1 ? `**/*.${exts[0]}` : `**/*.{${exts.join(',')}}`;
   }

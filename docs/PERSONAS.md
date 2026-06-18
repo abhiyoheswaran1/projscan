@@ -12490,3 +12490,38 @@ domain test proves helper imports and no back-imports from the facade.
 
 Kept change: one test-file split, one organization regression, this persona
 note, and no release action in this slice.
+
+## Two Hundred Sixty Fourth Slice Decision
+
+Selected persona: Agent-Orchestrating Senior Engineer.
+
+Reason: repo orientation, bug-hunt, doctor, hotspots, and preflight all depend on
+fast local scans. A daily workflow that takes several seconds before it gives an
+engineer evidence will be skipped, even if the output is correct.
+
+Smallest fix: keep the existing walker and ignore rules, but feed it exact paths
+from `git ls-files` instead of globbing ignored trees and filtering afterward.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/repositoryScanner.gitignore.test.ts tests/utils/fileWalker.test.ts
+npm run bench
+```
+
+## Review Guardrails: Scanner Fast Path
+
+Delete-list after this slice:
+
+- Do not add a cache before the scanner path is measured again.
+- Do not add a new dependency for glob matching; `fast-glob` is already the
+  walker engine.
+- Do not change `includeIgnored`; it remains the explicit slow/full path.
+- Do not broaden this into analyzer graph memory work.
+
+Reviewer edge case: `.projscanrc` ignore rules still need to apply after git
+lists untracked visible files, so the path list must flow through the walker
+instead of bypassing ignore handling.
+
+Kept change: one walker option, one scanner branch replacement, one architecture
+guard, this persona note, and no release action in this slice.

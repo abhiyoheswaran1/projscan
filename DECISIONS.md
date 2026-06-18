@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Use git-visible paths as scanner input
+
+- Status: accepted
+- Context: Local benchmarks showed daily commands spending seconds in repository scans. The scanner already asked git for visible files, then still globbed the whole working tree and filtered afterward, which wasted work in repos with large ignored directories.
+- Decision: When git is available and ignored files are not explicitly included, pass the `git ls-files` result into the existing file walker as escaped exact paths. Keep `includeIgnored` on the existing glob path, and keep default plus `.projscanrc` ignore filtering inside the walker.
+- Consequences: Daily commands avoid walking ignored trees before filtering, while scan boundary metadata, file metadata, and explicit `includeIgnored` behavior stay stable. This does not redesign analyzer graph memory use.
+- Verification: Scanner regression coverage failed on the old glob-and-filter branch, then passed after the path-based git scan. Local benchmarks showed faster warm daily commands, including `doctor` and `hotspots`.
+
 ## 2026-06-18: Keep bug-hunt manual sign-off proof review-specific
 
 - Status: accepted
