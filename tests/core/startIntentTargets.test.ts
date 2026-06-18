@@ -52,6 +52,9 @@ describe('Mission Control intent target parsing', () => {
     );
     expect(extractSearchQuery('which role can access admin?')).toBe('admin role access');
     expect(extractSearchQuery('which CSS module styles Button?')).toBe('Button CSS module');
+    expect(extractSearchQuery('where is sidebar nav item for billing?')).toBe(
+      'billing sidebar nav item',
+    );
     expect(extractSearchQuery('where are the migrations?')).toBe('migrations');
   });
 

@@ -7,6 +7,7 @@ import { extractDataContractQuery } from './startIntentDataContractQueries.js';
 import { extractDomainWorkflowQuery } from './startIntentDomainWorkflowQueries.js';
 import { extractInfraArtifactQuery } from './startIntentInfraArtifactQueries.js';
 import { extractIntegrationQuery } from './startIntentIntegrationQueries.js';
+import { extractNavigationLayoutQuery } from './startIntentNavigationLayoutQueries.js';
 import { extractReliabilityQuery } from './startIntentReliabilityQueries.js';
 import { extractStateManagementQuery } from './startIntentStateManagementQueries.js';
 import { extractStyleSystemQuery } from './startIntentStyleSystemQueries.js';
@@ -551,32 +552,6 @@ function extractTestDataQuery(intent: string): string | undefined {
     /\b(?:find|locate|search(?:\s+for)?|lookup|where\s+(?:are|is))\s+(?:the\s+)?(?:factories?|factory)\s+(?:for|of)\s+(.+?)$/i,
   );
   if (factoryLookup?.[1]) return `${unwrapTarget(factoryLookup[1].trim())} factory`;
-  return undefined;
-}
-
-function extractNavigationLayoutQuery(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!.\s]+$/g, '');
-
-  const sidebarNav = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?(?:sidebar\s+)?(?:nav|navigation|menu)\s+items?\s+(?:for|of|on|in)\s+(.+?)$/i,
-  );
-  if (sidebarNav?.[1]) return `${unwrapTarget(sidebarNav[1].trim())} sidebar nav item`;
-
-  const breadcrumb = compactIntent.match(
-    /\b(?:which|what)\s+breadcrumbs?\s+(?:renders?|shows?|for|of)\s+(.+?)$/i,
-  );
-  if (breadcrumb?.[1]) return `${unwrapTarget(breadcrumb[1].trim())} breadcrumb`;
-
-  const pageTitle = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?page\s+(?:title|metadata|meta)\s+(?:set|sets|defined|configured)\s+(?:for|of|on|in)\s+(.+?)$/i,
-  );
-  if (pageTitle?.[1]) return `${unwrapTarget(pageTitle[1].trim())} page title`;
-
-  const nextLayout = compactIntent.match(
-    /\b(?:where\s+(?:is|are)|find|locate|search(?:\s+for)?|lookup)\s+(?:the\s+)?next(?:\.js|js)?\s+layouts?\s+(?:for|of|on|in)\s+(.+?)$/i,
-  );
-  if (nextLayout?.[1]) return `${unwrapTarget(nextLayout[1].trim())} Next.js layout`;
-
   return undefined;
 }
 

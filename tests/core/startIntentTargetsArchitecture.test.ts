@@ -301,4 +301,26 @@ describe('Mission Control intent target architecture', () => {
     expect(styleSource).toContain('export function extractStyleSystemQuery');
     expect(styleSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps navigation layout search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const navigationPath = path.join(
+      process.cwd(),
+      'src/core/startIntentNavigationLayoutQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractNavigationLayoutQuery } from './startIntentNavigationLayoutQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractNavigationLayoutQuery');
+    expect(targetSource).not.toContain('Next.js layout');
+
+    expect(existsSync(navigationPath)).toBe(true);
+    const navigationSource = readFileSync(navigationPath, 'utf8');
+    expect(navigationSource).toContain('export function extractNavigationLayoutQuery');
+    expect(navigationSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
