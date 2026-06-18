@@ -6,6 +6,7 @@ import {
   regressionFailureContextMatches,
   regressionFlakeContextMatches,
   regressionLocalSetupContextMatches,
+  regressionPackageManagerWarningContextMatches,
   regressionPerformanceContextMatches,
 } from './intentRouterRegressionSignals.js';
 import { packageScriptDiscoveryContextMatches } from './intentRouterRepoSignals.js';
@@ -70,7 +71,16 @@ export function regressionKeywordMatches(
     !harnessProofContextMatches(tokens)
   )
     return false;
-  if (packageScriptDiscoveryContextMatches(tokens)) return false;
+  if (
+    packageScriptDiscoveryContextMatches(tokens) &&
+    !regressionPackageManagerWarningContextMatches(tokens)
+  )
+    return false;
+  if (
+    ['warn', 'warning', 'warnings', 'allow', 'approve'].includes(keyword) &&
+    !regressionPackageManagerWarningContextMatches(tokens)
+  )
+    return false;
   if (
     [
       'port',
@@ -100,6 +110,9 @@ export function regressionKeywordMatches(
       'trace',
       'error',
       'errors',
+      'warn',
+      'warning',
+      'warnings',
       'failure',
       'failures',
       'production',

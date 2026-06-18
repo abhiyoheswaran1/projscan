@@ -73,6 +73,30 @@ test('start report turns read-first orientation questions into repo understandin
   expect(
     npmScripts.missionControl.alternatives?.find((route) => route.tool === 'projscan_outdated'),
   ).toBeUndefined();
+  expect(
+    npmScripts.missionControl.alternatives?.find(
+      (route) => route.tool === 'projscan_regression_plan',
+    ),
+  ).toBeUndefined();
+
+  const installWarning = await computeStartReport(root, {
+    intent: 'npm install -g projscan printed allow-scripts warnings',
+  });
+  expect(installWarning.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan regression-plan --level focused --format json',
+      tool: 'projscan_regression_plan',
+      args: { level: 'focused' },
+    }),
+  );
+  expect(installWarning.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Regression',
+      tool: 'projscan_regression_plan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['install', 'warnings']),
+    }),
+  );
 
   const e2eScript = await computeStartReport(root, {
     intent: 'which script runs e2e tests',

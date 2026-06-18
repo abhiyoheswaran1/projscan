@@ -197,6 +197,17 @@ describe('routeIntent regression and security routing', () => {
       }),
     );
 
+    const installWarning = routeIntent('npm install -g projscan printed allow-scripts warnings');
+    expect(installWarning.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Regression',
+        tool: 'projscan_regression_plan',
+        cli: 'projscan regression-plan',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['install', 'warnings']),
+      }),
+    );
+
     expect(routeIntent('debug this stack trace').matches[0]).toEqual(
       expect.objectContaining({
         tool: 'projscan_regression_plan',

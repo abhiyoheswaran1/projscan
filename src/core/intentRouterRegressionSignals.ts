@@ -64,6 +64,7 @@ export function regressionFailureContextMatches(tokens: Set<string>): boolean {
   const logFailureSignal =
     (tokens.has('log') || tokens.has('logs')) &&
     (failureSignal || outageSignal || statusCodeSignal);
+  const packageManagerWarningSignal = regressionPackageManagerWarningContextMatches(tokens);
   return (
     failureSignal ||
     statusCodeSignal ||
@@ -75,7 +76,8 @@ export function regressionFailureContextMatches(tokens: Set<string>): boolean {
     debugSignal ||
     rootCauseSignal ||
     returningStatusSignal ||
-    logFailureSignal
+    logFailureSignal ||
+    packageManagerWarningSignal
   );
 }
 
@@ -95,6 +97,17 @@ export function regressionLocalSetupContextMatches(tokens: Set<string>): boolean
         tokens.has(token),
       ));
   return portSignal || permissionSignal || packageManagerSignal;
+}
+
+export function regressionPackageManagerWarningContextMatches(tokens: Set<string>): boolean {
+  const warningSignal =
+    ['warn', 'warning', 'warnings'].some((token) => tokens.has(token)) ||
+    (tokens.has('allow') && tokens.has('scripts')) ||
+    (tokens.has('approve') && tokens.has('scripts'));
+  if (!warningSignal) return false;
+  return ['install', 'npm', 'pnpm', 'yarn', 'package', 'packages', 'dependency', 'dependencies'].some(
+    (token) => tokens.has(token),
+  );
 }
 
 export function regressionCiPlatformContextMatches(tokens: Set<string>): boolean {

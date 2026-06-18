@@ -904,6 +904,11 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     return 2;
   if (
     entry.tool === 'projscan_regression_plan' &&
+    ['warn', 'warning', 'warnings', 'allow', 'approve'].includes(keyword)
+  )
+    return 4;
+  if (
+    entry.tool === 'projscan_regression_plan' &&
     [
       'port',
       'ports',
@@ -940,6 +945,9 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
       'failed',
       'error',
       'errors',
+      'warn',
+      'warning',
+      'warnings',
       'failure',
       'failures',
       'debug',
