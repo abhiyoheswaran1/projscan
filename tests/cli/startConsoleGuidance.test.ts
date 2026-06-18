@@ -88,6 +88,15 @@ test('start console surfaces AgentFlight verification guidance when present', as
   );
 });
 
+test('start console omits duplicate action plan when ready actions match it', async () => {
+  const result = await runCli(['start', '--intent', 'prepare this branch for handoff', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Ready Now');
+  expect(result.stdout).toContain('projscan agent-brief --intent next_agent --format json');
+  expect(result.stdout).not.toContain('\nAction Plan\n');
+});
+
 test('start console labels healthy p2-only risks as a watch list', () => {
   expect(
     startRiskSectionTitle(

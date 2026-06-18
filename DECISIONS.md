@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Hide duplicate start console action plans
+
+- Status: accepted
+- Context: The normal `projscan start` console printed the same simple routed command in Mission Control, `Action Plan`, and `Ready Now`. That made handoff and first-run output feel broader than the daily workflow actually required.
+- Decision: When `missionControl.actionPlan` and `missionControl.readyActions` contain the same visible actions, print only `Ready Now` in the normal console. Keep `Action Plan` when it has extra or different steps, and keep the JSON fields unchanged.
+- Consequences: Human console output has one less duplicate section for common single-step routes, while MCP/JSON clients, saved mission bundles, proof queues, and routing behavior stay stable.
+- Verification: A CLI regression failed while duplicate `Action Plan` was printed, then passed after the console-only guard. Existing start console and JSON orientation tests stayed green.
+
 ## 2026-06-18: Use git-visible paths as scanner input
 
 - Status: accepted

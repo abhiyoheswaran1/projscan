@@ -190,9 +190,29 @@ function printMissionRoute(report: StartReport): void {
 }
 
 function printMissionActionSections(report: StartReport): void {
-  printActionCommands('Action Plan', report.missionControl.actionPlan, 4);
-  printActionCommands('Ready Now', report.missionControl.readyActions, 4);
+  const { actionPlan, readyActions } = report.missionControl;
+  if (!sameConsoleActions(actionPlan, readyActions)) {
+    printActionCommands('Action Plan', actionPlan, 4);
+  }
+  printActionCommands('Ready Now', readyActions, 4);
   printUnresolvedInputs(report);
+}
+
+function sameConsoleActions(
+  left: StartReport['missionControl']['actionPlan'],
+  right: StartReport['missionControl']['readyActions'],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((action, index) => {
+      const other = right[index];
+      return (
+        action.label === other?.label &&
+        action.command === other.command &&
+        action.tool === other.tool
+      );
+    })
+  );
 }
 
 function printActionCommands(

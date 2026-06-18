@@ -12525,3 +12525,42 @@ instead of bypassing ignore handling.
 
 Kept change: one walker option, one scanner branch replacement, one architecture
 guard, this persona note, and no release action in this slice.
+
+## Two Hundred Sixty Fifth Slice Decision
+
+Selected persona: Agent-Orchestrating Senior Engineer.
+
+Reason: the normal `projscan start` console is the first screen an engineer or
+agent sees before edits and handoffs. Repeating the same routed command under
+multiple section titles makes the output feel like feature breadth instead of a
+clear daily workflow.
+
+Smallest fix: when `Action Plan` and `Ready Now` contain the same visible
+actions, print only `Ready Now` in the normal console. Leave JSON, routing,
+proof queues, and saved mission bundles alone.
+
+Proof commands:
+
+```bash
+npm run test -- tests/cli/startConsoleGuidance.test.ts tests/cli/start.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Start Console Noise Reduction
+
+Delete-list after this slice:
+
+- Do not redesign Mission Control or the execution plan.
+- Do not remove `actionPlan` or `readyActions` from JSON.
+- Do not hide `Ready Now`; it is the daily command the engineer needs.
+- Do not add another console section to explain the removed duplicate.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: if the action plan has extra or different actions from the
+ready actions, the console should still print both sections.
+
+Kept change: one console guard, one CLI regression, this persona note, and no
+release action in this slice.
