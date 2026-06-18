@@ -213,4 +213,26 @@ describe('Mission Control intent target architecture', () => {
     expect(toolingSource).toContain('export function extractToolingConfigQuery');
     expect(toolingSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps domain workflow search query parsing in a focused helper', () => {
+    const targetSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
+      'utf8',
+    );
+    const domainPath = path.join(
+      process.cwd(),
+      'src/core/startIntentDomainWorkflowQueries.ts',
+    );
+
+    expect(targetSource).toContain(
+      "import { extractDomainWorkflowQuery } from './startIntentDomainWorkflowQueries.js';",
+    );
+    expect(targetSource).not.toContain('function extractDomainWorkflowQuery');
+    expect(targetSource).not.toContain('subscription\\s+renewal');
+
+    expect(existsSync(domainPath)).toBe(true);
+    const domainSource = readFileSync(domainPath, 'utf8');
+    expect(domainSource).toContain('export function extractDomainWorkflowQuery');
+    expect(domainSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
