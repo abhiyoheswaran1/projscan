@@ -1,37 +1,34 @@
+interface PackageTargetPattern {
+  pattern: RegExp;
+  skip?: (target: string, intent: string) => boolean;
+}
+
+const PACKAGE_TARGET_PATTERNS: PackageTargetPattern[] = [
+  { pattern: /[`'"](@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)[`'"]/ },
+  {
+    pattern:
+      /\b(?:bump|upgrade|update|remove|drop|uninstall)\s+(?:the\s+)?(?:(?:package|dependency)\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
+    skip: isPythonUpgradeCoverageTopic,
+  },
+  {
+    pattern:
+      /\b(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)\s+(?:safe\s+to\s+)?(?:remove|drop|uninstall)\b/i,
+  },
+  {
+    pattern:
+      /\b(?:package|dependency)\s+(?:named\s+|called\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
+  },
+];
+
 export function extractPackageTarget(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const wrapped = compactIntent.match(/[`'"](@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)[`'"]/);
-  if (wrapped?.[1] && isPackageNameTarget(wrapped[1])) return normalizePackageName(wrapped[1]);
-
-  const actionMatch = compactIntent.match(
-    /\b(?:bump|upgrade|update|remove|drop|uninstall)\s+(?:the\s+)?(?:(?:package|dependency)\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
-  );
-  if (
-    actionMatch?.[1] &&
-    !isPythonUpgradeCoverageTopic(actionMatch[1], compactIntent) &&
-    isPackageNameTarget(actionMatch[1])
-  )
-    return normalizePackageName(actionMatch[1]);
-
-  const removalSubject = compactIntent.match(
-    /\b(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)\s+(?:safe\s+to\s+)?(?:remove|drop|uninstall)\b/i,
-  );
-  if (removalSubject?.[1] && isPackageNameTarget(removalSubject[1]))
-    return normalizePackageName(removalSubject[1]);
-
-  const labeled = compactIntent.match(
-    /\b(?:package|dependency)\s+(?:named\s+|called\s+)?(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)(?=\s|$)/i,
-  );
-  if (labeled?.[1] && isPackageNameTarget(labeled[1])) return normalizePackageName(labeled[1]);
-
-  return undefined;
+  return firstPackageTarget(compactIntentTargetText(intent), PACKAGE_TARGET_PATTERNS);
 }
 
 export function extractAuditPackageTarget(intent: string): string | undefined {
   const packageName = extractPackageTarget(intent);
   if (packageName) return packageName;
 
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
+  const compactIntent = compactIntentTargetText(intent);
   const subject = compactIntent.match(
     /\b(?:does|is|can)\s+(@?[A-Za-z0-9][\w.-]*(?:\/[A-Za-z0-9][\w.-]*)?)\s+(?:have|has|contain|contains|affected|vulnerable|secure|safe)\b/i,
   );
@@ -42,6 +39,22 @@ export function extractAuditPackageTarget(intent: string): string | undefined {
   );
   if (command?.[1] && isPackageNameTarget(command[1])) return normalizePackageName(command[1]);
 
+  return undefined;
+}
+
+function compactIntentTargetText(intent: string): string {
+  return intent.trim().replace(/[?!\s]+$/g, '');
+}
+
+function firstPackageTarget(
+  compactIntent: string,
+  patterns: PackageTargetPattern[],
+): string | undefined {
+  for (const { pattern, skip } of patterns) {
+    const target = compactIntent.match(pattern)?.[1];
+    if (!target || skip?.(target, compactIntent) || !isPackageNameTarget(target)) continue;
+    return normalizePackageName(target);
+  }
   return undefined;
 }
 

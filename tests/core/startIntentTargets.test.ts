@@ -89,6 +89,14 @@ describe('Mission Control intent target parsing', () => {
     expect(extractClaimAgent('claim src/core/start.ts for me')).toBeUndefined();
   });
 
+  it('keeps package target extraction patterns stable', () => {
+    expect(extractPackageTarget('update "React"')).toBe('react');
+    expect(extractPackageTarget('remove package lodash')).toBe('lodash');
+    expect(extractPackageTarget('lodash safe to remove')).toBe('lodash');
+    expect(extractPackageTarget('dependency named @scope/pkg')).toBe('@scope/pkg');
+    expect(extractPackageTarget('upgrade coverage for python requirements')).toBeUndefined();
+  });
+
   it('builds graph queries and shell-safe command arguments', () => {
     const query = graphQueryFromIntent('who imports src/core/start.ts');
 
