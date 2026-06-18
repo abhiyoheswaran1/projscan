@@ -42,9 +42,14 @@ describe('plugin runtime maintainability', () => {
 
   it('keeps analyzer issue shape validation out of the plugin runtime hotspot', async () => {
     const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
-    expect(runtimeSource).toContain("from './pluginIssueValidation.js'");
     expect(runtimeSource).not.toContain('function isWellShapedIssue');
     expect(runtimeSource).not.toContain('function isSeverity');
+
+    const analyzerRunningSource = readFileSync(
+      path.join(process.cwd(), 'src/core/pluginAnalyzerRunning.ts'),
+      'utf8',
+    );
+    expect(analyzerRunningSource).toContain("from './pluginIssueValidation.js'");
 
     const inspection = await inspectRepoSourceFile('src/core/pluginIssueValidation.ts');
     const validateIssue = inspection.functions?.find((fn) => fn.name === 'isWellShapedIssue');
@@ -97,6 +102,29 @@ describe('plugin runtime maintainability', () => {
     expect(analyzerSource).not.toContain("from './plugins.js'");
     expect(loadAnalyzerEntry).toBeDefined();
     expect(loadAnalyzerEntry!.cyclomaticComplexity).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps analyzer plugin execution out of the plugin runtime hotspot', async () => {
+    const runtimeSource = readFileSync(path.join(process.cwd(), 'src/core/plugins.ts'), 'utf8');
+    expect(runtimeSource).toContain("from './pluginAnalyzerRunning.js'");
+    expect(runtimeSource).toContain('export { runAnalyzerPlugins }');
+    expect(runtimeSource).not.toContain('export async function runAnalyzerPlugins');
+    expect(runtimeSource).not.toContain('threw during check');
+    expect(runtimeSource).not.toContain('isWellShapedIssue(issue)');
+    expect(runtimeSource).not.toContain('id: `plugin:${p.manifest.name}:${issue.id}`');
+
+    const inspection = await inspectRepoSourceFile('src/core/pluginAnalyzerRunning.ts');
+    const runningSource = readFileSync(
+      path.join(process.cwd(), 'src/core/pluginAnalyzerRunning.ts'),
+      'utf8',
+    );
+    const runAnalyzerPlugins = inspection.functions?.find(
+      (fn) => fn.name === 'runAnalyzerPlugins',
+    );
+
+    expect(runningSource).not.toContain("from './plugins.js'");
+    expect(runAnalyzerPlugins).toBeDefined();
+    expect(runAnalyzerPlugins!.cyclomaticComplexity).toBeLessThanOrEqual(8);
   });
 
   it('keeps reporter plugin loading and rendering out of the plugin runtime hotspot', async () => {

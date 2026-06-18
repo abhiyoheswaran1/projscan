@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract analyzer plugin execution helper
+
+- Status: accepted
+- Context: `src/core/plugins.ts` remained a high-churn plugin hotspot and still owned analyzer plugin execution, malformed issue filtering, exception reporting, and plugin issue id/category stamping inside the public plugin facade.
+- Decision: Move analyzer plugin execution into `src/core/pluginAnalyzerRunning.ts`, while re-exporting `runAnalyzerPlugins` from `src/core/plugins.ts`.
+- Consequences: Public plugin imports stay unchanged. Analyzer execution still isolates thrown plugin checks, drops malformed issue output, prefixes issue ids with `plugin:<name>:`, and falls back to the manifest category when a plugin emits an empty category. `src/core/plugins.ts` drops to a smaller facade.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. Focused plugin behavior checks passed, and focused `projscan file` checks showed no issues in `src/core/plugins.ts` or `src/core/pluginAnalyzerRunning.ts`.
+
 ## 2026-06-18: Extract code graph incremental update helper
 
 - Status: accepted

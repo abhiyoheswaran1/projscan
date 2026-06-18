@@ -10465,3 +10465,51 @@ and source changes keep package-root-aware import resolution correct.
 
 Kept change: one incremental graph helper, one adapter-context helper, one
 architecture guard, this persona note, and no release action in this slice.
+
+## Two Hundred Twentieth Slice Decision
+
+Selected personas: Security-Conscious Reviewer, Platform And Release Owner, and
+OSS Maintainer Evaluating MCP Adoption.
+
+Reason: local analyzer plugins are an explicit trust-boundary feature. The
+public plugin facade had already shed manifest validation, manifest discovery,
+module loading, analyzer loading, and reporter runtime work, but still owned
+execution-time issue filtering, crash isolation, and issue id/category stamping.
+Those are review-sensitive behaviors because malformed or crashing plugin code
+must not poison the scan pipeline.
+
+Smallest fix: move analyzer execution into
+`src/core/pluginAnalyzerRunning.ts`; keep `runAnalyzerPlugins` re-exported from
+`src/core/plugins.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/pluginArchitecture.test.ts
+npm run test -- tests/core/plugins.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/plugins.ts --format json
+npm exec projscan -- file src/core/pluginAnalyzerRunning.ts --format json
+```
+
+## Review Guardrails: Analyzer Plugin Execution Extraction
+
+Delete-list after this slice:
+
+- Do not change plugin preview gating, trust behavior, manifest schema,
+  analyzer loading, reporter loading/rendering, malformed issue filtering,
+  exception isolation, issue id prefixing, category fallback, dependencies,
+  lockfiles, publish behavior, push behavior, tags, or releases.
+- Do not import from `src/core/plugins.ts` inside the analyzer-running helper;
+  the helper must remain leaf-side of the public plugin facade.
+- Do not broaden this into reporter plugins, manifest validation, plugin trust,
+  plugin CLI, MCP plugin tooling, or plugin authoring docs.
+
+Reviewer edge case: if one analyzer throws, the remaining analyzer plugins
+should still run; if a plugin emits malformed issues, only well-shaped issues
+should survive and receive the same prefixed ids.
+
+Kept change: one analyzer execution helper, one architecture guard, this persona
+note, and no release action in this slice.
