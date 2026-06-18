@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Extract Python pyproject evidence helper
+
+- Status: accepted
+- Context: `src/core/languages/pythonManifests.ts` remained a Python evidence hotspot and still owned `pyproject.toml` filesystem reads plus pyproject evidence assembly while parsing and package-root extraction already lived in focused helpers.
+- Decision: Move `pyproject.toml` read/evidence assembly into `src/core/languages/pythonPyprojectEvidence.ts`, while keeping `detectPythonProject` behavior and parser re-exports available from `src/core/languages/pythonManifests.ts`.
+- Consequences: Pyproject manifest reporting, declared dependency extraction, pyproject package-root inference, requirements, constraints, setuptools, lockfile handling, and public imports stay unchanged. The manifest facade no longer imports `fs`/`path` for pyproject IO and drops to lower complexity.
+- Verification: Architecture guard failed before helper extraction and passed after extraction. AgentLoop task verification passed for the Python manifest architecture test, Python project detection tests, upgrade-preview pyproject/constraints/requirements tests, typecheck, lint, build, and focused `projscan file` checks. Post-slice bug pass found no concrete new defects; only the known release-scale manual sign-off remained.
+
 ## 2026-06-18: Extract analyzer plugin loading helper
 
 - Status: accepted

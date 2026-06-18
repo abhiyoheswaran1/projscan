@@ -158,6 +158,39 @@ describe('python manifest maintainability', () => {
     expect(parsePyproject!.cyclomaticComplexity).toBeLessThanOrEqual(10);
   });
 
+  it('keeps pyproject filesystem evidence reading out of the manifest detector', async () => {
+    const manifestSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),
+      'utf8',
+    );
+    expect(manifestSource).toContain("from './pythonPyprojectEvidence.js'");
+    expect(manifestSource).not.toContain("from 'node:fs/promises'");
+    expect(manifestSource).not.toContain("from 'node:path'");
+    expect(manifestSource).not.toContain('function tryRead');
+    expect(manifestSource).not.toContain("path.join(rootPath, 'pyproject.toml')");
+    expect(manifestSource).not.toContain('parsePyproject(pyprojectContent)');
+    expect(manifestSource).not.toContain('extractPyprojectRoots(pyprojectContent)');
+
+    const pyprojectEvidenceSource = readFileSync(
+      path.join(process.cwd(), 'src/core/languages/pythonPyprojectEvidence.ts'),
+      'utf8',
+    );
+    expect(pyprojectEvidenceSource).not.toContain("from './pythonManifests.js'");
+
+    const evidenceInspection = await inspectRepoSourceFile(
+      'src/core/languages/pythonPyprojectEvidence.ts',
+    );
+    const readPyprojectEvidence = evidenceInspection.functions?.find(
+      (fn) => fn.name === 'readPyprojectEvidence',
+    );
+    const tryRead = evidenceInspection.functions?.find((fn) => fn.name === 'tryRead');
+
+    expect(readPyprojectEvidence).toBeDefined();
+    expect(readPyprojectEvidence!.cyclomaticComplexity).toBeLessThanOrEqual(3);
+    expect(tryRead).toBeDefined();
+    expect(tryRead!.cyclomaticComplexity).toBeLessThanOrEqual(2);
+  });
+
   it('keeps setuptools manifest parsing out of the manifest detector', async () => {
     const manifestSource = readFileSync(
       path.join(process.cwd(), 'src/core/languages/pythonManifests.ts'),

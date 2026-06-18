@@ -10311,3 +10311,55 @@ orientation payload.
 
 Kept change: one focused start option-registration helper, one architecture
 guard, this persona note, and no release action in this slice.
+
+## Two Hundred Seventeenth Slice Decision
+
+Selected personas: Platform And Release Owner, OSS Maintainer Evaluating MCP
+Adoption, and Security-Conscious Reviewer.
+
+Reason: Python upgrade and dependency evidence is useful only when reviewers can
+trust which local manifests were read. `src/core/languages/pythonManifests.ts`
+still owned pyproject file IO and evidence assembly while parsing and root
+extraction were already isolated, keeping a high-churn public manifest facade
+responsible for one more filesystem concern.
+
+Smallest fix: move `pyproject.toml` read/evidence assembly into
+`src/core/languages/pythonPyprojectEvidence.ts`; keep
+`detectPythonProject(...)` and all parser re-exports available from
+`src/core/languages/pythonManifests.ts`.
+
+Proof commands:
+
+```bash
+npm run test -- tests/core/languages/pythonManifestArchitecture.test.ts
+npm run test -- tests/core/languages/pythonProjectDetection.test.ts
+npm run test -- tests/core/upgradePreview.test.ts -t "pyproject|constraints|requirements"
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- file src/core/languages/pythonManifests.ts --format json
+npm exec projscan -- file src/core/languages/pythonPyprojectEvidence.ts --format json
+```
+
+## Review Guardrails: Python Pyproject Evidence Extraction
+
+Delete-list after this slice:
+
+- Do not change pyproject parsing, requirements parsing, setuptools parsing,
+  lockfile parsing, manifest detection rules, dependency scopes, public
+  re-exports, dependencies, lockfiles, publish behavior, push behavior, tags, or
+  releases.
+- Do not import from `src/core/languages/pythonManifests.ts` inside the
+  pyproject evidence helper; the helper must remain leaf-side of the facade.
+- Do not broaden Python upgrade-preview behavior or read files outside the
+  existing local scan/root evidence model.
+
+Reviewer edge case: missing `pyproject.toml` should still produce no pyproject
+evidence without throwing, present `pyproject.toml` should still add
+`pyproject.toml` to `manifestFiles`, declared dependencies should still come
+from `parsePyproject`, and package roots should still use
+`extractPyprojectRoots` before falling back to `__init__.py` inference and repo
+root.
+
+Kept change: one focused pyproject evidence helper, one architecture guard, this
+persona note, and no release action in this slice.

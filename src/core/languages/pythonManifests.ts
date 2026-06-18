@@ -1,12 +1,10 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import type { FileEntry } from '../../types.js';
 import { parsePythonLockfile, readPythonLockfiles } from './pythonLockfiles.js';
-import { parsePyproject } from './pythonPyproject.js';
+import { readPyprojectEvidence } from './pythonPyprojectEvidence.js';
 import { hasPythonProjectEvidence } from './pythonProjectEvidence.js';
 import type { PythonDeclaredDep, PythonLockedDep, PythonProjectInfo } from './pythonProjectTypes.js';
 import { readRootRequirementEvidence } from './pythonRequirements.js';
-import { extractPyprojectRoots, inferRootsFromInitFiles } from './pythonRoots.js';
+import { inferRootsFromInitFiles } from './pythonRoots.js';
 import { readSetuptoolsEvidence } from './pythonSetuptools.js';
 
 export {
@@ -38,13 +36,10 @@ export async function detectPythonProject(
   const declared: PythonDeclaredDep[] = [];
   const locked: PythonLockedDep[] = [];
 
-  const pyprojectPath = path.join(rootPath, 'pyproject.toml');
-  const pyprojectContent = await tryRead(pyprojectPath);
-  if (pyprojectContent !== null) {
-    manifestFiles.push('pyproject.toml');
-    declared.push(...parsePyproject(pyprojectContent));
-    roots.push(...extractPyprojectRoots(pyprojectContent));
-  }
+  const pyprojectEvidence = await readPyprojectEvidence(rootPath);
+  manifestFiles.push(...pyprojectEvidence.manifestFiles);
+  declared.push(...pyprojectEvidence.declared);
+  roots.push(...pyprojectEvidence.roots);
 
   const setuptoolsEvidence = await readSetuptoolsEvidence(rootPath);
   manifestFiles.push(...setuptoolsEvidence.manifestFiles);
@@ -78,14 +73,6 @@ export async function detectPythonProject(
     locked,
     hasLockfile,
   };
-}
-
-async function tryRead(absolutePath: string): Promise<string | null> {
-  try {
-    return await fs.readFile(absolutePath, 'utf-8');
-  } catch {
-    return null;
-  }
 }
 
 function dedupe(arr: string[]): string[] {
