@@ -88,6 +88,33 @@ test('bug_hunt workplan includes evidence, verification, and short handoff text 
   }
 });
 
+test('bug_hunt workplan suggested actions use commands that match their tools', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeWorkplan(root, { mode: 'bug_hunt', maxTasks: 1 });
+  const fileAction = report.suggestedNextActions.find((action) => action.tool === 'projscan_file');
+
+  expect(report.suggestedNextActions).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Use projscan_hotspots for Hunt bugs in the highest-risk files',
+        tool: 'projscan_hotspots',
+        command: 'projscan hotspots --format json',
+      }),
+      expect.objectContaining({
+        label: 'Use projscan_file for Hunt bugs in the highest-risk files',
+        tool: 'projscan_file',
+      }),
+      expect.objectContaining({
+        label: 'Use projscan_doctor for Hunt bugs in the highest-risk files',
+        tool: 'projscan_doctor',
+        command: 'projscan doctor --format json',
+      }),
+    ]),
+  );
+  expect(fileAction?.command).toBeUndefined();
+});
+
 test('release workplan includes release check, registry, and website follow-up tasks without mutating version', async () => {
   const root = await makeTempProject();
 

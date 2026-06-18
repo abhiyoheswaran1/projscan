@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Keep workplan suggested commands tool-specific
+
+- Status: accepted
+- Context: `projscan workplan --mode bug_hunt` could label suggested actions as `projscan_file` or `projscan_doctor` while reusing the first task verification command, such as `projscan hotspots --format json`. That made suggested next actions look exact while pointing at the wrong tool.
+- Decision: Match each `projscan_*` suggested action to a verification command with the same CLI command prefix. Keep a concrete `projscan file "<path>" --format json` command only when the task has a file path, and omit `command` rather than attach an unrelated fallback when no matching command exists.
+- Consequences: Workplan suggested actions remain compact, but they stop inventing false precision. Non-`projscan_*` suggested tools keep the existing first-command fallback.
+- Verification: A bug-hunt workplan regression failed on the old repeated `projscan hotspots` command and passed after tool-specific command selection.
+
 ## 2026-06-18: Route improve-next trust prompts to planning
 
 - Status: accepted

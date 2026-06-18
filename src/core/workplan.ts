@@ -702,11 +702,23 @@ function summarizeWorkplan(
 }
 
 function taskToSuggestedActions(task: WorkplanTask): PreflightSuggestedAction[] {
-  return task.suggestedTools.slice(0, 3).map((tool) => ({
-    label: `Use ${tool} for ${task.title}`,
-    tool: tool.startsWith('projscan_') ? tool : undefined,
-    command: task.verification.commands[0],
-  }));
+  return task.suggestedTools.slice(0, 3).map((tool) => {
+    const command = commandForSuggestedTool(tool, task);
+    return {
+      label: `Use ${tool} for ${task.title}`,
+      tool: tool.startsWith('projscan_') ? tool : undefined,
+      ...(command ? { command } : {}),
+    };
+  });
+}
+
+function commandForSuggestedTool(tool: string, task: WorkplanTask): string | undefined {
+  if (!tool.startsWith('projscan_')) return task.verification.commands[0];
+  if (tool === 'projscan_file' && task.files[0]) {
+    return `projscan file ${JSON.stringify(task.files[0])} --format json`;
+  }
+  const prefix = `projscan ${tool.slice('projscan_'.length).replace(/_/g, '-')}`;
+  return task.verification.commands.find((command) => command.startsWith(prefix));
 }
 
 function dedupeActions(actions: PreflightSuggestedAction[]): PreflightSuggestedAction[] {
