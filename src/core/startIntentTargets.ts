@@ -1,6 +1,7 @@
 import type { GraphQueryDirection } from './graphQuery.js';
 import { isPlaceholder, quoteShellArg } from './startShellArgs.js';
 import { isPackageNameTarget, normalizePackageName } from './startPackageTargets.js';
+import { extractSymbolTarget } from './startSymbolTargets.js';
 import { isGenericReferenceTarget, unwrapTarget } from './startIntentTargetText.js';
 import { extractApiContractQuery } from './startIntentApiContractQueries.js';
 import { extractAuthorizationQuery } from './startIntentAuthorizationQueries.js';
@@ -33,6 +34,7 @@ type QueryExtractor = (intent: string) => string | undefined;
 export { extractReportScopeTarget } from './startReportScopeTargets.js';
 export { extractAuditPackageTarget, extractPackageTarget } from './startPackageTargets.js';
 export { extractIssueIdTarget } from './startIssueTargets.js';
+export { isExactSymbolTarget } from './startSymbolTargets.js';
 export { escapeDoubleQuoted, isPlaceholder, quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';
 
 function firstQuery(intent: string, extractors: readonly QueryExtractor[]): string | undefined {
@@ -327,20 +329,6 @@ export function semanticGraphCommand(query: StartGraphQuery): string {
   return parts.join(' ');
 }
 
-function extractSymbolTarget(intent: string): string | undefined {
-  const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
-  const wrapped = compactIntent.match(/[`'"]([A-Za-z_$][\w$]*)[`'"]/);
-  if (wrapped?.[1]) return wrapped[1];
-  const definitionMatch = compactIntent.match(
-    /\bwhere\s+(?:is|are)\s+(?:the\s+)?([A-Za-z_$][\w$]*)\s+(?:defined|declared|implemented)\b/i,
-  );
-  if (definitionMatch?.[1] && isSymbolNameTarget(definitionMatch[1])) return definitionMatch[1];
-  const match = compactIntent.match(
-    /\b(?:symbol|function|class|const|type|interface)\s+([A-Za-z_$][\w$]*)\b/i,
-  );
-  return match?.[1] && isSymbolNameTarget(match[1]) ? match[1] : undefined;
-}
-
 function extractGraphPackageTarget(intent: string): string | undefined {
   const compactIntent = intent.trim().replace(/[?!\s]+$/g, '');
   const importMatch = compactIntent.match(
@@ -365,20 +353,6 @@ function extractGraphPackageTarget(intent: string): string | undefined {
   return undefined;
 }
 
-function isSymbolNameTarget(target: string): boolean {
-  return ![
-    'symbol',
-    'function',
-    'class',
-    'const',
-    'type',
-    'interface',
-    'defined',
-    'declared',
-    'implemented',
-  ].includes(target.toLowerCase());
-}
-
 function extractQuotedTextTarget(intent: string): string | undefined {
   const quoted = intent.match(/(["'`])(.{2,200}?)\1/);
   const target = quoted?.[2]?.trim();
@@ -390,8 +364,4 @@ export function isFilePathTarget(target: string): boolean {
     (target.includes('/') || target.startsWith('.') || /\.[A-Za-z0-9]{1,12}$/.test(target)) &&
     !/\s/.test(target)
   );
-}
-
-export function isExactSymbolTarget(target: string): boolean {
-  return /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?$/.test(target);
 }
