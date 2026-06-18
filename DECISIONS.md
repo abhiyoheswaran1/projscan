@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Ground roadmap positioning in daily workflows
+
+- Status: accepted
+- Context: The roadmap still led with broad market, substrate, and competitive-claim language after the product docs and start output had narrowed around three demonstrated daily workflows.
+- Decision: Rewrite the roadmap vision, strategic context, competitive framing, and strategy labels to lead with repeatable local proof for before-edit, before-handoff/commit, and release-candidate-review workflows.
+- Consequences: Historical release details stay intact, but future roadmap edits now have a docs regression that rejects selected overclaim phrases and requires the daily-workflow proof framing.
+- Verification: `tests/docs/startRoutingDocs.test.ts` failed before the roadmap carried the daily-workflow proof language and passed after the positioning update.
+
 ## 2026-06-18: Calibrate healthy start summary watch wording
 
 - Status: accepted

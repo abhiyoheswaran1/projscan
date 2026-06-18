@@ -11831,3 +11831,47 @@ continue to say `quality risk(s)`.
 Kept change: one verdict-aware summary label, one builder argument, focused
 policy regression tests, this persona note, and no release action in this
 slice.
+
+## Two Hundred Forty Ninth Slice Decision
+
+Selected personas: Agent-Orchestrating Engineer, Platform And Release Owner,
+OSS Maintainer, and Security-Conscious Reviewer.
+
+Reason: the roadmap still opened with broad market/substrate positioning even
+after the product had narrowed its strongest proof to three daily workflows.
+That made the docs sound larger than the demonstrated workflows and made the
+product easier to dismiss as generic AI tooling.
+
+Smallest fix: rewrite the roadmap vision, strategic context, competitive
+framing, and strategy labels so they lead with before-edit, before-handoff or
+commit, and release-candidate-review proof. Add a docs regression that requires
+the workflow proof sentence and rejects selected overclaim phrases.
+
+Proof commands:
+
+```bash
+npm run test -- tests/docs/startRoutingDocs.test.ts
+npm run typecheck
+npm run lint
+npm run build
+npm exec projscan -- start --intent "what should we improve next to make projscan more trustworthy for daily engineering workflows?" --format json
+npm exec projscan -- bug-hunt --format json
+```
+
+## Review Guardrails: Roadmap Proof Framing
+
+Delete-list after this slice:
+
+- Do not add new product commands, public schemas, dependencies, telemetry, or
+  release behavior for a docs-positioning problem.
+- Do not remove factual release history; reduce only the broad positioning
+  that is not tied to demonstrated daily workflows.
+- Do not replace concrete proof commands with generic productivity claims.
+- Do not publish, tag, release, deploy, push, merge, or bump the version.
+
+Reviewer edge case: the roadmap should still acknowledge MCP, multi-agent, and
+context-budget forces, but it must frame them as validation pressure for the
+daily workflows instead of proof that the product is already a broad platform.
+
+Kept change: one roadmap positioning rewrite, one docs regression guard, this
+persona note, and no release action in this slice.

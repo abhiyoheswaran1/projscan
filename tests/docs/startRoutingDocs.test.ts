@@ -50,6 +50,7 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
   const readme = fs.readFileSync('README.md', 'utf8');
   const guide = fs.readFileSync('docs/GUIDE.md', 'utf8');
   const adoption = fs.readFileSync('docs/examples/adoption-workflows.md', 'utf8');
+  const roadmap = fs.readFileSync('docs/ROADMAP.md', 'utf8');
 
   expect(readme).toContain('## Daily workflows engineers can trust');
   expect(readme).toContain('Use these three workflows before scanning the full command catalog.');
@@ -66,4 +67,16 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
 
   expect(adoption).toContain('## Daily workflows engineers can trust');
   expect(adoption).toContain('Success criteria:');
+
+  expect(roadmap).toContain(
+    'projscan is useful when engineers can repeat three daily workflows with local proof: before editing, before handoff or commit, and before release-candidate review.',
+  );
+  expect(roadmap).toContain(
+    'The next work is validation from real PRs and multi-agent sessions, not broader positioning.',
+  );
+  expect(roadmap).not.toContain('shared code-intelligence substrate');
+  expect(roadmap).not.toContain('The protocol war is over');
+  expect(roadmap).not.toContain('dominant 2026 pattern');
+  expect(roadmap).not.toContain('What we beat them on');
+  expect(roadmap).not.toContain('Become the operator, not the advisor');
 });

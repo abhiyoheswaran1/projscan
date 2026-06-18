@@ -1,14 +1,16 @@
 # ProjScan Roadmap
 
-Last reviewed 2026-06-17.
+Last reviewed 2026-06-18.
 
 ---
 
 ## Vision
 
-**The shared code-intelligence substrate that AI coding agents stand on.**
+**Local code evidence for repeatable engineering workflows.**
 
-Every agent — Claude Code, Cursor, Codex, Continue, custom orchestrations — needs the same things from the codebase it's editing: structural awareness, change-impact analysis, health signals, fix guidance. None of them want to build that themselves. projscan is the open, offline, agent-native MCP server that gives every agent the same accurate view, so they can spend their context and inference budget on the actual reasoning, not on grepping the repo.
+projscan is useful when engineers can repeat three daily workflows with local proof: before editing, before handoff or commit, and before release-candidate review.
+
+The CLI and MCP server support those workflows with cited repo context, change-impact analysis, health signals, coordination evidence, and reviewer-facing proof commands. Broader capabilities only matter when they make one of those workflows quieter, more accurate, or easier to review.
 
 ## Stable since 1.0
 
@@ -16,15 +18,15 @@ projscan 1.0 shipped 2026-05-04. The stability contract is in force: MCP tool na
 
 ## Strategic context
 
-Three forces define the next 12 months for projscan:
+Three practical forces define the next 12 months for projscan:
 
-1. **MCP is the de-facto standard.** The ecosystem has 10,000+ public servers; Claude Code, Cursor, Continue, Windsurf, and Codex all consume MCP. The protocol war is over; the value migrates to the _quality_ of individual servers. Code-intelligence is one of the highest-value categories.
-2. **Multi-agent orchestration is the dominant 2026 pattern.** Claude Agent Teams, swarms, sub-agents. The new pain point is _coordination_: agents have separate context windows and need a shared source-of-truth about the codebase. projscan's graph + cache + budget-aware tools are uniquely positioned to be that shared substrate.
-3. **Context-window cost compounds.** Token spend per turn is no longer the bottleneck — it's the _accumulated_ cost of carrying tool results, AST excerpts, and prior turns through every inference call. Agents that retrieve narrowly and budget aggressively win. projscan's `max_tokens`-aware response shaping, cursor pagination, and per-function chunking are exactly the primitives this trend rewards.
+1. **MCP adoption raises the quality bar.** Agents and editors can call local tools, but teams still trust outputs only when commands are specific, repeatable, and easy to verify.
+2. **Parallel agent work creates coordination risk.** Separate worktrees and context windows need local evidence for collisions, claims, merge order, and handoff boundaries before integration.
+3. **Context still has a cost.** Agents that retrieve narrow, cited code evidence leave more room for reasoning. `max_tokens` response shaping, cursor pagination, and per-function chunking are valuable only when they reduce review noise.
 
 ## The competitive picture
 
-| Tool                       | Position                                 | What they do well                                                         | What we beat them on                                                                                                                                                   |
+| Tool                       | Position                                 | What they do well                                                         | Current projscan edge to validate                                                                                                                                      |
 | -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Code Pathfinder**        | Direct competitor (MCP code-intel)       | Deep static analysis: AST + CFG + DFG, dataflow tracking, security focus. | Language coverage (9 vs 1: Python). Composed agent tools (review / fix-suggest / impact / watch). Health signals (churn × CC, hotspots). Monorepo workspace awareness. |
 | **Sourcegraph Cody / Amp** | Enterprise paid tier                     | Cross-repo indexing at org scale. Polished editor integrations.           | Fully offline. Open source. No SaaS dependency. Free for everyone.                                                                                                     |
@@ -34,15 +36,15 @@ Three forces define the next 12 months for projscan:
 
 **Where we're vulnerable:** Code Pathfinder has deeper analysis (CFG, DFG) and a security-finding focus. If they ship a JavaScript or TypeScript adapter, our breadth lead narrows.
 
-**Where we lead:** breadth (11 languages), agent-native composition (one-call review, fix-suggest, impact), monorepo support, the 1.0 stability contract, and a cleaner agent-journey product story (diagnose → review → fix → reach → live).
+**Where projscan appears useful today:** breadth (11 languages), agent-native composition (one-call review, fix-suggest, impact), monorepo support, the 1.0 stability contract, and the three daily workflows this roadmap now treats as the proof path.
 
 ## Strategy
 
 Four plays, in order:
 
-1. **Defend the lead** — close the obvious gaps so users picking an MCP server for code intel have one less reason to go elsewhere. ✅ Largely complete (1.1–1.3).
-2. **Lean into multi-agent** — make projscan the _shared substrate_ for agent swarms. This is where the market is moving and where our context-budget design pays off. ✅ Largely shipped (1.4 Session, 1.5 Budgeted by default + Project Memory).
-3. **Become the operator, not the advisor** — stop suggesting and start acting (cross-repo, apply, security gate). ✅ Shipped in the 1.6 arc.
+1. **Defend the useful basics** — close the obvious gaps so the first local run gives cited context, not setup friction. ✅ Largely complete (1.1-1.3).
+2. **Make multi-agent work reviewable** — keep collisions, claims, merge order, and handoffs visible when several agents touch one repo. ✅ Largely shipped (1.4 Session, 1.5 Budgeted by default + Project Memory).
+3. **Turn advice into bounded local actions** — keep automated fixes, cross-repo reads, and security gates explicit, reversible, and reviewable. ✅ Shipped in the 1.6 arc.
 4. **Expand the moat** — depth where it matters (CFG / dataflow on hot paths, more languages, sub-file embeddings, cost analytics, live PR review, plugin extensibility). Not everywhere; we're not trying to be Cody. ✅ The 1.7 → 2.0 arc turns this into a platform contract.
 5. **Coordinate the swarm** — collision detection, claims/leases, merge-risk preflight, intent routing, one-call coordination, and live coordinate watch shipped across the 3.6 through 3.7 arc, with the 4.0 tool-surface consolidation now complete. The next work is evidence: prove which commands agents reach for in real multi-worktree sessions, then deepen only the paths that prevent integration failures.
 6. **Make agent proof release-ready** — 4.1 through 4.6 turned Mission Control into a goal → mission → proof → review harness and packaged the post-4.4 implementation train: current planning surfaces, adoption examples, precise framework dataflow, scoped/redacted evidence exports, Python upgrade previews, coordination evidence, public graph types, and hotspot maintainability cleanup.
@@ -59,6 +61,8 @@ We are _not_ trying to be:
 ### Now — Post-4.8 Validation
 
 4.8.0 "Agent Research And Release Hardening" packages the latest post-4.7 validation train. The next work is validation and selective hardening from real use, not another broad feature push or another release push.
+
+The next work is validation from real PRs and multi-agent sessions, not broader positioning.
 
 The active validation lines are:
 
