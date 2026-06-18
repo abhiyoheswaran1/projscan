@@ -63,7 +63,7 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
   expect(pkg.description).not.toContain('mechanical apply layer');
   expect(pkg.description).not.toContain('CLI on the side');
 
-  expect(readme).toContain('## Daily workflows engineers can trust');
+  expect(readme).toContain('## Daily workflows');
   expect(readme).toContain('Use these three workflows before scanning the full command catalog.');
   expect(readme).toContain('Before editing a feature');
   expect(readme).toContain('Before handoff or commit');

@@ -29,7 +29,7 @@ For teams, projscan can turn the workflow into a repeatable PR habit. `projscan 
 
 The local plugin platform lets teams add project-specific findings and render `doctor`, `analyze`, and `ci` in their own voice without changing the scan pipeline. Humans get the same information through the CLI.
 
-**Everything is local-first. No source upload. No API keys. `.gitignore` is respected by default. `.env` values are path-only unless explicitly enabled. Anonymous product telemetry is off by default and only runs after explicit opt-in.**
+**Core scans run locally by default. No source upload. No projscan account or API key. `.gitignore` is respected by default. `.env` values are path-only unless explicitly enabled. Anonymous product telemetry is off by default and only runs after explicit opt-in. Network-capable paths are explicit: `audit`, registry checks, opt-in telemetry, and optional semantic model downloads.**
 
 ```bash
 npx projscan
@@ -57,6 +57,9 @@ handoffs, sharper Python dependency evidence, and smaller internal modules.
 - **Python dependency evidence.** Upgrade previews handle numeric-looking
   package names, Poetry dependency source lines, nested requirements, and nested
   constraints more reliably.
+- **Quieter release-candidate proof.** Start output now avoids duplicate ready
+  sections, low-signal test/barrel hotspot cautions stay out of the first
+  action, and `privacy-check --offline` exposes the offline boundary in help.
 - **Maintainability cleanup.** Mission Control route criteria, public start
   types, plugin loading, telemetry helpers, preflight/report assembly, code
   graph indexing, and HTML reporters have been split into focused modules.
@@ -157,7 +160,7 @@ Console output shows the same model for humans:
 ```text
 Execution Plan
 Run 1 ready step, resolve 2 input(s), then gather 4 proof command(s).
-- [ready] Next Action
+- [ready] Ready Commands
   - Find exact target for impact analysis: projscan search "auth token loader" --format json
 - [blocked] Resolve Inputs
   - symbol: Replace <symbol-from-search> with an exported symbol returned by the search step.
@@ -276,7 +279,7 @@ Or run directly without installing:
 npx projscan
 ```
 
-## Daily workflows engineers can trust
+## Daily workflows
 
 Use these three workflows before scanning the full command catalog.
 
@@ -982,7 +985,7 @@ projscan reads your source code so it can be useful; it does not send your sourc
 
 ### Patterns supply-chain scanners flag, and why they're benign here
 
-If you read projscan's [Socket report](https://socket.dev/npm/package/projscan), you'll see four supply-chain alerts. Here's a one-line answer to each:
+projscan's [Socket report](https://socket.dev/npm/package/projscan) currently shows four supply-chain alerts. Each alert maps to one of these code paths:
 
 - **"Network access"** — comes from `web-tree-sitter`'s internal API surface; we feed it local wasm files at `dist/grammars/`. No outbound traffic.
 - **"Dynamic require" / runtime import** — optional dependencies lazy-load from literal module names; opt-in local plugins load validated manifest module paths under `.projscan-plugins/`. Plugin execution is local code execution by design, gated by `PROJSCAN_PLUGINS_PREVIEW=1`.
@@ -998,7 +1001,7 @@ If you read projscan's [Socket report](https://socket.dev/npm/package/projscan),
 
 ## Dogfooding
 
-projscan runs against itself in CI on every PR. The dogfood loop is the most direct evidence we can offer that the tool works on real code, not just synthetic fixtures.
+projscan runs against itself in CI on every PR. The dogfood loop is the most direct evidence we can offer that the tool works on real code instead of synthetic fixtures alone.
 
 ```sh
 # .github/workflows/ci.yml — runs after the unit tests
@@ -1144,7 +1147,7 @@ projscan diff --format markdown     # Markdown diff for PRs
 
 ## Hotspots - Where to Fix First
 
-A flat health score doesn't tell you what to do. **`projscan hotspots`** combines `git log` churn, file complexity, open issues, recency, and **ownership** into a single risk score per file - so you know where refactoring or review will actually pay off.
+A flat health score doesn't tell you what to do. **`projscan hotspots`** combines `git log` churn, file complexity, open issues, recency, and **ownership** into a single risk score per file, so you know where refactoring or review will pay off.
 
 <img src="https://abhiyoheswaran.com/images/projscan/hotspots-poster.png" alt="projscan hotspots output ranking files by composite risk score" width="700">
 
@@ -1174,11 +1177,11 @@ projscan diff --save-baseline           # Snapshots health + hotspots
 projscan diff                           # Shows which hotspots rose / fell
 ```
 
-The baseline file now captures top hotspots too, so `diff` surfaces files that are **getting worse** (not just new issues).
+The baseline file now captures top hotspots too, so `diff` surfaces files that are **getting worse** alongside new issues.
 
 ## Dependency Health
 
-projscan ships three focused commands for keeping your dependency graph healthy - all **offline** by default, no registry calls.
+projscan ships focused commands for checking your dependency graph. Drift and upgrade previews run **offline** by default; `audit` wraps `npm audit` and can contact the npm registry.
 
 ```bash
 projscan outdated                       # Which declared deps drift from what's installed?
@@ -1403,7 +1406,7 @@ Capability is advertised under `experimental.fileChanged` on `initialize` so cli
 - **`projscan_quality_scorecard`** _(2.3)_ - dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
 - **`projscan_adoption`** _(2.9)_ - adoption helper for MCP config snippets, workflow recipes, and first-run diagnostics with the shared `firstTenMinutes` path.
 - **`projscan_fix_suggest`** _(0.14)_ - structured action prompt for any open issue: headline, why it matters, where, one-paragraph instruction, optional suggested test. Closes the diagnose → fix loop.
-- **`projscan_explain_issue`** _(0.14)_ - deep dive on one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
+- **`projscan_explain_issue`** _(0.14)_ - focused context for one issue: code excerpt, related issues in the same file, similar past commits via `git log --grep`, plus the structured FixSuggestion.
 - **`projscan_impact`** _(0.15)_ - transitive blast-radius for a file or symbol. BFS over reverse imports + symbol callsites. Use BEFORE renaming or deleting to see what breaks.
 - **`projscan_collision`** _(3.6)_ - detect change collisions across the repo's in-flight git worktrees (parallel agents). Flags same-file edits and dependency overlaps (one worktree edits a file another's change imports) before the branches merge. Local-first; needs ≥2 worktrees.
 - **`projscan_claim`** _(3.6)_ - advisory claims/leases over files, directories, or symbols, shared across the repo's worktrees. `add` returns contention when another agent already holds an overlapping target; `list` / `release` manage them. Local-first.
