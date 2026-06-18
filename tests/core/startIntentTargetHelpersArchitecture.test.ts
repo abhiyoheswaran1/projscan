@@ -185,6 +185,25 @@ describe('Mission Control intent target helper architecture', () => {
     expect(graphTargetsSource).toContain('export function semanticGraphCommand');
     expect(graphTargetsSource).not.toContain("from './startIntentTargets.js'");
   });
+
+  it('keeps test, route, and migration search parsing in a focused helper', () => {
+    const targetSource = readTargetSource();
+    const testRouteSearchPath = path.join(process.cwd(), 'src/core/startTestRouteSearchTargets.ts');
+
+    expect(targetSource).toContain(
+      "import { searchQueryFromTestAndRouteLookups } from './startTestRouteSearchTargets.js';",
+    );
+    expect(targetSource).not.toContain('function searchQueryFromTestAndRouteLookups');
+    expect(targetSource).not.toContain('function migrationSearchQuery');
+
+    expect(existsSync(testRouteSearchPath)).toBe(true);
+    const testRouteSearchSource = readFileSync(testRouteSearchPath, 'utf8');
+    expect(testRouteSearchSource).toContain(
+      'export function searchQueryFromTestAndRouteLookups',
+    );
+    expect(testRouteSearchSource).toContain('function migrationSearchQuery');
+    expect(testRouteSearchSource).not.toContain("from './startIntentTargets.js'");
+  });
 });
 
 function readTargetSource(): string {
