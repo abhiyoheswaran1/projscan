@@ -226,7 +226,7 @@ test('bug-hunt console labels release-scale sign-off queues as review work', asy
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('Bug Hunt: review');
   expect(result.stdout).toContain('review: bug hunt found 1 manual sign-off action(s)');
-  expect(result.stdout).toContain('Review preflight release sign-off');
+  expect(result.stdout).toContain('Review preflight manual sign-off');
   expect(result.stdout).toContain('Review Signals');
   expect(result.stdout).toContain('(package.json, package-lock.json, src/index.ts, +1 more)');
   expect(result.stdout).not.toContain('.agentflight/config.json');

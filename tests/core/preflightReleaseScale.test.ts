@@ -43,10 +43,15 @@ test('before_commit treats scale-only review blocks as manual sign-off caution',
       expect.objectContaining({
         source: 'release',
         severity: 'warning',
-        message: expect.stringContaining('Large platform release risk'),
+        message: expect.stringContaining('Large handoff review risk'),
       }),
     ]),
   );
+  expect(report.reasons.map((reason) => reason.message).join('\n')).not.toContain(
+    'manual release sign-off',
+  );
+  expect(report.summary).toContain('manual review sign-off');
+  expect(report.summary).not.toContain('manual release sign-off');
   expect(report.reasons.some((reason) => reason.source === 'review')).toBe(false);
   expect(report.evidence.review?.verdict).toBe('block');
   expect(report.requiredChecks.find((check) => check.name === 'review')?.status).toBe('warn');

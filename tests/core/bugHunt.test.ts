@@ -218,7 +218,7 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   expect(report.verificationMatrix.map((entry) => entry.reason).join(' ')).not.toContain(
     'after fixes',
   );
-  expect(preflightFinding?.title).toBe('Review preflight release sign-off');
+  expect(preflightFinding?.title).toBe('Review preflight manual sign-off');
   expect(preflightFinding?.files.slice(0, 4)).toEqual([
     'package.json',
     'package-lock.json',

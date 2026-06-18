@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-18: Use handoff wording for before-commit scale cautions
+
+- Status: accepted
+- Context: `projscan preflight --mode before_commit` and `projscan bug-hunt` kept broad scale cautions visible, but described them as manual release sign-off. That made the daily before-handoff/commit workflow sound like release readiness and made caution output easier to ignore.
+- Decision: Keep the same release-scale evidence and caution semantics, but label `before_commit` scale cautions as handoff/manual-review sign-off. Keep `before_merge` release-scale wording as manual release sign-off.
+- Consequences: Engineers get workflow-specific wording in the summary, release-scale explanation, and bug-hunt title without losing the review gate, changed-file evidence, or required-check downgrade behavior.
+- Verification: Before-commit release-scale and bug-hunt title regressions failed on release wording, then passed after mode-specific labels. Before-merge coverage still requires manual release sign-off wording.
+
 ## 2026-06-18: Infer handoff starts as before-commit workflows
 
 - Status: accepted

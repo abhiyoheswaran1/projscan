@@ -11,6 +11,9 @@ export function summarizePreflight(report: PreflightReport): string {
     return `${report.verdict}: no blocking or cautionary signals found`;
   }
   if (report.evidence.releaseScale?.detected) {
+    if (report.mode === 'before_commit') {
+      return `${report.verdict}: manual review sign-off recommended for large handoff risk`;
+    }
     return `${report.verdict}: manual release sign-off recommended for large platform release risk`;
   }
   return `${report.verdict}: ${report.reasons[0].message}`;

@@ -48,7 +48,11 @@ export function filesFromPreflightEvidence(files: string[]): string[] {
 }
 
 function preflightReasonTitle(reason: PreflightReason): string {
-  if (reason.source === 'release') return 'Review preflight release sign-off';
+  if (reason.source === 'release') {
+    return /handoff review|manual review sign-off/i.test(reason.message)
+      ? 'Review preflight manual sign-off'
+      : 'Review preflight release sign-off';
+  }
   return `Resolve preflight ${reason.source} signal`;
 }
 

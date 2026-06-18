@@ -35,6 +35,7 @@ interface ReleaseScaleInput {
 }
 
 interface ReleaseScaleSignals {
+  mode: PreflightMode;
   detected: boolean;
   changedFileThresholdExceeded: boolean;
   reviewScaleOnly: boolean;
@@ -95,6 +96,7 @@ function releaseScaleSignals(input: ReleaseScaleInput): ReleaseScaleSignals {
   const reviewScaleOnly =
     reviewBlocksOnScale && isScaleComplexityReviewBlock(reviewSummary);
   return {
+    mode: input.mode,
     detected: changedFileThresholdExceeded || reviewScaleOnly,
     changedFileThresholdExceeded,
     reviewScaleOnly,
@@ -122,7 +124,11 @@ function releaseScaleTriggers(
 }
 
 function releaseScaleExplanation(signals: ReleaseScaleSignals): string {
-  return `Large platform release risk: ${signals.triggers.join('; ')}. ${releaseScaleExplanationTail(signals)}${releaseScaleSignoffTail(signals.reviewSummary)}`;
+  return `${releaseScaleRiskLabel(signals.mode)}: ${signals.triggers.join('; ')}. ${releaseScaleExplanationTail(signals)}${releaseScaleSignoffTail(signals)}`;
+}
+
+function releaseScaleRiskLabel(mode: PreflightMode): string {
+  return mode === 'before_commit' ? 'Large handoff review risk' : 'Large platform release risk';
 }
 
 function releaseScaleExplanationTail(signals: ReleaseScaleSignals): string {
@@ -130,14 +136,19 @@ function releaseScaleExplanationTail(signals: ReleaseScaleSignals): string {
     return 'Review blocks on scale/complexity rather than new taint, dataflow, health, plugin, or supply-chain defects.';
   }
   if (signals.reviewBlocksOnScale) {
-    return 'Changed-file scale still needs manual release sign-off; inspect the separate review block before continuing.';
+    return `Changed-file scale still needs ${releaseScaleSignoffLabel(signals.mode)}; inspect the separate review block before continuing.`;
   }
   return 'This is a configured scale threshold/manual review signal, not a concrete taint, dataflow, health, plugin, or supply-chain defect.';
 }
 
-function releaseScaleSignoffTail(reviewSummary: string | undefined): string {
-  if (reviewSummary?.toLowerCase().includes('manual release sign-off')) return '';
-  return ' Treat this as a manual release sign-off gate.';
+function releaseScaleSignoffTail(signals: ReleaseScaleSignals): string {
+  const signoff = releaseScaleSignoffLabel(signals.mode);
+  if (signals.reviewSummary?.toLowerCase().includes(signoff)) return '';
+  return ` Treat this as a ${signoff} gate.`;
+}
+
+function releaseScaleSignoffLabel(mode: PreflightMode): string {
+  return mode === 'before_commit' ? 'manual review sign-off' : 'manual release sign-off';
 }
 
 function reviewBlocks(review: ReviewEvidence): boolean {
