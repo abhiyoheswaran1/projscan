@@ -45,6 +45,26 @@ export interface PreflightSuggestedAction {
   args?: Record<string, unknown>;
 }
 
+export type PreflightCautionAction = 'fix_now' | 'manual_signoff';
+
+export interface PreflightCautionBudgetItem {
+  severity: IssueSeverity;
+  source: PreflightReasonSource;
+  message: string;
+  action: PreflightCautionAction;
+  file?: string;
+  issueId?: string;
+  tool?: string;
+  command?: string;
+}
+
+export interface PreflightCautionBudget {
+  primary?: PreflightCautionBudgetItem;
+  reviewOnly: PreflightCautionBudgetItem[];
+  fixNow: PreflightCautionBudgetItem[];
+  manualSignoff: PreflightCautionBudgetItem[];
+}
+
 export interface PreflightReleaseScaleEvidence {
   detected: boolean;
   changedFiles: number;
@@ -147,6 +167,7 @@ export interface PreflightReport {
   verdict: PreflightVerdict;
   summary: string;
   reasons: PreflightReason[];
+  cautionBudget?: PreflightCautionBudget;
   evidence: PreflightEvidence;
   requiredChecks: PreflightRequiredCheck[];
   suggestedNextActions: PreflightSuggestedAction[];

@@ -1,4 +1,5 @@
 import { pluginsEnabled } from './plugins.js';
+import { buildCautionBudget } from './preflightCautionBudget.js';
 import { buildEvidence } from './preflightEvidence.js';
 import type { PreflightInputs } from './preflightInputs.js';
 import { buildPreflightReasons, countSupplyChainIssues } from './preflightReasons.js';
@@ -43,6 +44,7 @@ export function buildPreflightReport({
     coordination,
     maxChangedFiles,
   });
+  const cautionBudget = buildCautionBudget(reasons);
   const verdict = decidePreflightVerdict(reasons);
   const evidence = buildEvidence({
     health,
@@ -62,6 +64,7 @@ export function buildPreflightReport({
     verdict,
     summary: '',
     reasons,
+    ...(cautionBudget ? { cautionBudget } : {}),
     evidence,
     requiredChecks: buildRequiredChecks({
       mode,

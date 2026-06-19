@@ -143,6 +143,22 @@ test('preflight collapses release-scale-only manual signoff into one reason', ()
       command: 'projscan review --format json',
     }),
   ]);
+  expect(report.cautionBudget).toEqual(
+    expect.objectContaining({
+      primary: expect.objectContaining({
+        source: 'release',
+        action: 'manual_signoff',
+      }),
+      reviewOnly: [],
+      fixNow: [],
+      manualSignoff: [
+        expect.objectContaining({
+          source: 'release',
+          action: 'manual_signoff',
+        }),
+      ],
+    }),
+  );
 });
 
 test('preflight keeps separate review blocks visible during release-scale signoff', () => {
@@ -186,6 +202,32 @@ test('preflight keeps separate review blocks visible during release-scale signof
       severity: 'warning',
       source: 'review',
       message: expect.stringContaining(reviewSummary),
+    }),
+  );
+  expect(report.cautionBudget).toEqual(
+    expect.objectContaining({
+      primary: expect.objectContaining({
+        source: 'review',
+        action: 'fix_now',
+      }),
+      reviewOnly: [
+        expect.objectContaining({
+          source: 'release',
+          action: 'manual_signoff',
+        }),
+      ],
+      fixNow: [
+        expect.objectContaining({
+          source: 'review',
+          action: 'fix_now',
+        }),
+      ],
+      manualSignoff: [
+        expect.objectContaining({
+          source: 'release',
+          action: 'manual_signoff',
+        }),
+      ],
     }),
   );
 });
