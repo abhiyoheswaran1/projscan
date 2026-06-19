@@ -26,8 +26,11 @@ describe('release workflow metadata', () => {
     expect(workflow).toMatch(/FORCE_JAVASCRIPT_ACTIONS_TO_NODE24:\s*true/);
   });
 
-  it('keeps Node 18 in the CI matrix while package engines support Node 18', () => {
-    expect(ciWorkflow).toMatch(/node-version:\s*\[18,\s*20,\s*22,\s*24\]/);
+  it('keeps Node 18 published-package smoke coverage while source tests require Node 20+', () => {
+    expect(ciWorkflow).toMatch(/node-version:\s*\[20,\s*22,\s*24\]/);
+    expect(ciWorkflow).toContain('node18-packed-smoke:');
+    expect(ciWorkflow).toMatch(/node-version:\s*18/);
+    expect(ciWorkflow).toContain('npm run smoke:packed-install');
   });
 
   it('keeps release metadata versions in sync', () => {

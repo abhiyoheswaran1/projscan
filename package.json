@@ -1,13 +1,13 @@
 {
   "name": "projscan",
   "mcpName": "io.github.abhiyoheswaran1/projscan",
-  "version": "4.9.0",
+  "version": "4.9.1",
   "description": "Local code intelligence for agent-assisted engineering. Focused daily workflows for repo orientation before edits, proof before handoff or commit, and release-candidate review, with AST-backed evidence through an MCP server and CLI. Runs locally by default.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "projscan": "./dist/cli/index.js"
+    "projscan": "dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -85,7 +85,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abhiyoheswaran1/projscan.git"
+    "url": "git+https://github.com/abhiyoheswaran1/projscan.git"
   },
   "homepage": "https://github.com/abhiyoheswaran1/projscan#readme",
   "bugs": {

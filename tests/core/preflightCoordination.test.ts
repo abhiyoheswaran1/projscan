@@ -38,7 +38,7 @@ test('preflight surfaces swarm-coordination evidence and a caution (not block) a
   await fs.writeFile(path.join(sibling, 'src', 'a.ts'), 'export const a = 3;\n');
   await execFileAsync('git', ['commit', '-qam', 'b'], { cwd: sibling });
 
-  const report = await computePreflight(root, { mode: 'before_commit' });
+  const report = await computePreflight(root, { mode: 'before_edit' });
 
   expect(report.evidence.coordination?.available).toBe(true);
   expect(report.evidence.coordination?.readiness).toBe('conflicted');

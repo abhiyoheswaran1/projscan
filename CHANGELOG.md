@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.9.1]
+
+2026-06-19 - "Release CI Compatibility"
+
+### Changed
+
+- Aligned CI with the current Vitest/Vite source test harness by running full
+  source tests on Node 20, 22, and 24.
+- Added a separate Node 18 packed-install smoke job so published-package
+  compatibility remains covered without running the Node 20+ source harness.
+- Updated README and website release guidance to describe the 4.9.1 release
+  candidate and the current CI support boundary.
+
+### Fixed
+
+- Fixed the 4.9.0 release-candidate CI blocker where the Node 18 source-test
+  leg failed before tests started because Vitest's Rolldown dependency imports
+  `node:util.styleText`, which is not exported by Node 18.
+
 ## [4.9.0]
 
 2026-06-18 - "Daily Workflow Proof Hardening"

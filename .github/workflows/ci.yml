@@ -13,7 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        node-version: [18, 20, 22, 24]
+        node-version: [20, 22, 24]
+        # Vitest 4 / Vite 8 require Node 20+ for the source test harness.
         # 1.9+ — add a macOS leg on Node 22 only to validate the
         # wasi-sdk + tree-sitter wasm build chain on darwin. The
         # full matrix stays Linux-only because Node-version
@@ -47,3 +48,18 @@ jobs:
       # gone, and we want CI to fail on any genuine regression.
       - name: Dogfood (projscan ci against the projscan repo)
         run: node dist/cli/index.js ci --min-score 90
+
+  node18-packed-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v5
+        with:
+          node-version: 18
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run smoke:packed-install

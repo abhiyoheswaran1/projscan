@@ -37,11 +37,11 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.8.0
+## What's New in 4.9.1
 
-4.8.0 turns the post-4.7 agent-research loop into release-ready hardening:
-SvelteKit dataflow precision, safer continuation routing, clearer coordination
-handoffs, sharper Python dependency evidence, and smaller internal modules.
+4.9.1 turns the post-4.8 release-prep loop into daily workflow proof hardening:
+clearer Start output, quieter release-candidate proof, visible offline privacy
+checks, refreshed README media, and CI aligned with the current test toolchain.
 
 - **SvelteKit dataflow coverage.** `RequestEvent` handlers and hooks now
   classify request body readers, headers, URL, params, and cookies through
@@ -60,6 +60,9 @@ handoffs, sharper Python dependency evidence, and smaller internal modules.
 - **Quieter release-candidate proof.** Start output now avoids duplicate ready
   sections, low-signal test/barrel hotspot cautions stay out of the first
   action, and `privacy-check --offline` exposes the offline boundary in help.
+- **Release CI alignment.** CI now runs the full source test harness on Node 20,
+  22, and 24, with a separate Node 18 packed-install smoke job for published
+  package compatibility.
 - **Maintainability cleanup.** Mission Control route criteria, public start
   types, plugin loading, telemetry helpers, preflight/report assembly, code
   graph indexing, and HTML reporters have been split into focused modules.
