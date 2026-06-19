@@ -4,6 +4,9 @@ import path from 'node:path';
 import type {
   DogfoodFeedbackInput,
   DogfoodFeedbackResponse,
+  FeedbackIntakeCategory,
+  FeedbackIntakeConfidence,
+  FeedbackIntakeReport,
   FeedbackSummaryReport,
   FeedbackTemplateResult,
 } from '../types/dogfood.js';
@@ -79,6 +82,32 @@ export async function summarizeFeedbackFile(filePath: string): Promise<FeedbackS
   return summarizeFeedback(artifact.responses, resolved);
 }
 
+export function classifyFeedbackIntake(rawText: string): FeedbackIntakeReport {
+  const text = rawText.trim();
+  const lower = text.toLowerCase();
+  const category = classifyCategory(lower);
+  const signal = primarySignal(category, lower);
+  const confidence = confidenceFor(category, lower);
+  const taskTitle = taskTitleFor(category, signal);
+  const suggestedCommand = commandFor(category, signal);
+  const summary = summaryFor(category, signal);
+
+  return {
+    schemaVersion: FEEDBACK_ARTIFACT_VERSION,
+    category,
+    confidence,
+    summary,
+    evidence: evidenceFor(category, lower),
+    taskTitle,
+    suggestedCommand,
+    nextCommand:
+      'npm exec agentloop -- create-task --type bugfix --title "' +
+      escapeTaskTitle(taskTitle) +
+      '"',
+    feedbackResponse: feedbackResponseFor(category, signal, summary),
+  };
+}
+
 export function summarizeFeedback(
   responses: DogfoodFeedbackResponse[],
   filePath = '.projscan-feedback.json',
@@ -151,6 +180,171 @@ function toStoredFeedback(template: FeedbackTemplateResult): DogfoodFeedbackInpu
     questions: template.questions,
     responses: template.responses,
   };
+}
+
+function classifyCategory(text: string): FeedbackIntakeCategory {
+  if (
+    /\bfalse[- ]positive\b|incorrectly flag|wrongly flag|flagged unused|reported unused|not actually unused/.test(
+      text,
+    )
+  ) {
+    return 'false_positive';
+  }
+  if (
+    /\bcaution\b|\bwarning\b/.test(text) &&
+    /noise|noisy|background|too many|low[- ]signal|spam/.test(text)
+  ) {
+    return 'noisy_caution';
+  }
+  if (
+    /missing|not detected|not detect|does not detect|doesn't detect|should detect|misses/.test(
+      text,
+    ) &&
+    /framework|next\.?js|app router|route handler|middleware|koa|hono|fastify|express|sveltekit|astro|remix|request source|ctx\.request/.test(
+      text,
+    )
+  ) {
+    return 'missing_framework_rule';
+  }
+  if (
+    /docs|readme|output|wording|message|copy/.test(text) &&
+    /confusing|unclear|bigger than|overclaim|overstate|sounds bigger|not demonstrated/.test(text)
+  ) {
+    return 'confusing_docs_output';
+  }
+  if (/\buseful\b|saved .*minute|prevented|caught|helped|trusted|clear next/.test(text)) {
+    return 'useful_signal';
+  }
+  return 'uncategorized';
+}
+
+function primarySignal(category: FeedbackIntakeCategory, text: string): string {
+  if (category === 'false_positive') {
+    if (/unused[- ]exports?/.test(text)) return 'unused-exports';
+    if (/unused[- ]dependenc/.test(text)) return 'unused-dependencies';
+    if (/dead[- ]code/.test(text)) return 'dead-code';
+    if (/dataflow|taint|source-to-sink/.test(text)) return 'dataflow';
+    return 'rule false positive';
+  }
+  if (category === 'missing_framework_rule') {
+    if (/koa/.test(text)) return 'Koa';
+    if (/hono/.test(text)) return 'Hono';
+    if (/fastify/.test(text)) return 'Fastify';
+    if (/express/.test(text)) return 'Express';
+    if (/next\.?js|app router|middleware|route handler/.test(text)) return 'Next.js';
+    if (/sveltekit/.test(text)) return 'SvelteKit';
+    if (/astro/.test(text)) return 'Astro';
+    if (/remix/.test(text)) return 'Remix';
+    return 'framework request source';
+  }
+  if (category === 'noisy_caution') return 'caution';
+  if (category === 'confusing_docs_output') return 'docs/output';
+  if (category === 'useful_signal') return 'useful workflow';
+  return 'unclassified feedback';
+}
+
+function confidenceFor(category: FeedbackIntakeCategory, text: string): FeedbackIntakeConfidence {
+  if (category === 'uncategorized') return 'low';
+  const strongSignals = [
+    /\bfalse[- ]positive\b/,
+    /unused[- ]exports?/,
+    /\bcaution\b.*(?:noise|noisy|background)|(?:noise|noisy|background).*\bcaution\b/,
+    /ctx\.request|app router|route handler|middleware/,
+    /saved .*minute|prevented/,
+  ];
+  return strongSignals.some((pattern) => pattern.test(text)) ? 'high' : 'medium';
+}
+
+function taskTitleFor(category: FeedbackIntakeCategory, signal: string): string {
+  switch (category) {
+    case 'false_positive':
+      return 'Fix false-positive feedback: ' + signal;
+    case 'noisy_caution':
+      return 'Reduce noisy caution output';
+    case 'missing_framework_rule':
+      return 'Add missing framework rule: ' + signal;
+    case 'confusing_docs_output':
+      return 'Clarify confusing docs or output';
+    case 'useful_signal':
+      return 'Preserve useful feedback signal';
+    case 'uncategorized':
+      return 'Triage unclassified feedback';
+  }
+}
+
+function commandFor(category: FeedbackIntakeCategory, signal: string): string {
+  if (category === 'false_positive' && signal === 'unused-exports') {
+    return 'npm test -- tests/analyzers/deadCodeCheck.test.ts tests/core/importGraph.test.ts';
+  }
+  switch (category) {
+    case 'false_positive':
+      return 'npm test -- tests/analyzers tests/core/importGraph.test.ts';
+    case 'noisy_caution':
+      return 'npm test -- tests/core/preflight*.test.ts tests/core/releaseEvidence.test.ts';
+    case 'missing_framework_rule':
+      return 'npm test -- tests/core/dataflow.test.ts tests/analyzers/securityCheck.test.ts';
+    case 'confusing_docs_output':
+      return 'npm test -- tests/docs tests/cli/startConsoleGuidance.test.ts';
+    case 'useful_signal':
+      return 'projscan feedback summary --file .projscan-feedback.json --format json';
+    case 'uncategorized':
+      return 'projscan feedback summary --file .projscan-feedback.json --format json';
+  }
+}
+
+function summaryFor(category: FeedbackIntakeCategory, signal: string): string {
+  switch (category) {
+    case 'false_positive':
+      return 'Classified as false-positive feedback for ' + signal + '.';
+    case 'noisy_caution':
+      return 'Classified as caution noise that should be ranked or grouped.';
+    case 'missing_framework_rule':
+      return 'Classified as missing framework coverage for ' + signal + '.';
+    case 'confusing_docs_output':
+      return 'Classified as confusing docs or output wording.';
+    case 'useful_signal':
+      return 'Classified as a useful workflow signal to preserve.';
+    case 'uncategorized':
+      return 'Classified as feedback that needs maintainer triage.';
+  }
+}
+
+function evidenceFor(category: FeedbackIntakeCategory, text: string): string[] {
+  const evidence: string[] = [];
+  if (/false[- ]positive|flagged unused|reported unused/.test(text))
+    evidence.push('false-positive wording');
+  if (/unused[- ]exports?/.test(text)) evidence.push('unused-exports signal');
+  if (/caution|warning/.test(text)) evidence.push('caution wording');
+  if (/noise|noisy|background/.test(text)) evidence.push('noise wording');
+  if (/koa|hono|fastify|express|next\.?js|sveltekit|astro|remix/.test(text))
+    evidence.push('framework wording');
+  if (/docs|readme|output|wording|message/.test(text)) evidence.push('docs/output wording');
+  if (/useful|saved .*minute|prevented|caught|helped/.test(text))
+    evidence.push('usefulness wording');
+  if (evidence.length === 0) evidence.push(category);
+  return evidence;
+}
+
+function feedbackResponseFor(
+  category: FeedbackIntakeCategory,
+  signal: string,
+  summary: string,
+): DogfoodFeedbackResponse {
+  const response: DogfoodFeedbackResponse = {
+    reviewer: 'agent-intake',
+    useful: category === 'useful_signal',
+    minutesSaved: 0,
+    note: summary,
+  };
+  if (category === 'false_positive') response.falsePositiveRules = [signal];
+  if (category === 'missing_framework_rule') response.missingSignals = [signal];
+  if (category === 'noisy_caution') response.noisyFindings = [signal];
+  if (category === 'confusing_docs_output') response.noisyFindings = [signal];
+  return response;
+}
+
+function escapeTaskTitle(value: string): string {
+  return value.replace(/"/g, '\\"');
 }
 
 function normalizeFeedbackInput(input: unknown): DogfoodFeedbackInput {

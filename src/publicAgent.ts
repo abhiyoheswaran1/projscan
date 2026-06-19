@@ -24,6 +24,7 @@ export { computeDogfoodReport } from './core/dogfood.js';
 export { computeTrialReport } from './core/trial.js';
 export {
   addFeedbackResponse,
+  classifyFeedbackIntake,
   createFeedbackTemplate,
   readFeedbackFile,
   summarizeFeedback,

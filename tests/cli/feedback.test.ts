@@ -85,6 +85,39 @@ test('feedback init, add, and summary produce reusable JSON evidence', async () 
   );
 });
 
+test('feedback intake classifies pasted feedback and can append it to the feedback artifact', async () => {
+  const feedbackPath = path.join(tmp, '.projscan-feedback.json');
+
+  const intake = await runCli([
+    'feedback',
+    'intake',
+    '--text',
+    'unused-exports false positive: a symbol imported through @/lib/foo is flagged unused',
+    '--file',
+    feedbackPath,
+    '--append',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(intake.exitCode).toBe(0);
+  const report = JSON.parse(intake.stdout);
+  expect(report).toMatchObject({
+    category: 'false_positive',
+    confidence: 'high',
+    appended: {
+      path: feedbackPath,
+      responses: 1,
+    },
+  });
+  expect(report.feedbackResponse.falsePositiveRules).toContain('unused-exports');
+
+  const saved = JSON.parse(await fs.readFile(feedbackPath, 'utf8'));
+  expect(saved.responses).toHaveLength(1);
+  expect(saved.responses[0].falsePositiveRules).toContain('unused-exports');
+});
+
 async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {

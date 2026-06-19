@@ -62,6 +62,32 @@ export interface FeedbackSummaryReport {
   nextDogfoodCommand: string;
 }
 
+export type FeedbackIntakeCategory =
+  | 'false_positive'
+  | 'noisy_caution'
+  | 'missing_framework_rule'
+  | 'confusing_docs_output'
+  | 'useful_signal'
+  | 'uncategorized';
+
+export type FeedbackIntakeConfidence = 'high' | 'medium' | 'low';
+
+export interface FeedbackIntakeReport {
+  schemaVersion: 1;
+  category: FeedbackIntakeCategory;
+  confidence: FeedbackIntakeConfidence;
+  summary: string;
+  evidence: string[];
+  taskTitle: string;
+  suggestedCommand: string;
+  nextCommand: string;
+  feedbackResponse: DogfoodFeedbackResponse;
+  appended?: {
+    path: string;
+    responses: number;
+  };
+}
+
 export interface DogfoodRepoValidation {
   feedbackResponses: number;
   usefulResponses: number;

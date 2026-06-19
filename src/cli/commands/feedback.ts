@@ -4,6 +4,7 @@ import chalk from 'chalk';
 
 import {
   addFeedbackResponse,
+  classifyFeedbackIntake,
   createFeedbackTemplate,
   summarizeFeedbackFile,
 } from '../../core/feedback.js';
@@ -75,12 +76,46 @@ export function registerFeedback(): void {
     });
 
   feedback
+    .command('intake')
+    .description('Classify pasted agent or reviewer feedback into an actionable fix candidate')
+    .requiredOption('--text <text>', 'raw feedback text to classify')
+    .option('--file <path>', 'feedback file to update when --append is set', DEFAULT_FEEDBACK_FILE)
+    .option('--append', 'append the classified signal to the feedback artifact')
+    .action(async (cmdOpts) => {
+      await runIntake(cmdOpts);
+    });
+
+  feedback
     .command('summary')
     .description('Summarize reviewer feedback evidence before dogfood')
     .option('--file <path>', 'feedback file to read', DEFAULT_FEEDBACK_FILE)
     .action(async (cmdOpts) => {
       await runSummary(cmdOpts, 'feedback summary');
     });
+}
+
+async function runIntake(cmdOpts: Record<string, unknown>): Promise<void> {
+  setupLogLevel();
+  maybeCompactBanner();
+  const format = assertFormatSupported('feedback intake');
+  try {
+    const report = classifyFeedbackIntake(requiredString(cmdOpts.text, '--text'));
+    if (cmdOpts.append === true) {
+      const filePath = resolveFromRoot(asString(cmdOpts.file) ?? DEFAULT_FEEDBACK_FILE);
+      const artifact = await addFeedbackResponse(filePath, report.feedbackResponse);
+      report.appended = {
+        path: filePath,
+        responses: artifact.responses.length,
+      };
+    }
+    if (format === 'json') {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+    printIntake(report);
+  } catch (error) {
+    printError(error);
+  }
 }
 
 async function runInit(cmdOpts: { output: string; force?: boolean }): Promise<void> {
@@ -191,6 +226,22 @@ function printSummary(report: FeedbackSummaryReport): void {
   console.log('');
   console.log(chalk.bold('Next command'));
   console.log('  ' + chalk.cyan(report.nextDogfoodCommand));
+}
+
+function printIntake(report: ReturnType<typeof classifyFeedbackIntake>): void {
+  console.log('');
+  console.log(chalk.bold('Feedback Intake'));
+  console.log(chalk.dim('────────────────────────────────────────'));
+  console.log('  category:   ' + report.category);
+  console.log('  confidence: ' + report.confidence);
+  console.log('  task:       ' + report.taskTitle);
+  console.log('  verify:     ' + chalk.cyan(report.suggestedCommand));
+  console.log('  next:       ' + chalk.cyan(report.nextCommand));
+  if (report.appended) {
+    console.log(
+      '  appended:   ' + report.appended.path + ' (' + report.appended.responses + ' total)',
+    );
+  }
 }
 
 function resolveFromRoot(value: string): string {

@@ -37,6 +37,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   feedback: ['console', 'json'],
   'feedback init': ['console', 'json'],
   'feedback add': ['console', 'json'],
+  'feedback intake': ['console', 'json'],
   'feedback summary': ['console', 'json'],
   explain: ['console', 'json', 'markdown'],
   'explain-issue': ['console', 'json', 'markdown'],

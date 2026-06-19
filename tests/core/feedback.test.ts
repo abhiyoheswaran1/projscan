@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import {
   addFeedbackResponse,
+  classifyFeedbackIntake,
   createFeedbackTemplate,
   readFeedbackFile,
   summarizeFeedbackFile,
@@ -94,4 +95,51 @@ test('feedback add and summary track minutes saved, prevented bad edits, false p
   expect(summary.falsePositive.totalReports).toBe(1);
   expect(summary.falsePositive.noisyRules[0]).toEqual({ rule: 'route-owner:vague', count: 1 });
   expect(summary.nextDogfoodCommand).toBe('projscan dogfood --feedback ' + file + ' --format json');
+});
+
+test('feedback intake classifies raw agent and reviewer feedback into fix candidates', () => {
+  expect(
+    classifyFeedbackIntake(
+      'unused-exports false positives: imports through @/ path aliases are flagged unused in a Next.js app',
+    ),
+  ).toMatchObject({
+    category: 'false_positive',
+    confidence: 'high',
+    taskTitle: 'Fix false-positive feedback: unused-exports',
+    suggestedCommand:
+      'npm test -- tests/analyzers/deadCodeCheck.test.ts tests/core/importGraph.test.ts',
+  });
+
+  expect(
+    classifyFeedbackIntake('caution output is becoming noisy background noise in every PR'),
+  ).toMatchObject({
+    category: 'noisy_caution',
+    confidence: 'high',
+    taskTitle: 'Reduce noisy caution output',
+    suggestedCommand:
+      'npm test -- tests/core/preflight*.test.ts tests/core/releaseEvidence.test.ts',
+  });
+
+  expect(
+    classifyFeedbackIntake('Koa ctx.request.body is not detected as a framework request source'),
+  ).toMatchObject({
+    category: 'missing_framework_rule',
+    taskTitle: 'Add missing framework rule: Koa',
+  });
+
+  expect(
+    classifyFeedbackIntake(
+      'The docs sound bigger than the demonstrated workflow and the output wording is confusing',
+    ),
+  ).toMatchObject({
+    category: 'confusing_docs_output',
+    taskTitle: 'Clarify confusing docs or output',
+  });
+
+  expect(
+    classifyFeedbackIntake('This evidence pack was useful and saved the reviewer 20 minutes'),
+  ).toMatchObject({
+    category: 'useful_signal',
+    taskTitle: 'Preserve useful feedback signal',
+  });
 });
