@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.9.2]
+
+2026-06-19 - "Trust Patch And Release Readiness"
+
+### Added
+
+- Added feedback-intake classification so reviewer notes can turn into
+  fix-candidate evidence instead of staying in chat.
+- Added Daily PR Workflow evidence to approval comments so teams see context,
+  gate, fix-first, review-packet, and feedback commands in one place.
+
+### Changed
+
+- Compact `### Developer Feedback` in evidence-pack PR comments to three
+  reviewer actions: record usefulness, minutes saved, and noisy or false-positive
+  signals.
+- Rank preflight cautions into fix-now, review-only, and manual-signoff buckets
+  so release comments avoid mixing concrete blockers with human review gates.
+- Overlap independent preflight evidence collection to reduce local preflight
+  runtime without changing the report schema.
+
+### Fixed
+
+- Fixed unused-export false positives for TypeScript path aliases, local package
+  aliases, and Next.js App Router framework entrypoints.
+- Fixed Start, workplan, handoff, CLI shortcut, and MCP resume proof commands so
+  before-edit gates use `projscan preflight --mode before_edit --format json`
+  instead of the ambiguous generic preflight command.
+- Updated release-readiness fixtures so the full source test suite validates the
+  current compact feedback and explicit-proof behavior before publishing.
+
 ## [4.9.1]
 
 2026-06-19 - "Release CI Compatibility"

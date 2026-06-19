@@ -1,7 +1,7 @@
 {
   "name": "projscan",
   "mcpName": "io.github.abhiyoheswaran1/projscan",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "description": "Local code intelligence for agent-assisted engineering. Focused daily workflows for repo orientation before edits, proof before handoff or commit, and release-candidate review, with AST-backed evidence through an MCP server and CLI. Runs locally by default.",
   "type": "module",
   "main": "./dist/index.js",

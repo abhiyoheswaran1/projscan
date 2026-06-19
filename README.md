@@ -37,35 +37,31 @@ npx projscan
 
 <img src="docs/projscan-mission-control.gif" alt="projscan Mission Control turning a plain-language goal into shortcut commands, proof commands, and review gates" width="760">
 
-## What's New in 4.9.1
+## What's New in 4.9.2
 
-4.9.1 turns the post-4.8 release-prep loop into daily workflow proof hardening:
-clearer Start output, quieter release-candidate proof, visible offline privacy
-checks, refreshed README media, and CI aligned with the current test toolchain.
+4.9.2 is a trust patch for teams using projscan on real PRs. It reduces
+unused-export noise in alias-heavy and Next.js apps, makes Start proof commands
+explicit, and trims PR feedback prompts so reviewers can report usefulness or
+noise without reading a wall of instructions.
 
-- **SvelteKit dataflow coverage.** `RequestEvent` handlers and hooks now
-  classify request body readers, headers, URL, params, and cookies through
-  framework-gated source patterns.
-- **No-release continuation routing.** Autonomous improvement prompts now route
-  to bounded workplans while release, publish, deploy, push, merge, and
-  version-bump actions stay blocked unless a release task is active.
-- **Scoped evidence prompts.** Shareable redacted evidence requests can infer
-  top-level directory scopes such as `tests` and produce concrete local
-  analyze/doctor/CI commands.
-- **Coordination handoffs.** Agent briefs now carry clearer merge-order hints
-  and preflight coordination proof paths for parallel-agent work.
-- **Python dependency evidence.** Upgrade previews handle numeric-looking
-  package names, Poetry dependency source lines, nested requirements, and nested
-  constraints more reliably.
-- **Quieter release-candidate proof.** Start output now avoids duplicate ready
-  sections, low-signal test/barrel hotspot cautions stay out of the first
-  action, and `privacy-check --offline` exposes the offline boundary in help.
-- **Release CI alignment.** CI now runs the full source test harness on Node 20,
-  22, and 24, with a separate Node 18 packed-install smoke job for published
-  package compatibility.
-- **Maintainability cleanup.** Mission Control route criteria, public start
-  types, plugin loading, telemetry helpers, preflight/report assembly, code
-  graph indexing, and HTML reporters have been split into focused modules.
+- **Fewer unused-export false positives.** TypeScript path aliases, local
+  package aliases, and Next.js App Router entrypoints now count as real usage
+  where the framework or compiler owns the import path.
+- **Explicit proof commands.** Start, workplan, handoff, CLI shortcut, and MCP
+  resume surfaces now use `projscan preflight --mode before_edit --format json`
+  for before-edit proof instead of the ambiguous generic preflight command.
+- **Compact reviewer feedback.** Evidence-pack PR comments keep the Developer
+  Feedback section, but reduce it to three actions: record usefulness, minutes
+  saved, and noisy or false-positive signals.
+- **Caution triage.** Preflight cautions now separate fix-now items,
+  review-only signals, and manual sign-off gates, which keeps release comments
+  from treating scale review as an actual defect.
+- **Faster preflight input gathering.** Independent evidence collection runs in
+  parallel where it is safe, reducing local preflight wait time without changing
+  the report schema.
+- **Release verification cleanup.** The source test suite and PR-comment
+  fixtures now validate the current compact feedback and explicit-proof
+  behavior before publishing.
 
 <img src="docs/projscan-proof-router.png" alt="projscan intent router and proof workflow showing impact routing, setup discovery, dependency intelligence, and stable-surface guardrails" width="760">
 
