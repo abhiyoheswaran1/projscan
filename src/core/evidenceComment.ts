@@ -311,14 +311,12 @@ function formatFixFirst(fix: FixFirstRecommendation): string[] {
 }
 
 function formatDeveloperFeedback(): string[] {
+  const feedbackCommand =
+    'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
   return [
-    '- Was this useful on this PR? Ask the reviewer whether the comment saved 10-20 minutes.',
-    '- Minutes saved: `0|5|10|20+`.',
-    '- Prevented bad edit or missed review step: `yes|no`.',
-    '- Owner routing clear: `yes|no`. Next command clear: `yes|no`.',
-    '- False positives or noisy rules: `none|<rule ids>`.',
-    '- What was missing or noisy? Capture one missing signal, one noisy rule, or `none` before merge.',
-    '- Keep using it every PR: `projscan evidence-pack --pr-comment`, `projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10`, then `projscan dogfood --repo <repo-a> --repo <repo-b> --repo <repo-c> --feedback .projscan-feedback.json --format json`.',
+    `- Was this useful? Capture the reviewer outcome with \`${feedbackCommand}\`.`,
+    '- Ask whether it saved 10+ minutes or prevented a risky edit; record `--useful`, `--minutes-saved`, and `--prevented-bad-edit` when applicable.',
+    '- False positives or noisy rules: add `--false-positive-rule <rule>`, `--missing-signal <text>`, or `--noisy-finding <text>` before dogfood.',
   ];
 }
 

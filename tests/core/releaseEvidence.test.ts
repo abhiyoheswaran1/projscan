@@ -100,6 +100,14 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
   expect(report.prComment).toContain('projscan bug-hunt --format json');
   expect(report.prComment).toContain('projscan evidence-pack --pr-comment');
   expect(report.prComment).toContain('projscan feedback add --file .projscan-feedback.json');
+  const feedbackSection = report.prComment!.split('### Developer Feedback')[1]!.split('\n\n')[0]!;
+  expect(feedbackSection).toContain(
+    'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10',
+  );
+  expect(feedbackSection).toContain('Was this useful');
+  expect(feedbackSection).toContain('False positives or noisy rules');
+  expect(feedbackSection).not.toContain('Keep using it every PR');
+  expect(feedbackSection.split('\n').filter((line) => line.startsWith('- '))).toHaveLength(3);
   expect(report.prSummary?.trust.summary).toMatch(/defect|manual review|clean/i);
   expect(report.prSummary?.nextCommands).toContain(
     'projscan preflight --mode before_merge --format json',
