@@ -5,7 +5,7 @@ import { safeChangedFiles } from './preflightChangedFiles.js';
 import { safeCoordination, safeHotspots, safeSession } from './preflightLocalEvidence.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
-import type { FileEntry, Issue, PreflightMode } from '../types.js';
+import type { LoadedConfig, PreflightMode } from '../types.js';
 
 export interface LoadPreflightInputsOptions {
   baseRef?: string;
@@ -13,23 +13,73 @@ export interface LoadPreflightInputsOptions {
   enablePlugins?: boolean;
 }
 
+export interface PreflightInputDependencies {
+  loadConfig: typeof loadConfig;
+  scanRepository: typeof scanRepository;
+  collectIssues: typeof collectIssues;
+  applyConfigToIssues: typeof applyConfigToIssues;
+  calculateScore: typeof calculateScore;
+  safeChangedFiles: typeof safeChangedFiles;
+  safeSession: typeof safeSession;
+  safeHotspots: typeof safeHotspots;
+  safeReviewEvidence: typeof safeReviewEvidence;
+  safeCoordination: typeof safeCoordination;
+}
+
+const DEFAULT_PREFLIGHT_INPUT_DEPS: PreflightInputDependencies = {
+  loadConfig,
+  scanRepository,
+  collectIssues,
+  applyConfigToIssues,
+  calculateScore,
+  safeChangedFiles,
+  safeSession,
+  safeHotspots,
+  safeReviewEvidence,
+  safeCoordination,
+};
+
 export async function loadPreflightInputs(
   rootPath: string,
   mode: PreflightMode,
   options: LoadPreflightInputsOptions = {},
 ) {
-  const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
-  const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
-  const issues = applyConfigToIssues(
-    await collectIssuesWithPluginOption(rootPath, scan.files, options.enablePlugins),
+  return loadPreflightInputsWithDeps(rootPath, mode, options, DEFAULT_PREFLIGHT_INPUT_DEPS);
+}
+
+export async function loadPreflightInputsWithDeps(
+  rootPath: string,
+  mode: PreflightMode,
+  options: LoadPreflightInputsOptions = {},
+  deps: PreflightInputDependencies = DEFAULT_PREFLIGHT_INPUT_DEPS,
+) {
+  const configResult = await deps
+    .loadConfig(rootPath)
+    .catch((): LoadedConfig => ({ config: {}, source: null }));
+  const changedFilesPromise = deps.safeChangedFiles(rootPath, mode, options.baseRef);
+  const sessionPromise = deps.safeSession(rootPath);
+  const reviewPromise = deps.safeReviewEvidence(rootPath, mode, options);
+  const scan = await deps.scanRepository(rootPath, {
+    ignore: configResult.config.ignore,
+    includeIgnored: configResult.config.scan?.includeIgnored,
+    useConfig: false,
+  });
+  const issues = deps.applyConfigToIssues(
+    await deps.collectIssues(rootPath, scan.files, {
+      scanEnvValues: configResult.config.scan?.scanEnvValues === true,
+      useConfig: false,
+    }),
     configResult.config,
   );
-  const health = calculateScore(issues);
-  const changedFiles = await safeChangedFiles(rootPath, mode, options.baseRef);
-  const session = await safeSession(rootPath);
-  const hotspots = await safeHotspots(rootPath, scan.files, issues);
-  const review = await safeReviewEvidence(rootPath, mode, options);
-  const coordination = await safeCoordination(rootPath, options.baseRef);
+  const health = deps.calculateScore(issues);
+  const hotspotsPromise = deps.safeHotspots(rootPath, scan.files, issues);
+  const [changedFiles, session, hotspots, review] = await Promise.all([
+    changedFilesPromise,
+    sessionPromise,
+    hotspotsPromise,
+    reviewPromise,
+  ]);
+  const coordination = await deps.safeCoordination(rootPath, options.baseRef);
 
   return {
     issues,
@@ -43,11 +93,3 @@ export async function loadPreflightInputs(
 }
 
 export type PreflightInputs = Awaited<ReturnType<typeof loadPreflightInputs>>;
-
-async function collectIssuesWithPluginOption(
-  rootPath: string,
-  files: FileEntry[],
-  _enablePlugins?: boolean,
-): Promise<Issue[]> {
-  return collectIssues(rootPath, files);
-}
