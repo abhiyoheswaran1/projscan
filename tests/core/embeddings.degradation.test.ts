@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Hermetic, controllable stand-in for @xenova/transformers so we can simulate a
 // model-load failure (e.g. HTTP 429 from the model host, or offline) without
@@ -21,6 +21,11 @@ function fakePipeline() {
 beforeEach(() => {
   __resetEmbeddingsCache();
   pipelineMock.mockReset();
+  vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('embeddings — graceful degradation on model-load failure', () => {
@@ -30,6 +35,9 @@ describe('embeddings — graceful degradation on model-load failure', () => {
     );
 
     await expect(embedText('hello world')).resolves.toBeNull();
+    expect(process.stderr.write).toHaveBeenCalledWith(
+      expect.stringContaining('Semantic features disabled for this run.'),
+    );
   });
 
   it('does not poison the cache — a later call can still load the model', async () => {
@@ -41,5 +49,6 @@ describe('embeddings — graceful degradation on model-load failure', () => {
     const vec = await embedText('second attempt succeeds');
     expect(vec).not.toBeNull();
     expect(vec!.length).toBe(EMBEDDING_DIM);
+    expect(process.stderr.write).toHaveBeenCalledTimes(1);
   });
 });
