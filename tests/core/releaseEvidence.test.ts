@@ -57,6 +57,22 @@ test('evidence pack composes the four-line product plan without changing package
   expect(report.websitePrompt).toContain('projscan_evidence_pack');
   expect(report.approval.required).toBe(true);
   expect(report.approval.recommendation.length).toBeGreaterThan(0);
+  expect(report.dailyPrWorkflow?.map((step) => step.id)).toEqual([
+    'context',
+    'gate',
+    'fix_first',
+    'review_packet',
+    'feedback',
+  ]);
+  expect(report.dailyPrWorkflow?.map((step) => step.command)).toEqual(
+    expect.arrayContaining([
+      'projscan start --mode before_edit --format json',
+      'projscan preflight --mode before_commit --format json',
+      'projscan bug-hunt --format json',
+      'projscan evidence-pack --pr-comment',
+    ]),
+  );
+  expect(report.dailyPrWorkflow?.at(-1)?.command).toContain('projscan feedback add');
 });
 
 test('evidence pack can render a concise PR comment for GitHub review', async () => {
@@ -71,6 +87,7 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
   expect(report.prComment).toContain('**Verdict:**');
   expect(report.prComment).toContain('### Verdict');
   expect(report.prComment).toContain('### Reviewer Decision');
+  expect(report.prComment).toContain('### Daily PR Workflow');
   expect(report.prComment).toContain('### Top Risks');
   expect(report.prComment).toContain('### Team Routing');
   expect(report.prComment).toContain('### Baseline Trend');
@@ -79,6 +96,10 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
   expect(report.prComment).toContain('### Next Commands');
   expect(report.prComment).toContain('### Suggested Next Actions');
   expect(report.prComment).toContain('projscan preflight --mode before_merge --format json');
+  expect(report.prComment).toContain('projscan start --mode before_edit --format json');
+  expect(report.prComment).toContain('projscan bug-hunt --format json');
+  expect(report.prComment).toContain('projscan evidence-pack --pr-comment');
+  expect(report.prComment).toContain('projscan feedback add --file .projscan-feedback.json');
   expect(report.prSummary?.trust.summary).toMatch(/defect|manual review|clean/i);
   expect(report.prSummary?.nextCommands).toContain(
     'projscan preflight --mode before_merge --format json',

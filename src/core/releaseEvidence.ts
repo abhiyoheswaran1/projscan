@@ -1,6 +1,10 @@
 import { computeBugHunt } from './bugHunt.js';
-import { renderEvidencePackPrComment, validateEvidencePackPrComment } from './evidenceComment.js';
-export { renderEvidencePackPrComment, validateEvidencePackPrComment };
+import {
+  buildDailyPrWorkflow,
+  renderEvidencePackPrComment,
+  validateEvidencePackPrComment,
+} from './evidenceComment.js';
+export { buildDailyPrWorkflow, renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
 import { buildEvidencePackArtifacts } from './releaseEvidenceArtifacts.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
@@ -88,6 +92,7 @@ export async function computeEvidencePack(
       ? { websitePrompt: buildWebsitePrompt(train, changelogEntries) }
       : {}),
     prSummary,
+    dailyPrWorkflow: buildDailyPrWorkflow(),
     suggestedNextActions,
   };
   if (!options.includePrComment) return report;

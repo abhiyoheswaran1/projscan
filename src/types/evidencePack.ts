@@ -49,6 +49,20 @@ export interface EvidencePackPrSummary {
   baselineTrend?: BaselineTrend;
 }
 
+export type EvidencePackDailyPrWorkflowStepId =
+  | 'context'
+  | 'gate'
+  | 'fix_first'
+  | 'review_packet'
+  | 'feedback';
+
+export interface EvidencePackDailyPrWorkflowStep {
+  id: EvidencePackDailyPrWorkflowStepId;
+  label: string;
+  command: string;
+  purpose: string;
+}
+
 export interface EvidencePackPrCommentValidationCheck {
   id: string;
   status: 'pass' | 'warn' | 'fail';
@@ -81,5 +95,6 @@ export interface EvidencePackReport {
   prComment?: string;
   prCommentValidation?: EvidencePackPrCommentValidation;
   prSummary?: EvidencePackPrSummary;
+  dailyPrWorkflow?: EvidencePackDailyPrWorkflowStep[];
   suggestedNextActions: PreflightSuggestedAction[];
 }

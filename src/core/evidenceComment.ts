@@ -1,5 +1,6 @@
 import type {
   BaselineTrend,
+  EvidencePackDailyPrWorkflowStep,
   EvidencePackPrCommentValidation,
   EvidencePackPrSummary,
   EvidencePackReport,
@@ -32,6 +33,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '',
     '### Reviewer Decision',
     ...formatReviewerDecision(report),
+    '',
+    '### Daily PR Workflow',
+    ...formatDailyPrWorkflow(report.dailyPrWorkflow),
     '',
     '### Trust Calibration',
     ...(pr?.trust
@@ -83,6 +87,7 @@ const REQUIRED_PR_COMMENT_SECTIONS = [
   '## projscan approval evidence',
   '### Verdict',
   '### Reviewer Decision',
+  '### Daily PR Workflow',
   '### Trust Calibration',
   '### Baseline Trend',
   '### Top Risks',
@@ -95,6 +100,42 @@ const REQUIRED_PR_COMMENT_SECTIONS = [
 ] as const;
 
 const GITHUB_COMMENT_LIMIT = 65_536;
+
+export function buildDailyPrWorkflow(): EvidencePackDailyPrWorkflowStep[] {
+  return [
+    {
+      id: 'context',
+      label: 'Context',
+      command: 'projscan start --mode before_edit --format json',
+      purpose: 'Get repo orientation before editing.',
+    },
+    {
+      id: 'gate',
+      label: 'Gate',
+      command: 'projscan preflight --mode before_commit --format json',
+      purpose: 'Separate concrete blockers from review-only cautions.',
+    },
+    {
+      id: 'fix_first',
+      label: 'Fix first',
+      command: 'projscan bug-hunt --format json',
+      purpose: 'Address the highest-confidence defect before adding scope.',
+    },
+    {
+      id: 'review_packet',
+      label: 'Review packet',
+      command: 'projscan evidence-pack --pr-comment',
+      purpose: 'Post the reviewer-facing verdict, owners, proof, and next commands.',
+    },
+    {
+      id: 'feedback',
+      label: 'Feedback',
+      command:
+        'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10',
+      purpose: 'Capture whether the workflow saved time or produced noise.',
+    },
+  ];
+}
 
 export function validateEvidencePackPrComment(
   markdown: string,
@@ -176,6 +217,12 @@ function formatReviewerDecision(report: EvidencePackReport): string[] {
     `- owner state: ${ownerState}`,
     `- first command: \`${firstCommand}\``,
   ];
+}
+
+function formatDailyPrWorkflow(steps: EvidencePackDailyPrWorkflowStep[] | undefined): string[] {
+  return (steps ?? buildDailyPrWorkflow()).map(
+    (step) => `- ${step.label}: \`${step.command}\` - ${step.purpose}`,
+  );
 }
 
 function reviewerDecision(report: EvidencePackReport): 'ship' | 'review' | 'fix first' {
