@@ -4,6 +4,10 @@ import type { McpTool } from './_shared.js';
 import { loadWorkspace } from '../../core/workspace.js';
 import { scanRepository } from '../../core/repositoryScanner.js';
 import { buildCodeGraph, type CodeGraph } from '../../core/codeGraph.js';
+import {
+  loadJavaScriptProjectConfigs,
+  resolveJavaScriptImportAbsolute,
+} from '../../core/languages/javascriptProjectConfig.js';
 
 /**
  * `projscan_workspace_graph` (1.6+) — cross-repo intelligence over the
@@ -214,24 +218,25 @@ async function fileImportersView(
   }
 
   const sourceAbs = path.resolve(sourceRepoPath, file);
-  // Heuristic: an importer is any registered repo that has at least
-  // one file whose `imports[].source` resolves to a path matching
-  // sourceAbs. Lightweight scan — full cross-repo resolution is an
-  // expensive future improvement.
   const importers: Array<{ repo: string; file: string; source: string }> = [];
   for (const repo of workspace.repos) {
     if (repo.path === sourceRepoPath) continue;
     const graph = await buildPerRepoGraph(repo.path);
     if (!graph) continue;
+    const projectConfigs = await loadJavaScriptProjectConfigs(
+      repo.path,
+      [...graph.files.keys()].map((relativePath) => ({ relativePath })),
+    );
     for (const f of graph.files.values()) {
       for (const imp of f.imports) {
         if (typeof imp.source !== 'string') continue;
-        const resolved = path.resolve(repo.path, path.dirname(f.relativePath), imp.source);
-        const looksLikeMatch =
-          resolved === sourceAbs ||
-          resolved.startsWith(sourceAbs + '.') ||
-          imp.source.endsWith(file);
-        if (looksLikeMatch) {
+        const resolved = await resolveJavaScriptImportAbsolute(
+          repo.path,
+          f.relativePath,
+          imp.source,
+          projectConfigs,
+        );
+        if (resolved && pathsReferToSameFile(resolved, sourceAbs)) {
           importers.push({ repo: repo.name, file: f.relativePath, source: imp.source });
         }
       }
@@ -245,4 +250,14 @@ async function fileImportersView(
     importers: importers.slice(0, 200),
     truncated: importers.length > 200,
   };
+}
+
+function pathsReferToSameFile(a: string, b: string): boolean {
+  const left = path.resolve(a);
+  const right = path.resolve(b);
+  return left === right || stripKnownSourceExtension(left) === stripKnownSourceExtension(right);
+}
+
+function stripKnownSourceExtension(value: string): string {
+  return value.replace(/\.(?:[cm]?[jt]sx?|mts|cts)$/i, '');
 }

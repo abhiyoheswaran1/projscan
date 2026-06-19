@@ -295,14 +295,10 @@ function buildBoundaries(graph: CodeGraph, maxItems: number): UnderstandBoundary
       const fileNames = new Set(files.map((file) => file.relativePath));
       const dependsOn = new Set<string>();
       for (const file of files) {
-        for (const imp of file.imports) {
-          const local = [...graph.localImporters.entries()].find(([, importers]) =>
-            importers.has(file.relativePath),
-          )?.[0];
-          if (local && !fileNames.has(local)) dependsOn.add(boundaryName(local));
-          const source = imp.source.split('/')[0];
-          if (source && !imp.source.startsWith('.')) dependsOn.add(source);
+        for (const local of localDependenciesFor(file.relativePath, graph)) {
+          if (!fileNames.has(local)) dependsOn.add(boundaryName(local));
         }
+        for (const pkg of packageDependenciesFor(file.relativePath, graph)) dependsOn.add(pkg);
       }
       const publicExports = files
         .flatMap((file) => file.exports.map((entry) => entry.name).filter(Boolean))
@@ -441,8 +437,7 @@ function reachableFiles(entryFile: string, graph: CodeGraph, maxDepth: number): 
     if (current.depth >= maxDepth) continue;
     const graphFile = graph.files.get(current.file);
     if (!graphFile) continue;
-    for (const imp of graphFile.imports) {
-      const target = resolveLocalImport(current.file, imp.source, graph);
+    for (const target of localDependenciesFor(current.file, graph)) {
       if (target && !seen.has(target)) {
         seen.add(target);
         result.push(target);
@@ -453,19 +448,20 @@ function reachableFiles(entryFile: string, graph: CodeGraph, maxDepth: number): 
   return result;
 }
 
-function resolveLocalImport(fromFile: string, source: string, graph: CodeGraph): string | null {
-  if (!source.startsWith('.')) return null;
-  const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), source));
-  const candidates = [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    `${base}.js`,
-    `${base}.jsx`,
-    path.posix.join(base, 'index.ts'),
-    path.posix.join(base, 'index.js'),
-  ];
-  return candidates.find((candidate) => graph.files.has(candidate)) ?? null;
+function localDependenciesFor(file: string, graph: CodeGraph): string[] {
+  const dependencies: string[] = [];
+  for (const [target, importers] of graph.localImporters) {
+    if (importers.has(file)) dependencies.push(target);
+  }
+  return dependencies.sort();
+}
+
+function packageDependenciesFor(file: string, graph: CodeGraph): string[] {
+  const dependencies: string[] = [];
+  for (const [pkg, importers] of graph.packageImporters) {
+    if (importers.has(file)) dependencies.push(pkg);
+  }
+  return dependencies.sort();
 }
 
 async function buildContracts(

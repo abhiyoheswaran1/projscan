@@ -44,6 +44,36 @@ test('flow view describes runtime paths and side-effect sinks', async () => {
   expect(report.claims.some((claim) => claim.id === 'flow-runtime-paths')).toBe(true);
 });
 
+test('flow view follows tsconfig alias imports in runtime paths', async () => {
+  const root = await makeUnderstandFixture();
+  await fs.writeFile(
+    path.join(root, 'tsconfig.json'),
+    JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@app/*': ['src/*'] } } }),
+  );
+  await fs.writeFile(
+    path.join(root, 'src', 'server.ts'),
+    [
+      'import { loadConfig } from "@app/config";',
+      'import { query } from "@app/db";',
+      '',
+      'export function createApp() {',
+      '  return {',
+      '    async handle(req: { body: { id: string } }) {',
+      '      const config = loadConfig();',
+      '      await query(`select ${req.body.id} ${config.token}`);',
+      '    },',
+      '  };',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeUnderstandReport(root, { view: 'flow', maxItems: 8 });
+  const serverFlow = report.flows.find((flow) => flow.entry.file === 'src/server.ts');
+
+  expect(serverFlow?.path).toEqual(expect.arrayContaining(['src/config.ts', 'src/db.ts']));
+});
+
 test('contracts view lists public exports config contracts and breaking risks', async () => {
   const root = await makeUnderstandFixture();
 

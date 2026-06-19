@@ -69,7 +69,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
     if (isTestFile(file.relativePath)) continue;
     if (isBarrelFile(file.relativePath)) continue;
     if (isPublicEntry(file.relativePath, publicEntries)) continue;
-    if (isNextJsFrameworkEntrypoint(file.relativePath)) continue;
+    if (isFrameworkEntrypoint(file.relativePath)) continue;
 
     // Any importer → file is used.
     if ((graph.localImporters.get(file.relativePath)?.size ?? 0) > 0) continue;
@@ -133,7 +133,7 @@ function isPublicEntry(relativePath: string, publicEntries: Set<string>): boolea
   return false;
 }
 
-function isNextJsFrameworkEntrypoint(relativePath: string): boolean {
+function isFrameworkEntrypoint(relativePath: string): boolean {
   if (!isJavaScriptSourcePath(relativePath)) return false;
 
   const normalized = relativePath.replace(/\\/g, '/');
@@ -146,6 +146,10 @@ function isNextJsFrameworkEntrypoint(relativePath: string): boolean {
     return true;
   }
 
+  if (isRemixFrameworkEntrypoint(normalized)) return true;
+  if (isSvelteKitFrameworkEntrypoint(normalized)) return true;
+  if (isAstroFrameworkEntrypoint(normalized)) return true;
+
   const appRelativePath = normalized.startsWith('src/')
     ? normalized.slice('src/'.length)
     : normalized;
@@ -153,6 +157,36 @@ function isNextJsFrameworkEntrypoint(relativePath: string): boolean {
 
   const appBasename = path.posix.basename(appRelativePath, path.posix.extname(appRelativePath));
   return NEXT_APP_ROUTER_ENTRYPOINT_BASENAMES.has(appBasename);
+}
+
+function isRemixFrameworkEntrypoint(relativePath: string): boolean {
+  if (
+    relativePath === 'app/root.tsx' ||
+    relativePath === 'app/root.jsx' ||
+    relativePath === 'app/entry.client.tsx' ||
+    relativePath === 'app/entry.client.jsx' ||
+    relativePath === 'app/entry.server.tsx' ||
+    relativePath === 'app/entry.server.jsx' ||
+    relativePath === 'app/routes.ts'
+  ) {
+    return true;
+  }
+  return relativePath.startsWith('app/routes/');
+}
+
+function isSvelteKitFrameworkEntrypoint(relativePath: string): boolean {
+  const routePath = relativePath.startsWith('src/')
+    ? relativePath.slice('src/'.length)
+    : relativePath;
+  if (!routePath.startsWith('routes/')) return false;
+  return path.posix.basename(routePath).startsWith('+');
+}
+
+function isAstroFrameworkEntrypoint(relativePath: string): boolean {
+  const astroPath = relativePath.startsWith('src/')
+    ? relativePath.slice('src/'.length)
+    : relativePath;
+  return astroPath.startsWith('pages/');
 }
 
 const NEXT_ROOT_ENTRYPOINT_BASENAMES = new Set([

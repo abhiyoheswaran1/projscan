@@ -249,6 +249,62 @@ describe('deadCodeCheck', () => {
     expect(issues.find((i) => i.id === 'unused-exports-src/lib/dead-next-adjacent.ts')).toBeDefined();
   });
 
+  it('skips Remix SvelteKit and Astro file-router framework entrypoints only', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'app/routes/users.tsx',
+        [
+          'export async function loader() { return null; }',
+          'export async function action() { return null; }',
+          'export function meta() { return []; }',
+          'export default function UsersRoute() { return null; }',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/routes/+page.server.ts',
+        [
+          'export function load() { return {}; }',
+          'export const actions = { default() { return {}; } };',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/routes/api/+server.ts',
+        [
+          'export function GET() { return new Response("ok"); }',
+          'export function POST() { return new Response("ok"); }',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/pages/api/upload.ts',
+        [
+          'export function GET() { return new Response("ok"); }',
+          'export const prerender = false;',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(tmp, 'app/utils/helper.ts', 'export function unusedRemixHelper() {}\n'),
+      await writeFile(tmp, 'src/routes/helper.ts', 'export function unusedSvelteHelper() {}\n'),
+      await writeFile(tmp, 'src/lib/dead-framework-helper.ts', 'export function stillUnused() {}\n'),
+    ];
+    await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'x' }));
+
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-app/routes/users.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/routes/+page.server.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/routes/api/+server.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/pages/api/upload.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-app/utils/helper.ts')).toBeDefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/routes/helper.ts')).toBeDefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/lib/dead-framework-helper.ts')).toBeDefined();
+  });
+
   it('flags dead Python modules with named exports', async () => {
     const files = [
       await writeFile(tmp, 'pkg/__init__.py', ''),

@@ -19,6 +19,8 @@ export type BuiltinLanguageId = (typeof BUILTIN_LANGUAGE_IDS)[number];
 export type LanguageId = BuiltinLanguageId | (string & {});
 
 export interface LanguageResolveContext {
+  /** Repository root for resolvers that need to interpret project config paths. */
+  rootPath?: string;
   /** Language-specific root dirs used during import resolution. */
   packageRoots?: string[];
   meta?: Record<string, unknown>;

@@ -162,6 +162,75 @@ describe('buildCodeGraph', () => {
     expect(filesImportingFile(graph, 'src/helper.ts')).toEqual(['src/main.ts']);
   });
 
+  it('resolves jsconfig baseUrl-only imports to local files', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'jsconfig.json'),
+      JSON.stringify({ compilerOptions: { baseUrl: '.' } }),
+    );
+    const files = [
+      await writeFile(tmp, 'src/lib/storage.ts', 'export const storage = 1;'),
+      await writeFile(tmp, 'src/main.ts', "import { storage } from 'src/lib/storage';"),
+    ];
+
+    const graph = await buildCodeGraph(tmp, files);
+
+    expect(filesImportingFile(graph, 'src/lib/storage.ts')).toEqual(['src/main.ts']);
+    expect(filesImportingPackage(graph, 'src')).toEqual([]);
+  });
+
+  it('resolves path aliases inherited through extended configs', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'tsconfig.base.json'),
+      JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@shared/*': ['src/shared/*'] } } }),
+    );
+    await fs.mkdir(path.join(tmp, 'packages/app'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'packages/app/tsconfig.json'),
+      JSON.stringify({ extends: '../../tsconfig.base.json' }),
+    );
+    const files = [
+      await writeFile(tmp, 'src/shared/auth.ts', 'export function auth() { return 1; }'),
+      await writeFile(
+        tmp,
+        'packages/app/src/main.ts',
+        "import { auth } from '@shared/auth';\nauth();",
+      ),
+    ];
+
+    const graph = await buildCodeGraph(tmp, files);
+
+    expect(filesImportingFile(graph, 'src/shared/auth.ts')).toEqual(['packages/app/src/main.ts']);
+    expect(filesImportingPackage(graph, '@shared/auth')).toEqual([]);
+  });
+
+  it('prefers the nearest package-level jsconfig for aliases', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } }),
+    );
+    await fs.mkdir(path.join(tmp, 'packages/app'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, 'packages/app/jsconfig.json'),
+      JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } }),
+    );
+    const files = [
+      await writeFile(tmp, 'src/feature.ts', 'export const rootFeature = 1;'),
+      await writeFile(tmp, 'packages/app/src/feature.ts', 'export const packageFeature = 1;'),
+      await writeFile(
+        tmp,
+        'packages/app/src/main.ts',
+        "import { packageFeature } from '@/feature';\npackageFeature();",
+      ),
+    ];
+
+    const graph = await buildCodeGraph(tmp, files);
+
+    expect(filesImportingFile(graph, 'packages/app/src/feature.ts')).toEqual([
+      'packages/app/src/main.ts',
+    ]);
+    expect(filesImportingFile(graph, 'src/feature.ts')).toEqual([]);
+  });
+
   it('resolves barrel index files', async () => {
     const files = [
       await writeFile(tmp, 'src/utils/index.ts', "export { helper } from './helper.js';"),

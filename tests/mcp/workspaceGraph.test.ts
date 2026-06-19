@@ -198,6 +198,41 @@ export function callAuth() { return auth(); }
     server.close();
   });
 
+  it('file_importers resolves sibling repo imports through tsconfig path aliases', async () => {
+    await fs.writeFile(
+      path.join(consumerRepo, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            '@sdk/*': ['../sdk/src/*'],
+          },
+        },
+      }),
+    );
+    await fs.writeFile(
+      path.join(consumerRepo, 'src', 'index.ts'),
+      `import { auth } from '@sdk/auth';
+export function callAuth() { return auth(); }
+`,
+    );
+    const server = createMcpServer(workspaceRoot);
+    await init(server);
+    const result = await call(server, 1, {
+      action: 'file_importers',
+      file: 'src/auth.ts',
+      repo: 'sdk',
+    });
+
+    const importers = result.importers as Array<{ repo: string; file: string; source: string }>;
+    expect(importers).toContainEqual({
+      repo: 'consumer',
+      file: 'src/index.ts',
+      source: '@sdk/auth',
+    });
+    server.close();
+  });
+
   it('file_importers throws when `file` is missing (caller error)', async () => {
     const server = createMcpServer(workspaceRoot);
     await init(server);
