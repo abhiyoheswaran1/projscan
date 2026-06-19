@@ -260,7 +260,6 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
   expect(report.missionControl.resume.remainingProofCommands).toEqual([
     'projscan preflight --mode before_edit --format json',
     'projscan understand --view verify --format json',
-    'projscan preflight --format json',
   ]);
   expect(report.missionControl.resume.remainingProofToolCalls).toEqual([
     {
@@ -274,12 +273,6 @@ test('start report exposes a phased execution plan for fuzzy routed intents', as
       command: 'projscan understand --view verify --format json',
       tool: 'projscan_understand',
       args: { view: 'verify' },
-    },
-    {
-      stepId: 'proof-4',
-      command: 'projscan preflight --format json',
-      tool: 'projscan_preflight',
-      args: {},
     },
   ]);
   expect(

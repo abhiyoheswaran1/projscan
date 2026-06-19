@@ -33,7 +33,7 @@ describe('release evidence architecture', () => {
     const evidenceCommentEdges = evidenceSource.match(/from '\.\/evidenceComment\.js'/g) ?? [];
     expect(evidenceCommentEdges).toHaveLength(1);
     expect(evidenceSource).toContain(
-      'export { renderEvidencePackPrComment, validateEvidencePackPrComment };',
+      'export { buildDailyPrWorkflow, renderEvidencePackPrComment, validateEvidencePackPrComment };',
     );
   });
 

@@ -68,9 +68,7 @@ test('start release-candidate proof stays local before a version is cut', async 
     'projscan evidence-pack --website-prompt --format json',
   );
   expect(report.missionControl.proofCommands).not.toContain('npm view projscan version');
-  expect(report.missionControl.proofCommands).not.toContain(
-    'gh release view vX.Y.Z --json assets',
-  );
+  expect(report.missionControl.proofCommands).not.toContain('gh release view vX.Y.Z --json assets');
 });
 
 test('start report infers release mode from check-before-release phrasing', async () => {
@@ -174,6 +172,10 @@ test('start report routes release-note and changelog requests to release readine
       args: {},
     }),
   );
+});
+
+test('start report routes changed-since-release requests to release readiness', async () => {
+  const root = await makeTempProject();
 
   const sinceRelease = await computeStartReport(root, {
     intent: 'what changed since last release',
@@ -208,6 +210,10 @@ test('start report routes release-note and changelog requests to release readine
       matchedKeywords: expect.arrayContaining(['built', 'since', 'release']),
     }),
   );
+});
+
+test('start report routes version-candidate phrasing to release readiness', async () => {
+  const root = await makeTempProject();
 
   const versionCandidate = await computeStartReport(root, {
     intent: 'is it worth cutting a version',

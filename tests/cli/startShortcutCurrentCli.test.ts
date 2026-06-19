@@ -210,7 +210,7 @@ test('start prints only ready proof commands when requested', async () => {
   const proofCommands = result.stdout.trim().split('\n');
   expect(proofCommands).toContain('projscan preflight --mode before_edit --format json');
   expect(proofCommands).toContain('projscan understand --view verify --format json');
-  expect(proofCommands).toContain('projscan preflight --format json');
+  expect(proofCommands).not.toContain('projscan preflight --format json');
   expect(proofCommands).not.toContain('projscan search "auth token loader" --format json');
   expect(result.stdout).not.toContain('Start:');
   expect(result.stdout).not.toContain('Mission Control');
@@ -390,7 +390,6 @@ test('start JSON keeps the full report when handoff-json shortcut is requested',
   expect(report.missionControl.handoff.currentStep.stepId).toBe('ready-1');
   expect(report.missionControl.handoff.resume).toEqual(report.missionControl.resume);
 });
-
 
 async function runCli(
   args: string[],

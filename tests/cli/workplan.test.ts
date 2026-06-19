@@ -61,7 +61,8 @@ test('handoff can write a markdown artifact for the next agent', async () => {
   const markdown = await fs.readFile(target, 'utf-8');
   expect(markdown).toContain('# Agent Handoff');
   expect(markdown).toContain('## Next');
-  expect(markdown).toContain('projscan preflight --format json');
+  expect(markdown).toContain('projscan preflight --mode before_edit --format json');
+  expect(markdown).not.toContain('projscan preflight --format json');
 });
 
 test('workplan rejects unsupported formats through the shared matrix', async () => {

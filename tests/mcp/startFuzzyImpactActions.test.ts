@@ -179,7 +179,6 @@ test('projscan_start exposes fuzzy-impact actions and resume proof inputs', asyn
   expect(start.missionControl.resume.remainingProofCommands).toEqual([
     'projscan preflight --mode before_edit --format json',
     'projscan understand --view verify --format json',
-    'projscan preflight --format json',
   ]);
   expect(start.missionControl.resume.remainingProofToolCalls).toEqual([
     {
@@ -193,12 +192,6 @@ test('projscan_start exposes fuzzy-impact actions and resume proof inputs', asyn
       command: 'projscan understand --view verify --format json',
       tool: 'projscan_understand',
       args: { view: 'verify' },
-    },
-    {
-      stepId: 'proof-4',
-      command: 'projscan preflight --format json',
-      tool: 'projscan_preflight',
-      args: {},
     },
   ]);
   expect(

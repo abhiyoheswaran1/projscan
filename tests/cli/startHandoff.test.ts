@@ -144,9 +144,7 @@ test('start console renders a concrete action plan for fuzzy impact intents', as
   expect(result.stdout).toContain(
     '- proof-2: projscan preflight --mode before_edit --format json (MCP: projscan_preflight {"mode":"before_edit"})',
   );
-  expect(result.stdout).toContain(
-    '- proof-4: projscan preflight --format json (MCP: projscan_preflight {})',
-  );
+  expect(result.stdout).not.toContain('projscan preflight --format json');
   expect(result.stdout).not.toContain('projscan impact --symbol buildCodeGraph --format json');
   expect(result.stdout).not.toContain('Agent Runbook');
 });

@@ -195,8 +195,10 @@ function expectUsefulPrComment(report: Awaited<ReturnType<typeof computeEvidence
   expect(body).toContain('### Team Routing');
   expect(body).toContain('### Next Commands');
   expect(body).toContain('### Developer Feedback');
-  expect(body).toMatch(/useful on this PR/i);
-  expect(body).toMatch(/missing or noisy/i);
+  expect(body).toMatch(/Was this useful/i);
+  expect(body).toMatch(/False positives or noisy rules/i);
+  expect(body).toContain('projscan feedback add --file .projscan-feedback.json');
+  expect(body).not.toContain('Keep using it every PR');
   expect(body).toMatch(/### Team Routing[\s\S]*(?:@[a-z0-9_-]+|CODEOWNERS)/i);
   expect(body).toMatch(/### Next Commands[\s\S]*`(?:projscan|npm|npx|gh|git)\b/);
 }

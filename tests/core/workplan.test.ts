@@ -133,9 +133,7 @@ test('release workplan includes release check and local website prompt without m
     'projscan evidence-pack --website-prompt --format json',
   );
   expect(websiteTask?.verification.commands).not.toContain('npm view projscan version');
-  expect(websiteTask?.verification.commands).not.toContain(
-    'gh release view vX.Y.Z --json assets',
-  );
+  expect(websiteTask?.verification.commands).not.toContain('gh release view vX.Y.Z --json assets');
 });
 
 test('workplan carries touched-file coordination into the handoff', async () => {
@@ -176,10 +174,11 @@ test('workplan handoff payload is reusable and includes verification commands', 
   expect(handoff.verdict).toBe(report.verdict);
   expect(handoff.next.length).toBeGreaterThan(0);
   expect(handoff.verificationCommands).toEqual(
-    expect.arrayContaining(['projscan preflight --format json']),
+    expect.arrayContaining(['projscan preflight --mode before_edit --format json']),
   );
   expect(handoff.markdown).toContain('## Next');
-  expect(handoff.markdown).toContain('projscan preflight --format json');
+  expect(handoff.markdown).toContain('projscan preflight --mode before_edit --format json');
+  expect(handoff.markdown).not.toContain('projscan preflight --format json');
 });
 
 async function makeTempProject(): Promise<string> {
