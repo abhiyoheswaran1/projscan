@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
-import { buildImportGraph, toPackageName } from '../core/importGraph.js';
+import { buildImportGraph } from '../core/importGraph.js';
 import { detectWorkspaces } from '../core/monorepo.js';
 import { findDependencyLines } from '../utils/packageJsonLocator.js';
 
@@ -157,14 +157,16 @@ async function checkOnePackage(
   if (allDeclared.size === 0) return [];
 
   // Project per-package usage: walk only the files this manifest covers and
-  // collect their external package names from the full graph's byFile map.
+  // collect external packages from the resolved package index. This avoids
+  // counting tsconfig path aliases as dependency imports.
   const usedPackages = new Set<string>();
-  for (const f of scopedFiles) {
-    const specifiers = fullGraph.byFile.get(f.relativePath);
-    if (!specifiers) continue;
-    for (const spec of specifiers) {
-      const name = toPackageName(spec);
-      if (name) usedPackages.add(name);
+  const scopedRelativePaths = new Set(scopedFiles.map((f) => f.relativePath));
+  for (const [pkgName, importers] of fullGraph.packageImporters ?? []) {
+    for (const importer of importers) {
+      if (scopedRelativePaths.has(importer)) {
+        usedPackages.add(pkgName);
+        break;
+      }
     }
   }
 

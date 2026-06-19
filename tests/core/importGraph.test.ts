@@ -108,6 +108,34 @@ describe('buildImportGraph', () => {
     expect(graph.externalPackages.has('real-pkg')).toBe(true);
   });
 
+  it('does not classify tsconfig path aliases as external packages', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            '@internal/*': ['./src/*'],
+          },
+        },
+      }),
+    );
+    const files = [
+      await writeFile(tmp, 'src/lib/storage.ts', 'export function storage() {}\n'),
+      await writeFile(
+        tmp,
+        'src/app.ts',
+        "import { storage } from '@internal/lib/storage';\nimport React from 'react';\nstorage();",
+      ),
+    ];
+
+    const graph = await buildImportGraph(tmp, files);
+    expect(graph.externalPackages.has('@internal/lib')).toBe(false);
+    expect(graph.externalPackages.has('react')).toBe(true);
+    expect(filesImporting(graph, '@internal/lib')).toEqual([]);
+    expect(filesImporting(graph, 'react')).toEqual(['src/app.ts']);
+  });
+
   it('filesImporting returns relative paths of importers', async () => {
     const files = [
       await writeFile(tmp, 'src/a.ts', "import chalk from 'chalk';"),

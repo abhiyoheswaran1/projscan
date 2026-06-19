@@ -49,6 +49,39 @@ describe('unusedDependencyCheck', () => {
     expect(ids).not.toContain('unused-dependency-used-pkg');
   });
 
+  it('does not count tsconfig path aliases as dependency imports', async () => {
+    await fs.writeFile(
+      path.join(tmp, 'package.json'),
+      JSON.stringify({
+        dependencies: { '@internal/lib': '^1.0.0', react: '^18.0.0' },
+      }),
+    );
+    await fs.writeFile(
+      path.join(tmp, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            '@internal/*': ['./src/*'],
+          },
+        },
+      }),
+    );
+    const files = [
+      await writeFile(tmp, 'src/lib/storage.ts', 'export function storage() {}\n'),
+      await writeFile(
+        tmp,
+        'src/index.ts',
+        "import { storage } from '@internal/lib/storage';\nimport React from 'react';\nstorage();",
+      ),
+    ];
+
+    const issues = await check(tmp, files);
+    const ids = issues.map((i) => i.id);
+    expect(ids).toContain('unused-dependency-@internal/lib');
+    expect(ids).not.toContain('unused-dependency-react');
+  });
+
   it('devDependencies report at info severity', async () => {
     await fs.writeFile(
       path.join(tmp, 'package.json'),

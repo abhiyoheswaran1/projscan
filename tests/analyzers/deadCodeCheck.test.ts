@@ -101,6 +101,154 @@ describe('deadCodeCheck', () => {
     expect(issues.find((i) => i.id === 'unused-exports-src/helper.ts')).toBeUndefined();
   });
 
+  it('treats TypeScript path-alias imports as local usage', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/lib/firebase/storage-client.ts',
+        'export function getClientStorage() { return "storage"; }\n',
+      ),
+      await writeFile(
+        tmp,
+        'src/components/new-project/BrandAssetUploader.tsx',
+        [
+          "import { getClientStorage } from '@/lib/firebase/storage-client';",
+          'export function BrandAssetUploader() {',
+          '  return getClientStorage();',
+          '}',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(tmp, 'src/lib/dead.ts', 'export function unused() {}\n'),
+    ];
+    await fs.writeFile(
+      path.join(tmp, 'package.json'),
+      JSON.stringify({ name: 'x', main: 'src/components/new-project/BrandAssetUploader.tsx' }),
+    );
+    await fs.writeFile(
+      path.join(tmp, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: '.',
+          paths: {
+            '@/*': ['./src/*'],
+          },
+        },
+      }),
+    );
+
+    const issues = await check(tmp, files);
+    expect(
+      issues.find((i) => i.id === 'unused-exports-src/lib/firebase/storage-client.ts'),
+    ).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/lib/dead.ts')).toBeDefined();
+  });
+
+  it('skips Next.js App Router and middleware framework entrypoints only', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/app/api/upload/route.ts',
+        [
+          'export async function GET() { return Response.json({ ok: true }); }',
+          'export async function POST() { return Response.json({ ok: true }); }',
+          "export const dynamic = 'force-dynamic';",
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/app/page.tsx',
+        [
+          "export const metadata = { title: 'Home' };",
+          'export default function Page() { return null; }',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/app/dashboard/layout.tsx',
+        [
+          'export async function generateMetadata() { return {}; }',
+          'export default function DashboardLayout({ children }: { children: React.ReactNode }) {',
+          '  return children;',
+          '}',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'src/middleware.ts',
+        [
+          'export function middleware() { return Response.json({ ok: true }); }',
+          "export const config = { matcher: '/dashboard/:path*' };",
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(tmp, 'src/app/dashboard/helper.ts', 'export function unusedHelper() {}\n'),
+    ];
+    await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'x' }));
+
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/api/upload/route.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/page.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/dashboard/layout.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/middleware.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/dashboard/helper.ts')).toBeDefined();
+  });
+
+  it('skips adjacent Next.js root, App Router, and metadata conventions', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/proxy.ts',
+        [
+          'export function proxy() { return Response.json({ ok: true }); }',
+          "export const config = { matcher: '/dashboard/:path*' };",
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'instrumentation.ts',
+        [
+          'export function register() {}',
+          'export function onRequestError() {}',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(
+        tmp,
+        'mdx-components.tsx',
+        'export function useMDXComponents(components: Record<string, unknown>) { return components; }\n',
+      ),
+      await writeFile(
+        tmp,
+        'src/app/global-not-found.tsx',
+        [
+          "export const metadata = { title: 'Not found' };",
+          'export default function GlobalNotFound() { return null; }',
+          '',
+        ].join('\n'),
+      ),
+      await writeFile(tmp, 'src/app/@modal/default.tsx', 'export default function Default() { return null; }\n'),
+      await writeFile(tmp, 'src/app/forbidden.tsx', 'export default function Forbidden() { return null; }\n'),
+      await writeFile(tmp, 'src/app/sitemap.ts', 'export default function sitemap() { return []; }\n'),
+      await writeFile(tmp, 'src/lib/dead-next-adjacent.ts', 'export function stillUnused() {}\n'),
+    ];
+    await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({ name: 'x' }));
+
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-src/proxy.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-instrumentation.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-mdx-components.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/global-not-found.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/@modal/default.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/forbidden.tsx')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/app/sitemap.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/lib/dead-next-adjacent.ts')).toBeDefined();
+  });
+
   it('flags dead Python modules with named exports', async () => {
     const files = [
       await writeFile(tmp, 'pkg/__init__.py', ''),

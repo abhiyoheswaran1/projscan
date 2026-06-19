@@ -17,6 +17,17 @@ const SOURCE_EXTENSIONS = new Set([
   '.pyw',
 ]);
 
+const JAVASCRIPT_SOURCE_EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.mts',
+  '.cts',
+]);
+
 // Never flag these - they're public API by definition (JS convention).
 const PUBLIC_PATH_PREFIXES = ['src/index', 'index.'];
 
@@ -58,6 +69,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
     if (isTestFile(file.relativePath)) continue;
     if (isBarrelFile(file.relativePath)) continue;
     if (isPublicEntry(file.relativePath, publicEntries)) continue;
+    if (isNextJsFrameworkEntrypoint(file.relativePath)) continue;
 
     // Any importer → file is used.
     if ((graph.localImporters.get(file.relativePath)?.size ?? 0) > 0) continue;
@@ -119,6 +131,62 @@ function isPublicEntry(relativePath: string, publicEntries: Set<string>): boolea
     if (relativePath === prefix || relativePath.startsWith(prefix)) return true;
   }
   return false;
+}
+
+function isNextJsFrameworkEntrypoint(relativePath: string): boolean {
+  if (!isJavaScriptSourcePath(relativePath)) return false;
+
+  const normalized = relativePath.replace(/\\/g, '/');
+  const basename = path.posix.basename(normalized, path.posix.extname(normalized));
+  const dirname = path.posix.dirname(normalized);
+  if (
+    (dirname === '.' || dirname === 'src') &&
+    NEXT_ROOT_ENTRYPOINT_BASENAMES.has(basename)
+  ) {
+    return true;
+  }
+
+  const appRelativePath = normalized.startsWith('src/')
+    ? normalized.slice('src/'.length)
+    : normalized;
+  if (!appRelativePath.startsWith('app/')) return false;
+
+  const appBasename = path.posix.basename(appRelativePath, path.posix.extname(appRelativePath));
+  return NEXT_APP_ROUTER_ENTRYPOINT_BASENAMES.has(appBasename);
+}
+
+const NEXT_ROOT_ENTRYPOINT_BASENAMES = new Set([
+  'middleware',
+  'proxy',
+  'instrumentation',
+  'instrumentation-client',
+  'mdx-components',
+]);
+
+const NEXT_APP_ROUTER_ENTRYPOINT_BASENAMES = new Set([
+  'route',
+  'page',
+  'layout',
+  'template',
+  'default',
+  'loading',
+  'error',
+  'not-found',
+  'global-error',
+  'global-not-found',
+  'forbidden',
+  'unauthorized',
+  'sitemap',
+  'robots',
+  'manifest',
+  'icon',
+  'apple-icon',
+  'opengraph-image',
+  'twitter-image',
+]);
+
+function isJavaScriptSourcePath(relativePath: string): boolean {
+  return JAVASCRIPT_SOURCE_EXTENSIONS.has(path.posix.extname(relativePath).toLowerCase());
 }
 
 function stripExtension(p: string): string {

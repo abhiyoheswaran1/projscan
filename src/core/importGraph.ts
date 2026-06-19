@@ -6,6 +6,8 @@ export interface ImportGraph {
   byFile: Map<string, Set<string>>;
   /** unique set of non-relative, non-builtin specifiers (package names) */
   externalPackages: Set<string>;
+  /** package name → files importing that package after local resolution */
+  packageImporters?: Map<string, Set<string>>;
   /** count of source files scanned */
   scannedFiles: number;
 }
@@ -18,19 +20,21 @@ export async function buildImportGraph(rootPath: string, files: FileEntry[]): Pr
   const code = await buildCodeGraph(rootPath, files);
 
   const byFile = new Map<string, Set<string>>();
-  const externalPackages = new Set<string>();
 
   for (const [file, entry] of code.files) {
     const specifiers = new Set<string>();
     for (const imp of entry.imports) {
       specifiers.add(imp.source);
-      const pkg = graphToPackageName(imp.source);
-      if (pkg) externalPackages.add(pkg);
     }
     byFile.set(file, specifiers);
   }
 
-  return { byFile, externalPackages, scannedFiles: code.scannedFiles };
+  return {
+    byFile,
+    externalPackages: new Set(code.packageImporters.keys()),
+    packageImporters: cloneStringSetMap(code.packageImporters),
+    scannedFiles: code.scannedFiles,
+  };
 }
 
 /** Convert an import specifier to a bare package name. */
@@ -43,6 +47,8 @@ export function isPackageUsed(graph: ImportGraph, pkg: string): boolean {
 
 /** List files that import a given package. */
 export function filesImporting(graph: ImportGraph, pkg: string): string[] {
+  if (graph.packageImporters) return [...(graph.packageImporters.get(pkg) ?? [])].sort();
+
   const out: string[] = [];
   for (const [file, specifiers] of graph.byFile) {
     for (const spec of specifiers) {
@@ -53,4 +59,10 @@ export function filesImporting(graph: ImportGraph, pkg: string): string[] {
     }
   }
   return out.sort();
+}
+
+function cloneStringSetMap(input: Map<string, Set<string>>): Map<string, Set<string>> {
+  const output = new Map<string, Set<string>>();
+  for (const [key, values] of input) output.set(key, new Set(values));
+  return output;
 }

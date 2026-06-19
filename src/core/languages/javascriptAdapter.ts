@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FileEntry } from '../../types.js';
 import { parseSource, type AstResult } from '../ast.js';
@@ -6,6 +7,16 @@ import type { GraphFileLike, LanguageAdapter, LanguageResolveContext } from './L
 const JS_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
 
 const RESOLUTION_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'];
+
+interface TypeScriptPathAlias {
+  pattern: string;
+  targets: string[];
+}
+
+interface JavaScriptResolveMeta extends Record<string, unknown> {
+  tsconfigPathAliases?: TypeScriptPathAlias[];
+  tsconfigBaseUrl?: string;
+}
 
 const NODE_BUILTINS = new Set([
   'assert',
@@ -66,27 +77,14 @@ export const javascriptAdapter: LanguageAdapter = {
     importingFile: string,
     source: string,
     graphFiles: Map<string, GraphFileLike>,
+    context: LanguageResolveContext,
   ): string | null {
-    if (!(source.startsWith('.') || source.startsWith('/'))) return null;
-    const importingDir = path.posix.dirname(importingFile);
-    const base = path.posix.normalize(path.posix.join(importingDir, source));
-
-    if (graphFiles.has(base)) return base;
-
-    for (const ext of RESOLUTION_EXTS) {
-      if (graphFiles.has(base + ext)) return base + ext;
-    }
-    for (const ext of RESOLUTION_EXTS) {
-      const barrel = `${base}/index${ext}`;
-      if (graphFiles.has(barrel)) return barrel;
+    if (source.startsWith('.') || source.startsWith('/')) {
+      const importingDir = path.posix.dirname(importingFile);
+      return resolveLocalBase(path.posix.normalize(path.posix.join(importingDir, source)), graphFiles);
     }
 
-    if (base.endsWith('.js')) {
-      const trimmed = base.slice(0, -3);
-      if (graphFiles.has(`${trimmed}.ts`)) return `${trimmed}.ts`;
-      if (graphFiles.has(`${trimmed}.tsx`)) return `${trimmed}.tsx`;
-    }
-    return null;
+    return resolveTsconfigPathAlias(source, graphFiles, context);
   },
 
   toPackageName(specifier: string): string | null {
@@ -103,7 +101,103 @@ export const javascriptAdapter: LanguageAdapter = {
     return specifier.split('/')[0];
   },
 
-  preparePackageRoots(_rootPath: string, _files: FileEntry[]): LanguageResolveContext {
-    return {};
+  async preparePackageRoots(rootPath: string, _files: FileEntry[]): Promise<LanguageResolveContext> {
+    const tsconfig = await loadTsconfigPathAliases(rootPath);
+    return tsconfig ? { meta: tsconfig } : {};
   },
 };
+
+function resolveLocalBase(base: string, graphFiles: Map<string, GraphFileLike>): string | null {
+  if (graphFiles.has(base)) return base;
+
+  for (const ext of RESOLUTION_EXTS) {
+    if (graphFiles.has(base + ext)) return base + ext;
+  }
+  for (const ext of RESOLUTION_EXTS) {
+    const barrel = `${base}/index${ext}`;
+    if (graphFiles.has(barrel)) return barrel;
+  }
+
+  if (base.endsWith('.js')) {
+    const trimmed = base.slice(0, -3);
+    if (graphFiles.has(`${trimmed}.ts`)) return `${trimmed}.ts`;
+    if (graphFiles.has(`${trimmed}.tsx`)) return `${trimmed}.tsx`;
+  }
+  return null;
+}
+
+function resolveTsconfigPathAlias(
+  source: string,
+  graphFiles: Map<string, GraphFileLike>,
+  context: LanguageResolveContext,
+): string | null {
+  const meta = context.meta as JavaScriptResolveMeta | undefined;
+  const aliases = meta?.tsconfigPathAliases ?? [];
+  if (aliases.length === 0) return null;
+
+  const baseUrl = normalizeRepoPath(meta?.tsconfigBaseUrl ?? '.');
+  for (const alias of aliases) {
+    const wildcard = matchAliasPattern(alias.pattern, source);
+    if (wildcard === null) continue;
+
+    for (const target of alias.targets) {
+      const expanded = target.includes('*') ? target.replace('*', wildcard) : target;
+      const candidate = normalizeRepoPath(path.posix.join(baseUrl, expanded));
+      const resolved = resolveLocalBase(candidate, graphFiles);
+      if (resolved) return resolved;
+    }
+  }
+  return null;
+}
+
+function matchAliasPattern(pattern: string, source: string): string | null {
+  const star = pattern.indexOf('*');
+  if (star === -1) return pattern === source ? '' : null;
+
+  const prefix = pattern.slice(0, star);
+  const suffix = pattern.slice(star + 1);
+  if (!source.startsWith(prefix) || !source.endsWith(suffix)) return null;
+  return source.slice(prefix.length, source.length - suffix.length);
+}
+
+async function loadTsconfigPathAliases(rootPath: string): Promise<JavaScriptResolveMeta | null> {
+  try {
+    const raw = await fs.readFile(path.join(rootPath, 'tsconfig.json'), 'utf-8');
+    const parsed = JSON.parse(stripJsonCommentsAndTrailingCommas(raw)) as {
+      compilerOptions?: {
+        baseUrl?: unknown;
+        paths?: unknown;
+      };
+    };
+    const paths = parsed.compilerOptions?.paths;
+    if (!paths || typeof paths !== 'object') return null;
+
+    const aliases: TypeScriptPathAlias[] = [];
+    for (const [pattern, rawTargets] of Object.entries(paths as Record<string, unknown>)) {
+      if (!Array.isArray(rawTargets)) continue;
+      const targets = rawTargets.filter((target): target is string => typeof target === 'string');
+      if (targets.length > 0) aliases.push({ pattern, targets });
+    }
+    if (aliases.length === 0) return null;
+
+    return {
+      tsconfigPathAliases: aliases,
+      tsconfigBaseUrl:
+        typeof parsed.compilerOptions?.baseUrl === 'string' ? parsed.compilerOptions.baseUrl : '.',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function stripJsonCommentsAndTrailingCommas(value: string): string {
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+    .replace(/,\s*([}\]])/g, '$1');
+}
+
+function normalizeRepoPath(value: string): string {
+  const normalized = path.posix.normalize(value.replace(/\\/g, '/'));
+  return normalized.replace(/^\.\//, '').replace(/^\/+/, '');
+}
