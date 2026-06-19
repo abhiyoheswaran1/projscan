@@ -36,6 +36,8 @@ export async function loadJavaScriptProjectConfigs(
 ): Promise<JavaScriptProjectConfig[]> {
   const configPaths = await findConfigPathsForFiles(rootPath, files);
   const configs: JavaScriptProjectConfig[] = [];
+  const rootConfig = await loadRootResolutionConfig(rootPath);
+  if (rootConfig) configs.push(rootConfig);
   for (const configPath of configPaths) {
     const config = await loadJavaScriptProjectConfig(rootPath, configPath);
     if (config) configs.push(config);
@@ -52,17 +54,19 @@ export function resolveJavaScriptImportFromConfigs(
 ): string | null {
   if (source.startsWith('.') || source.startsWith('/')) {
     const importingDir = path.posix.dirname(importingFile);
-    return resolveLocalBase(path.posix.normalize(path.posix.join(importingDir, source)), graphFiles);
+    return resolveLocalBase(
+      path.posix.normalize(path.posix.join(importingDir, source)),
+      graphFiles,
+    );
   }
 
-  const config = findConfigForFile(importingFile, configs);
-  if (!config) return null;
-
-  for (const candidateAbs of candidateAbsoluteImports(config, source)) {
-    const relativeCandidate = absoluteToRepoPath(rootPath, candidateAbs);
-    if (!relativeCandidate) continue;
-    const resolved = resolveLocalBase(relativeCandidate, graphFiles);
-    if (resolved) return resolved;
+  for (const config of findConfigsForFile(importingFile, configs)) {
+    for (const candidateAbs of candidateAbsoluteImports(config, source)) {
+      const relativeCandidate = absoluteToRepoPath(rootPath, candidateAbs);
+      if (!relativeCandidate) continue;
+      const resolved = resolveLocalBase(relativeCandidate, graphFiles);
+      if (resolved) return resolved;
+    }
   }
   return null;
 }
@@ -73,9 +77,10 @@ export async function resolveJavaScriptImportAbsolute(
   source: string,
   configs: JavaScriptProjectConfig[],
 ): Promise<string | null> {
-  const sourceBase = source.startsWith('.') || source.startsWith('/')
-    ? path.resolve(rootPath, path.dirname(importingFile), source)
-    : firstConfigCandidate(rootPath, importingFile, source, configs);
+  const sourceBase =
+    source.startsWith('.') || source.startsWith('/')
+      ? path.resolve(rootPath, path.dirname(importingFile), source)
+      : firstConfigCandidate(rootPath, importingFile, source, configs);
   if (!sourceBase) return null;
   return await resolveAbsoluteBase(sourceBase);
 }
@@ -108,8 +113,11 @@ function firstConfigCandidate(
   source: string,
   configs: JavaScriptProjectConfig[],
 ): string | null {
-  const config = findConfigForFile(importingFile, configs);
-  return config ? (candidateAbsoluteImports(config, source)[0] ?? null) : null;
+  for (const config of findConfigsForFile(importingFile, configs)) {
+    const candidate = candidateAbsoluteImports(config, source)[0];
+    if (candidate) return candidate;
+  }
+  return null;
 }
 
 function candidateAbsoluteImports(config: JavaScriptProjectConfig, source: string): string[] {
@@ -128,11 +136,11 @@ function candidateAbsoluteImports(config: JavaScriptProjectConfig, source: strin
   return candidates;
 }
 
-function findConfigForFile(
+function findConfigsForFile(
   relativePath: string,
   configs: JavaScriptProjectConfig[],
-): JavaScriptProjectConfig | undefined {
-  return configs.find((config) => {
+): JavaScriptProjectConfig[] {
+  return configs.filter((config) => {
     if (!config.configDir) return true;
     return relativePath === config.configDir || relativePath.startsWith(`${config.configDir}/`);
   });
@@ -189,7 +197,8 @@ async function loadJavaScriptProjectConfig(
   for (const layer of chain) {
     const options = layer.compilerOptions;
     if (!options) continue;
-    if (typeof options.baseUrl === 'string') baseUrlAbs = path.resolve(layer.configDirAbs, options.baseUrl);
+    if (typeof options.baseUrl === 'string')
+      baseUrlAbs = path.resolve(layer.configDirAbs, options.baseUrl);
     if (options.paths && typeof options.paths === 'object') pathsLayer = layer;
   }
 
@@ -206,7 +215,24 @@ async function loadJavaScriptProjectConfig(
   };
 }
 
-function aliasesFromLayer(layer: ConfigLayer, baseUrlAbs: string | undefined): JavaScriptPathAlias[] {
+async function loadRootResolutionConfig(rootPath: string): Promise<JavaScriptProjectConfig | null> {
+  const aliases = [
+    ...(await loadViteAliases(rootPath)),
+    ...(await loadWorkspacePackageAliases(rootPath)),
+  ];
+  if (aliases.length === 0) return null;
+  return {
+    configPath: 'package.json',
+    configDir: '',
+    configDirAbs: path.resolve(rootPath),
+    aliases: dedupeAliases(aliases),
+  };
+}
+
+function aliasesFromLayer(
+  layer: ConfigLayer,
+  baseUrlAbs: string | undefined,
+): JavaScriptPathAlias[] {
   const paths = layer.compilerOptions?.paths;
   if (!paths || typeof paths !== 'object') return [];
   const targetBaseAbs = baseUrlAbs ?? layer.configDirAbs;
@@ -217,6 +243,210 @@ function aliasesFromLayer(layer: ConfigLayer, baseUrlAbs: string | undefined): J
     if (targets.length > 0) aliases.push({ pattern, targets, targetBaseAbs });
   }
   return aliases;
+}
+
+async function loadViteAliases(rootPath: string): Promise<JavaScriptPathAlias[]> {
+  const aliases: JavaScriptPathAlias[] = [];
+  for (const name of [
+    'vite.config.ts',
+    'vite.config.js',
+    'vite.config.mts',
+    'vite.config.mjs',
+    'vite.config.cts',
+    'vite.config.cjs',
+    'vitest.config.ts',
+    'vitest.config.js',
+    'vitest.config.mts',
+    'vitest.config.mjs',
+    'vitest.config.cts',
+    'vitest.config.cjs',
+  ]) {
+    const filePath = path.join(rootPath, name);
+    let raw: string;
+    try {
+      raw = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
+    aliases.push(...parseViteAliasObjects(raw, rootPath));
+  }
+  return aliases;
+}
+
+function parseViteAliasObjects(raw: string, rootPath: string): JavaScriptPathAlias[] {
+  const aliases: JavaScriptPathAlias[] = [];
+  for (const body of findObjectBodies(raw, 'alias')) {
+    const simpleEntry = /['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]/g;
+    for (const match of body.matchAll(simpleEntry)) {
+      aliases.push(...aliasPairToPatterns(match[1], match[2], rootPath));
+    }
+
+    const pathResolveEntry =
+      /['"]([^'"]+)['"]\s*:\s*path\.resolve\([^,]+,\s*['"]([^'"]+)['"]\s*\)/g;
+    for (const match of body.matchAll(pathResolveEntry)) {
+      aliases.push(...aliasPairToPatterns(match[1], match[2], rootPath));
+    }
+  }
+  return aliases;
+}
+
+async function loadWorkspacePackageAliases(rootPath: string): Promise<JavaScriptPathAlias[]> {
+  const rootPkg = await readJsonObject(path.join(rootPath, 'package.json'));
+  if (!rootPkg) return [];
+  const workspaces = workspacePatterns(rootPkg.workspaces);
+  const aliases: JavaScriptPathAlias[] = [];
+  for (const packageDir of await workspacePackageDirs(rootPath, workspaces)) {
+    const pkg = await readJsonObject(path.join(packageDir, 'package.json'));
+    if (!pkg) continue;
+    const name = typeof pkg?.name === 'string' ? pkg.name : undefined;
+    if (!name) continue;
+    aliases.push(...packageExportAliases(name, packageDir, pkg));
+  }
+  return aliases;
+}
+
+function packageExportAliases(
+  packageName: string,
+  packageDirAbs: string,
+  pkg: Record<string, unknown>,
+): JavaScriptPathAlias[] {
+  const aliases: JavaScriptPathAlias[] = [];
+  for (const field of ['source', 'module', 'main', 'types', 'typings']) {
+    const value = pkg[field];
+    if (typeof value === 'string') {
+      aliases.push({ pattern: packageName, targets: [value], targetBaseAbs: packageDirAbs });
+      break;
+    }
+  }
+
+  const exportsField = pkg.exports;
+  if (typeof exportsField === 'string') {
+    aliases.push({ pattern: packageName, targets: [exportsField], targetBaseAbs: packageDirAbs });
+  } else if (exportsField && typeof exportsField === 'object') {
+    for (const [rawKey, rawValue] of Object.entries(exportsField as Record<string, unknown>)) {
+      const target = firstExportTarget(rawValue);
+      if (!target) continue;
+      const key = rawKey === '.' ? '' : rawKey.replace(/^\.\//, '/');
+      aliases.push({
+        pattern: packageName + key,
+        targets: [target],
+        targetBaseAbs: packageDirAbs,
+      });
+    }
+  }
+  return aliases;
+}
+
+function firstExportTarget(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const target = firstExportTarget(item);
+      if (target) return target;
+    }
+    return null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  for (const key of ['source', 'import', 'module', 'default', 'require', 'types']) {
+    const target = firstExportTarget(record[key]);
+    if (target) return target;
+  }
+  for (const item of Object.values(record)) {
+    const target = firstExportTarget(item);
+    if (target) return target;
+  }
+  return null;
+}
+
+function workspacePatterns(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (value && typeof value === 'object') {
+    const packages = (value as { packages?: unknown }).packages;
+    if (Array.isArray(packages)) {
+      return packages.filter((item): item is string => typeof item === 'string');
+    }
+  }
+  return [];
+}
+
+async function workspacePackageDirs(rootPath: string, patterns: string[]): Promise<string[]> {
+  const dirs = new Set<string>();
+  for (const pattern of patterns) {
+    if (pattern.endsWith('/*')) {
+      const parent = path.resolve(rootPath, pattern.slice(0, -2));
+      let entries: string[];
+      try {
+        entries = await fs.readdir(parent);
+      } catch {
+        continue;
+      }
+      for (const entry of entries) dirs.add(path.join(parent, entry));
+      continue;
+    }
+    if (!pattern.includes('*')) dirs.add(path.resolve(rootPath, pattern));
+  }
+  return [...dirs].sort();
+}
+
+function aliasPairToPatterns(
+  find: string,
+  replacement: string,
+  rootPath: string,
+): JavaScriptPathAlias[] {
+  const targetBaseAbs = path.isAbsolute(replacement)
+    ? replacement
+    : path.resolve(rootPath, replacement);
+  return [
+    { pattern: find, targets: ['.'], targetBaseAbs },
+    { pattern: `${find}/*`, targets: ['*'], targetBaseAbs },
+  ];
+}
+
+function findObjectBodies(raw: string, propertyName: string): string[] {
+  const bodies: string[] = [];
+  const pattern = new RegExp(`${propertyName}\\s*:\\s*\\{`, 'g');
+  for (const match of raw.matchAll(pattern)) {
+    const open = (match.index ?? 0) + match[0].lastIndexOf('{');
+    const close = findMatchingBrace(raw, open);
+    if (close > open) bodies.push(raw.slice(open + 1, close));
+  }
+  return bodies;
+}
+
+function findMatchingBrace(raw: string, openIndex: number): number {
+  let depth = 0;
+  for (let i = openIndex; i < raw.length; i++) {
+    const char = raw[i];
+    if (char === '{') depth++;
+    if (char === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+async function readJsonObject(filePath: string): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf-8');
+    const parsed = JSON.parse(stripJsonCommentsAndTrailingCommas(raw)) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function dedupeAliases(aliases: JavaScriptPathAlias[]): JavaScriptPathAlias[] {
+  const seen = new Set<string>();
+  const result: JavaScriptPathAlias[] = [];
+  for (const alias of aliases) {
+    const key = `${alias.pattern}\0${alias.targetBaseAbs}\0${alias.targets.join('\0')}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(alias);
+  }
+  return result;
 }
 
 async function loadConfigChain(configPath: string, seen: Set<string>): Promise<ConfigLayer[]> {
@@ -261,7 +491,11 @@ function resolveExtendsPath(value: string, fromDir: string): string | null {
       return null;
     }
   }
-  return candidates.find((candidate, index) => candidates.indexOf(candidate) === index && existsSyncish(candidate)) ?? null;
+  return (
+    candidates.find(
+      (candidate, index) => candidates.indexOf(candidate) === index && existsSyncish(candidate),
+    ) ?? null
+  );
 }
 
 function matchAliasPattern(pattern: string, source: string): string | null {
