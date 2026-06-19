@@ -506,7 +506,7 @@ function modeTasks(
         ],
         files: touchedFiles,
         suggestedTools: ['projscan_preflight', 'projscan_session', 'projscan_hotspots'],
-        commands: ['projscan preflight --format json'],
+        commands: ['projscan preflight --mode before_edit --format json'],
         expected:
           'The agent can explain whether it may proceed and which evidence supports the next edit.',
       }),

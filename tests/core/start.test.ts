@@ -12,6 +12,22 @@ test('start report marks default mode when neither mode nor mode-specific intent
   expect(report.modeReason).toContain('No mode-specific intent');
 });
 
+test('start report makes the default before-edit preflight command explicit', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root);
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan preflight --mode before_edit --format json',
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_edit --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain('projscan preflight --format json');
+});
+
 test('start report exposes three trusted daily workflows before broad onboarding', async () => {
   const root = await makeTempProject();
 
@@ -30,9 +46,7 @@ test('start report exposes three trusted daily workflows before broad onboarding
         'projscan understand --view change --intent "add auth token refresh" --format json',
         'projscan preflight --mode before_edit --format json',
       ],
-      successCriteria: expect.arrayContaining([
-        'Agent has cited change context before editing.',
-      ]),
+      successCriteria: expect.arrayContaining(['Agent has cited change context before editing.']),
     }),
   );
   expect(report.dailyWorkflows[1].commands).toEqual([
