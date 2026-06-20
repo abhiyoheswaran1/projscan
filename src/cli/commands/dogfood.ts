@@ -31,6 +31,12 @@ export function registerDogfood(): void {
       'target number of repos before adoption is considered proven',
       parsePositiveInt,
     )
+    .option(
+      '--discover <path>',
+      'workspace root to discover local package repos from, repeatable',
+      collectRepo,
+      [],
+    )
     .option('--feedback <path>', 'JSON file with first-PR reviewer feedback responses')
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -39,6 +45,7 @@ export function registerDogfood(): void {
       try {
         const report = await computeDogfoodReport(getRootPath(), {
           repos: cmdOpts.repo,
+          discoverRoots: cmdOpts.discover,
           targetRepoCount: cmdOpts.targetRepos,
           feedback: cmdOpts.feedback ? await readFeedback(cmdOpts.feedback) : undefined,
         });

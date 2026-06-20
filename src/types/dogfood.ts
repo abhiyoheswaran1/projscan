@@ -112,6 +112,15 @@ export interface DogfoodWebsiteProof {
   markdown: string;
 }
 
+export interface DogfoodRepoDiscovery {
+  roots: string[];
+  candidates: string[];
+  selected: string[];
+  targetRepoCount: number;
+  missingRepoCount: number;
+  command: string;
+}
+
 export interface DogfoodMarketValidation {
   status: 'proven' | 'needs_feedback' | 'needs_more_repos' | 'needs_tuning';
   summary: string;
@@ -209,5 +218,6 @@ export interface DogfoodReport {
     falsePositiveReports: number;
   };
   marketValidation: DogfoodMarketValidation;
+  repoDiscovery?: DogfoodRepoDiscovery;
   suggestedNextActions: PreflightSuggestedAction[];
 }

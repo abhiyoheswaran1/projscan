@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { resolveDogfoodRepos } from './dogfoodDiscovery.js';
 import { MIN_REPEAT_FEEDBACK_PRS, MIN_REPEAT_FEEDBACK_REPOS } from './feedback.js';
 import { computeEvidencePack } from './releaseEvidence.js';
 import { computeStartReport } from './start.js';
@@ -8,6 +9,7 @@ import type {
   DogfoodFeedbackResponse,
   DogfoodMarketValidation,
   DogfoodReport,
+  DogfoodRepoDiscovery,
   DogfoodRepoResult,
   DogfoodRepoStatus,
   DogfoodRepoValidation,
@@ -16,6 +18,7 @@ import type { PreflightSuggestedAction } from '../types/preflight.js';
 
 export interface ComputeDogfoodOptions {
   repos?: string[];
+  discoverRoots?: string[];
   targetRepoCount?: number;
   feedback?: DogfoodFeedbackInput;
 }
@@ -41,7 +44,8 @@ export async function computeDogfoodReport(
   options: ComputeDogfoodOptions = {},
 ): Promise<DogfoodReport> {
   const targetRepoCount = normalizeTargetRepoCount(options.targetRepoCount);
-  const repos = normalizeRepos(rootPath, options.repos);
+  const repoResolution = await resolveDogfoodRepos(rootPath, options, targetRepoCount);
+  const repos = repoResolution.repos;
   const feedback = normalizeFeedback(options.feedback);
   const results = await Promise.all(repos.map((repoPath) => evaluateRepo(repoPath, feedback)));
   const totals = summarizeTotals(results);
@@ -55,7 +59,13 @@ export async function computeDogfoodReport(
     repos: results,
     totals,
     marketValidation,
-    suggestedNextActions: buildDogfoodActions(results.length, targetRepoCount, marketValidation),
+    ...(repoResolution.discovery ? { repoDiscovery: repoResolution.discovery } : {}),
+    suggestedNextActions: buildDogfoodActions(
+      results.length,
+      targetRepoCount,
+      marketValidation,
+      repoResolution.discovery,
+    ),
   };
 }
 
@@ -109,11 +119,6 @@ async function evaluateRepo(
 function normalizeTargetRepoCount(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_TARGET_REPO_COUNT;
   return Math.max(1, Math.floor(value));
-}
-
-function normalizeRepos(rootPath: string, repos: string[] | undefined): string[] {
-  const values = repos && repos.length > 0 ? repos : [rootPath];
-  return [...new Set(values.map((value) => path.resolve(rootPath, value)))];
 }
 
 function normalizeFeedback(input: DogfoodFeedbackInput | undefined): DogfoodFeedbackResponse[] {
@@ -513,6 +518,7 @@ function buildDogfoodActions(
   reposEvaluated: number,
   targetRepoCount: number,
   marketValidation: DogfoodMarketValidation,
+  repoDiscovery: DogfoodRepoDiscovery | undefined,
 ): PreflightSuggestedAction[] {
   const actions: PreflightSuggestedAction[] = [
     {
@@ -536,6 +542,12 @@ function buildDogfoodActions(
       command: DOGFOOD_WITH_FEEDBACK_COMMAND,
     },
   ];
+  if (repoDiscovery) {
+    actions.unshift({
+      label: 'Repeat local repo discovery for dogfood validation',
+      command: repoDiscovery.command,
+    });
+  }
   if (reposEvaluated < targetRepoCount) {
     actions.unshift({
       label:

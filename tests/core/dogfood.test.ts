@@ -72,6 +72,46 @@ test('dogfood next actions distinguish first-PR evidence from feedback capture',
   expect(evidenceIndex).toBeLessThan(feedbackIndex);
 });
 
+test('dogfood discovers local package repos up to the validation target', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-dogfood-workspace-'));
+  tempRoots.push(workspace);
+  const current = await makeRepoIn(workspace, 'current');
+  const api = await makeRepoIn(workspace, 'api-service');
+  const web = await makeRepoIn(workspace, 'web-app');
+  const worker = await makeRepoIn(workspace, 'worker');
+  await makeRepoIn(path.join(workspace, 'node_modules'), 'ignored-package');
+
+  const report = await computeDogfoodReport(current, {
+    discoverRoots: [workspace],
+    targetRepoCount: 3,
+  });
+
+  expect(report.repos.map((repo) => repo.path)).toEqual([current, api, web]);
+  expect(report.marketValidation.status).toBe('needs_feedback');
+  expect(report.repoDiscovery).toEqual(
+    expect.objectContaining({
+      roots: [workspace],
+      candidates: expect.arrayContaining([current, api, web, worker]),
+      selected: [current, api, web],
+      targetRepoCount: 3,
+      missingRepoCount: 0,
+      command: 'projscan dogfood --discover ' + workspace + ' --target-repos 3 --format json',
+    }),
+  );
+  expect(report.repoDiscovery?.candidates).not.toContain(
+    path.join(workspace, 'node_modules', 'ignored-package'),
+  );
+
+  const explicitReport = await computeDogfoodReport(current, {
+    repos: [api],
+    discoverRoots: [workspace],
+    targetRepoCount: 3,
+  });
+
+  expect(explicitReport.repos.map((repo) => repo.path)).toEqual([api, current, web]);
+  expect(explicitReport.repoDiscovery?.selected).toEqual([api, current, web]);
+});
+
 test('dogfood report rolls reviewer feedback into market validation and website proof', async () => {
   const repos = [
     await makeRepo('api-service'),
@@ -340,12 +380,22 @@ test('dogfood website proof copy stays provisional until feedback proves usefuln
 async function makeRepo(name: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-dogfood-' + name + '-'));
   tempRoots.push(root);
+  await writeRepo(root, name);
+  return root;
+}
+
+async function makeRepoIn(workspace: string, name: string): Promise<string> {
+  const root = path.join(workspace, name);
+  await writeRepo(root, name);
+  return root;
+}
+
+async function writeRepo(root: string, name: string): Promise<void> {
+  await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(
     path.join(root, 'package.json'),
     JSON.stringify({ name, version: '0.0.0', type: 'module' }, null, 2) + '\n',
   );
   await fs.writeFile(path.join(root, 'README.md'), '# ' + name + '\n');
-  await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
-  return root;
 }

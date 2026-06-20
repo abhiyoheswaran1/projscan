@@ -5,6 +5,7 @@ import type {
   DogfoodFeedbackInput,
   DogfoodFeedbackResponse,
   DogfoodMarketValidation,
+  DogfoodRepoDiscovery,
   DogfoodReport,
   DogfoodRepoResult,
   DogfoodRepoStatus,
@@ -156,6 +157,15 @@ const marketValidation: DogfoodMarketValidation = {
   websiteProof,
 };
 
+const repoDiscovery: DogfoodRepoDiscovery = {
+  roots: ['/repos'],
+  candidates: ['/repos/projscan', '/repos/api'],
+  selected: ['/repos/projscan', '/repos/api'],
+  targetRepoCount: 3,
+  missingRepoCount: 1,
+  command: 'projscan dogfood --discover /repos --target-repos 3 --format json',
+};
+
 const repoResult: DogfoodRepoResult = {
   path: '/repos/projscan',
   name: 'projscan',
@@ -192,6 +202,7 @@ const dogfoodReport: DogfoodReport = {
     falsePositiveReports: 0,
   },
   marketValidation,
+  repoDiscovery,
   suggestedNextActions: [
     {
       label: 'Run the full adoption trial across repos',

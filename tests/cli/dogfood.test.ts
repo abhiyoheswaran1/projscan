@@ -51,6 +51,34 @@ test('dogfood renders multi-repo usefulness evidence as JSON', async () => {
   ).toContain('projscan dogfood --repo <path-to-repo> --format json');
 });
 
+test('dogfood discovers package repos from an explicit local workspace root', async () => {
+  const result = await runCli([
+    'dogfood',
+    '--discover',
+    tmp,
+    '--target-repos',
+    '3',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.repos.map((repo: { path: string }) => repo.path)).toEqual([repoA, repoB, repoC]);
+  expect(report.marketValidation.status).toBe('needs_feedback');
+  expect(report.repoDiscovery).toEqual(
+    expect.objectContaining({
+      roots: [tmp],
+      candidates: expect.arrayContaining([repoA, repoB, repoC]),
+      selected: [repoA, repoB, repoC],
+      targetRepoCount: 3,
+      missingRepoCount: 0,
+      command: 'projscan dogfood --discover ' + tmp + ' --target-repos 3 --format json',
+    }),
+  );
+});
+
 test('dogfood accepts reviewer feedback and prints market validation JSON', async () => {
   const feedbackPath = path.join(tmp, 'feedback.json');
   await fs.writeFile(
