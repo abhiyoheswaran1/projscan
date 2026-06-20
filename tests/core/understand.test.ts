@@ -166,6 +166,51 @@ test('verify view keeps direct-test matches for normal source filenames', async 
   });
 });
 
+test('verify view recognizes graph-based test coverage through importer tests', async () => {
+  const root = await makeUnderstandFixture();
+  await fs.writeFile(
+    path.join(root, 'src', 'preflightEvidence.ts'),
+    ['export function buildEvidence() {', '  return { ready: true };', '}', ''].join('\n'),
+  );
+  await fs.writeFile(
+    path.join(root, 'src', 'preflight.ts'),
+    [
+      'import { buildEvidence } from "./preflightEvidence";',
+      '',
+      'export function runPreflight() {',
+      '  return buildEvidence();',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await fs.writeFile(
+    path.join(root, 'tests', 'preflight.test.ts'),
+    [
+      'import { runPreflight } from "../src/preflight";',
+      '',
+      'test("runs preflight", () => {',
+      '  expect(runPreflight().ready).toBe(true);',
+      '});',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeUnderstandReport(root, {
+    view: 'verify',
+    changedFiles: ['src/preflightEvidence.ts'],
+    maxItems: 8,
+  });
+
+  expect(report.verification.directTests).toContainEqual({
+    file: 'src/preflightEvidence.ts',
+    tests: ['tests/preflight.test.ts'],
+    confidence: 'low',
+  });
+  expect(report.verification.gaps.map((gap) => gap.file)).not.toContain(
+    'src/preflightEvidence.ts',
+  );
+});
+
 async function makeUnderstandFixture(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-understand-'));
   tempRoots.push(root);

@@ -41,6 +41,8 @@ export interface ComputeUnderstandOptions {
 }
 
 const DEFAULT_MAX_ITEMS = 8;
+const MAX_GRAPH_TEST_MATCHES = 5;
+const MAX_GRAPH_TEST_IMPORTER_DEPTH = 3;
 const CODE_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
@@ -104,6 +106,7 @@ export async function computeUnderstandReport(
   const verification = buildVerification(
     scan.files,
     changedFiles.length > 0 ? changedFiles : readFirst.map((item) => item.file),
+    graph,
     maxItems,
   );
   const changeReadiness = buildChangeReadiness(options.intent, changedFiles, graph, verification);
@@ -691,29 +694,35 @@ function buildChangeReadiness(
 function buildVerification(
   files: FileEntry[],
   changedFiles: string[],
+  graph: CodeGraph,
   maxItems: number,
 ): UnderstandVerification {
   const sourceFiles = unique(changedFiles.filter((file) => !isTestFile(file))).slice(0, maxItems);
   const testFiles = files.filter((file) => isTestFile(file.relativePath));
+  const testFileSet = new Set(testFiles.map((file) => file.relativePath));
   const directTests: UnderstandDirectTest[] = sourceFiles.map((file) => {
     const token = directTestMatchToken(file);
-    const tests = token
+    const filenameTests = token
       ? testFiles
           .map((entry) => entry.relativePath)
           .filter((testFile) => testFile.toLowerCase().includes(token.toLowerCase()))
           .slice(0, 5)
       : [];
+    const graphTests =
+      filenameTests.length > 0 ? [] : graphLinkedTestFiles(graph, file, testFileSet);
+    const tests = unique([...filenameTests, ...graphTests]).slice(0, 5);
     return {
       file,
       tests,
-      confidence: tests.length > 0 ? 'medium' : 'none',
+      confidence:
+        filenameTests.length > 0 ? 'medium' : graphTests.length > 0 ? 'low' : 'none',
     };
   });
   const gaps = directTests
     .filter((entry) => entry.tests.length === 0)
     .map((entry) => ({
       file: entry.file,
-      reason: 'No direct test file matched by filename.',
+      reason: 'No direct test file matched by filename or import graph.',
       command: `projscan search ${directTestSearchToken(entry.file) ?? entry.file} --format json`,
     }));
   return {
@@ -721,6 +730,63 @@ function buildVerification(
     directTests,
     gaps,
   };
+}
+
+function graphLinkedTestFiles(
+  graph: CodeGraph,
+  file: string,
+  testFileSet: Set<string>,
+): string[] {
+  if (!graph.files.has(file)) return [];
+  const state = graphTestSearchState(file);
+  while (state.queue.length > 0 && state.tests.length < MAX_GRAPH_TEST_MATCHES) {
+    visitNextGraphTestImporter(graph, testFileSet, state);
+  }
+  return state.tests;
+}
+
+function graphTestSearchState(file: string): {
+  tests: string[];
+  seen: Set<string>;
+  queue: Array<{ file: string; depth: number }>;
+} {
+  return {
+    tests: [],
+    seen: new Set([file]),
+    queue: [{ file, depth: 0 }],
+  };
+}
+
+function visitNextGraphTestImporter(
+  graph: CodeGraph,
+  testFileSet: Set<string>,
+  state: ReturnType<typeof graphTestSearchState>,
+): void {
+  const current = state.queue.shift();
+  if (!current || current.depth >= MAX_GRAPH_TEST_IMPORTER_DEPTH) return;
+  for (const importer of sortedImporters(graph, current.file)) {
+    addGraphTestCandidate(importer, current.depth + 1, testFileSet, state);
+    if (state.tests.length >= MAX_GRAPH_TEST_MATCHES) return;
+  }
+}
+
+function sortedImporters(graph: CodeGraph, file: string): string[] {
+  return [...(graph.localImporters.get(file) ?? [])].sort();
+}
+
+function addGraphTestCandidate(
+  importer: string,
+  depth: number,
+  testFileSet: Set<string>,
+  state: ReturnType<typeof graphTestSearchState>,
+): void {
+  if (state.seen.has(importer)) return;
+  state.seen.add(importer);
+  if (testFileSet.has(importer)) {
+    state.tests.push(importer);
+    return;
+  }
+  state.queue.push({ file: importer, depth });
 }
 
 function verificationTiers(): UnderstandVerificationTier[] {
@@ -835,7 +901,7 @@ function buildUnknowns(
     unknowns.push({
       id: 'direct-tests-missing',
       question: 'Which tests prove the touched source files?',
-      whyUnknown: 'At least one source file has no direct filename-matched test.',
+      whyUnknown: 'At least one source file has no filename or graph-linked test.',
       command: 'projscan understand --view verify --format json',
     });
   }
