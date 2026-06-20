@@ -111,6 +111,9 @@ export interface PreflightEvidence {
       count: number;
       files: string[];
       baseRef: string | null;
+      branchChangedFileCount?: number;
+      uncommittedChangedFileCount?: number;
+      uncommittedFiles?: string[];
       reason?: string;
     };
     sessionMemory: {

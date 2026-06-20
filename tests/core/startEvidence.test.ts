@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { afterEach, describe, expect, test } from 'vitest';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 import {
@@ -10,6 +12,7 @@ import {
 import type { SessionCoordinationHint, StartReport } from '../../src/types.js';
 
 const tempRoots: string[] = [];
+const execFileAsync = promisify(execFile);
 
 afterEach(async () => {
   await Promise.all(
@@ -20,6 +23,19 @@ afterEach(async () => {
 async function makeTempRoot(): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-start-evidence-'));
   tempRoots.push(root);
+  return root;
+}
+
+async function git(cwd: string, args: string[]): Promise<void> {
+  await execFileAsync('git', args, { cwd });
+}
+
+async function makeGitRepo(): Promise<string> {
+  const root = await makeTempRoot();
+  await git(root, ['init', '-q', '--initial-branch=main']);
+  await git(root, ['config', 'user.email', 'test@example.com']);
+  await git(root, ['config', 'user.name', 'Test']);
+  await git(root, ['config', 'commit.gpgsign', 'false']);
   return root;
 }
 
@@ -42,6 +58,33 @@ describe('start evidence helpers', () => {
       }),
     );
     expect(riskSources.sessionMemory.note).toContain('Remembered session context');
+  });
+
+  test('separates committed branch diff files from uncommitted working-tree files', async () => {
+    const root = await makeGitRepo();
+    await fs.writeFile(path.join(root, 'package.json'), '{"name":"fixture"}\n');
+    await git(root, ['add', 'package.json']);
+    await git(root, ['commit', '-q', '-m', 'initial']);
+    await git(root, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+
+    await fs.writeFile(path.join(root, 'src.ts'), 'export const value = 1;\n');
+    await git(root, ['add', 'src.ts']);
+    await git(root, ['commit', '-q', '-m', 'add src']);
+    await fs.writeFile(path.join(root, 'wip.ts'), 'export const wip = true;\n');
+
+    const riskSources = await buildStartRiskSources(root);
+
+    expect(riskSources.currentWorktree).toEqual(
+      expect.objectContaining({
+        available: true,
+        count: 2,
+        baseRef: 'origin/main',
+        branchChangedFileCount: 1,
+        uncommittedChangedFileCount: 1,
+        uncommittedFiles: ['wip.ts'],
+      }),
+    );
+    expect(riskSources.currentWorktree.files).toEqual(['src.ts', 'wip.ts']);
   });
 
   test('sorts and truncates remembered touches while preserving current-worktree fallback shape', async () => {
@@ -93,6 +136,9 @@ describe('start evidence helpers', () => {
         count: 2,
         files: ['src/a.ts', 'src/b.ts'],
         baseRef: 'main',
+        branchChangedFileCount: 2,
+        uncommittedChangedFileCount: 0,
+        uncommittedFiles: [],
       },
       sessionMemory: {
         kind: 'remembered-session',
@@ -120,7 +166,7 @@ describe('start evidence helpers', () => {
       id: 'current-worktree-check',
       label: 'Separate current worktree evidence from session memory',
       message:
-        'Current worktree evidence sees 2 changed file(s); remembered session context may include older agent touches.',
+        'Working tree has no uncommitted changes; branch diff evidence sees 2 file(s) against main. Remembered session context may include older agent touches.',
       command: 'projscan preflight --mode before_commit --format json',
     });
 

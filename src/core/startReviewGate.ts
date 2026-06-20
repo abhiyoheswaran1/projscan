@@ -143,6 +143,8 @@ function buildMissionReviewWorktree(
       available: false,
       clean: false,
       changedFileCount: 0,
+      branchChangedFileCount: 0,
+      uncommittedChangedFileCount: 0,
       files: [],
       baseRef: currentWorktree.baseRef,
       summary: `Current worktree evidence is unavailable: ${reason}.`,
@@ -152,17 +154,43 @@ function buildMissionReviewWorktree(
 
   const changedFileCount = currentWorktree.count;
   const baseRef = currentWorktree.baseRef;
+  const uncommittedChangedFileCount =
+    currentWorktree.uncommittedChangedFileCount ?? changedFileCount;
+  const branchChangedFileCount =
+    currentWorktree.branchChangedFileCount ??
+    Math.max(0, changedFileCount - uncommittedChangedFileCount);
   return {
     available: true,
-    clean: changedFileCount === 0,
+    clean: uncommittedChangedFileCount === 0,
     changedFileCount,
+    branchChangedFileCount,
+    uncommittedChangedFileCount,
     files: currentWorktree.files,
     baseRef,
-    summary:
-      changedFileCount === 0
-        ? 'Current worktree evidence sees no changed files.'
-        : `Current worktree evidence sees ${changedFileCount} changed file(s)${baseRef ? ` against ${baseRef}` : ''}.`,
+    summary: missionReviewWorktreeSummary({
+      baseRef,
+      branchChangedFileCount,
+      uncommittedChangedFileCount,
+    }),
   };
+}
+
+function missionReviewWorktreeSummary(input: {
+  baseRef: string | null;
+  branchChangedFileCount: number;
+  uncommittedChangedFileCount: number;
+}): string {
+  const baseSuffix = input.baseRef ? ` from ${input.baseRef}` : '';
+  if (input.uncommittedChangedFileCount === 0 && input.branchChangedFileCount === 0) {
+    return 'Working tree has no uncommitted changes and no branch diff files.';
+  }
+  if (input.uncommittedChangedFileCount === 0) {
+    return `Working tree has no uncommitted changes; branch differs${baseSuffix} by ${input.branchChangedFileCount} file(s).`;
+  }
+  if (input.branchChangedFileCount === 0) {
+    return `Working tree has ${input.uncommittedChangedFileCount} uncommitted changed file(s).`;
+  }
+  return `Working tree has ${input.uncommittedChangedFileCount} uncommitted changed file(s); branch differs${baseSuffix} by ${input.branchChangedFileCount} committed file(s).`;
 }
 
 function renderMissionReviewGateMarkdown(input: {

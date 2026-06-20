@@ -17,7 +17,9 @@ export function buildStartCoordinationHints(
     {
       id: 'current-worktree-check',
       label: 'Separate current worktree evidence from session memory',
-      message: `Current worktree evidence sees ${riskSources.currentWorktree.count} changed file(s); remembered session context may include older agent touches.`,
+      message:
+        currentWorktreeHint(riskSources.currentWorktree) +
+        ' Remembered session context may include older agent touches.',
       command: `projscan preflight --mode ${preflightMode} --format json`,
     },
   ];
@@ -33,6 +35,27 @@ export function buildStartCoordinationHints(
     });
   }
   return hints;
+}
+
+function currentWorktreeHint(
+  currentWorktree: StartReport['evidence']['riskSources']['currentWorktree'],
+): string {
+  if (!currentWorktree.available) {
+    return 'Current worktree evidence is unavailable.';
+  }
+  const uncommittedCount =
+    currentWorktree.uncommittedChangedFileCount ?? currentWorktree.count;
+  const branchCount =
+    currentWorktree.branchChangedFileCount ??
+    Math.max(0, currentWorktree.count - uncommittedCount);
+  const baseSuffix = currentWorktree.baseRef ? ` against ${currentWorktree.baseRef}` : '';
+  if (uncommittedCount === 0) {
+    return `Working tree has no uncommitted changes; branch diff evidence sees ${branchCount} file(s)${baseSuffix}.`;
+  }
+  if (branchCount === 0) {
+    return `Working tree has ${uncommittedCount} uncommitted changed file(s).`;
+  }
+  return `Working tree has ${uncommittedCount} uncommitted changed file(s); branch diff evidence sees ${branchCount} committed file(s)${baseSuffix}.`;
 }
 
 function swarmCoordinationHintForIntent(
@@ -58,6 +81,7 @@ export async function buildStartRiskSources(
       reason: err instanceof Error ? err.message : String(err),
       baseRef: null,
       files: [],
+      uncommittedFiles: [],
     })),
     loadSession(rootPath).catch(() => null),
   ]);
@@ -77,6 +101,9 @@ export async function buildStartRiskSources(
       count: changed.files.length,
       files: changed.files.slice(0, 40),
       baseRef: changed.baseRef,
+      branchChangedFileCount: branchChangedFileCount(changed.files, changed.uncommittedFiles),
+      uncommittedChangedFileCount: changed.uncommittedFiles.length,
+      uncommittedFiles: changed.uncommittedFiles.slice(0, 40),
       ...(changed.reason ? { reason: changed.reason } : {}),
     },
     sessionMemory: {
@@ -87,4 +114,9 @@ export async function buildStartRiskSources(
       ...(touchedFiles.length > visibleTouched.length ? { truncated: true } : {}),
     },
   };
+}
+
+function branchChangedFileCount(files: string[], uncommittedFiles: string[]): number {
+  const uncommitted = new Set(uncommittedFiles);
+  return files.filter((file) => !uncommitted.has(file)).length;
 }

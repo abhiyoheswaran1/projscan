@@ -15,6 +15,9 @@ interface ChangedFilesEvidence {
   count: number;
   files: string[];
   baseRef: string | null;
+  branchChangedFileCount: number;
+  uncommittedChangedFileCount: number;
+  uncommittedFiles: string[];
   reason?: string;
 }
 
@@ -128,6 +131,9 @@ function currentWorktreeEvidence(
     count: changedFiles.count,
     files,
     baseRef: changedFiles.baseRef,
+    branchChangedFileCount: changedFiles.branchChangedFileCount,
+    uncommittedChangedFileCount: changedFiles.uncommittedChangedFileCount,
+    uncommittedFiles: changedFiles.uncommittedFiles.slice(0, MAX_PREFLIGHT_EVIDENCE_FILES),
     ...(changedFiles.reason ? { reason: changedFiles.reason } : {}),
   };
 }

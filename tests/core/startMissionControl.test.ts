@@ -32,6 +32,9 @@ const riskSources: StartReport['evidence']['riskSources'] = {
     count: 0,
     files: [],
     baseRef: 'main',
+    branchChangedFileCount: 0,
+    uncommittedChangedFileCount: 0,
+    uncommittedFiles: [],
   },
   sessionMemory: {
     kind: 'remembered-session',
@@ -77,5 +80,80 @@ describe('start mission control builder', () => {
     expect(mission.handoffPrompt).toContain(mission.resume.prompt);
     expect(mission.taskCard.markdown).toContain(mission.handoffPrompt);
     expect(mission.runbook.markdown).toContain(mission.handoffPrompt);
+  });
+
+  test('review gate treats clean working tree and ahead-of-base diff as separate evidence', () => {
+    const mission = buildMissionControl({
+      mode: 'before_edit',
+      intent: 'continue local implementation',
+      setupOverall: 'pass',
+      workplan,
+      workflow,
+      adoptionGaps: [],
+      coordinationHints: [],
+      riskSources: {
+        ...riskSources,
+        currentWorktree: {
+          kind: 'current-worktree',
+          available: true,
+          count: 2,
+          files: ['src/a.ts', 'src/b.ts'],
+          baseRef: 'origin/main',
+          branchChangedFileCount: 2,
+          uncommittedChangedFileCount: 0,
+          uncommittedFiles: [],
+        },
+      },
+    });
+
+    expect(mission.reviewGate.worktree).toEqual(
+      expect.objectContaining({
+        clean: true,
+        changedFileCount: 2,
+        branchChangedFileCount: 2,
+        uncommittedChangedFileCount: 0,
+        summary:
+          'Working tree has no uncommitted changes; branch differs from origin/main by 2 file(s).',
+      }),
+    );
+    expect(mission.reviewGate.markdown).toContain(
+      'Working tree has no uncommitted changes; branch differs from origin/main by 2 file(s).',
+    );
+  });
+
+  test('review gate marks dirty working tree separately from committed branch diff', () => {
+    const mission = buildMissionControl({
+      mode: 'before_edit',
+      intent: 'continue local implementation',
+      setupOverall: 'pass',
+      workplan,
+      workflow,
+      adoptionGaps: [],
+      coordinationHints: [],
+      riskSources: {
+        ...riskSources,
+        currentWorktree: {
+          kind: 'current-worktree',
+          available: true,
+          count: 3,
+          files: ['src/a.ts', 'src/b.ts', 'src/wip.ts'],
+          baseRef: 'origin/main',
+          branchChangedFileCount: 2,
+          uncommittedChangedFileCount: 1,
+          uncommittedFiles: ['src/wip.ts'],
+        },
+      },
+    });
+
+    expect(mission.reviewGate.worktree).toEqual(
+      expect.objectContaining({
+        clean: false,
+        changedFileCount: 3,
+        branchChangedFileCount: 2,
+        uncommittedChangedFileCount: 1,
+        summary:
+          'Working tree has 1 uncommitted changed file(s); branch differs from origin/main by 2 committed file(s).',
+      }),
+    );
   });
 });

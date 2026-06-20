@@ -5,6 +5,8 @@ export interface StartMissionReviewWorktree {
   available: boolean;
   clean: boolean;
   changedFileCount: number;
+  branchChangedFileCount?: number;
+  uncommittedChangedFileCount?: number;
   files: string[];
   baseRef: string | null;
   summary: string;

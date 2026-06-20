@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { afterEach, expect, test } from 'vitest';
 import { computePreflight } from '../../src/core/preflight.js';
 import { buildPreflightReport } from '../../src/core/preflightReport.js';
@@ -8,6 +10,7 @@ import type { PreflightInputs } from '../../src/core/preflightInputs.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
 
 const tempRoots: string[] = [];
+const execFileAsync = promisify(execFile);
 
 afterEach(async () => {
   await Promise.all(
@@ -86,6 +89,27 @@ test('preflight separates current worktree evidence from remembered session cont
   expect(report.evidence.session?.kind).toBe('remembered-session');
 });
 
+test('preflight reports branch diff and uncommitted worktree evidence separately', async () => {
+  const root = await makeGitProject();
+  await fs.writeFile(path.join(root, 'src', 'committed.ts'), 'export const committed = true;\n');
+  await git(root, ['add', 'src/committed.ts']);
+  await git(root, ['commit', '-q', '-m', 'add committed file']);
+  await fs.writeFile(path.join(root, 'src', 'wip.ts'), 'export const wip = true;\n');
+
+  const report = await computePreflight(root, { mode: 'before_commit' });
+
+  expect(report.evidence.riskSources?.currentWorktree).toEqual(
+    expect.objectContaining({
+      available: true,
+      count: 2,
+      baseRef: 'origin/main',
+      branchChangedFileCount: 1,
+      uncommittedChangedFileCount: 1,
+      uncommittedFiles: ['src/wip.ts'],
+    }),
+  );
+});
+
 test('preflight collapses release-scale-only manual signoff into one reason', () => {
   const changedFiles = Array.from({ length: 51 }, (_, index) => `src/file-${index}.ts`);
   const reviewSummary =
@@ -102,6 +126,9 @@ test('preflight collapses release-scale-only manual signoff into one reason', ()
         count: changedFiles.length,
         files: changedFiles,
         baseRef: 'origin/main',
+        branchChangedFileCount: changedFiles.length,
+        uncommittedChangedFileCount: 0,
+        uncommittedFiles: [],
       },
       session: { id: 'test-session', touchedFiles: [], eventCount: 0 },
       hotspots: null,
@@ -177,6 +204,9 @@ test('preflight keeps separate review blocks visible during release-scale signof
         count: changedFiles.length,
         files: changedFiles,
         baseRef: 'origin/main',
+        branchChangedFileCount: changedFiles.length,
+        uncommittedChangedFileCount: 0,
+        uncommittedFiles: [],
       },
       session: { id: 'test-session', touchedFiles: [], eventCount: 0 },
       hotspots: null,
@@ -244,6 +274,23 @@ async function makeTempProject(): Promise<string> {
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
+}
+
+async function makeGitProject(): Promise<string> {
+  const root = await makeTempProject();
+  await fs.writeFile(path.join(root, '.gitignore'), '.projscan-memory/\n');
+  await git(root, ['init', '-q', '--initial-branch=main']);
+  await git(root, ['config', 'user.email', 'test@example.com']);
+  await git(root, ['config', 'user.name', 'Test']);
+  await git(root, ['config', 'commit.gpgsign', 'false']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-q', '-m', 'initial']);
+  await git(root, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+  return root;
+}
+
+async function git(cwd: string, args: string[]): Promise<void> {
+  await execFileAsync('git', args, { cwd });
 }
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {
