@@ -39,6 +39,10 @@ test('privacy-check reports the local trust boundary as JSON', async () => {
 
   expect(result.exitCode).toBe(0);
   const payload = JSON.parse(result.stdout);
+  expect(payload.schemaVersion).toBe(1);
+  expect(payload.summary).toBe(
+    'privacy-check: offline mode enabled; telemetry disabled; plugin execution disabled',
+  );
   expect(payload.telemetry.enabled).toBe(false);
   expect(payload.offline.enabled).toBe(true);
   expect(payload.scan.rootPath).toBe(tmp);

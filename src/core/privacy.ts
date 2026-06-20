@@ -20,6 +20,8 @@ export interface LocalWriteSurfaceInfo {
 }
 
 export interface PrivacyCheckReport {
+  schemaVersion: 1;
+  summary: string;
   telemetry: {
     enabled: boolean;
     anonymousId: string | null;
@@ -155,6 +157,8 @@ export async function buildPrivacyCheckReport(
   const pluginManifests = await discoverPluginManifests(rootPath);
   const pluginExecutionEnabled = pluginsEnabled();
   return {
+    schemaVersion: 1,
+    summary: summarizePrivacyCheck(offline, telemetry.enabled, pluginExecutionEnabled),
     telemetry: {
       enabled: telemetry.enabled,
       anonymousId: telemetry.anonymousId,
@@ -196,4 +200,19 @@ export async function buildPrivacyCheckReport(
       endpoints: knownNetworkEndpoints(offline),
     },
   };
+}
+
+function summarizePrivacyCheck(
+  offline: boolean,
+  telemetryEnabled: boolean,
+  pluginExecutionEnabled: boolean,
+): string {
+  return (
+    'privacy-check: offline mode ' +
+    (offline ? 'enabled' : 'disabled') +
+    '; telemetry ' +
+    (telemetryEnabled ? 'enabled' : 'disabled') +
+    '; plugin execution ' +
+    (pluginExecutionEnabled ? 'enabled' : 'disabled')
+  );
 }
