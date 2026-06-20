@@ -42,6 +42,22 @@ describe('routeIntent', () => {
     );
   });
 
+  it('routes raw false-positive feedback to feedback intake before generic analysis tools', () => {
+    const result = routeIntent(
+      'unused-exports false positive: Next.js App Router and @/ alias import are flagged unused',
+    );
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_feedback_intake',
+        cli: 'projscan feedback intake',
+        confidence: 'high',
+      }),
+    );
+    const semanticGraph = result.matches.find((match) => match.tool === 'projscan_semantic_graph');
+    expect(semanticGraph?.rank).toBeGreaterThan(1);
+  });
+
   it('keeps generic PR/template lookup intents on search instead of bug hunt', () => {
     const result = routeIntent('find the PR template');
 

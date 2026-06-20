@@ -157,6 +157,27 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     ].includes(keyword)
   )
     return 2;
+  if (entry.tool === 'projscan_feedback_intake') {
+    if (['feedback', 'reviewer', 'reviewers', 'user', 'users', 'intake'].includes(keyword))
+      return 3;
+    if (
+      [
+        'false',
+        'positive',
+        'unused',
+        'exports',
+        'alias',
+        'import',
+        'noisy',
+        'noise',
+        'caution',
+        'signal',
+        'wrong',
+        'incorrect',
+      ].includes(keyword)
+    )
+      return 2;
+  }
   if (entry.tool === 'projscan_file' && keyword === 'read') return 3;
   if (entry.tool === 'projscan_file' && ['review', 'reviewer', 'reviewers'].includes(keyword))
     return 5;

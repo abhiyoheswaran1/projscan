@@ -41,3 +41,16 @@ test('route accepts intent through the shared --intent option', async () => {
     }),
   );
 });
+
+test('route points raw feedback reports to feedback intake', async () => {
+  const result = await spawnCli(cliPath, [
+    'route',
+    '--intent',
+    'unused-exports false positive: Next.js App Router and @/ alias import are flagged unused',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('projscan_feedback_intake');
+  expect(result.stdout).toContain('projscan feedback intake --text');
+});
