@@ -177,6 +177,9 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
       ].includes(keyword)
     )
       return 2;
+    if (['allow', 'script', 'scripts', 'warning', 'warnings', 'tree', 'sitter'].includes(keyword))
+      return 3;
+    if (['node', 'gyp'].includes(keyword)) return 2;
   }
   if (entry.tool === 'projscan_file' && keyword === 'read') return 3;
   if (entry.tool === 'projscan_file' && ['review', 'reviewer', 'reviewers'].includes(keyword))

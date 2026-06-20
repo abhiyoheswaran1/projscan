@@ -54,3 +54,16 @@ test('route points raw feedback reports to feedback intake', async () => {
   expect(result.stdout).toContain('projscan_feedback_intake');
   expect(result.stdout).toContain('projscan feedback intake --text');
 });
+
+test('route points raw install warning reports to feedback intake', async () => {
+  const result = await spawnCli(cliPath, [
+    'route',
+    '--intent',
+    'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('projscan_feedback_intake');
+  expect(result.stdout).toContain('projscan feedback intake --text');
+});

@@ -58,6 +58,35 @@ describe('routeIntent', () => {
     expect(semanticGraph?.rank).toBeGreaterThan(1);
   });
 
+  it('routes raw install warning feedback to feedback intake', () => {
+    const result = routeIntent(
+      'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build',
+    );
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_feedback_intake',
+        cli: 'projscan feedback intake',
+        confidence: 'high',
+      }),
+    );
+    expect(result.matches.find((match) => match.tool === 'projscan_regression_plan')?.rank)
+      .toBeGreaterThan(1);
+  });
+
+  it('keeps ordinary install setup prompts away from feedback intake', () => {
+    const result = routeIntent('how do I install projscan and set up MCP');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_understand',
+      }),
+    );
+    expect(
+      result.matches.find((match) => match.tool === 'projscan_feedback_intake'),
+    ).toBeUndefined();
+  });
+
   it('keeps generic PR/template lookup intents on search instead of bug hunt', () => {
     const result = routeIntent('find the PR template');
 
