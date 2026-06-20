@@ -88,6 +88,11 @@ test('dogfood suggests concrete feedback capture commands for evaluated repos', 
   expect(report.marketValidation.status).toBe('needs_feedback');
   expect(report.repos[0].feedbackCaptureCommand).toBe(feedbackCommand);
   expect(report.repos[0].nextCommands).toContain(feedbackCommand);
+  expect(
+    report.marketValidation.proofGates
+      .filter((gate) => ['reviewer-feedback', 'useful-feedback', 'measured-value'].includes(gate.id))
+      .map((gate) => gate.command),
+  ).toEqual([feedbackCommand, feedbackCommand, feedbackCommand]);
   expect(report.suggestedNextActions[0]).toEqual(
     expect.objectContaining({
       label: 'Ask real reviewers for first-PR usefulness feedback',

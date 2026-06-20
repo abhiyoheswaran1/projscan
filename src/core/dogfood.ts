@@ -283,6 +283,7 @@ function buildMarketValidation(
     preventedBadEdits,
     ready: feedback.minutesSaved.average >= MIN_AVERAGE_MINUTES_SAVED || preventedBadEdits > 0,
   };
+  const feedbackCaptureCommand = firstFeedbackCaptureCommand(repos);
   const status = marketStatus({
     targetMet: repoCoverage.targetMet,
     responses: responseCount,
@@ -306,6 +307,7 @@ function buildMarketValidation(
     value,
     repeatUse,
     falsePositive.totalReports,
+    feedbackCaptureCommand,
   );
   const nextProofStep = nextProofStepFromGates(status, proofGates);
   return {
@@ -346,6 +348,7 @@ function buildProofGates(
   value: DogfoodMarketValidation['value'],
   repeatUse: DogfoodMarketValidation['repeatUse'],
   falsePositiveReports: number,
+  feedbackCaptureCommand: string,
 ): DogfoodMarketValidation['proofGates'] {
   const moreRepos = Math.max(0, repoCoverage.target - repoCoverage.evaluated);
   const moreUsefulResponses = Math.max(0, MIN_USEFUL_REVIEWER_RESPONSES - feedback.usefulResponses);
@@ -366,7 +369,7 @@ function buildProofGates(
         feedback.responses > 0
           ? `${feedback.responses} reviewer response(s) captured.`
           : 'Capture structured reviewer feedback from the first real PR.',
-      command: FEEDBACK_CAPTURE_COMMAND,
+      command: feedbackCaptureCommand,
     },
     {
       id: 'useful-feedback',
@@ -375,7 +378,7 @@ function buildProofGates(
         feedback.usefulResponses >= MIN_USEFUL_REVIEWER_RESPONSES
           ? `${feedback.usefulResponses} useful reviewer response(s) captured.`
           : `Collect at least ${moreUsefulResponses} more useful reviewer response(s).`,
-      command: FEEDBACK_CAPTURE_COMMAND,
+      command: feedbackCaptureCommand,
     },
     {
       id: 'repeat-use',
@@ -391,7 +394,7 @@ function buildProofGates(
       summary: value.ready
         ? `Measured value ready: ${value.averageMinutesSaved} average minutes saved or ${value.preventedBadEdits} risky edit(s) prevented.`
         : 'Record 10+ average minutes saved or at least one prevented risky edit.',
-      command: FEEDBACK_CAPTURE_COMMAND,
+      command: feedbackCaptureCommand,
     },
     {
       id: 'false-positive-balance',
@@ -403,6 +406,10 @@ function buildProofGates(
       command: 'projscan memory stable --format json',
     },
   ];
+}
+
+function firstFeedbackCaptureCommand(repos: DogfoodRepoResult[]): string {
+  return repos.find((repo) => repo.feedbackCaptureCommand)?.feedbackCaptureCommand ?? FEEDBACK_CAPTURE_COMMAND;
 }
 
 function nextProofStepFromGates(
