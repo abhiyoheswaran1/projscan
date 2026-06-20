@@ -520,20 +520,20 @@ function buildDogfoodActions(
       command: 'projscan dogfood --repo <path-to-repo> --format json',
     },
     {
+      label: 'Generate first-PR evidence for review',
+      command: 'projscan evidence-pack --pr-comment',
+    },
+    {
       label: 'Initialize structured reviewer feedback',
       command: FEEDBACK_INIT_COMMAND,
     },
     {
-      label: 'Capture first PR feedback as structured evidence',
+      label: 'Capture reviewer feedback as structured evidence',
       command: FEEDBACK_CAPTURE_COMMAND,
     },
     {
       label: 'Roll feedback into dogfood validation',
       command: DOGFOOD_WITH_FEEDBACK_COMMAND,
-    },
-    {
-      label: 'Capture first PR feedback',
-      command: 'projscan evidence-pack --pr-comment',
     },
   ];
   if (reposEvaluated < targetRepoCount) {

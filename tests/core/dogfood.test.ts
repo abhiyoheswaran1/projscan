@@ -42,6 +42,36 @@ test('dogfood report evaluates multiple repos and tells teams what is still miss
   );
 });
 
+test('dogfood next actions distinguish first-PR evidence from feedback capture', async () => {
+  const repo = await makeRepo('api-service');
+
+  const report = await computeDogfoodReport(process.cwd(), { repos: [repo], targetRepoCount: 3 });
+  const evidenceIndex = report.suggestedNextActions.findIndex(
+    (action) => action.command === 'projscan evidence-pack --pr-comment',
+  );
+  const feedbackCommand =
+    'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+  const feedbackIndex = report.suggestedNextActions.findIndex(
+    (action) => action.command === feedbackCommand,
+  );
+
+  expect(evidenceIndex).toBeGreaterThanOrEqual(0);
+  expect(feedbackIndex).toBeGreaterThanOrEqual(0);
+  expect(report.suggestedNextActions[evidenceIndex]).toEqual(
+    expect.objectContaining({
+      label: 'Generate first-PR evidence for review',
+      command: 'projscan evidence-pack --pr-comment',
+    }),
+  );
+  expect(report.suggestedNextActions[feedbackIndex]).toEqual(
+    expect.objectContaining({
+      label: 'Capture reviewer feedback as structured evidence',
+      command: feedbackCommand,
+    }),
+  );
+  expect(evidenceIndex).toBeLessThan(feedbackIndex);
+});
+
 test('dogfood report rolls reviewer feedback into market validation and website proof', async () => {
   const repos = [
     await makeRepo('api-service'),
