@@ -9,6 +9,7 @@ import {
   styleSystemFailureContextMatches,
   toolingFailureContextMatches,
 } from './intentRouterRegressionSignals.js';
+import { productImprovementContextMatches } from './intentRouterProductImprovementSignals.js';
 import { localServiceSetupCommandContextMatches } from './intentRouterRepoSignals.js';
 import { evidencePackKeywordMatches, reviewKeywordMatches } from './intentRouterReviewSignals.js';
 import {
@@ -101,6 +102,7 @@ export function routeKeywordRejectedByEarlyGuards(context: KeywordMatchContext):
 function privacyKeywordRejected({ entry, keyword, tokens }: KeywordMatchContext): boolean {
   if (entry.tool !== 'projscan_privacy_check') return false;
   return (
+    productImprovementContextMatches(tokens) ||
     improveNextTrustPlanningContextMatches(keyword, tokens) ||
     searchIntegrationContextMatches(tokens) ||
     searchUiInteractionContextMatches(tokens) ||

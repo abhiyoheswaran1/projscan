@@ -1,3 +1,5 @@
+import { productImprovementContextMatches } from './intentRouterProductImprovementSignals.js';
+
 function workplanDoContextMatches(tokens: Set<string>): boolean {
   return [
     'next',
@@ -88,6 +90,7 @@ export function bugHuntSpeedContextMatches(tokens: Set<string>): boolean {
 }
 
 export function bugHuntOpportunityContextMatches(tokens: Set<string>): boolean {
+  if (productImprovementContextMatches(tokens)) return true;
   if (
     (tokens.has('improve') || tokens.has('improvement')) &&
     tokens.has('next') &&

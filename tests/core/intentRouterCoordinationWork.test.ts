@@ -209,6 +209,22 @@ describe('routeIntent coordination and work routing', () => {
       }),
     );
 
+    const productImprovement = routeIntent(
+      'make projscan more useful for engineers by reducing noisy or slow trust workflows',
+    );
+    expect(productImprovement.matches[0]).toEqual(
+      expect.objectContaining({
+        category: 'Agent planning',
+        tool: 'projscan_bug_hunt',
+        cli: 'projscan bug-hunt',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['useful']),
+      }),
+    );
+    expect(
+      productImprovement.matches.find((match) => match.tool === 'projscan_regression_plan'),
+    ).toBeUndefined();
+
     const noReleaseImproveNext = routeIntent('what should we improve next without releasing');
     expect(noReleaseImproveNext.matches[0]).toEqual(
       expect.objectContaining({

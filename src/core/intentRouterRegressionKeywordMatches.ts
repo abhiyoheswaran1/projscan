@@ -9,6 +9,7 @@ import {
   regressionPackageManagerWarningContextMatches,
   regressionPerformanceContextMatches,
 } from './intentRouterRegressionSignals.js';
+import { productImprovementContextMatches } from './intentRouterProductImprovementSignals.js';
 import { packageScriptDiscoveryContextMatches } from './intentRouterRepoSignals.js';
 import { searchApiContractContextMatches } from './intentRouterSearchApiSignals.js';
 import { searchCommunicationArtifactContextMatches } from './intentRouterSearchCommunicationSignals.js';
@@ -36,6 +37,7 @@ export function regressionKeywordMatches(
   hasQuotedText: boolean,
 ): boolean {
   if (keyword === 'full' && !fullRegressionContextMatches(tokens)) return false;
+  if (productImprovementContextMatches(tokens)) return false;
   if (
     [
       'github',

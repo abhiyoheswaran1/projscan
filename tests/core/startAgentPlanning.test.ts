@@ -264,6 +264,32 @@ test('start report routes improve-next trust prompts to planning instead of priv
   expect(report.firstTenMinutes.commands[0].command).toBe('projscan privacy-check --offline');
 });
 
+test('start report routes product-improvement trust workflow prompts to bug hunt', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'make projscan more useful for engineers by reducing noisy or slow trust workflows',
+  });
+
+  expect(report.mode).toBe('bug_hunt');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Agent planning',
+      tool: 'projscan_bug_hunt',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan bug-hunt --format json',
+      tool: 'projscan_bug_hunt',
+    }),
+  );
+  expect((report.missionControl.alternatives ?? []).map((route) => route.tool)).not.toContain(
+    'projscan_regression_plan',
+  );
+});
+
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {
   const root = await makeTempProject();
 
