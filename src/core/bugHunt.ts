@@ -60,16 +60,18 @@ export async function computeBugHunt(
     ...hotspotFindings(hotspots),
   ]);
 
-  const immediateFixes = findings.filter(isImmediateFixFinding);
-  const verdict = bugHuntVerdict(issues, immediateFixes, actionablePreflightReasons);
-  const fixQueue = bugHuntFixQueue(verdict, immediateFixes, maxFindings);
+  const concreteFixes = findings.filter(isConcreteFixFinding);
+  const reviewFindings = findings.filter(isReviewOnlyFinding);
+  const verdict = bugHuntVerdict(issues, concreteFixes, reviewFindings, actionablePreflightReasons);
+  const fixQueue = bugHuntFixQueue(verdict, concreteFixes, maxFindings);
+  const reviewQueue = bugHuntReviewQueue(reviewFindings, maxFindings);
   const topSuspects = bugHuntTopSuspects(findings, fixQueue, maxFindings);
   const fixFirst = fixFirstFromBugHuntFinding(fixQueue[0]);
 
   return {
     schemaVersion: 1,
     verdict,
-    summary: summarize(verdict, fixQueue, immediateFixes),
+    summary: summarize(verdict, fixQueue, reviewQueue),
     health,
     evidence: bugHuntEvidence(
       health,
@@ -79,9 +81,18 @@ export async function computeBugHunt(
     ),
     topSuspects,
     fixQueue,
+    reviewQueue,
     ...(fixFirst ? { fixFirst } : {}),
     verificationMatrix: buildVerificationMatrix(verdict, fixQueue),
-    ...(bugHuntIsTruncated(findings, topSuspects, verdict, immediateFixes, fixQueue)
+    ...(bugHuntIsTruncated(
+      findings,
+      topSuspects,
+      verdict,
+      concreteFixes,
+      fixQueue,
+      reviewFindings,
+      reviewQueue,
+    )
       ? { truncated: true }
       : {}),
   };
@@ -111,6 +122,13 @@ function bugHuntTopSuspects(
   return findings.length > 0 ? findings.slice(0, maxFindings) : fixQueue;
 }
 
+function bugHuntReviewQueue(
+  reviewFindings: BugHuntFinding[],
+  maxFindings: number,
+): BugHuntFinding[] {
+  return reviewFindings.slice(0, maxFindings);
+}
+
 function bugHuntEvidence(
   health: BugHuntReport['health'],
   hotspotCount: number,
@@ -134,12 +152,15 @@ function bugHuntIsTruncated(
   findings: BugHuntFinding[],
   topSuspects: BugHuntFinding[],
   verdict: BugHuntVerdict,
-  immediateFixes: BugHuntFinding[],
+  concreteFixes: BugHuntFinding[],
   fixQueue: BugHuntFinding[],
+  reviewFindings: BugHuntFinding[],
+  reviewQueue: BugHuntFinding[],
 ): boolean {
   return (
     findings.length > topSuspects.length ||
-    (verdict !== 'review' && immediateFixes.length > fixQueue.length)
+    (verdict !== 'review' && concreteFixes.length > fixQueue.length) ||
+    reviewFindings.length > reviewQueue.length
   );
 }
 
@@ -273,6 +294,10 @@ function buildVerificationMatrix(
   ];
 }
 
+function isConcreteFixFinding(finding: BugHuntFinding): boolean {
+  return isImmediateFixFinding(finding) && !isReviewOnlyFinding(finding);
+}
+
 function isImmediateFixFinding(finding: BugHuntFinding): boolean {
   if (finding.source === 'verification') return false;
   if (finding.source !== 'hotspot') return true;
@@ -283,7 +308,8 @@ function isImmediateFixFinding(finding: BugHuntFinding): boolean {
 
 function bugHuntVerdict(
   issues: Issue[],
-  findings: BugHuntFinding[],
+  concreteFixes: BugHuntFinding[],
+  reviewFindings: BugHuntFinding[],
   actionablePreflightReasons: PreflightReason[],
 ): BugHuntVerdict {
   if (
@@ -292,10 +318,8 @@ function bugHuntVerdict(
   ) {
     return 'block';
   }
-  if (findings.length > 0) {
-    if (findings.every(isReleaseSignoffFinding)) return 'review';
-    return 'fix';
-  }
+  if (concreteFixes.length > 0) return 'fix';
+  if (reviewFindings.length > 0) return 'review';
   if (actionablePreflightReasons.length > 0) return 'fix';
   return 'clean';
 }
@@ -326,7 +350,7 @@ async function safeRiskNow(
 function summarize(
   verdict: BugHuntVerdict,
   fixQueue: BugHuntFinding[],
-  findings: BugHuntFinding[],
+  reviewQueue: BugHuntFinding[],
 ): string {
   const queueLength = fixQueue.length;
   if (verdict === 'clean')
@@ -334,10 +358,14 @@ function summarize(
   if (verdict === 'block')
     return `block: bug hunt found ${queueLength} high-priority fix target(s)`;
   if (verdict === 'review' || (fixQueue.length > 0 && fixQueue.every(isReleaseSignoffFinding))) {
-    const reviewCount = findings.filter(isReleaseSignoffFinding).length || queueLength;
+    const reviewCount = reviewQueue.length || queueLength;
     return `review: bug hunt found ${reviewCount} manual sign-off action(s)`;
   }
   return `fix: bug hunt found ${queueLength} prioritized fix target(s)`;
+}
+
+function isReviewOnlyFinding(finding: BugHuntFinding): boolean {
+  return isReleaseSignoffFinding(finding);
 }
 
 function isReleaseSignoffFinding(finding: BugHuntFinding): boolean {

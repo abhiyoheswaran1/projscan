@@ -65,7 +65,10 @@ function printFindingSection(report: BugHuntReport): void {
     return;
   }
 
-  const reviewSignals = report.verdict === 'review' ? report.topSuspects.filter(isReviewSignal) : [];
+  const reviewSignals =
+    report.verdict === 'review'
+      ? (report.reviewQueue ?? report.topSuspects).filter(isReviewSignal)
+      : [];
   if (reviewSignals.length === 0) return;
 
   console.log(chalk.bold('Review Signals'));

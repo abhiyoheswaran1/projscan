@@ -156,6 +156,7 @@ test('bug-hunt JSON orders preflight fallback files for review routing', async (
     (finding: { source: string; files: string[] }) => finding.source === 'preflight',
   );
   expect(report.fixQueue).toEqual([]);
+  expect(report.reviewQueue).toEqual([preflightFinding]);
   expect(preflightFinding?.files.slice(0, 4)).toEqual([
     'package.json',
     'package-lock.json',

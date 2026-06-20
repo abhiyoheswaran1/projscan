@@ -39,6 +39,7 @@ export interface BugHuntReport {
   };
   topSuspects: BugHuntFinding[];
   fixQueue: BugHuntFinding[];
+  reviewQueue?: BugHuntFinding[];
   fixFirst?: FixFirstRecommendation;
   verificationMatrix: Array<{ command: string; reason: string; expected: string }>;
   truncated?: boolean;

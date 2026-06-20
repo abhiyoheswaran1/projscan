@@ -57,6 +57,7 @@ const report: BugHuntReport = {
   },
   topSuspects: [finding],
   fixQueue: [finding],
+  reviewQueue: [],
   fixFirst: {
     id: finding.id,
     title: finding.title,
@@ -76,11 +77,38 @@ const report: BugHuntReport = {
   ],
 };
 
+const legacyReportWithoutReviewQueue: BugHuntReport = {
+  schemaVersion: 1,
+  verdict: reviewVerdict,
+  summary: 'Existing consumers can still construct Bug Hunt reports without reviewQueue.',
+  health: {
+    score: 100,
+    grade: 'A',
+    errors: 0,
+    warnings: 0,
+    infos: 0,
+  },
+  evidence: {
+    issueCounts: {
+      errors: 0,
+      warnings: 0,
+      infos: 0,
+    },
+    hotspotCount: 0,
+    preflightVerdict: 'proceed',
+    touchedFiles: [],
+    conflicts: 0,
+  },
+  topSuspects: [],
+  fixQueue: [],
+  verificationMatrix: [],
+};
+
 const barrelVerdict: BarrelBugHuntVerdict = verdict;
 const barrelFinding: BarrelBugHuntFinding = finding;
 const barrelReport: BarrelBugHuntReport = report;
 
-void [barrelVerdict, barrelFinding, reviewVerdict];
+void [barrelVerdict, barrelFinding, reviewVerdict, legacyReportWithoutReviewQueue];
 
 test('bug hunt public types compile from the module and legacy barrel', () => {
   expect(barrelReport).toBe(report);

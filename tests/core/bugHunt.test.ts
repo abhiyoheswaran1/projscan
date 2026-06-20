@@ -201,6 +201,7 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   expect(report.summary).toContain('manual sign-off action');
   expect(report.summary).not.toContain('fix:');
   expect(report.fixQueue).toEqual([]);
+  expect(report.reviewQueue).toEqual([preflightFinding]);
   expect(report.fixFirst).toBeUndefined();
   expect(report.verificationMatrix).toEqual([
     expect.objectContaining({
