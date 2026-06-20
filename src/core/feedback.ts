@@ -184,6 +184,12 @@ function toStoredFeedback(template: FeedbackTemplateResult): DogfoodFeedbackInpu
 
 function classifyCategory(text: string): FeedbackIntakeCategory {
   if (
+    /\b(?:npm|npx|install|installed|global|globally)\b/.test(text) &&
+    /allow[- ]scripts?|install scripts?|node-gyp-build|tree-sitter/.test(text)
+  ) {
+    return 'install_warning';
+  }
+  if (
     /\bfalse[- ]positive\b|incorrectly flag|wrongly flag|flagged unused|reported unused|not actually unused/.test(
       text,
     )
@@ -237,6 +243,12 @@ function primarySignal(category: FeedbackIntakeCategory, text: string): string {
     if (/remix/.test(text)) return 'Remix';
     return 'framework request source';
   }
+  if (category === 'install_warning') {
+    if (/allow[- ]scripts?/.test(text)) return 'npm allow-scripts';
+    if (/node-gyp-build|install scripts?/.test(text)) return 'native install scripts';
+    if (/tree-sitter/.test(text)) return 'tree-sitter install warning';
+    return 'npm install warning';
+  }
   if (category === 'noisy_caution') return 'caution';
   if (category === 'confusing_docs_output') return 'docs/output';
   if (category === 'useful_signal') return 'useful workflow';
@@ -249,6 +261,7 @@ function confidenceFor(category: FeedbackIntakeCategory, text: string): Feedback
     /\bfalse[- ]positive\b/,
     /unused[- ]exports?/,
     /\bcaution\b.*(?:noise|noisy|background)|(?:noise|noisy|background).*\bcaution\b/,
+    /allow[- ]scripts?|node-gyp-build|tree-sitter/,
     /ctx\.request|app router|route handler|middleware/,
     /saved .*minute|prevented/,
   ];
@@ -261,6 +274,8 @@ function taskTitleFor(category: FeedbackIntakeCategory, signal: string): string 
       return 'Fix false-positive feedback: ' + signal;
     case 'noisy_caution':
       return 'Reduce noisy caution output';
+    case 'install_warning':
+      return 'Fix install warning feedback: ' + signal;
     case 'missing_framework_rule':
       return 'Add missing framework rule: ' + signal;
     case 'confusing_docs_output':
@@ -281,6 +296,8 @@ function commandFor(category: FeedbackIntakeCategory, signal: string): string {
       return 'npm test -- tests/analyzers tests/core/importGraph.test.ts';
     case 'noisy_caution':
       return 'npm test -- tests/core/preflight*.test.ts tests/core/releaseEvidence.test.ts';
+    case 'install_warning':
+      return 'npm test -- tests/integration/packSmokeTest.test.ts';
     case 'missing_framework_rule':
       return 'npm test -- tests/core/dataflow.test.ts tests/analyzers/securityCheck.test.ts';
     case 'confusing_docs_output':
@@ -298,6 +315,8 @@ function summaryFor(category: FeedbackIntakeCategory, signal: string): string {
       return 'Classified as false-positive feedback for ' + signal + '.';
     case 'noisy_caution':
       return 'Classified as caution noise that should be ranked or grouped.';
+    case 'install_warning':
+      return 'Classified as setup/install warning feedback for ' + signal + '.';
     case 'missing_framework_rule':
       return 'Classified as missing framework coverage for ' + signal + '.';
     case 'confusing_docs_output':
@@ -315,6 +334,10 @@ function evidenceFor(category: FeedbackIntakeCategory, text: string): string[] {
     evidence.push('false-positive wording');
   if (/unused[- ]exports?/.test(text)) evidence.push('unused-exports signal');
   if (/caution|warning/.test(text)) evidence.push('caution wording');
+  if (/\b(?:npm|npx|install|installed|global|globally)\b/.test(text))
+    evidence.push('npm install wording');
+  if (/allow[- ]scripts?/.test(text)) evidence.push('allow-scripts warning');
+  if (/node-gyp-build|tree-sitter/.test(text)) evidence.push('native grammar install wording');
   if (/noise|noisy|background/.test(text)) evidence.push('noise wording');
   if (/koa|hono|fastify|express|next\.?js|sveltekit|astro|remix/.test(text))
     evidence.push('framework wording');
@@ -339,6 +362,7 @@ function feedbackResponseFor(
   if (category === 'false_positive') response.falsePositiveRules = [signal];
   if (category === 'missing_framework_rule') response.missingSignals = [signal];
   if (category === 'noisy_caution') response.noisyFindings = [signal];
+  if (category === 'install_warning') response.noisyFindings = [signal];
   if (category === 'confusing_docs_output') response.noisyFindings = [signal];
   return response;
 }

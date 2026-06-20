@@ -138,6 +138,20 @@ test('feedback intake classifies raw agent and reviewer feedback into fix candid
       'npm test -- tests/core/preflight*.test.ts tests/core/releaseEvidence.test.ts',
   });
 
+  const installWarning = classifyFeedbackIntake(
+    'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build',
+  );
+  expect(installWarning).toMatchObject({
+    category: 'install_warning',
+    confidence: 'high',
+    taskTitle: 'Fix install warning feedback: npm allow-scripts',
+    suggestedCommand: 'npm test -- tests/integration/packSmokeTest.test.ts',
+  });
+  expect(installWarning.evidence).toEqual(
+    expect.arrayContaining(['npm install wording', 'allow-scripts warning']),
+  );
+  expect(installWarning.feedbackResponse.noisyFindings).toContain('npm allow-scripts');
+
   expect(
     classifyFeedbackIntake('Koa ctx.request.body is not detected as a framework request source'),
   ).toMatchObject({

@@ -65,6 +65,7 @@ export interface FeedbackSummaryReport {
 export type FeedbackIntakeCategory =
   | 'false_positive'
   | 'noisy_caution'
+  | 'install_warning'
   | 'missing_framework_rule'
   | 'confusing_docs_output'
   | 'useful_signal'

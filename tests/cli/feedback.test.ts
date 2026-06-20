@@ -134,6 +134,28 @@ test('feedback intake classifies pasted feedback and can append it to the feedba
   expect(saved.responses[0].falsePositiveRules).toContain('unused-exports');
 });
 
+test('feedback intake classifies npm install warning feedback', async () => {
+  const intake = await runCli([
+    'feedback',
+    'intake',
+    '--text',
+    'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(intake.exitCode).toBe(0);
+  const report = JSON.parse(intake.stdout);
+  expect(report).toMatchObject({
+    category: 'install_warning',
+    confidence: 'high',
+    taskTitle: 'Fix install warning feedback: npm allow-scripts',
+    suggestedCommand: 'npm test -- tests/integration/packSmokeTest.test.ts',
+  });
+  expect(report.followUpCommands).toContain('npm test -- tests/integration/packSmokeTest.test.ts');
+});
+
 test('feedback intake console prints task and dogfood follow-up commands', async () => {
   const feedbackPath = path.join(tmp, '.projscan-feedback.json');
 
