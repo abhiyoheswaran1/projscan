@@ -178,6 +178,8 @@ const repoResult: DogfoodRepoResult = {
   gaps: [],
   feedbackQuestions: ['Did the PR comment save time?'],
   validation,
+  feedbackCaptureCommand:
+    'projscan feedback add --file .projscan-feedback.json --repo projscan --pr <url>',
   nextCommands: ['projscan evidence-pack --pr-comment'],
 };
 

@@ -49,12 +49,12 @@ test('dogfood next actions distinguish first-PR evidence from feedback capture',
   const evidenceIndex = report.suggestedNextActions.findIndex(
     (action) => action.command === 'projscan evidence-pack --pr-comment',
   );
-  const feedbackCommand =
-    'projscan feedback add --file .projscan-feedback.json --repo <repo> --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+  const feedbackCommand = report.repos[0].feedbackCaptureCommand;
   const feedbackIndex = report.suggestedNextActions.findIndex(
     (action) => action.command === feedbackCommand,
   );
 
+  expect(feedbackCommand).toContain('--repo projscan-dogfood-api-service-');
   expect(evidenceIndex).toBeGreaterThanOrEqual(0);
   expect(feedbackIndex).toBeGreaterThanOrEqual(0);
   expect(report.suggestedNextActions[evidenceIndex]).toEqual(
@@ -70,6 +70,30 @@ test('dogfood next actions distinguish first-PR evidence from feedback capture',
     }),
   );
   expect(evidenceIndex).toBeLessThan(feedbackIndex);
+});
+
+test('dogfood suggests concrete feedback capture commands for evaluated repos', async () => {
+  const repos = [
+    await makeRepo('api-service'),
+    await makeRepo('web-app'),
+    await makeRepo('worker'),
+  ];
+
+  const report = await computeDogfoodReport(process.cwd(), { repos, targetRepoCount: 3 });
+  const feedbackCommand =
+    'projscan feedback add --file .projscan-feedback.json --repo ' +
+    path.basename(repos[0]) +
+    ' --pr <url> --reviewer <handle> --useful true --minutes-saved 10';
+
+  expect(report.marketValidation.status).toBe('needs_feedback');
+  expect(report.repos[0].feedbackCaptureCommand).toBe(feedbackCommand);
+  expect(report.repos[0].nextCommands).toContain(feedbackCommand);
+  expect(report.suggestedNextActions[0]).toEqual(
+    expect.objectContaining({
+      label: 'Ask real reviewers for first-PR usefulness feedback',
+      command: feedbackCommand,
+    }),
+  );
 });
 
 test('dogfood discovers local package repos up to the validation target', async () => {

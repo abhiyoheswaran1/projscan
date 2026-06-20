@@ -194,6 +194,7 @@ export interface DogfoodRepoResult {
   gaps: string[];
   feedbackQuestions: string[];
   validation: DogfoodRepoValidation;
+  feedbackCaptureCommand?: string;
   nextCommands: string[];
 }
 

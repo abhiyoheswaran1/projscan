@@ -65,6 +65,7 @@ export async function computeDogfoodReport(
       targetRepoCount,
       marketValidation,
       repoResolution.discovery,
+      results[0]?.feedbackCaptureCommand,
     ),
   };
 }
@@ -86,6 +87,7 @@ async function evaluateRepo(
     (start.adoptionLoop.nextCommands.length ?? 0) >= 3;
   const mcpReady = start.evidence.mcpReady;
   const validation = summarizeRepoFeedback(feedbackForRepo(feedback, repoPath, name));
+  const feedbackCaptureCommand = feedbackCaptureCommandForRepo(name);
   const gaps = buildGaps({
     prCommentReady,
     repeatUseReady,
@@ -105,12 +107,13 @@ async function evaluateRepo(
     gaps,
     feedbackQuestions: [...FEEDBACK_QUESTIONS],
     validation,
+    feedbackCaptureCommand,
     nextCommands: [
       'projscan init team --team platform',
       'projscan evidence-pack --pr-comment',
       'projscan preflight --mode before_merge --format json',
       FEEDBACK_INIT_COMMAND,
-      FEEDBACK_CAPTURE_COMMAND,
+      feedbackCaptureCommand,
       DOGFOOD_WITH_FEEDBACK_COMMAND,
     ],
   };
@@ -123,6 +126,19 @@ function normalizeTargetRepoCount(value: number | undefined): number {
 
 function normalizeFeedback(input: DogfoodFeedbackInput | undefined): DogfoodFeedbackResponse[] {
   return Array.isArray(input?.responses) ? input.responses : [];
+}
+
+function feedbackCaptureCommandForRepo(repoName: string): string {
+  return (
+    'projscan feedback add --file .projscan-feedback.json --repo ' +
+    shellQuote(repoName) +
+    ' --pr <url> --reviewer <handle> --useful true --minutes-saved 10'
+  );
+}
+
+function shellQuote(value: string): string {
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) return value;
+  return "'" + value.replace(/'/g, "'\\''") + "'";
 }
 
 function feedbackForRepo(
@@ -519,7 +535,9 @@ function buildDogfoodActions(
   targetRepoCount: number,
   marketValidation: DogfoodMarketValidation,
   repoDiscovery: DogfoodRepoDiscovery | undefined,
+  firstFeedbackCaptureCommand: string | undefined,
 ): PreflightSuggestedAction[] {
+  const feedbackCaptureCommand = firstFeedbackCaptureCommand ?? FEEDBACK_CAPTURE_COMMAND;
   const actions: PreflightSuggestedAction[] = [
     {
       label: 'Run dogfood against a real team repo',
@@ -535,7 +553,7 @@ function buildDogfoodActions(
     },
     {
       label: 'Capture reviewer feedback as structured evidence',
-      command: FEEDBACK_CAPTURE_COMMAND,
+      command: feedbackCaptureCommand,
     },
     {
       label: 'Roll feedback into dogfood validation',
@@ -560,7 +578,7 @@ function buildDogfoodActions(
   if (marketValidation.status === 'needs_feedback') {
     actions.unshift({
       label: 'Ask real reviewers for first-PR usefulness feedback',
-      command: FEEDBACK_CAPTURE_COMMAND,
+      command: feedbackCaptureCommand,
     });
   }
   if (marketValidation.status === 'needs_tuning') {
