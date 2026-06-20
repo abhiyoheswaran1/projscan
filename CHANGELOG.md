@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.9.3]
+
+2026-06-20 - "README And Demo Refresh"
+
+### Changed
+
+- Reworked the README around install, three daily workflows, MCP setup, command
+  map, and the local-first trust model so the documentation matches the
+  demonstrated workflow.
+- Regenerated Playwright screenshots and VHS terminal demos from current CLI
+  output for the Mission Control and Mission Proof flows.
+- Updated website release guidance and raw media URLs for the 4.9.3 tag.
+
+### Fixed
+
+- Removed stale version-specific README guidance and oversized narrative sections
+  that made the docs sound broader than the proven daily workflows.
+
 ## [4.9.2]
 
 2026-06-19 - "Trust Patch And Release Readiness"

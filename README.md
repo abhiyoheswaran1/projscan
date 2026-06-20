@@ -9,7 +9,7 @@
 
 **Local proof for AI-assisted engineering.** projscan gives agents and engineers the repo context, risk checks, proof commands, and review gates they need before editing, handing off, or preparing a release candidate.
 
-[Install](#install) · [Three Workflows](#three-workflows) · [MCP Setup](#mcp-setup) · [Commands](#command-map) · [Trust](#trust-model) · [Full Guide](docs/GUIDE.md)
+[Install](#install) · [Daily workflows](#daily-workflows) · [MCP Setup](#mcp-setup) · [Commands](#command-map) · [Trust](#trust-model) · [Full Guide](docs/GUIDE.md)
 
 <img src="docs/projscan-mission-control.png" alt="projscan Mission Control routing a saved mission into proof status, remaining work, outcome commands, and review gates" width="760">
 
@@ -25,7 +25,7 @@ Use projscan when an agent asks one of these questions:
 - Which proof commands should I run before handoff?
 - Which risks need fixes, reviewer attention, or release sign-off?
 
-projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 45-tool MCP server.
+projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 45-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
 
 ## Install
 
@@ -48,21 +48,24 @@ projscan start --intent "what can projscan read?"
 projscan start --intent "does projscan read .env values?"
 ```
 
-## Three Workflows
+## Daily workflows
 
-Start here before scanning the command catalog.
+Use these three workflows before scanning the full command catalog.
 
-### Before Editing
+### Before editing a feature
 
 ```bash
 projscan start --intent "what files do I need to change for auth?"
+projscan start --intent "what should we build next?" # Routes to a before-edit implementation workplan
 projscan understand --view change --intent "add auth token refresh" --format json
 projscan preflight --mode before_edit --format json
 ```
 
 You get a cited change map, read-first files, likely touched files, blocked inputs, and a before-edit proof gate.
 
-### Before Handoff
+Success criteria: the agent can name the files to read first, the likely files to touch, and the proof command to run before editing.
+
+### Before handoff or commit
 
 ```bash
 projscan bug-hunt --format json
@@ -72,7 +75,9 @@ projscan evidence-pack --pr-comment
 
 You get concrete fixes, manual review gates, owner routing, baseline trend memory, and exact proof commands for the reviewer.
 
-### Before Release Review
+Success criteria: the reviewer sees the top fix, the remaining proof, and any manual sign-off gate without reading the full scan output.
+
+### Before release-candidate review
 
 ```bash
 projscan release-train --format json
@@ -81,6 +86,8 @@ projscan evidence-pack --pr-comment
 ```
 
 You get read-only readiness evidence. projscan reports fixes and sign-off gates; it does not tag, publish, deploy, or bump versions from these commands.
+
+Success criteria: release review separates concrete defects from human approval gates before anyone tags or publishes.
 
 ## Mission Control
 
@@ -121,15 +128,13 @@ npm run docs:screenshots
 npm run docs:demos
 ```
 
-## 4.9.2 Notes
+## 4.9.3 Notes
 
-4.9.2 focuses on trust for real PRs:
+4.9.3 is a documentation and proof-media patch for the 4.9 trust release:
 
-- TypeScript path aliases, local package aliases, and Next.js App Router entrypoints now count as usage for unused-export checks.
-- Start, workplan, handoff, CLI shortcut, and MCP resume surfaces now use `projscan preflight --mode before_edit --format json` for before-edit proof.
-- Evidence-pack PR comments keep feedback prompts short: usefulness, minutes saved, and noisy signals.
-- Preflight separates fix-now items, review-only signals, and manual sign-off gates.
-- Independent preflight evidence collection runs in parallel where the data can be gathered without shared state.
+- README now starts with install, three daily workflows, MCP setup, command map, and the trust model.
+- Mission Control screenshots and VHS demos were regenerated from current CLI output.
+- The release keeps the 4.9.2 runtime fixes for TypeScript aliases, local package aliases, Next.js App Router entrypoints, explicit before-edit proof, compact reviewer feedback, caution triage, and parallel preflight gathering.
 
 ## MCP Setup
 
@@ -222,6 +227,7 @@ Use scoped and redacted reports when evidence leaves the repo:
 
 ```bash
 projscan analyze --report-scope src/api --redact-paths --format json
+projscan analyze --report-scope "src/api,packages/backend" --redact-paths --format json
 projscan doctor --report-policy apiEvidence --format markdown
 ```
 
@@ -294,12 +300,16 @@ jobs:
 
 Local plugins let teams add project-specific analyzer rules and custom human reports without changing projscan core.
 
+### Load local plugins
+
 ```bash
 projscan plugin list
 projscan plugin validate .projscan-plugins/team-radar.projscan-plugin.json
 projscan plugin test .projscan-plugins/team-radar.projscan-plugin.json
 PROJSCAN_PLUGINS_PREVIEW=1 projscan doctor --reporter team-radar
 ```
+
+Run `projscan help` for the generated command-by-command support matrix.
 
 <img src="docs/projscan-reporter-plugin.png" alt="projscan reporter plugin rendering a team health report" width="760">
 
@@ -316,7 +326,7 @@ projscan reads TypeScript, JavaScript, Python, Go, Java, Ruby, Rust, PHP, C#, Ko
 
 Framework signals cover React, Next.js, Vue, Nuxt, Svelte, Angular, Express, Fastify, NestJS, Vite, Tailwind CSS, Prisma, Remix, SvelteKit, Astro, Hono, Koa, and common monorepo layouts.
 
-JavaScript and TypeScript use `@babel/parser`. Non-JS languages use packaged tree-sitter WASM grammars. The published package has seven direct runtime dependencies; optional semantic search uses the peer dependency `@xenova/transformers`.
+JavaScript and TypeScript use `@babel/parser`. Non-JS languages use packaged tree-sitter WASM grammars. The published package has 7 direct runtime dependencies; optional semantic search uses the peer dependency `@xenova/transformers`.
 
 ## Trust Model
 
@@ -343,7 +353,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.9.2` has seven direct runtime dependencies:
+`projscan@4.9.3` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -353,7 +363,9 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.9.2. Open an issue with the warning text if npm reports install scripts from `projscan@latest`.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.9.3. Open an issue with the warning text if npm reports install scripts from `projscan@latest`.
+
+The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 
 ## Deeper Docs
 
