@@ -23,3 +23,21 @@ test('route console shows confidence and matched keywords for the best tools', a
   expect(result.stdout).toContain('confidence: high');
   expect(result.stdout).toContain('matched: safe, commit');
 });
+
+test('route accepts intent through the shared --intent option', async () => {
+  const result = await spawnCli(cliPath, [
+    'route',
+    '--intent',
+    'is it safe to commit this change',
+    '--format',
+    'json',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(JSON.parse(result.stdout)).toEqual(
+    expect.objectContaining({
+      intent: 'is it safe to commit this change',
+      matched: true,
+    }),
+  );
+});

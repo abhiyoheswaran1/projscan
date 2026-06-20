@@ -11,11 +11,12 @@ export function registerRoute(): void {
   program
     .command('route [intent...]')
     .description('Find the right projscan tool for a goal')
-    .action(async (intentParts: string[]) => {
+    .option('--intent <text>', 'plain-language goal to route to the right tool')
+    .action(async (intentParts: string[], options: { intent?: string }) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('route');
-      const intent = (intentParts ?? []).join(' ').trim();
+      const intent = (options.intent ?? (intentParts ?? []).join(' ')).trim();
       const result = routeIntent(intent.length > 0 ? intent : undefined);
 
       if (format === 'json') {
