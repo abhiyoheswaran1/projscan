@@ -91,6 +91,7 @@ export function classifyFeedbackIntake(rawText: string): FeedbackIntakeReport {
   const taskTitle = taskTitleFor(category, signal);
   const suggestedCommand = commandFor(category, signal);
   const summary = summaryFor(category, signal);
+  const agentloopTaskCommand = agentloopCommandFor(category, taskTitle, summary, suggestedCommand);
 
   return {
     schemaVersion: FEEDBACK_ARTIFACT_VERSION,
@@ -100,10 +101,9 @@ export function classifyFeedbackIntake(rawText: string): FeedbackIntakeReport {
     evidence: evidenceFor(category, lower),
     taskTitle,
     suggestedCommand,
-    nextCommand:
-      'npm exec agentloop -- create-task --type bugfix --title "' +
-      escapeTaskTitle(taskTitle) +
-      '"',
+    nextCommand: agentloopTaskCommand,
+    agentloopTaskCommand,
+    followUpCommands: [agentloopTaskCommand, suggestedCommand],
     feedbackResponse: feedbackResponseFor(category, signal, summary),
   };
 }
@@ -343,8 +343,37 @@ function feedbackResponseFor(
   return response;
 }
 
-function escapeTaskTitle(value: string): string {
-  return value.replace(/"/g, '\\"');
+function agentloopCommandFor(
+  category: FeedbackIntakeCategory,
+  taskTitle: string,
+  summary: string,
+  suggestedCommand: string,
+): string {
+  const taskType = category === 'useful_signal' ? 'tests' : 'bugfix';
+  const problem =
+    'Reviewer feedback classified as ' +
+    category +
+    ': ' +
+    summary +
+    ' Preserve the raw signal in local feedback evidence and avoid broad product scope.';
+  const outcome =
+    category === 'useful_signal'
+      ? 'Keep the useful workflow covered by focused tests or docs so later changes do not regress it.'
+      : 'Reproduce and fix the feedback signal, or document the remaining limitation with focused verification.';
+  return [
+    'npm exec agentloop -- create-task',
+    '--type ' + taskType,
+    '--title ' + shellQuote(taskTitle),
+    '--problem ' + shellQuote(problem),
+    '--outcome ' + shellQuote(outcome),
+    '--acceptance ' + shellQuote('The feedback signal is addressed with a focused test or documented as deferred.'),
+    '--verify-command ' + shellQuote(suggestedCommand),
+    '--rollback ' + shellQuote('Revert the focused feedback fix if verification fails.'),
+  ].join(' ');
+}
+
+function shellQuote(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
 }
 
 function normalizeFeedbackInput(input: unknown): DogfoodFeedbackInput {

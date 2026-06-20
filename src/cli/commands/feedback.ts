@@ -103,6 +103,14 @@ async function runIntake(cmdOpts: Record<string, unknown>): Promise<void> {
     if (cmdOpts.append === true) {
       const filePath = resolveFromRoot(asString(cmdOpts.file) ?? DEFAULT_FEEDBACK_FILE);
       const artifact = await addFeedbackResponse(filePath, report.feedbackResponse);
+      report.feedbackSummaryCommand =
+        'projscan feedback summary --file ' + filePath + ' --format json';
+      report.dogfoodCommand = 'projscan dogfood --feedback ' + filePath + ' --format json';
+      report.followUpCommands = uniqueCommands([
+        ...report.followUpCommands,
+        report.feedbackSummaryCommand,
+        report.dogfoodCommand,
+      ]);
       report.appended = {
         path: filePath,
         responses: artifact.responses.length,
@@ -235,12 +243,20 @@ function printIntake(report: ReturnType<typeof classifyFeedbackIntake>): void {
   console.log('  category:   ' + report.category);
   console.log('  confidence: ' + report.confidence);
   console.log('  task:       ' + report.taskTitle);
-  console.log('  verify:     ' + chalk.cyan(report.suggestedCommand));
-  console.log('  next:       ' + chalk.cyan(report.nextCommand));
   if (report.appended) {
     console.log(
       '  appended:   ' + report.appended.path + ' (' + report.appended.responses + ' total)',
     );
+  }
+  console.log('');
+  console.log(chalk.bold('Next commands'));
+  console.log('  task command: ' + chalk.cyan(report.agentloopTaskCommand));
+  console.log('  verify:       ' + chalk.cyan(report.suggestedCommand));
+  if (report.feedbackSummaryCommand) {
+    console.log('  summary:      ' + chalk.cyan(report.feedbackSummaryCommand));
+  }
+  if (report.dogfoodCommand) {
+    console.log('  dogfood:      ' + chalk.cyan(report.dogfoodCommand));
   }
 }
 
@@ -284,6 +300,10 @@ function asString(value: unknown): string | undefined {
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === 'string');
+}
+
+function uniqueCommands(commands: string[]): string[] {
+  return [...new Set(commands.filter((command) => command.length > 0))];
 }
 
 function printError(error: unknown): never {

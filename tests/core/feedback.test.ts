@@ -98,17 +98,35 @@ test('feedback add and summary track minutes saved, prevented bad edits, false p
 });
 
 test('feedback intake classifies raw agent and reviewer feedback into fix candidates', () => {
-  expect(
-    classifyFeedbackIntake(
-      'unused-exports false positives: imports through @/ path aliases are flagged unused in a Next.js app',
-    ),
-  ).toMatchObject({
+  const falsePositive = classifyFeedbackIntake(
+    'unused-exports false positives: imports through @/ path aliases are flagged unused in a Next.js app',
+  );
+
+  expect(falsePositive).toMatchObject({
     category: 'false_positive',
     confidence: 'high',
     taskTitle: 'Fix false-positive feedback: unused-exports',
     suggestedCommand:
       'npm test -- tests/analyzers/deadCodeCheck.test.ts tests/core/importGraph.test.ts',
   });
+  expect(falsePositive.agentloopTaskCommand).toContain(
+    'npm exec agentloop -- create-task --type bugfix',
+  );
+  expect(falsePositive.agentloopTaskCommand).toContain(
+    "--title 'Fix false-positive feedback: unused-exports'",
+  );
+  expect(falsePositive.agentloopTaskCommand).toContain('--problem');
+  expect(falsePositive.agentloopTaskCommand).toContain('--outcome');
+  expect(falsePositive.agentloopTaskCommand).toContain(
+    "--verify-command 'npm test -- tests/analyzers/deadCodeCheck.test.ts tests/core/importGraph.test.ts'",
+  );
+  expect(falsePositive.nextCommand).toBe(falsePositive.agentloopTaskCommand);
+  expect(falsePositive.followUpCommands).toEqual(
+    expect.arrayContaining([
+      falsePositive.agentloopTaskCommand,
+      'npm test -- tests/analyzers/deadCodeCheck.test.ts tests/core/importGraph.test.ts',
+    ]),
+  );
 
   expect(
     classifyFeedbackIntake('caution output is becoming noisy background noise in every PR'),

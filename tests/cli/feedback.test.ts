@@ -111,11 +111,51 @@ test('feedback intake classifies pasted feedback and can append it to the feedba
       responses: 1,
     },
   });
+  expect(report.agentloopTaskCommand).toContain(
+    'npm exec agentloop -- create-task --type bugfix',
+  );
+  expect(report.feedbackSummaryCommand).toBe(
+    'projscan feedback summary --file ' + feedbackPath + ' --format json',
+  );
+  expect(report.dogfoodCommand).toBe(
+    'projscan dogfood --feedback ' + feedbackPath + ' --format json',
+  );
+  expect(report.followUpCommands).toEqual(
+    expect.arrayContaining([
+      report.agentloopTaskCommand,
+      report.feedbackSummaryCommand,
+      report.dogfoodCommand,
+    ]),
+  );
   expect(report.feedbackResponse.falsePositiveRules).toContain('unused-exports');
 
   const saved = JSON.parse(await fs.readFile(feedbackPath, 'utf8'));
   expect(saved.responses).toHaveLength(1);
   expect(saved.responses[0].falsePositiveRules).toContain('unused-exports');
+});
+
+test('feedback intake console prints task and dogfood follow-up commands', async () => {
+  const feedbackPath = path.join(tmp, '.projscan-feedback.json');
+
+  const intake = await runCli([
+    'feedback',
+    'intake',
+    '--text',
+    'caution output is noisy background noise in every PR',
+    '--file',
+    feedbackPath,
+    '--append',
+    '--quiet',
+  ]);
+
+  expect(intake.exitCode).toBe(0);
+  expect(intake.stdout).toContain('task command:');
+  expect(intake.stdout).toContain('npm exec agentloop -- create-task --type bugfix');
+  expect(intake.stdout).toContain('verify:');
+  expect(intake.stdout).toContain('dogfood:');
+  expect(intake.stdout).toContain(
+    'projscan dogfood --feedback ' + feedbackPath + ' --format json',
+  );
 });
 
 async function runCli(

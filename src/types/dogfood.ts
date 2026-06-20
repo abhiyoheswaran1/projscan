@@ -81,6 +81,10 @@ export interface FeedbackIntakeReport {
   taskTitle: string;
   suggestedCommand: string;
   nextCommand: string;
+  agentloopTaskCommand: string;
+  followUpCommands: string[];
+  feedbackSummaryCommand?: string;
+  dogfoodCommand?: string;
   feedbackResponse: DogfoodFeedbackResponse;
   appended?: {
     path: string;
