@@ -426,11 +426,11 @@
       <section class="hero" aria-label="projscan Mission Control">
         <div class="intro">
           <div>
-            <p class="eyebrow">Mission Outcome Loop</p>
+            <p class="eyebrow">Mission proof loop</p>
             <h1>Resume from saved proof.</h1>
             <p class="lead">
-              projscan routes a developer goal, saves the mission, reads the proof state, and tells
-              the next agent what changed, what remains, and whether the work is ready for version
+              projscan routes a developer goal, saves the mission, reads proof state, and tells the
+              next agent which proof passed, which work remains, and whether to request version
               review.
             </p>
             <div class="pills" aria-label="Product capabilities">
@@ -445,7 +445,7 @@
           <div class="metric-row" aria-label="Release candidate signals">
             <div class="metric">
               <strong>1 bundle</strong>
-              <span>mission plus proof</span>
+              <span>mission and proof</span>
             </div>
             <div class="metric">
               <strong>45</strong>
@@ -479,14 +479,14 @@
             <span class="line dim">read proof-logs/summary.json and status.jsonl</span>
 
             <div class="term-section">
-              <span class="line term-heading">What Changed</span>
+              <span class="line term-heading">Completed Proof</span>
               <span class="line">- Mission proof passed after 3 command(s).</span>
               <span class="line">- 1 reviewer decision recorded.</span>
               <span class="line">- 0 failed gates remain.</span>
             </div>
 
             <div class="term-section">
-              <span class="line term-heading">What Remains</span>
+              <span class="line term-heading">Remaining Work</span>
               <span class="line success">Run ./review.sh and choose a reviewer reply.</span>
               <span class="line success">Version candidate: review_candidate</span>
             </div>
@@ -531,7 +531,7 @@
           <h2>Start from saved proof.</h2>
           <p>
             <code>projscan start --mission</code> reads the bundle proof state and gives the next
-            agent a focused "what changed / what remains" handoff.
+            agent a focused proof status and remaining-work handoff.
           </p>
         </article>
         <article class="card">
@@ -611,7 +611,7 @@
               <span class="tag red">Gate</span>
               <span>
                 <strong>Version review</strong>
-                Outcome data says whether to request review or keep fixing failed proof.
+                Use outcome data to request review or keep fixing failed proof.
               </span>
             </div>
           </div>

@@ -8,6 +8,6 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 35ms
 Set Padding 16
 
-Type "projscan start --shortcuts --intent 'is it safe to commit this change?'"
+Type "projscan start --shortcuts --intent 'is it safe to commit this change?' --quiet"
 Enter
-Sleep 12s
+Sleep 24s
