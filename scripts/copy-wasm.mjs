@@ -21,7 +21,7 @@ async function ensureBuiltWasmViaCli(pkgDir, wasmName) {
   } catch {
     // Need to build.
   }
-  console.log(`building ${wasmName} (tree-sitter build --wasm in ${path.basename(pkgDir)})…`);
+  console.error(`building ${wasmName} (tree-sitter build --wasm in ${path.basename(pkgDir)})…`);
   await spawnAndWait(
     process.platform === 'win32' ? 'npx.cmd' : 'npx',
     ['--no-install', 'tree-sitter', 'build', '--wasm'],
@@ -74,7 +74,7 @@ async function ensureBuiltWasmViaWasiSdk(pkgDir, wasmName, exportName) {
         `If that step succeeded but the cache path differs on your platform, set the TREE_SITTER_WASI_SDK_PATH env var to the wasi-sdk root.`,
     );
   }
-  console.log(`building ${wasmName} (wasi-sdk clang in ${path.basename(pkgDir)})…`);
+  console.error(`building ${wasmName} (wasi-sdk clang in ${path.basename(pkgDir)})…`);
   const sources = ['src/parser.c', 'src/scanner.c'];
   await spawnAndWait(
     clang,
@@ -204,5 +204,5 @@ for (const { from, to } of targets) {
   }
   await copyFile(from, to);
   const { size } = await stat(to);
-  console.log(`copied ${path.basename(to)} (${(size / 1024).toFixed(1)} KB)`);
+  console.error(`copied ${path.basename(to)} (${(size / 1024).toFixed(1)} KB)`);
 }

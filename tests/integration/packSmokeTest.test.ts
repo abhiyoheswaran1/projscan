@@ -62,6 +62,30 @@ describe('npm pack smoke test', () => {
     expect(script).not.toMatch(/'install',\s*'--ignore-scripts'/);
   });
 
+  it('keeps npm pack --json stdout parseable when prepack runs', () => {
+    const repoRoot = path.resolve(__dirname, '..', '..');
+    const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'projscan-pack-json-'));
+    try {
+      const stdout = execFileSync(
+        'npm',
+        ['pack', '--dry-run', '--json', '--pack-destination', tmpDir],
+        {
+          cwd: repoRoot,
+          encoding: 'utf-8',
+          env: { ...process.env, npm_config_cache: path.join(tmpDir, '.npm-cache') },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 120_000,
+        },
+      );
+
+      const packuments = JSON.parse(stdout) as Array<{ filename?: string; files?: unknown[] }>;
+      expect(packuments[0]?.filename).toMatch(/^projscan-\d+\.\d+\.\d+\.tgz$/);
+      expect(packuments[0]?.files?.length).toBeGreaterThan(0);
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }, 120_000);
+
   it('packs dist/ including grammar wasm files', () => {
     const repoRoot = path.resolve(__dirname, '..', '..');
 
