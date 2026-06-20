@@ -92,8 +92,10 @@ test('bug_hunt workplan suggested actions use commands that match their tools', 
   const root = await makeTempProject();
 
   const report = await computeWorkplan(root, { mode: 'bug_hunt', maxTasks: 1 });
-  const fileAction = report.suggestedNextActions.find((action) => action.tool === 'projscan_file');
 
+  expect(report.tasks[0]?.suggestedTools).toContain('projscan_file');
+  expect(report.suggestedNextActions.every((action) => action.command)).toBe(true);
+  expect(report.suggestedNextActions.map((action) => action.tool)).not.toContain('projscan_file');
   expect(report.suggestedNextActions).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -102,17 +104,12 @@ test('bug_hunt workplan suggested actions use commands that match their tools', 
         command: 'projscan hotspots --format json',
       }),
       expect.objectContaining({
-        label: 'Use projscan_file for Hunt bugs in the highest-risk files',
-        tool: 'projscan_file',
-      }),
-      expect.objectContaining({
         label: 'Use projscan_doctor for Hunt bugs in the highest-risk files',
         tool: 'projscan_doctor',
         command: 'projscan doctor --format json',
       }),
     ]),
   );
-  expect(fileAction?.command).toBeUndefined();
 });
 
 test('release workplan includes release check and local website prompt without mutating version', async () => {

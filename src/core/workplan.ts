@@ -702,13 +702,16 @@ function summarizeWorkplan(
 }
 
 function taskToSuggestedActions(task: WorkplanTask): PreflightSuggestedAction[] {
-  return task.suggestedTools.slice(0, 3).map((tool) => {
+  return task.suggestedTools.slice(0, 3).flatMap((tool) => {
     const command = commandForSuggestedTool(tool, task);
-    return {
-      label: `Use ${tool} for ${task.title}`,
-      tool: tool.startsWith('projscan_') ? tool : undefined,
-      ...(command ? { command } : {}),
-    };
+    if (!command) return [];
+    return [
+      {
+        label: `Use ${tool} for ${task.title}`,
+        tool: tool.startsWith('projscan_') ? tool : undefined,
+        command,
+      },
+    ];
   });
 }
 
