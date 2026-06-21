@@ -1,3 +1,4 @@
+import { quoteShellArg } from './startShellArgs.js';
 import type { BugHuntFinding, FileHotspot } from '../types.js';
 
 export function hotspotToFinding(hotspot: FileHotspot): BugHuntFinding {
@@ -24,7 +25,7 @@ export function hotspotToFinding(hotspot: FileHotspot): BugHuntFinding {
     ],
     suggestedTools: ['projscan_file', 'projscan_hotspots', 'projscan_impact'],
     verification: {
-      commands: [`projscan file ${hotspot.relativePath} --format json`, 'npm test'],
+      commands: [`projscan file ${quoteShellArg(hotspot.relativePath)} --format json`, 'npm test'],
       expected:
         'The hotspot has either lower risk, added regression coverage, or an explicit owner for remaining risk.',
     },

@@ -113,6 +113,20 @@ test('change view ties intent to blast radius safe edit verification and rollbac
   );
 });
 
+test('change view emits shell-safe file commands', async () => {
+  const root = await makeUnderstandFixture();
+
+  const report = await computeUnderstandReport(root, {
+    view: 'change',
+    changedFiles: ['src/app route/$(touch pwn).ts'],
+    maxItems: 8,
+  });
+
+  expect(report.changeReadiness.safeEdit.command).toBe(
+    'projscan file "src/app route/\\$(touch pwn).ts" --format json',
+  );
+});
+
 test('verify view returns minimal focused and full proof tiers with direct-test gaps', async () => {
   const root = await makeUnderstandFixture();
 

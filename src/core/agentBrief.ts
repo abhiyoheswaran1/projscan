@@ -5,6 +5,7 @@ import { buildSemanticGraph } from './semanticGraph.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
+import { quoteShellArg } from './startShellArgs.js';
 import {
   computeCoordination,
   coordinationHints as toCoordinationHints,
@@ -225,7 +226,7 @@ function hotspotToFocus(hotspot: FileHotspot): AgentBriefItem {
     why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)}`,
     files: [hotspot.relativePath],
     commands: [
-      `projscan file ${hotspot.relativePath} --format json`,
+      `projscan file ${quoteShellArg(hotspot.relativePath)} --format json`,
       'projscan hotspots --format json',
     ],
   };

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Shell-escape generated file commands
+
+- Status: accepted
+- Context: Several JSON reports emitted copy-paste commands such as `projscan file <path> --format json` by interpolating raw file paths. Paths with spaces or shell expansion syntax could fail or become unsafe when pasted into a shell.
+- Decision: Reuse the existing shell argument helpers when composing hotspot and change-readiness file commands in quality scorecard, bug hunt, agent brief, understand, start, and workplan reports.
+- Consequences: Simple file paths keep their previous command shape on these surfaces. Shell-sensitive paths are escaped in double quotes. Schemas and command lists remain unchanged.
+- Verification: `npm test -- tests/core/qualityScorecard.test.ts tests/core/bugHunt.test.ts tests/core/understand.test.ts tests/core/agentBrief.test.ts tests/core/startMissionPolicy.test.ts tests/core/workplan.test.ts -t shell-safe` failed on raw interpolation and passed after command quoting.
+
 ## 2026-06-21: Label quality summary score as health score
 
 - Status: accepted

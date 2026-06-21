@@ -3,6 +3,7 @@ import { computePreflight, type ComputePreflightOptions } from './preflight.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildRiskNow } from './sessionResources.js';
 import { loadOwnership, type OwnershipLookup } from './ownership.js';
+import { escapeDoubleQuoted } from './startShellArgs.js';
 import type { QualityScorecardRisk } from '../types/qualityScorecard.js';
 import type {
   PreflightMode,
@@ -807,7 +808,7 @@ function taskToSuggestedActions(task: WorkplanTask): PreflightSuggestedAction[] 
 function commandForSuggestedTool(tool: string, task: WorkplanTask): string | undefined {
   if (!tool.startsWith('projscan_')) return task.verification.commands[0];
   if (tool === 'projscan_file' && task.files[0]) {
-    return `projscan file ${JSON.stringify(task.files[0])} --format json`;
+    return `projscan file "${escapeDoubleQuoted(task.files[0])}" --format json`;
   }
   const prefix = `projscan ${tool.slice('projscan_'.length).replace(/_/g, '-')}`;
   return task.verification.commands.find((command) => command.startsWith(prefix));

@@ -4,6 +4,7 @@ import { isPlaceholder } from './startIntentTargets.js';
 import { actionPlanFromRoute } from './startRouteActions.js';
 import { isReadyAction } from './startExecutionPlan.js';
 import { isRunnableCommand, uniqueStrings } from './startResume.js';
+import { escapeDoubleQuoted } from './startShellArgs.js';
 import {
   actionFromWorkplan,
   isPreflightAction,
@@ -305,7 +306,7 @@ function workplanRiskToStartRisk(risk: WorkplanTopRisk, index: number): StartRis
 function workplanRiskCommand(risk: WorkplanTopRisk): string {
   if (risk.tool === 'projscan_review') return 'projscan review --format json';
   if (risk.tool === 'projscan_file' && risk.file)
-    return `projscan file ${JSON.stringify(risk.file)} --format json`;
+    return `projscan file "${escapeDoubleQuoted(risk.file)}" --format json`;
   return 'projscan preflight --format json';
 }
 

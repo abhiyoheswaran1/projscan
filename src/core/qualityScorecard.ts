@@ -3,6 +3,7 @@ import { fixFirstFromQualityRisk } from './fixFirst.js';
 import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
+import { quoteShellArg } from './startShellArgs.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type { Issue } from '../types/common.js';
@@ -233,7 +234,7 @@ function hotspotToRisk(hotspot: FileHotspot): QualityScorecardRisk {
     title: `Hotspot ${hotspot.relativePath}`,
     files: [hotspot.relativePath],
     source: 'hotspot',
-    command: `projscan file ${hotspot.relativePath} --format json`,
+    command: `projscan file ${quoteShellArg(hotspot.relativePath)} --format json`,
   };
 }
 

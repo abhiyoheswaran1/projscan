@@ -5,9 +5,13 @@ import { afterEach, expect, test, vi } from 'vitest';
 import type { CoordinationSummary } from '../../src/core/coordination.js';
 import { computeAgentBrief } from '../../src/core/agentBrief.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
+import type { FileHotspot } from '../../src/types.js';
 
 const tempRoots: string[] = [];
 const computeCoordinationMock = vi.hoisted(() => vi.fn());
+const hotspotState = vi.hoisted(() => ({
+  hotspots: [] as FileHotspot[],
+}));
 
 vi.mock('../../src/core/coordination.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/core/coordination.js')>();
@@ -17,8 +21,18 @@ vi.mock('../../src/core/coordination.js', async (importOriginal) => {
   };
 });
 
+vi.mock('../../src/core/hotspotAnalyzer.js', () => ({
+  analyzeHotspots: vi.fn(async () => ({
+    available: true,
+    window: { since: null, commitsScanned: 0 },
+    hotspots: hotspotState.hotspots,
+    totalFilesRanked: hotspotState.hotspots.length,
+  })),
+}));
+
 afterEach(async () => {
   computeCoordinationMock.mockReset();
+  hotspotState.hotspots = [];
   await Promise.all(
     tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
   );
@@ -89,6 +103,24 @@ test('agent brief carries swarm coordination evidence boundaries for the next ag
   expect(hint?.message).toContain('projscan agent-brief --format json');
 });
 
+test('agent brief emits shell-safe hotspot file commands', async () => {
+  const root = await makeTempProject('2.2.0');
+  hotspotState.hotspots = [
+    hotspot({
+      relativePath: 'src/app route/$(touch pwn).ts',
+    }),
+  ];
+
+  const report = await computeAgentBrief(root, { intent: 'bug_hunt', maxItems: 4 });
+  const focus = report.focus.find((item) =>
+    item.files.includes('src/app route/$(touch pwn).ts'),
+  );
+
+  expect(focus?.commands[0]).toBe(
+    'projscan file "src/app route/\\$(touch pwn).ts" --format json',
+  );
+});
+
 async function makeTempProject(version: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-agent-brief-'));
   tempRoots.push(root);
@@ -100,6 +132,28 @@ async function makeTempProject(version: string): Promise<string> {
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
+}
+
+function hotspot(overrides: Partial<FileHotspot>): FileHotspot {
+  return {
+    relativePath: 'src/file.ts',
+    churn: 80,
+    distinctAuthors: 1,
+    daysSinceLastChange: 0,
+    lineCount: 450,
+    cyclomaticComplexity: 1,
+    sizeBytes: 1000,
+    issueCount: 0,
+    issueIds: [],
+    riskScore: 100,
+    reasons: ['high churn'],
+    primaryAuthor: 'dev@example.com',
+    primaryAuthorShare: 1,
+    busFactorOne: true,
+    topAuthors: [{ author: 'dev@example.com', commits: 80, share: 1 }],
+    coverage: null,
+    ...overrides,
+  };
 }
 
 function clearMultiWorktreeCoordination(root: string): CoordinationSummary {

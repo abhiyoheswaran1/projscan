@@ -192,6 +192,24 @@ test('maintainability evidence starts with analyzer-ranked actionable hotspots',
   expect(evidenceFiles).toEqual(topHotspotFiles);
 });
 
+test('quality scorecard emits shell-safe hotspot file commands', async () => {
+  hotspotState.hotspots = [
+    hotspot({
+      relativePath: 'src/app route/$(touch pwn).ts',
+      lineCount: 450,
+      riskScore: 100,
+    }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeQualityScorecard(root);
+
+  expect(report.topRisks[0]?.command).toBe(
+    'projscan file "src/app route/\\$(touch pwn).ts" --format json',
+  );
+  expect(report.suggestedNextActions[0]?.command).toBe(report.topRisks[0]?.command);
+});
+
 function dimension(
   id: QualityScorecardDimension['id'],
   label: string,

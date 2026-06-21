@@ -167,6 +167,24 @@ test('bug_hunt workplan names ranked hotspot files when no session files are tou
   expect(report.summary).not.toContain('no top risks');
 });
 
+test('bug_hunt workplan emits shell-safe file suggested actions', async () => {
+  hotspotState.hotspots = [
+    hotspot({
+      relativePath: 'src/app route/$(touch pwn).ts',
+      lineCount: 450,
+      riskScore: 100,
+    }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeWorkplan(root, { mode: 'bug_hunt', maxTasks: 2 });
+  const fileAction = report.suggestedNextActions.find((action) => action.tool === 'projscan_file');
+
+  expect(fileAction?.command).toBe(
+    'projscan file "src/app route/\\$(touch pwn).ts" --format json',
+  );
+});
+
 test('release workplan includes release check and local website prompt without mutating version', async () => {
   const root = await makeTempProject();
 

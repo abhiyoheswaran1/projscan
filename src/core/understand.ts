@@ -7,6 +7,7 @@ import { buildCodeGraph, type CodeGraph, type GraphFile } from './codeGraph.js';
 import { computeDataflow } from './dataflow.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildSemanticGraph } from './semanticGraph.js';
+import { quoteShellArg } from './startShellArgs.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { collectIssues } from './issueEngine.js';
@@ -515,7 +516,7 @@ async function buildContracts(
     title: `Changing ${file} may affect public imports or runtime configuration`,
     files: [file],
     why: 'The file is exported, imported, or contains configuration evidence that other code may rely on.',
-    command: `projscan impact ${file} --format json`,
+    command: `projscan impact ${quoteShellArg(file)} --format json`,
   }));
   return {
     publicExports: uniqueBy(
@@ -581,7 +582,7 @@ function buildReadFirst(
     why: entrypoints.some((entry) => entry.file === file)
       ? 'Start here because it is an entrypoint into the repo.'
       : 'Read this early because graph evidence shows exports, calls, or package boundary value.',
-    command: `projscan file ${file} --format json`,
+    command: `projscan file ${quoteShellArg(file)} --format json`,
     citations: [
       citation(
         file,
@@ -611,7 +612,7 @@ async function buildRisks(
           title: `Hotspot ${hotspot.relativePath}`,
           files: [hotspot.relativePath],
           why: hotspot.reasons[0] ?? `Risk score ${Math.round(hotspot.riskScore)}`,
-          command: `projscan file ${hotspot.relativePath} --format json`,
+          command: `projscan file ${quoteShellArg(hotspot.relativePath)} --format json`,
         }),
       )
     : [];
@@ -659,7 +660,7 @@ function buildChangeReadiness(
         importers.length > 0
           ? 'Local importers depend on this file and should be reviewed before editing.'
           : 'No local importers were found; inspect the file contract and tests before editing.',
-      command: `projscan impact ${file} --format json`,
+      command: `projscan impact ${quoteShellArg(file)} --format json`,
     };
   });
   const firstFile = focusFiles[0] ?? '.';
@@ -669,7 +670,7 @@ function buildChangeReadiness(
     safeEdit: {
       title: `Inspect ${firstFile} before editing`,
       files: [firstFile],
-      command: `projscan file ${firstFile} --format json`,
+      command: `projscan file ${quoteShellArg(firstFile)} --format json`,
       why: 'Start with the smallest cited file that matches the intended change, then follow importers before editing.',
     },
     owners: [
@@ -681,7 +682,10 @@ function buildChangeReadiness(
       },
     ],
     rollback: {
-      command: focusFiles.length > 0 ? `git restore ${focusFiles.join(' ')}` : 'git restore .',
+      command:
+        focusFiles.length > 0
+          ? `git restore ${focusFiles.map(quoteShellArg).join(' ')}`
+          : 'git restore .',
       why: 'Keep a simple rollback command visible before making broad edits.',
     },
     verificationCommands: unique([
@@ -723,7 +727,7 @@ function buildVerification(
     .map((entry) => ({
       file: entry.file,
       reason: 'No direct test file matched by filename or import graph.',
-      command: `projscan search ${directTestSearchToken(entry.file) ?? entry.file} --format json`,
+      command: `projscan search ${quoteShellArg(directTestSearchToken(entry.file) ?? entry.file)} --format json`,
     }));
   return {
     tiers: verificationTiers(),

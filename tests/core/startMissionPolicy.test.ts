@@ -466,3 +466,23 @@ describe('Mission Control policy helpers', () => {
     );
   });
 });
+
+test('Mission Control risks emit shell-safe file commands', () => {
+  expect(
+    combineRisks(
+      workplan({
+        topRisks: [
+          {
+            priority: 'p0',
+            source: 'hotspots',
+            message: 'Hotspot src/app route/$(touch pwn).ts',
+            file: 'src/app route/$(touch pwn).ts',
+            tool: 'projscan_file',
+          },
+        ],
+      }),
+      [],
+      3,
+    )[0]?.command,
+  ).toBe('projscan file "src/app route/\\$(touch pwn).ts" --format json');
+});

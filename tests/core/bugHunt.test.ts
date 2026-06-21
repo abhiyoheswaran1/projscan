@@ -5,6 +5,8 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, expect, test } from 'vitest';
 import { computeBugHunt } from '../../src/core/bugHunt.js';
+import { hotspotToFinding } from '../../src/core/bugHuntHotspotFindings.js';
+import type { FileHotspot } from '../../src/types.js';
 
 const tempRoots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -237,8 +239,42 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   );
 }, 120_000);
 
+test('bug hunt emits shell-safe hotspot file commands', () => {
+  const finding = hotspotToFinding(
+    hotspot({
+      relativePath: 'src/app route/$(touch pwn).ts',
+    }),
+  );
+
+  expect(finding.verification.commands[0]).toBe(
+    'projscan file "src/app route/\\$(touch pwn).ts" --format json',
+  );
+});
+
 async function git(root: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: root });
+}
+
+function hotspot(overrides: Partial<FileHotspot>): FileHotspot {
+  return {
+    relativePath: 'src/file.ts',
+    churn: 80,
+    distinctAuthors: 1,
+    daysSinceLastChange: 0,
+    lineCount: 450,
+    cyclomaticComplexity: 1,
+    sizeBytes: 1000,
+    issueCount: 0,
+    issueIds: [],
+    riskScore: 100,
+    reasons: ['high churn'],
+    primaryAuthor: 'dev@example.com',
+    primaryAuthorShare: 1,
+    busFactorOne: true,
+    topAuthors: [{ author: 'dev@example.com', commits: 80, share: 1 }],
+    coverage: null,
+    ...overrides,
+  };
 }
 
 async function makeTempProject(
