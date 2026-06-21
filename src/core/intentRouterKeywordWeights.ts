@@ -1,3 +1,5 @@
+import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
+
 export interface KeywordWeightedRouteEntry {
   tool: string;
 }
@@ -1255,45 +1257,7 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (entry.tool === 'projscan_pr_diff') {
     if (keyword === 'pr') return 0.25;
     if (['since', 'branch', 'main', 'base', 'head'].includes(keyword)) return 0.5;
-    if (
-      [
-        'commit',
-        'commits',
-        'message',
-        'build',
-        'built',
-        'implement',
-        'implemented',
-        'summarize',
-        'summary',
-        'changelog',
-        'entry',
-        'current',
-        'work',
-        'release',
-        'last',
-        'diff',
-        'changed',
-        'changes',
-        'change',
-        'compare',
-        'stale',
-        'branched',
-        'behind',
-        'ahead',
-        'sync',
-        'synced',
-        'large',
-        'big',
-        'size',
-        'sizes',
-        'exports',
-        'imports',
-        'calls',
-        'callers',
-      ].includes(keyword)
-    )
-      return 2;
+    if (isPrDiffKeyword(keyword)) return 2;
   }
   if (entry.tool === 'projscan_collision' && ['overlapping'].includes(keyword)) return 3;
   if (entry.tool === 'projscan_collision' && ['collide', 'colliding'].includes(keyword)) return 2;

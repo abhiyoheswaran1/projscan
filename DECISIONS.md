@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Centralize PR-diff routing keywords
+
+- Status: accepted
+- Context: PR-diff routing keywords were repeated across the route catalog, keyword weighting, and signal guards. Release-summary routing fixes had to touch all three places, making future drift likely.
+- Decision: Add one internal PR-diff keyword helper and use it for the catalog and weight list, while keeping release-summary-only PR-diff keywords behind a tested context guard.
+- Consequences: Route behavior and public schemas stay unchanged, but future PR-diff keyword edits have a smaller review surface and a drift regression test.
+- Verification: A new PR-diff keyword config test fails without the helper and passes after catalog, weight, and signal guard wiring use it.
+
 ## 2026-06-21: Extend release-summary lookup wording
 
 - Status: accepted

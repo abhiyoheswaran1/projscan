@@ -1,4 +1,5 @@
 import { dependencyBloatContextMatches } from './intentRouterDependencySignals.js';
+import { isPrDiffReleaseSummaryKeyword } from './intentRouterPrDiffKeywords.js';
 import { releaseChangeSummaryLookupContextMatches } from './intentRouterReleaseSignals.js';
 
 export function prDiffKeywordMatches(keyword: string, tokens: Set<string>): boolean {
@@ -30,21 +31,7 @@ export function prDiffKeywordMatches(keyword: string, tokens: Set<string>): bool
       )
     );
   }
-  if (
-    [
-      'build',
-      'built',
-      'changelog',
-      'commits',
-      'current',
-      'entry',
-      'implement',
-      'implemented',
-      'last',
-      'release',
-      'work',
-    ].includes(keyword)
-  ) {
+  if (isPrDiffReleaseSummaryKeyword(keyword)) {
     return releaseChangeSummaryLookupContextMatches(tokens);
   }
   return true;
