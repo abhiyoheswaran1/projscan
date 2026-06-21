@@ -1,4 +1,5 @@
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
+import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
 import { searchKeywordWeight } from './intentRouterSearchKeywordWeights.js';
 
 export interface KeywordWeightedRouteEntry {
@@ -468,122 +469,10 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     const weight = searchKeywordWeight(keyword);
     if (weight !== undefined) return weight;
   }
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['warn', 'warning', 'warnings', 'allow', 'approve'].includes(keyword)
-  )
-    return 4;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    [
-      'port',
-      'ports',
-      'eaddrinuse',
-      'listen',
-      'address',
-      'permission',
-      'denied',
-      'enoent',
-      'eresolve',
-      'peer',
-    ].includes(keyword)
-  )
-    return 3;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    [
-      'github',
-      'action',
-      'actions',
-      'workflow',
-      'workflows',
-      'pipeline',
-      'pipelines',
-      'job',
-      'jobs',
-      'fail',
-      'build',
-      'builds',
-      'lint',
-      'typecheck',
-      'typechecking',
-      'install',
-      'failed',
-      'error',
-      'errors',
-      'warn',
-      'warning',
-      'warnings',
-      'failure',
-      'failures',
-      'debug',
-      'stack',
-      'trace',
-      'production',
-      'prod',
-      'down',
-      'outage',
-      'incident',
-      'triage',
-      'runtime',
-      'crash',
-      'crashes',
-      'crashing',
-      'connection',
-      'refused',
-      'root',
-      'cause',
-      'returning',
-      'returns',
-      'log',
-      'logs',
-      '500',
-      '502',
-      '503',
-      '504',
-      '404',
-      '403',
-      '401',
-      'proof',
-      'prove',
-      'regression',
-      'verification',
-      'verify',
-      'smoke',
-      'focused',
-      'full',
-      'test',
-      'tests',
-      'slow',
-      'slower',
-      'speed',
-      'speedup',
-      'faster',
-      'benchmark',
-      'benchmarks',
-      'reproduce',
-      'reproduces',
-      'reproducing',
-      'flake',
-      'flaky',
-      'flakes',
-      'intermittent',
-      'intermittently',
-      'nondeterministic',
-      'nondeterminism',
-      'race',
-      'condition',
-      'stabilize',
-      'stabilise',
-      'quarantine',
-    ].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_regression_plan' &&
-    ['agentflight', 'agentloop', 'agentloopkit', 'harness'].includes(keyword)
-  )
-    return 4;
+  if (entry.tool === 'projscan_regression_plan') {
+    const weight = regressionPlanKeywordWeight(keyword);
+    if (weight !== undefined) return weight;
+  }
   if (entry.tool === 'projscan_agent_brief' && ['brief', 'handoff', 'agent'].includes(keyword))
     return 2;
   if (
@@ -771,7 +660,6 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (entry.tool === 'projscan_review' && keyword === 'pr') return 0.25;
   if (entry.tool === 'projscan_review' && ['secure', 'security'].includes(keyword)) return 2;
   if (entry.tool === 'projscan_review' && ['risk', 'risks', 'risky'].includes(keyword)) return 2;
-  if (entry.tool === 'projscan_regression_plan' && keyword === 'pr') return 0.25;
   if (entry.tool === 'projscan_pr_diff') {
     if (keyword === 'pr') return 0.25;
     if (['since', 'branch', 'main', 'base', 'head'].includes(keyword)) return 0.5;
