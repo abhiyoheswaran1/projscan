@@ -1013,6 +1013,9 @@ ProjScan loads a project-wide config from one of:
     "offline": false
   },
   "disableRules": ["missing-editorconfig", "large-*"],
+  "suppress": {
+    "hardcoded-secret": ["src/firebase.ts"]
+  },
   "severityOverrides": {
     "missing-prettier": "info"
   },
@@ -1040,12 +1043,19 @@ ProjScan loads a project-wide config from one of:
 | `scan.scanEnvValues`  | boolean                                          | Explicitly read `.env*` contents during secret-pattern checks. Default `false`; `.env` files are path-only.                                                   |
 | `scan.offline`        | boolean                                          | Block projscan network-capable features: telemetry sending, `audit`, registry checks, and optional semantic model loading. Default `false`.                   |
 | `disableRules`        | string[]                                         | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`).                                                                         |
+| `suppress`            | `Record<string, string[]>`                       | Silence a rule only for matching paths/globs, for example `{ "hardcoded-secret": ["src/firebase.ts"] }`. Other rules still run on that file.                  |
 | `severityOverrides`   | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them.                                                      |
 | `reportPolicies`      | `Record<string, { reportScope?: string[]; redactPaths?: boolean }>` | Named evidence export presets selected with `--report-policy <name>` on `analyze`, `doctor`, and `ci`.                                      |
 | `hotspots.limit`      | number (1–100)                                   | Default limit for `projscan hotspots`.                                                                                                                        |
 | `hotspots.since`      | string                                           | Default git history window for `projscan hotspots`.                                                                                                           |
 
 Invalid JSON in a discovered config file is a hard error - projscan exits rather than silently ignoring it.
+
+Use inline suppressions for a single confirmed false positive:
+
+```ts
+const firebaseKey = "AIza..." // projscan-ignore-line hardcoded-secret -- Firebase web keys are public identifiers
+```
 
 ### Embedded config in `package.json`
 

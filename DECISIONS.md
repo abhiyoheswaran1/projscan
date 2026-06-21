@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Add targeted suppressions and reduce secret false positives
+
+- Status: accepted
+- Context: Teams could only silence false positives by ignoring an entire file or disabling a whole rule, which hid unrelated coverage. `hardcoded-secret` also matched known non-secrets such as Firebase web config keys, placeholders, and examples in comments.
+- Decision: Add path-scoped `suppress` config and line-scoped `projscan-ignore-line <rule> -- reason` handling. Keep `disableRules` intact for global rule disables. Make `hardcoded-secret` line-aware and skip comment-only examples, mustache placeholders, and Firebase public web API key shapes while still detecting high-confidence assigned secret values.
+- Consequences: Confirmed false positives can be silenced without removing all checks from a file. Secret detection is less noisy, but still conservative for assigned credentials.
+- Verification: Focused config, security analyzer, issue-engine, and public type tests failed before the new suppressions/heuristics and pass after implementation.
+
 ## 2026-06-21: Keep branch-only release scale out of local bug-hunt queues
 
 - Status: accepted

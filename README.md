@@ -246,6 +246,9 @@ Create a `.projscanrc.json` when repo defaults should live in source control:
     "offline": false
   },
   "disableRules": ["large-*"],
+  "suppress": {
+    "hardcoded-secret": ["src/firebase.ts"]
+  },
   "severityOverrides": {
     "missing-prettier": "info"
   },
@@ -256,6 +259,13 @@ Create a `.projscanrc.json` when repo defaults should live in source control:
     }
   }
 }
+```
+
+Use `suppress` for a known false positive in a specific path without disabling
+the rule everywhere. For one line, add an inline directive next to the value:
+
+```ts
+const firebaseKey = "AIza..." // projscan-ignore-line hardcoded-secret -- Firebase web keys are public identifiers
 ```
 
 Config docs live in [docs/GUIDE.md](docs/GUIDE.md#configuration-projscanrc).

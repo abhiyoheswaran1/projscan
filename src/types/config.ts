@@ -16,6 +16,8 @@ export interface ProjscanConfig {
     offline?: boolean;
   };
   disableRules?: string[];
+  suppress?: Record<string, string[]>;
+  inlineSuppressions?: Record<string, InlineRuleSuppression[]>;
   severityOverrides?: Record<string, IssueSeverity>;
   /**
    * Named evidence-export presets. `analyze`, `doctor`, and `ci` can select
@@ -44,6 +46,12 @@ export interface ProjscanConfig {
     sources?: string[];
     sinks?: string[];
   };
+}
+
+export interface InlineRuleSuppression {
+  line: number;
+  rules: string[];
+  reason?: string;
 }
 
 export interface ReportPolicyPreset {

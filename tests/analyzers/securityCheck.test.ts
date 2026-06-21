@@ -158,6 +158,54 @@ describe('securityCheck', () => {
       expect(secretIssue).toBeDefined();
     });
 
+    it('does not flag documented public Firebase web apiKey values', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (p) => {
+        if (String(p).endsWith('.gitignore')) return '.env\n';
+        if (String(p).endsWith('firebase.ts'))
+          return `
+            export const firebaseConfig = {
+              apiKey: "AIzaSyD_publicFirebaseWebApiKey1234567890",
+              authDomain: "example.firebaseapp.com"
+            };
+          `;
+        return '';
+      });
+      const files = [makeFile('src/firebase.ts')];
+      const issues = await check('/proj', files);
+      expect(issues.find((i) => i.id === 'hardcoded-secret')).toBeUndefined();
+    });
+
+    it('does not flag secret names, comments, or template placeholders as values', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (p) => {
+        if (String(p).endsWith('.gitignore')) return '.env\n';
+        if (String(p).endsWith('docs.ts'))
+          return `
+            const secretNames = ["ANTHROPIC_API_KEY", "STRIPE_WEBHOOK_SECRET"];
+            // Example only: sk_test_1234567890abcdefghijklmnopqrstuvwxyz
+            // Example only: whsec_1234567890abcdefghijklmnopqrstuvwxyz
+            const token = "{{token}}";
+          `;
+        return '';
+      });
+      const files = [makeFile('src/docs.ts')];
+      const issues = await check('/proj', files);
+      expect(issues.find((i) => i.id === 'hardcoded-secret')).toBeUndefined();
+    });
+
+    it('still flags high-confidence assigned secret values', async () => {
+      vi.mocked(fs.readFile).mockImplementation(async (p) => {
+        if (String(p).endsWith('.gitignore')) return '.env\n';
+        if (String(p).endsWith('stripe.ts'))
+          return `const stripeSecret = "definitely-not-a-real-test-secret";`;
+        return '';
+      });
+      const files = [makeFile('src/stripe.ts')];
+      const issues = await check('/proj', files);
+      const secretIssue = issues.find((i) => i.id === 'hardcoded-secret');
+      expect(secretIssue).toBeDefined();
+      expect(secretIssue?.locations?.[0]).toEqual({ file: 'src/stripe.ts', line: 1 });
+    });
+
     it('should skip files over 512KB', async () => {
       vi.mocked(fs.readFile).mockImplementation(async (p) => {
         if (String(p).endsWith('.gitignore')) return '.env\n';

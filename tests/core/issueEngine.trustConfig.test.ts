@@ -52,4 +52,22 @@ describe('collectIssues trust config', () => {
     expect(issues.find((issue) => issue.id === 'env-file-committed')).toBeDefined();
     expect(issues.find((issue) => issue.id === 'hardcoded-secret')).toBeDefined();
   });
+
+  it('honors line-scoped inline suppressions without hiding other rules', async () => {
+    await write(
+      'src/firebase.ts',
+      [
+        `const publicKey = "${FAKE_AWS_ACCESS_KEY}"; // projscan-ignore-line hardcoded-secret -- test public fixture`,
+        '',
+      ].join('\n'),
+    );
+    await write('src/real-secret.ts', `const realKey = "${FAKE_AWS_ACCESS_KEY}";\n`);
+    const scan = await scanRepository(tmp);
+    const issues = await collectIssues(tmp, scan.files);
+    const secrets = issues.filter((issue) => issue.id === 'hardcoded-secret');
+
+    expect(secrets).toHaveLength(1);
+    expect(secrets[0].locations?.[0]).toEqual({ file: 'src/real-secret.ts', line: 1 });
+    expect(issues.find((issue) => issue.id === 'env-file-committed')).toBeDefined();
+  });
 });

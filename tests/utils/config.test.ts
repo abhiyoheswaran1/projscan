@@ -21,6 +21,18 @@ function issue(id: string, severity: Issue['severity'] = 'warning'): Issue {
   };
 }
 
+function locatedIssue(
+  id: string,
+  file: string,
+  line: number,
+  severity: Issue['severity'] = 'warning',
+): Issue {
+  return {
+    ...issue(id, severity),
+    locations: [{ file, line }],
+  };
+}
+
 describe('loadConfig', () => {
   let tmp: string;
 
@@ -209,6 +221,24 @@ describe('loadConfig', () => {
     expect(result.config.severityOverrides).toEqual({ 'missing-prettier': 'info' });
   });
 
+  it('normalizes per-rule suppressions', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscanrc.json'),
+      JSON.stringify({
+        suppress: {
+          'hardcoded-secret': ['src/firebase.ts', '', 42],
+          'unused-exports-*': ['src/generated/**'],
+          invalid: 'src/nope.ts',
+        },
+      }),
+    );
+    const result = await loadConfig(tmp);
+    expect(result.config.suppress).toEqual({
+      'hardcoded-secret': ['src/firebase.ts'],
+      'unused-exports-*': ['src/generated/**'],
+    });
+  });
+
   it('keeps severity override normalization out of the main config loader', () => {
     const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
     expect(configSource).not.toContain('function applySeverityOverrides');
@@ -264,6 +294,40 @@ describe('applyConfigToIssues', () => {
     const issues = [issue('missing-prettier', 'warning')];
     const out = applyConfigToIssues(issues, { severityOverrides: { 'missing-prettier': 'info' } });
     expect(out[0].severity).toBe('info');
+  });
+
+  it('drops only the matching rule and path from suppress config', () => {
+    const issues = [
+      locatedIssue('hardcoded-secret', 'src/firebase.ts', 1, 'error'),
+      locatedIssue('gitignore-missing-env', 'src/firebase.ts', 1),
+      locatedIssue('hardcoded-secret', 'src/real-secret.ts', 1, 'error'),
+    ];
+    const out = applyConfigToIssues(issues, {
+      suppress: { 'hardcoded-secret': ['src/firebase.ts'] },
+    });
+
+    expect(out.map((i) => `${i.id}:${i.locations?.[0]?.file}`)).toEqual([
+      'gitignore-missing-env:src/firebase.ts',
+      'hardcoded-secret:src/real-secret.ts',
+    ]);
+  });
+
+  it('drops only matching inline ignore-line findings', () => {
+    const issues = [
+      locatedIssue('hardcoded-secret', 'src/firebase.ts', 3, 'error'),
+      locatedIssue('gitignore-missing-env', 'src/firebase.ts', 3),
+      locatedIssue('hardcoded-secret', 'src/firebase.ts', 4, 'error'),
+    ];
+    const out = applyConfigToIssues(issues, {
+      inlineSuppressions: {
+        'src/firebase.ts': [{ line: 3, rules: ['hardcoded-secret'], reason: 'Firebase key is public' }],
+      },
+    });
+
+    expect(out.map((i) => `${i.id}:${i.locations?.[0]?.line}`)).toEqual([
+      'gitignore-missing-env:3',
+      'hardcoded-secret:4',
+    ]);
   });
 
   it('leaves non-matching issues untouched', () => {

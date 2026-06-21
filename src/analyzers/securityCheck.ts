@@ -41,11 +41,13 @@ const MAX_FILE_SIZE = 512 * 1024; // 512 KB
 const SECRET_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'AWS Access Key', pattern: /AKIA[0-9A-Z]{16}/ },
   { name: 'GitHub Token', pattern: /gh[ps]_[A-Za-z0-9_]{36,}/ },
+  { name: 'Stripe Secret Key', pattern: /sk_(?:live|test)_[A-Za-z0-9]{24,}/ },
+  { name: 'Stripe Webhook Secret', pattern: /whsec_[A-Za-z0-9]{24,}/ },
   { name: 'Slack Token', pattern: /xox[bpras]-[A-Za-z0-9-]+/ },
   { name: 'Private Key', pattern: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----/ },
   {
     name: 'Generic Secret',
-    pattern: /(?:password|secret|api_key|apikey|token|auth)\s*[=:]\s*['"][^'"]{8,}['"]/i,
+    pattern: /(?:password|secret|api_key|apikey|token|auth)\s*[=:]\s*['"]([^'"]{8,})['"]/i,
   },
 ];
 
@@ -157,10 +159,13 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
   try {
     const content = await fs.readFile(file.absolutePath, 'utf-8');
 
-    for (const { name, pattern } of SECRET_PATTERNS) {
-      const match = pattern.exec(content);
-      if (match) {
-        const line = lineNumberFor(content, match.index);
+    const lines = content.split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index] ?? '';
+      if (isCommentOnlyLine(line)) continue;
+      for (const { name, pattern } of SECRET_PATTERNS) {
+        const match = pattern.exec(line);
+        if (!match || isBenignSecretMatch(name, match, line, content)) continue;
         return {
           id: 'hardcoded-secret',
           title: `Potential ${name} detected in ${file.relativePath}`,
@@ -168,7 +173,7 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
           severity: 'error',
           category: 'security',
           fixAvailable: false,
-          locations: [{ file: file.relativePath, line }],
+          locations: [{ file: file.relativePath, line: index + 1 }],
         };
       }
     }
@@ -178,11 +183,33 @@ async function scanFileForSecrets(file: FileEntry): Promise<Issue | null> {
   return null;
 }
 
-function lineNumberFor(content: string, index: number): number {
-  if (index <= 0) return 1;
-  let line = 1;
-  for (let i = 0; i < index && i < content.length; i++) {
-    if (content.charCodeAt(i) === 10) line++;
-  }
-  return line;
+function isBenignSecretMatch(
+  name: string,
+  match: RegExpExecArray,
+  line: string,
+  content: string,
+): boolean {
+  const value = match[1] ?? match[0];
+  if (value.includes('{{') || value.includes('}}')) return true;
+  if (name === 'Generic Secret' && isFirebaseWebApiKey(line, value, content)) return true;
+  return false;
+}
+
+function isFirebaseWebApiKey(line: string, value: string, content: string): boolean {
+  return (
+    /\bapiKey\b/i.test(line) &&
+    value.startsWith('AIza') &&
+    /\bfirebase(?:app)?\b/i.test(content)
+  );
+}
+
+function isCommentOnlyLine(line: string): boolean {
+  const trimmed = line.trim();
+  return (
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('*') ||
+    trimmed.startsWith('/*') ||
+    trimmed.startsWith('<!--')
+  );
 }

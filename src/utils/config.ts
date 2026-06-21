@@ -1,5 +1,11 @@
 import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
-import { applyBaseRef, applyDisableRules, applyIgnore, applyMinScore } from './configBasics.js';
+import {
+  applyBaseRef,
+  applyDisableRules,
+  applyIgnore,
+  applyMinScore,
+  applySuppress,
+} from './configBasics.js';
 import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
 import { applyReportPolicies } from './configReportPolicies.js';
@@ -26,6 +32,7 @@ function normalize(input: unknown): ProjscanConfig {
   applyIgnore(obj, out);
   applyScan(obj, out);
   applyDisableRules(obj, out);
+  applySuppress(obj, out);
   applySeverityOverrides(obj, out);
   applyReportPolicies(obj, out);
   applyMonorepo(obj, out);

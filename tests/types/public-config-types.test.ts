@@ -42,6 +42,9 @@ const config: ProjscanConfig = {
     offline: true,
   },
   disableRules: ['taint-*'],
+  suppress: {
+    'hardcoded-secret': ['src/firebase.ts'],
+  },
   severityOverrides: {
     'demo-warning': 'warning',
   },
@@ -75,6 +78,7 @@ test('config public types compile from the module and legacy barrel', () => {
   expect(barrelPolicy.from).toBe('@acme/app');
   expect(barrelReportPolicy.redactPaths).toBe(true);
   expect(barrelConfig.scan?.offline).toBe(true);
+  expect(barrelConfig.suppress?.['hardcoded-secret']).toEqual(['src/firebase.ts']);
   expect(barrelConfig.reportPolicies?.apiEvidence.reportScope).toEqual(['src/api']);
   expect(moduleLoaded.source).toBe('.projscanrc.json');
   expect(moduleLoaded.config.monorepo?.importPolicy?.[0]?.allow).toEqual([

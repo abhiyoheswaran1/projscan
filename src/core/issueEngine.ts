@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import type { FileEntry, Issue, ProjscanConfig } from '../types.js';
 import { check as eslintCheck } from '../analyzers/eslintCheck.js';
 import { check as prettierCheck } from '../analyzers/prettierCheck.js';
@@ -25,8 +26,9 @@ import {
   pluginsEnabled,
   type PluginAnalyzerContext,
 } from './plugins.js';
-import { loadConfig } from '../utils/config.js';
+import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import type { DataflowReport, SemanticGraphReport } from '../types.js';
+import type { InlineRuleSuppression } from '../types/config.js';
 
 const SCAN_ENV_VALUES_ENV = 'PROJSCAN_SCAN_ENV_VALUES';
 
@@ -70,7 +72,12 @@ export async function collectIssues(
     ...checkers.map((check) => check(rootPath, files)),
     securityCheck(rootPath, files, { scanEnvValues }),
   ]);
-  const issues = results.flat();
+  let issues = results.flat();
+
+  const inlineSuppressions = await loadInlineSuppressions(files, issues);
+  if (Object.keys(inlineSuppressions).length > 0) {
+    issues = applyConfigToIssues(issues, { inlineSuppressions });
+  }
 
   // 1.10+ — fold in issues from loaded analyzer plugins. No-op unless
   // PROJSCAN_PLUGINS_PREVIEW=1 is set; loadPlugins() short-circuits to []
@@ -110,6 +117,51 @@ export async function collectIssues(
   await recordRunInMemory(rootPath, issues);
 
   return issues;
+}
+
+async function loadInlineSuppressions(
+  files: FileEntry[],
+  issues: Issue[],
+): Promise<Record<string, InlineRuleSuppression[]>> {
+  const filesByPath = new Map(files.map((file) => [file.relativePath, file]));
+  const issueFiles = new Set(
+    issues.flatMap((issue) => (issue.locations ?? []).map((location) => location.file)),
+  );
+  const suppressions: Record<string, InlineRuleSuppression[]> = {};
+  await Promise.all(
+    [...issueFiles].map(async (relativePath) => {
+      const file = filesByPath.get(relativePath);
+      if (!file) return;
+      const entries = await readInlineSuppressions(file.absolutePath).catch(() => []);
+      if (entries.length > 0) suppressions[relativePath] = entries;
+    }),
+  );
+  return suppressions;
+}
+
+async function readInlineSuppressions(filePath: string): Promise<InlineRuleSuppression[]> {
+  const content = await fs.readFile(filePath, 'utf-8');
+  return content.split(/\r?\n/).flatMap((line, index) => inlineSuppressionForLine(line, index + 1));
+}
+
+function inlineSuppressionForLine(line: string, lineNumber: number): InlineRuleSuppression[] {
+  const marker = 'projscan-ignore-line';
+  const markerIndex = line.indexOf(marker);
+  if (markerIndex < 0) return [];
+  const rest = line.slice(markerIndex + marker.length).trim();
+  const [rulesPart, reasonPart] = rest.split(/\s+--\s+/, 2);
+  const rules = (rulesPart ?? '')
+    .split(/[,\s]+/)
+    .map((rule) => rule.trim())
+    .filter(Boolean);
+  if (rules.length === 0) return [];
+  return [
+    {
+      line: lineNumber,
+      rules,
+      ...(reasonPart?.trim() ? { reason: reasonPart.trim() } : {}),
+    },
+  ];
 }
 
 async function shouldScanEnvValues(
