@@ -18,6 +18,7 @@ import type {
   BugHuntVerdict,
   Issue,
   PreflightReason,
+  PreflightEvidence,
   SessionConflict,
   WorkplanPriority,
 } from '../types.js';
@@ -42,7 +43,9 @@ export async function computeBugHunt(
   );
   const health = calculateScore(issues);
   const preflight = await computePreflight(rootPath, { mode: 'before_commit' });
-  const actionablePreflightReasons = preflight.reasons.filter(isActionablePreflightReason);
+  const actionablePreflightReasons = preflight.reasons.filter((reason) =>
+    isActionablePreflightReason(reason, preflight.evidence),
+  );
   const preflightChangedFiles = filesFromPreflightEvidence(
     preflight.evidence.changedFiles?.files ?? [],
   );
@@ -330,7 +333,11 @@ function bugHuntVerdict(
   return 'clean';
 }
 
-function isActionablePreflightReason(reason: PreflightReason): boolean {
+function isActionablePreflightReason(
+  reason: PreflightReason,
+  evidence: PreflightEvidence,
+): boolean {
+  if (isBranchOnlyReleaseScaleReason(reason, evidence)) return false;
   if (reason.source === 'review' && reason.message.startsWith('Review unavailable:')) return false;
   if (
     (reason.source === 'review' || reason.source === 'taint') &&
@@ -341,6 +348,18 @@ function isActionablePreflightReason(reason: PreflightReason): boolean {
   }
   if (reason.severity === 'error') return true;
   return reason.source !== 'git' && reason.source !== 'changed-files';
+}
+
+function isBranchOnlyReleaseScaleReason(
+  reason: PreflightReason,
+  evidence: PreflightEvidence,
+): boolean {
+  const worktree = evidence.riskSources?.currentWorktree;
+  return (
+    reason.source === 'release' &&
+    worktree?.uncommittedChangedFileCount === 0 &&
+    (worktree.branchChangedFileCount ?? 0) > 0
+  );
 }
 
 async function safeRiskNow(

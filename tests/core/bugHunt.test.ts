@@ -239,6 +239,48 @@ test('bug hunt orders preflight fallback files by review usefulness', async () =
   );
 }, 120_000);
 
+test('bug hunt does not turn clean branch-only scale into a manual sign-off queue', async () => {
+  const root = await makeTempProject({
+    packageJson: {
+      name: 'fixture',
+      version: '0.0.0',
+      type: 'module',
+      devDependencies: { vitest: '^3.0.0' },
+      eslintConfig: { root: true },
+      prettier: {},
+    },
+    testFile: true,
+    gitignore: true,
+  });
+  await fs.appendFile(path.join(root, '.gitignore'), '.projscan-memory/\n');
+  await git(root, ['init', '-q', '--initial-branch=main']);
+  await git(root, ['config', 'user.email', 'agent@example.com']);
+  await git(root, ['config', 'user.name', 'Agent']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-q', '-m', 'baseline']);
+  await git(root, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
+
+  for (let i = 0; i < 55; i += 1) {
+    await fs.writeFile(path.join(root, 'src', `branch-${i}.ts`), `void ${i};\n`);
+  }
+  await git(root, ['add', 'src']);
+  await git(root, ['commit', '-q', '-m', 'branch-only scale']);
+
+  const report = await computeBugHunt(root, { maxFindings: 5 });
+
+  expect(report.verdict).toBe('clean');
+  expect(report.summary).not.toContain('manual sign-off');
+  expect(report.fixQueue[0]?.id).toBe('bh-verify-clean');
+  expect(report.reviewQueue).toEqual([]);
+  expect(
+    report.topSuspects.some(
+      (finding) =>
+        finding.source === 'preflight' &&
+        finding.evidence.some((entry) => entry.source === 'release'),
+    ),
+  ).toBe(false);
+}, 120_000);
+
 test('bug hunt emits shell-safe hotspot file commands', () => {
   const finding = hotspotToFinding(
     hotspot({

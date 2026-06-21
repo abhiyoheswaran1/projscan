@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep branch-only release scale out of local bug-hunt queues
+
+- Status: accepted
+- Context: `bug-hunt` runs preflight in `before_commit` mode so it can catch handoff risks, but a clean working tree on a large branch can produce release-scale manual sign-off as the first bug-hunt finding. That is useful for preflight, but noisy when the user is looking for local bug fixes.
+- Decision: Keep preflight behavior unchanged, but have `bug-hunt` ignore release-scale preflight reasons when current-worktree evidence shows zero uncommitted files and the scale is branch-only. Local uncommitted release-scale changes still produce the existing manual sign-off review queue.
+- Consequences: Bug-hunt stays focused on concrete doctor/session/preflight fixes and hotspot watchlists during local cleanup, while preflight and release-readiness commands still own branch-scale sign-off.
+- Verification: Added a clean branch-only regression test plus the existing uncommitted preflight-signoff test; both pass after filtering branch-only release-scale reasons in bug-hunt.
+
 ## 2026-06-21: Treat hotspot-only quality risks as review-first
 
 - Status: accepted
