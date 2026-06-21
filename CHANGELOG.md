@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.10.0]
+
+2026-06-21 - "Trustworthy Daily Engineering Gates"
+
+### Added
+
+- Added targeted suppressions for noisy findings, including config-level
+  suppressions and inline ignore directives with reasons.
+- Added `failOn` severity floors, full CI issue locations/details, and score
+  breakdowns so teams can tune gates without hiding real defects.
+- Added feedback-intake routing for false positives, install warnings,
+  docs-overclaim notes, and workflow-focus feedback so reviewer reports become
+  actionable follow-up work.
+
+### Changed
+
+- Split intent-router keyword weights into focused modules for search,
+  regression, workflow, trust feedback, file impact, architecture, dependency,
+  security, and operational routing.
+- Calibrated bug-hunt, hotspot, quality-scorecard, and release-readiness
+  wording so cautions separate concrete fixes from manual review gates.
+- Tightened dogfood proof commands, file inspection next actions, release
+  summary lookup, and no-publish release-readiness routing.
+
+### Fixed
+
+- Fixed git setup diagnostics, project-memory git-status hygiene, first-party
+  `prepare` lifecycle noise, generated command shell escaping, and npm pack JSON
+  parsing.
+- Fixed change-planning, change-summary, AI-review, install-warning, and
+  feedback intents so Start routes each prompt to the intended proof workflow.
+- Split oversized router/start tests so the release suite stays reliable under
+  the normal full `npm run test` gate.
+
 ## [4.9.3]
 
 2026-06-20 - "README And Demo Refresh"
