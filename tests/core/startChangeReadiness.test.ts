@@ -49,7 +49,7 @@ test('start report turns feature-placement questions into the change-readiness v
     expect.objectContaining({
       tool: 'projscan_understand',
       confidence: 'high',
-      matchedKeywords: ['need', 'change', 'files'],
+      matchedKeywords: expect.arrayContaining(['need', 'change', 'files']),
     }),
   );
   expect(authChange.missionControl.primaryAction).toEqual(

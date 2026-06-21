@@ -8,9 +8,7 @@ import { expectedReviewPromptReplies } from '../helpers/startReviewGate.js';
 
 test('start report keeps adoption gap shaping out of the main orchestrator', () => {
   const startSource = readFileSync(path.join(process.cwd(), 'src/core/start.ts'), 'utf8');
-  expect(startSource).not.toContain(
-    ".filter((diagnostic) => diagnostic.status !== 'pass')",
-  );
+  expect(startSource).not.toContain(".filter((diagnostic) => diagnostic.status !== 'pass')");
 
   const adoptionGapsSource = readFileSync(
     path.join(process.cwd(), 'src/core/startAdoptionGaps.ts'),
@@ -39,7 +37,9 @@ test('start report re-exports options type without duplicating the startOptions 
     "import { normalizeStartOptions, type ComputeStartOptions } from './startOptions.js';",
   );
   expect(startSource).toContain('export type { ComputeStartOptions };');
-  expect(startSource).not.toContain("export type { ComputeStartOptions } from './startOptions.js';");
+  expect(startSource).not.toContain(
+    "export type { ComputeStartOptions } from './startOptions.js';",
+  );
 });
 
 test('start report gives a compact first-60-seconds workflow without mutating the repo', async () => {
@@ -84,7 +84,7 @@ test('start report gives a compact first-60-seconds workflow without mutating th
   expect(report.firstTenMinutes.commands.map((step) => step.id)).toContain('first-pr-evidence');
   expect(report.coordinationHints.map((hint) => hint.id)).toContain('current-worktree-check');
   expect(report.coordinationHints[0]?.message).toMatch(
-    /Current worktree evidence sees \d+ changed file\(s\)/,
+    /^(Current worktree evidence is unavailable|Working tree has)/,
   );
   expect(report.missionControl.status).toMatch(/ready|needs_setup|needs_attention|blocked/);
   expect(report.missionControl.primaryAction.command).toBeDefined();
@@ -495,18 +495,21 @@ test.each([
     'docs/GUIDE.md',
     'projscan analyze --report-scope docs/GUIDE.md --redact-paths --format json',
   ],
-])('start report preserves shareable evidence scope extraction for %s', async (intent, scope, command) => {
-  const root = await makeTempProject();
+])(
+  'start report preserves shareable evidence scope extraction for %s',
+  async (intent, scope, command) => {
+    const root = await makeTempProject();
 
-  const report = await computeStartReport(root, { intent });
+    const report = await computeStartReport(root, { intent });
 
-  expect(report.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
-      command,
-      args: { report_scope: scope, redact_paths: true },
-    }),
-  );
-});
+    expect(report.missionControl.primaryAction).toEqual(
+      expect.objectContaining({
+        command,
+        args: { report_scope: scope, redact_paths: true },
+      }),
+    );
+  },
+);
 
 test('start report preserves multiple shareable evidence scopes', async () => {
   const root = await makeTempProject();

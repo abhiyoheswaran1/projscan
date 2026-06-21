@@ -44,7 +44,10 @@ test('start report turns read-first orientation questions into repo understandin
   expect(report.missionControl.proofCommands).toContain(
     'projscan understand --view map --format json',
   );
+});
 
+test('start report turns package script questions into contract understanding', async () => {
+  const root = await makeTempProject();
   const npmScripts = await computeStartReport(root, {
     intent: 'what npm scripts exist',
   });
@@ -78,25 +81,6 @@ test('start report turns read-first orientation questions into repo understandin
       (route) => route.tool === 'projscan_regression_plan',
     ),
   ).toBeUndefined();
-
-  const installWarning = await computeStartReport(root, {
-    intent: 'npm install -g projscan printed allow-scripts warnings',
-  });
-  expect(installWarning.missionControl.primaryAction).toEqual(
-    expect.objectContaining({
-      command: 'projscan regression-plan --level focused --format json',
-      tool: 'projscan_regression_plan',
-      args: { level: 'focused' },
-    }),
-  );
-  expect(installWarning.missionControl.routedIntent).toEqual(
-    expect.objectContaining({
-      category: 'Regression',
-      tool: 'projscan_regression_plan',
-      confidence: 'high',
-      matchedKeywords: expect.arrayContaining(['install', 'warnings']),
-    }),
-  );
 
   const e2eScript = await computeStartReport(root, {
     intent: 'which script runs e2e tests',
@@ -209,6 +193,33 @@ test('start report turns read-first orientation questions into repo understandin
       (route) => route.tool === 'projscan_regression_plan',
     ),
   ).toBeUndefined();
+});
+
+test('start report turns install warnings into regression planning', async () => {
+  const root = await makeTempProject();
+
+  const installWarning = await computeStartReport(root, {
+    intent: 'npm install -g projscan printed allow-scripts warnings',
+  });
+  expect(installWarning.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan regression-plan --level focused --format json',
+      tool: 'projscan_regression_plan',
+      args: { level: 'focused' },
+    }),
+  );
+  expect(installWarning.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Regression',
+      tool: 'projscan_regression_plan',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['install', 'warnings']),
+    }),
+  );
+});
+
+test('start report turns failing e2e checks into regression planning', async () => {
+  const root = await makeTempProject();
 
   const failingE2e = await computeStartReport(root, {
     intent: 'e2e tests are failing',
