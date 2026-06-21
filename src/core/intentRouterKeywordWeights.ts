@@ -1,3 +1,4 @@
+import { architectureKeywordWeight } from './intentRouterArchitectureKeywordWeights.js';
 import { fileImpactKeywordWeight } from './intentRouterFileImpactKeywordWeights.js';
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
 import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
@@ -14,64 +15,8 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (trustFeedbackWeight !== undefined) return trustFeedbackWeight;
   const fileImpactWeight = fileImpactKeywordWeight(entry.tool, keyword);
   if (fileImpactWeight !== undefined) return fileImpactWeight;
-  if (entry.tool === 'projscan_explain_issue' && keyword === 'explain') return 2;
-  if (
-    entry.tool === 'projscan_semantic_graph' &&
-    [
-      'import',
-      'imports',
-      'importers',
-      'exports',
-      'defined',
-      'definition',
-      'uses',
-      'depend',
-      'depends',
-      'installed',
-    ].includes(keyword)
-  )
-    return 2;
-  if (entry.tool === 'projscan_coupling') {
-    if (['circular', 'cycle', 'cycles'].includes(keyword)) return 3;
-    if (
-      [
-        'coupling',
-        'coupled',
-        'tightly',
-        'module',
-        'modules',
-        'dependency',
-        'dependencies',
-        'import',
-        'imports',
-        'fan',
-        'instability',
-        'architecture',
-        'boundary',
-        'boundaries',
-      ].includes(keyword)
-    )
-      return 2;
-  }
-  if (
-    entry.tool === 'projscan_coverage' &&
-    [
-      'coverage',
-      'untested',
-      'uncovered',
-      'scariest',
-      'gap',
-      'gaps',
-      'test',
-      'tests',
-      'file',
-      'files',
-      'no',
-      'missing',
-      'without',
-    ].includes(keyword)
-  )
-    return 2;
+  const architectureWeight = architectureKeywordWeight(entry.tool, keyword);
+  if (architectureWeight !== undefined) return architectureWeight;
   if (
     entry.tool === 'projscan_dependencies' &&
     ['dependencies', 'dependency', 'deps', 'package', 'packages', 'inventory', 'declared'].includes(
