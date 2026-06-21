@@ -370,6 +370,20 @@ test('start report keeps read-only change summaries out of release mode', async 
     'The next task has a verification command: npm run release:check',
   );
 
+  const built = await computeStartReport(root, {
+    intent: 'what have we built since last release',
+  });
+  expect(built.mode).toBe('before_commit');
+  expect(built.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan pr-diff --format json',
+      tool: 'projscan_pr_diff',
+    }),
+  );
+  expect(built.missionControl.successCriteria).not.toContain(
+    'The next task has a verification command: npm run release:check',
+  );
+
   const release = await computeStartReport(root, {
     intent: 'prepare this branch for release',
   });

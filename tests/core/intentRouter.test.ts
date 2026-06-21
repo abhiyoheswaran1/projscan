@@ -156,6 +156,10 @@ describe('routeIntent', () => {
     for (const intent of [
       'what changed since the last release',
       'show changelog entry for the current work',
+      'what have we built since last release',
+      'summary of work since last release',
+      'what did we implement since the last release',
+      'what commits since last release',
     ]) {
       const result = routeIntent(intent);
       expect(result.matches[0]).toEqual(

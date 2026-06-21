@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Extend release-summary lookup wording
+
+- Status: accepted
+- Context: After read-only changed-since-release prompts moved to `projscan pr-diff`, adjacent wording such as "what have we built since last release", "summary of work since last release", and "what did we implement since the last release" still routed to release-train or session.
+- Decision: Extend the same release-summary lookup context to built, implemented, work-summary, and commit-summary wording, and let pr-diff own those keywords only inside that context.
+- Consequences: Maintainer summary prompts stay read-only with before-commit proof criteria. Explicit release-preparation prompts still route to release-train.
+- Verification: Router, start-report, and CLI regressions fail on the old release-train/session routes and pass after the guarded keyword extension.
+
 ## 2026-06-21: Route no-publish release readiness to read-only proof
 
 - Status: accepted

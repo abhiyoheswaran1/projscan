@@ -30,7 +30,21 @@ export function prDiffKeywordMatches(keyword: string, tokens: Set<string>): bool
       )
     );
   }
-  if (['release', 'last', 'changelog', 'entry', 'current', 'work'].includes(keyword)) {
+  if (
+    [
+      'build',
+      'built',
+      'changelog',
+      'commits',
+      'current',
+      'entry',
+      'implement',
+      'implemented',
+      'last',
+      'release',
+      'work',
+    ].includes(keyword)
+  ) {
     return releaseChangeSummaryLookupContextMatches(tokens);
   }
   return true;

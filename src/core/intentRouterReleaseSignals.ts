@@ -145,8 +145,22 @@ export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>)
 }
 
 export function releaseChangeSummaryLookupContextMatches(tokens: Set<string>): boolean {
+  const sinceLastRelease = tokens.has('since') && tokens.has('last') && tokens.has('release');
+  const changeSummarySubject = hasAnyToken(tokens, [
+    'build',
+    'built',
+    'change',
+    'changed',
+    'changes',
+    'commit',
+    'commits',
+    'implement',
+    'implemented',
+  ]);
   const changedSinceLastRelease =
-    tokens.has('changed') && tokens.has('since') && tokens.has('last') && tokens.has('release');
+    sinceLastRelease &&
+    (changeSummarySubject ||
+      (tokens.has('summary') && (tokens.has('work') || tokens.has('change'))));
   const currentChangelogEntry =
     tokens.has('changelog') &&
     tokens.has('entry') &&

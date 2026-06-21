@@ -411,7 +411,12 @@ export const ROUTE_CATALOG: RouteEntry[] = [
     example: 'projscan pr-diff --format json',
     keywords: [
       'commit',
+      'commits',
       'message',
+      'build',
+      'built',
+      'implement',
+      'implemented',
       'summarize',
       'summary',
       'changelog',

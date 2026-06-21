@@ -174,18 +174,25 @@ test('start report routes release-note and changelog requests to release readine
   );
 });
 
-test('start report routes changed-since-release requests to release readiness', async () => {
+test('start report routes read-only release summaries away from release readiness', async () => {
   const root = await makeTempProject();
 
   const sinceRelease = await computeStartReport(root, {
     intent: 'what changed since last release',
   });
-  expect(sinceRelease.mode).toBe('release');
+  expect(sinceRelease.mode).toBe('before_commit');
   expect(sinceRelease.missionControl.routedIntent).toEqual(
     expect.objectContaining({
-      tool: 'projscan_release_train',
+      tool: 'projscan_pr_diff',
       confidence: 'high',
       matchedKeywords: expect.arrayContaining(['changed', 'since', 'release']),
+    }),
+  );
+  expect(sinceRelease.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan pr-diff --format json',
+      tool: 'projscan_pr_diff',
+      args: {},
     }),
   );
 
@@ -202,12 +209,19 @@ test('start report routes changed-since-release requests to release readiness', 
   const builtSinceRelease = await computeStartReport(root, {
     intent: 'what have you built since the last release',
   });
-  expect(builtSinceRelease.mode).toBe('release');
+  expect(builtSinceRelease.mode).toBe('before_commit');
   expect(builtSinceRelease.missionControl.routedIntent).toEqual(
     expect.objectContaining({
-      tool: 'projscan_release_train',
+      tool: 'projscan_pr_diff',
       confidence: 'high',
       matchedKeywords: expect.arrayContaining(['built', 'since', 'release']),
+    }),
+  );
+  expect(builtSinceRelease.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan pr-diff --format json',
+      tool: 'projscan_pr_diff',
+      args: {},
     }),
   );
 });

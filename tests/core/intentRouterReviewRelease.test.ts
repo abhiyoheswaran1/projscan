@@ -522,11 +522,14 @@ describe('routeIntent review and release routing', () => {
     const sinceRelease = routeIntent('what changed since last release');
     expect(sinceRelease.matches[0]).toEqual(
       expect.objectContaining({
-        tool: 'projscan_release_train',
+        tool: 'projscan_pr_diff',
         confidence: 'high',
         matchedKeywords: expect.arrayContaining(['changed', 'since', 'release']),
       }),
     );
+    expect(
+      sinceRelease.matches.find((match) => match.tool === 'projscan_release_train'),
+    ).toBeUndefined();
     expect(sinceRelease.matches.find((match) => match.tool === 'projscan_session')).toEqual(
       expect.objectContaining({
         matchedKeywords: ['last', 'changed'],

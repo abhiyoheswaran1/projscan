@@ -156,7 +156,7 @@ test('start keeps read-only change summaries out of release mode', async () => {
   const result = await runCli([
     'start',
     '--intent',
-    'show changelog entry for the current work',
+    'summary of work since last release',
     '--format',
     'json',
     '--quiet',

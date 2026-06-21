@@ -1258,7 +1258,12 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     if (
       [
         'commit',
+        'commits',
         'message',
+        'build',
+        'built',
+        'implement',
+        'implemented',
         'summarize',
         'summary',
         'changelog',
