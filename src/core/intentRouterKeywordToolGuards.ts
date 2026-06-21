@@ -257,6 +257,16 @@ function feedbackIntakeContextMatches(tokens: Set<string>): boolean {
     ].some((token) => tokens.has(token))
   )
     return true;
+  if (
+    (tokens.has('breadth') ||
+      (['feature', 'features'].some((token) => tokens.has(token)) &&
+        ['workflow', 'workflows'].some((token) => tokens.has(token))) ||
+      (tokens.has('killer') && ['workflow', 'workflows'].some((token) => tokens.has(token)))) &&
+    ['trust', 'daily', 'engineer', 'engineers', 'without', 'few'].some((token) =>
+      tokens.has(token),
+    )
+  )
+    return true;
   if (tokens.has('missing') && tokens.has('signal')) return true;
   if (
     ['wrong', 'incorrect', 'incorrectly', 'flagged'].some((token) => tokens.has(token)) &&

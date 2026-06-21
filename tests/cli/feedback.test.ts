@@ -156,6 +156,28 @@ test('feedback intake classifies npm install warning feedback', async () => {
   expect(report.followUpCommands).toContain('npm test -- tests/integration/packSmokeTest.test.ts');
 });
 
+test('feedback intake classifies workflow-focus feedback', async () => {
+  const intake = await runCli([
+    'feedback',
+    'intake',
+    '--text',
+    'feature breadth without a few killer workflows that engineers trust daily',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(intake.exitCode).toBe(0);
+  const report = JSON.parse(intake.stdout);
+  expect(report).toMatchObject({
+    category: 'workflow_focus',
+    confidence: 'high',
+    taskTitle: 'Focus feature breadth into trusted daily workflows',
+    suggestedCommand: 'npm test -- tests/core/start*.test.ts tests/docs/startRoutingDocs.test.ts',
+  });
+  expect(report.feedbackResponse.noisyFindings).toContain('workflow focus');
+});
+
 test('feedback intake console prints task and dogfood follow-up commands', async () => {
   const feedbackPath = path.join(tmp, '.projscan-feedback.json');
 

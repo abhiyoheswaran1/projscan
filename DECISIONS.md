@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Classify workflow-focus feedback
+
+- Status: accepted
+- Context: Feedback that projscan has feature breadth without a few trusted daily workflows was uncategorized, and `projscan route` / `projscan start` treated the word `trust` as a privacy-check request.
+- Decision: Add a workflow-focus feedback category and route feature-breadth / killer-workflow wording to feedback intake while keeping explicit upload, network, and boundary trust prompts on privacy-check.
+- Consequences: Agents can preserve workflow-focus product feedback as a bounded task instead of running a generic trust-boundary check. Normal privacy prompts still start with `projscan privacy-check --offline`.
+- Verification: Feedback, router, start-report, and CLI regressions fail on the old uncategorized/privacy-check behavior and pass after the classifier and route guard.
+
 ## 2026-06-21: Route docs-overclaim feedback to intake
 
 - Status: accepted

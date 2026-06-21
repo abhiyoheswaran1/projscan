@@ -218,6 +218,13 @@ function classifyCategory(text: string): FeedbackIntakeCategory {
   ) {
     return 'confusing_docs_output';
   }
+  if (
+    /feature breadth|breadth|too many features|feature[s]?.*without.*workflow|killer workflow|killer workflows|trusted daily|trust daily|daily workflow|daily workflows/.test(
+      text,
+    )
+  ) {
+    return 'workflow_focus';
+  }
   if (/\buseful\b|saved .*minute|prevented|caught|helped|trusted|clear next/.test(text)) {
     return 'useful_signal';
   }
@@ -251,6 +258,7 @@ function primarySignal(category: FeedbackIntakeCategory, text: string): string {
   }
   if (category === 'noisy_caution') return 'caution';
   if (category === 'confusing_docs_output') return 'docs/output';
+  if (category === 'workflow_focus') return 'workflow focus';
   if (category === 'useful_signal') return 'useful workflow';
   return 'unclassified feedback';
 }
@@ -263,6 +271,7 @@ function confidenceFor(category: FeedbackIntakeCategory, text: string): Feedback
     /\bcaution\b.*(?:noise|noisy|background)|(?:noise|noisy|background).*\bcaution\b/,
     /allow[- ]scripts?|node-gyp-build|tree-sitter/,
     /ctx\.request|app router|route handler|middleware/,
+    /feature breadth|killer workflows?|trust daily|daily workflows?/,
     /saved .*minute|prevented/,
   ];
   return strongSignals.some((pattern) => pattern.test(text)) ? 'high' : 'medium';
@@ -280,6 +289,8 @@ function taskTitleFor(category: FeedbackIntakeCategory, signal: string): string 
       return 'Add missing framework rule: ' + signal;
     case 'confusing_docs_output':
       return 'Clarify confusing docs or output';
+    case 'workflow_focus':
+      return 'Focus feature breadth into trusted daily workflows';
     case 'useful_signal':
       return 'Preserve useful feedback signal';
     case 'uncategorized':
@@ -302,6 +313,8 @@ function commandFor(category: FeedbackIntakeCategory, signal: string): string {
       return 'npm test -- tests/core/dataflow.test.ts tests/analyzers/securityCheck.test.ts';
     case 'confusing_docs_output':
       return 'npm test -- tests/docs tests/cli/startConsoleGuidance.test.ts';
+    case 'workflow_focus':
+      return 'npm test -- tests/core/start*.test.ts tests/docs/startRoutingDocs.test.ts';
     case 'useful_signal':
       return 'projscan feedback summary --file .projscan-feedback.json --format json';
     case 'uncategorized':
@@ -321,6 +334,8 @@ function summaryFor(category: FeedbackIntakeCategory, signal: string): string {
       return 'Classified as missing framework coverage for ' + signal + '.';
     case 'confusing_docs_output':
       return 'Classified as confusing docs or output wording.';
+    case 'workflow_focus':
+      return 'Classified as workflow-focus feedback about breadth versus trusted daily use.';
     case 'useful_signal':
       return 'Classified as a useful workflow signal to preserve.';
     case 'uncategorized':
@@ -342,6 +357,10 @@ function evidenceFor(category: FeedbackIntakeCategory, text: string): string[] {
   if (/koa|hono|fastify|express|next\.?js|sveltekit|astro|remix/.test(text))
     evidence.push('framework wording');
   if (/docs|readme|output|wording|message/.test(text)) evidence.push('docs/output wording');
+  if (/feature breadth|breadth|too many features/.test(text))
+    evidence.push('feature breadth wording');
+  if (/killer workflows?|daily workflows?|trust daily|trusted daily/.test(text))
+    evidence.push('trusted workflow wording');
   if (/useful|saved .*minute|prevented|caught|helped/.test(text))
     evidence.push('usefulness wording');
   if (evidence.length === 0) evidence.push(category);
@@ -364,6 +383,7 @@ function feedbackResponseFor(
   if (category === 'noisy_caution') response.noisyFindings = [signal];
   if (category === 'install_warning') response.noisyFindings = [signal];
   if (category === 'confusing_docs_output') response.noisyFindings = [signal];
+  if (category === 'workflow_focus') response.noisyFindings = [signal];
   return response;
 }
 

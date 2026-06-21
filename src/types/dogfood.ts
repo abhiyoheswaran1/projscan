@@ -68,6 +68,7 @@ export type FeedbackIntakeCategory =
   | 'install_warning'
   | 'missing_framework_rule'
   | 'confusing_docs_output'
+  | 'workflow_focus'
   | 'useful_signal'
   | 'uncategorized';
 

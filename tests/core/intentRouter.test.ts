@@ -105,6 +105,27 @@ describe('routeIntent', () => {
     ).toBeUndefined();
   });
 
+  it('routes workflow-focus feedback to intake without hijacking trust-boundary prompts', () => {
+    const feedback = routeIntent(
+      'feature breadth without a few killer workflows that engineers trust daily',
+    );
+
+    expect(feedback.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_feedback_intake',
+        cli: 'projscan feedback intake',
+        confidence: 'high',
+      }),
+    );
+
+    const privacy = routeIntent('can projscan upload code or contact the network boundary');
+    expect(privacy.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_privacy_check',
+      }),
+    );
+  });
+
   it('routes AI-generated code review-before-commit intents to structural review', () => {
     const result = routeIntent('review AI-generated code before commit for verification debt');
 

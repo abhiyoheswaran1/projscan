@@ -385,6 +385,34 @@ test('start report routes docs-overclaim feedback to feedback intake', async () 
   );
 });
 
+test('start report routes workflow-focus feedback to feedback intake', async () => {
+  const root = await makeTempProject();
+  const intent = 'feature breadth without a few killer workflows that engineers trust daily';
+
+  const report = await computeStartReport(root, { intent });
+
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_feedback_intake',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan feedback intake --text "feature breadth without a few killer workflows that engineers trust daily" --format json',
+      tool: 'projscan_feedback_intake',
+      args: { text: intent },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toEqual(
+    expect.arrayContaining([
+      'The raw feedback is classified and preserved before any product change starts.',
+      'The generated AgentLoop task command is copied or run so the feedback becomes a bounded implementation slice.',
+    ]),
+  );
+});
+
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {
   const root = await makeTempProject();
 

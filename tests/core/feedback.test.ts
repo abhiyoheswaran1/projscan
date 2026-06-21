@@ -169,6 +169,20 @@ test('feedback intake classifies raw agent and reviewer feedback into fix candid
   });
 
   expect(
+    classifyFeedbackIntake(
+      'feature breadth without a few killer workflows that engineers trust daily',
+    ),
+  ).toMatchObject({
+    category: 'workflow_focus',
+    confidence: 'high',
+    taskTitle: 'Focus feature breadth into trusted daily workflows',
+    suggestedCommand: 'npm test -- tests/core/start*.test.ts tests/docs/startRoutingDocs.test.ts',
+    feedbackResponse: {
+      noisyFindings: ['workflow focus'],
+    },
+  });
+
+  expect(
     classifyFeedbackIntake('This evidence pack was useful and saved the reviewer 20 minutes'),
   ).toMatchObject({
     category: 'useful_signal',
