@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Label start summaries by combined risk priority
+
+- Status: accepted
+- Context: `projscan start` could show p0/p1 workplan-derived top risks while the summary still said `quality watch item(s)` because the label only considered the scorecard verdict.
+- Decision: Let `summarize()` inspect the combined start `topRisks`; if any visible risk is p0 or p1, use `ranked risk item(s)`. Healthy or excellent p2-only output keeps the existing `quality watch item(s)` wording.
+- Consequences: Mission Control summaries now match the urgency of the visible risk list without changing schemas, route selection, or risk ranking.
+- Verification: `npm test -- tests/core/startMissionPolicy.test.ts -t "chooses workflows"` failed before priority-aware wording and passed after passing combined risks into `summarize()`.
+
 ## 2026-06-21: Preserve file commands for start workplan risks
 
 - Status: accepted

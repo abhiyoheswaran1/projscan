@@ -43,6 +43,7 @@ export function buildStartReport(input: BuildStartReportInput): StartReport {
       input.adoptionGaps.length,
       input.fixFirst?.title,
       input.quality.verdict,
+      input.topRisks,
     ),
     setup: {
       overall: input.setup.overall,

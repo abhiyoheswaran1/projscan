@@ -381,10 +381,17 @@ export function summarize(
   adoptionGaps: number,
   fixFirstTitle?: string,
   qualityVerdict?: QualityScorecardVerdict,
+  topRisks: StartRisk[] = [],
 ): string {
   const qualityLabel =
-    qualityVerdict === 'excellent' || qualityVerdict === 'healthy'
+    topRisks.some(isPriorityRisk)
+      ? 'ranked risk item(s)'
+      : qualityVerdict === 'excellent' || qualityVerdict === 'healthy'
       ? 'quality watch item(s)'
       : 'quality risk(s)';
   return `start: ${mode} recommends ${fixFirstTitle ?? workplan.tasks[0]?.title ?? 'preserving the baseline'} with ${qualityRisks} ${qualityLabel} and ${adoptionGaps} adoption gap(s)`;
+}
+
+function isPriorityRisk(risk: StartRisk): boolean {
+  return risk.priority === 'p0' || risk.priority === 'p1';
 }

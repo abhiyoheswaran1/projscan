@@ -422,6 +422,34 @@ describe('Mission Control policy helpers', () => {
       'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',
     );
     expect(
+      summarize('bug_hunt', workplan(), 3, 0, 'Hunt bugs in the highest-risk files', 'healthy', [
+        {
+          id: 'start-workplan-1',
+          priority: 'p0',
+          title: 'Hotspot src/core/intentRouterCatalog.ts',
+          source: 'hotspots',
+          files: ['src/core/intentRouterCatalog.ts'],
+          command: 'projscan file "src/core/intentRouterCatalog.ts" --format json',
+        },
+      ]),
+    ).toBe(
+      'start: bug_hunt recommends Hunt bugs in the highest-risk files with 3 ranked risk item(s) and 0 adoption gap(s)',
+    );
+    expect(
+      summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'healthy', [
+        {
+          id: 'start-quality-watch',
+          priority: 'p2',
+          title: 'Watch list item',
+          source: 'hotspot',
+          files: ['src/types.ts'],
+          command: 'projscan file src/types.ts --format json',
+        },
+      ]),
+    ).toBe(
+      'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',
+    );
+    expect(
       summarize('before_edit', workplan(), 2, 1, 'Fix first recommendation', 'excellent'),
     ).toBe(
       'start: before_edit recommends Fix first recommendation with 2 quality watch item(s) and 1 adoption gap(s)',
