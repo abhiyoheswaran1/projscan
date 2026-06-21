@@ -96,6 +96,23 @@ test('start keeps no-more-release continuation intents in the workplan workflow'
   expect(report.missionControl.proofCommands).not.toContain('projscan release-train --format json');
 });
 
+test('start uses understand change view for before-edit change-prep read questions', async () => {
+  const intent = 'what files should I read before adding auth token refresh';
+  const result = await runCli(['start', '--intent', intent, '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_edit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_understand');
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan understand --view change --intent "what files should I read before adding auth token refresh" --format json',
+      args: { view: 'change', intent },
+    }),
+  );
+});
+
 test('start uses release-candidate proof mode without publishing actions', async () => {
   const result = await runCli([
     'start',

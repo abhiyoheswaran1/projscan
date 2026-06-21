@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Route change-prep read starts to the change view
+
+- Status: accepted
+- Context: `projscan start --intent "what files should I read before adding auth token refresh"` routed to `projscan_understand`, but generated `projscan understand --view map --format json` and dropped the intent. That gave broad repo orientation when the user needed before-edit change-readiness.
+- Decision: Recognize "what/which files should I read before ..." change-prep wording as `understand --view change` and preserve the raw intent in the generated command.
+- Consequences: Before-edit change-prep starts now produce `projscan understand --view change --intent ... --format json`. Generic repo-map and install/setup prompts keep their existing map view behavior.
+- Verification: Focused start-report and CLI regressions fail on the old map command and pass after the narrow change-prep read rule.
+
 ## 2026-06-21: Use release-candidate proof mode for evidence-pack starts
 
 - Status: accepted

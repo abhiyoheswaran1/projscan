@@ -126,6 +126,7 @@ const UNDERSTAND_VIEW_RULES: readonly UnderstandViewRule[] = [
     view: 'verify',
     matches: (text) => /\b(?:verify|verification|proof|test\s+plan|checks?)\b/.test(text),
   },
+  { view: 'change', matches: isChangePrepReadIntent },
   {
     view: 'change',
     matches: (text) =>
@@ -592,6 +593,12 @@ function isClaimListIntent(intent: string): boolean {
 
 function understandViewFromIntent(intent: string): UnderstandView {
   return UNDERSTAND_VIEW_RULES.find((rule) => rule.matches(intent.toLowerCase()))?.view ?? 'map';
+}
+
+function isChangePrepReadIntent(text: string): boolean {
+  return /\b(?:what|which)\s+files?\s+should\s+i\s+read\b.*\bbefore\b.*\b(?:add|adding|build|building|change|changing|create|creating|implement|implementing|modify|modifying|wire|wiring)\b/.test(
+    text,
+  );
 }
 
 function isVerificationPlanningIntent(text: string): boolean {
