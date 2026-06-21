@@ -65,6 +65,7 @@ const ROUTE_ARG_BUILDERS: Record<string, RouteArgBuilder> = {
   projscan_claim: ({ intent }) => claimArgsFromIntent(intent),
   projscan_regression_plan: ({ intent }) => ({ level: regressionLevelFromIntent(intent) }),
   projscan_evidence_pack: () => ({ pr_comment: true }),
+  projscan_feedback_intake: ({ intent }) => ({ text: intent }),
   projscan_analyze: ({ intent }) => reportControlArgsFromIntent(intent),
 };
 
@@ -89,6 +90,8 @@ const ROUTE_COMMAND_BUILDERS: Record<string, RouteCommandBuilder> = {
   projscan_regression_plan: ({ args }) =>
     `projscan regression-plan --level ${String(args.level)} --format json`,
   projscan_evidence_pack: () => 'projscan evidence-pack --pr-comment',
+  projscan_feedback_intake: ({ args }) =>
+    `projscan feedback intake --text ${quoteShellArg(String(args.text))} --format json`,
   projscan_analyze: ({ args }) => reportControlCommand('analyze', 'json', args),
 };
 

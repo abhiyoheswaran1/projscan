@@ -96,6 +96,20 @@ test('start keeps no-more-release continuation intents in the workplan workflow'
   expect(report.missionControl.proofCommands).not.toContain('projscan release-train --format json');
 });
 
+test('start fills feedback intake primary action with raw install warning text', async () => {
+  const intent =
+    'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build';
+  const result = await runCli(['start', '--intent', intent, '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_feedback_intake');
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan feedback intake --text "npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build" --format json',
+  );
+  expect(report.missionControl.primaryAction.command).not.toContain('<feedback>');
+});
+
 test('start keeps an explicit workflow mode even when intent routes elsewhere', async () => {
   const result = await runCli([
     'start',

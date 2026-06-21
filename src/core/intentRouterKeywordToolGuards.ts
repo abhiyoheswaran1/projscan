@@ -218,6 +218,8 @@ const TOOL_KEYWORD_REJECTORS: readonly ToolKeywordRejector[] = [
   ({ entry, tokens }) =>
     entry.tool === 'projscan_analyze' && !reportControlContextMatches(tokens),
   ({ entry, tokens }) =>
+    entry.tool === 'projscan_feedback_intake' && !feedbackIntakeContextMatches(tokens),
+  ({ entry, tokens }) =>
     entry.tool === 'projscan_release_train' && searchInfraArtifactContextMatches(tokens),
   ({ entry, keyword, tokens }) =>
     entry.tool === 'projscan_release_train' && !releaseTrainKeywordMatches(keyword, tokens),
@@ -225,4 +227,26 @@ const TOOL_KEYWORD_REJECTORS: readonly ToolKeywordRejector[] = [
 
 function reportControlContextMatches(tokens: Set<string>): boolean {
   return REPORT_CONTROL_CONTEXT_KEYWORDS.some((token) => tokens.has(token));
+}
+
+function feedbackIntakeContextMatches(tokens: Set<string>): boolean {
+  if (['feedback', 'intake', 'raw', 'pasted', 'paste'].some((token) => tokens.has(token)))
+    return true;
+  if (tokens.has('false') && tokens.has('positive')) return true;
+  if (tokens.has('alias') && tokens.has('import')) return true;
+  if (tokens.has('allow') && (tokens.has('script') || tokens.has('scripts'))) return true;
+  if (tokens.has('tree') && tokens.has('sitter')) return true;
+  if (tokens.has('node') && tokens.has('gyp')) return true;
+  if (
+    ['noisy', 'noise', 'background'].some((token) => tokens.has(token)) &&
+    tokens.has('caution')
+  )
+    return true;
+  if (tokens.has('missing') && tokens.has('signal')) return true;
+  if (
+    ['wrong', 'incorrect', 'incorrectly', 'flagged'].some((token) => tokens.has(token)) &&
+    ['rule', 'rules', 'unused', 'exports', 'route', 'router'].some((token) => tokens.has(token))
+  )
+    return true;
+  return false;
 }

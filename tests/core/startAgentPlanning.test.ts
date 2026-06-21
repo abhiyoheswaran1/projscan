@@ -290,6 +290,45 @@ test('start report routes product-improvement trust workflow prompts to bug hunt
   );
 });
 
+test('start report fills feedback intake commands with the raw intent text', async () => {
+  const root = await makeTempProject();
+  const intent =
+    'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build';
+
+  const report = await computeStartReport(root, { intent });
+
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_feedback_intake',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan feedback intake --text "npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build" --format json',
+      tool: 'projscan_feedback_intake',
+      args: { text: intent },
+    }),
+  );
+  expect(report.missionControl.primaryAction.command).not.toContain('<feedback>');
+});
+
+test('start report keeps ordinary install setup prompts on understand', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'how do I install projscan and set up MCP',
+  });
+
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan understand --view map --format json',
+      tool: 'projscan_understand',
+    }),
+  );
+});
+
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {
   const root = await makeTempProject();
 
