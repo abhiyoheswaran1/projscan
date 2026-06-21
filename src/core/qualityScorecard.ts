@@ -162,12 +162,20 @@ function buildMaintainabilityDimension(
     summary: `${maintainabilityIssues.length} maintainability issue(s), ${hotspots.length} hotspot(s)`,
     evidence: [
       ...maintainabilityIssues.slice(0, 3).map((issue) => issue.title),
-      ...hotspots
+      ...rankHotspotsForEvidence(hotspots)
         .slice(0, 3)
         .map((hotspot) => `${hotspot.relativePath}: risk ${Math.round(hotspot.riskScore)}`),
     ],
     commands: ['projscan hotspots --format json', 'projscan quality-scorecard --format json'],
   };
+}
+
+function rankHotspotsForEvidence(hotspots: FileHotspot[]): FileHotspot[] {
+  return [...hotspots].sort(
+    (a, b) =>
+      priorityRank(hotspotRiskPriority(a)) - priorityRank(hotspotRiskPriority(b)) ||
+      slug(a.relativePath).localeCompare(slug(b.relativePath)),
+  );
 }
 
 function isMaintainabilityPenaltyHotspot(hotspot: FileHotspot): boolean {

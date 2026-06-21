@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Align quality hotspot evidence with top risks
+
+- Status: accepted
+- Context: `projscan quality-scorecard` could show maintainability evidence from raw hotspot order while `topRisks` and `fixFirst` pointed to different ranked hotspots. That made watch output feel noisy and harder to act on.
+- Decision: Order maintainability hotspot evidence with the same hotspot priority rules used by quality top risks, while keeping summary counts, scores, thresholds, and schemas unchanged.
+- Consequences: Watch evidence now leads with the files the developer is asked to inspect first. Tiny issue-free hotspots remain visible when they are the only hotspot evidence.
+- Verification: A regression test fails on raw hotspot ordering and passes when maintainability evidence starts with ranked actionable hotspots.
+
 ## 2026-06-21: Centralize PR-diff routing keywords
 
 - Status: accepted

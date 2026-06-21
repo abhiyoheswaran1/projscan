@@ -167,6 +167,29 @@ test('quality scorecard keeps large and complex hotspots as p0 risks', async () 
   );
 });
 
+test('maintainability evidence starts with ranked actionable hotspots', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'tests/tiny.test.ts', lineCount: 40, riskScore: 300 }),
+    hotspot({ relativePath: 'src/types.ts', lineCount: 35, riskScore: 250 }),
+    hotspot({ relativePath: 'src/large.ts', lineCount: 450, riskScore: 100 }),
+    hotspot({ relativePath: 'src/complex.ts', cyclomaticComplexity: 18, riskScore: 90 }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeQualityScorecard(root);
+  const dimension = report.dimensions.find((item) => item.id === 'maintainability');
+  const topHotspotFiles = report.topRisks
+    .filter((risk) => risk.source === 'hotspot')
+    .slice(0, 2)
+    .flatMap((risk) => risk.files);
+  const evidenceFiles = (dimension?.evidence ?? [])
+    .slice(0, 2)
+    .map((entry) => entry.split(':')[0]);
+
+  expect(topHotspotFiles).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(evidenceFiles).toEqual(topHotspotFiles);
+});
+
 function dimension(
   id: QualityScorecardDimension['id'],
   label: string,
