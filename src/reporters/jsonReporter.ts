@@ -22,6 +22,7 @@ import type {
 import type { ReportControlsMetadata } from '../core/reportScope.js';
 import type { ReviewReport } from '../types/review.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
+import { toCiIssueDetail } from './ciIssueDetails.js';
 
 export const CLI_JSON_SCHEMA_VERSION = 2;
 
@@ -82,7 +83,7 @@ export function reportCiJson(
           errors,
           warnings,
           info: infos,
-          issues,
+          issues: issues.map(toCiIssueDetail),
         },
       },
       null,

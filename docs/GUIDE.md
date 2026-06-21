@@ -582,6 +582,10 @@ projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
 projscan ci --min-score 70 --format json
 ```
 
+Every `ci.issues[]` item keeps the original issue fields and adds
+annotation-friendly fields: `ruleId`, `message`, primary `location`, all
+`locations`, and `remediation` when a fix hint is available.
+
 **SARIF output** (for GitHub Code Scanning or any SARIF consumer):
 
 ```bash
@@ -1589,6 +1593,10 @@ pass=$(echo "$result" | jq '.ci.pass')
 score=$(echo "$result" | jq '.ci.score')
 echo "Score: $score, Pass: $pass"
 ```
+
+For PR annotation tooling, read `.ci.issues[]`. Each issue includes `ruleId`,
+`severity`, `message`, primary `location`, all `locations`, and `remediation`
+when available.
 
 ### Tracking health over time in CI
 

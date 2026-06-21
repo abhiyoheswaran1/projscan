@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Expose annotation-ready CI issue details
+
+- Status: accepted
+- Context: `projscan ci` received the same issue data as `doctor`, but failed console output only printed issue titles and JSON lacked explicit `ruleId`, `message`, primary `location`, and remediation fields. That made cycle findings and other CI failures hard to annotate in PR tooling.
+- Decision: Keep analyzer issue objects unchanged and add a CI-output serializer that preserves existing fields while adding `ruleId`, `message`, primary `location`, and `remediation` when available. Console CI failure rows now print the rule id, known locations, full message, and remediation hint.
+- Consequences: Existing JSON consumers keep the original fields, while CI annotation consumers get stable, direct fields. Health JSON remains unchanged.
+- Verification: Focused CI output tests fail on the missing fields and pass after wiring the serializer and console detail rows.
+
 ## 2026-06-21: Add targeted suppressions and reduce secret false positives
 
 - Status: accepted

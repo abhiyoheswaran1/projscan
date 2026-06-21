@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { Issue } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
+import { formatIssueLocations, issueRemediation } from './ciIssueDetails.js';
 
 function severityIcon(severity: string): string {
   switch (severity) {
@@ -28,7 +29,12 @@ export function reportCi(issues: Issue[], threshold: number): void {
 
   if (!pass) {
     for (const issue of issues) {
-      console.log(`  ${severityIcon(issue.severity)} ${issue.title}`);
+      console.log(`  ${severityIcon(issue.severity)} ${issue.title} ${chalk.dim(`(${issue.id})`)}`);
+      const locations = formatIssueLocations(issue);
+      if (locations) console.log(`    ${chalk.dim('where:')} ${locations}`);
+      console.log(`    ${chalk.dim('message:')} ${issue.description}`);
+      const remediation = issueRemediation(issue);
+      if (remediation) console.log(`    ${chalk.dim('remediation:')} ${remediation}`);
     }
   }
 }

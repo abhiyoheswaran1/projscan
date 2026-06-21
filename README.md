@@ -277,8 +277,13 @@ Use `projscan ci` to gate pull requests:
 ```bash
 projscan ci --min-score 80
 projscan ci --changed-only
+projscan ci --format json
 projscan ci --format sarif > projscan.sarif
 ```
+
+`ci --format json` keeps `ci.issues[]` annotation-ready: each issue includes
+`ruleId`, `severity`, `message`, `location`, `locations`, and `remediation`
+when projscan has that data.
 
 GitHub Actions example:
 
