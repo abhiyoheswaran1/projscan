@@ -466,7 +466,7 @@ describe('routeIntent understand and planning routing', () => {
       expect.objectContaining({
         tool: 'projscan_understand',
         confidence: 'high',
-        matchedKeywords: ['need', 'change', 'files'],
+        matchedKeywords: ['need', 'change', 'files', 'auth'],
       }),
     );
 
