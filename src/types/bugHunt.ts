@@ -34,6 +34,8 @@ export interface BugHuntReport {
     };
     hotspotCount: number;
     preflightVerdict: PreflightVerdict;
+    preflightActionableReasonCount?: number;
+    preflightIgnoredReasonCount?: number;
     touchedFiles: string[];
     conflicts: number;
   };

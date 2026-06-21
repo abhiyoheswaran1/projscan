@@ -46,6 +46,10 @@ export async function computeBugHunt(
   const actionablePreflightReasons = preflight.reasons.filter((reason) =>
     isActionablePreflightReason(reason, preflight.evidence),
   );
+  const ignoredPreflightReasonCount = Math.max(
+    0,
+    preflight.reasons.length - actionablePreflightReasons.length,
+  );
   const preflightChangedFiles = filesFromPreflightEvidence(
     preflight.evidence.changedFiles?.files ?? [],
   );
@@ -83,6 +87,8 @@ export async function computeBugHunt(
       health,
       hotspots.available ? hotspots.hotspots.length : 0,
       preflight.verdict,
+      actionablePreflightReasons.length,
+      ignoredPreflightReasonCount,
       riskNow,
     ),
     topSuspects,
@@ -139,6 +145,8 @@ function bugHuntEvidence(
   health: BugHuntReport['health'],
   hotspotCount: number,
   preflightVerdict: BugHuntReport['evidence']['preflightVerdict'],
+  preflightActionableReasonCount: number,
+  preflightIgnoredReasonCount: number,
   riskNow: { touchedFiles: string[]; conflicts: SessionConflict[] },
 ): BugHuntReport['evidence'] {
   return {
@@ -149,6 +157,8 @@ function bugHuntEvidence(
     },
     hotspotCount,
     preflightVerdict,
+    preflightActionableReasonCount,
+    preflightIgnoredReasonCount,
     touchedFiles: riskNow.touchedFiles,
     conflicts: riskNow.conflicts.length,
   };

@@ -52,6 +52,8 @@ const report: BugHuntReport = {
     },
     hotspotCount: 1,
     preflightVerdict: 'caution',
+    preflightActionableReasonCount: 1,
+    preflightIgnoredReasonCount: 0,
     touchedFiles: ['src/types.ts'],
     conflicts: 0,
   },

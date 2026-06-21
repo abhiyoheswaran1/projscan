@@ -270,6 +270,9 @@ test('bug hunt does not turn clean branch-only scale into a manual sign-off queu
 
   expect(report.verdict).toBe('clean');
   expect(report.summary).not.toContain('manual sign-off');
+  expect(report.evidence.preflightVerdict).toBe('caution');
+  expect(report.evidence.preflightActionableReasonCount).toBe(0);
+  expect(report.evidence.preflightIgnoredReasonCount).toBeGreaterThan(0);
   expect(report.fixQueue[0]?.id).toBe('bh-verify-clean');
   expect(report.reviewQueue).toEqual([]);
   expect(
