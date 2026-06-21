@@ -9,6 +9,7 @@ import {
 import { computePreflight } from './preflight.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
+import { buildCodeGraph } from './codeGraph.js';
 import { loadConfig, applyConfigToIssues } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type {
@@ -46,9 +47,11 @@ export async function computeBugHunt(
     preflight.evidence.changedFiles?.files ?? [],
   );
   const riskNow = await safeRiskNow(rootPath);
+  const graph = await buildCodeGraph(rootPath, scan.files).catch(() => undefined);
   const hotspots = await analyzeHotspots(rootPath, scan.files, issues, {
     limit: maxFindings,
     since: options.since,
+    ...(graph ? { graph } : {}),
   });
 
   const findings = rankFindings([
@@ -240,16 +243,19 @@ function cleanVerificationFinding(): BugHuntFinding {
 function rankFindings(findings: BugHuntFinding[]): BugHuntFinding[] {
   const seen = new Set<string>();
   return findings
-    .filter((finding) => {
+    .map((finding, index) => ({ finding, index }))
+    .filter((entry) => {
+      const { finding } = entry;
       if (seen.has(finding.id)) return false;
       seen.add(finding.id);
       return true;
     })
     .sort((a, b) => {
-      const priority = priorityRank(a.priority) - priorityRank(b.priority);
+      const priority = priorityRank(a.finding.priority) - priorityRank(b.finding.priority);
       if (priority !== 0) return priority;
-      return sourceRank(a.source) - sourceRank(b.source) || a.id.localeCompare(b.id);
-    });
+      return sourceRank(a.finding.source) - sourceRank(b.finding.source) || a.index - b.index;
+    })
+    .map((entry) => entry.finding);
 }
 
 function buildVerificationMatrix(

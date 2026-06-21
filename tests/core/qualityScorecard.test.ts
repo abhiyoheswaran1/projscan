@@ -6,6 +6,8 @@ import {
   computeQualityScorecard,
   deriveQualityScorecardVerdict,
 } from '../../src/core/qualityScorecard.js';
+import { analyzeHotspots } from '../../src/core/hotspotAnalyzer.js';
+import type { CodeGraph } from '../../src/core/codeGraph.js';
 import type { Issue } from '../../src/types/common.js';
 import type { FileHotspot } from '../../src/types/hotspots.js';
 import type { QualityScorecardDimension } from '../../src/types.js';
@@ -15,6 +17,16 @@ const hotspotState = vi.hoisted(() => ({
 }));
 const issueState = vi.hoisted(() => ({
   issues: [] as Issue[],
+}));
+const codeGraphState = vi.hoisted(() => ({
+  graph: {
+    files: new Map(),
+    packageImporters: new Map(),
+    localImporters: new Map(),
+    symbolDefs: new Map(),
+    scannedFiles: 0,
+  } as CodeGraph,
+  shouldThrow: false,
 }));
 
 vi.mock('../../src/core/hotspotAnalyzer.js', () => ({
@@ -26,6 +38,17 @@ vi.mock('../../src/core/hotspotAnalyzer.js', () => ({
   })),
 }));
 
+vi.mock('../../src/core/codeGraph.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/codeGraph.js')>();
+  return {
+    ...actual,
+    buildCodeGraph: vi.fn(async () => {
+      if (codeGraphState.shouldThrow) throw new Error('graph unavailable');
+      return codeGraphState.graph;
+    }),
+  };
+});
+
 vi.mock('../../src/core/issueEngine.js', () => ({
   collectIssues: vi.fn(async () => issueState.issues),
 }));
@@ -35,6 +58,8 @@ const tempRoots: string[] = [];
 afterEach(async () => {
   hotspotState.hotspots = [];
   issueState.issues = [];
+  codeGraphState.shouldThrow = false;
+  vi.mocked(analyzeHotspots).mockClear();
   await Promise.all(
     tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
   );
@@ -208,6 +233,39 @@ test('quality scorecard emits shell-safe hotspot file commands', async () => {
     'projscan file "src/app route/\\$(touch pwn).ts" --format json',
   );
   expect(report.suggestedNextActions[0]?.command).toBe(report.topRisks[0]?.command);
+});
+
+test('quality scorecard uses graph-aware hotspot analysis when available', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'src/complex.ts', lineCount: 60, cyclomaticComplexity: 18 }),
+  ];
+  const root = await makeTempProject();
+
+  await computeQualityScorecard(root);
+
+  expect(vi.mocked(analyzeHotspots).mock.calls[0]?.[3]).toEqual(
+    expect.objectContaining({ graph: codeGraphState.graph }),
+  );
+});
+
+test('quality scorecard falls back when graph-aware hotspot analysis is unavailable', async () => {
+  codeGraphState.shouldThrow = true;
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'src/large.ts', lineCount: 450, cyclomaticComplexity: 1 }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeQualityScorecard(root);
+
+  expect(report.topRisks[0]).toEqual(
+    expect.objectContaining({
+      id: 'qs-hotspot-src-large-ts',
+      priority: 'p0',
+    }),
+  );
+  expect(vi.mocked(analyzeHotspots).mock.calls[0]?.[3]).toEqual(
+    expect.not.objectContaining({ graph: expect.anything() }),
+  );
 });
 
 function dimension(

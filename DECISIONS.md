@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Use graph-aware hotspot scoring in quality and bug hunt
+
+- Status: accepted
+- Context: `projscan hotspots` uses AST-derived cyclomatic complexity, but `quality-scorecard` and `bug-hunt` called hotspot analysis without a graph. Bug-hunt also sorted same-priority hotspot findings by id, which could discard analyzer order.
+- Decision: Build a code graph best-effort before quality and bug-hunt hotspot analysis and pass it into `analyzeHotspots`; if graph construction fails, keep the previous no-graph fallback. Preserve original finding order within the same priority/source group.
+- Consequences: Quality scorecard and bug-hunt hotspot order now align with the standalone hotspot command when graph data is available. Schemas and priority thresholds remain unchanged.
+- Verification: `npm test -- tests/core/qualityScorecard.test.ts -t graph-aware` and `npm test -- tests/core/bugHuntGraphHotspots.test.ts` failed when graph/options or analyzer order were not preserved and passed after adding the best-effort graph option and stable same-source ordering.
+
 ## 2026-06-21: Add file inspection follow-up actions
 
 - Status: accepted

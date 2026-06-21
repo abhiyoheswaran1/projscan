@@ -4,6 +4,7 @@ import { collectIssues } from './issueEngine.js';
 import { scanRepository } from './repositoryScanner.js';
 import { buildRiskNow } from './sessionResources.js';
 import { quoteShellArg } from './startShellArgs.js';
+import { buildCodeGraph } from './codeGraph.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import type { Issue } from '../types/common.js';
@@ -85,7 +86,11 @@ async function safeHotspots(
   limit: number,
 ): Promise<{ available: boolean; hotspots: FileHotspot[] }> {
   try {
-    const report = await analyzeHotspots(rootPath, files, issues, { limit });
+    const graph = await buildCodeGraph(rootPath, files).catch(() => undefined);
+    const report = await analyzeHotspots(rootPath, files, issues, {
+      limit,
+      ...(graph ? { graph } : {}),
+    });
     return { available: report.available, hotspots: report.hotspots };
   } catch {
     return { available: false, hotspots: [] };
