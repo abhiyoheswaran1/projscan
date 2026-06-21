@@ -1,3 +1,4 @@
+import { fileImpactKeywordWeight } from './intentRouterFileImpactKeywordWeights.js';
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
 import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
 import { searchKeywordWeight } from './intentRouterSearchKeywordWeights.js';
@@ -11,77 +12,8 @@ export interface KeywordWeightedRouteEntry {
 export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string): number {
   const trustFeedbackWeight = trustFeedbackKeywordWeight(entry.tool, keyword);
   if (trustFeedbackWeight !== undefined) return trustFeedbackWeight;
-  if (entry.tool === 'projscan_file' && keyword === 'read') return 3;
-  if (entry.tool === 'projscan_file' && ['review', 'reviewer', 'reviewers'].includes(keyword))
-    return 5;
-  if (
-    entry.tool === 'projscan_file' &&
-    ['file', 'explain', 'inspect', 'owns', 'risk', 'risks', 'risky', 'dangerous'].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_file' &&
-    [
-      'last',
-      'touched',
-      'touch',
-      'changed',
-      'recently',
-      'history',
-      'author',
-      'authors',
-      'blame',
-    ].includes(keyword)
-  )
-    return 2;
-  if (entry.tool === 'projscan_file' && ['add', 'write'].includes(keyword)) return 2;
-  if (
-    entry.tool === 'projscan_file' &&
-    ['coverage', 'covered', 'uncovered', 'test', 'tests'].includes(keyword)
-  )
-    return 2;
-  if (entry.tool === 'projscan_impact' && ['delete', 'remove'].includes(keyword)) return 2;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['drop', 'schema', 'table', 'column', 'database', 'db', 'migration', 'migrations'].includes(
-      keyword,
-    )
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['revert', 'rollback', 'undo', 'backout', 'back', 'out', 'recover'].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_impact' &&
-    ['depends', 'used', 'usage', 'referenced', 'called'].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_impact' &&
-    [
-      'api',
-      'apis',
-      'endpoint',
-      'endpoints',
-      'client',
-      'clients',
-      'contract',
-      'contracts',
-      'deprecate',
-      'deprecates',
-      'deprecated',
-      'deprecation',
-      'compatibility',
-      'compatible',
-      'version',
-      'versions',
-    ].includes(keyword)
-  )
-    return 2;
-  if (entry.tool === 'projscan_impact' && ['change', 'changes', 'changing'].includes(keyword))
-    return 3;
+  const fileImpactWeight = fileImpactKeywordWeight(entry.tool, keyword);
+  if (fileImpactWeight !== undefined) return fileImpactWeight;
   if (entry.tool === 'projscan_explain_issue' && keyword === 'explain') return 2;
   if (
     entry.tool === 'projscan_semantic_graph' &&
