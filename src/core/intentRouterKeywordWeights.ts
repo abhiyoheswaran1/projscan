@@ -4,6 +4,7 @@ import { fileImpactKeywordWeight } from './intentRouterFileImpactKeywordWeights.
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
 import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
 import { searchKeywordWeight } from './intentRouterSearchKeywordWeights.js';
+import { securityKeywordWeight } from './intentRouterSecurityKeywordWeights.js';
 import { trustFeedbackKeywordWeight } from './intentRouterTrustFeedbackKeywordWeights.js';
 import { workflowKeywordWeight } from './intentRouterWorkflowKeywordWeights.js';
 
@@ -20,54 +21,8 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (architectureWeight !== undefined) return architectureWeight;
   const dependencyWeight = dependencyKeywordWeight(entry.tool, keyword);
   if (dependencyWeight !== undefined) return dependencyWeight;
-  if (
-    entry.tool === 'projscan_dataflow' &&
-    [
-      'dataflow',
-      'taint',
-      'security',
-      'injection',
-      'secret',
-      'secrets',
-      'expose',
-      'exposes',
-      'exposed',
-      'sanitize',
-      'sanitized',
-      'request',
-      'data',
-      'reach',
-      'reaches',
-      'exec',
-      'auth',
-      'bypass',
-      'pii',
-      'gdpr',
-      'compliance',
-      'personal',
-      'customer',
-      'email',
-      'emails',
-      'password',
-      'token',
-      'tokens',
-      'leak',
-      'leaks',
-      'logged',
-      'logging',
-      'log',
-      'logs',
-      'store',
-      'stores',
-      'retention',
-      'handled',
-      'handles',
-      'process',
-      'processes',
-      'processing',
-    ].includes(keyword)
-  )
-    return 2;
+  const securityWeight = securityKeywordWeight(entry.tool, keyword);
+  if (securityWeight !== undefined) return securityWeight;
   if (entry.tool === 'projscan_search') {
     const weight = searchKeywordWeight(keyword);
     if (weight !== undefined) return weight;
