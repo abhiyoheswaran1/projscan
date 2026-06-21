@@ -152,6 +152,29 @@ test('start uses release-candidate proof mode without publishing actions', async
   );
 });
 
+test('start keeps read-only change summaries out of release mode', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'show changelog entry for the current work',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_commit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_pr_diff');
+  expect(report.missionControl.primaryAction.command).toBe('projscan pr-diff --format json');
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_commit --format json',
+  );
+  expect(report.missionControl.successCriteria).not.toContain(
+    'The next task has a verification command: npm run release:check',
+  );
+});
+
 test('start fills feedback intake primary action with raw install warning text', async () => {
   const intent =
     'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build';

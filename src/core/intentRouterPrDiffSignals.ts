@@ -1,4 +1,5 @@
 import { dependencyBloatContextMatches } from './intentRouterDependencySignals.js';
+import { releaseChangeSummaryLookupContextMatches } from './intentRouterReleaseSignals.js';
 
 export function prDiffKeywordMatches(keyword: string, tokens: Set<string>): boolean {
   const commitMessageContext = tokens.has('commit') && tokens.has('message');
@@ -23,10 +24,14 @@ export function prDiffKeywordMatches(keyword: string, tokens: Set<string>): bool
   if (['since', 'branch', 'main', 'base', 'head'].includes(keyword)) {
     return (
       branchSyncDiffContextMatches(tokens) ||
+      releaseChangeSummaryLookupContextMatches(tokens) ||
       ['change', 'changed', 'changes', 'diff', 'pr', 'pull', 'request'].some((token) =>
         tokens.has(token),
       )
     );
+  }
+  if (['release', 'last', 'changelog', 'entry', 'current', 'work'].includes(keyword)) {
+    return releaseChangeSummaryLookupContextMatches(tokens);
   }
   return true;
 }

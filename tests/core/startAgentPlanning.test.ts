@@ -342,6 +342,46 @@ test('start report uses release-candidate proof mode without release automation'
   );
 });
 
+test('start report keeps read-only change summaries out of release mode', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'what changed since the last release',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_pr_diff',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan pr-diff --format json',
+      tool: 'projscan_pr_diff',
+      args: {},
+    }),
+  );
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_commit --format json',
+  );
+  expect(report.missionControl.successCriteria).not.toContain(
+    'The next task has a verification command: npm run release:check',
+  );
+
+  const release = await computeStartReport(root, {
+    intent: 'prepare this branch for release',
+  });
+  expect(release.mode).toBe('release');
+  expect(release.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan release-train --format json',
+      tool: 'projscan_release_train',
+    }),
+  );
+});
+
 test('start report routes improve-next trust prompts to planning instead of privacy check', async () => {
   const root = await makeTempProject();
 

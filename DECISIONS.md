@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep read-only change summaries out of release mode
+
+- Status: accepted
+- Context: `projscan start --intent "what changed since the last release"` and `show changelog entry for the current work` routed to release-train and put Mission Control in release mode with `npm run release:check` criteria. That made summary lookup sound like release preparation.
+- Decision: Treat changed-since-last-release and current-work changelog-entry wording as read-only PR diff summaries. Release-train backs off for those lookup contexts, while explicit release readiness/preparation prompts still use release-train or evidence-pack.
+- Consequences: Summary prompts now start with `projscan pr-diff --format json` and before-commit proof criteria instead of release checks.
+- Verification: Router, start-report, and CLI regressions fail on the old release-train route and pass after adding the release-summary lookup guard and pr-diff keywords.
+
 ## 2026-06-21: Keep change-file planning out of dataflow
 
 - Status: accepted

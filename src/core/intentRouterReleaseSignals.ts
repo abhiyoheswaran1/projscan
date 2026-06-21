@@ -139,8 +139,42 @@ function releaseReadinessContextMatches(tokens: Set<string>): boolean {
 }
 
 export function releaseTrainKeywordMatches(keyword: string, tokens: Set<string>): boolean {
+  if (releaseChangeSummaryLookupContextMatches(tokens)) return false;
   const rule = RELEASE_TRAIN_KEYWORD_RULES.find((candidate) => candidate.keywords.has(keyword));
   return rule ? rule.matches(tokens) : true;
+}
+
+export function releaseChangeSummaryLookupContextMatches(tokens: Set<string>): boolean {
+  const changedSinceLastRelease =
+    tokens.has('changed') && tokens.has('since') && tokens.has('last') && tokens.has('release');
+  const currentChangelogEntry =
+    tokens.has('changelog') &&
+    tokens.has('entry') &&
+    (tokens.has('current') || tokens.has('work'));
+  if (!changedSinceLastRelease && !currentChangelogEntry) return false;
+  return !hasAnyToken(tokens, [
+    'approval',
+    'approve',
+    'candidate',
+    'cut',
+    'cutting',
+    'deploy',
+    'deploying',
+    'deployment',
+    'prepare',
+    'preparing',
+    'publish',
+    'publishing',
+    'readiness',
+    'ready',
+    'ship',
+    'shipping',
+    'tag',
+    'tagging',
+    'version',
+    'versions',
+    'worth',
+  ]);
 }
 
 function releaseCommunicationContextMatches(tokens: Set<string>): boolean {

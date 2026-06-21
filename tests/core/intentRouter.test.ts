@@ -152,6 +152,32 @@ describe('routeIntent', () => {
     );
   });
 
+  it('routes read-only change summaries away from release train', () => {
+    for (const intent of [
+      'what changed since the last release',
+      'show changelog entry for the current work',
+    ]) {
+      const result = routeIntent(intent);
+      expect(result.matches[0]).toEqual(
+        expect.objectContaining({
+          tool: 'projscan_pr_diff',
+          confidence: 'high',
+        }),
+      );
+      expect(
+        result.matches.find((match) => match.tool === 'projscan_release_train')?.rank ?? Infinity,
+      ).toBeGreaterThan(1);
+    }
+
+    const release = routeIntent('prepare this branch for release');
+    expect(release.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_release_train',
+        confidence: 'high',
+      }),
+    );
+  });
+
   it('routes AI-generated code review-before-commit intents to structural review', () => {
     const result = routeIntent('review AI-generated code before commit for verification debt');
 
