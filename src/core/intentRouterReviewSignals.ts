@@ -12,6 +12,7 @@ const PR_NARRATIVE_KEYWORDS = ['pr', 'pull', 'request'];
 const TEAM_NARRATIVE_ACTION_KEYWORDS = ['tell', 'share', 'team'];
 const TEAM_NARRATIVE_SUBJECT_KEYWORDS = ['change', 'changes', 'changed', 'pr', 'pull', 'request'];
 const PR_READINESS_KEYWORDS = ['ready', 'open', 'opening', 'before', 'prepare'];
+const PR_READINESS_ACTION_KEYWORDS = ['ready', 'open', 'opening', 'prepare'];
 const CHANGED_FILE_OWNER_KEYWORDS = ['who', 'owner', 'owners', 'owns'];
 const OWNER_REVIEW_CONTEXT_KEYWORDS = [
   'review',
@@ -29,6 +30,7 @@ interface EvidencePackContexts {
   readonly prNarrative: boolean;
   readonly reviewerSummary: boolean;
   readonly teamNarrative: boolean;
+  readonly versionCandidateReview: boolean;
   readonly prReadiness: boolean;
   readonly changedFileOwner: boolean;
 }
@@ -60,6 +62,12 @@ export function reviewKeywordMatches(keyword: string, tokens: Set<string>): bool
   return true;
 }
 
+export function structuralReviewWorkflowContextMatches(tokens: Set<string>): boolean {
+  if (!tokens.has('review')) return false;
+  if (hasAnyToken(tokens, ['search', 'find', 'locate', 'where', 'show'])) return false;
+  return hasAnyToken(tokens, ['agent', 'ai', 'generated', 'commit', 'verification', 'debt']);
+}
+
 function evidencePackContexts(tokens: Set<string>): EvidencePackContexts {
   const prReview = hasAnyToken(tokens, PR_REVIEW_KEYWORDS);
   const reviewerSummary =
@@ -69,13 +77,19 @@ function evidencePackContexts(tokens: Set<string>): EvidencePackContexts {
   const teamNarrative =
     hasAnyToken(tokens, TEAM_NARRATIVE_ACTION_KEYWORDS) &&
     hasAnyToken(tokens, TEAM_NARRATIVE_SUBJECT_KEYWORDS);
+  const versionCandidateReview =
+    tokens.has('review') && (tokens.has('version') || tokens.has('candidate'));
   return {
     reviewerRouting: hasAnyToken(tokens, REVIEWER_ROUTING_KEYWORDS),
     prReview,
     prNarrative: hasAnyToken(tokens, PR_NARRATIVE_KEYWORDS),
     reviewerSummary,
     teamNarrative,
-    prReadiness: prReview && hasAnyToken(tokens, PR_READINESS_KEYWORDS),
+    versionCandidateReview,
+    prReadiness:
+      versionCandidateReview ||
+      (hasAnyToken(tokens, PR_NARRATIVE_KEYWORDS) &&
+        hasAnyToken(tokens, PR_READINESS_ACTION_KEYWORDS)),
     changedFileOwner:
       tokens.has('changed') &&
       (tokens.has('file') || tokens.has('files')) &&

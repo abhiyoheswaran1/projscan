@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Route AI-generated review prompts to structural review first
+
+- Status: accepted
+- Context: `projscan start --intent "review AI-generated code before commit for verification debt"` routed to evidence-pack because generic `review` + `before` wording looked like PR-readiness evidence. Once evidence-pack backed off, lookup/orientation tools could still win on `code`, `generated`, or `verification`.
+- Decision: Treat AI-generated-code review-before-commit wording as a structural review workflow. Evidence-pack keeps explicit PR-readiness and version-candidate review packet prompts, while search and understand back off when a prompt is clearly asking for review workflow evidence rather than lookup or orientation.
+- Consequences: Agents reviewing generated changes start with `projscan review --format json` and get a verdict before drafting evidence. Existing PR comment, PR readiness, and version-candidate review packet prompts still route to evidence-pack.
+- Verification: Router, start-report, and CLI regressions fail on the old evidence-pack/search/understand routes and pass after the review-workflow guard.
+
 ## 2026-06-21: Give feedback intake mission criteria
 
 - Status: accepted

@@ -110,6 +110,23 @@ test('start fills feedback intake primary action with raw install warning text',
   expect(report.missionControl.primaryAction.command).not.toContain('<feedback>');
 });
 
+test('start routes AI-generated code review-before-commit intents to structural review', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'review AI-generated code before commit for verification debt',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_commit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_review');
+  expect(report.missionControl.primaryAction.command).toBe('projscan review --format json');
+});
+
 test('start keeps an explicit workflow mode even when intent routes elsewhere', async () => {
   const result = await runCli([
     'start',

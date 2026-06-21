@@ -87,6 +87,21 @@ describe('routeIntent', () => {
     ).toBeUndefined();
   });
 
+  it('routes AI-generated code review-before-commit intents to structural review', () => {
+    const result = routeIntent('review AI-generated code before commit for verification debt');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_review',
+        confidence: 'high',
+        matchedKeywords: expect.arrayContaining(['review']),
+      }),
+    );
+    expect(
+      result.matches.find((match) => match.tool === 'projscan_evidence_pack')?.rank ?? Infinity,
+    ).toBeGreaterThan(1);
+  });
+
   it('keeps generic PR/template lookup intents on search instead of bug hunt', () => {
     const result = routeIntent('find the PR template');
 

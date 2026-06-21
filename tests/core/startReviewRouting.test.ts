@@ -75,6 +75,33 @@ test('start report turns PR risk questions into structural review', async () => 
   expect(report.missionControl.proofCommands).toContain('projscan review --format json');
 });
 
+test('start report turns AI-generated code review-before-commit requests into structural review', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'review AI-generated code before commit for verification debt',
+  });
+
+  expect(report.mode).toBe('before_commit');
+  expect(report.modeSource).toBe('intent');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      category: 'Review',
+      tool: 'projscan_review',
+      confidence: 'high',
+      matchedKeywords: expect.arrayContaining(['review']),
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan review --format json',
+      tool: 'projscan_review',
+      args: {},
+    }),
+  );
+  expect(report.missionControl.proofCommands).toContain('projscan review --format json');
+});
+
 test('start report turns merge risk summaries into merge preflight', async () => {
   const root = await makeTempProject();
 

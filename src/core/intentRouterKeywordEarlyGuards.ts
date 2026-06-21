@@ -11,7 +11,11 @@ import {
 } from './intentRouterRegressionSignals.js';
 import { productImprovementContextMatches } from './intentRouterProductImprovementSignals.js';
 import { localServiceSetupCommandContextMatches } from './intentRouterRepoSignals.js';
-import { evidencePackKeywordMatches, reviewKeywordMatches } from './intentRouterReviewSignals.js';
+import {
+  evidencePackKeywordMatches,
+  reviewKeywordMatches,
+  structuralReviewWorkflowContextMatches,
+} from './intentRouterReviewSignals.js';
 import {
   dataflowKeywordMatches,
   explicitDataflowContextMatches,
@@ -139,6 +143,7 @@ function understandKeywordRejected({
   hasQuotedText,
 }: KeywordMatchContext): boolean {
   if (entry.tool !== 'projscan_understand') return false;
+  if (structuralReviewWorkflowContextMatches(tokens)) return true;
   if (!understandKeywordMatches(keyword, tokens)) return true;
   if (searchEnvLookupContextMatches(tokens, hasEnvVar)) return true;
   if (searchQuotedDebugTextContextMatches(tokens, hasQuotedText)) return true;

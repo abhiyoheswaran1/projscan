@@ -36,6 +36,7 @@ import {
   searchCodeLocationContextMatches,
   searchTestLocationContextMatches,
 } from './intentRouterVerificationSignals.js';
+import { structuralReviewWorkflowContextMatches } from './intentRouterReviewSignals.js';
 
 type SearchKeywordGuardRule = {
   keywords: readonly string[];
@@ -69,7 +70,9 @@ function anyTokenContext(tokens: Set<string>, matchers: readonly TokenContextMat
 const SEARCH_KEYWORD_GUARD_RULES: readonly SearchKeywordGuardRule[] = [
   {
     keywords: keywordList('search find locate where show code'),
-    allows: ({ tokens }) => !doctorCleanupDiscoveryContextMatches(tokens),
+    allows: ({ tokens }) =>
+      !doctorCleanupDiscoveryContextMatches(tokens) &&
+      !structuralReviewWorkflowContextMatches(tokens),
   },
   {
     keywords: keywordList('test tests spec specs cover covers covering'),
@@ -250,6 +253,7 @@ const SEARCH_KEYWORD_GUARD_RULES: readonly SearchKeywordGuardRule[] = [
   {
     keywords: keywordList('migration migrations generated exist exists ran show file files'),
     allows: ({ tokens }) =>
+      !structuralReviewWorkflowContextMatches(tokens) &&
       anyTokenContext(tokens, [
         searchMigrationLookupContextMatches,
         searchGeneratedContextMatches,
@@ -264,6 +268,7 @@ const SEARCH_KEYWORD_GUARD_RULES: readonly SearchKeywordGuardRule[] = [
   {
     keywords: keywordList('code handles handled handler contains logic implemented configured created creates loaded loader parse parses parsed middleware'),
     allows: ({ tokens }) =>
+      !structuralReviewWorkflowContextMatches(tokens) &&
       anyTokenContext(tokens, [
         searchCodeLocationContextMatches,
         searchGeneratedContextMatches,
