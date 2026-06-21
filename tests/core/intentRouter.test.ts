@@ -126,6 +126,32 @@ describe('routeIntent', () => {
     );
   });
 
+  it('routes change-file planning away from dataflow hardening', () => {
+    for (const intent of [
+      'what files should I change for auth token refresh',
+      'which files should I modify for auth token refresh',
+      'where should I add auth token refresh',
+    ]) {
+      const result = routeIntent(intent);
+      expect(result.matches[0]).toEqual(
+        expect.objectContaining({
+          tool: 'projscan_understand',
+          confidence: 'high',
+        }),
+      );
+      expect(result.matches.find((match) => match.tool === 'projscan_dataflow')?.rank ?? Infinity)
+        .toBeGreaterThan(1);
+    }
+
+    const dataflow = routeIntent('trace auth token taint into database sinks');
+    expect(dataflow.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_dataflow',
+        confidence: 'high',
+      }),
+    );
+  });
+
   it('routes AI-generated code review-before-commit intents to structural review', () => {
     const result = routeIntent('review AI-generated code before commit for verification debt');
 

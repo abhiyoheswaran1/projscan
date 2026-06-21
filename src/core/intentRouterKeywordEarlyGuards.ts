@@ -3,6 +3,7 @@ import type { KeywordMatchContext } from './intentRouterKeywordContext.js';
 import {
   dataAccessPlanningContextMatches,
   domainWorkflowPlanningContextMatches,
+  featurePlacementContextMatches,
   stateManagementPlanningContextMatches,
 } from './intentRouterPlanningSignals.js';
 import {
@@ -65,6 +66,7 @@ const UNDERSTAND_CONTEXT_REJECTORS: readonly TokenContextMatcher[] = [
 
 const DATAFLOW_PLANNING_REJECTORS: readonly TokenContextMatcher[] = [
   domainWorkflowPlanningContextMatches,
+  featurePlacementContextMatches,
   stateManagementPlanningContextMatches,
   dataAccessPlanningContextMatches,
 ];

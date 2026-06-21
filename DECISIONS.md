@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep change-file planning out of dataflow
+
+- Status: accepted
+- Context: Before-edit prompts such as `what files should I change for auth token refresh` and `where should I add auth token refresh` routed to `projscan_dataflow` because `token` / `auth` matched security keywords. That skipped the trusted before-edit change-readiness workflow.
+- Decision: Treat feature-placement planning as a dataflow rejector and allow auth-domain placement prompts to match `projscan_understand` when they look like change planning.
+- Consequences: Change-file planning now starts with `projscan understand --view change --intent ... --format json`, while explicit taint/dataflow prompts still start with `projscan dataflow --format json`.
+- Verification: Router, start-report, and CLI regressions fail on the old dataflow route and pass after the planning guard and auth planning keyword.
+
 ## 2026-06-21: Route change-prep read starts to the change view
 
 - Status: accepted

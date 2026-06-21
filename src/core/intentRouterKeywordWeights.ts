@@ -127,6 +127,7 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
       'screen',
       'view',
       'webhook',
+      'auth',
       'login',
       'support',
       'checkout',

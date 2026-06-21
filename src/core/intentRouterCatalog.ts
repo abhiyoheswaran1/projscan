@@ -163,6 +163,7 @@ export const ROUTE_CATALOG: RouteEntry[] = [
       'screen',
       'view',
       'webhook',
+      'auth',
       'login',
       'support',
       'checkout',

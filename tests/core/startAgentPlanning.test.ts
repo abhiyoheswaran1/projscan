@@ -206,6 +206,44 @@ test('start report routes change-prep read questions to understand change view',
   );
 });
 
+test('start report routes change-file planning to understand change view', async () => {
+  const root = await makeTempProject();
+  const intent = 'what files should I change for auth token refresh';
+
+  const report = await computeStartReport(root, { intent });
+
+  expect(report.mode).toBe('before_edit');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_understand',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan understand --view change --intent "what files should I change for auth token refresh" --format json',
+      tool: 'projscan_understand',
+      args: { view: 'change', intent },
+    }),
+  );
+
+  const verify = await computeStartReport(root, {
+    intent: 'what tests should I run before changing auth token refresh',
+  });
+  expect(verify.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan understand --view verify --intent "what tests should I run before changing auth token refresh" --format json',
+      tool: 'projscan_understand',
+      args: {
+        view: 'verify',
+        intent: 'what tests should I run before changing auth token refresh',
+      },
+    }),
+  );
+});
+
 test('start report routes generic build-next questions to before-edit workplans', async () => {
   const root = await makeTempProject();
   await fs.writeFile(

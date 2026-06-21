@@ -143,6 +143,7 @@ export function understandKeywordMatches(keyword: string, tokens: Set<string>): 
       'screen',
       'view',
       'webhook',
+      'auth',
       'login',
       'support',
       'checkout',

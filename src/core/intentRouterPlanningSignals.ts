@@ -9,7 +9,12 @@ export function featurePlacementContextMatches(tokens: Set<string>): boolean {
   if (styleSystemPlanningContextMatches(tokens)) return true;
   const placementSubject = ['feature', 'endpoint', 'button'].some((token) => tokens.has(token));
   if (placementSubject && ['where', 'put', 'add'].some((token) => tokens.has(token))) return true;
-  if (tokens.has('files') && tokens.has('need') && tokens.has('change')) return true;
+  if (
+    tokens.has('files') &&
+    (tokens.has('change') || tokens.has('modify'))
+  )
+    return true;
+  if (tokens.has('where') && tokens.has('add')) return true;
   const kickoffAction = ['add', 'implement', 'build', 'create', 'wire'].some((token) =>
     tokens.has(token),
   );

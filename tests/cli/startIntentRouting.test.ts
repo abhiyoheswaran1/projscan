@@ -113,6 +113,23 @@ test('start uses understand change view for before-edit change-prep read questio
   );
 });
 
+test('start keeps change-file planning out of dataflow hardening', async () => {
+  const intent = 'where should I add auth token refresh';
+  const result = await runCli(['start', '--intent', intent, '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_edit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_understand');
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan understand --view change --intent "where should I add auth token refresh" --format json',
+      args: { view: 'change', intent },
+    }),
+  );
+});
+
 test('start uses release-candidate proof mode without publishing actions', async () => {
   const result = await runCli([
     'start',
