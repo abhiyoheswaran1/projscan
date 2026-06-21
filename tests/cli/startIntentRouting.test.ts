@@ -110,6 +110,18 @@ test('start fills feedback intake primary action with raw install warning text',
   expect(report.missionControl.primaryAction.command).not.toContain('<feedback>');
 });
 
+test('start routes docs-overclaim feedback to feedback intake', async () => {
+  const intent = 'docs sound bigger than demonstrated workflows';
+  const result = await runCli(['start', '--intent', intent, '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_feedback_intake');
+  expect(report.missionControl.primaryAction.command).toBe(
+    'projscan feedback intake --text "docs sound bigger than demonstrated workflows" --format json',
+  );
+});
+
 test('start routes AI-generated code review-before-commit intents to structural review', async () => {
   const result = await runCli([
     'start',

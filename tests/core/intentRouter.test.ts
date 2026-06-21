@@ -87,6 +87,24 @@ describe('routeIntent', () => {
     ).toBeUndefined();
   });
 
+  it('routes docs-overclaim feedback to feedback intake without hijacking docs lookup', () => {
+    const feedback = routeIntent('docs sound bigger than demonstrated workflows');
+
+    expect(feedback.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_feedback_intake',
+        cli: 'projscan feedback intake',
+        confidence: 'high',
+      }),
+    );
+
+    const lookup = routeIntent('where are the setup docs');
+    expect(lookup.matches[0].tool).not.toBe('projscan_feedback_intake');
+    expect(
+      lookup.matches.find((match) => match.tool === 'projscan_feedback_intake'),
+    ).toBeUndefined();
+  });
+
   it('routes AI-generated code review-before-commit intents to structural review', () => {
     const result = routeIntent('review AI-generated code before commit for verification debt');
 

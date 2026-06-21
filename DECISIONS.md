@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Route docs-overclaim feedback to intake
+
+- Status: accepted
+- Context: `projscan feedback intake` could classify "docs sound bigger than demonstrated workflows" as confusing docs/output feedback, but `projscan route` and `projscan start` did not route that raw feedback to intake. Agents fell back to generic before-edit preflight instead of preserving the feedback as a bounded improvement task.
+- Decision: Add narrow docs/output overclaim keywords and a feedback-intake context guard that requires docs/output wording plus overclaim-style terms such as bigger, demonstrated, workflow, confusing, or overclaim. Keep normal docs lookup prompts out of feedback intake.
+- Consequences: Raw docs-overclaim feedback now starts with `projscan feedback intake --text ... --format json`, while prompts such as "where are the setup docs" still route to search/understand.
+- Verification: Router, start-report, and CLI regressions fail without the docs-overclaim route support and pass after adding it.
+
 ## 2026-06-21: Route AI-generated review prompts to structural review first
 
 - Status: accepted
