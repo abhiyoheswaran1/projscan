@@ -105,6 +105,27 @@ describe('Mission Control success criteria', () => {
     ]);
   });
 
+  it('keeps feedback-intake criteria focused on task creation and verification', () => {
+    const criteria = successCriteria({
+      route: route('projscan_feedback_intake', ['noisy', 'caution'], 'high'),
+      actionPlan: [
+        action(
+          'Capture raw feedback',
+          'projscan feedback intake --text "caution output is noisy" --format json',
+          'projscan_feedback_intake',
+          { text: 'caution output is noisy' },
+        ),
+      ],
+    });
+
+    expect(criteria).toEqual([
+      'The raw feedback is classified and preserved before any product change starts.',
+      'The generated AgentLoop task command is copied or run so the feedback becomes a bounded implementation slice.',
+      'The feedback-intake suggested verification command is attached to the task or handoff.',
+      'The next task has a verification command: npm test -- tests/core/start.test.ts',
+    ]);
+  });
+
   it('keeps file criteria ordered by matched evidence', () => {
     const criteria = successCriteria({
       route: route('projscan_file', ['risk', 'coverage', 'reviewer']),

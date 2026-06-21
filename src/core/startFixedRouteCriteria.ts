@@ -39,6 +39,11 @@ export const FIXED_ROUTE_CRITERIA: Record<string, string[]> = {
     'The evidence pack produces a paste-ready PR comment with verdict, top risks, owner routing, and next commands.',
     'The reviewer-facing comment is validated before it is shared or used for approval.',
   ],
+  projscan_feedback_intake: [
+    'The raw feedback is classified and preserved before any product change starts.',
+    'The generated AgentLoop task command is copied or run so the feedback becomes a bounded implementation slice.',
+    'The feedback-intake suggested verification command is attached to the task or handoff.',
+  ],
   projscan_analyze: [
     'The scoped analysis, health, and CI artifacts are generated with path redaction enabled before sharing outside the repo.',
     'The reviewer can correlate redacted-path-N labels without seeing raw repo structure.',

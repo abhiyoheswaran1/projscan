@@ -329,6 +329,34 @@ test('start report keeps ordinary install setup prompts on understand', async ()
   );
 });
 
+test('start report uses feedback-intake success criteria for noisy caution feedback', async () => {
+  const root = await makeTempProject();
+  const intent = 'caution output is becoming noisy background noise in every PR';
+
+  const report = await computeStartReport(root, { intent });
+
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_feedback_intake',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan feedback intake --text "caution output is becoming noisy background noise in every PR" --format json',
+      tool: 'projscan_feedback_intake',
+      args: { text: intent },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toEqual([
+    'The raw feedback is classified and preserved before any product change starts.',
+    'The generated AgentLoop task command is copied or run so the feedback becomes a bounded implementation slice.',
+    'The feedback-intake suggested verification command is attached to the task or handoff.',
+    'The next task has a verification command: projscan preflight --mode before_edit --format json',
+  ]);
+});
+
 test('start report does not use bug-hunt criteria when explicit mode overrides product planning', async () => {
   const root = await makeTempProject();
 

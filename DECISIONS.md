@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Give feedback intake mission criteria
+
+- Status: accepted
+- Context: `projscan start` could route raw feedback to `projscan_feedback_intake`, but the success criteria fell back to a generic preflight verification line. That made the feedback-forwarding loop less explicit for agents handling noisy-output or false-positive reports.
+- Decision: Add fixed Mission Control criteria for `projscan_feedback_intake`: classify and preserve the raw feedback, carry forward the generated AgentLoop task command, and attach the suggested verification command to the task or handoff.
+- Consequences: Start JSON and mission artifacts now make feedback-to-task handling explicit without changing the feedback intake schema or adding a new command.
+- Verification: Focused start success-criteria and start-report regressions fail without the fixed-route criteria and pass after adding it.
+
 ## 2026-06-18: Distinguish dependency kind moves in review summaries
 
 - Status: accepted
