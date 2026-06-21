@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep Project Memory local state out of Git status
+
+- Status: accepted
+- Context: Project Memory records local issue history in `.projscan-memory/memory.json`, but init flows did not add a default `.gitignore` entry. Teams saw churny untracked local-state files after onboarding or scans.
+- Decision: Project Memory now writes a nested ignore file when saving, and init flows add `.projscan-memory/` to the root `.gitignore` idempotently without clobbering existing entries. The team onboarding review list includes `.gitignore` because init team may now modify it.
+- Consequences: Normal scans can still keep local memory, but the memory directory no longer appears as a file to commit after init. Existing `.gitignore` content is preserved.
+- Verification: Focused memory and init tests cover nested ignore creation, root `.gitignore` preservation, no duplicate entry, and clean Git status for generated memory after `init team`.
+
 ## 2026-06-21: Avoid first-party prepare lifecycle false positives
 
 - Status: accepted

@@ -7,6 +7,7 @@ import { buildFirstTenMinutes } from './onboarding.js';
 import { PLUGIN_PREVIEW_FLAG, discoverPluginManifests } from './plugins.js';
 import { analyzeHotspots } from './hotspotAnalyzer.js';
 import { collectIssues } from './issueEngine.js';
+import { ensureProjectMemoryIgnored } from './memory.js';
 import { scanRepository } from './repositoryScanner.js';
 import { saveBaseline } from '../utils/baseline.js';
 import { applyConfigToIssues, loadConfig } from '../utils/config.js';
@@ -683,6 +684,7 @@ export async function writeTeamStarterKit(
   const action = await writeGithubActionStarter(rootPath, options);
   const codeowners = await writeCodeownersStarter(rootPath, team, options);
   const baseline = await writeInitialBaseline(rootPath, options);
+  await ensureProjectMemoryIgnored(rootPath);
   return {
     schemaVersion: 1,
     team,
@@ -722,12 +724,13 @@ function buildTeamOnboarding(team: PolicyStarterTeam): TeamOnboardingStep[] {
       title: 'Review generated starter files',
       why: 'Confirm policy thresholds, PR workflow behavior, CODEOWNERS handles, and baseline memory before committing the bootstrap.',
       command:
-        'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json',
+        'git diff -- .projscanrc.json .github/workflows/projscan.yml .github/CODEOWNERS .projscan-baseline.json .gitignore',
       files: [
         '.projscanrc.json',
         '.github/workflows/projscan.yml',
         '.github/CODEOWNERS',
         '.projscan-baseline.json',
+        '.gitignore',
       ],
     },
     {

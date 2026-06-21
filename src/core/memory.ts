@@ -23,7 +23,7 @@ import path from 'node:path';
  */
 
 export const MEMORY_SCHEMA_VERSION = 1;
-const MEMORY_DIR = '.projscan-memory';
+export const MEMORY_DIR = '.projscan-memory';
 const MEMORY_FILENAME = 'memory.json';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -145,12 +145,26 @@ export async function saveMemory(rootPath: string, memory: ProjectMemory): Promi
   try {
     const dir = path.join(rootPath, MEMORY_DIR);
     await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, '.gitignore'), '*\n', 'utf-8').catch(() => {});
     const filePath = memoryFilePath(rootPath);
     memory.lastUpdatedAt = new Date().toISOString();
     await fs.writeFile(filePath, JSON.stringify(memory, null, 2), 'utf-8');
   } catch {
     // best-effort
   }
+}
+
+export async function ensureProjectMemoryIgnored(rootPath: string): Promise<void> {
+  const target = path.join(rootPath, '.gitignore');
+  let current = '';
+  try {
+    current = await fs.readFile(target, 'utf-8');
+  } catch (error) {
+    if (!isMissingFileError(error)) throw error;
+  }
+  if (gitignoreAlreadyCoversProjectMemory(current)) return;
+  const separator = current.length > 0 && !current.endsWith('\n') ? '\n' : '';
+  await fs.writeFile(target, `${current}${separator}${MEMORY_DIR}/\n`, 'utf-8');
 }
 
 /**
@@ -438,6 +452,27 @@ function createFresh(): ProjectMemory {
 
 function memoryFilePath(rootPath: string): string {
   return path.join(rootPath, MEMORY_DIR, MEMORY_FILENAME);
+}
+
+function gitignoreAlreadyCoversProjectMemory(content: string): boolean {
+  return content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .some(
+      (line) =>
+        !line.startsWith('#') &&
+        [
+          MEMORY_DIR,
+          `${MEMORY_DIR}/`,
+          `/${MEMORY_DIR}`,
+          `/${MEMORY_DIR}/`,
+          `**/${MEMORY_DIR}/**`,
+        ].includes(line),
+    );
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function isMemoryShape(value: unknown): value is ProjectMemory {

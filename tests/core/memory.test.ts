@@ -175,6 +175,16 @@ describe('saveMemory + load round-trip', () => {
     expect(reloaded.rules['rule-a'].runCount).toBe(2);
     expect(reloaded.rules['rule-b'].runCount).toBe(1);
   });
+
+  it('writes a local .gitignore so project memory is not committed', async () => {
+    const m = await loadMemory(tmp);
+    recordRun(m, ['rule-a']);
+    await saveMemory(tmp, m);
+
+    await expect(
+      fs.readFile(path.join(tmp, '.projscan-memory', '.gitignore'), 'utf-8'),
+    ).resolves.toBe('*\n');
+  });
 });
 
 describe('forgetRule', () => {

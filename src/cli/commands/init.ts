@@ -35,6 +35,7 @@ import {
   type WriteGithubActionStarterResult,
   type WritePolicyStarterResult,
 } from '../../core/adoption.js';
+import { ensureProjectMemoryIgnored } from '../../core/memory.js';
 import type { StartReport } from '../../types/start.js';
 
 /**
@@ -189,6 +190,7 @@ async function runInit(rootPath: string, force: boolean): Promise<void> {
   }
 
   if (exists && !force) {
+    await ensureProjectMemoryIgnored(rootPath);
     console.log('');
     console.log(chalk.yellow('⚠ .projscanrc.json already exists. Refusing to overwrite.'));
     console.log(
@@ -207,6 +209,7 @@ async function runInit(rootPath: string, force: boolean): Promise<void> {
 
   const content = JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n';
   await fs.writeFile(target, content, 'utf-8');
+  await ensureProjectMemoryIgnored(rootPath);
   console.log('');
   console.log(chalk.green('✓ Created .projscanrc.json'));
   console.log('');
