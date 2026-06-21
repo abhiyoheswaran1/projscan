@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { calculateScore, badgeUrl, badgeMarkdown } from '../../src/utils/scoreCalculator.js';
 import type { Issue } from '../../src/types.js';
 
-function makeIssue(severity: 'error' | 'warning' | 'info'): Issue {
+function makeIssue(severity: 'error' | 'warning' | 'info', category = 'test'): Issue {
   return {
     id: `test-${severity}`,
     title: `Test ${severity}`,
     description: `A test ${severity}`,
     severity,
-    category: 'test',
+    category,
     fixAvailable: false,
   };
 }
@@ -70,6 +70,31 @@ describe('calculateScore', () => {
     const result = calculateScore(issues);
     expect(result.score).toBe(67);
     expect(result.grade).toBe('D');
+  });
+
+  it('explains score penalties by severity and category', () => {
+    const result = calculateScore([
+      makeIssue('error', 'security'),
+      makeIssue('warning', 'architecture'),
+      makeIssue('info', 'security'),
+    ]);
+
+    expect(result.scoreBreakdown).toEqual({
+      baseScore: 100,
+      finalScore: 67,
+      grade: 'D',
+      totalPenalty: 33,
+      uncappedPenalty: 33,
+      bySeverity: {
+        error: { count: 1, weight: 20, penalty: 20 },
+        warning: { count: 1, weight: 10, penalty: 10 },
+        info: { count: 1, weight: 3, penalty: 3 },
+      },
+      byCategory: [
+        { category: 'architecture', count: 1, penalty: 10 },
+        { category: 'security', count: 2, penalty: 23 },
+      ],
+    });
   });
 });
 

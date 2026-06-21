@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import type { Issue } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import { formatIssueLocations, issueRemediation } from './ciIssueDetails.js';
+import { printScoreBreakdown } from './scoreBreakdownReporter.js';
 
 function severityIcon(severity: string): string {
   switch (severity) {
@@ -17,7 +18,7 @@ function severityIcon(severity: string): string {
 }
 
 export function reportCi(issues: Issue[], threshold: number): void {
-  const { score, grade, errors, warnings, infos } = calculateScore(issues);
+  const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
   const pass = score >= threshold;
   const status = pass ? chalk.green('PASS') : chalk.red('FAIL');
   const gradeColor =
@@ -26,6 +27,7 @@ export function reportCi(issues: Issue[], threshold: number): void {
   console.log(
     `projscan: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))} - ${errors} error${errors !== 1 ? 's' : ''}, ${warnings} warning${warnings !== 1 ? 's' : ''}, ${infos} info - ${status} (threshold: ${threshold})`,
   );
+  printScoreBreakdown(scoreBreakdown);
 
   if (!pass) {
     for (const issue of issues) {

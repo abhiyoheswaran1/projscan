@@ -891,6 +891,9 @@ Use it before broader rollout. The report includes feedback questions for the fi
 ## Health Score
 
 Every `projscan doctor` and `projscan badge` run calculates a health score from 0 to 100 based on detected issues.
+`doctor --format json` and `ci --format json` include `scoreBreakdown` so scripts
+and reviewers can see the base score, per-severity weights, category penalties,
+total penalty, final score, and grade.
 
 **Scoring:**
 
@@ -913,7 +916,8 @@ Every `projscan doctor` and `projscan badge` run calculates a health score from 
 The score appears in all output formats:
 
 - **Console**: Shown at the top of the doctor report
-- **JSON**: Included as `health.score` and `health.grade` fields
+- **JSON**: Included as `health.score`, `health.grade`, and `health.scoreBreakdown`
+  fields. CI uses the same structure under `ci.scoreBreakdown`.
 - **Markdown**: Shown as a heading with an auto-generated shields.io badge
 - **HTML**: Shown in the health summary card
 - **SARIF**: Not surfaced directly - SARIF is per-issue, not per-project. The score still drives `ci`'s exit code.

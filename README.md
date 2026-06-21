@@ -284,6 +284,9 @@ projscan ci --format sarif > projscan.sarif
 `ci --format json` keeps `ci.issues[]` annotation-ready: each issue includes
 `ruleId`, `severity`, `message`, `location`, `locations`, and `remediation`
 when projscan has that data.
+`doctor --format json` and `ci --format json` also include `scoreBreakdown`,
+which shows the base score, severity weights, category penalties, total penalty,
+final score, and grade.
 
 GitHub Actions example:
 

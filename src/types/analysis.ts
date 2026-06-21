@@ -1,4 +1,4 @@
-import type { ExportInfo, ImportInfo, Issue } from './common.js';
+import type { ExportInfo, ImportInfo, Issue, IssueSeverity } from './common.js';
 import type {
   DependencyReport,
   FrameworkResult,
@@ -38,4 +38,27 @@ export interface HealthScore {
   errors: number;
   warnings: number;
   infos: number;
+  scoreBreakdown?: ScoreBreakdown;
+}
+
+export interface ScoreSeverityBreakdown {
+  count: number;
+  weight: number;
+  penalty: number;
+}
+
+export interface ScoreCategoryBreakdown {
+  category: string;
+  count: number;
+  penalty: number;
+}
+
+export interface ScoreBreakdown {
+  baseScore: number;
+  finalScore: number;
+  grade: HealthScore['grade'];
+  totalPenalty: number;
+  uncappedPenalty: number;
+  bySeverity: Record<IssueSeverity, ScoreSeverityBreakdown>;
+  byCategory: ScoreCategoryBreakdown[];
 }

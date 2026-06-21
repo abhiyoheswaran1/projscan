@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { Issue } from '../types.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
+import { printScoreBreakdown } from './scoreBreakdownReporter.js';
 
 export interface ReportHealthOptions {
   /** Scan duration in milliseconds; surfaced under the score line. */
@@ -69,9 +70,10 @@ function gradeColor(grade: string): (message: string) => string {
 }
 
 function printHealthScore(issues: Issue[]): void {
-  const { score, grade } = calculateScore(issues);
+  const { score, grade, scoreBreakdown } = calculateScore(issues);
   const color = gradeColor(grade);
   console.log(`\n  Health Score: ${color(chalk.bold(`${grade} (${score}/100)`))}`);
+  printScoreBreakdown(scoreBreakdown);
 }
 
 function printNoIssues(): void {

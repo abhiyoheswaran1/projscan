@@ -1,4 +1,11 @@
-import type { Issue, HealthScore } from '../types.js';
+import type { Issue, HealthScore, IssueSeverity, ScoreBreakdown } from '../types.js';
+
+const BASE_SCORE = 100;
+const SEVERITY_WEIGHTS: Record<IssueSeverity, number> = {
+  error: 20,
+  warning: 10,
+  info: 3,
+};
 
 /**
  * Calculate a project health score (0–100) and letter grade from detected issues.
@@ -16,21 +23,85 @@ import type { Issue, HealthScore } from '../types.js';
  *   F  < 60
  */
 export function calculateScore(issues: Issue[]): HealthScore {
-  const errors = issues.filter((i) => i.severity === 'error').length;
-  const warnings = issues.filter((i) => i.severity === 'warning').length;
-  const infos = issues.filter((i) => i.severity === 'info').length;
+  const errors = countSeverity(issues, 'error');
+  const warnings = countSeverity(issues, 'warning');
+  const infos = countSeverity(issues, 'info');
+  const uncappedPenalty =
+    penaltyFor('error', errors) + penaltyFor('warning', warnings) + penaltyFor('info', infos);
+  const totalPenalty = Math.min(BASE_SCORE, uncappedPenalty);
+  const score = Math.max(0, BASE_SCORE - uncappedPenalty);
+  const grade = gradeForScore(score);
 
-  const deductions = errors * 20 + warnings * 10 + infos * 3;
-  const score = Math.max(0, 100 - deductions);
+  return {
+    score,
+    grade,
+    errors,
+    warnings,
+    infos,
+    scoreBreakdown: buildScoreBreakdown(issues, {
+      score,
+      grade,
+      errors,
+      warnings,
+      infos,
+      totalPenalty,
+      uncappedPenalty,
+    }),
+  };
+}
 
-  let grade: HealthScore['grade'];
-  if (score >= 90) grade = 'A';
-  else if (score >= 80) grade = 'B';
-  else if (score >= 70) grade = 'C';
-  else if (score >= 60) grade = 'D';
-  else grade = 'F';
+function countSeverity(issues: Issue[], severity: IssueSeverity): number {
+  return issues.filter((issue) => issue.severity === severity).length;
+}
 
-  return { score, grade, errors, warnings, infos };
+function penaltyFor(severity: IssueSeverity, count: number): number {
+  return count * SEVERITY_WEIGHTS[severity];
+}
+
+function gradeForScore(score: number): HealthScore['grade'] {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
+}
+
+function buildScoreBreakdown(
+  issues: Issue[],
+  score: HealthScore & { totalPenalty: number; uncappedPenalty: number },
+): ScoreBreakdown {
+  return {
+    baseScore: BASE_SCORE,
+    finalScore: score.score,
+    grade: score.grade,
+    totalPenalty: score.totalPenalty,
+    uncappedPenalty: score.uncappedPenalty,
+    bySeverity: {
+      error: severityBreakdown(score.errors, 'error'),
+      warning: severityBreakdown(score.warnings, 'warning'),
+      info: severityBreakdown(score.infos, 'info'),
+    },
+    byCategory: categoryBreakdown(issues),
+  };
+}
+
+function severityBreakdown(count: number, severity: IssueSeverity) {
+  const weight = SEVERITY_WEIGHTS[severity];
+  return { count, weight, penalty: count * weight };
+}
+
+function categoryBreakdown(issues: Issue[]): ScoreBreakdown['byCategory'] {
+  const categories = new Map<string, { count: number; penalty: number }>();
+  for (const issue of issues) {
+    const category = issue.category || 'uncategorized';
+    const current = categories.get(category) ?? { count: 0, penalty: 0 };
+    current.count += 1;
+    current.penalty += SEVERITY_WEIGHTS[issue.severity];
+    categories.set(category, current);
+  }
+  return [...categories.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, value]) => ({ category, ...value }));
 }
 
 const GRADE_COLORS: Record<HealthScore['grade'], string> = {

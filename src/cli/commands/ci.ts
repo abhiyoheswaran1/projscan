@@ -71,7 +71,7 @@ export function registerCi(): void {
             typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold,
           ),
         );
-        const { score, grade, errors, warnings, infos } = calculateScore(issues);
+        const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
         const ci = {
           score,
           grade,
@@ -81,6 +81,7 @@ export function registerCi(): void {
           errors,
           warnings,
           info: infos,
+          scoreBreakdown,
           issues,
         };
 

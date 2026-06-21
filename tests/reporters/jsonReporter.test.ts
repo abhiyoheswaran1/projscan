@@ -68,6 +68,15 @@ describe('jsonReporter', () => {
         errors: 1,
         warnings: 1,
         info: 1,
+        scoreBreakdown: {
+          baseScore: 100,
+          totalPenalty: 33,
+          bySeverity: {
+            error: { count: 1, weight: 20, penalty: 20 },
+            warning: { count: 1, weight: 10, penalty: 10 },
+            info: { count: 1, weight: 3, penalty: 3 },
+          },
+        },
       });
       expect(typeof parsed.health.score).toBe('number');
       expect(parsed.health.grade).toMatch(/^[A-F]$/);
@@ -115,6 +124,13 @@ describe('jsonReporter', () => {
       )) as { schemaVersion: number; ci: Record<string, unknown> };
       expect(parsed.schemaVersion).toBe(2);
       expect(parsed.ci).toMatchObject({ threshold: 80, totalIssues: 1, errors: 1 });
+      expect(parsed.ci.scoreBreakdown).toMatchObject({
+        baseScore: 100,
+        totalPenalty: 20,
+        bySeverity: {
+          error: { count: 1, weight: 20, penalty: 20 },
+        },
+      });
       expect(typeof parsed.ci.pass).toBe('boolean');
       expect(typeof parsed.ci.score).toBe('number');
     });

@@ -41,7 +41,7 @@ export function reportAnalysisJson(
 }
 
 export function reportHealthJson(issues: Issue[], reportControls?: ReportControlsMetadata): void {
-  const { score, grade, errors, warnings, infos } = calculateScore(issues);
+  const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
   console.log(
     JSON.stringify(
       {
@@ -54,6 +54,7 @@ export function reportHealthJson(issues: Issue[], reportControls?: ReportControl
           errors,
           warnings,
           info: infos,
+          scoreBreakdown,
           issues,
         },
       },
@@ -68,7 +69,7 @@ export function reportCiJson(
   threshold: number,
   reportControls?: ReportControlsMetadata,
 ): void {
-  const { score, grade, errors, warnings, infos } = calculateScore(issues);
+  const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
   console.log(
     JSON.stringify(
       {
@@ -83,6 +84,7 @@ export function reportCiJson(
           errors,
           warnings,
           info: infos,
+          scoreBreakdown,
           issues: issues.map(toCiIssueDetail),
         },
       },

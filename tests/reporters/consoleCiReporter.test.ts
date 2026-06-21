@@ -34,6 +34,10 @@ describe('consoleCiReporter', () => {
     expect(out).toContain('1 error');
     expect(out).toContain('2 warnings');
     expect(out).toContain('1 info');
+    expect(out).toContain('Score breakdown');
+    expect(out).toContain('error: 1 x 20 = -20');
+    expect(out).toContain('warning: 2 x 10 = -20');
+    expect(out).toContain('info: 1 x 3 = -3');
     expect(out).toContain('First error');
     expect(out).toContain('One warning');
     expect(out).toContain('Second warning');

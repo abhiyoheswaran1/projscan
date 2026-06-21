@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Add explicit health and CI score breakdowns
+
+- Status: accepted
+- Context: Teams could see the final health score and grade, but not the weights or category penalties that produced them. That made zero-error repos with warnings or info findings feel arbitrary.
+- Decision: Keep existing score semantics unchanged and add `scoreBreakdown` to calculator output, health JSON, CI JSON, and CI reporter plugin payloads. Console health and CI output now prints the base score, applied penalty, severity weights, and category penalty summary when findings exist.
+- Consequences: Existing `score`, `grade`, and issue count fields remain compatible. Reviewers and PR annotation tools can explain why a score changed without reverse-engineering hard-coded weights.
+- Verification: Focused score calculator and reporter tests fail without the breakdown and pass after adding it.
+
 ## 2026-06-21: Expose annotation-ready CI issue details
 
 - Status: accepted

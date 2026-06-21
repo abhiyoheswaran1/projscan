@@ -41,6 +41,10 @@ describe('consoleHealthReporter', () => {
     expect(out).toContain('Project Health Report');
     expect(out).toContain('Health Score');
     expect(out).toMatch(/\d+\/100/);
+    expect(out).toContain('Score breakdown');
+    expect(out).toContain('error: 1 x 20 = -20');
+    expect(out).toContain('warning: 1 x 10 = -10');
+    expect(out).toContain('info: 1 x 3 = -3');
     expect(out).toContain('1 error');
     expect(out).toContain('1 warning');
     expect(out).toContain('1 info');
