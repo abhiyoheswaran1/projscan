@@ -126,10 +126,24 @@ and a before-edit gate instead of a free-form plan.
 projscan bug-hunt --format json
 projscan preflight --mode before_commit --format json
 projscan evidence-pack --pr-comment
+projscan assess --goal "make this repo safer to ship this week"
+projscan assess --mode fix-first --format markdown
+projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"
 ```
 
 Success criteria: concrete fix targets, manual review gates, and proof commands
 are separated before a reviewer sees the work.
+
+`projscan assess` turns those same signals into Proof Cards with evidence,
+impact, a safe change shape, verification commands, feedback or suppression
+guidance, and a risk delta. Add `--baseline previous-assess.json` to compare
+the current risk delta against a prior run. It does not release, tag, publish,
+or deploy.
+
+`projscan simulate --plan "<change plan>"` is the next step when the safest
+fix shape is a refactor, extraction, or module split. It predicts likely files,
+affected tests, contract surfaces, rollout steps, proof commands, and projected
+risk delta from local evidence. It is read-only and does not execute the plan.
 
 ### Before release-candidate review
 
@@ -234,6 +248,8 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_bug_hunt` / `projscan bug-hunt`** — bug-hunt action queue. Combines doctor issues, preflight, hotspots, and session coordination into ranked actions with verification commands; release-scale-only findings print as manual review/sign-off work while preserving JSON verdict compatibility, and pure hotspot churn stays as watchlist/top-suspect evidence when health and gates are clean.
 - **`projscan_agent_brief` / `projscan agent-brief`** — compact next-agent context packet with focus items, repo context, coordination hints, guardrails, and suggested next actions.
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
+- **`projscan_assess` / `projscan assess`** — proof-first assessment. Composes quality-scorecard, bug-hunt, and preflight into Proof Cards with local evidence, impact, a safe fix shape, verification commands, feedback or suppression guidance, and risk delta. Use `projscan assess --goal "make this repo safer to ship this week"` for a broad weekly pass, `projscan assess --mode fix-first --format markdown` when you want one or two next actions instead of a long list, or `--baseline previous-assess.json` to compare against a prior assessment. The command is read-only and does not release, tag, publish, or deploy.
+- **`projscan_simulate` / `projscan simulate`** — risk delta simulator. Evaluates a proposed change plan before editing and returns likely touched files, affected tests, contract surfaces, rollout steps, proof commands, confidence, and projected before/after risk. Use `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` before doing a refactor. The command is read-only and does not execute the plan.
 - **`projscan_understand` / `projscan understand`** — cited repo-comprehension surface. Returns repo maps, runtime flow maps, contract maps, change-readiness guidance, verification tiers, unknowns, read-first files, and exact next commands.
 - **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan telemetry` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, default-off telemetry controls, adoption trial reports, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
@@ -1383,6 +1399,8 @@ _Structural / agent-native:_
 - `projscan_bug_hunt` — prioritized bug-hunt action queue with per-action verification.
 - `projscan_agent_brief` — compact next-agent context packet with focus items, guardrails, repo context, and suggested next actions.
 - `projscan_quality_scorecard` — dimensioned quality view with top risks and verification commands.
+- `projscan_assess` — proof-first assessment with Proof Cards, risk delta, and fix-first guidance.
+- `projscan_simulate` — risk delta simulator for proposed change plans before editing.
 - `projscan_adoption` — adoption helper for MCP client snippets, MCP setup doctor, agent workflow recipes, and first-run diagnostics.
 - `projscan_release_train` — product-line readiness plan with scope and next-action evidence.
 - `projscan_evidence_pack` — approval packet with planning, bug-hunt, workplan, preflight, changelog, and website prompt evidence.
@@ -1705,7 +1723,7 @@ src/
 ├── mcp/
 │   ├── server.ts                # MCP server factory and JSON-RPC request orchestration
 │   ├── serverStdio.ts           # stdio transport loop for the CLI entry point
-│   ├── tools.ts                 # 41 MCP tools (barrel; per-tool files under tools/)
+│   ├── tools.ts                 # MCP tools barrel; per-tool files live under tools/
 │   ├── tokenBudget.ts           # Record-aware response truncator
 │   ├── pagination.ts            # Cursor-based pagination (opaque base64 + checksum)
 │   ├── progress.ts              # notifications/progress plumbing

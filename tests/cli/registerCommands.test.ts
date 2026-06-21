@@ -52,6 +52,8 @@ const expectedRegistrarOrder = [
   'registerRegressionPlan',
   'registerAgentBrief',
   'registerQualityScorecard',
+  'registerAssess',
+  'registerSimulate',
   'registerStart',
   'registerTrial',
   'registerTelemetry',

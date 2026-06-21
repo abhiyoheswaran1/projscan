@@ -188,7 +188,7 @@ Fresh verification for this review-packet task:
 | `npm exec projscan -- preflight --mode before_commit --format json` | Exit 0, verdict `caution`; health and supply-chain checks pass, coordination readiness is `clear`, review warning is scale/complexity across 44 changed files. |
 | `npm run typecheck` | Passed with `tsc --noEmit`. |
 | `npm run lint` | Passed with `eslint src/`. |
-| `npm run build` | Passed with TypeScript compile, wasm copy, and 45-tool manifest generation. |
+| `npm run build` | Passed with TypeScript compile, wasm copy, and 47-tool manifest generation. |
 
 Non-blocking review signal: `projscan review` returns a block verdict from
 maximum changed-file risk because the dirty train is broad. It does not report

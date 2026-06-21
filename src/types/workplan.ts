@@ -15,6 +15,7 @@ export interface WorkplanEvidence {
   message: string;
   severity?: IssueSeverity;
   file?: string;
+  line?: number;
   issueId?: string;
   tool?: string;
 }

@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.11.0]
+
+2026-06-21 - "Proof-First Engineering Command Center"
+
+### Added
+
+- Added `projscan assess`, a proof-first assessment workflow that answers what
+  is risky, why it matters, what to fix first, how to fix it safely, which
+  commands prove it, what risk the fix removes, and whether the repo is ready
+  to ship.
+- Added Proof Cards with local evidence, impact, safe change shape,
+  verification commands, confidence, feedback or suppression paths, and risk
+  delta.
+- Added `projscan simulate --plan "<change plan>"`, a read-only risk delta
+  simulator that predicts likely touched files, affected tests, contract
+  surfaces, rollout steps, proof commands, and before/after risk.
+- Added MCP tools `projscan_assess` and `projscan_simulate` so agents can use
+  the same proof-first workflows through the 47-tool MCP server.
+
+### Changed
+
+- Updated hotspot Proof Cards to point refactor-style fixes toward
+  `projscan simulate` before editing.
+- Updated README, guide, stability policy, registry metadata, and website
+  update guidance around the proof-first command center direction.
+
+### Fixed
+
+- Fixed simulator false confidence where vague plans could inherit quality or
+  graph evidence without matching a concrete file or symbol.
+- Fixed simulator dotfile matching so files such as `.gitignore` cannot match
+  every plan through an empty basename.
+- Tightened likely-test ranking so simulator output prefers direct matching
+  tests instead of broad same-directory or alphabetical noise.
+
 ## [4.10.0]
 
 2026-06-21 - "Trustworthy Daily Engineering Gates"

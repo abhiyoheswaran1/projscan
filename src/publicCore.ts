@@ -4,6 +4,8 @@ export { detectFrameworks } from './core/frameworkDetector.js';
 export { analyzeDependencies } from './core/dependencyAnalyzer.js';
 export { collectIssues } from './core/issueEngine.js';
 export { analyzeHotspots, computeRiskScore } from './core/hotspotAnalyzer.js';
+export { computeAssess } from './core/assess.js';
+export { computeSimulation } from './core/simulate.js';
 export { inspectFile } from './core/fileInspector.js';
 export {
   buildImportGraph,

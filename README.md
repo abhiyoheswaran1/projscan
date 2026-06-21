@@ -24,8 +24,9 @@ Use projscan when an agent asks one of these questions:
 - Which files should I read before changing this feature?
 - Which proof commands should I run before handoff?
 - Which risks need fixes, reviewer attention, or release sign-off?
+- What is actually risky, and what should I fix first?
 
-projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 45-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
+projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 47-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
 
 ## Install
 
@@ -89,6 +90,20 @@ You get read-only readiness evidence. projscan reports fixes and sign-off gates;
 
 Success criteria: release review separates concrete defects from human approval gates before anyone tags or publishes.
 
+### Weekly proof-first assessment
+
+```bash
+projscan assess --goal "make this repo safer to ship this week"
+projscan assess --mode fix-first --format markdown
+projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"
+```
+
+You get Proof Cards: each recommendation carries local evidence, impact, a safe change shape, verification commands, feedback or suppression guidance, and a risk delta. Add `--baseline previous-assess.json` to compare the current risk delta against a prior run. `assess` composes existing quality, bug-hunt, and preflight evidence; it does not release, tag, publish, or deploy.
+
+Use the risk delta simulator before a refactor or extraction. It predicts likely touched files, affected tests, contract surfaces, rollout steps, proof commands, and before/after risk from local evidence. It is read-only: it does not edit files, run the plan, release, tag, publish, or deploy.
+
+Success criteria: the team sees the one or two highest-value fixes, why they matter, how to prove them, and whether ship-readiness still needs caution or review.
+
 ## Mission Control
 
 `projscan start --intent "<goal>"` turns a plain-language goal into an execution plan:
@@ -128,13 +143,13 @@ npm run docs:screenshots
 npm run docs:demos
 ```
 
-## 4.9.3 Notes
+## 4.11.0 Notes
 
-4.9.3 is a documentation and proof-media patch for the 4.9 trust release:
+4.11.0 is the proof-first engineering command center release:
 
-- README now starts with install, three daily workflows, MCP setup, command map, and the trust model.
-- Mission Control screenshots and VHS demos were regenerated from current CLI output.
-- The release keeps the 4.9.2 runtime fixes for TypeScript aliases, local package aliases, Next.js App Router entrypoints, explicit before-edit proof, compact reviewer feedback, caution triage, and parallel preflight gathering.
+- `projscan assess` turns quality, bug-hunt, and preflight evidence into Proof Cards with fix-first guidance and risk delta.
+- `projscan simulate --plan "<change plan>"` predicts likely files, tests, contracts, rollout, proof commands, and before/after risk before editing.
+- MCP now exposes 47 tools, including `projscan_assess` and `projscan_simulate`.
 
 ## MCP Setup
 
@@ -174,6 +189,8 @@ npx -y projscan mcp --watch
 | Who imports this file?                       | `projscan semantic-graph --query importers --file src/auth/jwt.ts --format json` |
 | What breaks if I rename this symbol?         | `projscan impact --symbol buildCodeGraph --format json`                          |
 | What should I fix first?                     | `projscan bug-hunt --format json`                                                |
+| What is risky and worth fixing this week?    | `projscan assess --goal "make this repo safer to ship this week"`                |
+| Is this refactor worth doing?                | `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` |
 | Which files have high risk and low coverage? | `projscan coverage --format json`                                                |
 | What should my agent do next?                | `projscan workplan --format json`                                                |
 | Which proof belongs in this PR?              | `projscan evidence-pack --pr-comment`                                            |
@@ -186,6 +203,8 @@ npx -y projscan mcp --watch
 | `projscan start`          | first-60-seconds orientation, routing, and Mission Control                 |
 | `projscan understand`     | cited repo map, runtime flows, public contracts, and change readiness      |
 | `projscan preflight`      | proceed, caution, or block gate for edit, commit, or merge                 |
+| `projscan assess`         | proof-first assessment with Proof Cards, risk delta, and fix-first guidance |
+| `projscan simulate`       | risk delta simulator for a proposed change plan before editing              |
 | `projscan evidence-pack`  | PR-ready proof with risks, owners, and next commands                       |
 | `projscan bug-hunt`       | ranked fix queue from health, hotspots, session, and preflight evidence    |
 | `projscan workplan`       | ordered agent tasks with proof and handoff text                            |
@@ -375,7 +394,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.9.3` has seven direct runtime dependencies:
+`projscan@4.11.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -385,7 +404,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.9.3. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.11.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

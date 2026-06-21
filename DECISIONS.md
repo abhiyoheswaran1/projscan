@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Add proof-first assessment as a read-only command
+
+- Status: accepted
+- Context: Quality scorecard, bug-hunt, hotspots, and preflight each produced useful evidence, but engineers still had to combine several outputs to answer what is actually risky, what to fix first, how to verify it, and whether shipping is safe.
+- Decision: Add `projscan assess` and `projscan_assess` as a read-only assessment layer that composes existing quality, bug-hunt, and preflight signals into Proof Cards. Each card carries local evidence, impact, safe change shape, verification commands, feedback or suppression guidance, confidence, and risk delta.
+- Consequences: Maintainers get one proof-first workflow for weekly assessment and fix-first planning. The command does not release, tag, publish, or deploy, and it does not write project memory.
+- Verification: Focused core, CLI, MCP, public type, and docs tests cover report shape, fix-first mode, format support, tool registration, and docs.
+
 ## 2026-06-21: Keep Git setup diagnostics precise
 
 - Status: accepted

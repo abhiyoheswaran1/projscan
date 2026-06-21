@@ -40,6 +40,8 @@ import { evidencePackTool } from './tools/evidencePack.js';
 import { regressionPlanTool } from './tools/regressionPlan.js';
 import { agentBriefTool } from './tools/agentBrief.js';
 import { qualityScorecardTool } from './tools/qualityScorecard.js';
+import { assessTool } from './tools/assess.js';
+import { simulateTool } from './tools/simulate.js';
 import { adoptionTool } from './tools/adoption.js';
 import { startTool } from './tools/start.js';
 import { understandTool } from './tools/understand.js';
@@ -82,6 +84,8 @@ export const mcpTools: McpTool[] = [
   regressionPlanTool,
   agentBriefTool,
   qualityScorecardTool,
+  assessTool,
+  simulateTool,
   adoptionTool,
   startTool,
   understandTool,
