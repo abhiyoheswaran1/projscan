@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Label quality summary score as health score
+
+- Status: accepted
+- Context: `quality-scorecard` summaries said `quality scorecard 100/100` even when the verdict was `needs_attention`, because the number came from doctor health while watch dimensions can still lower the verdict.
+- Decision: Keep verdict and scoring unchanged, but label the numeric value as `health score <n>/100` in the summary.
+- Consequences: Scorecard summaries no longer look contradictory when health is clean but maintainability or coordination dimensions need attention. JSON shape and command lists remain unchanged.
+- Verification: `npm test -- tests/core/qualityScorecard.test.ts -t "summarizes dimensions"` failed on the old wording and passed after the summary wording change.
+
 ## 2026-06-21: Keep workplan scorecard risk order aligned
 
 - Status: accepted

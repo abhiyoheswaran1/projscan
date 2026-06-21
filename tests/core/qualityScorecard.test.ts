@@ -58,6 +58,8 @@ test('quality scorecard summarizes dimensions and verification commands', async 
 
   expect(report.schemaVersion).toBe(1);
   expect(report.verdict).toMatch(/^(excellent|healthy|needs_attention|blocked)$/);
+  expect(report.summary).toContain(`health score ${report.health.score}/100`);
+  expect(report.summary).not.toContain('quality scorecard 100/100');
   expect(report.dimensions.map((dimension) => dimension.id)).toEqual(
     expect.arrayContaining(['health', 'security', 'tests', 'maintainability', 'coordination']),
   );

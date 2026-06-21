@@ -320,7 +320,7 @@ function summarize(
 ): string {
   const failing = dimensions.filter((dimension) => dimension.status === 'fail').length;
   const watching = dimensions.filter((dimension) => dimension.status === 'watch').length;
-  return `${verdict}: quality scorecard ${score}/100 with ${failing} failing and ${watching} watch dimension(s)`;
+  return `${verdict}: health score ${score}/100 with ${failing} failing and ${watching} watch dimension(s)`;
 }
 
 function issueFiles(issue: Issue): string[] {
