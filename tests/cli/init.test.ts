@@ -9,6 +9,13 @@ import { spawnCli } from '../helpers/cli.js';
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
+const gitEnv = {
+  ...process.env,
+  GIT_AUTHOR_EMAIL: 'fixture@example.com',
+  GIT_AUTHOR_NAME: 'Fixture',
+  GIT_COMMITTER_EMAIL: 'fixture@example.com',
+  GIT_COMMITTER_NAME: 'Fixture',
+};
 
 let tmp: string;
 
@@ -72,7 +79,7 @@ async function runCli(
 }
 
 async function git(args: string[]): Promise<void> {
-  await execFileAsync('git', args, { cwd: tmp });
+  await execFileAsync('git', args, { cwd: tmp, env: gitEnv });
 }
 
 async function gitStatus(): Promise<string> {
