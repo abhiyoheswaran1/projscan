@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Add file inspection follow-up actions
+
+- Status: accepted
+- Context: `projscan start`, workplan, and quality reports point engineers at `projscan file`, but file inspection mostly returned metadata. The next safe commands were implicit.
+- Decision: Add optional `suggestedNextActions` to file inspection output and render a short Next Actions section in console and Markdown reporters.
+- Consequences: `projscan file` now tells engineers how to check impact, explain the first linked issue, review hotspot context, and search for tests without changing the existing schema version or removing metadata.
+- Verification: `npm test -- tests/core/fileInspectionReport.test.ts tests/reporters/consoleFileReporter.test.ts tests/reporters/markdownFileReporter.test.ts -t suggested` failed before the field/rendering existed and passed after adding the action builder and reporter sections.
+
 ## 2026-06-21: Shell-escape generated file commands
 
 - Status: accepted

@@ -14,6 +14,8 @@ import { collectFileInspectionEvidence } from './fileInspectionEvidence.js';
 import { deriveFileGraphMetrics } from './fileGraphMetrics.js';
 import { detectFileIssues } from './fileIssues.js';
 import { inferPurpose } from './filePurpose.js';
+import { quoteShellArg } from './startShellArgs.js';
+import type { PreflightSuggestedAction } from '../types/preflight.js';
 
 export interface InspectOptions {
   scan?: { files: FileEntry[] };
@@ -53,6 +55,7 @@ export async function inspectExistingProjectFile(
   });
 
   const graphMetrics = deriveFileGraphMetrics(graph, relativePath);
+  const suggestedNextActions = buildSuggestedNextActions(relativePath, relatedEvidence);
 
   return {
     relativePath,
@@ -69,6 +72,45 @@ export async function inspectExistingProjectFile(
     fanIn: graphMetrics.fanIn,
     fanOut: graphMetrics.fanOut,
     language,
+    suggestedNextActions,
     functions: graphMetrics.functions,
   };
+}
+
+function buildSuggestedNextActions(
+  relativePath: string,
+  evidence: ReturnType<typeof collectFileInspectionEvidence>,
+): PreflightSuggestedAction[] {
+  const testQuery = `tests for ${relativePath}`;
+  const actions: PreflightSuggestedAction[] = [
+    {
+      label: 'Check impact before editing',
+      command: `projscan impact ${quoteShellArg(relativePath)} --format json`,
+      tool: 'projscan_impact',
+      args: { file: relativePath },
+    },
+  ];
+  const firstIssue = evidence.issues[0];
+  if (firstIssue) {
+    actions.push({
+      label: `Explain ${firstIssue.id}`,
+      command: `projscan explain-issue ${quoteShellArg(firstIssue.id)} --format json`,
+      tool: 'projscan_explain_issue',
+      args: { issueId: firstIssue.id },
+    });
+  }
+  if (evidence.hotspot) {
+    actions.push({
+      label: 'Review hotspot context',
+      command: 'projscan hotspots --format json',
+      tool: 'projscan_hotspots',
+    });
+  }
+  actions.push({
+    label: 'Find tests for this file',
+    command: `projscan search ${quoteShellArg(testQuery)} --format json`,
+    tool: 'projscan_search',
+    args: { query: testQuery },
+  });
+  return actions.slice(0, 4);
 }

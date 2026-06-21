@@ -14,6 +14,7 @@ export function reportFileMarkdown(insp: FileInspection): void {
   appendFileImports(lines, insp);
   appendFileExports(lines, insp);
   appendFileFunctions(lines, insp);
+  appendFileSuggestedActions(lines, insp);
   console.log(lines.join('\n'));
 }
 
@@ -89,5 +90,17 @@ function appendFileFunctions(lines: string[], insp: FileInspection): void {
   }
   if (insp.functions.length > 20) {
     lines.push('', `_... and ${insp.functions.length - 20} more_`);
+  }
+}
+
+function appendFileSuggestedActions(lines: string[], insp: FileInspection): void {
+  if (!insp.suggestedNextActions || insp.suggestedNextActions.length === 0) return;
+  lines.push('', '## Next Actions', '');
+  for (const action of insp.suggestedNextActions) {
+    lines.push(
+      action.command
+        ? `- **${action.label}:** \`${action.command}\``
+        : `- **${action.label}**`,
+    );
   }
 }

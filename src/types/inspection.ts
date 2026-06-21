@@ -1,5 +1,6 @@
 import type { ExportInfo, ImportInfo, Issue } from './common.js';
 import type { FileHotspot } from './hotspots.js';
+import type { PreflightSuggestedAction } from './preflight.js';
 
 export interface FileInspection {
   relativePath: string;
@@ -21,6 +22,8 @@ export interface FileInspection {
   fanOut?: number | null;
   /** Adapter id (e.g. 'javascript', 'python'). Set when the graph was available. */
   language?: string;
+  /** Concise follow-up commands for the inspected file. */
+  suggestedNextActions?: PreflightSuggestedAction[];
   /**
    * Per-function McCabe CC (0.13.0+). Sorted by cyclomaticComplexity desc.
    * Empty array when the file has no functions or the adapter doesn't yet

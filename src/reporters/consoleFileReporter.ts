@@ -14,6 +14,7 @@ export function reportFileInspection(insp: FileInspection): void {
   printFileImports(insp);
   printFileExports(insp);
   printFileFunctions(insp);
+  printFileSuggestedActions(insp);
   console.log('');
 }
 
@@ -131,6 +132,15 @@ function printFileFunctions(insp: FileInspection): void {
   }
   if (insp.functions.length > 10) {
     console.log(chalk.dim(`  ... and ${insp.functions.length - 10} more`));
+  }
+}
+
+function printFileSuggestedActions(insp: FileInspection): void {
+  if (!insp.suggestedNextActions || insp.suggestedNextActions.length === 0) return;
+  console.log(header('Next Actions'));
+  for (const action of insp.suggestedNextActions) {
+    const command = action.command ? ` ${chalk.dim(action.command)}` : '';
+    console.log(`  ${chalk.dim('•')} ${chalk.bold(action.label)}${command}`);
   }
 }
 

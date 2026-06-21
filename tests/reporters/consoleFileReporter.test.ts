@@ -48,6 +48,26 @@ describe('consoleFileReporter', () => {
     expect(out).toContain('riskier L10-30');
   });
 
+  it('renders suggested next actions', async () => {
+    const out = await capturePlain(() =>
+      reportFileInspection(
+        makeFileInspection({
+          suggestedNextActions: [
+            {
+              label: 'Check impact before editing',
+              command: 'projscan impact src/big.ts --format json',
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(out).toContain('Next Actions');
+    expect(out).toContain('Check impact before editing');
+    expect(out).toContain('projscan impact src/big.ts --format json');
+    expect(out).not.toContain('caution');
+  });
+
   it('truncates long dependency and function lists', async () => {
     const imports = Array.from({ length: 22 }, (_, index) => ({
       source: `pkg-${index + 1}`,

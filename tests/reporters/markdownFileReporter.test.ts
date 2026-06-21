@@ -44,6 +44,25 @@ describe('markdownFileReporter', () => {
     expect(out).toContain('| 12 | 1 | `riskier` | L10-30 |');
   });
 
+  it('prints suggested next actions', async () => {
+    const out = await captureStdout(() =>
+      reportFileMarkdown(
+        makeFileInspection({
+          suggestedNextActions: [
+            {
+              label: 'Check impact before editing',
+              command: 'projscan impact src/big.ts --format json',
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(out).toContain('## Next Actions');
+    expect(out).toContain('- **Check impact before editing:** `projscan impact src/big.ts --format json`');
+    expect(out).not.toContain('caution');
+  });
+
   it('truncates function rows after the first 20 entries', async () => {
     const functions = Array.from({ length: 22 }, (_, index) => ({
       name: `fn${index + 1}`,
