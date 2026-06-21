@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Treat hotspot-only quality risks as review-first
+
+- Status: accepted
+- Context: `quality-scorecard` and `start --mode bug_hunt` treated large or complex maintainability hotspots as `p0` blocking work even when `doctor` was clean. That made caution output sound more severe than the evidence.
+- Decision: Keep hotspot-only findings visible and ranked, but cap their quality/workplan priority at review-first `p1`. Concrete doctor issues and coordination errors can still produce blocking `p0` risks.
+- Consequences: Engineers still see the riskiest files first, but fix-first wording says review signal instead of blocking signal for hotspot-only work. Schemas, commands, scoring, and hotspot order stay unchanged.
+- Verification: Focused quality and workplan tests failed while hotspots were emitted as `p0` and passed after capping hotspot-only priorities at `p1`.
+
 ## 2026-06-21: Use graph-aware hotspot scoring in quality and bug hunt
 
 - Status: accepted

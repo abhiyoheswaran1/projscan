@@ -433,7 +433,7 @@ function modeTasks(
     tasks.push(
       makeTask({
         id: 'wp-bug-hunt-hotspots',
-        priority: verdict === 'block' ? 'p1' : 'p0',
+        priority: 'p1',
         title: 'Hunt bugs in the highest-risk files',
         why: 'The fastest polish pass starts where churn, complexity, and current issues overlap instead of scanning the whole repository equally.',
         evidence: [

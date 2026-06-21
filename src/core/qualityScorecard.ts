@@ -245,9 +245,7 @@ function hotspotToRisk(hotspot: FileHotspot): QualityScorecardRisk {
 
 function hotspotRiskPriority(hotspot: FileHotspot): WorkplanPriority {
   if (!isMaintainabilityPenaltyHotspot(hotspot)) return 'p2';
-  if (hotspot.riskScore >= 70) return 'p0';
-  if (hotspot.riskScore >= 30) return 'p1';
-  return 'p2';
+  return 'p1';
 }
 
 function conflictToRisk(conflict: SessionConflict, index: number): QualityScorecardRisk {

@@ -171,7 +171,7 @@ test('maintainability score penalizes large or complex hotspots', async () => {
   expect(dimension.score).toBe(76);
 });
 
-test('quality scorecard keeps large and complex hotspots as p0 risks', async () => {
+test('quality scorecard keeps large and complex hotspots as review-first risks', async () => {
   hotspotState.hotspots = [
     hotspot({ relativePath: 'src/large.ts', lineCount: 450, cyclomaticComplexity: 1 }),
     hotspot({ relativePath: 'src/complex.ts', lineCount: 60, cyclomaticComplexity: 18 }),
@@ -184,14 +184,16 @@ test('quality scorecard keeps large and complex hotspots as p0 risks', async () 
     expect.arrayContaining([
       expect.objectContaining({
         id: 'qs-hotspot-src-large-ts',
-        priority: 'p0',
+        priority: 'p1',
       }),
       expect.objectContaining({
         id: 'qs-hotspot-src-complex-ts',
-        priority: 'p0',
+        priority: 'p1',
       }),
     ]),
   );
+  expect(report.fixFirst?.whyFirst).toContain('review signal');
+  expect(report.fixFirst?.whyFirst).not.toContain('blocking signal');
 });
 
 test('maintainability evidence starts with analyzer-ranked actionable hotspots', async () => {
@@ -260,7 +262,7 @@ test('quality scorecard falls back when graph-aware hotspot analysis is unavaila
   expect(report.topRisks[0]).toEqual(
     expect.objectContaining({
       id: 'qs-hotspot-src-large-ts',
-      priority: 'p0',
+      priority: 'p1',
     }),
   );
   expect(vi.mocked(analyzeHotspots).mock.calls[0]?.[3]).toEqual(
