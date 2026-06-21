@@ -31,6 +31,54 @@ test('first-run diagnostics recognize the built Tree-sitter runtime', async () =
   expect(report.nextCommands).toContain('projscan privacy-check --offline');
 });
 
+test('first-run Git diagnostic stays green when optional remote metadata is unavailable', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-git-diagnostic-'));
+  const bin = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-fake-git-'));
+  const oldPath = process.env.PATH;
+  try {
+    await fs.writeFile(
+      path.join(bin, 'git'),
+      [
+        '#!/bin/sh',
+        'if [ "$1" = "rev-parse" ] && [ "$2" = "--is-inside-work-tree" ]; then echo true; exit 0; fi',
+        'if [ "$1" = "status" ] && [ "$2" = "--short" ]; then exit 0; fi',
+        'if [ "$1" = "remote" ]; then echo "remote unavailable" >&2; exit 1; fi',
+        'exit 1',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    process.env.PATH = `${bin}${path.delimiter}${oldPath ?? ''}`;
+
+    const report = await computeFirstRunDiagnostics(root);
+    const git = report.diagnostics.find((diagnostic) => diagnostic.id === 'git');
+
+    expect(git).toEqual(
+      expect.objectContaining({
+        status: 'pass',
+        summary: 'Git worktree detected and clean.',
+      }),
+    );
+    expect(git?.detail).toContain('Remote metadata unavailable');
+  } finally {
+    process.env.PATH = oldPath;
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.rm(bin, { recursive: true, force: true });
+  }
+});
+
+test('first-run Git diagnostic still warns outside a Git worktree', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-no-git-'));
+  try {
+    const report = await computeFirstRunDiagnostics(root);
+    const git = report.diagnostics.find((diagnostic) => diagnostic.id === 'git');
+
+    expect(git?.status).toBe('warn');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test('policy starter kits expose team-specific projscan config', () => {
   const security = getPolicyStarterKit('security');
   const monorepo = getPolicyStarterKit('monorepo');

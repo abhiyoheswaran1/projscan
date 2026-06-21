@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep Git setup diagnostics precise
+
+- Status: accepted
+- Context: `projscan start` and first-run setup diagnostics could report `Git metadata is unavailable` when the repository was inside a Git worktree but an optional metadata command, such as remote lookup, failed. That kind of setup false positive makes caution output easier to ignore.
+- Decision: Treat `git rev-parse --is-inside-work-tree` plus `git status --short` as the Git readiness signal. Remote lookup remains optional detail and no longer downgrades an otherwise clean Git worktree.
+- Consequences: Valid worktrees stay green even when remote metadata cannot be read. Real non-Git roots and unavailable Git status still produce warnings with the relevant command.
+- Verification: Focused adoption/start tests cover optional remote failure, non-Git roots, and start mission output.
+
 ## 2026-06-21: Keep Project Memory local state out of Git status
 
 - Status: accepted

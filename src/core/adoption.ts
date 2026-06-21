@@ -494,30 +494,9 @@ async function checkPackageJson(rootPath: string): Promise<FirstRunDiagnostic> {
 }
 
 async function checkGit(rootPath: string): Promise<FirstRunDiagnostic> {
+  let inside: { stdout: string };
   try {
-    const inside = await git(rootPath, ['rev-parse', '--is-inside-work-tree']);
-    if (inside.stdout.trim() !== 'true') {
-      return {
-        id: 'git',
-        label: 'Git',
-        status: 'warn',
-        summary: 'This directory is not inside a Git worktree.',
-        detail: 'Review, changed-file, and pre-merge recipes need Git history.',
-      };
-    }
-    const status = await git(rootPath, ['status', '--short']);
-    const remote = await git(rootPath, ['remote']);
-    const dirty = status.stdout.trim().length > 0;
-    return {
-      id: 'git',
-      label: 'Git',
-      status: dirty ? 'warn' : 'pass',
-      summary: dirty ? 'Git worktree has local changes.' : 'Git worktree detected and clean.',
-      detail:
-        remote.stdout.trim().length > 0
-          ? `Remotes: ${remote.stdout.trim().split(/\s+/).join(', ')}`
-          : 'No git remote configured.',
-    };
+    inside = await git(rootPath, ['rev-parse', '--is-inside-work-tree']);
   } catch (err) {
     return {
       id: 'git',
@@ -525,9 +504,59 @@ async function checkGit(rootPath: string): Promise<FirstRunDiagnostic> {
       status: 'warn',
       summary: 'Git metadata is unavailable.',
       detail: err instanceof Error ? err.message : String(err),
+      command: 'git rev-parse --is-inside-work-tree',
+    };
+  }
+  if (inside.stdout.trim() !== 'true') {
+    return {
+      id: 'git',
+      label: 'Git',
+      status: 'warn',
+      summary: 'This directory is not inside a Git worktree.',
+      detail: 'Review, changed-file, and pre-merge recipes need Git history.',
+    };
+  }
+
+  let status: { stdout: string };
+  try {
+    status = await git(rootPath, ['status', '--short']);
+  } catch (err) {
+    return {
+      id: 'git',
+      label: 'Git',
+      status: 'warn',
+      summary: 'Git worktree detected, but status is unavailable.',
+      detail: formatGitError(err),
       command: 'git status --short',
     };
   }
+
+  const remote = await git(rootPath, ['remote']).catch((err) => err);
+  const dirty = status.stdout.trim().length > 0;
+  return {
+    id: 'git',
+    label: 'Git',
+    status: dirty ? 'warn' : 'pass',
+    summary: dirty ? 'Git worktree has local changes.' : 'Git worktree detected and clean.',
+    detail: gitRemoteDetail(remote),
+  };
+}
+
+function gitRemoteDetail(remote: { stdout: string } | unknown): string {
+  if (isGitResult(remote)) {
+    return remote.stdout.trim().length > 0
+      ? `Remotes: ${remote.stdout.trim().split(/\s+/).join(', ')}`
+      : 'No git remote configured.';
+  }
+  return `Remote metadata unavailable: ${formatGitError(remote)}`;
+}
+
+function isGitResult(value: unknown): value is { stdout: string } {
+  return typeof value === 'object' && value !== null && 'stdout' in value && !('code' in value);
+}
+
+function formatGitError(err: unknown): string {
+  return err instanceof Error ? err.message.trim() : String(err);
 }
 
 async function checkConfig(rootPath: string): Promise<FirstRunDiagnostic> {
