@@ -176,10 +176,11 @@ function hardeningMode({ primaryRoute }: ModeResolverContext): WorkplanMode | un
     : undefined;
 }
 
-function evidencePackMode({ primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
-  return primaryRoute?.tool === 'projscan_evidence_pack' || primaryRoute?.tool === 'projscan_analyze'
-    ? 'before_commit'
-    : undefined;
+function evidencePackMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
+  if (primaryRoute?.tool !== 'projscan_evidence_pack' && primaryRoute?.tool !== 'projscan_analyze') {
+    return undefined;
+  }
+  return releaseCandidateReviewIntentMatches(intent) ? 'before_merge' : 'before_commit';
 }
 
 function reviewMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
@@ -230,6 +231,13 @@ function hasContinuationPlanningHint(intent: string): boolean {
 
 function handoffIntentMatches(intent: string): boolean {
   return /\b(?:handoff|handover|hand\s+off)\b/i.test(intent);
+}
+
+function releaseCandidateReviewIntentMatches(intent: string): boolean {
+  return (
+    /\brelease[-\s]+candidate\b/i.test(intent) &&
+    /\b(?:review|approval|readiness|evidence|prepare|prepared|preparing)\b/i.test(intent)
+  );
 }
 
 export function hasProhibitedWorkflowModeAction(intent: string): boolean {

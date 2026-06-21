@@ -235,6 +235,41 @@ test('start report routes generic build-next questions to before-edit workplans'
   expect(bugHunt.missionControl.primaryAction?.tool).toBe('projscan_bug_hunt');
 });
 
+test('start report uses release-candidate proof mode without release automation', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'prepare a release candidate review without publishing',
+  });
+
+  expect(report.mode).toBe('before_merge');
+  expect(report.modeSource).toBe('intent');
+  expect(report.recommendedWorkflow.id).toBe('pre_merge');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_evidence_pack',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan evidence-pack --pr-comment',
+      tool: 'projscan_evidence_pack',
+      args: { pr_comment: true },
+    }),
+  );
+  expect(report.missionControl.primaryAction.command).not.toMatch(/publish|version|tag|push/);
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_merge --format json',
+  );
+  expect(report.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_merge --format json',
+  );
+  expect(report.missionControl.proofCommands).not.toContain(
+    'projscan preflight --mode before_commit --format json',
+  );
+});
+
 test('start report routes improve-next trust prompts to planning instead of privacy check', async () => {
   const root = await makeTempProject();
 

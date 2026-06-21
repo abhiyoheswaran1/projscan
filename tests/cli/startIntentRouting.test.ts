@@ -96,6 +96,28 @@ test('start keeps no-more-release continuation intents in the workplan workflow'
   expect(report.missionControl.proofCommands).not.toContain('projscan release-train --format json');
 });
 
+test('start uses release-candidate proof mode without publishing actions', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'prepare a release candidate review without publishing',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_merge');
+  expect(report.modeSource).toBe('intent');
+  expect(report.recommendedWorkflow.id).toBe('pre_merge');
+  expect(report.missionControl.primaryAction.command).toBe('projscan evidence-pack --pr-comment');
+  expect(report.missionControl.primaryAction.command).not.toMatch(/publish|version|tag|push/);
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_merge --format json',
+  );
+});
+
 test('start fills feedback intake primary action with raw install warning text', async () => {
   const intent =
     'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build';

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Use release-candidate proof mode for evidence-pack starts
+
+- Status: accepted
+- Context: `projscan start --intent "prepare a release candidate review without publishing"` correctly avoided release automation and selected evidence-pack, but it kept `before_commit` proof mode. That gave agents handoff proof instead of the release-candidate review gate.
+- Decision: Keep evidence-pack as the primary read-only action, but infer `before_merge` mode when an evidence-pack start intent explicitly asks for release-candidate review/readiness/evidence.
+- Consequences: Release-candidate review starts now use `projscan preflight --mode before_merge --format json` in proof criteria without adding publish, tag, push, version, or release actions. Plain evidence-pack and handoff starts remain before-commit workflows.
+- Verification: Focused start-report and CLI regressions fail on the old `before_commit` mode and pass after the evidence-pack mode resolver recognizes release-candidate review wording.
+
 ## 2026-06-21: Classify workflow-focus feedback
 
 - Status: accepted
