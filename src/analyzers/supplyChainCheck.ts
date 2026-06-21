@@ -207,6 +207,7 @@ async function scanPackageManifest(
   if (manifest.scripts && typeof manifest.scripts === 'object') {
     for (const [scriptName, rawCommand] of Object.entries(manifest.scripts)) {
       if (!LIFECYCLE_SCRIPTS.has(scriptName)) continue;
+      if (isFirstPartyPrepareScript(file, scriptName)) continue;
       const command = typeof rawCommand === 'string' ? rawCommand : String(rawCommand);
       if (!shouldFlagLifecycleScript(scriptName, command)) continue;
       pushIssue(
@@ -449,10 +450,11 @@ function isGithubCommitDependency(spec: string): boolean {
 }
 
 function isPackageManifest(file: FileEntry): boolean {
-  return (
-    path.basename(file.relativePath) === 'package.json' &&
-    !normalizePath(file.relativePath).includes('/node_modules/')
-  );
+  return path.basename(file.relativePath) === 'package.json';
+}
+
+function isFirstPartyPrepareScript(file: FileEntry, scriptName: string): boolean {
+  return scriptName === 'prepare' && !pathSegments(file.relativePath).includes('node_modules');
 }
 
 function isPackageLock(file: FileEntry): boolean {
@@ -484,6 +486,10 @@ function safeId(value: string): string {
 
 function normalizePath(value: string): string {
   return value.split(path.sep).join('/');
+}
+
+function pathSegments(value: string): string[] {
+  return normalizePath(value).split('/');
 }
 
 async function readJson<T>(filePath: string, maxBytes: number): Promise<T | null> {

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Avoid first-party prepare lifecycle false positives
+
+- Status: accepted
+- Context: The supply-chain lifecycle rule treated the scanned repo's own `package.json` `prepare` script like a dependency install-time script. First-party prepare scripts often set up Git hooks or local packaging and were noisy when reported as `supply-chain-lifecycle-prepare`.
+- Decision: Do not report first-party non-`node_modules` `prepare` scripts. Keep reporting first-party `preinstall` / `install` / `postinstall` style hooks, and continue reporting dependency lifecycle scripts when dependency manifests are scanned.
+- Consequences: Normal root/workspace prepare scripts no longer require suppressions. High-risk install hooks and scanned dependency lifecycle scripts still surface as supply-chain warnings.
+- Verification: Focused supply-chain analyzer tests cover root prepare suppression, first-party install hook reporting, and dependency prepare reporting.
+
 ## 2026-06-21: Add CI failOn severity floor
 
 - Status: accepted

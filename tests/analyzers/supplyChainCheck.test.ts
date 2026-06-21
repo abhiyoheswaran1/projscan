@@ -108,17 +108,54 @@ test('scans package-lock files larger than 2MB', async () => {
   );
 });
 
-test('flags prepare scripts that execute packages directly while allowing npm build delegation', async () => {
+test('does not flag first-party root prepare scripts used for repo setup', async () => {
   const root = await makeTempProject();
   await writeJson(root, 'package.json', {
     name: 'fixture',
     scripts: {
-      prepare: 'npx team-bootstrap',
+      prepare: 'npm run build && git config core.hooksPath .githooks',
       prepack: 'npm run build',
     },
   });
 
   const issues = await check(root, [await fileEntry(root, 'package.json')]);
+
+  expect(issues.some((issue) => issue.id === 'supply-chain-lifecycle-prepare')).toBe(false);
+  expect(issues.some((issue) => issue.id === 'supply-chain-lifecycle-prepack')).toBe(false);
+});
+
+test('still flags first-party install lifecycle scripts', async () => {
+  const root = await makeTempProject();
+  await writeJson(root, 'package.json', {
+    name: 'fixture',
+    scripts: {
+      preinstall: 'node scripts/check-install.js',
+    },
+  });
+
+  const issues = await check(root, [await fileEntry(root, 'package.json')]);
+
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'supply-chain-lifecycle-preinstall',
+        severity: 'warning',
+      }),
+    ]),
+  );
+});
+
+test('flags dependency package lifecycle scripts when dependency manifests are scanned', async () => {
+  const root = await makeTempProject();
+  await writeJson(root, 'node_modules/risky/package.json', {
+    name: 'risky',
+    version: '1.0.0',
+    scripts: {
+      prepare: 'node prepare.js',
+    },
+  });
+
+  const issues = await check(root, [await fileEntry(root, 'node_modules/risky/package.json')]);
 
   expect(issues).toEqual(
     expect.arrayContaining([
@@ -128,7 +165,6 @@ test('flags prepare scripts that execute packages directly while allowing npm bu
       }),
     ]),
   );
-  expect(issues.some((issue) => issue.id === 'supply-chain-lifecycle-prepack')).toBe(false);
 });
 
 async function makeTempProject(): Promise<string> {
