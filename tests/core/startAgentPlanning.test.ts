@@ -382,6 +382,44 @@ test('start report keeps read-only change summaries out of release mode', async 
   );
 });
 
+test('start report routes no-publish release readiness to read-only release proof', async () => {
+  const root = await makeTempProject();
+
+  const report = await computeStartReport(root, {
+    intent: 'is this ready for release without publishing',
+  });
+
+  expect(report.mode).toBe('before_merge');
+  expect(report.missionControl.routedIntent).toEqual(
+    expect.objectContaining({
+      tool: 'projscan_evidence_pack',
+      confidence: 'high',
+    }),
+  );
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan evidence-pack --pr-comment',
+      tool: 'projscan_evidence_pack',
+      args: { pr_comment: true },
+    }),
+  );
+  expect(report.missionControl.primaryAction.command).not.toMatch(/publish|tag|push|version/);
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_merge --format json',
+  );
+
+  const continuation = await computeStartReport(root, {
+    intent: 'keep improving projscan after 4.8.0 with user research and no more release today',
+  });
+  expect(continuation.mode).toBe('before_edit');
+  expect(continuation.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command: 'projscan workplan --mode before_edit --format json',
+      tool: 'projscan_workplan',
+    }),
+  );
+});
+
 test('start report routes improve-next trust prompts to planning instead of privacy check', async () => {
   const root = await makeTempProject();
 

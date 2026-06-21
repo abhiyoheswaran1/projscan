@@ -175,6 +175,27 @@ test('start keeps read-only change summaries out of release mode', async () => {
   );
 });
 
+test('start routes no-publish release readiness to read-only release proof', async () => {
+  const result = await runCli([
+    'start',
+    '--intent',
+    'do not publish, just check release readiness',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_merge');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_evidence_pack');
+  expect(report.missionControl.primaryAction.command).toBe('projscan evidence-pack --pr-comment');
+  expect(report.missionControl.primaryAction.command).not.toMatch(/publish|tag|push|version/);
+  expect(report.missionControl.successCriteria).toContain(
+    'The next task has a verification command: projscan preflight --mode before_merge --format json',
+  );
+});
+
 test('start fills feedback intake primary action with raw install warning text', async () => {
   const intent =
     'npm install -g projscan got allow-scripts warnings from tree-sitter-c-sharp node-gyp-build';

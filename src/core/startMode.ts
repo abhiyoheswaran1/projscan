@@ -180,7 +180,9 @@ function evidencePackMode({ intent, primaryRoute }: ModeResolverContext): Workpl
   if (primaryRoute?.tool !== 'projscan_evidence_pack' && primaryRoute?.tool !== 'projscan_analyze') {
     return undefined;
   }
-  return releaseCandidateReviewIntentMatches(intent) ? 'before_merge' : 'before_commit';
+  return releaseCandidateReviewIntentMatches(intent) || noPublishReleaseReadinessIntentMatches(intent)
+    ? 'before_merge'
+    : 'before_commit';
 }
 
 function reviewMode({ intent, primaryRoute }: ModeResolverContext): WorkplanMode | undefined {
@@ -237,6 +239,15 @@ function releaseCandidateReviewIntentMatches(intent: string): boolean {
   return (
     /\brelease[-\s]+candidate\b/i.test(intent) &&
     /\b(?:review|approval|readiness|evidence|prepare|prepared|preparing)\b/i.test(intent)
+  );
+}
+
+function noPublishReleaseReadinessIntentMatches(intent: string): boolean {
+  return (
+    /\brelease\b/i.test(intent) &&
+    /\b(?:ready|readiness|check|proof|review)\b/i.test(intent) &&
+    (/\bwithout\b[^.?!\n]*(?:publish|publishing)\b/i.test(intent) ||
+      /\b(?:do\s+not|don't|dont|never)\b[^.?!\n]*(?:publish|publishing)\b/i.test(intent))
   );
 }
 

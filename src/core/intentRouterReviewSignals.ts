@@ -31,6 +31,7 @@ interface EvidencePackContexts {
   readonly reviewerSummary: boolean;
   readonly teamNarrative: boolean;
   readonly versionCandidateReview: boolean;
+  readonly noPublishReleaseReadiness: boolean;
   readonly prReadiness: boolean;
   readonly changedFileOwner: boolean;
 }
@@ -79,6 +80,11 @@ function evidencePackContexts(tokens: Set<string>): EvidencePackContexts {
     hasAnyToken(tokens, TEAM_NARRATIVE_SUBJECT_KEYWORDS);
   const versionCandidateReview =
     tokens.has('review') && (tokens.has('version') || tokens.has('candidate'));
+  const noPublishReleaseReadiness =
+    tokens.has('release') &&
+    hasAnyToken(tokens, ['ready', 'readiness', 'check']) &&
+    hasAnyToken(tokens, ['publish', 'publishing']) &&
+    hasAnyToken(tokens, ['without', 'not', 'never']);
   return {
     reviewerRouting: hasAnyToken(tokens, REVIEWER_ROUTING_KEYWORDS),
     prReview,
@@ -86,8 +92,10 @@ function evidencePackContexts(tokens: Set<string>): EvidencePackContexts {
     reviewerSummary,
     teamNarrative,
     versionCandidateReview,
+    noPublishReleaseReadiness,
     prReadiness:
       versionCandidateReview ||
+      noPublishReleaseReadiness ||
       (hasAnyToken(tokens, PR_NARRATIVE_KEYWORDS) &&
         hasAnyToken(tokens, PR_READINESS_ACTION_KEYWORDS)),
     changedFileOwner:
@@ -122,6 +130,10 @@ function evidencePackKeywordMatchers(contexts: EvidencePackContexts, tokens: Set
     {
       keywords: PR_READINESS_KEYWORDS,
       matches: () => contexts.prReadiness,
+    },
+    {
+      keywords: ['release', 'readiness', 'check', 'publish', 'publishing'],
+      matches: () => contexts.noPublishReleaseReadiness,
     },
     {
       keywords: ['changed', 'file', 'files'],

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Route no-publish release readiness to read-only proof
+
+- Status: accepted
+- Context: `projscan start --intent "is this ready for release without publishing"` fell back to before-edit preflight, and `do not publish, just check release readiness` routed to coordination because release-train was correctly suppressed by no-publish wording.
+- Decision: Treat release-readiness prompts with explicit no-publish wording as evidence-pack review requests and infer `before_merge` proof mode for that read-only path.
+- Consequences: Agents get `projscan evidence-pack --pr-comment` plus `projscan preflight --mode before_merge --format json` without publish, tag, push, version, or release automation. No-release continuation prompts still route to workplans, and explicit release preparation still routes to release-train.
+- Verification: Router, start-report, and CLI regressions fail on the old fallback/coordinate behavior and pass after the evidence-pack context and mode inference.
+
 ## 2026-06-21: Keep read-only change summaries out of release mode
 
 - Status: accepted

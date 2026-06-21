@@ -178,6 +178,31 @@ describe('routeIntent', () => {
     );
   });
 
+  it('routes no-publish release readiness to evidence pack instead of coordination', () => {
+    for (const intent of [
+      'is this ready for release without publishing',
+      'do not publish, just check release readiness',
+    ]) {
+      const result = routeIntent(intent);
+      expect(result.matches[0]).toEqual(
+        expect.objectContaining({
+          tool: 'projscan_evidence_pack',
+          confidence: 'high',
+        }),
+      );
+      expect(result.matches.find((match) => match.tool === 'projscan_coordinate')?.rank ?? Infinity)
+        .toBeGreaterThan(1);
+    }
+
+    const release = routeIntent('prepare this branch for release');
+    expect(release.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_release_train',
+        confidence: 'high',
+      }),
+    );
+  });
+
   it('routes AI-generated code review-before-commit intents to structural review', () => {
     const result = routeIntent('review AI-generated code before commit for verification debt');
 
