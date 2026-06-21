@@ -298,11 +298,15 @@ function workplanRiskToStartRisk(risk: WorkplanTopRisk, index: number): StartRis
     title: startRiskTitle(risk),
     source: risk.source,
     files: risk.file ? [risk.file] : [],
-    command:
-      risk.tool === 'projscan_review'
-        ? 'projscan review --format json'
-        : 'projscan preflight --format json',
+    command: workplanRiskCommand(risk),
   };
+}
+
+function workplanRiskCommand(risk: WorkplanTopRisk): string {
+  if (risk.tool === 'projscan_review') return 'projscan review --format json';
+  if (risk.tool === 'projscan_file' && risk.file)
+    return `projscan file ${JSON.stringify(risk.file)} --format json`;
+  return 'projscan preflight --format json';
 }
 
 function startRiskTitle(risk: WorkplanTopRisk): string {

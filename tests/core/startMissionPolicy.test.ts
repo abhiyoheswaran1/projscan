@@ -328,6 +328,30 @@ describe('Mission Control policy helpers', () => {
     ]);
     expect(
       combineRisks(
+        workplan({
+          topRisks: [
+            {
+              priority: 'p0',
+              source: 'hotspots',
+              message: 'Hotspot src/core/intentRouterCatalog.ts',
+              file: 'src/core/intentRouterCatalog.ts',
+              tool: 'projscan_file',
+            },
+          ],
+        }),
+        [],
+        3,
+      )[0],
+    ).toEqual({
+      id: 'start-workplan-1',
+      priority: 'p0',
+      title: 'Hotspot src/core/intentRouterCatalog.ts',
+      source: 'hotspots',
+      files: ['src/core/intentRouterCatalog.ts'],
+      command: 'projscan file "src/core/intentRouterCatalog.ts" --format json',
+    });
+    expect(
+      combineRisks(
         workplan({ topRisks: [] }),
         [
           {

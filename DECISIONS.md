@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Preserve file commands for start workplan risks
+
+- Status: accepted
+- Context: `projscan start --intent "what should I fix first"` carried workplan hotspot files into `topRisks`, but converted each file-backed risk command to generic `projscan preflight --format json`.
+- Decision: Map workplan risks with `tool: "projscan_file"` and a file to `projscan file "<path>" --format json`, while keeping review risks on `projscan review --format json` and generic risks on preflight.
+- Consequences: Mission Control risk entries now open the exact risky file instead of sending engineers through another broad gate. The start schema and routing behavior remain unchanged.
+- Verification: `npm test -- tests/core/startMissionPolicy.test.ts -t "Mission Control policy helpers"` failed before the command mapper handled `projscan_file` and passed after the focused mapper change.
+
 ## 2026-06-21: Enrich bug-hunt workplans with scorecard hotspots
 
 - Status: accepted
