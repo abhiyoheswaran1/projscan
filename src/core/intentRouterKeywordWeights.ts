@@ -1,6 +1,7 @@
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
 import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
 import { searchKeywordWeight } from './intentRouterSearchKeywordWeights.js';
+import { workflowKeywordWeight } from './intentRouterWorkflowKeywordWeights.js';
 
 export interface KeywordWeightedRouteEntry {
   tool: string;
@@ -605,51 +606,8 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
     )
       return 2;
   }
-  if (entry.tool === 'projscan_evidence_pack') {
-    if (keyword === 'pr') return 0.25;
-    if (['changed', 'file', 'files'].includes(keyword)) return 1;
-    if (
-      [
-        'evidence',
-        'proof',
-        'approval',
-        'approve',
-        'comment',
-        'summarize',
-        'changes',
-        'description',
-        'draft',
-        'say',
-        'checklist',
-        'tell',
-        'team',
-        'change',
-        'share',
-        'reviewer',
-        'reviewers',
-        'summary',
-        'packet',
-        'paste',
-        'who',
-        'review',
-        'ready',
-        'release',
-        'readiness',
-        'check',
-        'publish',
-        'publishing',
-        'open',
-        'opening',
-        'before',
-        'prepare',
-        'owner',
-        'owners',
-        'owns',
-        'routing',
-      ].includes(keyword)
-    )
-      return 2;
-  }
+  const workflowWeight = workflowKeywordWeight(entry.tool, keyword);
+  if (workflowWeight !== undefined) return workflowWeight;
   if (entry.tool === 'projscan_doctor') {
     if (keyword === 'unused') return 3;
     if (['dead', 'orphaned'].includes(keyword)) return 2;
@@ -668,62 +626,5 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (entry.tool === 'projscan_collision' && ['overlapping'].includes(keyword)) return 3;
   if (entry.tool === 'projscan_collision' && ['collide', 'colliding'].includes(keyword)) return 2;
   if (entry.tool === 'projscan_merge_risk' && keyword === 'first') return 1;
-  if (entry.tool === 'projscan_release_train') {
-    if (keyword === 'releasing') return 2;
-    if (['deploy', 'deploying', 'deployed', 'deployment'].includes(keyword)) return 2;
-    if (
-      [
-        'build',
-        'next',
-        'roadmap',
-        'plan',
-        'product',
-        'products',
-        'feature',
-        'features',
-        'workstream',
-        'workstreams',
-      ].includes(keyword)
-    )
-      return 2;
-    if (['changed', 'since', 'last'].includes(keyword)) return 2;
-    if (['changelog', 'note', 'notes', 'entry', 'summarize', 'summary'].includes(keyword)) return 2;
-  }
-  if (entry.tool === 'projscan_bug_hunt') {
-    if (
-      [
-        'bug',
-        'bugs',
-        'hunt',
-        'defect',
-        'broken',
-        'first',
-        'fastest',
-        'quickest',
-        'quick',
-        'smallest',
-        'small',
-        'low',
-        'lowest',
-        'improve',
-        'improvement',
-        'useful',
-        'easy',
-        'beginner',
-        'starter',
-        'intern',
-        'interns',
-        'task',
-        'tasks',
-        'five',
-        'minutes',
-        'today',
-        'win',
-        'wins',
-      ].includes(keyword)
-    )
-      return 2;
-    if (['find', 'fix', 'pr'].includes(keyword)) return 0.25;
-  }
   return 1;
 }
