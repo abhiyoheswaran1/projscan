@@ -75,6 +75,7 @@ describe('loadConfig', () => {
   it('keeps basic scalar and list normalization out of the main config loader', () => {
     const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
     expect(configSource).not.toContain('function applyMinScore');
+    expect(configSource).not.toContain('function applyFailOn');
     expect(configSource).not.toContain('function applyBaseRef');
     expect(configSource).not.toContain('function applyIgnore');
     expect(configSource).not.toContain('function applyDisableRules');
@@ -100,6 +101,18 @@ describe('loadConfig', () => {
     await fs.writeFile(path.join(tmp, '.projscanrc.json'), JSON.stringify({ minScore: 250 }));
     const result = await loadConfig(tmp);
     expect(result.config.minScore).toBe(100);
+  });
+
+  it('normalizes failOn severity floor', async () => {
+    await fs.writeFile(path.join(tmp, '.projscanrc.json'), JSON.stringify({ failOn: 'warning' }));
+    const result = await loadConfig(tmp);
+    expect(result.config.failOn).toBe('warning');
+  });
+
+  it('drops invalid failOn severity floors', async () => {
+    await fs.writeFile(path.join(tmp, '.projscanrc.json'), JSON.stringify({ failOn: 'critical' }));
+    const result = await loadConfig(tmp);
+    expect(result.config.failOn).toBeUndefined();
   });
 
   it('normalizes scan privacy options', async () => {

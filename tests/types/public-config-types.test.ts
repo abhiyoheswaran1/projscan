@@ -6,6 +6,7 @@ import type {
   ProjscanConfig,
   ReportPolicyPreset,
   ReportFormat,
+  CiFailOnSeverity,
 } from '../../src/types/config.js';
 import type {
   ImportPolicyRule as BarrelImportPolicyRule,
@@ -13,9 +14,11 @@ import type {
   ProjscanConfig as BarrelProjscanConfig,
   ReportPolicyPreset as BarrelReportPolicyPreset,
   ReportFormat as BarrelReportFormat,
+  CiFailOnSeverity as BarrelCiFailOnSeverity,
 } from '../../src/types.js';
 
 const formats: ReportFormat[] = ['console', 'json', 'markdown', 'sarif', 'html'];
+const failOn: CiFailOnSeverity = 'warning';
 
 const importPolicy: ImportPolicyRule = {
   from: '@acme/app',
@@ -30,6 +33,7 @@ const reportPolicy: ReportPolicyPreset = {
 
 const config: ProjscanConfig = {
   minScore: 85,
+  failOn,
   baseRef: 'origin/main',
   hotspots: {
     limit: 10,
@@ -66,6 +70,7 @@ const loaded: LoadedConfig = {
 };
 
 const barrelFormat: BarrelReportFormat = 'json';
+const barrelFailOn: BarrelCiFailOnSeverity = failOn;
 const barrelPolicy: BarrelImportPolicyRule = importPolicy;
 const barrelReportPolicy: BarrelReportPolicyPreset = reportPolicy;
 const barrelConfig: BarrelProjscanConfig = config;
@@ -75,6 +80,7 @@ const moduleLoaded: LoadedConfig = barrelLoaded;
 test('config public types compile from the module and legacy barrel', () => {
   expect(formats).toEqual(['console', 'json', 'markdown', 'sarif', 'html']);
   expect(barrelFormat).toBe('json');
+  expect(barrelFailOn).toBe('warning');
   expect(barrelPolicy.from).toBe('@acme/app');
   expect(barrelReportPolicy.redactPaths).toBe(true);
   expect(barrelConfig.scan?.offline).toBe(true);

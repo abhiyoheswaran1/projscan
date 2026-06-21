@@ -1,5 +1,7 @@
 import type { Issue } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
+import type { CiFailOnSeverity } from '../types/config.js';
+import { evaluateCiGate } from '../core/ciGate.js';
 import { calculateScore, badgeMarkdown } from '../utils/scoreCalculator.js';
 
 export function reportHealthMarkdown(
@@ -23,18 +25,19 @@ export function reportCiMarkdown(
   issues: Issue[],
   threshold: number,
   reportControls?: ReportControlsMetadata,
+  failOn?: CiFailOnSeverity,
 ): void {
-  const { score, grade } = calculateScore(issues);
-  const pass = score >= threshold;
-  const lines: string[] = [`# Projscan CI - ${ciLabel(pass)}`, ''];
+  const gate = evaluateCiGate(issues, threshold, failOn);
+  const lines: string[] = [`# Projscan CI - ${ciLabel(gate.pass)}`, ''];
   appendReportControlsMarkdown(lines, reportControls);
   lines.push(
     `| Metric | Value |`,
     `| --- | --- |`,
-    `| Score | **${score}/100** |`,
-    `| Grade | **${grade}** |`,
+    `| Score | **${gate.score}/100** |`,
+    `| Grade | **${gate.grade}** |`,
     `| Threshold | ${threshold} |`,
-    `| Result | ${ciIcon(pass)} ${ciResultLabel(pass)} |`,
+    `| Fail on | ${gate.failOn} |`,
+    `| Result | ${ciIcon(gate.pass)} ${ciResultLabel(gate.pass)} |`,
   );
   appendCiIssues(lines, issues);
 

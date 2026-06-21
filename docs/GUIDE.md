@@ -551,13 +551,14 @@ Natural follow-up to `projscan hotspots` - once hotspots tells you _which_ file 
 projscan ci
 ```
 
-A CI-pipeline-friendly health gate. Runs the full health check and exits with code 1 if the score falls below a threshold. No spinners or banners - clean output for CI logs.
+A CI-pipeline-friendly health gate. Runs the full health check and exits with code 1 if the score falls below a threshold and at least one finding meets the `failOn` severity floor. No spinners or banners - clean output for CI logs.
 
 **Options:**
 
 | Flag               | Description                                      | Default                                                     |
 | ------------------ | ------------------------------------------------ | ----------------------------------------------------------- |
 | `--min-score <n>`  | Minimum passing score (0–100)                    | `minScore` from `.projscanrc`, else 70                      |
+| `--fail-on <severity>` | Lowest severity that can fail a below-threshold gate: `info`, `warning`, or `error` | `failOn` from `.projscanrc`, else `warning` |
 | `--changed-only`   | Gate only on issues in files changed vs base ref | off                                                         |
 | `--base-ref <ref>` | Git base ref for `--changed-only`                | auto (origin/main → origin/master → main → master → HEAD~1) |
 
@@ -566,7 +567,7 @@ A CI-pipeline-friendly health gate. Runs the full health check and exits with co
 ```bash
 $ projscan ci --min-score 80
 
-projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
+projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80, failOn: warning)
 ```
 
 <img src="npx%20projscan%20ci%20--min-score%2070.gif" alt="npx projscan ci" width="700">
@@ -574,7 +575,8 @@ projscan: B (82/100) - 0 errors, 2 warnings, 1 info - PASS (threshold: 80)
 **Exit codes:**
 
 - `0` - Score meets or exceeds the threshold
-- `1` - Score is below the threshold
+- `0` - Score is below the threshold but no finding meets the `failOn` floor
+- `1` - Score is below the threshold and at least one finding meets the `failOn` floor
 
 **JSON output** (useful for scripts):
 
@@ -1013,6 +1015,7 @@ ProjScan loads a project-wide config from one of:
 ```json
 {
   "minScore": 80,
+  "failOn": "warning",
   "baseRef": "origin/main",
   "ignore": ["**/fixtures/**", "**/generated/**"],
   "scan": {
@@ -1045,6 +1048,7 @@ ProjScan loads a project-wide config from one of:
 | Field                 | Type                                             | Effect                                                                                                                                                        |
 | --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `minScore`            | number (0–100)                                   | Default threshold for `projscan ci`. Clamped to 0–100.                                                                                                        |
+| `failOn`              | `'info' \| 'warning' \| 'error'`                 | Lowest severity that can fail a below-threshold `projscan ci` gate. Default `warning`; set `info` for legacy strictness or `error` for error-only blocking. |
 | `baseRef`             | string                                           | Default base ref for `--changed-only`.                                                                                                                        |
 | `ignore`              | string[]                                         | Extra glob patterns added to the built-in ignore list (`node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `.nuxt`, `.cache`, `.turbo`, `.output`). |
 | `scan.includeIgnored` | boolean                                          | Explicitly include files hidden by Git ignore rules. Default `false`.                                                                                         |
@@ -1582,8 +1586,10 @@ If you'd rather skip Code Scanning, `projscan init github-action` writes a pull-
 The `ci` command is purpose-built for pipelines:
 
 ```bash
-projscan ci                                 # Fail if score < 70 (default)
+projscan ci                                 # Fail if score < 70 and warning/error findings exist
 projscan ci --min-score 80                  # Custom threshold
+projscan ci --fail-on info                  # Legacy strictness: info can fail the gate
+projscan ci --fail-on error                 # Only errors can fail a below-threshold gate
 projscan ci --changed-only                  # Gate only on PR diff
 projscan ci --format json                   # JSON output for scripts
 projscan ci --format sarif > projscan.sarif # SARIF for any consumer
@@ -1595,12 +1601,14 @@ projscan ci --format sarif > projscan.sarif # SARIF for any consumer
 result=$(projscan ci --min-score 0 --format json)
 pass=$(echo "$result" | jq '.ci.pass')
 score=$(echo "$result" | jq '.ci.score')
-echo "Score: $score, Pass: $pass"
+fail_on=$(echo "$result" | jq -r '.ci.failOn')
+echo "Score: $score, Pass: $pass, FailOn: $fail_on"
 ```
 
 For PR annotation tooling, read `.ci.issues[]`. Each issue includes `ruleId`,
 `severity`, `message`, primary `location`, all `locations`, and `remediation`
-when available.
+when available. Gate metadata lives at `.ci.failOn`, `.ci.scorePass`, and
+`.ci.severityFloorMet`.
 
 ### Tracking health over time in CI
 

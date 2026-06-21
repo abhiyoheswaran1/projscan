@@ -2,6 +2,7 @@ import type { LoadedConfig, ProjscanConfig } from '../types/config.js';
 import {
   applyBaseRef,
   applyDisableRules,
+  applyFailOn,
   applyIgnore,
   applyMinScore,
   applySuppress,
@@ -27,6 +28,7 @@ function normalize(input: unknown): ProjscanConfig {
   const obj = input as Record<string, unknown>;
   const out: ProjscanConfig = {};
   applyMinScore(obj, out);
+  applyFailOn(obj, out);
   applyBaseRef(obj, out);
   applyHotspots(obj, out);
   applyIgnore(obj, out);

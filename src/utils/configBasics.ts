@@ -1,9 +1,15 @@
 import type { ProjscanConfig } from '../types/config.js';
+import { normalizeCiFailOn } from './ciFailOn.js';
 
 export function applyMinScore(obj: Record<string, unknown>, out: ProjscanConfig): void {
   if (typeof obj.minScore === 'number' && Number.isFinite(obj.minScore)) {
     out.minScore = Math.max(0, Math.min(100, Math.floor(obj.minScore)));
   }
+}
+
+export function applyFailOn(obj: Record<string, unknown>, out: ProjscanConfig): void {
+  const failOn = normalizeCiFailOn(obj.failOn);
+  if (failOn) out.failOn = failOn;
 }
 
 export function applyBaseRef(obj: Record<string, unknown>, out: ProjscanConfig): void {

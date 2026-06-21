@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Add CI failOn severity floor
+
+- Status: accepted
+- Context: Teams that downgraded noisy rules to `info` still saw `projscan ci` fail when enough info findings pulled the score below `minScore`. That made severity overrides feel ineffective.
+- Decision: Add a CI gate severity floor named `failOn`, available in config and as `--fail-on`. The default is `warning`, so info-only findings remain visible in score output but do not fail CI by themselves. Set `failOn: "info"` for legacy strictness or `failOn: "error"` for error-only blocking.
+- Consequences: Score calculation and `scoreBreakdown` are unchanged. CI pass/fail now depends on both score threshold and whether any finding meets the configured severity floor. JSON, console, Markdown, and reporter-plugin CI payloads expose the gate metadata.
+- Verification: Focused CI gate, config, public type, JSON reporter, and console reporter tests fail without the severity floor and pass after implementation.
+
 ## 2026-06-21: Add explicit health and CI score breakdowns
 
 - Status: accepted

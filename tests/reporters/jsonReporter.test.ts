@@ -135,6 +135,22 @@ describe('jsonReporter', () => {
       expect(typeof parsed.ci.score).toBe('number');
     });
 
+    it('exposes failOn gate details when info findings do not block CI', async () => {
+      const parsed = (await captureJson(() =>
+        reportCiJson([makeIssue({ id: 'advisory', severity: 'info' })], 100, undefined, 'warning'),
+      )) as {
+        schemaVersion: number;
+        ci: Record<string, unknown>;
+      };
+
+      expect(parsed.ci).toMatchObject({
+        pass: true,
+        scorePass: false,
+        failOn: 'warning',
+        severityFloorMet: false,
+      });
+    });
+
     it('marks pass=true when score meets threshold', async () => {
       const parsed = (await captureJson(() => reportCiJson([], 50))) as {
         schemaVersion: number;

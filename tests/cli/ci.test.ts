@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { evaluateCiGate } from '../../src/core/ciGate.js';
 import { reportCi } from '../../src/reporters/consoleCiReporter.js';
 import { reportCiJson } from '../../src/reporters/jsonReporter.js';
 import { captureStdout, makeIssue, stripAnsi } from '../reporters/fixtures.js';
@@ -9,6 +10,30 @@ async function capturePlain(fn: () => void): Promise<string> {
 }
 
 describe('ci output', () => {
+  it('lets failOn warning keep info-only score drops visible without failing CI', () => {
+    const infoFindings = Array.from({ length: 20 }, (_, index) =>
+      makeIssue({ id: `info-${index}`, severity: 'info' }),
+    );
+
+    expect(evaluateCiGate(infoFindings, 70, 'warning')).toMatchObject({
+      score: 40,
+      pass: true,
+      scorePass: false,
+      failOn: 'warning',
+      severityFloorMet: false,
+    });
+    expect(evaluateCiGate([makeIssue({ severity: 'warning' })], 100, 'warning')).toMatchObject({
+      pass: false,
+      scorePass: false,
+      severityFloorMet: true,
+    });
+    expect(evaluateCiGate(infoFindings, 70, 'info')).toMatchObject({
+      pass: false,
+      scorePass: false,
+      severityFloorMet: true,
+    });
+  });
+
   it('emits annotation-ready issue fields in JSON output', async () => {
     const out = await captureStdout(() =>
       reportCiJson(
@@ -88,5 +113,15 @@ describe('ci output', () => {
       'Circular import among 2 files: src/a.ts, src/b.ts. Resolve by introducing an interface boundary.',
     );
     expect(out).toContain('Run projscan coupling --cycles-only for the full cycle.');
+  });
+
+  it('prints pass context when failOn prevents an info-only score failure', async () => {
+    const out = await capturePlain(() =>
+      reportCi([makeIssue({ id: 'info-only', severity: 'info', title: 'Advisory' })], 100, 'warning'),
+    );
+
+    expect(out).toContain('PASS');
+    expect(out).toContain('(threshold: 100, failOn: warning)');
+    expect(out).toContain('score is below threshold, but no warning-or-higher findings were found');
   });
 });

@@ -21,6 +21,8 @@ import type {
 } from '../types.js';
 import type { ReportControlsMetadata } from '../core/reportScope.js';
 import type { ReviewReport } from '../types/review.js';
+import type { CiFailOnSeverity } from '../types/config.js';
+import { evaluateCiGate } from '../core/ciGate.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 import { toCiIssueDetail } from './ciIssueDetails.js';
 
@@ -68,23 +70,27 @@ export function reportCiJson(
   issues: Issue[],
   threshold: number,
   reportControls?: ReportControlsMetadata,
+  failOn?: CiFailOnSeverity,
 ): void {
-  const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
+  const gate = evaluateCiGate(issues, threshold, failOn);
   console.log(
     JSON.stringify(
       {
         schemaVersion: CLI_JSON_SCHEMA_VERSION,
         ...(reportControls ? { reportControls } : {}),
         ci: {
-          score,
-          grade,
-          pass: score >= threshold,
+          score: gate.score,
+          grade: gate.grade,
+          pass: gate.pass,
           threshold,
+          failOn: gate.failOn,
+          scorePass: gate.scorePass,
+          severityFloorMet: gate.severityFloorMet,
           totalIssues: issues.length,
-          errors,
-          warnings,
-          info: infos,
-          scoreBreakdown,
+          errors: gate.errors,
+          warnings: gate.warnings,
+          info: gate.infos,
+          scoreBreakdown: gate.scoreBreakdown,
           issues: issues.map(toCiIssueDetail),
         },
       },

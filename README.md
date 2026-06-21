@@ -238,6 +238,7 @@ Create a `.projscanrc.json` when repo defaults should live in source control:
 ```json
 {
   "minScore": 80,
+  "failOn": "warning",
   "baseRef": "origin/main",
   "ignore": ["**/fixtures/**", "**/generated/**"],
   "scan": {
@@ -287,6 +288,9 @@ when projscan has that data.
 `doctor --format json` and `ci --format json` also include `scoreBreakdown`,
 which shows the base score, severity weights, category penalties, total penalty,
 final score, and grade.
+By default, `ci` only fails a below-threshold score when there is a warning or
+error. Set `"failOn": "info"` for legacy strictness or `"failOn": "error"` for
+error-only blocking.
 
 GitHub Actions example:
 

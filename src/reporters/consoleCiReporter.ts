@@ -1,6 +1,8 @@
 import chalk from 'chalk';
 import type { Issue } from '../types.js';
-import { calculateScore } from '../utils/scoreCalculator.js';
+import type { CiFailOnSeverity } from '../types/config.js';
+import { evaluateCiGate } from '../core/ciGate.js';
+import { ciFailOnLabel } from '../utils/ciFailOn.js';
 import { formatIssueLocations, issueRemediation } from './ciIssueDetails.js';
 import { printScoreBreakdown } from './scoreBreakdownReporter.js';
 
@@ -17,19 +19,31 @@ function severityIcon(severity: string): string {
   }
 }
 
-export function reportCi(issues: Issue[], threshold: number): void {
-  const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
-  const pass = score >= threshold;
-  const status = pass ? chalk.green('PASS') : chalk.red('FAIL');
+export function reportCi(
+  issues: Issue[],
+  threshold: number,
+  failOn?: CiFailOnSeverity,
+): void {
+  const gate = evaluateCiGate(issues, threshold, failOn);
+  const status = gate.pass ? chalk.green('PASS') : chalk.red('FAIL');
   const gradeColor =
-    grade === 'A' || grade === 'B' ? chalk.green : grade === 'C' ? chalk.yellow : chalk.red;
+    gate.grade === 'A' || gate.grade === 'B'
+      ? chalk.green
+      : gate.grade === 'C'
+        ? chalk.yellow
+        : chalk.red;
 
   console.log(
-    `projscan: ${gradeColor(chalk.bold(`${grade} (${score}/100)`))} - ${errors} error${errors !== 1 ? 's' : ''}, ${warnings} warning${warnings !== 1 ? 's' : ''}, ${infos} info - ${status} (threshold: ${threshold})`,
+    `projscan: ${gradeColor(chalk.bold(`${gate.grade} (${gate.score}/100)`))} - ${gate.errors} error${gate.errors !== 1 ? 's' : ''}, ${gate.warnings} warning${gate.warnings !== 1 ? 's' : ''}, ${gate.infos} info - ${status} (threshold: ${threshold}, failOn: ${gate.failOn})`,
   );
-  printScoreBreakdown(scoreBreakdown);
+  printScoreBreakdown(gate.scoreBreakdown);
+  if (!gate.scorePass && gate.pass) {
+    console.log(
+      `  ${chalk.dim(`score is below threshold, but no ${ciFailOnLabel(gate.failOn)} findings were found`)}`,
+    );
+  }
 
-  if (!pass) {
+  if (!gate.pass) {
     for (const issue of issues) {
       console.log(`  ${severityIcon(issue.severity)} ${issue.title} ${chalk.dim(`(${issue.id})`)}`);
       const locations = formatIssueLocations(issue);

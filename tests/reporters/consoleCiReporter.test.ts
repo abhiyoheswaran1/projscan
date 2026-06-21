@@ -17,7 +17,7 @@ describe('consoleCiReporter', () => {
     expect(out).toContain('0 warnings');
     expect(out).toContain('0 info');
     expect(out).toContain('PASS');
-    expect(out).toContain('(threshold: 50)');
+    expect(out).toContain('(threshold: 50, failOn: warning)');
   });
 
   it('renders FAIL with pluralized counts and issue rows when score is below threshold', async () => {
@@ -30,7 +30,7 @@ describe('consoleCiReporter', () => {
     const out = await capturePlain(() => reportCi(issues, 100));
 
     expect(out).toContain('FAIL');
-    expect(out).toContain('(threshold: 100)');
+    expect(out).toContain('(threshold: 100, failOn: warning)');
     expect(out).toContain('1 error');
     expect(out).toContain('2 warnings');
     expect(out).toContain('1 info');
@@ -55,10 +55,22 @@ describe('consoleCiReporter', () => {
     expect(out).not.toContain('Hidden warning row');
   });
 
+  it('shows when failOn lets info-only findings pass despite a low score', async () => {
+    const issues = Array.from({ length: 20 }, (_, index) =>
+      makeIssue({ id: `info-${index}`, severity: 'info' }),
+    );
+    const out = await capturePlain(() => reportCi(issues, 70, 'warning'));
+
+    expect(out).toContain('PASS');
+    expect(out).toContain('(threshold: 70, failOn: warning)');
+    expect(out).toContain('score is below threshold, but no warning-or-higher findings were found');
+  });
+
   it('preserves the consoleReporter re-export', async () => {
     const out = await capturePlain(() => reportCiFromConsoleReporter([], 50));
 
     expect(out).toContain('PASS');
     expect(out).toContain('threshold: 50');
+    expect(out).toContain('failOn: warning');
   });
 });

@@ -1,9 +1,11 @@
 import type { IssueSeverity } from './common.js';
 
 export type ReportFormat = 'console' | 'json' | 'markdown' | 'sarif' | 'html';
+export type CiFailOnSeverity = IssueSeverity;
 
 export interface ProjscanConfig {
   minScore?: number;
+  failOn?: CiFailOnSeverity;
   baseRef?: string;
   hotspots?: {
     limit?: number;

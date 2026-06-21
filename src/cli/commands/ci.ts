@@ -18,8 +18,9 @@ import {
   reportControlsMetadata,
   resolveReportControls,
 } from '../../core/reportScope.js';
+import { evaluateCiGate } from '../../core/ciGate.js';
 import { applyConfigToIssues } from '../../utils/config.js';
-import { calculateScore } from '../../utils/scoreCalculator.js';
+import { DEFAULT_CI_FAIL_ON, normalizeCiFailOn } from '../../utils/ciFailOn.js';
 import { reportCi } from '../../reporters/consoleReporter.js';
 import { reportCiJson } from '../../reporters/jsonReporter.js';
 import { reportCiMarkdown } from '../../reporters/markdownReporter.js';
@@ -32,6 +33,10 @@ export function registerCi(): void {
     .option('--min-score <score>', 'minimum passing score (0-100)')
     .option('--changed-only', 'gate only on issues in files changed vs base ref')
     .option('--base-ref <ref>', 'git base ref for --changed-only (default: origin/main)')
+    .option(
+      '--fail-on <severity>',
+      'lowest severity that can fail a below-threshold CI gate (info, warning, or error)',
+    )
     .option('--report-policy <name>', 'use a named report policy preset from config')
     .option('--report-scope <paths>', 'comma-separated repo-relative paths to include in exported evidence')
     .option('--redact-paths', 'replace file paths in exported evidence with stable redacted labels')
@@ -71,40 +76,45 @@ export function registerCi(): void {
             typeof rawThreshold === 'string' ? parseInt(rawThreshold, 10) || 70 : rawThreshold,
           ),
         );
-        const { score, grade, errors, warnings, infos, scoreBreakdown } = calculateScore(issues);
+        const cliFailOn = failOnFromCli(cmdOpts.failOn);
+        const failOn = cliFailOn ?? config.failOn ?? DEFAULT_CI_FAIL_ON;
+        const gate = evaluateCiGate(issues, threshold, failOn);
         const ci = {
-          score,
-          grade,
-          pass: score >= threshold,
+          score: gate.score,
+          grade: gate.grade,
+          pass: gate.pass,
           threshold,
+          failOn: gate.failOn,
+          scorePass: gate.scorePass,
+          severityFloorMet: gate.severityFloorMet,
           totalIssues: issues.length,
-          errors,
-          warnings,
-          info: infos,
-          scoreBreakdown,
+          errors: gate.errors,
+          warnings: gate.warnings,
+          info: gate.infos,
+          scoreBreakdown: gate.scoreBreakdown,
           issues,
         };
 
         if (await renderPluginReporterIfRequested('ci', cmdOpts.reporter, { ci })) {
-          if (score < threshold) process.exit(1);
+          if (!ci.pass) process.exit(1);
           return;
         }
 
         switch (format) {
           case 'json':
-            reportCiJson(issues, threshold, reportControlsInfo);
+            reportCiJson(issues, threshold, reportControlsInfo, failOn);
             break;
           case 'markdown':
-            reportCiMarkdown(issues, threshold, reportControlsInfo);
+            reportCiMarkdown(issues, threshold, reportControlsInfo, failOn);
             break;
           case 'sarif':
             reportCiSarif(issues, pkg.version, reportControlsInfo);
             break;
           default:
-            reportCi(issues, threshold);
+            reportCi(issues, threshold, failOn);
         }
 
-        if (score < threshold) {
+        if (!ci.pass) {
           process.exit(1);
         }
       } catch (error) {
@@ -112,4 +122,11 @@ export function registerCi(): void {
         process.exit(1);
       }
     });
+}
+
+function failOnFromCli(value: unknown) {
+  if (value === undefined) return undefined;
+  const failOn = normalizeCiFailOn(value);
+  if (!failOn) throw new Error('--fail-on must be one of: info, warning, error');
+  return failOn;
 }
