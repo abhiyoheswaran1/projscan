@@ -717,17 +717,20 @@ function buildTopRisks(
   }));
   const seen = new Set<string>();
   return [...reasonRisks, ...conflictRisks, ...extraRisks]
-    .filter((risk) => {
+    .map((risk, index) => ({ risk, index }))
+    .filter((entry) => {
+      const { risk } = entry;
       const key = `${risk.source}:${risk.file ?? ''}:${risk.message}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
     .sort((a, b) => {
-      const priority = priorityRank(a.priority) - priorityRank(b.priority);
+      const priority = priorityRank(a.risk.priority) - priorityRank(b.risk.priority);
       if (priority !== 0) return priority;
-      return a.message.localeCompare(b.message);
+      return a.index - b.index;
     })
+    .map((entry) => entry.risk)
     .slice(0, MAX_TOP_RISKS);
 }
 

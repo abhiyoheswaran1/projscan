@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Keep workplan scorecard risk order aligned
+
+- Status: accepted
+- Context: Bug-hunt workplans reused scorecard hotspot files for `fixFirst`, but `buildTopRisks()` re-sorted same-priority risks by message. That could make `topRisks` disagree with the first task and `fixFirst.files`.
+- Decision: Preserve input order within equal-priority workplan risks after de-duplication, while still sorting higher-priority risks ahead of lower-priority ones.
+- Consequences: Bug-hunt workplan `topRisks`, first task files, and `fixFirst.files` now agree on scorecard hotspot order. The workplan schema and priority levels remain unchanged.
+- Verification: `npm test -- tests/core/workplan.test.ts -t "ranked hotspot files"` failed on message-sorted risks and passed after preserving input order.
+
 ## 2026-06-21: Preserve hotspot analyzer order in quality risks
 
 - Status: accepted

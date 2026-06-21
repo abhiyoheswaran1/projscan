@@ -143,26 +143,26 @@ test('bug_hunt workplan names ranked hotspot files when no session files are tou
   expect(report.topRisks.slice(0, 2)).toEqual([
     expect.objectContaining({
       source: 'hotspots',
-      file: 'src/complex.ts',
+      file: 'src/large.ts',
       priority: 'p0',
     }),
     expect.objectContaining({
       source: 'hotspots',
-      file: 'src/large.ts',
+      file: 'src/complex.ts',
       priority: 'p0',
     }),
   ]);
-  expect(hotspotTask?.files.slice(0, 2)).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(hotspotTask?.files.slice(0, 2)).toEqual(['src/large.ts', 'src/complex.ts']);
   expect(hotspotTask?.evidence).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         source: 'hotspots',
-        file: 'src/complex.ts',
-        message: 'Hotspot src/complex.ts',
+        file: 'src/large.ts',
+        message: 'Hotspot src/large.ts',
       }),
     ]),
   );
-  expect(report.fixFirst?.files.slice(0, 2)).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(report.fixFirst?.files.slice(0, 2)).toEqual(['src/large.ts', 'src/complex.ts']);
   expect(report.summary).toContain('top risk');
   expect(report.summary).not.toContain('no top risks');
 });
