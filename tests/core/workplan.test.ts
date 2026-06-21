@@ -1,14 +1,29 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { buildWorkplanHandoff, computeWorkplan } from '../../src/core/workplan.js';
 import { loadSession, recordTouch, saveSession } from '../../src/core/session.js';
+import type { FileHotspot } from '../../src/types/hotspots.js';
 import type { WorkplanMode, WorkplanPriority } from '../../src/types.js';
+
+const hotspotState = vi.hoisted(() => ({
+  hotspots: [] as FileHotspot[],
+}));
+
+vi.mock('../../src/core/hotspotAnalyzer.js', () => ({
+  analyzeHotspots: vi.fn(async () => ({
+    available: true,
+    window: { since: null, commitsScanned: 0 },
+    hotspots: hotspotState.hotspots,
+    totalFilesRanked: hotspotState.hotspots.length,
+  })),
+}));
 
 const tempRoots: string[] = [];
 
 afterEach(async () => {
+  hotspotState.hotspots = [];
   await Promise.all(
     tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
   );
@@ -78,6 +93,8 @@ test('bug_hunt workplan includes evidence, verification, and short handoff text 
   expect(report.mode).toBe('bug_hunt');
   expect(report.tasks.length).toBeGreaterThan(0);
   expect(report.tasks.length).toBeLessThanOrEqual(4);
+  expect(report.topRisks).toEqual([]);
+  expect(report.summary).toContain('no top risks');
   for (const task of report.tasks) {
     expect(['p0', 'p1', 'p2']).toContain(task.priority satisfies WorkplanPriority);
     expect(task.why.length).toBeGreaterThan(10);
@@ -110,6 +127,44 @@ test('bug_hunt workplan suggested actions use commands that match their tools', 
       }),
     ]),
   );
+});
+
+test('bug_hunt workplan names ranked hotspot files when no session files are touched', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'tests/tiny.test.ts', lineCount: 40, riskScore: 300 }),
+    hotspot({ relativePath: 'src/large.ts', lineCount: 450, riskScore: 100 }),
+    hotspot({ relativePath: 'src/complex.ts', cyclomaticComplexity: 18, riskScore: 90 }),
+  ];
+  const root = await makeTempProject();
+
+  const report = await computeWorkplan(root, { mode: 'bug_hunt', maxTasks: 2 });
+  const hotspotTask = report.tasks.find((task) => task.id === 'wp-bug-hunt-hotspots');
+
+  expect(report.topRisks.slice(0, 2)).toEqual([
+    expect.objectContaining({
+      source: 'hotspots',
+      file: 'src/complex.ts',
+      priority: 'p0',
+    }),
+    expect.objectContaining({
+      source: 'hotspots',
+      file: 'src/large.ts',
+      priority: 'p0',
+    }),
+  ]);
+  expect(hotspotTask?.files.slice(0, 2)).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(hotspotTask?.evidence).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        source: 'hotspots',
+        file: 'src/complex.ts',
+        message: 'Hotspot src/complex.ts',
+      }),
+    ]),
+  );
+  expect(report.fixFirst?.files.slice(0, 2)).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(report.summary).toContain('top risk');
+  expect(report.summary).not.toContain('no top risks');
 });
 
 test('release workplan includes release check and local website prompt without mutating version', async () => {
@@ -190,6 +245,28 @@ async function makeTempProject(): Promise<string> {
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 1;\n');
   return root;
+}
+
+function hotspot(overrides: Partial<FileHotspot>): FileHotspot {
+  return {
+    relativePath: 'src/file.ts',
+    churn: 80,
+    distinctAuthors: 1,
+    daysSinceLastChange: 0,
+    lineCount: 50,
+    cyclomaticComplexity: 1,
+    sizeBytes: 1000,
+    issueCount: 0,
+    issueIds: [],
+    riskScore: 182.7,
+    reasons: ['high churn'],
+    primaryAuthor: 'dev@example.com',
+    primaryAuthorShare: 1,
+    busFactorOne: true,
+    topAuthors: [{ author: 'dev@example.com', commits: 80, share: 1 }],
+    coverage: null,
+    ...overrides,
+  };
 }
 
 async function writeJson(filePath: string, value: unknown): Promise<void> {

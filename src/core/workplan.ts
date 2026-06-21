@@ -1,7 +1,9 @@
 import { fixFirstFromWorkplanRisk, fixFirstFromWorkplanTask } from './fixFirst.js';
 import { computePreflight, type ComputePreflightOptions } from './preflight.js';
+import { computeQualityScorecard } from './qualityScorecard.js';
 import { buildRiskNow } from './sessionResources.js';
 import { loadOwnership, type OwnershipLookup } from './ownership.js';
+import type { QualityScorecardRisk } from '../types/qualityScorecard.js';
 import type {
   PreflightMode,
   PreflightReason,
@@ -59,24 +61,26 @@ export async function computeWorkplan(
     maxChangedFiles: options.maxChangedFiles,
     enablePlugins: options.enablePlugins,
   } satisfies ComputePreflightOptions);
-  const [riskNow, ownership] = await Promise.all([
+  const [riskNow, ownership, qualitySignals] = await Promise.all([
     safeRiskNow(rootPath),
     loadOwnership(rootPath).catch(() => undefined),
+    safeQualitySignals(rootPath, mode),
   ]);
   const coordination = buildCoordination(
     preflight.verdict,
     riskNow.touchedFiles,
     riskNow.conflicts,
   );
+  const modeFiles = unique([...coordination.touchedFiles, ...qualitySignals.files]);
   const tasks = rankWorkplanTasks([
     ...tasksFromPreflight(preflight.reasons),
     ...tasksFromCoordination(coordination),
-    ...modeTasks(mode, preflight.verdict, coordination.touchedFiles),
+    ...modeTasks(mode, preflight.verdict, modeFiles, qualitySignals.evidence),
   ]);
   const maxTasks = normalizeMaxTasks(options.maxTasks);
   const limitedTasks = annotateTasksWithOwners(tasks.slice(0, maxTasks), ownership);
   const topRisks = annotateTopRisksWithOwners(
-    buildTopRisks(preflight.reasons, coordination.conflicts),
+    buildTopRisks(preflight.reasons, coordination.conflicts, qualitySignals.topRisks),
     ownership,
   );
   const fixFirst =
@@ -174,6 +178,71 @@ async function safeRiskNow(rootPath: string): Promise<{
       touchedFiles: [],
     };
   }
+}
+
+interface WorkplanQualitySignals {
+  files: string[];
+  evidence: WorkplanEvidence[];
+  topRisks: WorkplanTopRisk[];
+}
+
+async function safeQualitySignals(
+  rootPath: string,
+  mode: WorkplanMode,
+): Promise<WorkplanQualitySignals> {
+  if (mode !== 'bug_hunt') return emptyQualitySignals();
+  try {
+    const report = await computeQualityScorecard(rootPath, { maxRisks: MAX_TOP_RISKS });
+    const topRisks = report.topRisks
+      .map(qualityRiskToWorkplanRisk)
+      .filter((risk): risk is WorkplanTopRisk => risk !== undefined);
+    return {
+      files: unique(report.topRisks.flatMap((risk) => risk.files)),
+      evidence: topRisks.map((risk) => ({
+        source: risk.source,
+        message: risk.message,
+        ...(risk.severity ? { severity: risk.severity } : {}),
+        ...(risk.file ? { file: risk.file } : {}),
+        ...(risk.issueId ? { issueId: risk.issueId } : {}),
+        ...(risk.tool ? { tool: risk.tool } : {}),
+      })),
+      topRisks,
+    };
+  } catch {
+    return emptyQualitySignals();
+  }
+}
+
+function emptyQualitySignals(): WorkplanQualitySignals {
+  return { files: [], evidence: [], topRisks: [] };
+}
+
+function qualityRiskToWorkplanRisk(risk: QualityScorecardRisk): WorkplanTopRisk | undefined {
+  if (risk.files.length === 0) return undefined;
+  const tool = toolFromCommand(risk.command);
+  return {
+    source: workplanSourceFromQualityRisk(risk.source),
+    message: risk.title,
+    priority: risk.priority,
+    file: risk.files[0],
+    ...(tool ? { tool } : {}),
+  };
+}
+
+function workplanSourceFromQualityRisk(
+  source: QualityScorecardRisk['source'],
+): WorkplanEvidence['source'] {
+  if (source === 'hotspot') return 'hotspots';
+  if (source === 'coordination') return 'coordination';
+  return 'doctor';
+}
+
+function toolFromCommand(command: string): string | undefined {
+  if (command.startsWith('projscan file ')) return 'projscan_file';
+  if (command.startsWith('projscan doctor ')) return 'projscan_doctor';
+  if (command.startsWith('projscan session ')) return 'projscan_session';
+  if (command.startsWith('projscan quality-scorecard ')) return 'projscan_quality_scorecard';
+  return undefined;
 }
 
 function buildCoordination(
@@ -355,9 +424,11 @@ function modeTasks(
   mode: WorkplanMode,
   verdict: PreflightVerdict,
   touchedFiles: string[],
+  qualityEvidence: WorkplanEvidence[] = [],
 ): WorkplanTask[] {
   const tasks: WorkplanTask[] = [];
   if (mode === 'bug_hunt') {
+    const bugHuntFiles = unique([...touchedFiles, ...filesFromEvidence(qualityEvidence)]);
     tasks.push(
       makeTask({
         id: 'wp-bug-hunt-hotspots',
@@ -365,12 +436,13 @@ function modeTasks(
         title: 'Hunt bugs in the highest-risk files',
         why: 'The fastest polish pass starts where churn, complexity, and current issues overlap instead of scanning the whole repository equally.',
         evidence: [
+          ...qualityEvidence.slice(0, 5),
           {
             source: 'verification',
             message: 'bug_hunt mode prioritizes hotspots, doctor issues, and focused tests',
           },
         ],
-        files: touchedFiles,
+        files: bugHuntFiles,
         suggestedTools: ['projscan_hotspots', 'projscan_file', 'projscan_doctor'],
         commands: ['projscan hotspots --format json', 'projscan doctor --format json', 'npm test'],
         expected:
@@ -621,9 +693,16 @@ function filesFromReasons(reasons: PreflightReason[]): string[] {
   );
 }
 
+function filesFromEvidence(evidence: WorkplanEvidence[]): string[] {
+  return unique(
+    evidence.map((item) => item.file).filter((file): file is string => typeof file === 'string'),
+  );
+}
+
 function buildTopRisks(
   reasons: PreflightReason[],
   conflicts: SessionConflict[],
+  extraRisks: WorkplanTopRisk[] = [],
 ): WorkplanTopRisk[] {
   const reasonRisks = reasons.map((reason) => ({
     ...reasonToEvidence(reason),
@@ -636,7 +715,14 @@ function buildTopRisks(
     file: conflict.files[0],
     priority: conflict.severity === 'error' ? ('p0' as const) : ('p1' as const),
   }));
-  return [...reasonRisks, ...conflictRisks]
+  const seen = new Set<string>();
+  return [...reasonRisks, ...conflictRisks, ...extraRisks]
+    .filter((risk) => {
+      const key = `${risk.source}:${risk.file ?? ''}:${risk.message}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => {
       const priority = priorityRank(a.priority) - priorityRank(b.priority);
       if (priority !== 0) return priority;

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Enrich bug-hunt workplans with scorecard hotspots
+
+- Status: accepted
+- Context: `projscan workplan --mode bug_hunt` said it would hunt the highest-risk files, but when no session files were touched it emitted an empty file list and "no top risks" even though `quality-scorecard` already had ranked hotspot evidence.
+- Decision: In bug-hunt mode, load quality scorecard risks best-effort and map hotspot, issue, and coordination risks into workplan evidence, top risks, and the first bug-hunt task file list. Other workplan modes keep their previous data path.
+- Consequences: Bug-hunt workplans now name concrete files for agents to inspect first, and `fixFirst` carries those files through existing task-to-fix-first logic. The command does one extra scorecard pass only for bug-hunt mode; if scorecard evidence fails, workplan falls back to its previous generic plan.
+- Verification: `npm test -- tests/core/workplan.test.ts -t "ranked hotspot files"` failed before scorecard risks were included, then passed after the workplan enrichment. The full workplan suite passed after narrowing the test mock to hotspot analysis only.
+
 ## 2026-06-21: Align quality hotspot evidence with top risks
 
 - Status: accepted
