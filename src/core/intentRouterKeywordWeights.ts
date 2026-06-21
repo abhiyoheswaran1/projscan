@@ -1,4 +1,5 @@
 import { architectureKeywordWeight } from './intentRouterArchitectureKeywordWeights.js';
+import { dependencyKeywordWeight } from './intentRouterDependencyKeywordWeights.js';
 import { fileImpactKeywordWeight } from './intentRouterFileImpactKeywordWeights.js';
 import { isPrDiffKeyword } from './intentRouterPrDiffKeywords.js';
 import { regressionPlanKeywordWeight } from './intentRouterRegressionKeywordWeights.js';
@@ -17,87 +18,8 @@ export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string)
   if (fileImpactWeight !== undefined) return fileImpactWeight;
   const architectureWeight = architectureKeywordWeight(entry.tool, keyword);
   if (architectureWeight !== undefined) return architectureWeight;
-  if (
-    entry.tool === 'projscan_dependencies' &&
-    ['dependencies', 'dependency', 'deps', 'package', 'packages', 'inventory', 'declared'].includes(
-      keyword,
-    )
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_dependencies' &&
-    [
-      'bundle',
-      'bundles',
-      'size',
-      'sizes',
-      'large',
-      'heavy',
-      'bloat',
-      'bloated',
-      'weight',
-      'footprint',
-      'reduce',
-      'slim',
-    ].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_dependencies' &&
-    [
-      'license',
-      'licenses',
-      'gpl',
-      'copyleft',
-      'notice',
-      'notices',
-      'third',
-      'party',
-      'open',
-      'source',
-      'compliance',
-    ].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_workspaces' &&
-    [
-      'workspace',
-      'workspaces',
-      'monorepo',
-      'package',
-      'packages',
-      'map',
-      'list',
-      'owns',
-      'contains',
-      'put',
-      'change',
-    ].includes(keyword)
-  )
-    return 2;
-  if (
-    entry.tool === 'projscan_upgrade' &&
-    ['upgrade', 'bump', 'update', 'remove', 'drop', 'uninstall', 'package'].includes(keyword)
-  )
-    return 2;
-  if (entry.tool === 'projscan_audit') {
-    if (
-      [
-        'audit',
-        'cve',
-        'cves',
-        'vulnerable',
-        'vulnerability',
-        'vulnerabilities',
-        'security',
-        'secure',
-        'safe',
-      ].includes(keyword)
-    )
-      return 2;
-    if (['dependency', 'dependencies', 'package', 'packages', 'npm'].includes(keyword)) return 1;
-  }
+  const dependencyWeight = dependencyKeywordWeight(entry.tool, keyword);
+  if (dependencyWeight !== undefined) return dependencyWeight;
   if (
     entry.tool === 'projscan_dataflow' &&
     [
