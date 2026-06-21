@@ -171,11 +171,14 @@ function buildMaintainabilityDimension(
 }
 
 function rankHotspotsForEvidence(hotspots: FileHotspot[]): FileHotspot[] {
-  return [...hotspots].sort(
-    (a, b) =>
-      priorityRank(hotspotRiskPriority(a)) - priorityRank(hotspotRiskPriority(b)) ||
-      slug(a.relativePath).localeCompare(slug(b.relativePath)),
-  );
+  return hotspots
+    .map((hotspot, index) => ({ hotspot, index }))
+    .sort(
+      (a, b) =>
+        priorityRank(hotspotRiskPriority(a.hotspot)) -
+          priorityRank(hotspotRiskPriority(b.hotspot)) || a.index - b.index,
+    )
+    .map((entry) => entry.hotspot);
 }
 
 function isMaintainabilityPenaltyHotspot(hotspot: FileHotspot): boolean {
@@ -266,17 +269,20 @@ function baselineRisk(): QualityScorecardRisk {
 function rankRisks(risks: QualityScorecardRisk[]): QualityScorecardRisk[] {
   const seen = new Set<string>();
   return risks
-    .filter((risk) => {
+    .map((risk, index) => ({ risk, index }))
+    .filter((entry) => {
+      const { risk } = entry;
       if (seen.has(risk.id)) return false;
       seen.add(risk.id);
       return true;
     })
     .sort(
       (a, b) =>
-        priorityRank(a.priority) - priorityRank(b.priority) ||
-        sourceRank(a.source) - sourceRank(b.source) ||
-        a.id.localeCompare(b.id),
-    );
+        priorityRank(a.risk.priority) - priorityRank(b.risk.priority) ||
+        sourceRank(a.risk.source) - sourceRank(b.risk.source) ||
+        a.index - b.index,
+    )
+    .map((entry) => entry.risk);
 }
 
 export function deriveQualityScorecardVerdict(

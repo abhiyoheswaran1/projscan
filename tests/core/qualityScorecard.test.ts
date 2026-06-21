@@ -167,7 +167,7 @@ test('quality scorecard keeps large and complex hotspots as p0 risks', async () 
   );
 });
 
-test('maintainability evidence starts with ranked actionable hotspots', async () => {
+test('maintainability evidence starts with analyzer-ranked actionable hotspots', async () => {
   hotspotState.hotspots = [
     hotspot({ relativePath: 'tests/tiny.test.ts', lineCount: 40, riskScore: 300 }),
     hotspot({ relativePath: 'src/types.ts', lineCount: 35, riskScore: 250 }),
@@ -186,7 +186,7 @@ test('maintainability evidence starts with ranked actionable hotspots', async ()
     .slice(0, 2)
     .map((entry) => entry.split(':')[0]);
 
-  expect(topHotspotFiles).toEqual(['src/complex.ts', 'src/large.ts']);
+  expect(topHotspotFiles).toEqual(['src/large.ts', 'src/complex.ts']);
   expect(evidenceFiles).toEqual(topHotspotFiles);
 });
 

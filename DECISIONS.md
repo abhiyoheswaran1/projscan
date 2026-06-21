@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-21: Preserve hotspot analyzer order in quality risks
+
+- Status: accepted
+- Context: `quality-scorecard` correctly promoted actionable hotspots to p0, but same-priority hotspot risks were sorted by id/path. That could put an alphabetically earlier file above the analyzer's higher-risk file.
+- Decision: Preserve input order within equal priority/source groups in quality risk ranking, and use the same priority-plus-input-order rule for maintainability hotspot evidence.
+- Consequences: `topRisks`, `fixFirst`, and maintainability evidence now follow the hotspot analyzer's risk order within the same priority bucket. Public scorecard fields and priority thresholds remain unchanged.
+- Verification: `npm test -- tests/core/qualityScorecard.test.ts -t "analyzer-ranked actionable hotspots"` failed on path ordering and passed after preserving analyzer order.
+
 ## 2026-06-21: Label start summaries by combined risk priority
 
 - Status: accepted
