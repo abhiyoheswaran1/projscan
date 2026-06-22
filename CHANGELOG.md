@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.12.1]
+
+2026-06-22 - "Simulator Precision Patch"
+
+### Fixed
+
+- Tightened `projscan simulate --plan` candidate ranking so short filenames
+  such as `s.ts` do not match broad plan text by single-letter substring.
+- Filtered generated agent/cache paths and weak planning terms from simulator
+  term-overlap evidence, so logs or proof artifacts do not appear as likely
+  files when the plan names no concrete repo target.
+
 ## [4.12.0]
 
 2026-06-22 - "Proof Cards V2 Daily Trust Loop"

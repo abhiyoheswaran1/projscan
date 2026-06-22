@@ -23,6 +23,90 @@ export interface ComputeSimulationOptions {
 const DEFAULT_MAX_FILES = 5;
 const NO_MATCH_WARNING =
   'No repo files matched the plan. Mention a file, symbol, command, package, or module name for a stronger simulation.';
+const IGNORED_SIMULATION_PATH_SEGMENTS = new Set([
+  '.agentflight',
+  '.agentloop',
+  '.git',
+  '.projscan-memory',
+  'coverage',
+  'dist',
+  'node_modules',
+]);
+const SOURCE_LIKE_EXTENSIONS = new Set([
+  '.c',
+  '.cpp',
+  '.cs',
+  '.css',
+  '.go',
+  '.h',
+  '.hpp',
+  '.html',
+  '.java',
+  '.js',
+  '.json',
+  '.jsonc',
+  '.jsx',
+  '.kt',
+  '.md',
+  '.mdx',
+  '.mjs',
+  '.mts',
+  '.php',
+  '.py',
+  '.rb',
+  '.rs',
+  '.scss',
+  '.sh',
+  '.sql',
+  '.swift',
+  '.toml',
+  '.ts',
+  '.tsx',
+  '.yaml',
+  '.yml',
+]);
+const SOURCE_LIKE_FILENAMES = new Set([
+  'dockerfile',
+  'makefile',
+  'package-lock.json',
+  'package.json',
+  'pnpm-lock.yaml',
+  'readme',
+  'tsconfig.json',
+  'yarn.lock',
+]);
+const WEAK_PLAN_TERMS = new Set([
+  'add',
+  'adding',
+  'change',
+  'changes',
+  'clean',
+  'cleaner',
+  'code',
+  'edit',
+  'evidence',
+  'extract',
+  'file',
+  'files',
+  'fix',
+  'improve',
+  'improvement',
+  'into',
+  'make',
+  'module',
+  'modules',
+  'output',
+  'ranking',
+  'refactor',
+  'safe',
+  'safer',
+  'ship',
+  'split',
+  'test',
+  'tests',
+  'update',
+  'week',
+]);
 
 export async function computeSimulation(
   rootPath: string,
@@ -107,6 +191,7 @@ function rankCandidateFiles(input: {
   }
 
   return input.files
+    .filter((file) => isSimulationCandidatePath(file.relativePath))
     .map((file) => scoreFile(file, planLower, planTerms, input.graph, riskByFile.get(file.relativePath)))
     .filter((candidate): candidate is SimulateCandidateFile => candidate.score > 0)
     .sort(
@@ -136,12 +221,12 @@ function scoreFile(
   } else if (planLower.includes(basename.toLowerCase())) {
     score += 70;
     reasons.push(`plan mentions ${basename}`);
-  } else if (basenameNoExt && planLower.includes(basenameNoExt.toLowerCase())) {
+  } else if (basenameNoExt && planMentionsStem(basenameNoExt, planLower, planTerms)) {
     score += 60;
     reasons.push(`plan mentions ${basenameNoExt}`);
   }
 
-  const overlap = [...fileTerms].filter((term) => planTerms.has(term) && term.length > 2);
+  const overlap = [...fileTerms].filter((term) => planTerms.has(term) && isStrongPlanTerm(term));
   if (overlap.length > 0) {
     score += overlap.length * 12;
     reasons.push(`plan shares term(s): ${overlap.slice(0, 4).join(', ')}`);
@@ -200,6 +285,7 @@ function testScore(testLower: string, candidateBase: string): number {
     .replace(/\.(test|spec)\.[^.]+$/, '')
     .replace(/\.[^.]+$/, '');
   if (testBase === candidateBase) return 100;
+  if (candidateBase.length < 3) return 0;
   return testLower.includes(candidateBase) ? 40 : 0;
 }
 
@@ -452,6 +538,25 @@ function tokenize(value: string): Set<string> {
 
 function hasAny(terms: Set<string>, values: string[]): boolean {
   return values.some((value) => terms.has(value));
+}
+
+function isSimulationCandidatePath(filePath: string): boolean {
+  const segments = filePath.split(/[\\/]+/);
+  if (segments.some((segment) => IGNORED_SIMULATION_PATH_SEGMENTS.has(segment))) return false;
+  const basename = path.basename(filePath).toLowerCase();
+  if (SOURCE_LIKE_FILENAMES.has(basename)) return true;
+  if (SOURCE_LIKE_FILENAMES.has(basename.replace(/\.[^.]+$/, ''))) return true;
+  return SOURCE_LIKE_EXTENSIONS.has(path.extname(basename));
+}
+
+function isStrongPlanTerm(term: string): boolean {
+  return term.length > 2 && !WEAK_PLAN_TERMS.has(term);
+}
+
+function planMentionsStem(stem: string, planLower: string, planTerms: Set<string>): boolean {
+  const normalized = stem.toLowerCase();
+  if (normalized.length < 3) return planTerms.has(normalized);
+  return planLower.includes(normalized);
 }
 
 function quotePlan(plan: string): string {

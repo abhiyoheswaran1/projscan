@@ -173,6 +173,16 @@ npm run docs:screenshots
 npm run docs:demos
 ```
 
+## 4.12.1 Notes
+
+4.12.1 is the simulator precision patch for the Proof Cards V2 release:
+
+- `projscan simulate --plan` no longer treats one-letter filenames such as
+  `s.ts` as matches for broad plan text.
+- Simulator term-overlap evidence now filters generated agent/cache paths and
+  weak planning terms, so logs or proof artifacts do not become likely files
+  when the plan names no concrete repo target.
+
 ## 4.12.0 Notes
 
 4.12.0 is the Proof Cards V2 daily trust loop release:
@@ -448,7 +458,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.12.0` has seven direct runtime dependencies:
+`projscan@4.12.1` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -458,7 +468,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.12.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.12.1. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

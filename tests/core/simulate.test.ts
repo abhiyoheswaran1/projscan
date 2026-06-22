@@ -40,6 +40,15 @@ beforeEach(async () => {
       '',
     ].join('\n'),
   );
+  await fs.writeFile(
+    path.join(tmp, 'src/core/s.ts'),
+    [
+      'export function smallHelper(value: string): string {',
+      '  return value.trim();',
+      '}',
+      '',
+    ].join('\n'),
+  );
   await fs.mkdir(path.join(tmp, 'tests/core'), { recursive: true });
   await fs.mkdir(path.join(tmp, 'tests/cli'), { recursive: true });
   await fs.writeFile(
@@ -58,8 +67,17 @@ beforeEach(async () => {
     "test('unrelated', () => undefined);\n",
   );
   await fs.writeFile(
+    path.join(tmp, 'tests/core/s.test.ts'),
+    "test('small helper', () => undefined);\n",
+  );
+  await fs.writeFile(
     path.join(tmp, 'tests/cli/releaseTrainBugHunt.test.ts'),
     "test('release train bug hunt integration', () => undefined);\n",
+  );
+  await fs.mkdir(path.join(tmp, '.agentflight/evidence/run-1'), { recursive: true });
+  await fs.writeFile(
+    path.join(tmp, '.agentflight/evidence/run-1/verification-1.stderr.txt'),
+    'artifact output\n',
   );
 });
 
@@ -78,9 +96,12 @@ test('predicts the safest rollout for a bounded split plan', async () => {
   expect(report.confidence).toMatch(/high|medium/);
   expect(report.filesLikelyTouched[0]?.path).toBe('src/core/bugHunt.ts');
   expect(report.filesLikelyTouched[0]?.reasons.join(' ')).toContain('plan mentions bugHunt.ts');
+  expect(report.filesLikelyTouched.map((file) => file.path)).not.toContain('src/core/s.ts');
+  expect(report.filesLikelyTouched.some((file) => file.path.includes('.agentflight'))).toBe(false);
   expect(report.testsLikelyAffected[0]).toBe('tests/core/bugHunt.test.ts');
   expect(report.testsLikelyAffected).toContain('tests/cli/releaseTrainBugHunt.test.ts');
   expect(report.testsLikelyAffected).not.toContain('tests/core/unrelated.test.ts');
+  expect(report.testsLikelyAffected).not.toContain('tests/core/s.test.ts');
   expect(report.contractsLikelyAffected).toContain('module boundary');
   expect(report.riskDelta.projectedScore).toBeGreaterThan(report.riskDelta.baselineScore);
   expect(report.recommendedAlternative.id).toBe('bounded-extraction');

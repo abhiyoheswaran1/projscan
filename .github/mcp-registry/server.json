@@ -6,12 +6,12 @@
     "url": "https://github.com/abhiyoheswaran1/projscan",
     "source": "github"
   },
-  "version": "4.12.0",
+  "version": "4.12.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "projscan",
-      "version": "4.12.0",
+      "version": "4.12.1",
       "transport": {
         "type": "stdio"
       },

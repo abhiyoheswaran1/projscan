@@ -13,17 +13,21 @@ Current live-site baseline from 2026-06-22; re-check before publishing:
 - Keep 4.0 migration content and 4.9 trust-patch details as historical context.
 
 ```text
-Update the projscan website for projscan 4.12.0.
+Update the projscan website for projscan 4.12.1.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
 - https://www.baseframelabs.com/apps/projscan/docs
 
+Do not edit:
+- https://www.baseframelabs.com/apps/projscan/changelog
+The changelog updates automatically.
+
 Release headline:
-4.12.0: Proof Cards V2 Daily Trust Loop
+4.12.1: Proof Cards V2 Daily Trust Loop
 
 Primary story:
-projscan 4.12.0 turns Proof Cards into a daily trust loop. `projscan assess`
+projscan 4.12.1 turns Proof Cards into a daily trust loop. `projscan assess`
 now shows evidence strength, confidence reason, evidence gaps, ranking reasons,
 Trust Memory, and an AgentLoopKit-ready handoff packet. `projscan start
 --intent "is this safe to commit?"` now starts with `projscan assess --mode
@@ -46,16 +50,17 @@ Do not change:
 
 Stale live-site claims to update:
 - Version labels: `4.0.0`, `4.3.1`, `4.4.0`, `4.7.0`, `4.8.0`, `4.9.0`,
-  `4.9.1`, `4.9.2`, `4.9.3`, `4.10.0`, `4.11.0`, or `4.11.1` -> `4.12.0`.
+  `4.9.1`, `4.9.2`, `4.9.3`, `4.10.0`, `4.11.0`, `4.11.1`, or
+  `4.12.0` -> `4.12.1`.
 - Navigation/changelog labels: `Changelog 4.0.0`, `Changelog 4.3.1`,
   `Changelog 4.4.0`, `Changelog 4.7.0`, `Changelog 4.8.0`,
   `Changelog 4.9.0`, `Changelog 4.9.1`, `Changelog 4.9.2`, or
-  `Changelog 4.9.3`, `Changelog 4.10.0`, `Changelog 4.11.0`, or
-  `Changelog 4.11.1` ->
-  `Changelog 4.12.0`.
-- Release notes headings: old `Shipped in ...` headings -> `Shipped in 4.12.0.`
-- Replace any release-current `4.9.3`, `4.10.0`, `4.11.0`, or `4.11.1` copy
-  with the 4.12.0 proof-first story.
+  `Changelog 4.9.3`, `Changelog 4.10.0`, `Changelog 4.11.0`,
+  `Changelog 4.11.1`, or `Changelog 4.12.0` ->
+  `Changelog 4.12.1`.
+- Release notes headings: old `Shipped in ...` headings -> `Shipped in 4.12.1.`
+- Replace any release-current `4.9.3`, `4.10.0`, `4.11.0`, `4.11.1`, or
+  `4.12.0` copy with the 4.12.1 proof-first story.
 
 Above-the-fold update:
 - Lead with: "Know the safest next change before you edit."
@@ -66,7 +71,7 @@ Above-the-fold update:
 - Keep graph, dataflow, MCP, Mission Control, and local-first language, but make
   proof-first engineering decisions the first story.
 
-New release-note bullets for 4.12.0:
+New release-note bullets for 4.12.1:
 - Proof Cards V2: assessment cards now show evidence strength, confidence
   reason, evidence gaps, ranking reasons, Trust Memory, and AgentLoopKit-ready
   handoff packets.
@@ -95,6 +100,9 @@ New release-note bullets for 4.12.0:
 - Simulator bug pass: vague plans no longer inherit confidence from unrelated
   quality or graph evidence, dotfiles no longer match every plan, and likely
   tests prefer direct matches over broad noise.
+- Simulator precision patch: short filenames such as `s.ts`, generated
+  agent/cache paths, logs, and weak planning words no longer become likely
+  touched files when the plan does not name a concrete repo target.
 
 Main page feature-section edits:
 - Proof Cards: show a card with finding, evidence, impact, safe fix shape,
@@ -125,14 +133,14 @@ Docs page updates:
   the 4.9 site.
 
 Screenshots/media:
-- Use the README media after the `v4.12.0` tag is live:
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.0/docs/projscan-mission-control.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.0/docs/projscan-proof-router.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.0/docs/projscan-proof-cards.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.0/docs/projscan-mission-control.gif`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.0/docs/projscan-mission-proof.gif`
+- Use the README media after the `v4.12.1` tag is live:
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-control.png`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-proof-router.png`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-proof-cards.png`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-control.gif`
+  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-proof.gif`
 - Use the Mission Control image as the hero/overview asset.
-- Use the Proof Cards image near the 4.12.0 assess/simulate story.
+- Use the Proof Cards image near the 4.12.1 assess/simulate story.
 - Use proof-router imagery for Mission Control, saved proof, or release-review detail.
 - Keep older terminal GIFs only as secondary proof.
 
@@ -145,15 +153,17 @@ Calls to action:
 - Keep existing CTAs for MCP setup, privacy-check, evidence-pack, and swarm coordination.
 
 Suggested copy block:
-projscan 4.12.0 is the Proof Cards V2 daily trust loop release. `projscan
+projscan 4.12.1 is the Proof Cards V2 daily trust loop release. `projscan
 assess` shows the safest next change, the evidence behind it, Trust Memory,
 AgentLoopKit handoff details, and the commands that prove it. `projscan simulate
 --plan` compares bounded extraction, regression test first, and leave unchanged
 before recommending an option. Core scans still run locally by default, source is
 not uploaded, and telemetry stays off until someone opts in.
+The 4.12.1 patch also tightens simulator precision so vague plans do not pull in
+one-letter files, logs, or generated agent evidence.
 
 Verification before publishing:
-- Confirm every visible version/changelog label reads 4.12.0.
+- Confirm every visible version/changelog label reads 4.12.1.
 - Confirm the tool count still reads 47.
 - Confirm language copy reads 11 AST adapters covering 12 named languages.
 - Confirm `projscan assess --goal`, `projscan assess --mode fix-first`, and
@@ -162,10 +172,11 @@ Verification before publishing:
   proof commands are visible in docs.
 - Confirm evidence strength, confidence reason, Trust Memory, AgentLoopKit
   handoff, and simulator alternatives are visible in docs.
-- Confirm the screenshots load from the `v4.12.0` raw GitHub URLs after the tag
+- Confirm the screenshots load from the `v4.12.1` raw GitHub URLs after the tag
   is pushed.
-- Search the rendered site for `4.9.3`, `4.10.0`, and `4.11.0`; remaining hits
-  should be historical release context, not current-version labels.
+- Search the rendered site for `4.9.3`, `4.10.0`, `4.11.0`, and `4.12.0`;
+  remaining hits should be historical release context, not current-version
+  labels.
 ```
 
 ## Release Proof Assets
@@ -180,4 +191,4 @@ Verification before publishing:
 - Regenerate screenshots: `npm run docs:screenshots`
 - Regenerate VHS demos: `npm run docs:demos`
 - Regenerate all README media: `npm run docs:assets`
-- Changelog source: `CHANGELOG.md` entry for `4.12.0`
+- Changelog source: `CHANGELOG.md` entry for `4.12.1`
