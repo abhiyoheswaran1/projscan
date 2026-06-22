@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.11.1]
+
+2026-06-22 - "Proof Cards README Media"
+
+### Changed
+
+- Added a dedicated Proof Cards screenshot to the README so the proof-first
+  `projscan assess` and `projscan simulate` workflow has visible evidence in
+  the public package page.
+- Regenerated README screenshots so the Mission Control media shows the current
+  47-tool MCP surface.
+- Updated website handoff guidance to point the 4.11 proof-first story at
+  immutable `v4.11.1` media URLs.
+
 ## [4.11.0]
 
 2026-06-21 - "Proof-First Engineering Command Center"

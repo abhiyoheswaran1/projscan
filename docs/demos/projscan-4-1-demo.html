@@ -377,6 +377,109 @@
         background: var(--red);
       }
 
+      .assess {
+        padding-top: 74px;
+      }
+
+      .assess-header {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 24px;
+      }
+
+      .assess-header h2 {
+        margin-bottom: 10px;
+        font-size: 44px;
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .assess-header p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .proof-card-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        gap: 22px;
+      }
+
+      .proof-card {
+        min-height: 470px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .proof-card h3 {
+        margin-bottom: 8px;
+        font-size: 30px;
+        line-height: 1.12;
+        letter-spacing: 0;
+      }
+
+      .proof-card p {
+        margin-bottom: 18px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .evidence-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .evidence-item {
+        display: grid;
+        grid-template-columns: 118px minmax(0, 1fr);
+        gap: 12px;
+        padding: 13px 0;
+        border-top: 1px solid var(--line);
+        font-size: 14px;
+      }
+
+      .evidence-item strong {
+        color: var(--ink);
+      }
+
+      .evidence-item span {
+        color: var(--muted);
+      }
+
+      .delta-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .delta {
+        min-height: 82px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbf7ef;
+      }
+
+      .delta strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .delta span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
       @media (max-width: 980px) {
         .page {
           width: min(100% - 32px, 760px);
@@ -385,6 +488,8 @@
 
         .hero,
         .proof-header,
+        .assess-header,
+        .proof-card-grid,
         .workflow,
         .grid {
           grid-template-columns: 1fr;
@@ -408,7 +513,11 @@
       }
 
       body.proof-only .hero,
-      body.proof-only .grid {
+      body.proof-only .grid,
+      body.proof-only .assess,
+      body.assess-only .hero,
+      body.assess-only .grid,
+      body.assess-only .proof {
         display: none;
       }
 
@@ -417,6 +526,14 @@
       }
 
       body.proof-only .proof-header {
+        margin-top: 0;
+      }
+
+      body.assess-only .assess {
+        padding-top: 0;
+      }
+
+      body.assess-only .assess-header {
         margin-top: 0;
       }
     </style>
@@ -448,7 +565,7 @@
               <span>mission and proof</span>
             </div>
             <div class="metric">
-              <strong>45</strong>
+              <strong>47</strong>
               <span>MCP tools</span>
             </div>
             <div class="metric">
@@ -617,10 +734,105 @@
           </div>
         </div>
       </section>
+
+      <section class="assess" id="assess" aria-label="Proof Cards assessment view">
+        <div class="assess-header">
+          <div>
+            <p class="eyebrow">Proof-first assessment</p>
+            <h2>Pick the safest next fix.</h2>
+          </div>
+          <p>
+            <code>projscan assess</code> turns local quality, bug-hunt, and preflight evidence into
+            Proof Cards. Each card names the risk, the safest change shape, and the commands that
+            prove the risk went down.
+          </p>
+        </div>
+
+        <div class="proof-card-grid">
+          <section class="terminal compact-terminal" aria-label="Assess terminal output">
+            <div class="terminal-bar">
+              <span class="dot red"></span>
+              <span class="dot amber"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">projscan assess --mode fix-first</span>
+            </div>
+            <div class="terminal-body">
+              <span class="line"
+                ><span class="prompt">$</span>
+                <span class="cmd">projscan assess --mode fix-first --format markdown</span></span
+              >
+              <span class="line dim">Proof-first assessment</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Fix first: maintainability hotspot</span>
+              <span class="line">src/core/bugHunt.ts combines ranking, evidence, and output.</span>
+              <span class="line success">Confidence: high</span>
+              <span class="line notice">Risk delta: 76 -> 61 if split behind tests</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Proof commands</span>
+              <span class="line success">npm run typecheck</span>
+              <span class="line success">npm run lint</span>
+              <span class="line success">vitest tests/core/bugHunt.test.ts</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Simulate before editing</span>
+              <span class="line notice"
+                >projscan simulate --plan "split bugHunt.ts into ranking..."</span
+              >
+            </div>
+          </section>
+
+          <article class="proof-card" aria-label="Proof Card">
+            <span class="label blue">Proof Card</span>
+            <h3>Maintainability hotspot</h3>
+            <p>
+              Fix the extraction only when local evidence shows lower coupling and focused tests can
+              prove behavior stayed stable.
+            </p>
+            <div class="evidence-list">
+              <div class="evidence-item">
+                <strong>Evidence</strong>
+                <span>high churn, high complexity, broad imports, direct bug-hunt tests</span>
+              </div>
+              <div class="evidence-item">
+                <strong>Impact</strong>
+                <span>bug ranking, MCP findings, release review, PR evidence packs</span>
+              </div>
+              <div class="evidence-item">
+                <strong>Safe shape</strong>
+                <span>extract ranking, evidence, and markdown output behind existing tests</span>
+              </div>
+              <div class="evidence-item">
+                <strong>Verify</strong>
+                <span>typecheck, lint, focused Vitest, then bug-hunt smoke</span>
+              </div>
+              <div class="evidence-item">
+                <strong>Feedback</strong>
+                <span>accept, suppress, or feed false-positive notes back into trust memory</span>
+              </div>
+            </div>
+            <div class="delta-row" aria-label="Risk delta">
+              <div class="delta">
+                <strong>76</strong>
+                <span>before risk</span>
+              </div>
+              <div class="delta">
+                <strong>61</strong>
+                <span>after risk</span>
+              </div>
+              <div class="delta">
+                <strong>3</strong>
+                <span>proof commands</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
     </main>
     <script>
       if (window.location.hash === '#proof') {
         document.body.classList.add('proof-only');
+      }
+      if (window.location.hash === '#assess') {
+        document.body.classList.add('assess-only');
       }
       document.documentElement.dataset.ready = 'true';
     </script>

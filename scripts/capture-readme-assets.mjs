@@ -24,6 +24,12 @@ const captures = [
     output: path.join(repoRoot, 'docs', 'projscan-proof-router.png'),
     viewport: '1440,760',
   },
+  {
+    name: 'Proof Cards assessment',
+    url: `${pathToFileURL(demoPath).href}#assess`,
+    output: path.join(repoRoot, 'docs', 'projscan-proof-cards.png'),
+    viewport: '1440,820',
+  },
 ];
 
 for (const capture of captures) {
