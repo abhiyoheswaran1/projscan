@@ -136,10 +136,13 @@ test('projscan_start infers mode from safety-gate intent when no mode is supplie
   expect(result.start.recommendedWorkflow.id).toBe('before_handoff');
   expect(result.start.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan preflight --mode before_commit --format json',
-      tool: 'projscan_preflight',
-      args: { mode: 'before_commit' },
+      command: 'projscan assess --mode fix-first --format json',
+      tool: 'projscan_assess',
+      args: { mode: 'fix-first' },
     }),
+  );
+  expect(result.start.missionControl.proofCommands).toContain(
+    'projscan preflight --mode before_commit --format json',
   );
   expect(result.start.missionControl.proofCommands).not.toContain(
     'projscan preflight --mode before_edit --format json',

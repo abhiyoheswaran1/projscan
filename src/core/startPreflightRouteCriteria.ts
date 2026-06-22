@@ -35,6 +35,8 @@ export function preflightSuccessCriteria(
   }
   const preflightMode =
     context.route?.tool === 'projscan_preflight' &&
+    context.primaryAction &&
+    isPreflightAction(context.primaryAction) &&
     context.primaryAction?.args &&
     'mode' in context.primaryAction.args
       ? String(context.primaryAction.args.mode)

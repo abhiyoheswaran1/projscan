@@ -57,6 +57,12 @@ function printSimulateConsole(report: SimulateReport): void {
   if (report.filesLikelyTouched.length === 0) console.log('- No concrete file matched the plan');
   for (const file of report.filesLikelyTouched) console.log(renderCandidateConsole(file));
   console.log('');
+  console.log(chalk.bold('Recommended Alternative'));
+  console.log(
+    `- ${report.recommendedAlternative.id}: ${report.recommendedAlternative.summary} ` +
+      `(risk delta +${report.recommendedAlternative.riskDelta}, blast radius ${report.recommendedAlternative.blastRadius})`,
+  );
+  console.log('');
   console.log(chalk.bold('Proof Commands'));
   for (const command of report.proofCommands.slice(0, 6)) console.log(`- ${command}`);
 }
@@ -70,6 +76,24 @@ export function renderSimulateMarkdown(report: SimulateReport): string {
   lines.push(`- **Plan:** ${report.plan}`);
   lines.push(`- **Summary:** ${report.summary}`);
   lines.push(`- **Risk delta:** +${report.riskDelta.delta}`);
+  lines.push(`- **Recommended:** ${report.recommendedAlternative.id}`);
+  lines.push('');
+  lines.push('## Alternatives');
+  lines.push('');
+  lines.push(`Recommended: ${report.recommendedAlternative.id}`);
+  lines.push('');
+  for (const option of report.alternatives) {
+    lines.push(`### ${option.title}`);
+    lines.push('');
+    lines.push(`- **ID:** ${option.id}`);
+    lines.push(`- **Risk delta:** +${option.riskDelta}`);
+    lines.push(`- **Blast radius:** ${option.blastRadius}`);
+    lines.push(`- **Confidence:** ${option.confidence}`);
+    lines.push(`- **Reason:** ${option.reason}`);
+    lines.push('- **Tradeoffs:**');
+    for (const tradeoff of option.tradeoffs) lines.push(`  - ${tradeoff}`);
+    lines.push('');
+  }
   lines.push('');
   lines.push('## Files Likely Touched');
   lines.push('');
@@ -125,4 +149,3 @@ function parsePositiveInt(value: string): number {
   }
   return parsed;
 }
-

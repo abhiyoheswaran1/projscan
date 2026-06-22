@@ -201,6 +201,14 @@ export function proofCommandToolCall(command: string): StartMissionResume['toolC
     };
   }
 
+  const assessMatch = /^projscan assess(?: --mode ([a-z-]+))? --format json$/.exec(command);
+  if (assessMatch) {
+    return {
+      tool: 'projscan_assess',
+      args: assessMatch[1] ? { mode: assessMatch[1] } : {},
+    };
+  }
+
   const understandMatch =
     /^projscan understand --view ([a-z_]+)(?: --intent "((?:\\.|[^"\\])*)")? --format json$/.exec(
       command,

@@ -25,7 +25,7 @@ test('mission control keeps alternative routes for mixed intents', async () => {
   );
 });
 
-test('mission control does not duplicate preflight proof when intent routes to a safety gate', async () => {
+test('mission control starts safe-commit intents with proof-first assessment', async () => {
   const root = await makeTempProject();
 
   const report = await computeStartReport(root, {
@@ -52,14 +52,19 @@ test('mission control does not duplicate preflight proof when intent routes to a
   );
   expect(report.missionControl.primaryAction).toEqual(
     expect.objectContaining({
-      command: 'projscan preflight --mode before_commit --format json',
-      tool: 'projscan_preflight',
+      command: 'projscan assess --mode fix-first --format json',
+      tool: 'projscan_assess',
+      args: { mode: 'fix-first' },
     }),
   );
+  expect(report.missionControl.whyNow).toContain('start with projscan_assess');
+  expect(report.missionControl.whyNow).toContain('then keep projscan_preflight as proof');
   expect(report.missionControl.proofCommands[0]).toBe(
+    'projscan assess --mode fix-first --format json',
+  );
+  expect(report.missionControl.proofCommands).toContain(
     'projscan preflight --mode before_commit --format json',
   );
-  expect(report.missionControl.primaryAction.args).toEqual({ mode: 'before_commit' });
   expect(report.missionControl.proofCommands).not.toContain(
     'projscan preflight --mode before_edit --format json',
   );
@@ -72,6 +77,7 @@ test('mission control does not duplicate preflight proof when intent routes to a
       (command) => command === 'projscan preflight --mode before_commit --format json',
     ),
   ).toHaveLength(1);
+  expect(nextActionCommands[0]).toBe('projscan assess --mode fix-first --format json');
   expect(report.missionControl.successCriteria).toEqual(
     expect.arrayContaining([
       'projscan preflight --mode before_commit returns proceed or only documented manual-review items.',

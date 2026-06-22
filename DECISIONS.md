@@ -3025,3 +3025,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Move the domain search-query architecture assertions into `tests/core/startIntentDomainSearchArchitecture.test.ts`. Keep `tests/core/startIntentTargetsArchitecture.test.ts` focused on the facade and non-domain target boundaries.
 - Consequences: Architecture coverage remains in place, but future domain-query test edits no longer expand the shared facade architecture test file.
 - Verification: `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts` failed before the focused domain architecture test existed, then `npm run test -- tests/core/startIntentTargetsArchitecture.test.ts tests/core/startIntentDomainSearchArchitecture.test.ts` passed after the split.
+
+## 2026-06-22: Proof Cards V2 trust loop and simulator alternatives
+
+- Status: accepted
+- Context: `projscan assess` and `projscan simulate` gave proof-first output, but engineers still had to infer why a Proof Card ranked first, whether feedback memory affected it, and which refactor option the simulator preferred.
+- Decision: Add evidence strength, confidence reason, evidence gaps, ranking reasons, trust memory, and AgentLoopKit handoff data to Proof Cards; route the safe-commit start intent through `assess --mode fix-first`; let `assess --feedback` apply local reviewer feedback to ranking; and have `simulate` compare bounded extraction, test-first, and leave-unchanged alternatives.
+- Consequences: The assessment and simulation schemas gain additive fields while existing command names, tool names, package version, release behavior, and local-first privacy behavior remain unchanged. Markdown and console output now expose the same trust-loop evidence without requiring JSON inspection.
+- Verification: Targeted CLI, core, MCP, and public-type tests failed before the new fields and renderers existed, then passed after implementation. Post-slice `projscan bug-hunt --format json` reported no `fixQueue`, only the broad-worktree manual sign-off review gate.

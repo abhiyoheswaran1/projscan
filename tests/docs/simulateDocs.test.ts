@@ -8,9 +8,12 @@ test('docs describe the risk delta simulator workflow', () => {
 
   expect(readme).toContain('projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"');
   expect(readme).toContain('risk delta simulator');
+  expect(readme).toContain('bounded extraction');
+  expect(readme).toContain('regression test first');
+  expect(readme).toContain('leave unchanged');
   expect(guide).toContain('projscan_simulate');
   expect(guide).toContain('projscan simulate --plan');
+  expect(guide).toContain('recommended option');
   expect(stability).toContain('projscan_simulate');
   expect(stability).toContain('simulate');
 });
-

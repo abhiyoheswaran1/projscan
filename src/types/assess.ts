@@ -62,6 +62,40 @@ export interface AssessFeedback {
   command: string;
 }
 
+export type AssessEvidenceStrengthLevel = 'strong' | 'moderate' | 'thin';
+export type AssessTrustMemoryStatus = 'none' | 'helpful' | 'noisy' | 'suppressed' | 'mixed';
+
+export interface AssessEvidenceStrength {
+  level: AssessEvidenceStrengthLevel;
+  score: number;
+  sources: string[];
+  reasons: string[];
+}
+
+export interface AssessRanking {
+  rank: number;
+  score: number;
+  reasons: string[];
+}
+
+export interface AssessTrustMemory {
+  status: AssessTrustMemoryStatus;
+  summary: string;
+  signals: string[];
+  feedbackCommand: string;
+}
+
+export interface AssessAgentHandoff {
+  title: string;
+  problem: string;
+  scope: string[];
+  files: string[];
+  constraints: string[];
+  verificationCommands: string[];
+  doneCriteria: string[];
+  rollback: string;
+}
+
 export interface AssessProofCard {
   id: string;
   priority: WorkplanPriority;
@@ -74,6 +108,12 @@ export interface AssessProofCard {
   recommendedFix: AssessRecommendedFix;
   verification: AssessVerification;
   confidence: AssessConfidence;
+  confidenceReason: string;
+  evidenceStrength: AssessEvidenceStrength;
+  evidenceGaps: string[];
+  ranking: AssessRanking;
+  trustMemory: AssessTrustMemory;
+  agentHandoff: AssessAgentHandoff;
   suppression: AssessSuppression;
   feedback: AssessFeedback;
   riskDelta: RiskDeltaSnapshot;

@@ -1,8 +1,19 @@
 import { computeRiskDelta } from './riskDelta.js';
+import {
+  applyTrustMemory,
+  defaultTrustMemory,
+  trustMemoryRank,
+  trustMemoryRankingReason,
+  trustMemoryScoreDelta,
+  type ProofCardTrustMemoryInput,
+} from './proofCardTrustMemory.js';
 import type {
+  AssessAgentHandoff,
   AssessConfidence,
+  AssessEvidenceStrength,
   AssessProofCard,
   AssessProofSource,
+  AssessRanking,
   RiskDeltaSnapshot,
 } from '../types/assess.js';
 import type { BugHuntFinding, QualityScorecardRisk, WorkplanPriority } from '../types.js';
@@ -14,6 +25,7 @@ export interface BuildProofCardsInput {
   bugHuntFindings: BugHuntFinding[];
   maxCards?: number;
   riskDelta?: RiskDeltaSnapshot;
+  trustMemory?: ProofCardTrustMemoryInput;
 }
 
 const DEFAULT_MAX_CARDS = 5;
@@ -23,25 +35,30 @@ export function buildProofCards(input: BuildProofCardsInput): AssessProofCard[] 
   const cards = [
     ...input.bugHuntFindings.map(cardFromBugHuntFinding),
     ...input.qualityRisks.map(cardFromQualityRisk),
-  ];
+  ].map((card) => applyTrustMemory(card, input.trustMemory));
   const deduped = dedupeCards(cards);
   const ranked = rankCards(deduped).slice(0, maxCards);
-  return ranked.map((card) => ({
-    ...card,
-    riskDelta:
-      input.riskDelta ??
-      computeRiskDelta({
-        healthScore: 100,
-        qualityVerdict: 'needs_attention',
-        preflightVerdict: 'caution',
-        proofCards: ranked.map((entry) => ({
-          id: entry.id,
-          priority: entry.priority,
-          source: entry.source,
-        })),
-        selectedCardIds: [card.id],
-      }),
-  }));
+  return ranked.map((card, index) => {
+    const ranking = buildRanking(card, index + 1);
+    return {
+      ...card,
+      ranking,
+      confidenceReason: confidenceReasonFor(card.confidence, card.evidenceStrength, card.evidenceGaps),
+      riskDelta:
+        input.riskDelta ??
+        computeRiskDelta({
+          healthScore: 100,
+          qualityVerdict: 'needs_attention',
+          preflightVerdict: 'caution',
+          proofCards: ranked.map((entry) => ({
+            id: entry.id,
+            priority: entry.priority,
+            source: entry.source,
+          })),
+          selectedCardIds: [card.id],
+        }),
+    };
+  });
 }
 
 function cardFromBugHuntFinding(finding: BugHuntFinding): AssessProofCard {
@@ -121,6 +138,10 @@ function baseCard(input: {
   };
 }): AssessProofCard {
   const feedbackCommand = feedbackCommandFor(input.id);
+  const evidenceStrength = evidenceStrengthFor(input);
+  const evidenceGaps = evidenceGapsFor(input, evidenceStrength);
+  const trustMemory = defaultTrustMemory(feedbackCommand);
+  const agentHandoff = agentHandoffFor(input, input.commands);
   return {
     id: input.id,
     priority: input.priority,
@@ -143,9 +164,116 @@ function baseCard(input: {
       expected: input.expected,
     },
     confidence: input.confidence,
+    confidenceReason: confidenceReasonFor(input.confidence, evidenceStrength, evidenceGaps),
+    evidenceStrength,
+    evidenceGaps,
+    ranking: {
+      rank: 0,
+      score: 0,
+      reasons: rankingReasonsFor(input, evidenceStrength),
+    },
+    trustMemory,
+    agentHandoff,
     suppression: { command: feedbackCommand, ...input.suppressionHints },
     feedback: { command: feedbackCommand },
     riskDelta: { baselineScore: 0, projectedScore: 0, delta: 0, basis: [] },
+  };
+}
+
+function evidenceStrengthFor(input: {
+  source: AssessProofSource;
+  files: string[];
+  evidence: AssessProofCard['evidence'];
+  commands: string[];
+}): AssessEvidenceStrength {
+  const sources = [...new Set(input.evidence.map((entry) => entry.source).filter(Boolean))].sort();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (sources.length > 0) {
+    score += Math.min(45, sources.length * 25);
+    reasons.push(`${sources.length} local evidence source(s)`);
+  }
+  if (input.commands.length > 0) {
+    score += Math.min(20, input.commands.length * 8);
+    reasons.push(`${input.commands.length} proof command(s)`);
+  }
+  if (input.files.length > 0) {
+    score += 10;
+    reasons.push(`${input.files.length} scoped file(s)`);
+  }
+  if (input.source === 'doctor' || sources.includes('doctor')) {
+    score += 25;
+    reasons.push('doctor-backed finding');
+  }
+  if (input.commands.some((command) => /\b(?:npm test|vitest|test)\b/.test(command))) {
+    score += 10;
+    reasons.push('test command included');
+  }
+
+  const clamped = Math.max(0, Math.min(100, score));
+  const level = clamped >= 75 ? 'strong' : clamped >= 40 ? 'moderate' : 'thin';
+  return { level, score: clamped, sources, reasons };
+}
+
+function evidenceGapsFor(
+  input: {
+    source: AssessProofSource;
+    commands: string[];
+    evidence: AssessProofCard['evidence'];
+  },
+  strength: AssessEvidenceStrength,
+): string[] {
+  const sources = new Set(strength.sources);
+  const gaps: string[] = [];
+  if (input.source !== 'doctor' && !sources.has('doctor')) {
+    gaps.push('No direct bug-hunt or doctor finding is attached.');
+  }
+  if (!input.commands.some((command) => /\b(?:npm test|vitest|test)\b/.test(command))) {
+    gaps.push('No direct test command is attached.');
+  }
+  if (input.evidence.length <= 1 && strength.level !== 'strong') {
+    gaps.push('Only one evidence item supports this card.');
+  }
+  return [...new Set(gaps)];
+}
+
+function confidenceReasonFor(
+  confidence: AssessConfidence,
+  strength: AssessEvidenceStrength,
+  gaps: string[],
+): string {
+  const gapText =
+    gaps.length > 0 ? ` Evidence gaps: ${gaps.join(' ')}` : ' No evidence gaps are currently blocking action.';
+  return `${confidence} confidence because evidence strength is ${strength.level} (${strength.score}/100).${gapText}`;
+}
+
+function agentHandoffFor(
+  input: {
+    finding: string;
+    files: string[];
+    affectedAreas: string[];
+    fixSummary: string;
+    safeChangeShape: string;
+    expected: string;
+  },
+  commands: string[],
+): AssessAgentHandoff {
+  const files = input.files.length > 0 ? input.files : ['repo'];
+  return {
+    title: `Reduce risk: ${input.finding}`,
+    problem: `${input.finding}. ${input.fixSummary}`,
+    scope: [...new Set([...input.affectedAreas, ...files])],
+    files,
+    constraints: [
+      'Keep the change bounded to this proof card.',
+      'Preserve local-first behavior and do not read or print secret values.',
+      'Do not release, publish, deploy, push, merge, tag, or bump versions from this packet.',
+      input.safeChangeShape,
+    ],
+    verificationCommands: commands,
+    doneCriteria: [input.expected, 'All listed verification commands pass.'],
+    rollback: `Revert the focused files for this proof card: ${files.join(', ')}.`,
   };
 }
 
@@ -189,9 +317,41 @@ function rankCards(cards: AssessProofCard[]): AssessProofCard[] {
       (a, b) =>
         priorityRank(a.card.priority) - priorityRank(b.card.priority) ||
         sourceRank(a.card.source) - sourceRank(b.card.source) ||
+        trustMemoryRank(a.card.trustMemory.status) - trustMemoryRank(b.card.trustMemory.status) ||
         a.index - b.index,
     )
     .map((entry) => entry.card);
+}
+
+function buildRanking(card: AssessProofCard, rank: number): AssessRanking {
+  const score =
+    (card.priority === 'p0' ? 100 : card.priority === 'p1' ? 80 : 50) +
+    (card.source === 'doctor' || card.source === 'issue' ? 20 : 0) +
+    Math.round(card.evidenceStrength.score / 5) +
+    trustMemoryScoreDelta(card.trustMemory.status);
+  return {
+    rank,
+    score,
+    reasons: rankingReasonsFor(card, card.evidenceStrength),
+  };
+}
+
+function rankingReasonsFor(
+  input: {
+    priority: WorkplanPriority;
+    source: AssessProofSource;
+    confidence?: AssessConfidence;
+    trustMemory?: AssessProofCard['trustMemory'];
+  },
+  strength: AssessEvidenceStrength,
+): string[] {
+  const reasons = [`priority ${input.priority}`, `source ${input.source}`, `evidence ${strength.level}`];
+  if (input.confidence) reasons.push(`confidence ${input.confidence}`);
+  const trustReason = input.trustMemory
+    ? trustMemoryRankingReason(input.trustMemory.status)
+    : undefined;
+  if (trustReason) reasons.push(trustReason);
+  return reasons;
 }
 
 function affectedAreasForSource(source: AssessProofSource): string[] {

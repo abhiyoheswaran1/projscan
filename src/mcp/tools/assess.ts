@@ -24,6 +24,10 @@ export const assessTool: McpTool = {
         type: 'number',
         description: 'Maximum Proof Cards to return. Default: 5, max: 25.',
       },
+      feedback_path: {
+        type: 'string',
+        description: 'Optional local feedback artifact path to apply as trust memory.',
+      },
       max_tokens: {
         type: 'number',
         description: 'Cap the response to roughly this many tokens.',
@@ -38,6 +42,7 @@ export const assessTool: McpTool = {
         typeof args.max_cards === 'number' && Number.isFinite(args.max_cards)
           ? args.max_cards
           : undefined,
+      feedbackPath: typeof args.feedback_path === 'string' ? args.feedback_path : undefined,
     }),
   }),
 };
@@ -47,4 +52,3 @@ function parseMode(value: unknown): AssessMode | undefined {
     ? (value as AssessMode)
     : undefined;
 }
-

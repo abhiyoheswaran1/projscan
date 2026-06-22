@@ -37,6 +37,36 @@ const card: AssessProofCard = {
     expected: 'The hotspot remains explainable and tests pass.',
   },
   confidence: 'high',
+  confidenceReason: 'high confidence because the card has local evidence and proof commands.',
+  evidenceStrength: {
+    level: 'strong',
+    score: 85,
+    sources: ['quality-scorecard', 'bug-hunt'],
+    reasons: ['multiple local evidence sources'],
+  },
+  evidenceGaps: [],
+  ranking: {
+    rank: 1,
+    score: 92,
+    reasons: ['priority p1', 'source hotspot'],
+  },
+  trustMemory: {
+    status: 'none',
+    summary: 'No local trust-memory artifact was applied.',
+    signals: [],
+    feedbackCommand:
+      'projscan feedback intake --text "proof-hotspot-src-core-bughunt-ts: ..." --format json',
+  },
+  agentHandoff: {
+    title: 'Reduce risk: src/core/bugHunt.ts is a maintainability hotspot',
+    problem: 'The proof card reports a maintainability hotspot.',
+    scope: ['src/core/bugHunt.ts'],
+    files: ['src/core/bugHunt.ts'],
+    constraints: ['Keep the change bounded and local-first.'],
+    verificationCommands: ['projscan quality-scorecard --format json', 'npm test'],
+    doneCriteria: ['The hotspot remains explainable and tests pass.'],
+    rollback: 'Revert the focused files touched for this proof card.',
+  },
   suppression: {
     command:
       'projscan feedback intake --text "proof-hotspot-src-core-bughunt-ts: false positive because ..." --format json',

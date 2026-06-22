@@ -1,5 +1,5 @@
 import { computeBugHunt } from './bugHunt.js';
-import { computePreflight } from './preflight.js';
+import { readFeedbackFile } from './feedback.js';
 import { buildProofCards } from './proofCards.js';
 import { computeQualityScorecard } from './qualityScorecard.js';
 import { compareRiskDeltaSnapshots, computeRiskDelta } from './riskDelta.js';
@@ -18,6 +18,7 @@ export interface ComputeAssessOptions {
   maxCards?: number;
   baselineReport?: AssessReport;
   baselinePath?: string;
+  feedbackPath?: string;
 }
 
 const DEFAULT_GOAL = 'assess codebase risk and next proof-backed action';
@@ -29,22 +30,24 @@ export async function computeAssess(
   const mode = normalizeMode(options.mode);
   const maxCards = mode === 'fix-first' ? Math.min(options.maxCards ?? 2, 2) : options.maxCards;
   const goal = normalizeGoal(options.goal);
-  const [quality, bugHunt, preflight] = await Promise.all([
+  const [quality, bugHunt, trustMemory] = await Promise.all([
     computeQualityScorecard(rootPath, { maxRisks: maxCards ?? 5 }),
     computeBugHunt(rootPath, { maxFindings: maxCards ?? 5 }),
-    computePreflight(rootPath, { mode: 'before_commit' }),
+    readOptionalTrustMemory(options.feedbackPath),
   ]);
+  const preflightVerdict = bugHunt.evidence.preflightVerdict;
   const initialCards = buildProofCards({
     goal,
     qualityRisks: quality.topRisks,
     bugHuntFindings: bugHunt.fixQueue.length > 0 ? bugHunt.fixQueue : bugHunt.topSuspects,
     maxCards,
+    trustMemory,
   });
   const selectedCards = mode === 'fix-first' ? initialCards.slice(0, 2) : initialCards;
   const riskDelta = computeRiskDelta({
     healthScore: quality.health.score,
     qualityVerdict: quality.verdict,
-    preflightVerdict: preflight.verdict,
+    preflightVerdict,
     proofCards: selectedCards.map((card) => ({
       id: card.id,
       priority: card.priority,
@@ -53,11 +56,11 @@ export async function computeAssess(
     selectedCardIds: selectedCards.slice(0, mode === 'fix-first' ? 2 : 1).map((card) => card.id),
   });
   const proofCards = selectedCards.map((card) => ({ ...card, riskDelta }));
-  const verdict = assessVerdict(quality.verdict, preflight.verdict);
+  const verdict = assessVerdict(quality.verdict, preflightVerdict);
   const answers = buildAnswers({
     proofCards,
     riskDelta,
-    preflightVerdict: preflight.verdict,
+    preflightVerdict,
   });
 
   const report: AssessReport = {
@@ -74,7 +77,7 @@ export async function computeAssess(
     feedback: proofCards.map((card) => card.feedback.command),
     sourceVerdicts: {
       quality: quality.verdict,
-      preflight: preflight.verdict,
+      preflight: preflightVerdict,
     },
     ...(initialCards.length > proofCards.length ? { truncated: true } : {}),
   };
@@ -86,6 +89,28 @@ export async function computeAssess(
     });
   }
   return report;
+}
+
+async function readOptionalTrustMemory(
+  feedbackPath: string | undefined,
+): Promise<{ path?: string; responses: Awaited<ReturnType<typeof readFeedbackFile>>['responses'] } | undefined> {
+  if (!feedbackPath) return undefined;
+  try {
+    const feedback = await readFeedbackFile(feedbackPath);
+    return { path: feedbackPath, responses: feedback.responses };
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT')) return undefined;
+    throw error;
+  }
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === code
+  );
 }
 
 function buildAnswers(input: {

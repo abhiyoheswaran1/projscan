@@ -42,6 +42,7 @@ test('lists projscan_assess MCP tool with proof-first inputs', () => {
   expect(tool?.inputSchema.properties?.goal.description).toContain('assessment goal');
   expect(tool?.inputSchema.properties?.mode.description).toContain('fix-first');
   expect(tool?.inputSchema.properties?.max_cards.description).toContain('Proof Cards');
+  expect(tool?.inputSchema.properties?.feedback_path.description).toContain('feedback');
 });
 
 test('projscan_assess returns an assessment report', async () => {
@@ -53,6 +54,7 @@ test('projscan_assess returns an assessment report', async () => {
       goal: 'make this repo safer',
       mode: 'fix-first',
       max_cards: 2,
+      feedback_path: path.join(tmp, '.projscan-feedback.json'),
     },
     tmp,
   )) as { assess: AssessReport };
@@ -60,6 +62,11 @@ test('projscan_assess returns an assessment report', async () => {
   expect(result.assess.schemaVersion).toBe(1);
   expect(result.assess.mode).toBe('fix-first');
   expect(result.assess.proofCards.length).toBeLessThanOrEqual(2);
+  expect(result.assess.proofCards[0]?.agentHandoff).toEqual(
+    expect.objectContaining({
+      verificationCommands: expect.any(Array),
+      rollback: expect.stringContaining('Revert'),
+    }),
+  );
   expect(result.assess.commands).toContain('projscan assess --mode fix-first --format json');
 });
-

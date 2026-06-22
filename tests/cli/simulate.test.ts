@@ -57,6 +57,12 @@ test('simulate renders risk delta JSON', async () => {
   expect(report.verdict).toBe('worth-doing');
   expect(report.filesLikelyTouched[0].path).toBe('src/core/bugHunt.ts');
   expect(report.testsLikelyAffected).toContain('src/core/bugHunt.test.ts');
+  expect(report.recommendedAlternative.id).toBe('bounded-extraction');
+  expect(report.alternatives.map((option: { id: string }) => option.id)).toEqual([
+    'bounded-extraction',
+    'test-first',
+    'leave-unchanged',
+  ]);
   expect(report.proofCommands).toContain(
     'projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules" --format json',
   );
@@ -74,8 +80,23 @@ test('simulate renders markdown', async () => {
 
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('# Projscan Simulate');
+  expect(result.stdout).toContain('## Alternatives');
+  expect(result.stdout).toContain('Recommended: bounded-extraction');
   expect(result.stdout).toContain('## Files Likely Touched');
   expect(result.stdout).toContain('## Rollout Plan');
+});
+
+test('simulate console names the recommended alternative', async () => {
+  const result = await runCli([
+    'simulate',
+    '--plan',
+    'split bugHunt.ts into ranking, evidence, and output modules',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('Recommended Alternative');
+  expect(result.stdout).toContain('bounded-extraction');
 });
 
 test('simulate rejects unsupported formats through the shared matrix', async () => {
@@ -106,4 +127,3 @@ async function runCli(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp, maxBuffer: 4 * 1024 * 1024 });
 }
-

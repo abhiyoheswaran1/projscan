@@ -64,6 +64,10 @@ test('start infers the workflow mode from safety-gate intent when mode is omitte
   expect(report.modeReason).toContain('is it safe to commit this change');
   expect(report.recommendedWorkflow.id).toBe('before_handoff');
   expect(report.missionControl.primaryAction.command).toBe(
+    'projscan assess --mode fix-first --format json',
+  );
+  expect(report.missionControl.primaryAction.tool).toBe('projscan_assess');
+  expect(report.missionControl.proofCommands).toContain(
     'projscan preflight --mode before_commit --format json',
   );
   expect(report.missionControl.proofCommands).not.toContain(

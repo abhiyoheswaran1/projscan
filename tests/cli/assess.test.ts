@@ -45,6 +45,8 @@ test('assess renders proof-first JSON', async () => {
     'assess',
     '--goal',
     'make this repo safer to ship this week',
+    '--feedback',
+    path.join(tmp, '.projscan-feedback.json'),
     '--format',
     'json',
     '--quiet',
@@ -56,6 +58,7 @@ test('assess renders proof-first JSON', async () => {
   expect(report.goal).toBe('make this repo safer to ship this week');
   expect(report.answers.shipNow).toMatch(/preflight|proof commands/i);
   expect(Array.isArray(report.proofCards)).toBe(true);
+  expect(report.proofCards[0]?.trustMemory.status).toBe('none');
   expect(report.commands).toContain('projscan assess --mode fix-first --format json');
 });
 
@@ -65,6 +68,12 @@ test('assess fix-first renders markdown proof cards', async () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain('# Projscan Assess');
   expect(result.stdout).toContain('## Proof Cards');
+  expect(result.stdout).toContain('**Evidence strength:**');
+  expect(result.stdout).toContain('**Confidence reason:**');
+  expect(result.stdout).toContain('**Ranking:**');
+  expect(result.stdout).toContain('**Trust memory:**');
+  expect(result.stdout).toContain('AgentLoopKit Handoff');
+  expect(result.stdout).toContain('Do not release, publish, deploy, push, merge, tag, or bump versions');
   expect(result.stdout).toContain('## Verification');
 });
 
@@ -81,4 +90,3 @@ async function runCli(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return spawnCli(cliPath, args, { cwd: tmp, maxBuffer: 4 * 1024 * 1024 });
 }
-

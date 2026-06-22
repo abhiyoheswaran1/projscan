@@ -1,5 +1,9 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { computeAssess } from '../../src/core/assess.js';
+import { computePreflight } from '../../src/core/preflight.js';
 import type { BugHuntReport, PreflightReport, QualityScorecardReport } from '../../src/types.js';
 
 const state = vi.hoisted(() => ({
@@ -7,6 +11,8 @@ const state = vi.hoisted(() => ({
   bugHunt: undefined as BugHuntReport | undefined,
   preflight: undefined as PreflightReport | undefined,
 }));
+
+let tmp: string | undefined;
 
 vi.mock('../../src/core/qualityScorecard.js', () => ({
   computeQualityScorecard: vi.fn(async () => state.quality),
@@ -24,6 +30,12 @@ beforeEach(() => {
   state.quality = qualityReport();
   state.bugHunt = bugHuntReport();
   state.preflight = preflightReport('caution');
+  vi.mocked(computePreflight).mockClear();
+});
+
+afterEach(async () => {
+  if (tmp) await fs.rm(tmp, { recursive: true, force: true });
+  tmp = undefined;
 });
 
 test('computeAssess answers the seven proof-first questions', async () => {
@@ -44,6 +56,12 @@ test('computeAssess answers the seven proof-first questions', async () => {
   expect(report.answers.riskRemoved).toContain('Projected risk score');
   expect(report.answers.shipNow).toContain('preflight');
   expect(report.proofCards.length).toBeGreaterThan(0);
+  expect(report.proofCards[0]?.evidenceStrength.level).toBe('strong');
+  expect(report.proofCards[0]?.confidenceReason).toContain('high confidence');
+  expect(report.proofCards[0]?.ranking.reasons).toContain('priority p1');
+  expect(report.proofCards[0]?.agentHandoff.constraints).toContain(
+    'Do not release, publish, deploy, push, merge, tag, or bump versions from this packet.',
+  );
   expect(report.commands).toContain('projscan assess --mode fix-first --format json');
 });
 
@@ -56,12 +74,51 @@ test('computeAssess fix-first mode returns at most two proof cards', async () =>
 });
 
 test('computeAssess blocks when preflight blocks', async () => {
-  state.preflight = preflightReport('block');
+  state.bugHunt = bugHuntReport({ preflightVerdict: 'block' });
 
   const report = await computeAssess('/repo', { mode: 'ship-readiness' });
 
   expect(report.verdict).toBe('blocked');
   expect(report.answers.shipNow).toContain('Do not ship');
+});
+
+test('computeAssess reuses bug-hunt preflight evidence instead of duplicate preflight', async () => {
+  await computeAssess('/repo', { mode: 'fix-first' });
+
+  expect(computePreflight).not.toHaveBeenCalled();
+});
+
+test('computeAssess applies optional local feedback memory without network access', async () => {
+  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-assess-memory-'));
+  const feedbackPath = path.join(tmp, '.projscan-feedback.json');
+  await fs.writeFile(
+    feedbackPath,
+    JSON.stringify({
+      schemaVersion: 1,
+      responses: [
+        {
+          useful: false,
+          noisyFindings: ['hardcoded secret'],
+          note: 'Hardcoded secret was a false positive in this repo.',
+        },
+      ],
+    }),
+  );
+
+  const report = await computeAssess('/repo', { feedbackPath });
+
+  expect(report.proofCards[0]?.finding).toBe('Hardcoded secret');
+  expect(report.proofCards[0]?.trustMemory.status).toBe('noisy');
+  expect(report.proofCards[0]?.confidence).toBe('low');
+  expect(report.proofCards[0]?.evidenceGaps).toContain(
+    'Reviewer feedback marked this signal noisy or false-positive.',
+  );
+});
+
+test('computeAssess ignores a missing feedback memory file', async () => {
+  const report = await computeAssess('/repo', { feedbackPath: '/does/not/exist.json' });
+
+  expect(report.proofCards[0]?.trustMemory.status).toBe('none');
 });
 
 function qualityReport(): QualityScorecardReport {
@@ -105,7 +162,9 @@ function qualityReport(): QualityScorecardReport {
   };
 }
 
-function bugHuntReport(): BugHuntReport {
+function bugHuntReport(
+  overrides: Partial<BugHuntReport['evidence']> = {},
+): BugHuntReport {
   return {
     schemaVersion: 1,
     verdict: 'fix',
@@ -117,6 +176,7 @@ function bugHuntReport(): BugHuntReport {
       preflightVerdict: 'caution',
       touchedFiles: [],
       conflicts: 0,
+      ...overrides,
     },
     topSuspects: [],
     fixQueue: [

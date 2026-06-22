@@ -179,9 +179,9 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
       stepId: 'ready-1',
       kind: 'tool',
       status: 'ready',
-      command: 'projscan preflight --mode before_commit --format json',
-      tool: 'projscan_preflight',
-      args: { mode: 'before_commit' },
+      command: 'projscan assess --mode fix-first --format json',
+      tool: 'projscan_assess',
+      args: { mode: 'fix-first' },
       reason: 'Run this ready command next.',
     }),
   );
@@ -195,9 +195,9 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
     expect.objectContaining({
       kind: 'tool',
       status: 'ready',
-      command: 'projscan preflight --mode before_commit --format json',
-      tool: 'projscan_preflight',
-      args: { mode: 'before_commit' },
+      command: 'projscan assess --mode fix-first --format json',
+      tool: 'projscan_assess',
+      args: { mode: 'fix-first' },
     }),
   );
   expect(
@@ -212,16 +212,19 @@ test('start report exposes an unblocked execution plan for direct safety-gate in
   );
   expect(report.missionControl.runbook).toEqual(
     expect.objectContaining({
-      title: 'Runbook: Use projscan_preflight for is it safe to commit this change',
+      title: 'Runbook: Assess safe-commit risk first',
       status: report.missionControl.status,
       currentPhase: 'ready_now',
-      readyCommandBlock: 'projscan preflight --mode before_commit --format json',
+      readyCommandBlock: 'projscan assess --mode fix-first --format json',
     }),
   );
   expect(report.missionControl.runbook.currentPhase).toBe(
     report.missionControl.executionPlan.cursor.phaseId,
   );
   expect(report.missionControl.runbook.blockedInputSummary).toBeUndefined();
+  expect(report.missionControl.runbook.markdown).toContain(
+    '- `projscan assess --mode fix-first --format json`',
+  );
   expect(report.missionControl.runbook.markdown).toContain(
     '- `projscan preflight --mode before_commit --format json`',
   );

@@ -60,8 +60,9 @@ test('projscan_simulate returns a simulation report', async () => {
   expect(result.simulate.schemaVersion).toBe(1);
   expect(result.simulate.verdict).toBe('worth-doing');
   expect(result.simulate.filesLikelyTouched[0]?.path).toBe('src/core/bugHunt.ts');
+  expect(result.simulate.recommendedAlternative.id).toBe('bounded-extraction');
+  expect(result.simulate.alternatives.map((option) => option.id)).toContain('test-first');
   expect(result.simulate.proofCommands).toContain(
     'projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules" --format json',
   );
 });
-

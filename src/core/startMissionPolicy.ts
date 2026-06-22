@@ -40,6 +40,9 @@ export function routedWhyNow(
   if (route.tool === 'projscan_upgrade' && actionPlan[0]?.tool === 'projscan_outdated') {
     return `Intent matched "${route.intent}", but no package was named, so run projscan_outdated first and then run ${route.tool} on the selected package.`;
   }
+  if (actionPlan[0]?.tool && actionPlan[0].tool !== route.tool) {
+    return `Intent matched "${route.intent}", so start with ${actionPlan[0].tool} and then keep ${route.tool} as proof.`;
+  }
   return `Intent matched "${route.intent}", so start with ${route.tool} before broader workflow commands.`;
 }
 
@@ -77,10 +80,28 @@ export function missionActionPlan(
       },
     ];
   }
+  if (route?.tool === 'projscan_preflight' && intent && isDailySafeCommitIntent(mode, intent)) {
+    return [
+      {
+        label: 'Assess safe-commit risk first',
+        command: 'projscan assess --mode fix-first --format json',
+        tool: 'projscan_assess',
+        args: { mode: 'fix-first' },
+      },
+    ];
+  }
   if (route && intent) return actionPlanFromRoute(mode, intent, route);
   const fallback =
     actionFromFixFirst(fixFirst) ?? actionFromWorkplan(workplan) ?? actionFromWorkflow(workflow);
   return [fallback];
+}
+
+function isDailySafeCommitIntent(mode: WorkplanMode, intent: string): boolean {
+  return (
+    mode === 'before_commit' &&
+    /\b(?:safe|safety|ready)\b/i.test(intent) &&
+    /\b(?:commit|committing|committed|pr|pull\s+request)\b/i.test(intent)
+  );
 }
 
 export function missionUnresolvedInputs(

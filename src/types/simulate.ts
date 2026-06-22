@@ -30,6 +30,20 @@ export interface SimulateRolloutStep {
   commands: string[];
 }
 
+export type SimulateAlternativeId = 'bounded-extraction' | 'test-first' | 'leave-unchanged';
+
+export interface SimulateAlternative {
+  id: SimulateAlternativeId;
+  title: string;
+  summary: string;
+  riskDelta: number;
+  blastRadius: number;
+  confidence: SimulateConfidence;
+  proofCommands: string[];
+  reason: string;
+  tradeoffs: string[];
+}
+
 export interface SimulateReport {
   schemaVersion: 1;
   plan: string;
@@ -43,6 +57,7 @@ export interface SimulateReport {
   rolloutPlan: SimulateRolloutStep[];
   proofCommands: string[];
   evidence: SimulateEvidence[];
+  alternatives: SimulateAlternative[];
+  recommendedAlternative: SimulateAlternative;
   warnings: string[];
 }
-

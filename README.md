@@ -28,6 +28,31 @@ Use projscan when an agent asks one of these questions:
 
 projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 47-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
 
+```text
+Your agent / engineer
+  (Codex, Claude Code, Cursor, CI, your scripts)
+       |   intent, diff, repo files, feedback, proof requests
+       v
+  +----------------------------------------------------------------+
+  |  projscan   (runs locally, source stays on this machine)       |
+  |  ------------------------------------------------------------  |
+  |  Mission Control  ->  assess Proof Cards  ->  simulate risk    |
+  |                         |                       |              |
+  |                         |                       +- bounded extraction
+  |                         |                       +- regression test first
+  |                         |                       +- leave unchanged
+  |                         +- evidence strength                   |
+  |                         +- trust memory                        |
+  |                         +- AgentLoopKit handoff                |
+  |                                                                |
+  |  CLI + MCP tools, no account, telemetry off by default         |
+  +----------------------------------------------------------------+
+       |   next safe action, exact proof commands, handoff packet
+       v
+Reviewer / CI / LLM provider
+  (only the evidence you choose to pass along)
+```
+
 ## Install
 
 ```bash
@@ -69,12 +94,13 @@ Success criteria: the agent can name the files to read first, the likely files t
 ### Before handoff or commit
 
 ```bash
-projscan bug-hunt --format json
+projscan start --intent "is this safe to commit?"
+projscan assess --mode fix-first --format markdown
 projscan preflight --mode before_commit --format json
 projscan evidence-pack --pr-comment
 ```
 
-You get concrete fixes, manual review gates, owner routing, baseline trend memory, and exact proof commands for the reviewer.
+You get the changed-file risk, one or two trusted next actions, manual review gates, owner routing, baseline trend memory, and exact proof commands for the reviewer. Use `projscan bug-hunt --format json` when you want the raw fix queue behind the assessment.
 
 Success criteria: the reviewer sees the top fix, the remaining proof, and any manual sign-off gate without reading the full scan output.
 
@@ -100,7 +126,9 @@ projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output mo
 
 You get Proof Cards: each recommendation carries local evidence, impact, a safe change shape, verification commands, feedback or suppression guidance, and a risk delta. Add `--baseline previous-assess.json` to compare the current risk delta against a prior run. `assess` composes existing quality, bug-hunt, and preflight evidence; it does not release, tag, publish, or deploy.
 
-Use the risk delta simulator before a refactor or extraction. It predicts likely touched files, affected tests, contract surfaces, rollout steps, proof commands, and before/after risk from local evidence. It is read-only: it does not edit files, run the plan, release, tag, publish, or deploy.
+Proof Cards also show evidence strength, confidence reason, ranking reasons, trust memory, evidence gaps, and an AgentLoopKit handoff packet. Add `--feedback .projscan-feedback.json` when accepted recommendations, noisy findings, false positives, or suppressions should affect future ranking.
+
+Use the risk delta simulator before a refactor or extraction. It predicts likely touched files, affected tests, contract surfaces, rollout steps, proof commands, and before/after risk from local evidence. It compares bounded extraction, test-first, and leave-unchanged alternatives, then names the recommended option. It is read-only: it does not edit files, run the plan, release, tag, publish, or deploy.
 
 <img src="docs/projscan-proof-cards.png" alt="projscan assess showing a Proof Card with evidence, impact, safe change shape, verification commands, feedback path, and risk delta" width="760">
 
@@ -144,6 +172,20 @@ Regenerate README media:
 npm run docs:screenshots
 npm run docs:demos
 ```
+
+## 4.12.0 Notes
+
+4.12.0 is the Proof Cards V2 daily trust loop release:
+
+- Proof Cards now show evidence strength, confidence reason, evidence gaps,
+  ranking reasons, Trust Memory context, and AgentLoopKit handoff packets.
+- `projscan assess --feedback <path>` applies local reviewer feedback to
+  ranking and confidence.
+- `projscan start --intent "is this safe to commit?"` now starts with
+  `projscan assess --mode fix-first` and keeps preflight as proof.
+- `projscan simulate --plan "<change plan>"` compares bounded extraction,
+  regression test first, and leave unchanged alternatives before recommending
+  the safest option.
 
 ## 4.11.1 Notes
 
@@ -406,7 +448,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.11.1` has seven direct runtime dependencies:
+`projscan@4.12.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -416,7 +458,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.11.1. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.12.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

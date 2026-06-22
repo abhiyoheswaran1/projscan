@@ -9,6 +9,7 @@ import type {
   SimulateCandidateFile,
   SimulateConfidence,
   SimulateEvidence,
+  SimulateAlternative,
   SimulateReport,
   SimulateRolloutStep,
   SimulateVerdict,
@@ -62,6 +63,16 @@ export async function computeSimulation(
   const rolloutPlan = buildRolloutPlan(plan, candidateFiles, testsLikelyAffected);
   const proofCommands = buildProofCommands(plan, candidateFiles, testsLikelyAffected);
   const evidence = buildEvidence(candidateFiles, testsLikelyAffected, contractsLikelyAffected);
+  const alternatives = buildAlternatives({
+    plan,
+    confidence,
+    candidateFiles,
+    testsLikelyAffected,
+    contractsLikelyAffected,
+    riskDelta: riskDelta.delta,
+    proofCommands,
+  });
+  const recommendedAlternative = recommendAlternative(alternatives);
 
   return {
     schemaVersion: 1,
@@ -76,6 +87,8 @@ export async function computeSimulation(
     rolloutPlan,
     proofCommands,
     evidence,
+    alternatives,
+    recommendedAlternative,
     warnings,
   };
 }
@@ -295,6 +308,100 @@ function buildEvidence(
     });
   }
   return evidence;
+}
+
+function buildAlternatives(input: {
+  plan: string;
+  confidence: SimulateConfidence;
+  candidateFiles: SimulateCandidateFile[];
+  testsLikelyAffected: string[];
+  contractsLikelyAffected: string[];
+  riskDelta: number;
+  proofCommands: string[];
+}): SimulateAlternative[] {
+  const primary = input.candidateFiles[0]?.path;
+  const firstTest = input.testsLikelyAffected[0];
+  const extractionDelta = input.candidateFiles.length > 0 ? Math.max(6, input.riskDelta) : 0;
+  const extractionBlastRadius =
+    input.candidateFiles.length + input.contractsLikelyAffected.length * 2;
+  const testFirstDelta = firstTest ? Math.max(4, Math.min(10, Math.round(extractionDelta / 2))) : 3;
+  const testFirstBlastRadius = firstTest ? 1 : 2;
+
+  return [
+    {
+      id: 'bounded-extraction',
+      title: 'Bounded extraction',
+      summary: primary
+        ? `Extract one responsibility from ${primary} while preserving public imports.`
+        : 'Name the target file before extracting code.',
+      riskDelta: extractionDelta,
+      blastRadius: extractionBlastRadius,
+      confidence: input.confidence,
+      proofCommands: input.proofCommands.slice(0, 5),
+      reason:
+        extractionDelta > 0
+          ? 'Best when the plan names a hotspot or module boundary and nearby tests exist.'
+          : 'Not recommended until the plan names a concrete file or symbol.',
+      tradeoffs: [
+        'Removes maintainability risk when kept to one responsibility.',
+        'Touches production code and can affect import contracts.',
+      ],
+    },
+    {
+      id: 'test-first',
+      title: 'Regression test first',
+      summary: firstTest
+        ? `Start by locking behavior in ${firstTest}.`
+        : 'Add one regression test around the behavior before refactoring.',
+      riskDelta: testFirstDelta,
+      blastRadius: testFirstBlastRadius,
+      confidence: firstTest ? input.confidence : 'medium',
+      proofCommands: firstTest ? [`npm test -- ${firstTest}`] : ['projscan assess --mode fix-first --format json'],
+      reason: 'Best when confidence is medium or the safest first move is proving current behavior.',
+      tradeoffs: [
+        'Lowest blast radius.',
+        'Usually reduces uncertainty more than structural risk.',
+      ],
+    },
+    {
+      id: 'leave-unchanged',
+      title: 'Leave unchanged',
+      summary: 'Do not edit until the plan has stronger evidence or a clearer target.',
+      riskDelta: 0,
+      blastRadius: 0,
+      confidence: 'high',
+      proofCommands: ['projscan assess --mode fix-first --format json'],
+      reason: 'Best when simulation confidence is low or no repo files match the plan.',
+      tradeoffs: [
+        'No code risk.',
+        'Does not remove the underlying maintainability or verification risk.',
+      ],
+    },
+  ];
+}
+
+function recommendAlternative(alternatives: SimulateAlternative[]): SimulateAlternative {
+  return [...alternatives].sort(
+    (a, b) =>
+      alternativeScore(b) - alternativeScore(a) ||
+      alternativeOrder(a.id) - alternativeOrder(b.id),
+  )[0]!;
+}
+
+function alternativeScore(option: SimulateAlternative): number {
+  return option.riskDelta * 2 - option.blastRadius * 3 + confidenceScore(option.confidence);
+}
+
+function confidenceScore(confidence: SimulateConfidence): number {
+  if (confidence === 'high') return 4;
+  if (confidence === 'medium') return 2;
+  return -4;
+}
+
+function alternativeOrder(id: SimulateAlternative['id']): number {
+  if (id === 'bounded-extraction') return 0;
+  if (id === 'test-first') return 1;
+  return 2;
 }
 
 function verdictFor(confidence: SimulateConfidence, delta: number): SimulateVerdict {

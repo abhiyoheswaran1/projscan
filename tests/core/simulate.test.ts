@@ -83,6 +83,19 @@ test('predicts the safest rollout for a bounded split plan', async () => {
   expect(report.testsLikelyAffected).not.toContain('tests/core/unrelated.test.ts');
   expect(report.contractsLikelyAffected).toContain('module boundary');
   expect(report.riskDelta.projectedScore).toBeGreaterThan(report.riskDelta.baselineScore);
+  expect(report.recommendedAlternative.id).toBe('bounded-extraction');
+  expect(report.alternatives.map((option) => option.id)).toEqual([
+    'bounded-extraction',
+    'test-first',
+    'leave-unchanged',
+  ]);
+  expect(report.alternatives[0]).toEqual(
+    expect.objectContaining({
+      title: 'Bounded extraction',
+      riskDelta: expect.any(Number),
+      blastRadius: expect.any(Number),
+    }),
+  );
   expect(report.rolloutPlan.map((step) => step.title)).toEqual([
     'Lock the current behavior',
     'Extract the smallest module boundary',
@@ -99,6 +112,8 @@ test('returns low-confidence evidence instead of pretending a vague plan is prec
   expect(report.verdict).toBe('needs-more-evidence');
   expect(report.confidence).toBe('low');
   expect(report.filesLikelyTouched).toEqual([]);
+  expect(report.recommendedAlternative.id).toBe('leave-unchanged');
+  expect(report.alternatives.find((option) => option.id === 'leave-unchanged')?.riskDelta).toBe(0);
   expect(report.warnings).toContain(
     'No repo files matched the plan. Mention a file, symbol, command, package, or module name for a stronger simulation.',
   );

@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.12.0]
+
+2026-06-22 - "Proof Cards V2 Daily Trust Loop"
+
+### Added
+
+- Added Proof Cards V2 evidence fields: evidence strength, confidence reason,
+  evidence gaps, ranking reasons, Trust Memory context, and AgentLoopKit-ready
+  handoff packets.
+- Added `projscan assess --feedback <path>` so local reviewer feedback,
+  accepted recommendations, noisy findings, false positives, and suppressions
+  can affect future Proof Card ranking and confidence.
+- Added simulator alternatives for `projscan simulate --plan`, including
+  bounded extraction, regression test first, leave unchanged, and a recommended
+  option based on risk reduction versus blast radius.
+
+### Changed
+
+- Routed `projscan start --intent "is this safe to commit?"` through
+  `projscan assess --mode fix-first` as the primary daily safe-commit action,
+  while keeping preflight as proof.
+- Expanded assess Markdown and simulate console output so engineers can see
+  trust evidence and the recommended simulator option without opening JSON.
+- Updated README and guide content with the proof-first trust loop and a local
+  architecture diagram.
+
+### Fixed
+
+- Removed a duplicate preflight scan from `projscan assess` by reusing the
+  before-commit preflight verdict already carried by bug-hunt evidence.
+
 ## [4.11.1]
 
 2026-06-22 - "Proof Cards README Media"

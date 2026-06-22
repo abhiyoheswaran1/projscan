@@ -11,11 +11,17 @@ test('docs introduce proof-first assess without release automation claims', () =
     expect(doc).toContain('Proof Cards');
     expect(doc).toContain('projscan assess --mode fix-first --format markdown');
     expect(doc).toContain('risk delta');
+    expect(doc).toContain('evidence strength');
+    expect(doc).toContain('trust memory');
+    expect(doc).toContain('AgentLoopKit handoff');
     expect(doc).toContain('does not release, tag, publish, or deploy');
   }
 
+  expect(readme).toContain('Your agent / engineer');
+  expect(readme).toContain('runs locally, source stays on this machine');
+  expect(readme).toContain('projscan start --intent "is this safe to commit?"');
   expect(readme).toContain('| `projscan assess`');
   expect(guide).toContain('**`projscan_assess` / `projscan assess`**');
   expect(decisions).toContain('Add proof-first assessment as a read-only command');
+  expect(decisions).toContain('Proof Cards V2 trust loop and simulator alternatives');
 });
-

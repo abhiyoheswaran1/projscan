@@ -409,6 +409,10 @@ describe('Mission Control resume state helpers', () => {
       tool: 'projscan_preflight',
       args: { mode: 'before_commit' },
     });
+    expect(proofCommandToolCall('projscan assess --mode fix-first --format json')).toEqual({
+      tool: 'projscan_assess',
+      args: { mode: 'fix-first' },
+    });
     expect(
       proofCommandToolCall(
         'projscan understand --view verify --intent "what tests should I run" --format json',

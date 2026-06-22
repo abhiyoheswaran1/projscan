@@ -21,6 +21,7 @@ export function registerAssess(): void {
     .option('--mode <mode>', 'assessment mode: standard, fix-first, ship-readiness', parseMode)
     .option('--max-cards <count>', 'maximum Proof Cards to return', parsePositiveInt)
     .option('--baseline <path>', 'prior assess JSON file to compare risk delta against')
+    .option('--feedback <path>', 'local projscan feedback artifact to apply as trust memory')
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -31,6 +32,7 @@ export function registerAssess(): void {
           goal: cmdOpts.goal,
           mode: cmdOpts.mode,
           maxCards: cmdOpts.maxCards,
+          feedbackPath: cmdOpts.feedback,
           ...(cmdOpts.baseline
             ? {
                 baselineReport: await readAssessBaseline(cmdOpts.baseline),
@@ -108,6 +110,21 @@ function renderProofCard(lines: string[], card: AssessProofCard): void {
   lines.push('');
   lines.push(`- **Priority:** ${card.priority}`);
   lines.push(`- **Confidence:** ${card.confidence}`);
+  lines.push(`- **Confidence reason:** ${card.confidenceReason}`);
+  lines.push(
+    `- **Evidence strength:** ${card.evidenceStrength.level} (${card.evidenceStrength.score})`,
+  );
+  if (card.evidenceGaps.length > 0) {
+    lines.push(`- **Evidence gaps:** ${card.evidenceGaps.join('; ')}`);
+  }
+  lines.push(`- **Ranking:** #${card.ranking.rank} (${card.ranking.score})`);
+  if (card.ranking.reasons.length > 0) {
+    lines.push(`- **Ranking reasons:** ${card.ranking.reasons.join(', ')}`);
+  }
+  lines.push(`- **Trust memory:** ${card.trustMemory.status} - ${card.trustMemory.summary}`);
+  if (card.trustMemory.signals.length > 0) {
+    lines.push(`- **Trust signals:** ${card.trustMemory.signals.join('; ')}`);
+  }
   lines.push(`- **Why it matters:** ${card.whyItMatters}`);
   if (card.files.length > 0) lines.push(`- **Files:** ${card.files.join(', ')}`);
   lines.push(`- **Recommended fix:** ${card.recommendedFix.summary}`);
@@ -120,6 +137,18 @@ function renderProofCard(lines: string[], card: AssessProofCard): void {
   }
   lines.push('- **Commands:**');
   for (const command of card.verification.commands) lines.push(`  - \`${command}\``);
+  lines.push('- **AgentLoopKit Handoff:**');
+  lines.push(`  - Title: ${card.agentHandoff.title}`);
+  lines.push(`  - Scope: ${card.agentHandoff.scope.join(', ')}`);
+  lines.push(`  - Rollback: ${card.agentHandoff.rollback}`);
+  lines.push('  - Constraints:');
+  for (const constraint of card.agentHandoff.constraints.slice(0, 4)) {
+    lines.push(`    - ${constraint}`);
+  }
+  lines.push('  - Done when:');
+  for (const criterion of card.agentHandoff.doneCriteria) {
+    lines.push(`    - ${criterion}`);
+  }
   lines.push('');
 }
 
