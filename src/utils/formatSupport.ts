@@ -13,6 +13,7 @@ export const COMMAND_FORMAT_SUPPORT = {
   analyze: ['console', 'json', 'markdown', 'sarif', 'html'],
   assess: ['console', 'json', 'markdown'],
   simulate: ['console', 'json', 'markdown'],
+  prove: ['console', 'json', 'markdown'],
   'apply-fix': ['console', 'json'],
   audit: ['console', 'json', 'markdown', 'sarif'],
   badge: ['console'],

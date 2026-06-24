@@ -277,13 +277,16 @@ function missionUnsafeCommandBlock(): string[] {
 function missionProofLogSetup(report: StartReport): string[] {
   return [
     'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
+    'PROJSCAN_ROOT=$(git -C "$MISSION_DIR" rev-parse --show-toplevel 2>/dev/null || pwd)',
     'PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"',
     'PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"',
     'PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"',
     'PROOF_SUMMARY_FILE="${PROOF_LOG_DIR}/summary.json"',
+    'PROOF_LEDGER_FILE="${PROJSCAN_ROOT}/.projscan/proof-ledger.jsonl"',
     'mkdir -p "$PROOF_LOG_DIR"',
     ': > "$PROOF_STATUS_FILE"',
     ': > "$PROOF_REPORT_FILE"',
+    ...scriptAppendProofLedgerFunction(),
     ...scriptInitRunReport(report),
     scriptWriteSummaryJson('running'),
     scriptPrintExpanded('Proof logs: ${PROOF_LOG_DIR}'),
@@ -736,6 +739,7 @@ function scriptCommandBlock(
     'status=$?',
     'set -e',
     scriptAppendStatusJsonl(logTarget.id, label, logTarget.logName, command),
+    scriptAppendProofLedgerJsonl(logTarget.id, label, logTarget.logName, command),
     scriptAppendReportRow(logTarget.id, label, logTarget.logName),
     'if [ "$status" -ne 0 ]; then',
     `  ${scriptPrintError(`Command failed. See proof-logs/${logTarget.logName}.`)}`,
@@ -769,6 +773,47 @@ function scriptAppendStatusJsonl(
     command,
   }).replace(/}$/, ',"exitCode":');
   return `printf '%s%s%s\\n' ${shellQuote(prefix)} "$status" '}' >> "$PROOF_STATUS_FILE"`;
+}
+
+function scriptAppendProofLedgerFunction(): string[] {
+  return [
+    'append_proof_ledger_row() {',
+    '  mkdir -p "$(dirname "$PROOF_LEDGER_FILE")" 2>/dev/null || true',
+    '  node - "$PROJSCAN_ROOT" "$MISSION_DIR" "$1" "$2" "$3" "$4" "$5" <<\'NODE\' >> "$PROOF_LEDGER_FILE" 2>/dev/null || true',
+    'const crypto = require("node:crypto");',
+    'const path = require("node:path");',
+    'const { execFileSync } = require("node:child_process");',
+    'const [root, missionDir, id, label, logName, command, exitCodeRaw] = process.argv.slice(2);',
+    'function normalize(value) { return String(value || "").split(path.sep).join("/").replace(/^\\.\\//, ""); }',
+    'function changedFiles() {',
+    '  try {',
+    '    const output = execFileSync("git", ["-C", root, "status", "--porcelain", "--untracked-files=all"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });',
+    '    return [...new Set(output.split("\\n").map((line) => line.slice(3).trim()).filter(Boolean).map((file) => file.includes(" -> ") ? file.split(" -> ").pop() : file).map(normalize).filter((file) => !file.startsWith(".projscan/")))].sort();',
+    '  } catch {',
+    '    return [];',
+    '  }',
+    '}',
+    'const files = changedFiles();',
+    'const fingerprint = crypto.createHash("sha256").update(files.join("\\n")).digest("hex");',
+    'const completedAt = new Date().toISOString();',
+    'const exitCode = Number.parseInt(exitCodeRaw, 10);',
+    'const logPath = normalize(path.relative(root, path.join(missionDir, "proof-logs", logName)));',
+    'const digest = crypto.createHash("sha256").update(`${command}\\n${completedAt}\\n${exitCode}`).digest("hex").slice(0, 12);',
+    'const record = { schemaVersion: 1, id: `proof-ledger-${digest}`, command, normalizedCommand: command.trim().replace(/\\s+/g, " "), cwd: normalize(path.relative(root, missionDir) || "."), exitCode, status: exitCode === 0 ? "passed" : "failed", startedAt: completedAt, completedAt, durationMs: 0, changedFileFingerprint: fingerprint, changedFiles: files, outputSummary: `Mission proof ${label} exited ${exitCode}.`, source: "mission", logPath };',
+    'process.stdout.write(`${JSON.stringify(record)}\\n`);',
+    'NODE',
+    '}',
+    '',
+  ];
+}
+
+function scriptAppendProofLedgerJsonl(
+  id: string,
+  label: string,
+  logName: string,
+  command: string,
+): string {
+  return `append_proof_ledger_row ${shellQuote(id)} ${shellQuote(label)} ${shellQuote(logName)} ${shellQuote(command)} "$status"`;
 }
 
 function scriptInitRunReport(report: StartReport): string[] {

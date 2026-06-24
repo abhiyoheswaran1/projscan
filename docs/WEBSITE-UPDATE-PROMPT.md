@@ -1,19 +1,21 @@
 # Website Update Prompt
 
-Use this prompt when updating the public projscan website after the npm,
-GitHub, and MCP Registry release surfaces are live.
+Use this prompt after `projscan@4.13.0`, GitHub release `v4.13.0`, and MCP
+Registry metadata are live.
 
-Current live-site baseline from 2026-06-22; re-check before publishing:
+Current live-site baseline checked on 2026-06-24:
 
-- `https://www.baseframelabs.com/apps/projscan` shows `4.11.0` in the version
-  and changelog label, but still says `45` MCP tools and still centers the
-  Mission Control / 4.10.0 trust-gate story.
-- `https://www.baseframelabs.com/apps/projscan/docs` shows a `Changelog 4.11.0`
-  nav label, but the intro still says `4.10.0` and `45` MCP tools.
-- Keep 4.0 migration content and 4.9 trust-patch details as historical context.
+- `https://www.baseframelabs.com/apps/projscan` still shows older release
+  labels and older MCP tool-count copy in the visible product sections.
+- `https://www.baseframelabs.com/apps/projscan/docs` still leads with older
+  docs copy. Keep older release notes only as history.
+- Do not edit `https://www.baseframelabs.com/apps/projscan/changelog`; it
+  updates from the release feed.
+
+## Next Release Prompt: Proof Replay for Executable Proof Contracts
 
 ```text
-Update the projscan website for projscan 4.12.1.
+Update the projscan website for projscan 4.13.0.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -24,171 +26,102 @@ Do not edit:
 The changelog updates automatically.
 
 Release headline:
-4.12.1: Proof Cards V2 Daily Trust Loop
+4.13.0: Proof Replay for Executable Proof Contracts
 
 Primary story:
-projscan 4.12.1 turns Proof Cards into a daily trust loop. `projscan assess`
-now shows evidence strength, confidence reason, evidence gaps, ranking reasons,
-Trust Memory, and an AgentLoopKit-ready handoff packet. `projscan start
---intent "is this safe to commit?"` now starts with `projscan assess --mode
-fix-first`, and `projscan simulate --plan` compares bounded extraction,
-regression test first, and leave unchanged alternatives before recommending the
-safest option.
+projscan 4.13.0 adds Proof Replay to the existing proof-first workflow.
+`projscan prove --intent "<change>"` creates a local Proof Contract before an
+engineer or coding agent edits. The contract names allowed files, forbidden
+files, risky contracts, likely tests, proof commands, rollback notes,
+confidence, evidence gaps, Trust Memory signals, and reviewer guidance.
+`projscan prove --record-command "<command>" --exit-code <code>` records proof
+outcomes in `.projscan/proof-ledger.jsonl` with a changed-file fingerprint and
+redacted summary. `projscan prove --changed` validates the final working tree
+against that contract and ledger, then emits a reviewer-ready Proof Receipt.
 
-Do not change:
-- Keep the product name `projscan`.
-- Keep the MCP Registry name `io.github.abhiyoheswaran1/projscan`.
-- Keep the MCP Registry description aligned with this wording: Agent-first MCP. 11 AST adapters, 12 named languages, 47 tools, mission outcomes. Local.
-- Keep requirements copy anchored on Node.js >= 18.
-- Keep local-first trust copy precise: core scans run locally by default, source
-  is not uploaded, no projscan account or API key is required, telemetry is
-  default-off, and network-capable paths are explicit.
-- Keep the 47 MCP tools count unless the release artifact says otherwise.
-- Describe language support as 11 AST adapters covering 12 named languages.
-- Keep Baseframe Labs as the umbrella brand/family only, not a legal company
-  name with LLC/corp wording.
+Above the fold:
+- Lead with: "Know whether the change stayed inside the contract."
+- Hero command: `npx projscan prove --intent "is my agent allowed to change billing retry logic?"`
+- Supporting command: `npx projscan prove --record-command "npm test -- tests/billing/retry.test.ts" --exit-code 0 --duration-ms 1842 --summary "billing retry tests passed"`
+- Receipt command: `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
+- Keep Proof Cards nearby: `npx projscan assess --goal "make this repo safer to ship this week"`
+- Keep simulator nearby: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
+- Version: `4.13.0`
+- MCP tools: `48 MCP tools`
+- MCP Registry name: `io.github.abhiyoheswaran1/projscan`
+- MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 48 tools, mission outcomes. Local.`
+- Language support: `11 AST adapters covering 12 named languages`
+- Requirements: Node.js >= 18
 
-Stale live-site claims to update:
-- Version labels: `4.0.0`, `4.3.1`, `4.4.0`, `4.7.0`, `4.8.0`, `4.9.0`,
-  `4.9.1`, `4.9.2`, `4.9.3`, `4.10.0`, `4.11.0`, `4.11.1`, or
-  `4.12.0` -> `4.12.1`.
-- Navigation/changelog labels: `Changelog 4.0.0`, `Changelog 4.3.1`,
-  `Changelog 4.4.0`, `Changelog 4.7.0`, `Changelog 4.8.0`,
-  `Changelog 4.9.0`, `Changelog 4.9.1`, `Changelog 4.9.2`, or
-  `Changelog 4.9.3`, `Changelog 4.10.0`, `Changelog 4.11.0`,
-  `Changelog 4.11.1`, or `Changelog 4.12.0` ->
-  `Changelog 4.12.1`.
-- Release notes headings: old `Shipped in ...` headings -> `Shipped in 4.12.1.`
-- Replace any release-current `4.9.3`, `4.10.0`, `4.11.0`, `4.11.1`, or
-  `4.12.0` copy with the 4.12.1 proof-first story.
+New release bullets:
+- `projscan prove --intent "<change>"` creates an executable Proof Contract before editing.
+- Proof Contracts include allowed files, forbidden files, risky contracts,
+  likely tests, missing regression-test evidence, proof commands, safe change
+  shape, rollback, confidence, evidence gaps, Trust Memory summary, and
+  reviewer guidance.
+- `projscan prove --record-command "<command>" --exit-code <code>` records a
+  local proof outcome without executing the command.
+- Proof Ledger rows include command, exit code, duration, changed-file
+  fingerprint, redacted summary, optional log path, and source.
+- `projscan prove --changed` validates the working tree against the contract and
+  ledger, then reports scope drift, forbidden touches, proof status, stale
+  proof, failed proof, risk delta, reviewer decision, and commit readiness.
+- Proof Receipts separate allowed production, expected tests, documentation,
+  generated proof artifacts, config or security drift, forbidden touches, and
+  unexpected production files.
+- Mission Control `mission.sh` appends Proof Ledger rows while it runs the
+  existing proof queue.
+- `projscan evidence-pack --pr-comment` includes the latest Proof Receipt
+  summary when a contract and ledger are available.
+- Trust Memory now records proof outcomes such as accepted, rejected, reverted,
+  suppressed, and noisy, then feeds those outcomes into future Proof Contract
+  confidence.
+- MCP exposes `projscan_prove`, bringing the server to 48 tools.
+- Custom Proof Ledger paths must stay inside the project root.
 
-Above-the-fold update:
-- Lead with: "Know the safest next change before you edit."
-- Hero command: `npx projscan assess --goal "make this repo safer to ship this week"`
-- Supporting command: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
-- Mention Proof Cards, risk delta, fix-first mode, affected tests, contract
-  surfaces, and proof commands near the first proof workflow.
-- Keep graph, dataflow, MCP, Mission Control, and local-first language, but make
-  proof-first engineering decisions the first story.
+Docs page additions:
+- Add "Executable Proof Contracts":
+  - `npx projscan prove --intent "is my agent allowed to change billing retry logic?" --format json`
+  - `npx projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json`
+  - `npx projscan prove --record-command "npm test -- tests/billing/retry.test.ts" --exit-code 0 --duration-ms 1842 --summary "billing retry tests passed"`
+  - `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
+- Explain that `prove --intent` creates the contract before editing.
+- Explain that `prove --record-command` records a local outcome. It does not run
+  the command.
+- Explain that `prove --changed` validates the final working tree after editing,
+  classifies changed files, replays ledger evidence, and marks missing, failed,
+  partial, or stale proof before giving a reviewer decision.
+- Keep Proof Cards, simulate, Mission Control, privacy-check, evidence-pack, and
+  MCP setup as supporting workflows.
 
-New release-note bullets for 4.12.1:
-- Proof Cards V2: assessment cards now show evidence strength, confidence
-  reason, evidence gaps, ranking reasons, Trust Memory, and AgentLoopKit-ready
-  handoff packets.
-- Trust Memory: `projscan assess --feedback <path>` applies local reviewer
-  feedback, accepted recommendations, noisy findings, false positives, and
-  suppressions to future ranking and confidence.
-- Daily Safe Commit: `projscan start --intent "is this safe to commit?"` now
-  starts with `projscan assess --mode fix-first` and keeps before-commit
-  preflight as proof.
-- Simulator alternatives: `projscan simulate --plan "<change plan>"` compares
-  bounded extraction, regression test first, and leave unchanged before naming
-  the recommended option.
-- Proof-first assessment: `projscan assess` answers what is risky, why it is
-  risky, what to fix first, what change shape is safest, which tests prove it,
-  what risk the fix removes, and whether the repo is ready to ship.
-- Proof Cards: each recommendation carries local evidence, impact, safe change
-  shape, verification commands, confidence, feedback or suppression path, and
-  risk delta.
-- Fix-first mode: `projscan assess --mode fix-first` returns one or two trusted
-  next actions instead of a laundry list.
-- Risk delta simulator: `projscan simulate --plan "<change plan>"` predicts
-  likely files, affected tests, contracts, rollout steps, proof commands, and
-  before/after risk before editing.
-- Agent workflow: MCP now exposes `projscan_assess` and `projscan_simulate`
-  through the 47-tool server.
-- Simulator bug pass: vague plans no longer inherit confidence from unrelated
-  quality or graph evidence, dotfiles no longer match every plan, and likely
-  tests prefer direct matches over broad noise.
-- Simulator precision patch: short filenames such as `s.ts`, generated
-  agent/cache paths, logs, and weak planning words no longer become likely
-  touched files when the plan does not name a concrete repo target.
+Use these release assets:
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.13.0/docs/projscan-mission-control.png`
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.13.0/docs/projscan-proof-router.png`
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.13.0/docs/projscan-proof-cards.png`
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.13.0/docs/projscan-mission-control.gif`
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.13.0/docs/projscan-mission-proof.gif`
 
-Main page feature-section edits:
-- Proof Cards: show a card with finding, evidence, impact, safe fix shape,
-  verification, confidence, and risk delta.
-- Fix-first: show `projscan assess --mode fix-first --format markdown` producing
-  one or two trusted next actions.
-- Simulate before editing: show `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`.
-- Trust memory: keep feedback and suppression paths visible as the way to teach
-  projscan when a recommendation is wrong.
-- Agent handoff: show that every Proof Card includes scope, files, constraints,
-  verification commands, done criteria, and rollback notes for AgentLoopKit or
-  another coding agent.
-- Mission Control: keep `projscan start --intent` and saved mission proof as a
-  workflow entrypoint, but make `assess` and `simulate` the release headline.
+Suggested copy:
+projscan is the local proof layer for AI-assisted software engineering.
+Before an engineer or coding agent edits, `projscan prove --intent` defines the
+allowed scope and required proof. After proof commands run, `projscan prove
+--record-command` records the outcome locally. After the edit, `projscan prove
+--changed` produces a Proof Receipt showing whether the work stayed inside
+scope, whether the proof is fresh, which files need reviewer attention, and
+whether the change is ready for review. Source stays local by default, telemetry
+stays off until opted in, and no projscan account or API key is required.
 
-Docs page updates:
-- Add a "Proof-first assessment" section with:
-  - `npx projscan assess --goal "make this repo safer to ship this week" --format json`
-  - `npx projscan assess --mode fix-first --format markdown`
-  - `npx projscan assess --mode fix-first --feedback .projscan-feedback.json --format json`
-- Add a "Simulate a proposed change" section with:
-  - `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules" --format json`
-- Explain that `simulate` is read-only and predicts likely files/tests/contracts;
-  it does not edit code or execute the plan.
-- Explain that simulator alternatives compare bounded extraction, regression
-  test first, and leave unchanged, then recommend one option.
-- Keep the "Start with an intent" and "Resume from mission proof" sections from
-  the 4.9 site.
-
-Screenshots/media:
-- Use the README media after the `v4.12.1` tag is live:
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-control.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-proof-router.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-proof-cards.png`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-control.gif`
-  - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.12.1/docs/projscan-mission-proof.gif`
-- Use the Mission Control image as the hero/overview asset.
-- Use the Proof Cards image near the 4.12.1 assess/simulate story.
-- Use proof-router imagery for Mission Control, saved proof, or release-review detail.
-- Keep older terminal GIFs only as secondary proof.
-
-Calls to action:
-- Primary: "Assess risk" -> `npx projscan assess --goal "make this repo safer to ship this week"`
-- Secondary: "Simulate a change" -> `npx projscan simulate --plan "<change plan>"`
-- Secondary: "Route a goal" -> `npx projscan start --intent "is it safe to commit this change?"`
-- Secondary: "Intake feedback" -> `npx projscan feedback intake --text "<feedback>" --format json`
-- Secondary: "Resume from proof" -> `npx projscan start --mission .projscan/mission`
-- Keep existing CTAs for MCP setup, privacy-check, evidence-pack, and swarm coordination.
-
-Suggested copy block:
-projscan 4.12.1 is the Proof Cards V2 daily trust loop release. `projscan
-assess` shows the safest next change, the evidence behind it, Trust Memory,
-AgentLoopKit handoff details, and the commands that prove it. `projscan simulate
---plan` compares bounded extraction, regression test first, and leave unchanged
-before recommending an option. Core scans still run locally by default, source is
-not uploaded, and telemetry stays off until someone opts in.
-The 4.12.1 patch also tightens simulator precision so vague plans do not pull in
-one-letter files, logs, or generated agent evidence.
-
-Verification before publishing:
-- Confirm every visible version/changelog label reads 4.12.1.
-- Confirm the tool count still reads 47.
-- Confirm language copy reads 11 AST adapters covering 12 named languages.
-- Confirm `projscan assess --goal`, `projscan assess --mode fix-first`, and
-  `projscan simulate --plan` appear on overview and docs pages.
-- Confirm Proof Cards, risk delta, affected tests, contract surfaces, and
-  proof commands are visible in docs.
-- Confirm evidence strength, confidence reason, Trust Memory, AgentLoopKit
-  handoff, and simulator alternatives are visible in docs.
-- Confirm the screenshots load from the `v4.12.1` raw GitHub URLs after the tag
-  is pushed.
-- Search the rendered site for `4.9.3`, `4.10.0`, `4.11.0`, and `4.12.0`;
-  remaining hits should be historical release context, not current-version
-  labels.
+Publishing checklist:
+- Every current-version label reads `4.13.0`.
+- Tool count reads `48`.
+- Language copy reads `11 AST adapters covering 12 named languages`.
+- Overview and docs show `projscan prove --intent`, `projscan prove
+  --record-command`, `projscan prove --changed`, `projscan assess --goal`, and
+  `projscan simulate --plan`.
+- Proof Contract fields and Proof Receipt fields are visible.
+- Proof Ledger, proof freshness, failed proof, stale proof, reviewer decision,
+  and evidence-pack Proof Receipt section are visible.
+- Screenshots load from the `v4.13.0` raw GitHub URLs.
+- Search rendered pages for stale current-version labels from `4.9.3` through
+  `4.12.1`; keep those strings only in historical context.
 ```
-
-## Release Proof Assets
-
-- README screenshots: `docs/projscan-mission-control.png`,
-  `docs/projscan-proof-router.png`, `docs/projscan-proof-cards.png`
-- VHS demos: `docs/projscan-mission-control.gif`,
-  `docs/projscan-mission-proof.gif`
-- Screenshot source: `docs/demos/projscan-4-1-demo.html`
-- VHS sources: `docs/demos/projscan-mission-control.tape`,
-  `docs/demos/projscan-mission-proof.tape`
-- Regenerate screenshots: `npm run docs:screenshots`
-- Regenerate VHS demos: `npm run docs:demos`
-- Regenerate all README media: `npm run docs:assets`
-- Changelog source: `CHANGELOG.md` entry for `4.12.1`

@@ -451,9 +451,16 @@ function normalizeFeedbackResponse(
   const pr = cleanString(input.pr);
   const reviewer = cleanString(input.reviewer);
   const note = cleanString(input.note);
+  const proofContractId = cleanString(input.proofContractId);
+  const proofReceiptStatus = cleanString(input.proofReceiptStatus);
+  const proofReviewerDecision = cleanString(input.proofReviewerDecision);
   if (repo) normalized.repo = repo;
   if (pr) normalized.pr = pr;
   if (reviewer) normalized.reviewer = reviewer;
+  if (isProofOutcome(input.proofOutcome)) normalized.proofOutcome = input.proofOutcome;
+  if (proofContractId) normalized.proofContractId = proofContractId;
+  if (proofReceiptStatus) normalized.proofReceiptStatus = proofReceiptStatus;
+  if (proofReviewerDecision) normalized.proofReviewerDecision = proofReviewerDecision;
   if (typeof input.useful === 'boolean') normalized.useful = input.useful;
   if (typeof input.preventedBadEdit === 'boolean')
     normalized.preventedBadEdit = input.preventedBadEdit;
@@ -515,6 +522,16 @@ function cleanString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isProofOutcome(value: unknown): value is NonNullable<DogfoodFeedbackResponse['proofOutcome']> {
+  return (
+    value === 'accepted' ||
+    value === 'rejected' ||
+    value === 'reverted' ||
+    value === 'suppressed' ||
+    value === 'noisy'
+  );
 }
 
 function normalizeKey(value: string): string {

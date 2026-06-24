@@ -50,6 +50,7 @@ import { registerAgentBrief } from './commands/agentBrief.js';
 import { registerQualityScorecard } from './commands/qualityScorecard.js';
 import { registerAssess } from './commands/assess.js';
 import { registerSimulate } from './commands/simulate.js';
+import { registerProve } from './commands/prove.js';
 import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerStart } from './commands/start.js';
 import { registerTrial } from './commands/trial.js';
@@ -114,6 +115,7 @@ export const CLI_COMMAND_REGISTRARS = [
   registerQualityScorecard,
   registerAssess,
   registerSimulate,
+  registerProve,
   registerStart,
   registerTrial,
   registerTelemetry,

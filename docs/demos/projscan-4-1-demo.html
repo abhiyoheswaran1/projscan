@@ -565,7 +565,7 @@
               <span>mission and proof</span>
             </div>
             <div class="metric">
-              <strong>47</strong>
+              <strong>48</strong>
               <span>MCP tools</span>
             </div>
             <div class="metric">
@@ -664,13 +664,12 @@
       <section class="proof" id="proof" aria-label="Proof and dependency view">
         <div class="proof-header">
           <div>
-            <p class="eyebrow">Proof, review, and adoption evidence</p>
-            <h2>Check proof before release.</h2>
+            <p class="eyebrow">Proof Replay and review evidence</p>
+            <h2>Check what actually ran.</h2>
           </div>
           <p>
-            Developers and agents can resume from a saved mission bundle, summarize pass/fail
-            evidence, and compare local proof against a manual baseline without sending source code
-            anywhere.
+            Developers and agents can record proof-command outcomes locally, replay them against the
+            current working tree, and hand reviewers one receipt with scope, freshness, and decision.
           </p>
         </div>
 
@@ -680,24 +679,25 @@
               <span class="dot red"></span>
               <span class="dot amber"></span>
               <span class="dot green"></span>
-              <span class="terminal-title">projscan mission-proof</span>
+              <span class="terminal-title">projscan prove --changed</span>
             </div>
             <div class="terminal-body">
               <span class="line"
                 ><span class="prompt">$</span>
                 <span class="cmd"
-                  >projscan mission-proof --mission .projscan/mission --format json</span
+                  >projscan prove --changed --contract .projscan/proof-contract.json</span
                 ></span
               >
-              <span class="line dim">Local proof summary</span>
+              <span class="line dim">Proof Replay</span>
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">{"passed":1,"failed":0,</span>
-              <span class="line success">&nbsp;"reruns":0,"reviewerApprovals":1}</span>
+              <span class="line term-heading">Proof status: <span class="success">passed</span></span>
+              <span class="line success">Reviewer decision: safe-to-review</span>
+              <span class="line success">Scope: within-contract</span>
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">Review signal</span>
-              <span class="line success">- proof gate passed before release</span>
-              <span class="line success">- request version review next</span>
-              <span class="line notice">Next: projscan start --mission .projscan/mission</span>
+              <span class="line term-heading">Command evidence</span>
+              <span class="line success">- npm test -- tests/core/bugHunt.test.ts fresh</span>
+              <span class="line success">- projscan assess --mode fix-first fresh</span>
+              <span class="line notice">Next: paste Proof Receipt into PR</span>
             </div>
           </section>
 
@@ -705,30 +705,30 @@
             <div class="signal">
               <span class="tag green">Verify</span>
               <span>
-                <strong>Outcome resume</strong>
-                <code>--mission</code> reads <code>summary.json</code>, status rows, and reviewer
-                decisions.
+                <strong>Proof Ledger</strong>
+                <code>--record-command</code> stores command, exit code, duration, fingerprint, and
+                redacted summary.
               </span>
             </div>
             <div class="signal">
               <span class="tag blue">MCP</span>
               <span>
-                <strong>MCP start input</strong>
-                <code>mission_dir</code> carries the same proof outcome to agent clients.
+                <strong>Freshness</strong>
+                <code>prove --changed</code> marks proof stale when the changed-file fingerprint moves.
               </span>
             </div>
             <div class="signal">
               <span class="tag amber">List</span>
               <span>
-                <strong>Proof summary</strong>
-                <code>mission-proof</code> reports completion, reruns, failed gates, and approvals.
+                <strong>PR receipt</strong>
+                <code>evidence-pack --pr-comment</code> includes the latest Proof Receipt section.
               </span>
             </div>
             <div class="signal">
               <span class="tag red">Gate</span>
               <span>
-                <strong>Version review</strong>
-                Use outcome data to request review or keep fixing failed proof.
+                <strong>Stop signal</strong>
+                Failed proof or forbidden scope returns a reviewer decision of <code>stop</code>.
               </span>
             </div>
           </div>

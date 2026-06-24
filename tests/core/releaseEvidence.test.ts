@@ -10,6 +10,7 @@ import {
   renderEvidencePackPrComment,
   validateEvidencePackPrComment,
 } from '../../src/core/releaseEvidence.js';
+import { computeProve } from '../../src/core/prove.js';
 import { buildEvidencePackArtifacts } from '../../src/core/releaseEvidenceArtifacts.js';
 import type {
   BugHuntReport,
@@ -122,6 +123,41 @@ test('evidence pack can render a concise PR comment for GitHub review', async ()
     ]),
   );
 });
+
+test('evidence pack PR comments include available Proof Replay receipts', async () => {
+  const root = await makeTempProject('2.2.0');
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'projscan@example.test']);
+  await git(root, ['config', 'user.name', 'Projscan Test']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'initial']);
+  const contractReport = await computeProve(root, {
+    intent: 'change src index behavior',
+    saveContractPath: '.projscan/proof-contract.json',
+  });
+  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 2;\n');
+  for (const command of contractReport.contract?.proofCommands ?? []) {
+    await computeProve(root, {
+      recordCommand: command,
+      exitCode: 0,
+      durationMs: 77,
+      summary: 'proof passed',
+    } as never);
+  }
+
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 1,
+  });
+
+  expect(report.proofReceipt?.reviewerDecision).toMatch(
+    /safe-to-review|needs-focused-review|stop/,
+  );
+  expect(report.proofReceipt?.proofStatus).toBe('passed');
+  expect(report.prComment).toContain('### Proof Receipt');
+  expect(report.prComment).toContain('proof status: passed');
+  expect(report.prComment).toContain('projscan prove --changed --format markdown');
+}, 120_000);
 
 test('trust calibration treats release-scale review blocks as manual review', () => {
   const preflight: PreflightReport = {

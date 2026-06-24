@@ -6,6 +6,7 @@ export { collectIssues } from './core/issueEngine.js';
 export { analyzeHotspots, computeRiskScore } from './core/hotspotAnalyzer.js';
 export { computeAssess } from './core/assess.js';
 export { computeSimulation } from './core/simulate.js';
+export { computeProve } from './core/prove.js';
 export { inspectFile } from './core/fileInspector.js';
 export {
   buildImportGraph,

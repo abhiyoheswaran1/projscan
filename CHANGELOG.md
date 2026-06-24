@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.13.0]
+
+2026-06-24 - "Proof Replay"
+
+### Added
+
+- Added `projscan prove`, an executable Proof Contract workflow that creates
+  allowed-file scope, forbidden-file scope, risky contracts, likely tests,
+  proof commands, rollback notes, confidence, evidence gaps, Trust Memory
+  signals, and reviewer guidance before editing.
+- Added `projscan prove --record-command "<command>" --exit-code <code>` for
+  local Proof Ledger rows with command, duration, changed-file fingerprint,
+  redacted output summary, and optional log path.
+- Added `projscan prove --changed` Proof Receipts that validate the current
+  working tree against the saved contract and local ledger, then report scope
+  drift, forbidden touches, proof status, stale proof, failed proof, risk delta,
+  reviewer decision, and commit readiness.
+- Added MCP tool `projscan_prove`, bringing the MCP server to 48 tools.
+
+### Changed
+
+- Mission Control proof scripts now append local Proof Ledger rows while they
+  run the existing proof queue.
+- `projscan evidence-pack --pr-comment` now includes the latest Proof Receipt
+  summary when a contract and ledger are available.
+- Trust Memory feedback now records proof outcomes such as accepted, rejected,
+  reverted, suppressed, and noisy, then feeds those outcomes into future Proof
+  Contract confidence.
+- Updated README, guide, website prompt, screenshots, and terminal demos for
+  the Proof Replay workflow.
+
+### Fixed
+
+- Constrained custom Proof Ledger paths to the project root so wrappers and MCP
+  callers cannot write proof records outside the scanned repository.
+
 ## [4.12.1]
 
 2026-06-22 - "Simulator Precision Patch"

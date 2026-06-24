@@ -26,6 +26,8 @@ export type * from './types/understand.js';
 export type * from './types/qualityScorecard.js';
 export type * from './types/assess.js';
 export type * from './types/simulate.js';
+export type * from './types/prove.js';
+export type * from './types/proofLedger.js';
 export type * from './types/regressionPlan.js';
 export type * from './types/start.js';
 export type * from './types/agentBrief.js';

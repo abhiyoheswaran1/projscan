@@ -298,6 +298,8 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"');
   expect(missionScript).toContain('PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"');
   expect(missionScript).toContain('PROOF_SUMMARY_FILE="${PROOF_LOG_DIR}/summary.json"');
+  expect(missionScript).toContain('PROOF_LEDGER_FILE="${PROJSCAN_ROOT}/.projscan/proof-ledger.jsonl"');
+  expect(missionScript).toContain('append_proof_ledger_row');
   expect(missionScript).toContain('mkdir -p "$PROOF_LOG_DIR"');
   expect(missionScript).toContain(': > "$PROOF_STATUS_FILE"');
   expect(missionScript).toContain(': > "$PROOF_REPORT_FILE"');
@@ -322,6 +324,7 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('> "$PROOF_LOG_DIR/current-ready-1.log" 2>&1');
   expect(missionScript).toContain('status=$?');
   expect(missionScript).toContain('>> "$PROOF_STATUS_FILE"');
+  expect(missionScript).toContain('>> "$PROOF_LEDGER_FILE"');
   expect(missionScript).toContain('>> "$PROOF_REPORT_FILE"');
   expect(missionScript).toContain('"id":"current-ready-1"');
   expect(missionScript).toContain('"exitCode":');

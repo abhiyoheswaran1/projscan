@@ -63,6 +63,19 @@ export interface EvidencePackDailyPrWorkflowStep {
   purpose: string;
 }
 
+export interface EvidencePackProofReceiptSummary {
+  available: boolean;
+  command: string;
+  summary: string;
+  proofStatus: string;
+  reviewerDecision: string;
+  scopeStatus?: string;
+  riskDeltaDirection?: string;
+  missingCommands: string[];
+  failedCommands: string[];
+  staleCommands: string[];
+}
+
 export interface EvidencePackPrCommentValidationCheck {
   id: string;
   status: 'pass' | 'warn' | 'fail';
@@ -95,6 +108,7 @@ export interface EvidencePackReport {
   prComment?: string;
   prCommentValidation?: EvidencePackPrCommentValidation;
   prSummary?: EvidencePackPrSummary;
+  proofReceipt?: EvidencePackProofReceiptSummary;
   dailyPrWorkflow?: EvidencePackDailyPrWorkflowStep[];
   suggestedNextActions: PreflightSuggestedAction[];
 }

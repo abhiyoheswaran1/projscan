@@ -8,6 +8,10 @@ export interface DogfoodFeedbackResponse {
   pr?: string;
   reviewer?: string;
   useful?: boolean;
+  proofOutcome?: 'accepted' | 'rejected' | 'reverted' | 'suppressed' | 'noisy';
+  proofContractId?: string;
+  proofReceiptStatus?: string;
+  proofReviewerDecision?: string;
   minutesSaved?: number;
   preventedBadEdit?: boolean;
   ownerRoutingClear?: boolean;

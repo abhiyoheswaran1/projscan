@@ -34,6 +34,9 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     '### Reviewer Decision',
     ...formatReviewerDecision(report),
     '',
+    '### Proof Receipt',
+    ...formatProofReceipt(report),
+    '',
     '### Daily PR Workflow',
     ...formatDailyPrWorkflow(report.dailyPrWorkflow),
     '',
@@ -87,6 +90,7 @@ const REQUIRED_PR_COMMENT_SECTIONS = [
   '## projscan approval evidence',
   '### Verdict',
   '### Reviewer Decision',
+  '### Proof Receipt',
   '### Daily PR Workflow',
   '### Trust Calibration',
   '### Baseline Trend',
@@ -217,6 +221,36 @@ function formatReviewerDecision(report: EvidencePackReport): string[] {
     `- owner state: ${ownerState}`,
     `- first command: \`${firstCommand}\``,
   ];
+}
+
+function formatProofReceipt(report: EvidencePackReport): string[] {
+  const receipt = report.proofReceipt;
+  if (!receipt?.available) {
+    return [
+      `- proof status: ${receipt?.proofStatus ?? 'missing'}`,
+      `- reviewer decision: ${receipt?.reviewerDecision ?? 'needs-focused-review'}`,
+      `- receipt: ${receipt?.summary ?? 'No Proof Receipt available for this evidence pack.'}`,
+      '- run: `projscan prove --changed --format markdown`',
+    ];
+  }
+  return [
+    `- proof status: ${receipt.proofStatus}`,
+    `- reviewer decision: ${receipt.reviewerDecision}`,
+    ...optionalReceiptLine('scope', receipt.scopeStatus),
+    ...optionalReceiptLine('risk delta', receipt.riskDeltaDirection),
+    proofCommandsLine('failed proof', receipt.failedCommands),
+    proofCommandsLine('stale proof', receipt.staleCommands),
+    proofCommandsLine('missing proof', receipt.missingCommands),
+    `- run: \`${receipt.command}\``,
+  ];
+}
+
+function optionalReceiptLine(label: string, value: string | undefined): string[] {
+  return value ? [`- ${label}: ${value}`] : [];
+}
+
+function proofCommandsLine(label: string, commands: string[]): string {
+  return commands.length > 0 ? `- ${label}: ${commands.join('; ')}` : `- ${label}: none`;
 }
 
 function formatDailyPrWorkflow(steps: EvidencePackDailyPrWorkflowStep[] | undefined): string[] {

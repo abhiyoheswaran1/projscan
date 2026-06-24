@@ -51,7 +51,9 @@ describe('MCP Registry descriptor', () => {
     expect(websitePrompt).toContain(`projscan ${pkg.version}`);
     expect(websitePrompt).toContain(descriptor.name);
     expect(websitePrompt).toContain(descriptor.description);
-    expect(websitePrompt).toContain('47 MCP tools');
+    const toolCount = descriptor.description.match(/(\d+) tools/)?.[1];
+    expect(toolCount).toBeDefined();
+    expect(websitePrompt).toContain(`${toolCount} MCP tools`);
     expect(websitePrompt).toContain('Node.js >= 18');
   });
 });

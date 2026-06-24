@@ -2,6 +2,22 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-23: Add Proof Replay as local evidence for Proof Receipts
+
+- Status: accepted
+- Context: Proof Contracts named required proof commands, but reviewers still could not tell whether those commands actually ran, whether they passed, or whether newer edits made the proof stale.
+- Decision: Add a local Proof Ledger under `.projscan/proof-ledger.jsonl` and wire it into existing proof surfaces. `prove --record-command` records command, exit code, duration, changed-file fingerprint, redacted summary, and optional log path without executing shell commands. `prove --changed` replays the ledger against the current changed-file fingerprint and reports passed, missing, failed, partial, or stale proof plus a reviewer decision. Saved Mission Control bundles append compatible ledger rows while running their existing proof queue. `evidence-pack --pr-comment` includes the latest Proof Receipt summary when available.
+- Consequences: Reviewers can check scope and proof freshness from one local receipt. Proof replay stays lightweight and does not run full preflight; `preflight` and `evidence-pack` remain the broader safety gates. Local proof artifacts under `.projscan/` do not make proof stale.
+- Verification: Focused core, CLI, evidence-pack, feedback, mission-bundle, docs, and format-support tests cover ledger recording, redaction, fresh proof, failed proof, stale proof, PR comments, Mission Control ledger rows, and Trust Memory outcome fields.
+
+## 2026-06-23: Add executable Proof Contracts as the closed loop above Proof Cards
+
+- Status: accepted
+- Context: `assess`, Proof Cards, `simulate`, Mission Control, MCP, and Trust Memory help engineers identify risky work and safe next actions, but agents and reviewers still lack a single local contract that constrains a proposed change and validates the completed diff.
+- Decision: Add `projscan prove` and `projscan_prove` as an additive, local-first Proof Contract workflow. `prove --intent "<change>"` composes simulation evidence and optional local feedback memory into allowed files, forbidden files, risky contracts, likely tests, proof commands, rollback notes, confidence, evidence gaps, and reviewer guidance. Noisy or missing-signal Trust Memory lowers the confidence reason so the contract does not overstate evidence. It keeps `projscan assess --mode fix-first --format json` as a required proof command instead of blocking intent mode on the slower weekly assessment path. `prove --changed` validates the working tree against a saved or discovered contract and emits a Proof Receipt with changed-file classes, scope drift, readiness, risk delta, proof status, a reviewer checklist, and a copyable decision.
+- Consequences: projscan becomes a proof layer for AI-assisted engineering without adding autofix or hidden network behavior. Intent mode is read-only unless `--save-contract` is explicit. Changed mode can operate without a contract, but it reports missing contract evidence and cannot overstate readiness.
+- Verification: Focused core, CLI, MCP, docs, and format-support tests cover contract generation, changed-file validation, saved contract loading, changed-file classification, forbidden scope drift, Trust Memory confidence adjustment, Markdown receipts, and MCP registration.
+
 ## 2026-06-21: Add proof-first assessment as a read-only command
 
 - Status: accepted

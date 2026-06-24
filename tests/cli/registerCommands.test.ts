@@ -54,6 +54,7 @@ const expectedRegistrarOrder = [
   'registerQualityScorecard',
   'registerAssess',
   'registerSimulate',
+  'registerProve',
   'registerStart',
   'registerTrial',
   'registerTelemetry',

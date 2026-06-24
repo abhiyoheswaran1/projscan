@@ -6,6 +6,7 @@ import {
 } from './evidenceComment.js';
 export { buildDailyPrWorkflow, renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
+import { computeProve } from './prove.js';
 import { buildEvidencePackArtifacts } from './releaseEvidenceArtifacts.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
 import { buildEvidencePackPrSummary } from './releaseEvidencePrSummary.js';
@@ -20,7 +21,12 @@ import {
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
 import { loadOwnership } from './ownership.js';
-import type { EvidencePackReport, PreflightSuggestedAction, ReleaseTrainReport } from '../types.js';
+import type {
+  EvidencePackProofReceiptSummary,
+  EvidencePackReport,
+  PreflightSuggestedAction,
+  ReleaseTrainReport,
+} from '../types.js';
 
 export interface ComputeEvidencePackOptions {
   lines?: string[];
@@ -70,6 +76,9 @@ export async function computeEvidencePack(
     ownership,
   });
   const verdict = calibrateEvidencePackVerdict(rawVerdict, prSummary);
+  const proofReceipt = options.includePrComment
+    ? await safeProofReceipt(rootPath)
+    : undefined;
 
   const report: EvidencePackReport = {
     schemaVersion: 1,
@@ -92,6 +101,7 @@ export async function computeEvidencePack(
       ? { websitePrompt: buildWebsitePrompt(train, changelogEntries) }
       : {}),
     prSummary,
+    ...(proofReceipt ? { proofReceipt } : {}),
     dailyPrWorkflow: buildDailyPrWorkflow(),
     suggestedNextActions,
   };
@@ -102,6 +112,49 @@ export async function computeEvidencePack(
     prComment,
     prCommentValidation: validateEvidencePackPrComment(prComment, report),
   };
+}
+
+async function safeProofReceipt(rootPath: string): Promise<EvidencePackProofReceiptSummary> {
+  const command = 'projscan prove --changed --format markdown';
+  try {
+    const report = await computeProve(rootPath, { changed: true });
+    const receipt = report.receipt;
+    if (!receipt || receipt.scope.status === 'missing-contract') {
+      return {
+        available: false,
+        command,
+        summary: 'No Proof Contract was available for this evidence pack.',
+        proofStatus: 'missing',
+        reviewerDecision: 'needs-focused-review',
+        missingCommands: [],
+        failedCommands: [],
+        staleCommands: [],
+      };
+    }
+    return {
+      available: true,
+      command,
+      summary: receipt.summary,
+      proofStatus: receipt.proofStatus.status,
+      reviewerDecision: receipt.reviewerDecision,
+      scopeStatus: receipt.scope.status,
+      riskDeltaDirection: receipt.riskDeltaDirection,
+      missingCommands: receipt.proofStatus.missingCommands,
+      failedCommands: receipt.proofStatus.failedCommands,
+      staleCommands: receipt.proofStatus.staleCommands,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      command,
+      summary: `Proof Receipt unavailable: ${error instanceof Error ? error.message : 'unknown error'}`,
+      proofStatus: 'missing',
+      reviewerDecision: 'needs-focused-review',
+      missingCommands: [],
+      failedCommands: [],
+      staleCommands: [],
+    };
+  }
 }
 
 function buildChangelogEntries(): string[] {

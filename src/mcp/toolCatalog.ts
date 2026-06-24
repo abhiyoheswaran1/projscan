@@ -42,6 +42,7 @@ import { agentBriefTool } from './tools/agentBrief.js';
 import { qualityScorecardTool } from './tools/qualityScorecard.js';
 import { assessTool } from './tools/assess.js';
 import { simulateTool } from './tools/simulate.js';
+import { proveTool } from './tools/prove.js';
 import { adoptionTool } from './tools/adoption.js';
 import { startTool } from './tools/start.js';
 import { understandTool } from './tools/understand.js';
@@ -86,6 +87,7 @@ export const mcpTools: McpTool[] = [
   qualityScorecardTool,
   assessTool,
   simulateTool,
+  proveTool,
   adoptionTool,
   startTool,
   understandTool,

@@ -69,6 +69,10 @@ test('feedback add and summary track minutes saved, prevented bad edits, false p
     falsePositiveRules: ['route-owner:vague'],
     missingSignals: ['auth middleware was not identified'],
     noisyFindings: ['generated route warning'],
+    proofOutcome: 'accepted',
+    proofContractId: 'proof-contract-auth',
+    proofReceiptStatus: 'passed',
+    proofReviewerDecision: 'safe-to-review',
   });
   await addFeedbackResponse(file, {
     repo: 'web',
@@ -94,6 +98,13 @@ test('feedback add and summary track minutes saved, prevented bad edits, false p
   expect(summary.preventedBadEdits).toBe(1);
   expect(summary.falsePositive.totalReports).toBe(1);
   expect(summary.falsePositive.noisyRules[0]).toEqual({ rule: 'route-owner:vague', count: 1 });
+  const saved = await readFeedbackFile(file);
+  expect(saved.responses[1]).toMatchObject({
+    proofOutcome: 'accepted',
+    proofContractId: 'proof-contract-auth',
+    proofReceiptStatus: 'passed',
+    proofReviewerDecision: 'safe-to-review',
+  });
   expect(summary.nextDogfoodCommand).toBe('projscan dogfood --feedback ' + file + ' --format json');
 });
 
