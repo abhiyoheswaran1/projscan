@@ -1,7 +1,7 @@
 import type { AssessConfidence, AssessEvidenceStrengthLevel, RiskDeltaSnapshot } from './assess.js';
 import type { ProofLedgerRecord } from './proofLedger.js';
 
-export type ProveMode = 'intent' | 'changed' | 'record';
+export type ProveMode = 'intent' | 'changed' | 'record' | 'run';
 export type ProveVerdict = 'ready' | 'needs-review' | 'blocked';
 export type ProveScopeStatus = 'within-contract' | 'drifted' | 'missing-contract';
 export type ProveProofStatus = 'not-run' | 'missing' | 'partial' | 'passed' | 'failed' | 'stale';
@@ -24,6 +24,20 @@ export interface ProveTrustMemorySummary {
   status: string;
   summary: string;
   signals: string[];
+}
+
+export interface ProveVerifiedWorkflow {
+  phase: 'contract' | 'receipt' | 'record';
+  status: ProveVerdict;
+  nextAction: string;
+  nextCommand: string;
+  reviewerDecision?: ProveReviewerDecision;
+  scopeStatus?: ProveScopeStatus;
+  proofStatus?: ProveProofStatus;
+  riskDeltaDirection?: ProveRiskDeltaDirection;
+  staleProof: boolean;
+  missingProof: boolean;
+  failedProof: boolean;
 }
 
 export interface ProveChangedFileClassification {
@@ -57,6 +71,7 @@ export interface ProveContract {
   reviewerGuidance: string;
   receiptCommand: string;
   riskDelta: RiskDeltaSnapshot;
+  verifiedWorkflow: ProveVerifiedWorkflow;
 }
 
 export interface ProveReceiptScope {
@@ -110,6 +125,7 @@ export interface ProveReceipt {
   newRisks: string[];
   evidenceGaps: string[];
   reviewerGuidance: string;
+  verifiedWorkflow: ProveVerifiedWorkflow;
 }
 
 export interface ProveReport {
@@ -121,6 +137,7 @@ export interface ProveReport {
   receipt?: ProveReceipt;
   commands: string[];
   warnings: string[];
+  verifiedWorkflow: ProveVerifiedWorkflow;
   savedContractPath?: string;
   ledgerRecord?: ProofLedgerRecord;
 }

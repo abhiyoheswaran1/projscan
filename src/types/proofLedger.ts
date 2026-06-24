@@ -1,4 +1,4 @@
-export type ProofLedgerSource = 'prove-record' | 'mission' | 'external';
+export type ProofLedgerSource = 'prove-record' | 'prove-run' | 'mission' | 'external';
 export type ProofLedgerStatus = 'passed' | 'failed';
 
 export interface ProofLedgerRecord {

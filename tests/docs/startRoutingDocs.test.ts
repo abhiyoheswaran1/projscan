@@ -64,8 +64,9 @@ test('docs lead with demonstrated daily workflows instead of inflated breadth', 
   expect(pkg.description).not.toContain('CLI on the side');
 
   expect(readme).toContain('## Daily workflows');
-  expect(readme).toContain('Use these three workflows before scanning the full command catalog.');
+  expect(readme).toContain('Use these four workflows before scanning the full command catalog.');
   expect(readme).toContain('Before editing a feature');
+  expect(readme).toContain('Verified change workflow');
   expect(readme).toContain('Before handoff or commit');
   expect(readme).toContain('Before release-candidate review');
   expect(readme).toContain('Success criteria:');

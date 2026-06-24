@@ -70,6 +70,9 @@ const MERGE_KEYWORDS = keywordList('merge merged merging');
 const REPORT_CONTROL_CONTEXT_KEYWORDS = keywordList(
   'redact redacted redaction scoped scope partner vendor external artifact artifacts export exports paths report reports',
 );
+const PROVE_CONTEXT_KEYWORDS = keywordList(
+  'allowed permission permissions proof contract contracts scope scoped forbidden receipt receipts replay ledger stale fresh bounded',
+);
 
 export function routeKeywordToolGuardDecision(
   context: KeywordMatchContext,
@@ -172,6 +175,8 @@ const TOOL_KEYWORD_REJECTORS: readonly ToolKeywordRejector[] = [
     entry.tool === 'projscan_claim' && searchDataContractContextMatches(tokens),
   ({ entry, keyword, tokens }) =>
     entry.tool === 'projscan_claim' && !claimKeywordMatches(keyword, tokens),
+  ({ entry, tokens }) =>
+    entry.tool === 'projscan_prove' && !proveContextMatches(tokens),
   ({ entry, keyword, tokens }) =>
     entry.tool === 'projscan_collision' &&
     keywordIn(keyword, ['conflict', 'conflicts']) &&
@@ -274,4 +279,13 @@ function feedbackIntakeContextMatches(tokens: Set<string>): boolean {
   )
     return true;
   return false;
+}
+
+function proveContextMatches(tokens: Set<string>): boolean {
+  if (tokens.has('claim')) return false;
+  if (PROVE_CONTEXT_KEYWORDS.some((token) => tokens.has(token))) return true;
+  return (
+    tokens.has('agent') &&
+    (tokens.has('change') || tokens.has('changed') || tokens.has('edit') || tokens.has('edits'))
+  );
 }

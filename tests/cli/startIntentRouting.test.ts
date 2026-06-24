@@ -78,6 +78,29 @@ test('start infers the workflow mode from safety-gate intent when mode is omitte
   );
 });
 
+test('start routes agent permission intents to an executable Proof Contract', async () => {
+  const intent = 'is my agent allowed to change billing retry logic';
+  const result = await runCli(['start', '--intent', intent, '--format', 'json', '--quiet']);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('before_edit');
+  expect(report.missionControl.routedIntent.tool).toBe('projscan_prove');
+  expect(report.missionControl.primaryAction).toEqual(
+    expect.objectContaining({
+      command:
+        'projscan prove --intent "is my agent allowed to change billing retry logic" --save-contract .projscan/proof-contract.json --format json',
+      args: {
+        intent,
+        save_contract_path: '.projscan/proof-contract.json',
+      },
+    }),
+  );
+  expect(report.missionControl.successCriteria).toContain(
+    'The agent has a saved Proof Contract with allowed files, forbidden files, and required proof commands before editing.',
+  );
+});
+
 test('start keeps no-more-release continuation intents in the workplan workflow', async () => {
   const result = await runCli([
     'start',

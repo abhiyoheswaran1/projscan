@@ -79,33 +79,39 @@ projscan start --intent "does projscan read .env values?"
 
 ## Daily workflows
 
-Use these three workflows before scanning the full command catalog.
+Use these four workflows before scanning the full command catalog.
 
 ### Before editing a feature
 
 ```bash
 projscan start --intent "what files do I need to change for auth?"
 projscan start --intent "what should we build next?" # Routes to a before-edit implementation workplan
+projscan start --intent "is my agent allowed to change billing retry logic?"
 projscan understand --view change --intent "add auth token refresh" --format json
 projscan prove --intent "is my agent allowed to change billing retry logic?"
 projscan preflight --mode before_edit --format json
 ```
 
-You get a cited change map, read-first files, likely touched files, blocked inputs, an executable Proof Contract, and a before-edit proof gate.
+You get a cited change map, read-first files, likely touched files, blocked inputs, an executable Proof Contract, and a before-edit proof gate. Agent-permission intents route to `projscan prove`, so `start` can hand the next agent a contract path instead of a broad checklist.
 
 Success criteria: the agent can name the files to read first, the likely files to touch, the forbidden files to avoid, and the proof commands to run before editing.
 
-### Before handing work to an agent
+### Verified change workflow
 
 ```bash
+projscan start --intent "is my agent allowed to change billing retry logic?"
 projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json
-projscan prove --record-command "npm test -- tests/billing/retry.test.ts" --exit-code 0 --duration-ms 1842 --summary "billing retry tests passed"
+projscan prove --run -- npm test -- tests/billing/retry.test.ts
 projscan prove --changed --contract .projscan/proof-contract.json --format markdown
 ```
 
+The path is `start -> prove -> run -> changed`. `start` chooses the contract workflow. `prove --intent` writes the contract only when `--save-contract` is present. `prove --run -- <command...>` executes a local proof command, records the exit code, captures a redacted log, and fingerprints the current changed files. `prove --record-command` remains available for imported CI or external evidence when projscan did not run the command. `prove --changed` checks the current working tree against the contract and local ledger.
+
 You get a Proof Contract before edits and a Proof Receipt after edits. The contract names allowed files, forbidden files, risky contracts, likely tests, missing regression-test evidence, proof commands, safe change shape, rollback, confidence, and reviewer guidance. The receipt checks the real working tree against that contract and classifies changed files as allowed production, expected tests, documentation, generated proof artifacts, config/security drift, forbidden touches, or unexpected production. It also reports proof replay status, risk delta, commit readiness, and a reviewer checklist.
 
-Proof Replay records command, exit code, duration, changed-file fingerprint, redacted summary, and optional log path in `.projscan/proof-ledger.jsonl`. `prove --changed` marks proof as passed, missing, failed, partial, or stale. If the agent edits new files after proof ran, the receipt says the proof is stale before a reviewer reads the diff.
+Proof Replay records command, exit code, duration, changed-file fingerprint, redacted summary, log path, and source in `.projscan/proof-ledger.jsonl`. Executed proof logs stay under `.projscan/proof-logs/`. `prove --changed` marks proof as passed, missing, failed, partial, or stale. If the agent edits new files after proof ran, the receipt says the proof is stale before a reviewer reads the diff.
+
+Every `prove` report includes `verifiedWorkflow`, a compact JSON summary for agents and MCP clients. It names the phase, next action, next command, scope status, proof status, risk delta direction, reviewer decision, and stale/missing/failed proof flags.
 
 Success criteria: the reviewer sees whether the agent stayed inside the contract, whether the right proof ran, and whether that proof is still fresh.
 
@@ -191,15 +197,22 @@ npm run docs:screenshots
 npm run docs:demos
 ```
 
-## 4.13.0 Notes
+## 4.14.0 Notes
 
-4.13.0 ships Proof Replay for Executable Proof Contracts:
+4.14.0 ships the Verified Change Workflow and Executed Proof Runner:
 
 - `projscan prove --intent "<change>"` creates a local Proof Contract before
   editing. It names allowed files, forbidden files, risky contracts, likely
   tests, missing regression-test evidence, proof commands, rollback, confidence,
   Trust Memory signals, evidence gaps, and reviewer guidance. Noisy feedback or
   missing-signal feedback lowers the confidence reason instead of hiding it.
+- `projscan start --intent "is my agent allowed to change billing retry logic?"`
+  routes directly to `projscan prove`, so agent-permission prompts start with a
+  bounded contract instead of a broad checklist.
+- `projscan prove --run -- <command...>` executes an explicit local proof
+  command with shell execution disabled, writes a redacted log under
+  `.projscan/proof-logs/`, appends a `prove-run` ledger row, and lets
+  `prove --changed` replay executed proof instead of self-reported evidence.
 - `projscan prove --changed` validates the current working tree against a saved
   contract and emits a Proof Receipt for PRs, agents, and CI. Its changed-file
   classes separate allowed production edits, expected tests, documentation,
@@ -207,8 +220,11 @@ npm run docs:demos
   unexpected production changes before giving a copyable reviewer decision.
 - `projscan prove --record-command "<command>" --exit-code <code>` appends a
   local Proof Ledger row with command, duration, changed-file fingerprint,
-  redacted output summary, and optional log path. `prove --changed` replays
-  those rows and reports passed, missing, failed, partial, or stale proof.
+  redacted output summary, and optional log path when importing proof from CI or
+  another trusted runner.
+- Every `prove` JSON report includes `verifiedWorkflow`, so agents can read the
+  next action, next command, scope status, proof status, reviewer decision, and
+  stale/missing/failed proof flags without parsing Markdown.
 - Saved Mission Control bundles append Proof Ledger rows while `mission.sh`
   runs the existing proof queue. The script still writes proof logs and status
   JSONL for humans.
@@ -300,7 +316,7 @@ npx -y projscan mcp --watch
 | What should I fix first?                     | `projscan bug-hunt --format json`                                                        |
 | What is risky and worth fixing this week?    | `projscan assess --goal "make this repo safer to ship this week"`                        |
 | Is this refactor worth doing?                | `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` |
-| Is my agent allowed to make this change?     | `projscan prove --intent "is my agent allowed to change billing retry logic?"`           |
+| Is my agent allowed to make this change?     | `projscan start --intent "is my agent allowed to change billing retry logic?"`           |
 | Did the change stay inside scope?            | `projscan prove --changed --contract .projscan/proof-contract.json --format markdown`    |
 | Which files have high risk and low coverage? | `projscan coverage --format json`                                                        |
 | What should my agent do next?                | `projscan workplan --format json`                                                        |
@@ -316,7 +332,7 @@ npx -y projscan mcp --watch
 | `projscan preflight`      | proceed, caution, or block gate for edit, commit, or merge                  |
 | `projscan assess`         | proof-first assessment with Proof Cards, risk delta, and fix-first guidance |
 | `projscan simulate`       | risk delta simulator for a proposed change plan before editing              |
-| `projscan prove`          | executable Proof Contracts and reviewer-ready Proof Receipts                |
+| `projscan prove`          | executable Proof Contracts, Verified Workflow JSON, and Proof Receipts      |
 | `projscan evidence-pack`  | PR-ready proof with risks, owners, and next commands                        |
 | `projscan bug-hunt`       | ranked fix queue from health, hotspots, session, and preflight evidence     |
 | `projscan workplan`       | ordered agent tasks with proof and handoff text                             |
@@ -506,7 +522,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.13.0` has seven direct runtime dependencies:
+`projscan@4.14.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -516,7 +532,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.13.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.14.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

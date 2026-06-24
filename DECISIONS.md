@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-24: Route verified change workflows through prove
+
+- Status: accepted
+- Context: `prove` could create contracts and replay proof, but `start` did not route agent-permission prompts to the Proof Contract workflow. Agents also had to parse Markdown or several receipt fields to find the next proof action.
+- Decision: Add `projscan_prove` to the deterministic intent router for proof-contract and agent-permission wording. Keep generic safe-commit prompts on `projscan_preflight`. Add `verifiedWorkflow` to `prove` reports, contracts, and receipts so agents can read phase, status, next action, next command, scope status, proof status, risk delta direction, reviewer decision, and stale/missing/failed proof flags. Treat `.projscan/` proof artifacts as local proof evidence, not scope drift.
+- Consequences: `projscan start --intent "is my agent allowed to change billing retry logic?"` now starts at `projscan prove --intent ... --save-contract .projscan/proof-contract.json`. Reviewers still use the full Proof Receipt for details, while agents can use `verifiedWorkflow` for handoff logic. The change is additive and does not run commands, upload source, tag, publish, deploy, or bump versions.
+- Verification: Focused router, start CLI, core prove, MCP prove, docs, typecheck, build, security, stability, and performance checks cover route selection, proof summaries, generated proof artifact handling, and docs.
+
 ## 2026-06-23: Add Proof Replay as local evidence for Proof Receipts
 
 - Status: accepted
@@ -3049,3 +3057,11 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add evidence strength, confidence reason, evidence gaps, ranking reasons, trust memory, and AgentLoopKit handoff data to Proof Cards; route the safe-commit start intent through `assess --mode fix-first`; let `assess --feedback` apply local reviewer feedback to ranking; and have `simulate` compare bounded extraction, test-first, and leave-unchanged alternatives.
 - Consequences: The assessment and simulation schemas gain additive fields while existing command names, tool names, package version, release behavior, and local-first privacy behavior remain unchanged. Markdown and console output now expose the same trust-loop evidence without requiring JSON inspection.
 - Verification: Targeted CLI, core, MCP, and public-type tests failed before the new fields and renderers existed, then passed after implementation. Post-slice `projscan bug-hunt --format json` reported no `fixQueue`, only the broad-worktree manual sign-off review gate.
+
+## 2026-06-24: Execute local proof commands through prove run mode
+
+- Status: accepted
+- Context: Proof Replay could record command outcomes, but `projscan prove --record-command` depended on a caller-supplied exit code. Reviewers still had to ask whether projscan ran the proof command, whether the result matched the current diff, and whether the saved evidence hid command output.
+- Decision: Add CLI-only `projscan prove --run -- <command...>`. The implementation executes the provided argv vector with `shell: false`, writes a redacted bounded log under `.projscan/proof-logs/`, appends a `prove-run` Proof Ledger row, and reuses `prove --changed` for freshness and receipt replay. MCP does not execute arbitrary commands in this slice.
+- Consequences: `projscan prove` gains additive run mode and stable flags `--run` / `--run-timeout-ms`. `--record-command` stays available for imported CI or external proof. Command execution remains explicit and local.
+- Verification: `npm test -- tests/core/prove.test.ts` failed before run mode existed, then passed after the core runner. `npm run build` and `npm test -- tests/cli/prove.test.ts` passed after CLI delimiter parsing was added.

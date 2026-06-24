@@ -100,6 +100,9 @@ test('prove changed reads a saved contract and renders markdown receipt', async 
   expect(changed.stdout).toContain('src/core/bugHunt.ts');
   expect(changed.stdout).toContain('Proof Commands');
   expect(changed.stdout).toContain('Scope Decision');
+  expect(changed.stdout).toContain('Verified Workflow');
+  expect(changed.stdout).toContain('next action');
+  expect(changed.stdout).toContain('next command');
   expect(changed.stdout).toContain('Allowed production');
   expect(changed.stdout).toContain('Expected tests');
   expect(changed.stdout).toContain('Reviewer Checklist');
@@ -161,6 +164,57 @@ test('prove records command evidence and replays it in markdown receipts', async
   expect(changed.stdout).not.toContain('proof passed with Bearer');
 });
 
+test('prove runs a local proof command through the delimiter', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    "export function buildBugHuntReport(findings: string[]): string[] { return findings.map(String); }\n",
+  );
+
+  const result = await runCli([
+    'prove',
+    '--format',
+    'json',
+    '--quiet',
+    '--run',
+    '--',
+    process.execPath,
+    '-e',
+    'console.log("token=secret-value"); process.exit(0);',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.mode).toBe('run');
+  expect(report.verdict).toBe('ready');
+  expect(report.ledgerRecord.source).toBe('prove-run');
+  expect(report.ledgerRecord.status).toBe('passed');
+  expect(report.ledgerRecord.changedFiles).toContain('src/core/bugHunt.ts');
+  expect(report.ledgerRecord.outputSummary).toContain('[redacted]');
+  expect(report.ledgerRecord.outputSummary).not.toContain('secret-value');
+  expect(report.ledgerRecord.logPath).toMatch(/^\.projscan\/proof-logs\//);
+});
+
+test('prove run renders executed proof evidence in markdown', async () => {
+  const result = await runCli([
+    'prove',
+    '--format',
+    'markdown',
+    '--quiet',
+    '--run',
+    '--',
+    process.execPath,
+    '-e',
+    'console.log("ok"); process.exit(0);',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain('# Projscan Executed Proof');
+  expect(result.stdout).toContain('**Source:** prove-run');
+  expect(result.stdout).toContain('**Status:** passed');
+  expect(result.stdout).toContain('**Log:** `.projscan/proof-logs/');
+  expect(result.stdout).toContain('## Verified Workflow');
+});
+
 test('prove record mode rejects invalid exit codes', async () => {
   const result = await runCli([
     'prove',
@@ -203,7 +257,7 @@ test('prove rejects mutually exclusive modes', async () => {
   ]);
 
   expect(result.exitCode).toBe(1);
-  expect(result.stderr).toContain('either --intent or --changed');
+  expect(result.stderr).toContain('either --intent, --changed, --record-command, or --run');
 });
 
 async function git(args: string[]): Promise<void> {

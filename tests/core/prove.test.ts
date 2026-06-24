@@ -82,6 +82,18 @@ test('builds an executable contract from an intent', async () => {
   expect(report.contract?.rollbackPlan).toContain('git restore');
   expect(report.contract?.receiptCommand).toContain('projscan prove --changed');
   expect(report.contract?.reviewerGuidance).toContain('Review scope first');
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'contract',
+      status: 'ready',
+      nextAction: 'save the Proof Contract, make the bounded edit, then record proof commands',
+      nextCommand: report.contract?.receiptCommand,
+      staleProof: false,
+      missingProof: true,
+      failedProof: false,
+    }),
+  );
+  expect((report.contract as any).verifiedWorkflow).toEqual((report as any).verifiedWorkflow);
   expect(report.receipt).toBeUndefined();
 });
 
@@ -132,6 +144,20 @@ test('validates changed files against a saved contract', async () => {
   expect(report.receipt?.proofStatus.commandsRequired).toContain(
     'projscan assess --mode fix-first --format json',
   );
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'receipt',
+      status: report.verdict,
+      scopeStatus: 'within-contract',
+      proofStatus: 'missing',
+      reviewerDecision: report.receipt?.reviewerDecision,
+      nextCommand: 'projscan prove --record-command "<command>" --exit-code 0 --duration-ms <ms>',
+      staleProof: false,
+      missingProof: true,
+      failedProof: false,
+    }),
+  );
+  expect((report.receipt as any).verifiedWorkflow).toEqual((report as any).verifiedWorkflow);
 });
 
 test('classifies changed files so proof receipts are reviewable', async () => {
@@ -273,6 +299,17 @@ test('records proof command outcomes in a local redacted ledger', async () => {
   expect(report.mode).toBe('record');
   expect(report.ledgerRecord?.command).toBe('npm test -- tests/core/bugHunt.test.ts');
   expect(report.ledgerRecord?.status).toBe('passed');
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'record',
+      status: 'ready',
+      nextAction: 'run projscan prove --changed to replay the ledger against the current diff',
+      nextCommand: 'projscan prove --changed --format markdown',
+      staleProof: false,
+      missingProof: false,
+      failedProof: false,
+    }),
+  );
   expect(row.command).toBe('npm test -- tests/core/bugHunt.test.ts');
   expect(row.exitCode).toBe(0);
   expect(row.durationMs).toBe(4210);
@@ -281,6 +318,108 @@ test('records proof command outcomes in a local redacted ledger', async () => {
   expect(row.outputSummary).not.toContain('sk_test_123456789');
   expect(row.outputSummary).not.toContain('secret-value');
   expect(row.logPath).toBe('.projscan/proof-logs/bugHunt-test.log');
+});
+
+test('runs a proof command and records executed ledger evidence', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeProve(tmp, {
+    runCommand: [
+      process.execPath,
+      '-e',
+      'console.log("token=secret-value"); console.error("ok"); process.exit(0);',
+    ],
+  } as never);
+  const ledgerRaw = await fs.readFile(path.join(tmp, '.projscan/proof-ledger.jsonl'), 'utf-8');
+  const [row] = ledgerRaw
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+
+  expect(report.mode).toBe('run');
+  expect(report.verdict).toBe('ready');
+  expect(report.ledgerRecord?.source).toBe('prove-run');
+  expect(report.ledgerRecord?.status).toBe('passed');
+  expect(report.ledgerRecord?.exitCode).toBe(0);
+  expect(report.ledgerRecord?.durationMs).toBeGreaterThanOrEqual(0);
+  expect(report.ledgerRecord?.changedFiles).toContain('src/core/bugHunt.ts');
+  expect(report.ledgerRecord?.outputSummary).toContain('[redacted]');
+  expect(report.ledgerRecord?.outputSummary).not.toContain('secret-value');
+  expect(report.ledgerRecord?.logPath).toMatch(/^\.projscan\/proof-logs\//);
+  expect(row.source).toBe('prove-run');
+  expect(row.logPath).toBe(report.ledgerRecord?.logPath);
+  const log = await fs.readFile(path.join(tmp, row.logPath), 'utf-8');
+  expect(log).toContain('[redacted]');
+  expect(log).not.toContain('secret-value');
+});
+
+test('failed executed proof records a blocking ledger row', async () => {
+  const report = await computeProve(tmp, {
+    runCommand: [process.execPath, '-e', 'console.error("test failed"); process.exit(7);'],
+  } as never);
+
+  expect(report.mode).toBe('run');
+  expect(report.verdict).toBe('blocked');
+  expect(report.ledgerRecord?.source).toBe('prove-run');
+  expect(report.ledgerRecord?.status).toBe('failed');
+  expect(report.ledgerRecord?.exitCode).toBe(7);
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'record',
+      status: 'blocked',
+      staleProof: false,
+      missingProof: false,
+      failedProof: true,
+    }),
+  );
+});
+
+test('replays executed proof ledger evidence in changed receipts', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  const runReport = await computeProve(tmp, {
+    runCommand: [process.execPath, '-e', 'console.log("passed");'],
+  } as never);
+  const command = runReport.ledgerRecord?.command;
+  expect(command).toBeTruthy();
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: {
+      ...contractReport.contract!,
+      proofCommands: [command ?? ''],
+    },
+  });
+
+  expect(report.receipt?.proofStatus.status).toBe('passed');
+  expect(report.receipt?.proofStatus.commandsRun).toEqual([command]);
+  expect(report.receipt?.proofStatus.commandEvidence[0]).toEqual(
+    expect.objectContaining({
+      command,
+      status: 'passed',
+      fresh: true,
+      outputSummary: expect.any(String),
+      logPath: expect.stringMatching(/^\.projscan\/proof-logs\//),
+    }),
+  );
 });
 
 test('rejects proof ledger paths outside the project root', async () => {
@@ -389,6 +528,16 @@ test('proof ledger evidence becomes stale after changed files move', async () =>
   });
 
   expect(report.receipt?.proofStatus.status).toBe('stale');
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'receipt',
+      proofStatus: 'stale',
+      staleProof: true,
+      missingProof: false,
+      failedProof: false,
+      nextAction: 'rerun stale proof commands before review',
+    }),
+  );
   expect(report.receipt?.proofStatus.staleCommands).toEqual(
     contractReport.contract?.proofCommands,
   );

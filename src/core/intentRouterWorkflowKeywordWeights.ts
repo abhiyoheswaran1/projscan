@@ -97,10 +97,32 @@ const BUG_HUNT_WEIGHT_TWO_KEYWORDS = new Set([
   'wins',
 ]);
 
+const PROVE_WEIGHT_TWO_KEYWORDS = new Set([
+  'agent',
+  'allowed',
+  'allow',
+  'permission',
+  'permissions',
+  'proof',
+  'contract',
+  'contracts',
+  'scope',
+  'scoped',
+  'forbidden',
+  'receipt',
+  'receipts',
+  'replay',
+  'ledger',
+  'stale',
+  'fresh',
+  'bounded',
+]);
+
 export function workflowKeywordWeight(tool: string, keyword: string): number | undefined {
   if (tool === 'projscan_evidence_pack') return evidencePackKeywordWeight(keyword);
   if (tool === 'projscan_release_train') return releaseTrainKeywordWeight(keyword);
   if (tool === 'projscan_bug_hunt') return bugHuntKeywordWeight(keyword);
+  if (tool === 'projscan_prove') return proveKeywordWeight(keyword);
   return undefined;
 }
 
@@ -118,5 +140,11 @@ function releaseTrainKeywordWeight(keyword: string): number | undefined {
 function bugHuntKeywordWeight(keyword: string): number | undefined {
   if (BUG_HUNT_WEIGHT_TWO_KEYWORDS.has(keyword)) return 2;
   if (['find', 'fix', 'pr'].includes(keyword)) return 0.25;
+  return undefined;
+}
+
+function proveKeywordWeight(keyword: string): number | undefined {
+  if (PROVE_WEIGHT_TWO_KEYWORDS.has(keyword)) return 2;
+  if (['change', 'changed', 'edit', 'edits', 'prove'].includes(keyword)) return 0.5;
   return undefined;
 }

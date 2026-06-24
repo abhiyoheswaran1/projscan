@@ -8,7 +8,12 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeProve } from '../../core/prove.js';
-import type { ProveContract, ProveReceipt, ProveReport } from '../../types/prove.js';
+import type {
+  ProveContract,
+  ProveReceipt,
+  ProveReport,
+  ProveVerifiedWorkflow,
+} from '../../types/prove.js';
 
 export function registerProve(): void {
   program
@@ -26,19 +31,29 @@ export function registerProve(): void {
     .option('--duration-ms <ms>', 'duration in milliseconds for --record-command', parseDurationMs)
     .option('--summary <text>', 'safe proof output summary for --record-command')
     .option('--log <path>', 'redacted proof log path for --record-command')
+    .option('--run', 'execute a local proof command supplied after -- and record the outcome')
+    .option('--run-timeout-ms <ms>', 'timeout in milliseconds for --run commands', parseDurationMs)
     .option('--ledger <path>', 'proof ledger JSONL path')
-    .action(async (cmdOpts) => {
+    .argument('[runCommand...]', 'command vector for --run after --')
+    .action(async (runCommand: string[], cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
       const format = assertFormatSupported('prove');
 
       try {
-        const selectedModes = [cmdOpts.intent, cmdOpts.changed, cmdOpts.recordCommand].filter(Boolean);
+        const runArgs = Array.isArray(runCommand) ? runCommand : [];
+        const selectedModes = [cmdOpts.intent, cmdOpts.changed, cmdOpts.recordCommand, cmdOpts.run].filter(Boolean);
         if (selectedModes.length > 1) {
-          throw new Error('prove accepts either --intent or --changed or --record-command');
+          throw new Error('prove accepts either --intent, --changed, --record-command, or --run');
         }
         if (selectedModes.length === 0) {
-          throw new Error('prove requires --intent "<change>", --changed, or --record-command');
+          throw new Error('prove requires --intent "<change>", --changed, --record-command, or --run -- <command>');
+        }
+        if (!cmdOpts.run && runArgs.length > 0) {
+          throw new Error('prove command arguments require --run before the -- delimiter');
+        }
+        if (cmdOpts.run && runArgs.length === 0) {
+          throw new Error('prove --run requires a command after --, for example: projscan prove --run -- npm test');
         }
         const report = await computeProve(getRootPath(), {
           intent: cmdOpts.intent,
@@ -54,6 +69,8 @@ export function registerProve(): void {
           durationMs: cmdOpts.durationMs,
           summary: cmdOpts.summary,
           logPath: cmdOpts.log,
+          runCommand: cmdOpts.run ? runArgs : undefined,
+          runTimeoutMs: cmdOpts.runTimeoutMs,
         });
 
         if (format === 'json') {
@@ -82,17 +99,29 @@ function printProveConsole(report: ProveReport): void {
   console.log(color(`Projscan Prove: ${report.verdict}`));
   console.log(report.summary);
   console.log('');
+  printVerifiedWorkflowConsole(report.verifiedWorkflow);
+  console.log('');
   if (report.contract && report.mode === 'intent') {
     printContractConsole(report.contract);
   }
   if (report.ledgerRecord) {
-    console.log(chalk.bold('Recorded Proof'));
+    console.log(chalk.bold(report.ledgerRecord.source === 'prove-run' ? 'Executed Proof' : 'Recorded Proof'));
     console.log(`- ${report.ledgerRecord.status}: ${report.ledgerRecord.command}`);
+    console.log(`- source: ${report.ledgerRecord.source}`);
     console.log(`- ${report.ledgerRecord.changedFiles.length} changed file(s) fingerprinted`);
   }
   if (report.receipt) {
     printReceiptConsole(report.receipt);
   }
+}
+
+function printVerifiedWorkflowConsole(workflow: ProveVerifiedWorkflow): void {
+  console.log(chalk.bold('Verified Workflow'));
+  console.log(`- next action: ${workflow.nextAction}`);
+  console.log(`- next command: ${workflow.nextCommand}`);
+  console.log(`- stale proof: ${workflow.staleProof ? 'yes' : 'no'}`);
+  console.log(`- missing proof: ${workflow.missingProof ? 'yes' : 'no'}`);
+  console.log(`- failed proof: ${workflow.failedProof ? 'yes' : 'no'}`);
 }
 
 function printContractConsole(contract: ProveContract): void {
@@ -133,7 +162,40 @@ function printReceiptConsole(receipt: ProveReceipt): void {
 }
 
 export function renderProveMarkdown(report: ProveReport): string {
-  return report.receipt ? renderReceiptMarkdown(report, report.receipt) : renderContractMarkdown(report);
+  if (report.receipt) return renderReceiptMarkdown(report, report.receipt);
+  if (report.ledgerRecord) return renderLedgerRecordMarkdown(report);
+  return renderContractMarkdown(report);
+}
+
+function renderLedgerRecordMarkdown(report: ProveReport): string {
+  const record = report.ledgerRecord;
+  const lines: string[] = [
+    record?.source === 'prove-run' ? '# Projscan Executed Proof' : '# Projscan Recorded Proof',
+    '',
+    `- **Verdict:** ${report.verdict}`,
+    `- **Summary:** ${report.summary}`,
+  ];
+  if (!record) return lines.join('\n');
+  lines.push(`- **Source:** ${record.source}`);
+  lines.push(`- **Status:** ${record.status}`);
+  lines.push(`- **Command:** \`${record.command}\``);
+  lines.push(`- **Exit code:** ${record.exitCode}`);
+  lines.push(`- **Duration:** ${record.durationMs}ms`);
+  lines.push(`- **Completed:** ${record.completedAt}`);
+  lines.push(`- **Changed-file fingerprint:** ${record.changedFileFingerprint}`);
+  if (record.logPath) lines.push(`- **Log:** \`${record.logPath}\``);
+  lines.push('');
+  pushVerifiedWorkflow(lines, report.verifiedWorkflow);
+  lines.push('');
+  lines.push('## Output Summary');
+  lines.push(record.outputSummary);
+  lines.push('');
+  lines.push('## Changed Files');
+  pushList(lines, record.changedFiles, 'No changed files were fingerprinted.');
+  lines.push('');
+  lines.push('## Replay');
+  lines.push('Run `projscan prove --changed --contract .projscan/proof-contract.json --format markdown` after the edit to replay this proof against the current diff.');
+  return lines.join('\n');
 }
 
 function renderContractMarkdown(report: ProveReport): string {
@@ -145,6 +207,8 @@ function renderContractMarkdown(report: ProveReport): string {
   lines.push(`- **Intent:** ${contract.intent}`);
   lines.push(`- **Confidence:** ${contract.confidence}`);
   lines.push(`- **Evidence strength:** ${contract.evidenceStrength.level} (${contract.evidenceStrength.score})`);
+  lines.push('');
+  pushVerifiedWorkflow(lines, report.verifiedWorkflow);
   lines.push('');
   lines.push('## Allowed Files');
   pushList(lines, contract.allowedFiles, 'No concrete allowed files inferred.');
@@ -174,6 +238,8 @@ function renderReceiptMarkdown(report: ProveReport, receipt: ProveReceipt): stri
   lines.push(`- **Scope:** ${receipt.scope.status}`);
   lines.push(`- **Proof status:** ${receipt.proofStatus.status}`);
   lines.push(`- **Reviewer decision:** ${receipt.reviewerDecision}`);
+  lines.push('');
+  pushVerifiedWorkflow(lines, report.verifiedWorkflow);
   lines.push('');
   lines.push('## Scope Decision');
   lines.push(`- **Status:** ${receipt.scope.status}`);
@@ -255,6 +321,21 @@ function renderReceiptMarkdown(report: ProveReport, receipt: ProveReceipt): stri
     `projscan prove: ${receipt.commitReadiness} (${receipt.scope.status}); proof ${receipt.proofStatus.status}; reviewer decision ${receipt.reviewerDecision}.`,
   );
   return lines.join('\n');
+}
+
+function pushVerifiedWorkflow(lines: string[], workflow: ProveVerifiedWorkflow): void {
+  lines.push('## Verified Workflow');
+  lines.push(`- **phase:** ${workflow.phase}`);
+  lines.push(`- **status:** ${workflow.status}`);
+  lines.push(`- **next action:** ${workflow.nextAction}`);
+  lines.push(`- **next command:** \`${workflow.nextCommand}\``);
+  if (workflow.scopeStatus) lines.push(`- **scope:** ${workflow.scopeStatus}`);
+  if (workflow.proofStatus) lines.push(`- **proof:** ${workflow.proofStatus}`);
+  if (workflow.reviewerDecision) lines.push(`- **reviewer decision:** ${workflow.reviewerDecision}`);
+  if (workflow.riskDeltaDirection) lines.push(`- **risk delta:** ${workflow.riskDeltaDirection}`);
+  lines.push(`- **stale proof:** ${workflow.staleProof ? 'yes' : 'no'}`);
+  lines.push(`- **missing proof:** ${workflow.missingProof ? 'yes' : 'no'}`);
+  lines.push(`- **failed proof:** ${workflow.failedProof ? 'yes' : 'no'}`);
 }
 
 function printList(values: string[], empty: string): void {

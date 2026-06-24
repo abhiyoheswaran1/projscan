@@ -4,7 +4,7 @@ import type { McpTool } from './_shared.js';
 export const proveTool: McpTool = {
   name: 'projscan_prove',
   description:
-    'Create, record, or replay a local Proof Contract for a change. Returns allowed files, forbidden files, proof commands, ledger evidence, scope drift, and a reviewer-ready Proof Receipt.',
+    'Create, record, or replay a local Proof Contract for a change. Returns allowed files, forbidden files, proof commands, ledger evidence, scope drift, a reviewer-ready Proof Receipt, and verifiedWorkflow status for agent handoff.',
   inputSchema: {
     type: 'object',
     properties: {

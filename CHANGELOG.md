@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.14.0]
+
+2026-06-24 - "Executed Proof Runner"
+
+### Added
+
+- Added `projscan prove --run -- <command...>` to execute an explicit local
+  proof command, capture exit code and duration, write a redacted proof log
+  under `.projscan/proof-logs/`, and append a `prove-run` Proof Ledger row.
+- Added `--run-timeout-ms <ms>` for bounded proof-command execution.
+- Added executed-proof Markdown output so reviewers can see command, source,
+  status, exit code, duration, log path, changed-file fingerprint, and Verified
+  Workflow without parsing JSON.
+- Added start routing for agent-permission intents such as
+  `projscan start --intent "is my agent allowed to change billing retry logic?"`,
+  sending those workflows directly to `projscan prove`.
+
+### Changed
+
+- Updated the daily proof path to `start -> prove -> run -> changed`.
+- Kept `projscan prove --record-command` for imported CI or external evidence,
+  while docs now prefer `--run` when projscan should execute the local command.
+- `prove --changed` now replays executed `prove-run` rows through the same
+  passed, missing, failed, partial, and stale proof receipt logic.
+- Local `.projscan/` proof artifacts no longer count as scope drift in Proof
+  Receipts.
+
+### Security
+
+- `projscan prove --run` executes the supplied command vector with shell
+  execution disabled and redacts captured proof output before saving summaries
+  or logs.
+
 ## [4.13.0]
 
 2026-06-24 - "Proof Replay"

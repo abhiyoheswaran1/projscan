@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,6 +9,7 @@ import {
   changedFileFingerprint,
   latestProofRecordFor,
   readProofLedger,
+  redactProofOutput,
 } from './proofLedger.js';
 import { quoteShellArg } from './startShellArgs.js';
 import { computeSimulation } from './simulate.js';
@@ -22,6 +25,7 @@ import type {
   ProveRiskDeltaDirection,
   ProveScopeStatus,
   ProveVerdict,
+  ProveVerifiedWorkflow,
 } from '../types/prove.js';
 
 export interface ComputeProveOptions {
@@ -39,9 +43,16 @@ export interface ComputeProveOptions {
   durationMs?: number;
   summary?: string;
   logPath?: string;
+  runCommand?: string[];
+  runTimeoutMs?: number;
 }
 
 const DEFAULT_CONTRACT_PATH = '.projscan/proof-contract.json';
+const DEFAULT_RUN_TIMEOUT_MS = 10 * 60 * 1000;
+const PROOF_RUN_TIMEOUT_EXIT_CODE = 124;
+const COMMAND_NOT_FOUND_EXIT_CODE = 127;
+const MAX_PROOF_RUN_OUTPUT_CHARS = 256 * 1024;
+const MAX_PROOF_RUN_LOG_CHARS = 512 * 1024;
 const GENERATED_FORBIDDEN_PATTERNS = [
   '.agentflight/**',
   '.agentloop/**',
@@ -74,6 +85,14 @@ interface RecordProofInput {
   durationMs: number;
   summary?: string;
   logPath?: string;
+}
+
+interface RunProofResult {
+  command: string;
+  exitCode: number;
+  durationMs: number;
+  outputSummary: string;
+  logPath: string;
 }
 
 interface ChangedFileRule {
@@ -157,15 +176,48 @@ export async function computeProve(
   rootPath: string,
   options: ComputeProveOptions = {},
 ): Promise<ProveReport> {
-  const modeCount = [Boolean(options.intent?.trim()), Boolean(options.changed), Boolean(options.recordCommand?.trim())].filter(
-    Boolean,
-  ).length;
+  const modeCount = [
+    Boolean(options.intent?.trim()),
+    Boolean(options.changed),
+    Boolean(options.recordCommand?.trim()),
+    options.runCommand !== undefined,
+  ].filter(Boolean).length;
   if (modeCount > 1) {
-    throw new Error('prove accepts only one of --intent, --changed, or --record-command');
+    throw new Error('prove accepts only one of --intent, --changed, --record-command, or --run');
   }
+  if (options.runCommand !== undefined) return computeRunProof(rootPath, options);
   if (options.recordCommand?.trim()) return computeRecordProof(rootPath, options);
   if (options.changed) return computeChangedProof(rootPath, options);
   return computeIntentProof(rootPath, options);
+}
+
+async function computeRunProof(
+  rootPath: string,
+  options: ComputeProveOptions,
+): Promise<ProveReport> {
+  const run = await executeProofCommand(rootPath, options.runCommand ?? [], options.runTimeoutMs);
+  const changedFiles = await getChangedFiles(rootPath, options.baseRef);
+  const record = await appendProofLedgerRecord(rootPath, options.ledgerPath, {
+    command: run.command,
+    exitCode: run.exitCode,
+    durationMs: run.durationMs,
+    changedFiles: proofRelevantChangedFiles(changedFiles.files),
+    outputSummary: run.outputSummary,
+    logPath: run.logPath,
+    source: 'prove-run',
+  });
+  const verdict: ProveVerdict = record.status === 'passed' ? 'ready' : 'blocked';
+  const verifiedWorkflow = verifiedWorkflowForRecord(verdict, record.status);
+  return {
+    schemaVersion: 1,
+    mode: 'run',
+    verdict,
+    summary: `${verdict}: executed ${record.status} proof for ${record.command}`,
+    commands: [record.command],
+    warnings: changedFiles.available ? [] : [changedFiles.reason ?? 'Changed-file evidence is unavailable.'],
+    verifiedWorkflow,
+    ledgerRecord: record,
+  };
 }
 
 async function computeRecordProof(
@@ -184,6 +236,7 @@ async function computeRecordProof(
     source: 'prove-record',
   });
   const verdict: ProveVerdict = record.status === 'passed' ? 'ready' : 'blocked';
+  const verifiedWorkflow = verifiedWorkflowForRecord(verdict, record.status);
   return {
     schemaVersion: 1,
     mode: 'record',
@@ -191,6 +244,7 @@ async function computeRecordProof(
     summary: `${verdict}: recorded ${record.status} proof for ${record.command}`,
     commands: [record.command],
     warnings: changedFiles.available ? [] : [changedFiles.reason ?? 'Changed-file evidence is unavailable.'],
+    verifiedWorkflow,
     ledgerRecord: record,
   };
 }
@@ -211,6 +265,220 @@ function recordProofInput(options: ComputeProveOptions): RecordProofInput {
     summary: options.summary,
     logPath: options.logPath,
   };
+}
+
+async function executeProofCommand(
+  rootPath: string,
+  command: string[],
+  timeoutMs: number | undefined,
+): Promise<RunProofResult> {
+  const commandVector = normalizeRunCommand(command);
+  const displayCommand = redactProofOutput(commandVector.map(quoteShellArg).join(' '));
+  const startedAtMs = Date.now();
+  const effectiveTimeoutMs = resolveRunTimeoutMs(timeoutMs);
+  const result = await spawnProofCommand(rootPath, commandVector, effectiveTimeoutMs);
+  const durationMs = Date.now() - startedAtMs;
+  const outputSummary = proofRunOutputSummary(result, effectiveTimeoutMs);
+  const logPath = await writeProofRunLog(rootPath, {
+    command: displayCommand,
+    exitCode: result.exitCode,
+    durationMs,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    errorMessage: result.errorMessage,
+    timedOut: result.timedOut,
+    truncated: result.truncated,
+  });
+  return {
+    command: displayCommand,
+    exitCode: result.exitCode,
+    durationMs,
+    outputSummary,
+    logPath,
+  };
+}
+
+function normalizeRunCommand(command: string[]): string[] {
+  const normalized = command.map((part) => String(part));
+  if (normalized.length === 0 || normalized[0]?.trim().length === 0) {
+    throw new Error('prove --run requires a command after --, for example: projscan prove --run -- npm test');
+  }
+  return normalized;
+}
+
+function resolveRunTimeoutMs(value: number | undefined): number {
+  if (value === undefined) return DEFAULT_RUN_TIMEOUT_MS;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error('prove --run-timeout-ms requires a positive number');
+  }
+  return Math.round(value);
+}
+
+function spawnProofCommand(
+  rootPath: string,
+  command: string[],
+  timeoutMs: number,
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  errorMessage?: string;
+  timedOut: boolean;
+  truncated: boolean;
+}> {
+  return new Promise((resolve) => {
+    const [executable, ...args] = command;
+    let stdout = '';
+    let stderr = '';
+    let truncated = false;
+    let timedOut = false;
+    let finished = false;
+    let killTimer: NodeJS.Timeout | undefined;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+      killTimer = setTimeout(() => child.kill('SIGKILL'), 1_000);
+      killTimer.unref();
+    }, timeoutMs);
+    timeout.unref();
+    const child = spawn(executable, args, {
+      cwd: rootPath,
+      env: process.env,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const finish = (exitCode: number, errorMessage?: string): void => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      if (killTimer) clearTimeout(killTimer);
+      resolve({
+        exitCode: timedOut ? PROOF_RUN_TIMEOUT_EXIT_CODE : exitCode,
+        stdout,
+        stderr,
+        ...(errorMessage ? { errorMessage } : {}),
+        timedOut,
+        truncated,
+      });
+    };
+    child.stdout?.on('data', (chunk: Buffer) => {
+      const next = appendBoundedOutput(stdout, chunk);
+      stdout = next.value;
+      truncated ||= next.truncated;
+    });
+    child.stderr?.on('data', (chunk: Buffer) => {
+      const next = appendBoundedOutput(stderr, chunk);
+      stderr = next.value;
+      truncated ||= next.truncated;
+    });
+    child.on('error', (error) => {
+      finish(COMMAND_NOT_FOUND_EXIT_CODE, error instanceof Error ? error.message : String(error));
+    });
+    child.on('close', (code, signal) => {
+      if (code === null) {
+        finish(signal ? 1 : 0);
+        return;
+      }
+      finish(code);
+    });
+  });
+}
+
+function appendBoundedOutput(
+  current: string,
+  chunk: Buffer,
+): { value: string; truncated: boolean } {
+  const text = chunk.toString('utf-8');
+  const remaining = MAX_PROOF_RUN_OUTPUT_CHARS - current.length;
+  if (remaining <= 0) return { value: current, truncated: text.length > 0 };
+  if (text.length > remaining) {
+    return { value: current + text.slice(0, remaining), truncated: true };
+  }
+  return { value: current + text, truncated: false };
+}
+
+function proofRunOutputSummary(
+  result: {
+    stdout: string;
+    stderr: string;
+    errorMessage?: string;
+    timedOut: boolean;
+    truncated: boolean;
+  },
+  timeoutMs: number,
+): string {
+  const parts = [
+    result.timedOut ? `timed out after ${timeoutMs}ms` : undefined,
+    result.errorMessage ? `start error: ${result.errorMessage}` : undefined,
+    result.stdout.trim() ? `stdout: ${result.stdout.trim()}` : undefined,
+    result.stderr.trim() ? `stderr: ${result.stderr.trim()}` : undefined,
+    result.truncated ? 'output truncated' : undefined,
+  ].filter((part): part is string => Boolean(part));
+  return parts.join(' | ');
+}
+
+async function writeProofRunLog(
+  rootPath: string,
+  input: {
+    command: string;
+    exitCode: number;
+    durationMs: number;
+    stdout: string;
+    stderr: string;
+    errorMessage?: string;
+    timedOut: boolean;
+    truncated: boolean;
+  },
+): Promise<string> {
+  const relativePath = proofRunLogPath(input.command);
+  const fullPath = path.resolve(rootPath, relativePath);
+  const root = path.resolve(rootPath);
+  const relativeToRoot = path.relative(root, fullPath);
+  if (!relativeToRoot || relativeToRoot.startsWith('..') || path.isAbsolute(relativeToRoot)) {
+    throw new Error('Proof log path must stay inside the project root.');
+  }
+  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  await fs.writeFile(fullPath, redactedProofRunLog(input), 'utf-8');
+  return relativePath;
+}
+
+function proofRunLogPath(command: string): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const digest = crypto.createHash('sha256').update(command).digest('hex').slice(0, 10);
+  return `.projscan/proof-logs/prove-run-${stamp}-${digest}.log`;
+}
+
+function redactedProofRunLog(input: {
+  command: string;
+  exitCode: number;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+  errorMessage?: string;
+  timedOut: boolean;
+  truncated: boolean;
+}): string {
+  const raw = [
+    `command: ${input.command}`,
+    `exitCode: ${input.exitCode}`,
+    `durationMs: ${input.durationMs}`,
+    `timedOut: ${input.timedOut ? 'yes' : 'no'}`,
+    `truncated: ${input.truncated ? 'yes' : 'no'}`,
+    input.errorMessage ? `error: ${input.errorMessage}` : undefined,
+    '--- stdout ---',
+    input.stdout || '(empty)',
+    '--- stderr ---',
+    input.stderr || '(empty)',
+  ]
+    .filter((line): line is string => typeof line === 'string')
+    .join('\n');
+  const redacted = redactProofOutput(raw);
+  return `${truncateText(redacted, MAX_PROOF_RUN_LOG_CHARS)}\n`;
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 24)}\n[projscan log truncated]\n`;
 }
 
 function isNonNegativeFiniteNumber(value: unknown): value is number {
@@ -246,6 +514,7 @@ async function computeIntentProof(
     contract,
     commands: contract.proofCommands,
     warnings: simulation.warnings,
+    verifiedWorkflow: contract.verifiedWorkflow,
     ...(savedContractPath ? { savedContractPath } : {}),
   };
 }
@@ -281,6 +550,7 @@ async function computeChangedProof(
     receipt,
     commands: receipt.proofStatus.commandsRequired,
     warnings: receipt.evidenceGaps,
+    verifiedWorkflow: receipt.verifiedWorkflow,
   };
 }
 
@@ -322,8 +592,7 @@ function buildContract(input: {
     ...(input.trustMemory?.gaps ?? []),
   ]);
   const confidence = confidenceForTrustMemory(input.simulation.confidence, input.trustMemory);
-
-  return {
+  const contract: Omit<ProveContract, 'verifiedWorkflow'> = {
     schemaVersion: 1,
     id: `proof-contract-${slug(input.intent)}`,
     intent: input.intent,
@@ -358,6 +627,10 @@ function buildContract(input: {
       'Review scope first, then require the listed proof commands before approving commit or handoff.',
     receiptCommand: `projscan prove --changed --contract ${quoteShellArg(DEFAULT_CONTRACT_PATH)} --format markdown`,
     riskDelta: input.simulation.riskDelta,
+  };
+  return {
+    ...contract,
+    verifiedWorkflow: verifiedWorkflowForContract(contract),
   };
 }
 
@@ -402,7 +675,7 @@ function buildReceipt(input: {
     scope,
     preflightVerdict: input.preflightVerdict,
   });
-  return {
+  const receipt: Omit<ProveReceipt, 'verifiedWorkflow'> = {
     summary: summaryForReceipt(commitReadiness, scope),
     commitReadiness,
     scope,
@@ -414,6 +687,118 @@ function buildReceipt(input: {
     evidenceGaps,
     reviewerGuidance: reviewerGuidanceFor(commitReadiness, scope, reviewerDecision, proofStatus.status),
   };
+  return {
+    ...receipt,
+    verifiedWorkflow: verifiedWorkflowForReceipt(receipt),
+  };
+}
+
+function verifiedWorkflowForContract(
+  contract: Omit<ProveContract, 'verifiedWorkflow'>,
+): ProveVerifiedWorkflow {
+  return {
+    phase: 'contract',
+    status: intentVerdict(contract),
+    nextAction: 'save the Proof Contract, make the bounded edit, then record proof commands',
+    nextCommand: contract.receiptCommand,
+    staleProof: false,
+    missingProof: contract.proofCommands.length > 0,
+    failedProof: false,
+  };
+}
+
+function verifiedWorkflowForRecord(
+  verdict: ProveVerdict,
+  recordStatus: 'passed' | 'failed',
+): ProveVerifiedWorkflow {
+  const failedProof = recordStatus === 'failed';
+  return {
+    phase: 'record',
+    status: verdict,
+    nextAction: failedProof
+      ? 'fix the failed proof command, record it again, then replay changed proof'
+      : 'run projscan prove --changed to replay the ledger against the current diff',
+    nextCommand: 'projscan prove --changed --format markdown',
+    staleProof: false,
+    missingProof: false,
+    failedProof,
+  };
+}
+
+function verifiedWorkflowForReceipt(
+  receipt: Omit<ProveReceipt, 'verifiedWorkflow'>,
+): ProveVerifiedWorkflow {
+  const proofStatus = receipt.proofStatus.status;
+  const staleProof = proofStatus === 'stale' || receipt.proofStatus.staleCommands.length > 0;
+  const missingProof =
+    proofStatus === 'missing' ||
+    proofStatus === 'partial' ||
+    receipt.proofStatus.missingCommands.length > 0;
+  const failedProof = proofStatus === 'failed' || receipt.proofStatus.failedCommands.length > 0;
+  return {
+    phase: 'receipt',
+    status: receipt.commitReadiness,
+    nextAction: nextActionForReceipt({
+      receipt,
+      staleProof,
+      missingProof,
+      failedProof,
+    }),
+    nextCommand: nextCommandForReceipt({
+      receipt,
+      staleProof,
+      missingProof,
+      failedProof,
+    }),
+    reviewerDecision: receipt.reviewerDecision,
+    scopeStatus: receipt.scope.status,
+    proofStatus,
+    riskDeltaDirection: receipt.riskDeltaDirection,
+    staleProof,
+    missingProof,
+    failedProof,
+  };
+}
+
+function nextActionForReceipt(input: {
+  receipt: Omit<ProveReceipt, 'verifiedWorkflow'>;
+  staleProof: boolean;
+  missingProof: boolean;
+  failedProof: boolean;
+}): string {
+  if (input.failedProof) return 'fix failed proof commands before review';
+  if (input.staleProof) return 'rerun stale proof commands before review';
+  if (input.missingProof) return 'record missing proof commands before review';
+  if (input.receipt.scope.status === 'drifted') {
+    return 'resolve scope drift or update the Proof Contract before review';
+  }
+  if (input.receipt.reviewerDecision === 'safe-to-review') {
+    return 'share the Proof Receipt with the reviewer';
+  }
+  return 'review focused scope and proof gaps before approval';
+}
+
+function nextCommandForReceipt(input: {
+  receipt: Omit<ProveReceipt, 'verifiedWorkflow'>;
+  staleProof: boolean;
+  missingProof: boolean;
+  failedProof: boolean;
+}): string {
+  if (input.failedProof) {
+    return `projscan prove --record-command ${quoteShellArg(
+      input.receipt.proofStatus.failedCommands[0] ?? '<command>',
+    )} --exit-code 0 --duration-ms <ms>`;
+  }
+  if (input.staleProof) {
+    return `projscan prove --record-command ${quoteShellArg(
+      input.receipt.proofStatus.staleCommands[0] ?? '<command>',
+    )} --exit-code 0 --duration-ms <ms>`;
+  }
+  if (input.missingProof) {
+    return 'projscan prove --record-command "<command>" --exit-code 0 --duration-ms <ms>';
+  }
+  if (input.receipt.scope.status === 'drifted') return 'projscan prove --changed --format markdown';
+  return 'projscan evidence-pack --pr-comment';
 }
 
 function proofStatusFor(
@@ -534,7 +919,7 @@ function scopeFor(
     contract.forbiddenFiles.some((pattern) => pathMatches(file, pattern)),
   );
   const allowedTouched = changedFiles.filter((file) => allowed.has(file));
-  const outsideAllowed = changedFiles.filter((file) => !allowed.has(file));
+  const outsideAllowed = changedFiles.filter((file) => !allowed.has(file) && !isLocalProofArtifactPath(file));
   const classifications = changedFiles.map((file) =>
     classifyChangedFile({
       file,
@@ -966,7 +1351,7 @@ function rollbackPlan(files: string[]): string {
   return `Run git restore ${files.map(quoteShellArg).join(' ')} to roll back this proof slice.`;
 }
 
-function intentVerdict(contract: ProveContract): ProveVerdict {
+function intentVerdict(contract: Pick<ProveContract, 'confidence'>): ProveVerdict {
   return contract.confidence === 'low' ? 'needs-review' : 'ready';
 }
 
@@ -1027,6 +1412,10 @@ function isGeneratedPath(file: string): boolean {
     file.startsWith('coverage/') ||
     file.startsWith('dist/')
   );
+}
+
+function isLocalProofArtifactPath(file: string): boolean {
+  return file.startsWith('.projscan/');
 }
 
 function isSecuritySensitivePath(file: string): boolean {

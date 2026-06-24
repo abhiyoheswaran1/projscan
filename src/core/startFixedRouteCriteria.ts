@@ -52,6 +52,10 @@ export const FIXED_ROUTE_CRITERIA: Record<string, string[]> = {
     'Dead code, unused exports, lint, dependency, security, and config issues are reviewed before cleanup starts.',
     'Any issue chosen for cleanup has a fix-suggest, impact, or verification follow-up before files are deleted.',
   ],
+  projscan_prove: [
+    'The agent has a saved Proof Contract with allowed files, forbidden files, and required proof commands before editing.',
+    'The completed change has a Proof Receipt with scope, proof replay, risk delta, and reviewer decision before handoff.',
+  ],
   projscan_fix_suggest: [
     'A concrete fix suggestion is produced for the selected issue id.',
     'The suggestion names the file, fix instruction, and verification step before editing starts.',

@@ -113,6 +113,7 @@ paths.
 
 ```bash
 projscan start --intent "what files do I need to change for auth?"
+projscan start --intent "is my agent allowed to change billing retry logic?"
 projscan understand --view change --intent "add auth token refresh" --format json
 projscan prove --intent "is my agent allowed to change billing retry logic?"
 projscan preflight --mode before_edit --format json
@@ -121,13 +122,23 @@ projscan preflight --mode before_edit --format json
 Success criteria: the agent starts with cited files, change-readiness evidence,
 an executable Proof Contract, and a before-edit gate instead of a free-form plan.
 
-### Before handing work to an agent
+### Verified change workflow
 
 ```bash
+projscan start --intent "is my agent allowed to change billing retry logic?"
 projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json
-projscan prove --record-command "npm test -- tests/billing/retry.test.ts" --exit-code 0 --duration-ms 1842 --summary "billing retry tests passed"
+projscan prove --run -- npm test -- tests/billing/retry.test.ts
 projscan prove --changed --contract .projscan/proof-contract.json --format markdown
 ```
+
+The path is `start -> prove -> run -> changed`. Agent-permission intents route
+from `start` to `prove`. Intent mode writes a contract only when
+`--save-contract` is present. Run mode executes an explicit local command after
+the `--` delimiter, captures exit code, duration, redacted output, log path, and
+changed-file fingerprint, then appends a `prove-run` row to the local ledger.
+Record mode remains available for imported CI or external evidence when
+projscan did not run the command. Changed mode checks the working tree against
+the contract and local ledger.
 
 Success criteria: the agent gets allowed files, forbidden files, risky contracts,
 likely tests, proof commands, rollback notes, confidence, and reviewer guidance
@@ -136,6 +147,11 @@ tree stayed inside scope and classifies changed files as allowed production,
 expected tests, docs, generated proof artifacts, config/security drift,
 forbidden touches, or unexpected production. It also reports whether proof
 commands passed and whether that proof is stale after newer edits.
+
+Every prove report includes `verifiedWorkflow`, a compact JSON summary for agents
+and MCP clients. It names the phase, next action, next command, scope status,
+proof status, risk delta direction, reviewer decision, and stale/missing/failed
+proof flags.
 
 ### Before handoff or commit
 
@@ -168,18 +184,21 @@ and does not execute the plan.
 
 `projscan prove --intent "<change>"` turns the simulation into an executable
 Proof Contract for humans, agents, CI, and reviewers. Intent mode is read-only
-unless `--save-contract <path>` is supplied. `projscan prove --changed` reads
-that contract, checks local git changed-file evidence, and emits a Proof Receipt
-with changed-file classes, proof replay status, a reviewer checklist, and a
-copyable decision. Use `projscan prove --record-command "<command>" --exit-code
-<code> --duration-ms <ms>` to append a local Proof Ledger row before replaying
-the receipt. The ledger stores command, exit code, duration, changed-file
-fingerprint, redacted summary, and optional log path under `.projscan/`. If no
-contract exists, changed mode still reports the working tree, but marks the
-result as needing review because there is no contract to enforce. When you pass
-`--feedback .projscan-feedback.json`, Trust Memory can lower the confidence
-reason when prior reviewers reported missing signals, noisy findings, false
-positives, or rejected proof outcomes.
+unless `--save-contract <path>` is supplied. Use `projscan prove --run --
+<command...>` when projscan should execute a local proof command and append the
+result. Use `projscan prove --record-command "<command>" --exit-code <code>
+--duration-ms <ms>` only when importing proof from CI or another trusted runner.
+`projscan prove --changed` reads the contract, checks local git changed-file
+evidence, and emits a Proof Receipt with changed-file classes, proof replay
+status, a Verified Workflow section, a reviewer checklist, and a copyable
+decision. The ledger stores command, exit code, duration, changed-file
+fingerprint, redacted summary, source, and log path under `.projscan/`. Local
+`.projscan/` proof artifacts do not count as scope drift. If no contract exists,
+changed mode still reports the working tree, but marks the result as needing
+review because there is no contract to enforce. When you pass `--feedback
+.projscan-feedback.json`, Trust Memory can lower the confidence reason when
+prior reviewers reported missing signals, noisy findings, false positives, or
+rejected proof outcomes.
 
 Weekly or before a larger refactor, run the broader assessment and simulator:
 
@@ -293,7 +312,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
 - **`projscan_assess` / `projscan assess`** — proof-first assessment. Composes quality-scorecard, bug-hunt, and preflight into Proof Cards with local evidence, impact, a safe fix shape, verification commands, feedback or suppression guidance, and risk delta. Proof Cards include evidence strength, confidence reason, ranking reasons, trust memory, evidence gaps, and an AgentLoopKit handoff packet. Use `projscan assess --goal "make this repo safer to ship this week"` for a broad weekly pass, `projscan assess --mode fix-first --format markdown` when you want one or two next actions instead of a long list, `--feedback .projscan-feedback.json` when local reviewer memory should affect ranking, or `--baseline previous-assess.json` to compare against a prior assessment. The command is read-only and does not release, tag, publish, or deploy.
 - **`projscan_simulate` / `projscan simulate`** — risk delta simulator. Evaluates a proposed change plan before editing and returns likely touched files, affected tests, contract surfaces, rollout steps, proof commands, confidence, projected before/after risk, alternatives, and a recommended option. Use `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` before doing a refactor. The command is read-only and does not execute the plan.
-- **`projscan_prove` / `projscan prove`** — executable Proof Contracts and Proof Replay. Use `projscan prove --intent "<change>"` before editing to get allowed files, forbidden files, risky contracts, likely tests, proof commands, rollback, confidence, Trust Memory signals, and reviewer guidance. Use `projscan prove --record-command "<command>" --exit-code <code>` to record proof outcomes in the local ledger. Use `projscan prove --changed --contract .projscan/proof-contract.json --format markdown` after editing to produce a Proof Receipt with changed-file classes, scope drift, forbidden touches, proof status, stale proof, failed proof, risk delta, reviewer decision, and commit readiness.
+- **`projscan_prove` / `projscan prove`** — executable Proof Contracts, Verified Workflow JSON, and Proof Replay. Use `projscan prove --intent "<change>"` before editing to get allowed files, forbidden files, risky contracts, likely tests, proof commands, rollback, confidence, Trust Memory signals, and reviewer guidance. Use `projscan prove --run -- <command...>` to execute a local proof command and record a `prove-run` ledger row. Use `projscan prove --record-command "<command>" --exit-code <code>` for imported proof outcomes from CI or another runner. Use `projscan prove --changed --contract .projscan/proof-contract.json --format markdown` after editing to produce a Proof Receipt with changed-file classes, scope drift, forbidden touches, proof status, stale proof, failed proof, risk delta, reviewer decision, and commit readiness. Read `verifiedWorkflow` when an agent needs the next action without parsing Markdown.
 - **`projscan_understand` / `projscan understand`** — cited repo-comprehension surface. Returns repo maps, runtime flow maps, contract maps, change-readiness guidance, verification tiers, unknowns, read-first files, and exact next commands.
 - **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan telemetry` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, default-off telemetry controls, adoption trial reports, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.

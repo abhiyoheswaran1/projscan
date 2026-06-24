@@ -77,6 +77,15 @@ test('projscan_prove returns an intent Proof Contract', async () => {
   expect(result.prove.contract?.proofCommands).toContain(
     'projscan assess --mode fix-first --format json',
   );
+  expect((result.prove as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'contract',
+      nextCommand: result.prove.contract?.receiptCommand,
+      staleProof: false,
+      missingProof: true,
+      failedProof: false,
+    }),
+  );
 });
 
 test('projscan_prove records and replays proof ledger evidence', async () => {
@@ -119,6 +128,13 @@ test('projscan_prove records and replays proof ledger evidence', async () => {
   )) as { prove: ProveReport };
 
   expect(changedResult.prove.receipt?.proofStatus.commandsRun).toContain(command);
+  expect((changedResult.prove as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      phase: 'receipt',
+      scopeStatus: 'within-contract',
+      reviewerDecision: changedResult.prove.receipt?.reviewerDecision,
+    }),
+  );
 });
 
 async function git(args: string[]): Promise<void> {

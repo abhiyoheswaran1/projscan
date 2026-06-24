@@ -11,6 +11,7 @@ const REDACTION_PATTERNS = [
   /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
   /\b(?:sk|pk|whsec|ghp|gho|github_pat)_[A-Za-z0-9_=-]{8,}/gi,
   /\b(password|passwd|pwd|token|secret|api[_-]?key)\s*[:=]\s*["']?[^"'\s,;]+/gi,
+  /\b(--?(?:password|passwd|pwd|token|secret|api[_-]?key))\s+[^"'\s,;]+/gi,
   /\b[A-Za-z_][A-Za-z0-9_]*\.env\s*[:=]\s*[^"'\s,;]+/gi,
 ];
 
@@ -24,17 +25,20 @@ export function changedFileFingerprint(files: string[]): string {
 }
 
 export function redactProofSummary(value: string | undefined): string {
-  let summary = (value ?? '').replace(/\s+/g, ' ').trim();
+  let summary = redactProofOutput(value ?? '').replace(/\s+/g, ' ').trim();
   if (summary.length === 0) summary = 'No proof output summary supplied.';
-  for (const pattern of REDACTION_PATTERNS) {
-    summary = summary.replace(pattern, (match, label: string | undefined) =>
-      label ? `${label}=[redacted]` : '[redacted]',
-    );
-  }
   if (summary.length > MAX_SUMMARY_LENGTH) {
     return `${summary.slice(0, MAX_SUMMARY_LENGTH - 1)}...`;
   }
   return summary;
+}
+
+export function redactProofOutput(value: string): string {
+  let output = value;
+  for (const pattern of REDACTION_PATTERNS) {
+    output = output.replace(pattern, redactionReplacement);
+  }
+  return output;
 }
 
 export async function appendProofLedgerRecord(
@@ -147,6 +151,12 @@ function isProofLedgerRecord(value: Partial<ProofLedgerRecord>): value is ProofL
 
 function normalizePath(value: string): string {
   return value.split(path.sep).join('/').replace(/^\.\//, '');
+}
+
+function redactionReplacement(_match: string, ...args: unknown[]): string {
+  const captures = args.slice(0, -2);
+  const label = captures.find((value): value is string => typeof value === 'string' && value.length > 0);
+  return label ? `${label}=[redacted]` : '[redacted]';
 }
 
 function isNodeErrorCode(error: unknown, code: string): boolean {

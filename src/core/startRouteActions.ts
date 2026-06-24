@@ -67,6 +67,10 @@ const ROUTE_ARG_BUILDERS: Record<string, RouteArgBuilder> = {
   projscan_evidence_pack: () => ({ pr_comment: true }),
   projscan_feedback_intake: ({ intent }) => ({ text: intent }),
   projscan_analyze: ({ intent }) => reportControlArgsFromIntent(intent),
+  projscan_prove: ({ intent }) => ({
+    intent,
+    save_contract_path: '.projscan/proof-contract.json',
+  }),
 };
 
 const ROUTE_COMMAND_BUILDERS: Record<string, RouteCommandBuilder> = {
@@ -93,6 +97,10 @@ const ROUTE_COMMAND_BUILDERS: Record<string, RouteCommandBuilder> = {
   projscan_feedback_intake: ({ args }) =>
     `projscan feedback intake --text ${quoteShellArg(String(args.text))} --format json`,
   projscan_analyze: ({ args }) => reportControlCommand('analyze', 'json', args),
+  projscan_prove: ({ args }) =>
+    `projscan prove --intent ${quoteShellArg(String(args.intent))} --save-contract ${quoteShellArg(
+      String(args.save_contract_path),
+    )} --format json`,
 };
 
 const UNDERSTAND_VIEW_RULES: readonly UnderstandViewRule[] = [

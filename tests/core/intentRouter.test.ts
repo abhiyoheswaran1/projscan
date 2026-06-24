@@ -2,6 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { routeIntent } from '../../src/core/intentRouter.js';
 
 describe('routeIntent issue and search smoke routing', () => {
+  it('routes agent permission and proof contract intents to prove', () => {
+    const result = routeIntent('is my agent allowed to change billing retry logic');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_prove',
+        confidence: 'high',
+      }),
+    );
+    expect(result.matches[0].matchedKeywords).toEqual(
+      expect.arrayContaining(['agent', 'allowed', 'change']),
+    );
+  });
+
+  it('keeps generic safe commit checks on preflight', () => {
+    const result = routeIntent('is it safe to commit this change');
+
+    expect(result.matches[0]).toEqual(
+      expect.objectContaining({
+        tool: 'projscan_preflight',
+        confidence: 'high',
+      }),
+    );
+  });
+
   it('routes explicit issue-fix intents to fix-suggest instead of bug hunt', () => {
     const result = routeIntent('fix issue missing-test-framework');
 
