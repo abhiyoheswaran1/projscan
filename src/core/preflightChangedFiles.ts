@@ -45,7 +45,7 @@ export async function safeChangedFiles(
   }
 }
 
-function changedFilesFromResult(result: ChangedFilesResult): PreflightChangedFiles {
+export function changedFilesFromResult(result: ChangedFilesResult): PreflightChangedFiles {
   return {
     available: result.available,
     count: result.files.length,

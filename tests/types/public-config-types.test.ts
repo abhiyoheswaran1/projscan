@@ -7,6 +7,7 @@ import type {
   ReportPolicyPreset,
   ReportFormat,
   CiFailOnSeverity,
+  ProofRecipeConfig,
 } from '../../src/types/config.js';
 import type {
   ImportPolicyRule as BarrelImportPolicyRule,
@@ -15,6 +16,7 @@ import type {
   ReportPolicyPreset as BarrelReportPolicyPreset,
   ReportFormat as BarrelReportFormat,
   CiFailOnSeverity as BarrelCiFailOnSeverity,
+  ProofRecipeConfig as BarrelProofRecipeConfig,
 } from '../../src/types.js';
 
 const formats: ReportFormat[] = ['console', 'json', 'markdown', 'sarif', 'html'];
@@ -29,6 +31,16 @@ const importPolicy: ImportPolicyRule = {
 const reportPolicy: ReportPolicyPreset = {
   reportScope: ['src/api'],
   redactPaths: true,
+};
+
+const proofRecipe: ProofRecipeConfig = {
+  id: 'billing-critical',
+  matches: ['src/billing/**'],
+  requiredCommands: ['npm test -- tests/billing/retry.test.ts'],
+  requiredReviewers: ['@payments'],
+  forbiddenFiles: ['src/auth/**'],
+  riskSurface: 'billing',
+  reason: 'Billing retry changes need focused payments proof.',
 };
 
 const config: ProjscanConfig = {
@@ -55,6 +67,7 @@ const config: ProjscanConfig = {
   reportPolicies: {
     apiEvidence: reportPolicy,
   },
+  proofRecipes: [proofRecipe],
   monorepo: {
     importPolicy: [importPolicy],
   },
@@ -73,6 +86,7 @@ const barrelFormat: BarrelReportFormat = 'json';
 const barrelFailOn: BarrelCiFailOnSeverity = failOn;
 const barrelPolicy: BarrelImportPolicyRule = importPolicy;
 const barrelReportPolicy: BarrelReportPolicyPreset = reportPolicy;
+const barrelProofRecipe: BarrelProofRecipeConfig = proofRecipe;
 const barrelConfig: BarrelProjscanConfig = config;
 const barrelLoaded: BarrelLoadedConfig = loaded;
 const moduleLoaded: LoadedConfig = barrelLoaded;
@@ -83,7 +97,9 @@ test('config public types compile from the module and legacy barrel', () => {
   expect(barrelFailOn).toBe('warning');
   expect(barrelPolicy.from).toBe('@acme/app');
   expect(barrelReportPolicy.redactPaths).toBe(true);
+  expect(barrelProofRecipe.requiredReviewers).toEqual(['@payments']);
   expect(barrelConfig.scan?.offline).toBe(true);
+  expect(barrelConfig.proofRecipes?.[0]?.id).toBe('billing-critical');
   expect(barrelConfig.suppress?.['hardcoded-secret']).toEqual(['src/firebase.ts']);
   expect(barrelConfig.reportPolicies?.apiEvidence.reportScope).toEqual(['src/api']);
   expect(moduleLoaded.source).toBe('.projscanrc.json');

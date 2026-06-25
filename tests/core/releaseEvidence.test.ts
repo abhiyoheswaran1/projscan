@@ -142,6 +142,7 @@ test('evidence pack PR comments include available Proof Replay receipts', async 
       exitCode: 0,
       durationMs: 77,
       summary: 'proof passed',
+      recordSource: 'prove-run',
     } as never);
   }
 
@@ -154,9 +155,144 @@ test('evidence pack PR comments include available Proof Replay receipts', async 
     /safe-to-review|needs-focused-review|stop/,
   );
   expect(report.proofReceipt?.proofStatus).toBe('passed');
+  expect(report.proofReceipt?.proofEvidenceSources).toMatchObject({
+    executed: contractReport.contract?.proofCommands.length,
+    recorded: 0,
+    total: contractReport.contract?.proofCommands.length,
+  });
+  expect(report.proofReceipt?.proofSufficiencyStatus).toMatch(/strong|adequate|weak/);
+  expect(report.proofReceipt?.weakRequirements).toEqual(expect.any(Array));
+  expect(report.proofReceipt?.missingRequirements).toEqual(expect.any(Array));
+  expect((report.proofReceipt as any).proofReplayStatus).toBe('verified');
+  expect((report.proofReceipt as any).changedAfterProof).toEqual([]);
+  expect((report.proofReceipt as any).receiptFingerprint).toEqual(
+    expect.stringMatching(/^[a-f0-9]{16}$/),
+  );
   expect(report.prComment).toContain('### Proof Receipt');
   expect(report.prComment).toContain('proof status: passed');
+  expect(report.prComment).toContain(
+    `proof evidence: executed ${contractReport.contract?.proofCommands.length} / recorded 0`,
+  );
+  expect(report.prComment).toContain('proof replay: verified');
+  expect(report.prComment).toContain('changed after proof: none');
+  expect(report.prComment).toMatch(/receipt fingerprint: `[a-f0-9]{16}`/);
+  expect(report.prComment).toContain('proof sufficiency:');
   expect(report.prComment).toContain('projscan prove --changed --format markdown');
+}, 120_000);
+
+test('evidence pack PR comments include matching Team Proof Recipes', async () => {
+  const root = await makeTempProject('2.2.0');
+  await fs.writeFile(
+    path.join(root, '.projscanrc.json'),
+    JSON.stringify({
+      proofRecipes: [
+        {
+          id: 'src-critical',
+          matches: ['src/**'],
+          requiredCommands: ['npm test -- src/index.test.ts -- --runInBand'],
+          requiredReviewers: ['@platform'],
+          forbiddenFiles: ['src/auth/**'],
+        },
+      ],
+    }),
+  );
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'projscan@example.test']);
+  await git(root, ['config', 'user.name', 'Projscan Test']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'initial']);
+  const contractReport = await computeProve(root, {
+    intent: 'change src index behavior',
+    saveContractPath: '.projscan/proof-contract.json',
+    proofRecipes: [
+      {
+        id: 'src-critical',
+        matches: ['src/**'],
+        requiredCommands: ['npm test -- src/index.test.ts -- --runInBand'],
+        requiredReviewers: ['@platform'],
+        forbiddenFiles: ['src/auth/**'],
+      },
+    ],
+  } as never);
+  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 2;\n');
+  for (const command of contractReport.contract?.proofCommands ?? []) {
+    if (command === 'npm test -- src/index.test.ts -- --runInBand') continue;
+    await computeProve(root, {
+      recordCommand: command,
+      exitCode: 0,
+      durationMs: 77,
+      summary: 'proof passed',
+    } as never);
+  }
+
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 1,
+  });
+
+  expect(report.prComment).toContain('### Proof Receipt');
+  expect(report.prComment).toContain('Team Proof Recipes');
+  expect(report.prComment).toContain('recipe: src-critical');
+  expect(report.prComment).toContain('@platform');
+  expect(report.prComment).toContain('npm test -- src/index.test.ts -- --runInBand');
+  expect(report.prCommentValidation?.status).toBe('pass');
+}, 120_000);
+
+test('evidence pack ignores repo-config baseRef for reviewer proof scope', async () => {
+  const root = await makeTempProject('2.2.0');
+  await fs.writeFile(path.join(root, '.projscanrc.json'), JSON.stringify({ baseRef: 'HEAD' }));
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'projscan@example.test']);
+  await git(root, ['config', 'user.name', 'Projscan Test']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'initial']);
+  await computeProve(root, {
+    intent: 'change src index behavior',
+    saveContractPath: '.projscan/proof-contract.json',
+  });
+  await git(root, ['add', '.projscan/proof-contract.json']);
+  await git(root, ['commit', '-m', 'proof contract']);
+  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 2;\n');
+  await git(root, ['add', 'src/index.ts']);
+  await git(root, ['commit', '-m', 'change source']);
+
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 1,
+  });
+
+  expect(report.proofReceipt?.summary).toContain('1 changed file(s)');
+  expect(report.proofReceipt?.summary).not.toContain('0 changed file(s)');
+}, 120_000);
+
+test('evidence pack top-level decision reflects missing Proof Receipt evidence', async () => {
+  const root = await makeTempProject('2.2.0');
+  await git(root, ['init']);
+  await git(root, ['config', 'user.email', 'projscan@example.test']);
+  await git(root, ['config', 'user.name', 'Projscan Test']);
+  await git(root, ['add', '.']);
+  await git(root, ['commit', '-m', 'initial']);
+  await computeProve(root, {
+    intent: 'change src index behavior',
+    saveContractPath: '.projscan/proof-contract.json',
+  });
+  await fs.writeFile(path.join(root, 'src', 'index.ts'), 'export const value = 2;\n');
+
+  const report = await computeEvidencePack(root, {
+    includePrComment: true,
+    maxFindings: 1,
+  });
+
+  expect(report.proofReceipt?.proofStatus).toBe('missing');
+  expect(report.verdict).toBe('caution');
+  expect(report.approval.recommendation).toContain('Proof Receipt');
+  expect(report.prComment).toContain('- decision: review');
+  expect(report.prComment).toContain(
+    '- reason: Proof Receipt is missing, stale, failed, or not strong enough for review.',
+  );
+  expect(report.prComment).toContain(
+    '- first command: `projscan prove --changed --format markdown`',
+  );
 }, 120_000);
 
 test('trust calibration treats release-scale review blocks as manual review', () => {

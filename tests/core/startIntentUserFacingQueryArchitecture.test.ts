@@ -8,14 +8,19 @@ describe('Mission Control user-facing intent query architecture', () => {
       path.join(process.cwd(), 'src/core/startIntentTargets.ts'),
       'utf8',
     );
+    const searchSource = readFileSync(
+      path.join(process.cwd(), 'src/core/startSearchQueryTargets.ts'),
+      'utf8',
+    );
     const domainSource = readFileSync(
       path.join(process.cwd(), 'src/core/startIntentDomainSearchQueries.ts'),
       'utf8',
     );
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromDomainSignals } from './startIntentDomainSearchQueries.js';",
     );
+    expect(targetSource).not.toContain('searchQueryFromDomainSignals');
 
     const helperCases = [
       {

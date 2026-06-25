@@ -22,7 +22,16 @@ This guide starts with demonstrated workflows before the command reference. For 
   - [ci](#ci)
   - [diff](#diff)
   - [fix](#fix)
-  - [explain](#explain)
+  - [explain-issue](#explain-issue)
+  - [assess](#assess)
+  - [simulate](#simulate)
+  - [prove](#prove)
+  - [evidence-pack](#evidence-pack)
+  - [privacy-check](#privacy-check)
+  - [mission-proof](#mission-proof)
+  - [trial](#trial)
+  - [telemetry](#telemetry)
+  - [dogfood](#dogfood)
   - [diagram](#diagram)
   - [structure](#structure)
   - [dependencies](#dependencies)
@@ -32,7 +41,6 @@ This guide starts with demonstrated workflows before the command reference. For 
   - [coverage](#coverage)
   - [badge](#badge)
   - [mcp](#mcp)
-  - [dogfood](#dogfood)
 - [Health Score](#health-score)
 - [Output Formats](#output-formats)
   - [Console](#console-default)
@@ -127,14 +135,16 @@ an executable Proof Contract, and a before-edit gate instead of a free-form plan
 ```bash
 projscan start --intent "is my agent allowed to change billing retry logic?"
 projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json
+# Make the bounded edit, then run the proof command.
 projscan prove --run -- npm test -- tests/billing/retry.test.ts
 projscan prove --changed --contract .projscan/proof-contract.json --format markdown
 ```
 
 The path is `start -> prove -> run -> changed`. Agent-permission intents route
 from `start` to `prove`. Intent mode writes a contract only when
-`--save-contract` is present. Run mode executes an explicit local command after
-the `--` delimiter, captures exit code, duration, redacted output, log path, and
+`--save-contract` is present. Make the bounded edit after the contract exists
+and before run mode. Run mode executes an explicit local command after the `--`
+delimiter, captures exit code, duration, redacted output, log path, and
 changed-file fingerprint, then appends a `prove-run` row to the local ledger.
 Record mode remains available for imported CI or external evidence when
 projscan did not run the command. Changed mode checks the working tree against
@@ -145,13 +155,22 @@ likely tests, proof commands, rollback notes, confidence, and reviewer guidance
 before editing. After editing, the Proof Receipt shows whether the actual working
 tree stayed inside scope and classifies changed files as allowed production,
 expected tests, docs, generated proof artifacts, config/security drift,
-forbidden touches, or unexpected production. It also reports whether proof
-commands passed and whether that proof is stale after newer edits.
+forbidden touches, or unexpected production. The receipt reports proof command
+state, freshness after newer edits, proof replay status, `proofReplay` timeline
+events, `changedAfterProof`, receipt fingerprint, and sufficiency for the
+changed risk surface.
 
 Every prove report includes `verifiedWorkflow`, a compact JSON summary for agents
 and MCP clients. It names the phase, next action, next command, scope status,
-proof status, risk delta direction, reviewer decision, and stale/missing/failed
-proof flags.
+proof status, proof sufficiency status, risk delta direction, reviewer decision,
+and stale/missing/failed proof flags.
+
+Team Proof Recipes let the repo encode path-specific proof in `proofRecipes`;
+when a matching recipe is configured, `prove --intent` adds its required
+commands, reviewers, and forbidden files to the Proof Contract. `prove --changed`
+and `projscan evidence-pack --pr-comment` then show missing recipe proof,
+required reviewers, and recipe drift in the Proof Receipt. A recipe does not run proof commands by itself. Use `prove --run -- <command...>` or
+`prove --record-command` to add proof to the local ledger.
 
 ### Before handoff or commit
 
@@ -187,12 +206,16 @@ Proof Contract for humans, agents, CI, and reviewers. Intent mode is read-only
 unless `--save-contract <path>` is supplied. Use `projscan prove --run --
 <command...>` when projscan should execute a local proof command and append the
 result. Use `projscan prove --record-command "<command>" --exit-code <code>
---duration-ms <ms>` only when importing proof from CI or another trusted runner.
+--duration-ms <ms>` only when importing proof from CI or another runner.
 `projscan prove --changed` reads the contract, checks local git changed-file
 evidence, and emits a Proof Receipt with changed-file classes, proof replay
-status, a Verified Workflow section, a reviewer checklist, and a copyable
-decision. The ledger stores command, exit code, duration, changed-file
-fingerprint, redacted summary, source, and log path under `.projscan/`. Local
+status, Proof Sufficiency, a Verified Workflow section, a reviewer checklist,
+and a copyable decision. The contract JSON includes `proofRequirements`; the
+receipt JSON includes `proofReplay` with replay status, timeline events,
+`changedAfterProof`, replay command, and receipt fingerprint. It also includes
+`proofSufficiency` with strong, adequate, weak, missing, stale, or failed proof
+per changed risk surface. The ledger stores command, exit code, duration,
+changed-file fingerprint, redacted summary, source, and log path under `.projscan/`. Local
 `.projscan/` proof artifacts do not count as scope drift. If no contract exists,
 changed mode still reports the working tree, but marks the result as needing
 review because there is no contract to enforce. When you pass `--feedback
@@ -312,7 +335,7 @@ When the agent first opens a repo, or before starting a refactor, the question i
 - **`projscan_quality_scorecard` / `projscan quality-scorecard`** — dimensioned quality view across health, security, tests, maintainability, coordination, top risks, and verification commands.
 - **`projscan_assess` / `projscan assess`** — proof-first assessment. Composes quality-scorecard, bug-hunt, and preflight into Proof Cards with local evidence, impact, a safe fix shape, verification commands, feedback or suppression guidance, and risk delta. Proof Cards include evidence strength, confidence reason, ranking reasons, trust memory, evidence gaps, and an AgentLoopKit handoff packet. Use `projscan assess --goal "make this repo safer to ship this week"` for a broad weekly pass, `projscan assess --mode fix-first --format markdown` when you want one or two next actions instead of a long list, `--feedback .projscan-feedback.json` when local reviewer memory should affect ranking, or `--baseline previous-assess.json` to compare against a prior assessment. The command is read-only and does not release, tag, publish, or deploy.
 - **`projscan_simulate` / `projscan simulate`** — risk delta simulator. Evaluates a proposed change plan before editing and returns likely touched files, affected tests, contract surfaces, rollout steps, proof commands, confidence, projected before/after risk, alternatives, and a recommended option. Use `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` before doing a refactor. The command is read-only and does not execute the plan.
-- **`projscan_prove` / `projscan prove`** — executable Proof Contracts, Verified Workflow JSON, and Proof Replay. Use `projscan prove --intent "<change>"` before editing to get allowed files, forbidden files, risky contracts, likely tests, proof commands, rollback, confidence, Trust Memory signals, and reviewer guidance. Use `projscan prove --run -- <command...>` to execute a local proof command and record a `prove-run` ledger row. Use `projscan prove --record-command "<command>" --exit-code <code>` for imported proof outcomes from CI or another runner. Use `projscan prove --changed --contract .projscan/proof-contract.json --format markdown` after editing to produce a Proof Receipt with changed-file classes, scope drift, forbidden touches, proof status, stale proof, failed proof, risk delta, reviewer decision, and commit readiness. Read `verifiedWorkflow` when an agent needs the next action without parsing Markdown.
+- **`projscan_prove` / `projscan prove`** — executable Proof Contracts, Verified Workflow JSON, Proof Replay, and Proof Sufficiency. Use `projscan prove --intent "<change>"` before editing to get allowed files, forbidden files, risky contracts, likely tests, proof commands, rollback, confidence, Trust Memory signals, reviewer guidance, and `proofRequirements`. Use `projscan prove --run -- <command...>` to execute a local proof command and record a `prove-run` ledger row. Use `projscan prove --record-command "<command>" --exit-code <code>` for imported proof outcomes from CI or another runner. Use `projscan prove --changed --contract .projscan/proof-contract.json --format markdown` after editing to produce a Proof Receipt with changed-file classes, scope drift, forbidden touches, proof status, `proofReplay`, `changedAfterProof`, receipt fingerprint, `proofSufficiency`, stale proof, failed proof, risk delta, reviewer decision, and commit readiness. MCP can create and replay contracts and record imported proof; only the CLI `prove --run` executes local commands. Read `verifiedWorkflow` when an agent needs the next action without parsing Markdown.
 - **`projscan_understand` / `projscan understand`** — cited repo-comprehension surface. Returns repo maps, runtime flow maps, contract maps, change-readiness guidance, verification tiers, unknowns, read-first files, and exact next commands.
 - **`projscan_adoption` / `projscan init team` / `projscan init mcp` / `projscan mcp doctor` / `projscan init policy` / `projscan init github-action` / `projscan recipes` / `projscan first-run` / `projscan telemetry` / `projscan dogfood`** — adoption layer. Returns MCP client config snippets, setup verification, policy starters, PR workflow scaffolding with validated PR comments and block-only enforcement, baseline memory, ownership routing, first-PR onboarding steps, repeatable team-bootstrap and PR-automation recipes, multi-repo dogfood evidence, measured reviewer feedback, default-off telemetry controls, adoption trial reports, and setup diagnostics.
 - **`projscan_release_train` / `projscan release-train`** — product-line readiness planner. Plans upcoming product lines with version, scope, readiness, and next-action evidence.
@@ -739,6 +762,14 @@ projscan fix -y
 | Test framework | `vitest.config.ts` + sample test file, adds `test` script to package.json | `vitest`                                               |
 | EditorConfig   | `.editorconfig` (UTF-8, LF, 2-space indent, trim trailing whitespace)     | Nothing                                                |
 
+### explain-issue
+
+```bash
+projscan explain-issue <issue_id>
+```
+
+Shows the code excerpt, related issues in the same file, similar past fixes from git history, and the structured fix suggestion for one issue id.
+
 ### diagram
 
 ```bash
@@ -901,9 +932,61 @@ projscan mcp --watch    # 1.3+: also push notifications/file_changed on every ba
 
 Runs ProjScan as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server over stdio. AI coding agents (Claude Code, Cursor, Windsurf, any MCP client) can call ProjScan during a session to ground their suggestions in live project state.
 
-With `--watch`, the server starts an in-process file watcher and emits a JSON-RPC `notifications/file_changed` notification on every debounced batch (paths + post-update graph size + timestamp). The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support before subscribing. Off by default — agents that don't need push updates pay nothing for it.
+With `--watch`, the server starts an in-process file watcher and emits a JSON-RPC `notifications/file_changed` notification on every debounced batch (paths + post-update graph size + timestamp). The capability is advertised under `experimental.fileChanged` on the `initialize` response so clients can detect support before subscribing. Agents that do not need push updates can leave it off.
 
 See [MCP Server for AI Agents](#mcp-server-for-ai-agents).
+
+### assess
+
+```bash
+projscan assess --goal "make this repo safer to ship this week" --format json
+projscan assess --mode fix-first --format markdown
+```
+
+Runs a proof-first assessment from local quality, bug-hunt, preflight, hotspot, and feedback evidence. Use `--mode fix-first` when you want one or two ranked actions instead of a long report.
+
+### simulate
+
+```bash
+projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules" --format json
+```
+
+Predicts likely files, affected tests, contract surfaces, rollout steps, proof commands, and before/after risk for a proposed plan. It is read-only: it does not edit files, run tests, tag, publish, or deploy.
+
+### prove
+
+```bash
+projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json
+# Make the bounded edit, then run the proof command.
+projscan prove --run -- npm test -- tests/billing/retry.test.ts
+projscan prove --changed --contract .projscan/proof-contract.json --format markdown
+```
+
+Creates a local Proof Contract, records explicit proof command outcomes in the Proof Ledger, and checks the current working tree against the saved contract after the edit. `prove --run` executes only the command after `--` and keeps shell execution disabled. `prove --record-command` imports external proof into the local ledger without running it.
+
+### evidence-pack
+
+```bash
+projscan evidence-pack --pr-comment
+```
+
+Builds a reviewer-facing evidence packet from release-train, bug-hunt, workplan, preflight, and the latest Proof Receipt when available. Use the PR comment output when reviewers need risk, owner, proof, and next-command context in one Markdown block.
+
+### privacy-check
+
+```bash
+projscan privacy-check --format markdown
+```
+
+Shows which paths projscan reads, which files stay ignored, which features can touch the network, and whether telemetry can send anything from the current configuration.
+
+### mission-proof
+
+```bash
+projscan mission-proof --mission .projscan/mission --format markdown
+```
+
+Summarizes saved Mission Control proof logs, pass/fail status, reviewer gate evidence, reruns, and optional manual baseline comparisons.
 
 ### session _(1.4+)_
 
@@ -1109,6 +1192,15 @@ ProjScan loads a project-wide config from one of:
   "severityOverrides": {
     "missing-prettier": "info"
   },
+  "proofRecipes": [
+    {
+      "id": "billing-critical",
+      "matches": ["src/billing/**"],
+      "requiredCommands": ["npm test -- tests/billing/retry.test.ts"],
+      "requiredReviewers": ["@platform"],
+      "forbiddenFiles": ["src/auth/**"]
+    }
+  ],
   "reportPolicies": {
     "apiEvidence": {
       "reportScope": ["src/api", "packages/backend"],
@@ -1136,6 +1228,7 @@ ProjScan loads a project-wide config from one of:
 | `disableRules`        | string[]                                         | Silence rules by id. Exact match (`missing-prettier`) or wildcard prefix (`large-*`).                                                                         |
 | `suppress`            | `Record<string, string[]>`                       | Silence a rule only for matching paths/globs, for example `{ "hardcoded-secret": ["src/firebase.ts"] }`. Other rules still run on that file.                  |
 | `severityOverrides`   | `Record<string, 'info' \| 'warning' \| 'error'>` | Remap a rule's severity. Useful for downgrading project-specific false positives without disabling them.                                                      |
+| `proofRecipes`        | `{ id: string; matches: string[]; requiredCommands: string[]; requiredReviewers?: string[]; forbiddenFiles?: string[]; riskSurface?: string; reason?: string }[]` | Add Team Proof Recipes to `projscan prove` contracts and receipts when a matching recipe is configured. Recipes without a command are skipped; recipes do not execute commands. |
 | `reportPolicies`      | `Record<string, { reportScope?: string[]; redactPaths?: boolean }>` | Named evidence export presets selected with `--report-policy <name>` on `analyze`, `doctor`, and `ci`.                                      |
 | `hotspots.limit`      | number (1–100)                                   | Default limit for `projscan hotspots`.                                                                                                                        |
 | `hotspots.since`      | string                                           | Default git history window for `projscan hotspots`.                                                                                                           |
@@ -1147,6 +1240,14 @@ Use inline suppressions for a single confirmed false positive:
 ```ts
 const firebaseKey = "AIza..." // projscan-ignore-line hardcoded-secret -- Firebase web keys are public identifiers
 ```
+
+Use `proofRecipes` when a sensitive path needs team proof. When a matching
+recipe is configured, `projscan prove` adds its commands, reviewers, and
+forbidden files to the Proof Contract and Proof Receipt. The recipe does not run proof commands by itself.
+Recipe IDs and reviewer handles use a conservative identifier shape, duplicate
+recipe IDs keep the first recipe, and path patterns support exact paths plus
+`*` and `**` globs. Broad `forbiddenFiles` globs can mark many changed files as
+drift, so keep them scoped to the smallest risky area.
 
 ### Embedded config in `package.json`
 
@@ -1253,7 +1354,7 @@ projscan ci --help
 
 ### Languages
 
-ProjScan maps file extensions to language names. Supported languages include TypeScript, JavaScript, Python, Go, Rust, Java, C#, C++, C, Ruby, PHP, Swift, Kotlin, Dart, Lua, Scala, R, Shell, CSS, SCSS/Sass, HTML, JSON, YAML, Markdown, SQL, and more.
+ProjScan maps file extensions to language names. AST-aware adapters cover TypeScript, JavaScript, Python, Go, Rust, Java, C#, C++, Ruby, PHP, Swift, and Kotlin. File-level detection also covers C, Dart, Lua, Scala, R, Shell, CSS, SCSS/Sass, HTML, JSON, YAML, Markdown, SQL, and related project files.
 
 The **primary language** is the one with the most files.
 
@@ -1387,7 +1488,7 @@ This is heuristic-based and works best with conventional project structures. Pro
 
 ## File Explanation Engine
 
-The `explain` command performs regex-based static analysis. It does not execute your code or make network calls.
+The `explain-issue` command performs regex-based static analysis around one issue. It does not execute your code or make network calls.
 
 **Import detection** handles:
 
@@ -1464,7 +1565,7 @@ _Structural / agent-native:_
 - `projscan_quality_scorecard` — dimensioned quality view with top risks and verification commands.
 - `projscan_assess` — proof-first assessment with Proof Cards, risk delta, and fix-first guidance.
 - `projscan_simulate` — risk delta simulator for proposed change plans before editing.
-- `projscan_prove` — executable Proof Contracts, local Proof Ledger rows, and replayed Proof Receipts for proposed and completed changes.
+- `projscan_prove` — Proof Contracts and Proof Receipts for proposed and completed changes. MCP records and replays imported proof; only CLI `prove --run` executes commands.
 - `projscan_adoption` — adoption helper for MCP client snippets, MCP setup doctor, agent workflow recipes, and first-run diagnostics.
 - `projscan_release_train` — product-line readiness plan with scope and next-action evidence.
 - `projscan_evidence_pack` — approval packet with planning, bug-hunt, workplan, preflight, changelog, and website prompt evidence.
@@ -1627,7 +1728,7 @@ ProjScan has three first-class CI integration paths:
 
 ### 1. First-party GitHub Action (recommended)
 
-The easiest path - installs projscan, runs the health gate, uploads SARIF to GitHub Code Scanning.
+The GitHub Action installs projscan, runs the health gate, and uploads SARIF to GitHub Code Scanning.
 
 ```yaml
 name: ProjScan
@@ -1710,7 +1811,7 @@ projscan diff --format json          # Shows new/resolved issues + hotspot movem
 
 ### "No package.json found"
 
-The `dependencies` and `fix` commands require a `package.json` in the current directory. Other commands (`analyze`, `structure`, `diagram`, `explain`) work without one.
+The `dependencies` and `fix` commands require a `package.json` in the current directory. Other commands (`analyze`, `structure`, `diagram`, `explain-issue`) work without one.
 
 ### Scan is slow
 

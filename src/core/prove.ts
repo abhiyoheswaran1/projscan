@@ -7,18 +7,39 @@ import { readFeedbackFile } from './feedback.js';
 import {
   appendProofLedgerRecord,
   changedFileFingerprint,
-  latestProofRecordFor,
+  normalizeProofCommand,
+  prepareProofArtifactReadPath,
+  prepareProofArtifactWritePath,
   readProofLedger,
+  readLatestProofLedgerRecords,
   redactProofOutput,
 } from './proofLedger.js';
+import {
+  buildProofRequirements,
+  isConfigPath,
+  isDocumentationPath,
+  isGeneratedPath,
+  isProductionPath,
+  isSecuritySensitivePath,
+  isTestPath,
+  proofRelevantChangedFiles,
+  proofSufficiencyFor,
+} from './proofSufficiency.js';
+import { buildProofReplay } from './proofReplay.js';
 import { quoteShellArg } from './startShellArgs.js';
 import { computeSimulation } from './simulate.js';
 import { getChangedFiles } from '../utils/changedFiles.js';
+import type { ChangedFilesResult } from '../utils/changedFiles.js';
 import type { AssessConfidence, RiskDeltaSnapshot } from '../types/assess.js';
+import type { ProofRecipeConfig } from '../types/config.js';
+import type { ProofLedgerSource } from '../types/proofLedger.js';
 import type {
   ProveChangedFileClassification,
   ProveContract,
+  ProveMatchedProofRecipe,
   ProveProofCommandEvidence,
+  ProveProofRequirement,
+  ProveProofSufficiencyStatus,
   ProveReceipt,
   ProveReport,
   ProveReviewerDecision,
@@ -45,7 +66,12 @@ export interface ComputeProveOptions {
   logPath?: string;
   runCommand?: string[];
   runTimeoutMs?: number;
+  proofRecipes?: ProofRecipeConfig[];
+  changedFiles?: ChangedFilesResult;
+  recordSource?: ProofLedgerSource;
 }
+
+type ProofLedgerRecords = Awaited<ReturnType<typeof readProofLedger>>;
 
 const DEFAULT_CONTRACT_PATH = '.projscan/proof-contract.json';
 const DEFAULT_RUN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -70,6 +96,7 @@ const HIGH_RISK_FORBIDDEN_FILES = [
   'package-lock.json',
   'package.json',
 ];
+const PATH_MATCH_REGEX_CACHE = new Map<string, RegExp>();
 
 interface TrustMemoryEvaluation {
   status: string;
@@ -163,15 +190,6 @@ const CHANGED_FILE_RULES: ChangedFileRule[] = [
 ];
 
 const NEGATIVE_PROOF_OUTCOMES = new Set(['rejected', 'reverted', 'suppressed', 'noisy']);
-const CONFIG_BASENAMES = new Set([
-  'package.json',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-  'tsconfig.json',
-]);
-const CONFIG_SUFFIXES = ['.config.js', '.config.cjs', '.config.mjs', '.config.ts'];
-
 export async function computeProve(
   rootPath: string,
   options: ComputeProveOptions = {},
@@ -233,7 +251,7 @@ async function computeRecordProof(
     changedFiles: proofRelevantChangedFiles(changedFiles.files),
     outputSummary: proof.summary,
     logPath: proof.logPath,
-    source: 'prove-record',
+    source: options.recordSource ?? 'prove-record',
   });
   const verdict: ProveVerdict = record.status === 'passed' ? 'ready' : 'blocked';
   const verifiedWorkflow = verifiedWorkflowForRecord(verdict, record.status);
@@ -437,7 +455,7 @@ async function writeProofRunLog(
   if (!relativeToRoot || relativeToRoot.startsWith('..') || path.isAbsolute(relativeToRoot)) {
     throw new Error('Proof log path must stay inside the project root.');
   }
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  await prepareProofArtifactWritePath(rootPath, fullPath);
   await fs.writeFile(fullPath, redactedProofRunLog(input), 'utf-8');
   return relativePath;
 }
@@ -500,7 +518,12 @@ async function computeIntentProof(
     readTrustMemory(options.feedbackPath),
   ]);
 
-  const contract = buildContract({ intent, simulation, trustMemory });
+  const contract = buildContract({
+    intent,
+    simulation,
+    trustMemory,
+    proofRecipes: options.proofRecipes,
+  });
   let savedContractPath: string | undefined;
   if (options.saveContractPath) {
     savedContractPath = await writeContract(rootPath, options.saveContractPath, contract);
@@ -523,12 +546,17 @@ async function computeChangedProof(
   rootPath: string,
   options: ComputeProveOptions,
 ): Promise<ProveReport> {
-  const [contract, changedFiles, ledger] = await Promise.all([
+  const [contract, changedFiles] = await Promise.all([
     resolveContract(rootPath, options),
-    getChangedFiles(rootPath, options.baseRef),
-    readProofLedger(rootPath, options.ledgerPath),
+    options.changedFiles ? Promise.resolve(options.changedFiles) : getChangedFiles(rootPath, options.baseRef),
   ]);
   const quickPreflight = quickProofPreflight(changedFiles);
+  const relevantChangedFiles = proofRelevantChangedFiles(changedFiles.files);
+  const proofCommands = proofCommandsForReceipt(contract.contract);
+  const [currentChangedFileFingerprint, ledger] = await Promise.all([
+    changedFileFingerprint(rootPath, relevantChangedFiles),
+    readLatestProofLedgerRecords(rootPath, options.ledgerPath, proofCommands),
+  ]);
   const receipt = buildReceipt({
     contract: contract.contract,
     contractPath: contract.path,
@@ -539,6 +567,8 @@ async function computeChangedProof(
     newRisks: quickPreflight.risks,
     preflightVerdict: quickPreflight.verdict,
     ledger,
+    proofCommands,
+    currentChangedFileFingerprint,
   });
 
   return {
@@ -580,12 +610,32 @@ function buildContract(input: {
   intent: string;
   simulation: Awaited<ReturnType<typeof computeSimulation>>;
   trustMemory?: Awaited<ReturnType<typeof readTrustMemory>>;
+  proofRecipes?: ProofRecipeConfig[];
 }): ProveContract {
   const simulationFiles = input.simulation.filesLikelyTouched.map((file) => file.path);
   const allowedFiles = unique(simulationFiles);
   const likelyTests = unique(input.simulation.testsLikelyAffected);
-  const forbiddenFiles = forbiddenFilesFor(input.intent, [...allowedFiles, ...likelyTests]);
-  const proofCommands = contractProofCommands(input.simulation.proofCommands);
+  const matchedRecipes = matchTeamProofRecipes(input.proofRecipes ?? [], [
+    ...allowedFiles,
+    ...likelyTests,
+  ]);
+  const forbiddenFiles = unique([
+    ...forbiddenFilesFor(input.intent, [...allowedFiles, ...likelyTests]),
+    ...matchedRecipes.flatMap((recipe) => recipe.forbiddenFiles ?? []),
+  ]);
+  const proofCommands = unique([
+    ...contractProofCommands(input.simulation.proofCommands),
+    ...matchedRecipes.flatMap((recipe) => recipe.requiredCommands),
+  ]);
+  const proofRequirements = [
+    ...buildProofRequirements({
+    allowedFiles,
+    likelyTests,
+    riskyContracts: riskyContractsFor(input.simulation.contractsLikelyAffected, allowedFiles),
+    proofCommands,
+    }),
+    ...recipeProofRequirements(matchedRecipes),
+  ];
   const evidenceGaps = unique([
     ...(input.simulation.warnings.length > 0 ? input.simulation.warnings : []),
     ...(likelyTests.length === 0 ? ['No likely regression test was inferred from the plan.'] : []),
@@ -604,6 +654,8 @@ function buildContract(input: {
     missingRegressionTests:
       likelyTests.length > 0 ? [] : ['Add one regression test around the behavior named by the intent.'],
     proofCommands,
+    proofRequirements,
+    ...(matchedRecipes.length > 0 ? { teamProofRecipes: matchedRecipes } : {}),
     safeChangeShape: safeChangeShape(input.simulation.recommendedAlternative.summary),
     rollbackPlan: rollbackPlan([...allowedFiles, ...likelyTests]),
     confidence,
@@ -643,6 +695,93 @@ function contractProofCommands(simulationCommands: string[]): string[] {
   ].filter((command): command is string => typeof command === 'string'));
 }
 
+function matchTeamProofRecipes(
+  recipes: ProofRecipeConfig[],
+  files: string[],
+): ProveMatchedProofRecipe[] {
+  return recipes
+    .map((recipe) => {
+      const matchedFiles = unique(
+        files.filter((file) => recipe.matches.some((pattern) => pathMatches(file, pattern))),
+      );
+      if (matchedFiles.length === 0) return null;
+      return {
+        ...recipe,
+        matchedFiles,
+      };
+    })
+    .filter((recipe): recipe is ProveMatchedProofRecipe => Boolean(recipe));
+}
+
+function recipeProofRequirements(recipes: ProveMatchedProofRecipe[]): ProveProofRequirement[] {
+  return recipes.map((recipe) => ({
+    id: `recipe:${recipe.id}`,
+    surface: 'custom',
+    files: recipe.matchedFiles,
+    requiredCommands: recipe.requiredCommands,
+    requiredReview: recipe.requiredReviewers?.length
+      ? `require review from ${recipe.requiredReviewers.join(', ')}`
+      : `review Team Proof Recipe ${recipe.id}`,
+    reason: recipe.reason ?? `Team Proof Recipe ${recipe.id} matched ${recipe.matchedFiles.join(', ')}.`,
+    source: 'recipe',
+    recipeId: recipe.id,
+    ...(recipe.requiredReviewers ? { requiredReviewers: recipe.requiredReviewers } : {}),
+  }));
+}
+
+function teamProofRecipesForReceipt(
+  recipes: ProveMatchedProofRecipe[],
+  changedFiles: string[],
+  proofStatus: ProveReceipt['proofStatus'],
+): ProveMatchedProofRecipe[] {
+  return recipes
+    .map((recipe) => {
+      const matchedFiles = unique(
+        changedFiles.filter((file) => recipe.matches.some((pattern) => pathMatches(file, pattern))),
+      );
+      const forbiddenTouched = unique(
+        changedFiles.filter((file) =>
+          (recipe.forbiddenFiles ?? []).some((pattern) => pathMatches(file, pattern)),
+        ),
+      );
+      if (matchedFiles.length === 0 && forbiddenTouched.length === 0) return null;
+      const missingCommands = recipe.requiredCommands.filter((command) =>
+        proofStatus.missingCommands.includes(command),
+      );
+      const failedCommands = recipe.requiredCommands.filter((command) =>
+        proofStatus.failedCommands.includes(command),
+      );
+      const staleCommands = recipe.requiredCommands.filter((command) =>
+        proofStatus.staleCommands.includes(command),
+      );
+      return {
+        ...recipe,
+        matchedFiles,
+        ...(forbiddenTouched.length > 0 ? { forbiddenTouched } : {}),
+        ...(missingCommands.length > 0 ? { missingCommands } : {}),
+        ...(failedCommands.length > 0 ? { failedCommands } : {}),
+        ...(staleCommands.length > 0 ? { staleCommands } : {}),
+      };
+    })
+    .filter((recipe): recipe is ProveMatchedProofRecipe => Boolean(recipe));
+}
+
+function recipeGapsFor(recipes: ProveMatchedProofRecipe[]): string[] {
+  const gaps: string[] = [];
+  for (const recipe of recipes) {
+    for (const command of recipe.missingCommands ?? []) {
+      gaps.push(`${recipe.id} requires proof command: ${command}`);
+    }
+    for (const command of recipe.failedCommands ?? []) {
+      gaps.push(`${recipe.id} has failed proof command: ${command}`);
+    }
+    for (const command of recipe.staleCommands ?? []) {
+      gaps.push(`${recipe.id} has stale proof command: ${command}`);
+    }
+  }
+  return gaps;
+}
+
 function buildReceipt(input: {
   contract?: ProveContract;
   contractPath?: string;
@@ -653,39 +792,80 @@ function buildReceipt(input: {
   newRisks: string[];
   preflightVerdict: 'proceed' | 'caution' | 'block';
   ledger: Awaited<ReturnType<typeof readProofLedger>>;
+  proofCommands: string[];
+  currentChangedFileFingerprint: string;
 }): ProveReceipt {
   const scope = scopeFor(input.contract, input.contractPath, input.changedFiles);
   const evidenceGaps = evidenceGapsFor(input);
-  const proofCommands = input.contract?.proofCommands ?? [
-    'projscan assess --mode fix-first --format json',
-    'projscan preflight --mode before_commit --format json',
-  ];
-  const proofStatus = proofStatusFor(proofCommands, input.ledger, input.changedFiles);
+  const proofStatus = proofStatusFor(
+    input.proofCommands,
+    input.ledger,
+    input.changedFiles,
+    input.currentChangedFileFingerprint,
+  );
+  const teamProofRecipes = teamProofRecipesForReceipt(
+    input.contract?.teamProofRecipes ?? [],
+    input.changedFiles,
+    proofStatus,
+  );
+  const requiredReviewers = unique(teamProofRecipes.flatMap((recipe) => recipe.requiredReviewers ?? []));
+  const recipeForbiddenTouched = unique(
+    teamProofRecipes.flatMap((recipe) => recipe.forbiddenTouched ?? []),
+  );
+  const recipeGaps = recipeGapsFor(teamProofRecipes);
+  const proofSufficiency = proofSufficiencyFor({
+    contract: input.contract,
+    scope,
+    proofStatus,
+  });
   const commitReadiness = readinessFor({
     scopeStatus: scope.status,
     forbiddenTouched: scope.forbiddenTouched,
     preflightVerdict: input.preflightVerdict,
     evidenceGaps,
     proofStatus: proofStatus.status,
+    proofSufficiencyStatus: proofSufficiency.status,
   });
   const riskDeltaDirection = riskDeltaDirectionFor(input.riskDelta);
   const reviewerDecision = reviewerDecisionFor({
     commitReadiness,
     proofStatus: proofStatus.status,
+    proofSufficiencyStatus: proofSufficiency.status,
     scope,
     preflightVerdict: input.preflightVerdict,
+  });
+  const proofReplay = buildProofReplay({
+    scope,
+    proofStatus,
+    proofSufficiency,
+    riskDeltaDirection,
+    reviewerDecision,
+    replayCommand: replayCommandForReceipt(scope.contractPath),
   });
   const receipt: Omit<ProveReceipt, 'verifiedWorkflow'> = {
     summary: summaryForReceipt(commitReadiness, scope),
     commitReadiness,
     scope,
     proofStatus,
+    proofSufficiency,
+    proofReplay,
+    ...(teamProofRecipes.length > 0 ? { teamProofRecipes } : {}),
+    ...(requiredReviewers.length > 0 ? { requiredReviewers } : {}),
+    ...(recipeForbiddenTouched.length > 0 ? { recipeForbiddenTouched } : {}),
+    ...(recipeForbiddenTouched.length > 0 ? { recipeDrift: recipeForbiddenTouched } : {}),
+    ...(recipeGaps.length > 0 ? { recipeGaps } : {}),
     riskDelta: input.riskDelta,
     riskDeltaDirection,
     reviewerDecision,
     newRisks: input.newRisks,
     evidenceGaps,
-    reviewerGuidance: reviewerGuidanceFor(commitReadiness, scope, reviewerDecision, proofStatus.status),
+    reviewerGuidance: reviewerGuidanceFor(
+      commitReadiness,
+      scope,
+      reviewerDecision,
+      proofStatus.status,
+      proofSufficiency.status,
+    ),
   };
   return {
     ...receipt,
@@ -729,10 +909,10 @@ function verifiedWorkflowForReceipt(
   receipt: Omit<ProveReceipt, 'verifiedWorkflow'>,
 ): ProveVerifiedWorkflow {
   const proofStatus = receipt.proofStatus.status;
+  const proofSufficiencyStatus = receipt.proofSufficiency?.status ?? 'missing';
   const staleProof = proofStatus === 'stale' || receipt.proofStatus.staleCommands.length > 0;
   const missingProof =
-    proofStatus === 'missing' ||
-    proofStatus === 'partial' ||
+    isMissingProofStatus(proofStatus) ||
     receipt.proofStatus.missingCommands.length > 0;
   const failedProof = proofStatus === 'failed' || receipt.proofStatus.failedCommands.length > 0;
   return {
@@ -753,6 +933,7 @@ function verifiedWorkflowForReceipt(
     reviewerDecision: receipt.reviewerDecision,
     scopeStatus: receipt.scope.status,
     proofStatus,
+    proofSufficiencyStatus,
     riskDeltaDirection: receipt.riskDeltaDirection,
     staleProof,
     missingProof,
@@ -768,6 +949,9 @@ function nextActionForReceipt(input: {
 }): string {
   if (input.failedProof) return 'fix failed proof commands before review';
   if (input.staleProof) return 'rerun stale proof commands before review';
+  if (input.receipt.proofStatus.status === 'not-run') {
+    return 'add required proof commands to the Proof Contract before review';
+  }
   if (input.missingProof) return 'record missing proof commands before review';
   if (input.receipt.scope.status === 'drifted') {
     return 'resolve scope drift or update the Proof Contract before review';
@@ -794,6 +978,9 @@ function nextCommandForReceipt(input: {
       input.receipt.proofStatus.staleCommands[0] ?? '<command>',
     )} --exit-code 0 --duration-ms <ms>`;
   }
+  if (input.receipt.proofStatus.status === 'not-run') {
+    return 'projscan prove --intent "<change intent>" --save-contract .projscan/proof-contract.json';
+  }
   if (input.missingProof) {
     return 'projscan prove --record-command "<command>" --exit-code 0 --duration-ms <ms>';
   }
@@ -803,13 +990,14 @@ function nextCommandForReceipt(input: {
 
 function proofStatusFor(
   proofCommands: string[],
-  ledger: Awaited<ReturnType<typeof readProofLedger>>,
+  ledger: ProofLedgerRecords,
   changedFiles: string[],
+  currentFingerprint: string,
 ): ProveReceipt['proofStatus'] {
   const relevantChangedFiles = proofRelevantChangedFiles(changedFiles);
-  const currentFingerprint = changedFileFingerprint(relevantChangedFiles);
+  const latestLedgerByCommand = latestProofRecordsByCommand(ledger);
   const commandEvidence = proofCommands.map((command): ProveProofCommandEvidence => {
-    const record = latestProofRecordFor(ledger, command);
+    const record = latestLedgerByCommand.get(normalizeProofCommand(command));
     if (!record) {
       return {
         command,
@@ -826,18 +1014,24 @@ function proofStatusFor(
         exitCode: record.exitCode,
         durationMs: record.durationMs,
         completedAt: record.completedAt,
+        source: record.source,
+        recordedChangedFiles: record.changedFiles,
+        recordedChangedFileFingerprint: record.changedFileFingerprint,
         outputSummary: record.outputSummary,
         ...(record.logPath ? { logPath: record.logPath } : {}),
-        staleReason: 'Recorded changed files differ from current changed files.',
+        staleReason: staleProofReason(record.changedFiles, relevantChangedFiles),
       };
     }
     return {
       command,
       status: record.exitCode === 0 ? 'passed' : 'failed',
       fresh: true,
+      source: record.source,
       exitCode: record.exitCode,
       durationMs: record.durationMs,
       completedAt: record.completedAt,
+      recordedChangedFiles: record.changedFiles,
+      recordedChangedFileFingerprint: record.changedFileFingerprint,
       outputSummary: record.outputSummary,
       ...(record.logPath ? { logPath: record.logPath } : {}),
     };
@@ -872,6 +1066,37 @@ function proofStatusFor(
   };
 }
 
+function latestProofRecordsByCommand(
+  records: ProofLedgerRecords,
+): Map<string, ProofLedgerRecords[number]> {
+  const latest = new Map<string, ProofLedgerRecords[number]>();
+  for (const record of records) {
+    const existing = latest.get(record.normalizedCommand);
+    if (!existing || record.completedAt.localeCompare(existing.completedAt) >= 0) {
+      latest.set(record.normalizedCommand, record);
+    }
+  }
+  return latest;
+}
+
+function staleProofReason(recordedFiles: string[], currentFiles: string[]): string {
+  return sameStringSet(recordedFiles, currentFiles)
+    ? 'Recorded changed-file content fingerprint differs from current changed-file content.'
+    : 'Recorded changed files differ from current changed files.';
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((value) => rightSet.has(value));
+}
+
+function replayCommandForReceipt(contractPath: string | undefined): string {
+  return contractPath
+    ? `projscan prove --changed --contract ${quoteShellArg(contractPath)} --format markdown`
+    : 'projscan prove --changed --format markdown';
+}
+
 function proofStatusSummary(input: {
   requiredCount: number;
   missingCount: number;
@@ -886,8 +1111,13 @@ function proofStatusSummary(input: {
   return 'passed';
 }
 
-function proofRelevantChangedFiles(files: string[]): string[] {
-  return files.filter((file) => !isGeneratedPath(file));
+function proofCommandsForReceipt(contract: ProveContract | undefined): string[] {
+  return (
+    contract?.proofCommands ?? [
+      'projscan assess --mode fix-first --format json',
+      'projscan preflight --mode before_commit --format json',
+    ]
+  );
 }
 
 function scopeFor(
@@ -918,14 +1148,19 @@ function scopeFor(
   const forbiddenTouched = changedFiles.filter((file) =>
     contract.forbiddenFiles.some((pattern) => pathMatches(file, pattern)),
   );
+  const forbiddenTouchedSet = new Set(forbiddenTouched);
+  const allowedProductionSet = new Set(contract.allowedFiles);
+  const likelyTestSet = new Set(contract.likelyTests);
   const allowedTouched = changedFiles.filter((file) => allowed.has(file));
-  const outsideAllowed = changedFiles.filter((file) => !allowed.has(file) && !isLocalProofArtifactPath(file));
+  const outsideAllowed = changedFiles.filter(
+    (file) => !allowed.has(file) && !isLocalProofArtifactPath(file),
+  );
   const classifications = changedFiles.map((file) =>
     classifyChangedFile({
       file,
-      forbidden: forbiddenTouched.includes(file),
-      allowedProduction: contract.allowedFiles.includes(file),
-      expectedTest: contract.likelyTests.includes(file),
+      forbidden: forbiddenTouchedSet.has(file),
+      allowedProduction: allowedProductionSet.has(file),
+      expectedTest: likelyTestSet.has(file),
       contractPath: contractPath === file,
     }),
   );
@@ -963,8 +1198,9 @@ async function readContract(
   filePath: string,
   required: boolean,
 ): Promise<ProveContract | undefined> {
-  const fullPath = path.resolve(rootPath, filePath);
+  const fullPath = resolveProofContractPath(rootPath, filePath);
   try {
+    await prepareProofArtifactReadPath(rootPath, fullPath);
     const parsed = JSON.parse(await fs.readFile(fullPath, 'utf-8')) as Partial<ProveContract>;
     if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.allowedFiles) || !parsed.id) {
       throw new Error('invalid Proof Contract shape');
@@ -986,10 +1222,31 @@ async function writeContract(
   filePath: string,
   contract: ProveContract,
 ): Promise<string> {
-  const fullPath = path.resolve(rootPath, filePath);
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  const fullPath = resolveProofContractPath(rootPath, filePath);
+  await prepareProofArtifactWritePath(rootPath, fullPath);
   await fs.writeFile(fullPath, `${JSON.stringify(contract, null, 2)}\n`, 'utf-8');
   return filePath;
+}
+
+function resolveProofContractPath(rootPath: string, filePath: string): string {
+  const root = path.resolve(rootPath);
+  const requested = filePath.trim();
+  if (!requested) throw new Error('Proof Contract path is required.');
+  const fullPath = path.resolve(root, requested);
+  const relative = path.relative(root, fullPath);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Proof Contract path must stay inside the project root.');
+  }
+  const normalizedRelative = relative.split(path.sep).join('/');
+  if (
+    normalizedRelative !== DEFAULT_CONTRACT_PATH &&
+    !/^\.projscan\/proof-contracts\/[^/]+\.json$/.test(normalizedRelative)
+  ) {
+    throw new Error(
+      'Proof Contract path must be .projscan/proof-contract.json or .projscan/proof-contracts/<name>.json.',
+    );
+  }
+  return fullPath;
 }
 
 function forbiddenFilesFor(intent: string, allowed: string[]): string[] {
@@ -1038,6 +1295,7 @@ function readinessFor(input: {
   preflightVerdict: 'proceed' | 'caution' | 'block';
   evidenceGaps: string[];
   proofStatus: ProveReceipt['proofStatus']['status'];
+  proofSufficiencyStatus: ProveProofSufficiencyStatus;
 }): ProveVerdict {
   if (hasBlockingReceiptSignal(input)) return 'blocked';
   return hasReviewReceiptSignal(input) ? 'needs-review' : 'ready';
@@ -1047,8 +1305,14 @@ function hasBlockingReceiptSignal(input: {
   forbiddenTouched: string[];
   preflightVerdict: 'proceed' | 'caution' | 'block';
   proofStatus: ProveReceipt['proofStatus']['status'];
+  proofSufficiencyStatus: ProveProofSufficiencyStatus;
 }): boolean {
-  return input.forbiddenTouched.length > 0 || input.preflightVerdict === 'block' || input.proofStatus === 'failed';
+  return (
+    input.forbiddenTouched.length > 0 ||
+    input.preflightVerdict === 'block' ||
+    input.proofStatus === 'failed' ||
+    input.proofSufficiencyStatus === 'failed'
+  );
 }
 
 function hasReviewReceiptSignal(input: {
@@ -1056,17 +1320,27 @@ function hasReviewReceiptSignal(input: {
   preflightVerdict: 'proceed' | 'caution' | 'block';
   evidenceGaps: string[];
   proofStatus: ProveReceipt['proofStatus']['status'];
+  proofSufficiencyStatus: ProveProofSufficiencyStatus;
 }): boolean {
   return (
     input.scopeStatus !== 'within-contract' ||
     isIncompleteProofStatus(input.proofStatus) ||
+    isReviewProofSufficiencyStatus(input.proofSufficiencyStatus) ||
     input.preflightVerdict === 'caution' ||
     input.evidenceGaps.length > 0
   );
 }
 
 function isIncompleteProofStatus(status: ProveReceipt['proofStatus']['status']): boolean {
-  return status === 'missing' || status === 'partial' || status === 'stale';
+  return status === 'not-run' || status === 'missing' || status === 'partial' || status === 'stale';
+}
+
+function isMissingProofStatus(status: ProveReceipt['proofStatus']['status']): boolean {
+  return status === 'not-run' || status === 'missing' || status === 'partial';
+}
+
+function isReviewProofSufficiencyStatus(status: ProveProofSufficiencyStatus): boolean {
+  return status === 'missing' || status === 'stale' || status === 'weak';
 }
 
 function riskDeltaDirectionFor(riskDelta: RiskDeltaSnapshot): ProveRiskDeltaDirection {
@@ -1078,13 +1352,19 @@ function riskDeltaDirectionFor(riskDelta: RiskDeltaSnapshot): ProveRiskDeltaDire
 function reviewerDecisionFor(input: {
   commitReadiness: ProveVerdict;
   proofStatus: ProveReceipt['proofStatus']['status'];
+  proofSufficiencyStatus: ProveProofSufficiencyStatus;
   scope: ProveReceipt['scope'];
   preflightVerdict: 'proceed' | 'caution' | 'block';
 }): ProveReviewerDecision {
-  if (input.commitReadiness === 'blocked' || input.proofStatus === 'failed') return 'stop';
+  if (
+    input.commitReadiness === 'blocked' ||
+    input.proofStatus === 'failed' ||
+    input.proofSufficiencyStatus === 'failed'
+  ) return 'stop';
   if (
     input.commitReadiness === 'ready' &&
     input.proofStatus === 'passed' &&
+    (input.proofSufficiencyStatus === 'strong' || input.proofSufficiencyStatus === 'adequate') &&
     input.scope.status === 'within-contract' &&
     input.preflightVerdict === 'proceed'
   ) {
@@ -1098,11 +1378,16 @@ function reviewerGuidanceFor(
   scope: ProveReceipt['scope'],
   reviewerDecision: ProveReviewerDecision,
   proofStatus: ProveReceipt['proofStatus']['status'],
+  proofSufficiencyStatus: ProveProofSufficiencyStatus,
 ): string {
   return firstMatchingGuidance([
     [reviewerDecision === 'stop', 'Stop this proof slice until failed proof commands, forbidden files, or preflight blockers are cleared.'],
+    [proofSufficiencyStatus === 'failed', 'Fix failed proof for the affected risk surface before review.'],
     [proofStatus === 'stale', 'Rerun the required proof commands; the ledger evidence is stale after newer file changes.'],
+    [proofSufficiencyStatus === 'stale', 'Rerun stale proof for the affected risk surface before review.'],
     [isIncompleteProofStatus(proofStatus), 'Record fresh proof-command evidence before approval. Missing or partial proof should not be treated as reviewer-ready.'],
+    [proofSufficiencyStatus === 'missing', 'Record proof for each changed risk surface before approval.'],
+    [proofSufficiencyStatus === 'weak', 'Review weak proof mapping before approval; a command passed but did not prove the changed surface strongly.'],
     [verdict === 'blocked', 'Do not approve until forbidden files or preflight blockers are removed from this proof slice.'],
     [scope.unexpectedProduction.length > 0, 'Review the unexpected production files first. Either update the Proof Contract intentionally or split those edits out.'],
     [hasSensitiveScopeDrift(scope), 'Require explicit reviewer sign-off for config or security-sensitive drift before approving.'],
@@ -1394,74 +1679,52 @@ function normalizeIntent(value: string | undefined): string {
   return value?.trim().replace(/\s+/g, ' ') ?? '';
 }
 
-function isDocumentationPath(file: string): boolean {
-  return (
-    file === 'README.md' ||
-    file.startsWith('docs/') ||
-    file.endsWith('.md') ||
-    file.endsWith('.mdx')
-  );
-}
-
-function isGeneratedPath(file: string): boolean {
-  return (
-    file.startsWith('.projscan/') ||
-    file.startsWith('.projscan-memory/') ||
-    file.startsWith('.agentloop/') ||
-    file.startsWith('.agentflight/') ||
-    file.startsWith('coverage/') ||
-    file.startsWith('dist/')
-  );
-}
-
 function isLocalProofArtifactPath(file: string): boolean {
   return file.startsWith('.projscan/');
 }
 
-function isSecuritySensitivePath(file: string): boolean {
-  return (
-    file === '.env' ||
-    file.startsWith('.env.') ||
-    file.includes('/auth') ||
-    file.includes('/security') ||
-    file.includes('/secrets') ||
-    file.endsWith('.pem') ||
-    file.endsWith('.key')
-  );
-}
-
-function isConfigPath(file: string): boolean {
-  const basename = path.posix.basename(file);
-  return (
-    CONFIG_BASENAMES.has(basename) ||
-    CONFIG_SUFFIXES.some((suffix) => basename.endsWith(suffix)) ||
-    file.startsWith('.github/')
-  );
-}
-
-function isTestPath(file: string): boolean {
-  return (
-    file.startsWith('test/') ||
-    file.startsWith('tests/') ||
-    file.includes('/__tests__/') ||
-    /\.test\.[cm]?[jt]sx?$/.test(file) ||
-    /\.spec\.[cm]?[jt]sx?$/.test(file)
-  );
-}
-
-function isProductionPath(file: string): boolean {
-  return (
-    file.startsWith('src/') ||
-    file.startsWith('app/') ||
-    file.startsWith('lib/') ||
-    file.startsWith('packages/') ||
-    file.startsWith('apps/')
-  );
-}
-
 function pathMatches(file: string, pattern: string): boolean {
-  if (pattern.endsWith('/**')) return file.startsWith(pattern.slice(0, -3));
-  return file === pattern;
+  const normalizedFile = normalizeRepoPath(file);
+  const normalizedPattern = normalizeRepoPath(pattern);
+  if (normalizedFile === normalizedPattern) return true;
+  if (!normalizedPattern.includes('*')) return false;
+  let regex = PATH_MATCH_REGEX_CACHE.get(normalizedPattern);
+  if (!regex) {
+    regex = globToRegExp(normalizedPattern);
+    PATH_MATCH_REGEX_CACHE.set(normalizedPattern, regex);
+  }
+  return regex.test(normalizedFile);
+}
+
+function globToRegExp(pattern: string): RegExp {
+  let source = '^';
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    if (char === '*') {
+      if (pattern[index + 1] === '*') {
+        if (pattern[index + 2] === '/') {
+          source += '(?:.*/)?';
+          index += 2;
+        } else {
+          source += '.*';
+          index += 1;
+        }
+      } else {
+        source += '[^/]*';
+      }
+      continue;
+    }
+    source += escapeRegExp(char);
+  }
+  return new RegExp(`${source}$`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+}
+
+function normalizeRepoPath(value: string): string {
+  return value.split(path.sep).join('/').replace(/^\.\//, '');
 }
 
 function unique<T>(values: T[]): T[] {

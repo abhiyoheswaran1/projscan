@@ -3,11 +3,17 @@ import type {
   EvidencePackDailyPrWorkflowStep,
   EvidencePackPrCommentValidation,
   EvidencePackPrSummary,
+  EvidencePackProofEvidenceSources,
   EvidencePackReport,
   EvidencePackTopRisk,
   FixFirstRecommendation,
   PreflightSuggestedAction,
 } from '../types.js';
+import { markdownInlineCode } from './markdownSafety.js';
+import {
+  proofReceiptBlocksApproval,
+  proofReceiptNeedsFocusedReview,
+} from './releaseEvidenceVerdict.js';
 
 export function renderEvidencePackPrComment(report: EvidencePackReport): string {
   const blockers = report.approval.blockingReasons.slice(0, 5);
@@ -68,12 +74,12 @@ export function renderEvidencePackPrComment(report: EvidencePackReport): string 
     ...(pr?.teamRoutes.length ? pr.teamRoutes.map(formatTeamRoute) : formatMissingOwnerHint(pr)),
     '',
     '### Verification',
-    ...commands.map((command) => `- \`${command}\``),
+    ...commands.map((command) => `- ${markdownInlineCode(command)}`),
     '',
     '### Next Commands',
     ...(pr?.nextCommands.length
-      ? pr.nextCommands.map((command) => `- \`${command}\``)
-      : ['- `projscan preflight --mode before_merge --format json`']),
+      ? pr.nextCommands.map((command) => `- ${markdownInlineCode(command)}`)
+      : [`- ${markdownInlineCode('projscan preflight --mode before_merge --format json')}`]),
     '',
     '### Suggested Next Actions',
     ...(nextActions.length > 0 ? nextActions.map(formatSuggestedAction) : ['- None recorded.']),
@@ -202,15 +208,20 @@ function formatApprovalGuidance(report: EvidencePackReport): string {
 function formatReviewerDecision(report: EvidencePackReport): string[] {
   const trust = report.prSummary?.trust;
   const decision = reviewerDecision(report);
+  const proofNeedsReview = proofReceiptNeedsFocusedReview(report.proofReceipt);
   const firstCommand =
-    report.prSummary?.fixFirst?.commands[0] ??
+    proofNeedsReview && report.proofReceipt?.command
+      ? report.proofReceipt.command
+      : report.prSummary?.fixFirst?.commands[0] ??
     report.prSummary?.nextCommands[0] ??
     report.suggestedNextActions.find((action) => action.command)?.command ??
     'projscan preflight --mode before_merge --format json';
   const routedOwners = report.prSummary?.teamRoutes.map((route) => route.owner) ?? [];
   const ownerState = routedOwners.length > 0 ? routedOwners.join(', ') : 'unassigned';
   const reason =
-    trust?.verdict === 'actual_defect'
+    proofNeedsReview
+      ? 'Proof Receipt is missing, stale, failed, or not strong enough for review.'
+      : trust?.verdict === 'actual_defect'
       ? 'Concrete blockers are present; fix the first item before approval.'
       : trust?.verdict === 'manual_review'
         ? 'Manual review or release sign-off is required; no concrete blocker is recorded unless listed above.'
@@ -235,9 +246,25 @@ function formatProofReceipt(report: EvidencePackReport): string[] {
   }
   return [
     `- proof status: ${receipt.proofStatus}`,
+    ...optionalReceiptLine('proof evidence', proofEvidenceSourceSummary(receipt.proofEvidenceSources)),
+    ...optionalReceiptLine('proof replay', receipt.proofReplayStatus),
+    ...optionalReceiptLine('proof sufficiency', receipt.proofSufficiencyStatus),
     `- reviewer decision: ${receipt.reviewerDecision}`,
     ...optionalReceiptLine('scope', receipt.scopeStatus),
     ...optionalReceiptLine('risk delta', receipt.riskDeltaDirection),
+    proofCommandsLine('changed after proof', receipt.changedAfterProof),
+    ...(receipt.receiptFingerprint ? [`- receipt fingerprint: \`${receipt.receiptFingerprint}\``] : []),
+    proofCommandsLine('weak requirements', receipt.weakRequirements),
+    proofCommandsLine('missing requirements', receipt.missingRequirements),
+    proofCommandsLine('stale requirements', receipt.staleRequirements),
+    proofCommandsLine('failed requirements', receipt.failedRequirements),
+    proofCommandsLine(
+      'Team Proof Recipes',
+      (receipt.teamProofRecipes ?? []).map((recipe) => `recipe: ${recipe}`),
+    ),
+    proofCommandsLine('required reviewers', receipt.requiredReviewers ?? []),
+    proofCommandsLine('recipe proof gaps', receipt.recipeGaps ?? []),
+    proofCommandsLine('recipe drift', receipt.recipeDrift ?? []),
     proofCommandsLine('failed proof', receipt.failedCommands),
     proofCommandsLine('stale proof', receipt.staleCommands),
     proofCommandsLine('missing proof', receipt.missingCommands),
@@ -249,8 +276,23 @@ function optionalReceiptLine(label: string, value: string | undefined): string[]
   return value ? [`- ${label}: ${value}`] : [];
 }
 
+function proofEvidenceSourceSummary(
+  sources: EvidencePackProofEvidenceSources | undefined,
+): string | undefined {
+  if (!sources) return undefined;
+  return [
+    `executed ${sources.executed}`,
+    `recorded ${sources.recorded}`,
+    `mission ${sources.mission}`,
+    `external ${sources.external}`,
+    `unknown ${sources.unknown}`,
+  ].join(' / ');
+}
+
 function proofCommandsLine(label: string, commands: string[]): string {
-  return commands.length > 0 ? `- ${label}: ${commands.join('; ')}` : `- ${label}: none`;
+  return commands.length > 0
+    ? `- ${label}: ${commands.map(markdownInlineCode).join('; ')}`
+    : `- ${label}: none`;
 }
 
 function formatDailyPrWorkflow(steps: EvidencePackDailyPrWorkflowStep[] | undefined): string[] {
@@ -261,6 +303,8 @@ function formatDailyPrWorkflow(steps: EvidencePackDailyPrWorkflowStep[] | undefi
 
 function reviewerDecision(report: EvidencePackReport): 'ship' | 'review' | 'fix first' {
   const trust = report.prSummary?.trust.verdict;
+  if (proofReceiptBlocksApproval(report.proofReceipt)) return 'fix first';
+  if (proofReceiptNeedsFocusedReview(report.proofReceipt)) return 'review';
   if (trust === 'actual_defect' || report.verdict === 'blocked')
     return trust === 'manual_review' ? 'review' : 'fix first';
   if (trust === 'manual_review' || report.verdict === 'caution')

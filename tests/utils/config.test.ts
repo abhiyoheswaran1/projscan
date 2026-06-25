@@ -175,6 +175,68 @@ describe('loadConfig', () => {
     });
   });
 
+  it('normalizes team proof recipes', async () => {
+    await fs.writeFile(
+      path.join(tmp, '.projscanrc.json'),
+      JSON.stringify({
+        proofRecipes: [
+          {
+            id: ' billing-critical ',
+            matches: ['src/billing/**', '', 42],
+            requiredCommands: [' npm test -- tests/billing/retry.test.ts ', 'bad\0command', 'line\nbreak'],
+            requiredReviewers: [' @payments ', '', null],
+            forbiddenFiles: ['src/auth/**', '', 7],
+            riskSurface: ' billing ',
+            reason: ' Billing retry changes need focused payments proof. ',
+          },
+          {
+            id: '',
+            matches: ['src/ignored/**'],
+            requiredCommands: ['npm test -- ignored'],
+          },
+          {
+            id: 'billing-critical',
+            matches: ['src/duplicate/**'],
+            requiredCommands: ['npm test -- duplicate'],
+          },
+          {
+            id: '<!--',
+            matches: ['src/injected/**'],
+            requiredCommands: ['npm test -- injected'],
+            requiredReviewers: ['<!--'],
+          },
+          true,
+        ],
+      }),
+    );
+
+    const result = await loadConfig(tmp);
+
+    expect(result.config.proofRecipes).toEqual([
+      {
+        id: 'billing-critical',
+        matches: ['src/billing/**'],
+        requiredCommands: ['npm test -- tests/billing/retry.test.ts'],
+        requiredReviewers: ['@payments'],
+        forbiddenFiles: ['src/auth/**'],
+        riskSurface: 'billing',
+        reason: 'Billing retry changes need focused payments proof.',
+      },
+    ]);
+  });
+
+  it('keeps proof recipe normalization out of the main config loader', () => {
+    const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
+    expect(configSource).not.toContain('function applyProofRecipes');
+    expect(configSource).not.toContain('function normalizeProofRecipe');
+
+    const proofRecipesSource = readFileSync(
+      path.join(process.cwd(), 'src/utils/configProofRecipes.ts'),
+      'utf8',
+    );
+    expect(proofRecipesSource).not.toContain("from './config.js'");
+  });
+
   it('keeps report policy preset normalization out of the main config loader', () => {
     const configSource = readFileSync(path.join(process.cwd(), 'src/utils/config.ts'), 'utf8');
     expect(configSource).not.toContain('function applyReportPolicies');

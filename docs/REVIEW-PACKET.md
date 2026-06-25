@@ -1,11 +1,14 @@
-# Current Train Review Packet
+# Historical review packet: 4.6.0 train
+
+This file is retained as historical release evidence for the 4.6.0 train. It is
+not the current projscan release packet.
 
 Date: 2026-06-16
 
 This packet packages the current post-4.4 implementation train for review.
 It originally held release action until explicit approval. On 2026-06-16 the
 user approved finishing the bug pass and cutting the next version, so this
-packet is now the review evidence behind the 4.6.0 release candidate.
+packet was the review evidence behind the 4.6.0 historical release candidate.
 
 ## Decision Frame
 

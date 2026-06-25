@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.15.0]
+
+2026-06-25 - "Proof Replay Trust Loop"
+
+### Added
+
+- Added richer Proof Replay receipts with timeline events, changed-after-proof
+  files, replay command, receipt fingerprint, and proof sufficiency status.
+- Added Team Proof Recipes through `.projscanrc.json` `proofRecipes`, letting
+  teams require path-matched proof commands, reviewers, and forbidden files for
+  sensitive areas.
+- Added Proof Sufficiency reporting for strong, adequate, weak, missing, stale,
+  and failed proof across changed risk surfaces.
+
+### Changed
+
+- `projscan evidence-pack --pr-comment` now includes proof replay, proof
+  sufficiency, recipe gaps, required reviewers, changed-after-proof files, and
+  receipt fingerprints when a Proof Receipt is available.
+- Updated README, guide, stability docs, decisions, and website prompt for the
+  4.15.0 proof replay trust loop.
+- Split proof, start, adoption, workplan, and intent-routing internals into
+  smaller focused helpers with architecture tests.
+
+### Security
+
+- Proof Contract and Proof Ledger reads now reject symlink escapes.
+- Proof log redaction covers more standalone token and private-key shapes.
+- Saved Mission Control scripts reject shell control syntax before running proof
+  commands.
+
+### Fixed
+
+- Kept release and MCP Registry metadata aligned with package version `4.15.0`.
+- Hardened slow proof replay tests against full-suite contention.
+
 ## [4.14.0]
 
 2026-06-24 - "Executed Proof Runner"

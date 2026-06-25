@@ -12,28 +12,25 @@ export interface KeywordWeightedRouteEntry {
   tool: string;
 }
 
+type KeywordWeighter = (entry: KeywordWeightedRouteEntry, keyword: string) => number | undefined;
+
+const KEYWORD_WEIGHTERS: readonly KeywordWeighter[] = [
+  ({ tool }, keyword) => trustFeedbackKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => fileImpactKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => architectureKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => dependencyKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => securityKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => (tool === 'projscan_search' ? searchKeywordWeight(keyword) : undefined),
+  ({ tool }, keyword) =>
+    tool === 'projscan_regression_plan' ? regressionPlanKeywordWeight(keyword) : undefined,
+  ({ tool }, keyword) => workflowKeywordWeight(tool, keyword),
+  ({ tool }, keyword) => operationalKeywordWeight(tool, keyword),
+];
+
 export function keywordWeight(entry: KeywordWeightedRouteEntry, keyword: string): number {
-  const trustFeedbackWeight = trustFeedbackKeywordWeight(entry.tool, keyword);
-  if (trustFeedbackWeight !== undefined) return trustFeedbackWeight;
-  const fileImpactWeight = fileImpactKeywordWeight(entry.tool, keyword);
-  if (fileImpactWeight !== undefined) return fileImpactWeight;
-  const architectureWeight = architectureKeywordWeight(entry.tool, keyword);
-  if (architectureWeight !== undefined) return architectureWeight;
-  const dependencyWeight = dependencyKeywordWeight(entry.tool, keyword);
-  if (dependencyWeight !== undefined) return dependencyWeight;
-  const securityWeight = securityKeywordWeight(entry.tool, keyword);
-  if (securityWeight !== undefined) return securityWeight;
-  if (entry.tool === 'projscan_search') {
-    const weight = searchKeywordWeight(keyword);
+  for (const weighter of KEYWORD_WEIGHTERS) {
+    const weight = weighter(entry, keyword);
     if (weight !== undefined) return weight;
   }
-  if (entry.tool === 'projscan_regression_plan') {
-    const weight = regressionPlanKeywordWeight(keyword);
-    if (weight !== undefined) return weight;
-  }
-  const workflowWeight = workflowKeywordWeight(entry.tool, keyword);
-  if (workflowWeight !== undefined) return workflowWeight;
-  const operationalWeight = operationalKeywordWeight(entry.tool, keyword);
-  if (operationalWeight !== undefined) return operationalWeight;
   return 1;
 }

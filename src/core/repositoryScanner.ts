@@ -17,6 +17,7 @@ const INCLUDE_IGNORED_ENV = 'PROJSCAN_INCLUDE_IGNORED';
 export interface ScanOptions {
   ignore?: string[];
   includeIgnored?: boolean;
+  countIgnoredFiles?: boolean;
   useConfig?: boolean;
 }
 
@@ -34,6 +35,7 @@ export async function scanRepository(
     options.includeIgnored === true ||
     config.scan?.includeIgnored === true ||
     process.env[INCLUDE_IGNORED_ENV] === '1';
+  const countIgnoredFiles = options.countIgnoredFiles !== false;
 
   let files: FileEntry[];
   let scanBoundary: ScanBoundary;
@@ -44,10 +46,10 @@ export async function scanRepository(
       source: 'glob',
       gitignoreRespected: false,
       includeIgnored: true,
-      ignoredFileCount: await countGitIgnoredFiles(rootPath),
+      ignoredFileCount: countIgnoredFiles ? await countGitIgnoredFiles(rootPath) : 0,
     };
   } else {
-    const gitBoundary = await listGitVisibleFiles(rootPath);
+    const gitBoundary = await listGitVisibleFiles(rootPath, countIgnoredFiles);
     if (gitBoundary) {
       files = await fileEntriesFromGitVisibleFiles(rootPath, gitBoundary.files, ignore);
       scanBoundary = {
@@ -113,6 +115,7 @@ async function fileEntriesFromGitVisibleFiles(
 
 async function listGitVisibleFiles(
   rootPath: string,
+  countIgnoredFiles: boolean,
 ): Promise<{ files: string[]; ignoredFileCount: number } | null> {
   try {
     await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: rootPath });
@@ -121,7 +124,7 @@ async function listGitVisibleFiles(
         cwd: rootPath,
         maxBuffer: 32 * 1024 * 1024,
       }),
-      countGitIgnoredFiles(rootPath),
+      countIgnoredFiles ? countGitIgnoredFiles(rootPath) : Promise.resolve(0),
     ]);
     return { files: parseGitFileList(stdout), ignoredFileCount };
   } catch {

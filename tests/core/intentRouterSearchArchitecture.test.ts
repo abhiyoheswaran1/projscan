@@ -94,6 +94,23 @@ describe('routeIntent search architecture', () => {
     expect(guardSource).toContain('prDiffKeywordMatches');
   });
 
+  it('keeps product guard signal helpers isolated from the tool guard table', () => {
+    const guardSource = toolGuardsSource();
+    const productSignalsSource = readFileSync(
+      path.join(process.cwd(), 'src/core/intentRouterProductGuardSignals.ts'),
+      'utf8',
+    );
+
+    expect(guardSource).toContain("from './intentRouterProductGuardSignals.js'");
+    expect(guardSource).not.toContain('function feedbackIntakeContextMatches');
+    expect(guardSource).not.toContain('function proveContextMatches');
+    expect(guardSource).not.toContain('function reportControlContextMatches');
+    expect(productSignalsSource).toContain('export function feedbackIntakeContextMatches');
+    expect(productSignalsSource).toContain('export function proveContextMatches');
+    expect(productSignalsSource).toContain('export function reportControlContextMatches');
+    expect(productSignalsSource).not.toContain("from './intentRouterKeywordToolGuards.js'");
+  });
+
   it('keeps infra artifact search routing isolated from the main router', () => {
     const routerSource = readFileSync(
       path.join(process.cwd(), 'src/core/intentRouter.ts'),

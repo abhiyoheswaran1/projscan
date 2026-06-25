@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import readline from 'node:readline';
 
 import type { ProofLedgerRecord, ProofLedgerWriteInput } from '../types/proofLedger.js';
 
@@ -8,20 +10,29 @@ export const DEFAULT_PROOF_LEDGER_PATH = '.projscan/proof-ledger.jsonl';
 
 const MAX_SUMMARY_LENGTH = 240;
 const REDACTION_PATTERNS = [
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g,
+  /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
+  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g,
   /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
-  /\b(?:sk|pk|whsec|ghp|gho|github_pat)_[A-Za-z0-9_=-]{8,}/gi,
-  /\b(password|passwd|pwd|token|secret|api[_-]?key)\s*[:=]\s*["']?[^"'\s,;]+/gi,
-  /\b(--?(?:password|passwd|pwd|token|secret|api[_-]?key))\s+[^"'\s,;]+/gi,
-  /\b[A-Za-z_][A-Za-z0-9_]*\.env\s*[:=]\s*[^"'\s,;]+/gi,
+  /\b(?:sk|pk|whsec|ghp|gho|github_pat)[_-][A-Za-z0-9_=-]{8,}/gi,
+  /\b[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)[A-Z0-9_]*\s*=\s*(?:"[^"]*"|'[^']*'|[^"'\s,;]+)/gi,
+  /\b(password|passwd|pwd|token|secret|api[_-]?key)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^"'\s,;]+)/gi,
+  /(--?(?:password|passwd|pwd|token|secret|api[_-]?key))\s+(?:"[^"]*"|'[^']*'|[^"'\s,;]+)/gi,
+  /\b[A-Za-z_][A-Za-z0-9_]*\.env\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^"'\s,;]+)/gi,
 ];
 
 export function normalizeProofCommand(command: string): string {
   return command.trim().replace(/\s+/g, ' ');
 }
 
-export function changedFileFingerprint(files: string[]): string {
+export function redactProofCommand(command: string): string {
+  return redactProofOutput(command);
+}
+
+export async function changedFileFingerprint(rootPath: string, files: string[]): Promise<string> {
   const normalized = [...new Set(files.map(normalizePath).filter(Boolean))].sort();
-  return crypto.createHash('sha256').update(normalized.join('\n')).digest('hex');
+  const entries = await Promise.all(normalized.map((file) => changedFileFingerprintEntry(rootPath, file)));
+  return crypto.createHash('sha256').update(entries.join('\n')).digest('hex');
 }
 
 export function redactProofSummary(value: string | undefined): string {
@@ -53,26 +64,27 @@ export async function appendProofLedgerRecord(
     ? new Date(completedMs - durationMs).toISOString()
     : completedAt;
   const changedFiles = [...new Set(input.changedFiles.map(normalizePath).filter(Boolean))].sort();
+  const command = redactProofCommand(input.command);
   const record: ProofLedgerRecord = {
     schemaVersion: 1,
-    id: proofRecordId(input.command, completedAt, input.exitCode),
-    command: input.command,
-    normalizedCommand: normalizeProofCommand(input.command),
+    id: proofRecordId(command, completedAt, input.exitCode),
+    command,
+    normalizedCommand: normalizeProofCommand(command),
     cwd: normalizePath(input.cwd ?? '.'),
     exitCode: input.exitCode,
     status: input.exitCode === 0 ? 'passed' : 'failed',
     startedAt,
     completedAt,
     durationMs,
-    changedFileFingerprint: changedFileFingerprint(changedFiles),
+    changedFileFingerprint: await changedFileFingerprint(rootPath, changedFiles),
     changedFiles,
     outputSummary: redactProofSummary(input.outputSummary),
     source: input.source ?? 'prove-record',
-    ...(input.logPath ? { logPath: normalizePath(input.logPath) } : {}),
+    ...(input.logPath ? { logPath: normalizeProofLogPath(input.logPath) } : {}),
   };
 
   const fullPath = resolveProofLedgerPath(rootPath, ledgerPath);
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  await prepareProofArtifactWritePath(rootPath, fullPath);
   await fs.appendFile(fullPath, `${JSON.stringify(record)}\n`, 'utf-8');
   return record;
 }
@@ -84,6 +96,7 @@ export async function readProofLedger(
   const fullPath = resolveProofLedgerPath(rootPath, ledgerPath);
   let raw: string;
   try {
+    await prepareProofArtifactReadPath(rootPath, fullPath);
     raw = await fs.readFile(fullPath, 'utf-8');
   } catch (error) {
     if (isNodeErrorCode(error, 'ENOENT')) return [];
@@ -92,6 +105,45 @@ export async function readProofLedger(
   return raw
     .split('\n')
     .map(parseProofLedgerRow)
+    .filter((record): record is ProofLedgerRecord => Boolean(record));
+}
+
+export async function readLatestProofLedgerRecords(
+  rootPath: string,
+  ledgerPath: string | undefined,
+  commands: string[],
+): Promise<ProofLedgerRecord[]> {
+  const normalizedCommands = uniqueNormalizedCommands(commands);
+  if (normalizedCommands.length === 0) return [];
+
+  const fullPath = resolveProofLedgerPath(rootPath, ledgerPath);
+  const latestByCommand = new Map<string, ProofLedgerRecord>();
+  let stream: ReturnType<typeof createReadStream>;
+  try {
+    await prepareProofArtifactReadPath(rootPath, fullPath);
+    await fs.access(fullPath);
+    stream = createReadStream(fullPath, { encoding: 'utf-8' });
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT')) return [];
+    throw error;
+  }
+
+  const lines = readline.createInterface({
+    input: stream,
+    crlfDelay: Infinity,
+  });
+  const requested = new Set(normalizedCommands);
+  for await (const line of lines) {
+    const record = parseProofLedgerRow(line);
+    if (!record || !requested.has(record.normalizedCommand)) continue;
+    const latest = latestByCommand.get(record.normalizedCommand);
+    if (!latest || record.completedAt.localeCompare(latest.completedAt) >= 0) {
+      latestByCommand.set(record.normalizedCommand, record);
+    }
+  }
+
+  return normalizedCommands
+    .map((command) => latestByCommand.get(command))
     .filter((record): record is ProofLedgerRecord => Boolean(record));
 }
 
@@ -106,6 +158,36 @@ export function latestProofRecordFor(
     if (!latest || record.completedAt.localeCompare(latest.completedAt) >= 0) latest = record;
   }
   return latest;
+}
+
+export async function prepareProofArtifactWritePath(
+  rootPath: string,
+  fullPath: string,
+): Promise<void> {
+  const root = path.resolve(rootPath);
+  const target = path.resolve(fullPath);
+  const relative = path.relative(root, target);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Proof artifact path must stay inside the project root.');
+  }
+  const parent = path.dirname(target);
+  await assertNoSymlinkInExistingPath(root, parent);
+  await fs.mkdir(parent, { recursive: true });
+  await assertNoSymlinkInExistingPath(root, parent);
+  await assertPathIsNotSymlink(target);
+}
+
+export async function prepareProofArtifactReadPath(
+  rootPath: string,
+  fullPath: string,
+): Promise<void> {
+  const root = path.resolve(rootPath);
+  const target = path.resolve(fullPath);
+  const relative = path.relative(root, target);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Proof artifact path must stay inside the project root.');
+  }
+  await assertNoSymlinkInExistingPath(root, target);
 }
 
 function proofRecordId(command: string, completedAt: string, exitCode: number): string {
@@ -125,7 +207,75 @@ function resolveProofLedgerPath(rootPath: string, ledgerPath: string | undefined
   if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error('Proof ledger path must stay inside the project root.');
   }
+  const normalizedRequested = normalizePath(relative);
+  if (
+    normalizedRequested !== DEFAULT_PROOF_LEDGER_PATH &&
+    !/^\.projscan\/proof-ledgers\/[^/]+\.jsonl$/.test(normalizedRequested)
+  ) {
+    throw new Error('Proof ledger path must be .projscan/proof-ledger.jsonl or .projscan/proof-ledgers/<name>.jsonl.');
+  }
   return fullPath;
+}
+
+async function changedFileFingerprintEntry(rootPath: string, file: string): Promise<string> {
+  const fullPath = resolvePathInsideRoot(rootPath, file);
+  if (!fullPath) return `${file}\0outside-root`;
+  try {
+    const stat = await fs.lstat(fullPath);
+    if (stat.isSymbolicLink()) {
+      const linkTarget = await fs.readlink(fullPath);
+      const digest = crypto.createHash('sha256').update(linkTarget).digest('hex');
+      return `${file}\0symlink\0${digest}`;
+    }
+    if (!stat.isFile()) return `${file}\0${stat.isDirectory() ? 'directory' : 'non-file'}`;
+    const digest = crypto.createHash('sha256').update(await fs.readFile(fullPath)).digest('hex');
+    return `${file}\0file\0${digest}`;
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT')) return `${file}\0missing`;
+    throw error;
+  }
+}
+
+function resolvePathInsideRoot(rootPath: string, file: string): string | null {
+  const root = path.resolve(rootPath);
+  const fullPath = path.resolve(root, file);
+  const relative = path.relative(root, fullPath);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return null;
+  return fullPath;
+}
+
+function normalizeProofLogPath(logPath: string): string {
+  const normalized = normalizePath(logPath);
+  if (!/^\.projscan\/proof-logs\/[^/]+\.log$/.test(normalized)) {
+    throw new Error('Proof log path must stay under .projscan/proof-logs/ and end with .log.');
+  }
+  return normalized;
+}
+
+async function assertNoSymlinkInExistingPath(root: string, target: string): Promise<void> {
+  const relative = path.relative(root, target);
+  const segments = relative.split(path.sep).filter(Boolean);
+  let current = root;
+  for (const segment of segments) {
+    current = path.join(current, segment);
+    try {
+      const stat = await fs.lstat(current);
+      if (stat.isSymbolicLink()) throw new Error('Proof artifact paths must not contain symlinks.');
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ENOENT')) return;
+      throw error;
+    }
+  }
+}
+
+async function assertPathIsNotSymlink(target: string): Promise<void> {
+  try {
+    const stat = await fs.lstat(target);
+    if (stat.isSymbolicLink()) throw new Error('Proof artifact paths must not contain symlinks.');
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT')) return;
+    throw error;
+  }
 }
 
 function parseProofLedgerRow(line: string): ProofLedgerRecord | undefined {
@@ -149,6 +299,10 @@ function isProofLedgerRecord(value: Partial<ProofLedgerRecord>): value is ProofL
   );
 }
 
+function uniqueNormalizedCommands(commands: string[]): string[] {
+  return [...new Set(commands.map(normalizeProofCommand).filter(Boolean))];
+}
+
 function normalizePath(value: string): string {
   return value.split(path.sep).join('/').replace(/^\.\//, '');
 }
@@ -156,6 +310,12 @@ function normalizePath(value: string): string {
 function redactionReplacement(_match: string, ...args: unknown[]): string {
   const captures = args.slice(0, -2);
   const label = captures.find((value): value is string => typeof value === 'string' && value.length > 0);
+  if (!label) {
+    const assignment = /^([A-Za-z0-9_-]*(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)[A-Za-z0-9_-]*)\s*[:=]/i.exec(
+      _match,
+    );
+    if (assignment?.[1]) return `${assignment[1]}=[redacted]`;
+  }
   return label ? `${label}=[redacted]` : '[redacted]';
 }
 

@@ -1,4 +1,5 @@
 import type { AssessConfidence, AssessEvidenceStrengthLevel, RiskDeltaSnapshot } from './assess.js';
+import type { ProofRecipeConfig } from './config.js';
 import type { ProofLedgerRecord } from './proofLedger.js';
 
 export type ProveMode = 'intent' | 'changed' | 'record' | 'run';
@@ -8,6 +9,44 @@ export type ProveProofStatus = 'not-run' | 'missing' | 'partial' | 'passed' | 'f
 export type ProveRiskDeltaDirection = 'improved' | 'worse' | 'flat';
 export type ProveReviewerDecision = 'safe-to-review' | 'needs-focused-review' | 'stop';
 export type ProveProofCommandStatus = 'passed' | 'failed' | 'missing' | 'stale';
+export type ProveProofReplayStatus = 'verified' | 'needs-proof' | 'stale' | 'failed' | 'drifted';
+export type ProveProofReplayEventKind =
+  | 'contract'
+  | 'change-set'
+  | 'proof-command'
+  | 'proof-sufficiency'
+  | 'receipt';
+export type ProveProofReplayEventStatus =
+  | 'passed'
+  | 'missing'
+  | 'missing-contract'
+  | 'stale'
+  | 'failed'
+  | 'drifted'
+  | 'strong'
+  | 'adequate'
+  | 'weak'
+  | ProveProofReplayStatus;
+export type ProveRiskSurface =
+  | 'production'
+  | 'test'
+  | 'documentation'
+  | 'config'
+  | 'security'
+  | 'public-api'
+  | 'cli'
+  | 'mcp'
+  | 'dependency'
+  | 'generated'
+  | 'custom'
+  | 'unknown';
+export type ProveProofSufficiencyStatus =
+  | 'strong'
+  | 'adequate'
+  | 'weak'
+  | 'missing'
+  | 'stale'
+  | 'failed';
 export type ProveChangedFileKind =
   | 'allowed-production'
   | 'expected-test'
@@ -38,6 +77,7 @@ export interface ProveVerifiedWorkflow {
   staleProof: boolean;
   missingProof: boolean;
   failedProof: boolean;
+  proofSufficiencyStatus?: ProveProofSufficiencyStatus;
 }
 
 export interface ProveChangedFileClassification {
@@ -57,6 +97,8 @@ export interface ProveContract {
   likelyTests: string[];
   missingRegressionTests: string[];
   proofCommands: string[];
+  proofRequirements?: ProveProofRequirement[];
+  teamProofRecipes?: ProveMatchedProofRecipe[];
   safeChangeShape: string;
   rollbackPlan: string;
   confidence: AssessConfidence;
@@ -72,6 +114,26 @@ export interface ProveContract {
   receiptCommand: string;
   riskDelta: RiskDeltaSnapshot;
   verifiedWorkflow: ProveVerifiedWorkflow;
+}
+
+export interface ProveProofRequirement {
+  id: string;
+  surface: ProveRiskSurface;
+  files: string[];
+  requiredCommands: string[];
+  requiredReview: string;
+  reason: string;
+  source?: 'inferred' | 'recipe';
+  recipeId?: string;
+  requiredReviewers?: string[];
+}
+
+export interface ProveMatchedProofRecipe extends ProofRecipeConfig {
+  matchedFiles: string[];
+  forbiddenTouched?: string[];
+  missingCommands?: string[];
+  failedCommands?: string[];
+  staleCommands?: string[];
 }
 
 export interface ProveReceiptScope {
@@ -106,12 +168,35 @@ export interface ProveProofCommandEvidence {
   command: string;
   status: ProveProofCommandStatus;
   fresh: boolean;
+  source?: ProofLedgerRecord['source'];
   exitCode?: number;
   durationMs?: number;
   completedAt?: string;
+  recordedChangedFiles?: string[];
+  recordedChangedFileFingerprint?: string;
   outputSummary?: string;
   logPath?: string;
   staleReason?: string;
+}
+
+export interface ProveProofReplay {
+  status: ProveProofReplayStatus;
+  summary: string;
+  events: ProveProofReplayEvent[];
+  changedAfterProof: string[];
+  replayCommand: string;
+  receiptFingerprint: string;
+}
+
+export interface ProveProofReplayEvent {
+  kind: ProveProofReplayEventKind;
+  status: ProveProofReplayEventStatus;
+  summary: string;
+  command?: string;
+  completedAt?: string;
+  changedFiles?: string[];
+  changedAfterProof?: string[];
+  source?: ProofLedgerRecord['source'];
 }
 
 export interface ProveReceipt {
@@ -119,6 +204,13 @@ export interface ProveReceipt {
   commitReadiness: ProveVerdict;
   scope: ProveReceiptScope;
   proofStatus: ProveReceiptProofStatus;
+  proofSufficiency?: ProveProofSufficiency;
+  proofReplay?: ProveProofReplay;
+  teamProofRecipes?: ProveMatchedProofRecipe[];
+  requiredReviewers?: string[];
+  recipeForbiddenTouched?: string[];
+  recipeDrift?: string[];
+  recipeGaps?: string[];
   riskDelta: RiskDeltaSnapshot;
   riskDeltaDirection: ProveRiskDeltaDirection;
   reviewerDecision: ProveReviewerDecision;
@@ -126,6 +218,32 @@ export interface ProveReceipt {
   evidenceGaps: string[];
   reviewerGuidance: string;
   verifiedWorkflow: ProveVerifiedWorkflow;
+}
+
+export interface ProveProofSufficiency {
+  status: ProveProofSufficiencyStatus;
+  summary: string;
+  requirements: ProveProofRequirementResult[];
+  gaps: string[];
+  weakRequirements: string[];
+  missingRequirements: string[];
+  staleRequirements: string[];
+  failedRequirements: string[];
+}
+
+export interface ProveProofRequirementResult {
+  id: string;
+  surface: ProveRiskSurface;
+  status: ProveProofSufficiencyStatus;
+  files: string[];
+  requiredCommands: string[];
+  matchedCommands: string[];
+  requiredReview: string;
+  reason: string;
+  gaps: string[];
+  source?: 'inferred' | 'recipe';
+  recipeId?: string;
+  requiredReviewers?: string[];
 }
 
 export interface ProveReport {

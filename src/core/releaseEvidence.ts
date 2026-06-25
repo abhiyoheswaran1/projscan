@@ -6,23 +6,24 @@ import {
 } from './evidenceComment.js';
 export { buildDailyPrWorkflow, renderEvidencePackPrComment, validateEvidencePackPrComment };
 import { computePreflight } from './preflight.js';
-import { computeProve } from './prove.js';
 import { buildEvidencePackArtifacts } from './releaseEvidenceArtifacts.js';
 import { safeBaselineTrend } from './releaseEvidenceBaseline.js';
 import { buildEvidencePackPrSummary } from './releaseEvidencePrSummary.js';
+import { safeProofReceipt } from './releaseEvidenceProofReceipt.js';
 export { calibratePreflightTrust } from './releaseEvidencePrSummary.js';
 import {
   approvalRecommendation,
   blockingEvidence,
   calibrateEvidencePackVerdict,
+  calibrateEvidencePackVerdictForProof,
   evidencePackVerdict,
   summarizeEvidencePack,
 } from './releaseEvidenceVerdict.js';
 import { computeReleaseTrain } from './releaseTrain.js';
 import { computeWorkplan } from './workplan.js';
 import { loadOwnership } from './ownership.js';
+import { getChangedFiles, type ChangedFilesResult } from '../utils/changedFiles.js';
 import type {
-  EvidencePackProofReceiptSummary,
   EvidencePackReport,
   PreflightSuggestedAction,
   ReleaseTrainReport,
@@ -34,18 +35,22 @@ export interface ComputeEvidencePackOptions {
   includePrComment?: boolean;
   maxFindings?: number;
   preflightMaxChangedFiles?: number;
+  baseRef?: string;
 }
 
 export async function computeEvidencePack(
   rootPath: string,
   options: ComputeEvidencePackOptions = {},
 ): Promise<EvidencePackReport> {
+  const changedFiles = await safeChangedFilesResult(rootPath, options.baseRef);
   const [train, bugHunt, workplan, preflight] = await Promise.all([
     computeReleaseTrain(rootPath, { lines: options.lines }),
     computeBugHunt(rootPath, { maxFindings: options.maxFindings }),
     computeWorkplan(rootPath, { mode: 'release', maxTasks: 6 }),
     computePreflight(rootPath, {
       mode: 'before_merge',
+      baseRef: options.baseRef,
+      changedFiles,
       maxChangedFiles: options.preflightMaxChangedFiles,
     }),
   ]);
@@ -75,10 +80,13 @@ export async function computeEvidencePack(
     baselineTrend,
     ownership,
   });
-  const verdict = calibrateEvidencePackVerdict(rawVerdict, prSummary);
   const proofReceipt = options.includePrComment
-    ? await safeProofReceipt(rootPath)
+    ? await safeProofReceipt(rootPath, { baseRef: options.baseRef, changedFiles })
     : undefined;
+  const verdict = calibrateEvidencePackVerdictForProof(
+    calibrateEvidencePackVerdict(rawVerdict, prSummary),
+    proofReceipt,
+  );
 
   const report: EvidencePackReport = {
     schemaVersion: 1,
@@ -92,7 +100,7 @@ export async function computeEvidencePack(
     },
     approval: {
       required: true,
-      recommendation: approvalRecommendation(verdict),
+      recommendation: approvalRecommendation(verdict, proofReceipt),
       blockingReasons,
     },
     artifacts,
@@ -114,45 +122,19 @@ export async function computeEvidencePack(
   };
 }
 
-async function safeProofReceipt(rootPath: string): Promise<EvidencePackProofReceiptSummary> {
-  const command = 'projscan prove --changed --format markdown';
+async function safeChangedFilesResult(
+  rootPath: string,
+  baseRef: string | undefined,
+): Promise<ChangedFilesResult> {
   try {
-    const report = await computeProve(rootPath, { changed: true });
-    const receipt = report.receipt;
-    if (!receipt || receipt.scope.status === 'missing-contract') {
-      return {
-        available: false,
-        command,
-        summary: 'No Proof Contract was available for this evidence pack.',
-        proofStatus: 'missing',
-        reviewerDecision: 'needs-focused-review',
-        missingCommands: [],
-        failedCommands: [],
-        staleCommands: [],
-      };
-    }
-    return {
-      available: true,
-      command,
-      summary: receipt.summary,
-      proofStatus: receipt.proofStatus.status,
-      reviewerDecision: receipt.reviewerDecision,
-      scopeStatus: receipt.scope.status,
-      riskDeltaDirection: receipt.riskDeltaDirection,
-      missingCommands: receipt.proofStatus.missingCommands,
-      failedCommands: receipt.proofStatus.failedCommands,
-      staleCommands: receipt.proofStatus.staleCommands,
-    };
+    return await getChangedFiles(rootPath, baseRef);
   } catch (error) {
     return {
       available: false,
-      command,
-      summary: `Proof Receipt unavailable: ${error instanceof Error ? error.message : 'unknown error'}`,
-      proofStatus: 'missing',
-      reviewerDecision: 'needs-focused-review',
-      missingCommands: [],
-      failedCommands: [],
-      staleCommands: [],
+      reason: error instanceof Error ? error.message : String(error),
+      baseRef: null,
+      files: [],
+      uncommittedFiles: [],
     };
   }
 }

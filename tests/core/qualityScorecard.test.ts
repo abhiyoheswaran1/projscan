@@ -7,7 +7,7 @@ import {
   deriveQualityScorecardVerdict,
 } from '../../src/core/qualityScorecard.js';
 import { analyzeHotspots } from '../../src/core/hotspotAnalyzer.js';
-import type { CodeGraph } from '../../src/core/codeGraph.js';
+import { buildCodeGraph, type CodeGraph } from '../../src/core/codeGraph.js';
 import type { Issue } from '../../src/types/common.js';
 import type { FileHotspot } from '../../src/types/hotspots.js';
 import type { QualityScorecardDimension } from '../../src/types.js';
@@ -59,6 +59,7 @@ afterEach(async () => {
   hotspotState.hotspots = [];
   issueState.issues = [];
   codeGraphState.shouldThrow = false;
+  vi.mocked(buildCodeGraph).mockClear();
   vi.mocked(analyzeHotspots).mockClear();
   await Promise.all(
     tempRoots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })),
@@ -248,6 +249,18 @@ test('quality scorecard uses graph-aware hotspot analysis when available', async
   expect(vi.mocked(analyzeHotspots).mock.calls[0]?.[3]).toEqual(
     expect.objectContaining({ graph: codeGraphState.graph }),
   );
+});
+
+test('quality scorecard reuses scan-heavy hotspot signals for risk-now conflicts', async () => {
+  hotspotState.hotspots = [
+    hotspot({ relativePath: 'src/complex.ts', lineCount: 60, cyclomaticComplexity: 18 }),
+  ];
+  const root = await makeTempProject();
+
+  await computeQualityScorecard(root);
+
+  expect(vi.mocked(buildCodeGraph)).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(analyzeHotspots)).toHaveBeenCalledTimes(1);
 });
 
 test('quality scorecard falls back when graph-aware hotspot analysis is unavailable', async () => {

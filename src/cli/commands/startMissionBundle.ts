@@ -268,7 +268,7 @@ function missionScriptHeader(report: StartReport, unsafeCommand: string | undefi
 function missionUnsafeCommandBlock(): string[] {
   return [
     scriptPrintError(
-      'Blocked: mission command contains shell expansion syntax; inspect --next-command before running it.',
+      'Blocked: mission command contains shell control syntax; inspect --next-command before running it.',
     ),
     'exit 2',
   ];
@@ -278,11 +278,12 @@ function missionProofLogSetup(report: StartReport): string[] {
   return [
     'MISSION_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)',
     'PROJSCAN_ROOT=$(git -C "$MISSION_DIR" rev-parse --show-toplevel 2>/dev/null || pwd)',
+    `PROJSCAN_NODE=${shellQuote(process.execPath)}`,
+    `PROJSCAN_CLI=${shellQuote(currentProjscanCliPath())}`,
     'PROOF_LOG_DIR="${MISSION_DIR}/proof-logs"',
     'PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"',
     'PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"',
     'PROOF_SUMMARY_FILE="${PROOF_LOG_DIR}/summary.json"',
-    'PROOF_LEDGER_FILE="${PROJSCAN_ROOT}/.projscan/proof-ledger.jsonl"',
     'mkdir -p "$PROOF_LOG_DIR"',
     ': > "$PROOF_STATUS_FILE"',
     ': > "$PROOF_REPORT_FILE"',
@@ -778,30 +779,14 @@ function scriptAppendStatusJsonl(
 function scriptAppendProofLedgerFunction(): string[] {
   return [
     'append_proof_ledger_row() {',
-    '  mkdir -p "$(dirname "$PROOF_LEDGER_FILE")" 2>/dev/null || true',
-    '  node - "$PROJSCAN_ROOT" "$MISSION_DIR" "$1" "$2" "$3" "$4" "$5" <<\'NODE\' >> "$PROOF_LEDGER_FILE" 2>/dev/null || true',
-    'const crypto = require("node:crypto");',
-    'const path = require("node:path");',
-    'const { execFileSync } = require("node:child_process");',
-    'const [root, missionDir, id, label, logName, command, exitCodeRaw] = process.argv.slice(2);',
-    'function normalize(value) { return String(value || "").split(path.sep).join("/").replace(/^\\.\\//, ""); }',
-    'function changedFiles() {',
-    '  try {',
-    '    const output = execFileSync("git", ["-C", root, "status", "--porcelain", "--untracked-files=all"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });',
-    '    return [...new Set(output.split("\\n").map((line) => line.slice(3).trim()).filter(Boolean).map((file) => file.includes(" -> ") ? file.split(" -> ").pop() : file).map(normalize).filter((file) => !file.startsWith(".projscan/")))].sort();',
-    '  } catch {',
-    '    return [];',
-    '  }',
-    '}',
-    'const files = changedFiles();',
-    'const fingerprint = crypto.createHash("sha256").update(files.join("\\n")).digest("hex");',
-    'const completedAt = new Date().toISOString();',
-    'const exitCode = Number.parseInt(exitCodeRaw, 10);',
-    'const logPath = normalize(path.relative(root, path.join(missionDir, "proof-logs", logName)));',
-    'const digest = crypto.createHash("sha256").update(`${command}\\n${completedAt}\\n${exitCode}`).digest("hex").slice(0, 12);',
-    'const record = { schemaVersion: 1, id: `proof-ledger-${digest}`, command, normalizedCommand: command.trim().replace(/\\s+/g, " "), cwd: normalize(path.relative(root, missionDir) || "."), exitCode, status: exitCode === 0 ? "passed" : "failed", startedAt: completedAt, completedAt, durationMs: 0, changedFileFingerprint: fingerprint, changedFiles: files, outputSummary: `Mission proof ${label} exited ${exitCode}.`, source: "mission", logPath };',
-    'process.stdout.write(`${JSON.stringify(record)}\\n`);',
-    'NODE',
+    '  label=$2',
+    '  command=$4',
+    '  exit_code=$5',
+    '  summary="Mission proof ${label} exited ${exit_code}."',
+    '  if ! (CDPATH= cd "$PROJSCAN_ROOT" && "$PROJSCAN_NODE" "$PROJSCAN_CLI" prove --record-command "$command" --record-source mission --exit-code "$exit_code" --duration-ms 0 --summary "$summary" --format json >/dev/null); then',
+    '    printf \'%s\\n\' "Failed to record mission proof ledger row for ${label}." >&2',
+    '    exit 1',
+    '  fi',
     '}',
     '',
   ];
@@ -920,10 +905,26 @@ function commandHasShellExpansionSyntax(command: string): boolean {
       continue;
     }
     const escaped = backslashCount % 2 === 1;
-    if ((char === '$' || char === '`') && !escaped) return true;
+    if (isUnsafeShellControlChar(char) && !escaped) return true;
     backslashCount = 0;
   }
   return false;
+}
+
+function isUnsafeShellControlChar(char: string): boolean {
+  return (
+    char === '$' ||
+    char === '`' ||
+    char === ';' ||
+    char === '|' ||
+    char === '&' ||
+    char === '\n' ||
+    char === '\r'
+  );
+}
+
+function currentProjscanCliPath(): string {
+  return path.resolve(process.argv[1] ?? 'dist/cli/index.js');
 }
 
 function shellQuote(value: string): string {

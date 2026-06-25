@@ -4,6 +4,7 @@ import type {
   PreflightMode,
   PreflightReport,
 } from '../types.js';
+import type { ChangedFilesResult } from '../utils/changedFiles.js';
 
 export { decidePreflightVerdict, summarizePreflight } from './preflightVerdict.js';
 
@@ -13,6 +14,7 @@ export interface ComputePreflightOptions {
   headRef?: string;
   maxChangedFiles?: number;
   enablePlugins?: boolean;
+  changedFiles?: ChangedFilesResult;
 }
 
 const DEFAULT_MAX_CHANGED_FILES = 50;

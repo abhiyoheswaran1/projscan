@@ -9,6 +9,7 @@ import {
 } from './configBasics.js';
 import { applyHotspots } from './configHotspots.js';
 import { applyMonorepo } from './configMonorepo.js';
+import { applyProofRecipes } from './configProofRecipes.js';
 import { applyReportPolicies } from './configReportPolicies.js';
 import { applyScan } from './configScan.js';
 import { applySeverityOverrides } from './configSeverity.js';
@@ -37,6 +38,7 @@ function normalize(input: unknown): ProjscanConfig {
   applySuppress(obj, out);
   applySeverityOverrides(obj, out);
   applyReportPolicies(obj, out);
+  applyProofRecipes(obj, out);
   applyMonorepo(obj, out);
   applyTaint(obj, out);
   return out;

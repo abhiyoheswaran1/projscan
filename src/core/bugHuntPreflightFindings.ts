@@ -1,4 +1,4 @@
-import type { BugHuntFinding, PreflightReason } from '../types.js';
+import type { BugHuntFinding, PreflightEvidence, PreflightReason } from '../types.js';
 
 export function preflightReasonToFinding(
   reason: PreflightReason,
@@ -45,6 +45,35 @@ export function filesFromPreflightEvidence(files: string[]): string[] {
 
   const runtimeFiles = contextFiles.filter(isAgentRuntimePath);
   return [...reviewableFiles, ...runtimeFiles];
+}
+
+export function isActionablePreflightReason(
+  reason: PreflightReason,
+  evidence: PreflightEvidence,
+): boolean {
+  if (isBranchOnlyReleaseScaleReason(reason, evidence)) return false;
+  if (reason.source === 'review' && reason.message.startsWith('Review unavailable:')) return false;
+  if (
+    (reason.source === 'review' || reason.source === 'taint') &&
+    !reason.file &&
+    !reason.issueId
+  ) {
+    return false;
+  }
+  if (reason.severity === 'error') return true;
+  return reason.source !== 'git' && reason.source !== 'changed-files';
+}
+
+function isBranchOnlyReleaseScaleReason(
+  reason: PreflightReason,
+  evidence: PreflightEvidence,
+): boolean {
+  const worktree = evidence.riskSources?.currentWorktree;
+  return (
+    reason.source === 'release' &&
+    worktree?.uncommittedChangedFileCount === 0 &&
+    (worktree.branchChangedFileCount ?? 0) > 0
+  );
 }
 
 function preflightReasonTitle(reason: PreflightReason): string {

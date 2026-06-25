@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { buildMissionScript } from '../../src/cli/commands/startMissionBundle.js';
+import type { StartReport } from '../../src/types/start.js';
 import { runScript, runStartCli } from '../helpers/startCli.js';
 import {
   expectedReviewDecisionIds,
@@ -298,8 +300,11 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('PROOF_STATUS_FILE="${PROOF_LOG_DIR}/status.jsonl"');
   expect(missionScript).toContain('PROOF_REPORT_FILE="${PROOF_LOG_DIR}/run-report.md"');
   expect(missionScript).toContain('PROOF_SUMMARY_FILE="${PROOF_LOG_DIR}/summary.json"');
-  expect(missionScript).toContain('PROOF_LEDGER_FILE="${PROJSCAN_ROOT}/.projscan/proof-ledger.jsonl"');
   expect(missionScript).toContain('append_proof_ledger_row');
+  expect(missionScript).toContain('"$PROJSCAN_NODE" "$PROJSCAN_CLI" prove --record-command "$command"');
+  expect(missionScript).toContain('--record-source mission');
+  expect(missionScript).not.toContain('PROOF_LEDGER_FILE="${PROJSCAN_ROOT}/.projscan/proof-ledger.jsonl"');
+  expect(missionScript).not.toContain('const record = { schemaVersion: 1');
   expect(missionScript).toContain('mkdir -p "$PROOF_LOG_DIR"');
   expect(missionScript).toContain(': > "$PROOF_STATUS_FILE"');
   expect(missionScript).toContain(': > "$PROOF_REPORT_FILE"');
@@ -324,7 +329,6 @@ test('start writes a Mission Control bundle when requested', async () => {
   expect(missionScript).toContain('> "$PROOF_LOG_DIR/current-ready-1.log" 2>&1');
   expect(missionScript).toContain('status=$?');
   expect(missionScript).toContain('>> "$PROOF_STATUS_FILE"');
-  expect(missionScript).toContain('>> "$PROOF_LEDGER_FILE"');
   expect(missionScript).toContain('>> "$PROOF_REPORT_FILE"');
   expect(missionScript).toContain('"id":"current-ready-1"');
   expect(missionScript).toContain('"exitCode":');
@@ -556,8 +560,63 @@ test('start writes a Mission Control bundle when requested', async () => {
   ]);
 });
 
+test('mission script refuses shell control syntax before emitting runnable commands', () => {
+  const unsafeCommands = [
+    'projscan doctor; echo unsafe',
+    'projscan doctor && echo unsafe',
+    'projscan doctor | cat',
+    'projscan doctor\n echo unsafe',
+    'projscan doctor $(id)',
+    'projscan doctor `id`',
+  ];
+
+  for (const command of unsafeCommands) {
+    const script = buildMissionScript(startReportWithMissionCommand(command), [], {
+      proofLogs: true,
+    });
+
+    expect(script).toContain('Blocked: mission command contains shell control syntax');
+    expect(script).not.toContain(`\n${command}\n`);
+  }
+});
+
+test('mission proof ledger recording uses the current projscan CLI path', () => {
+  const script = buildMissionScript(
+    startReportWithMissionCommand('node --version'),
+    ['node --version'],
+    { proofLogs: true },
+  );
+
+  expect(script).toContain('PROJSCAN_NODE=');
+  expect(script).toContain('PROJSCAN_CLI=');
+  expect(script).toContain('"$PROJSCAN_NODE" "$PROJSCAN_CLI" prove --record-command "$command"');
+  expect(script).not.toContain('&& projscan prove --record-command');
+});
+
 async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return runStartCli(tmp, args);
+}
+
+function startReportWithMissionCommand(command: string): StartReport {
+  return {
+    mode: 'before_edit',
+    missionControl: {
+      intent: 'security test',
+      status: 'ready',
+      executionPlan: {
+        cursor: {
+          phaseId: 'ready_now',
+          stepId: 'ready-1',
+          label: 'Run current command',
+          command,
+        },
+      },
+      reviewGate: {
+        stopCondition: 'Review gate',
+        commands: ['git status --short'],
+      },
+    },
+  } as StartReport;
 }

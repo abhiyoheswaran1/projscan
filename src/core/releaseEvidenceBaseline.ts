@@ -17,7 +17,10 @@ export async function safeBaselineTrend(rootPath: string): Promise<BaselineTrend
   }
   try {
     const configResult = await loadConfig(rootPath).catch(() => ({ config: { ignore: [] } }));
-    const scan = await scanRepository(rootPath, { ignore: configResult.config.ignore });
+    const scan = await scanRepository(rootPath, {
+      ignore: configResult.config.ignore,
+      countIgnoredFiles: false,
+    });
     const issues = applyConfigToIssues(
       await collectIssues(rootPath, scan.files),
       configResult.config,

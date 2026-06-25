@@ -28,6 +28,12 @@ export interface ProjscanConfig {
    */
   reportPolicies?: Record<string, ReportPolicyPreset>;
   /**
+   * Optional team-specific proof rules for `projscan prove`. Recipes add
+   * required commands, reviewers, and forbidden drift when a matched file is
+   * part of a Proof Contract or Proof Receipt.
+   */
+  proofRecipes?: ProofRecipeConfig[];
+  /**
    * Monorepo-specific configuration (0.14.0+). Currently scopes the
    * cross-package import policy: each entry says "package P may only import
    * from these listed packages, or specifically may NOT import from these
@@ -59,6 +65,16 @@ export interface InlineRuleSuppression {
 export interface ReportPolicyPreset {
   reportScope?: string[];
   redactPaths?: boolean;
+}
+
+export interface ProofRecipeConfig {
+  id: string;
+  matches: string[];
+  requiredCommands: string[];
+  requiredReviewers?: string[];
+  forbiddenFiles?: string[];
+  riskSurface?: string;
+  reason?: string;
 }
 
 /**

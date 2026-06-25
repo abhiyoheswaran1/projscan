@@ -97,7 +97,7 @@ describe('detectCollisions', () => {
         branch: 'main',
         changedFileCount: 1,
         uncommittedChangedFileCount: 1,
-        baseRef: 'main',
+        baseRef: '(working tree)',
       },
     });
     expect(report.evidence?.validationWorkflow.map((step) => step.command)).toEqual([

@@ -22,9 +22,11 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps generic target text helpers in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const targetTextPath = path.join(process.cwd(), 'src/core/startIntentTargetText.ts');
 
-    expect(targetSource).toContain("import { unwrapTarget } from './startIntentTargetText.js';");
+    expect(targetSource).toContain("export { extractSearchQuery } from './startSearchQueryTargets.js';");
+    expect(searchSource).toContain("import { unwrapTarget } from './startIntentTargetText.js';");
     expect(targetSource).not.toContain('isGenericReferenceTarget');
     expect(targetSource).not.toContain('function unwrapTarget');
     expect(targetSource).not.toContain('function isGenericReferenceTarget');
@@ -152,13 +154,14 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps quoted text target parsing in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const quotedTargetsPath = path.join(process.cwd(), 'src/core/startQuotedTextTargets.ts');
     const highPrioritySearchPath = path.join(
       process.cwd(),
       'src/core/startHighPrioritySearchTargets.ts',
     );
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromHighPrioritySignals } from './startHighPrioritySearchTargets.js';",
     );
     expect(targetSource).not.toContain("import { extractQuotedTextTarget }");
@@ -197,9 +200,10 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps test, route, and migration search parsing in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const testRouteSearchPath = path.join(process.cwd(), 'src/core/startTestRouteSearchTargets.ts');
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromTestAndRouteLookups } from './startTestRouteSearchTargets.js';",
     );
     expect(targetSource).not.toContain('function searchQueryFromTestAndRouteLookups');
@@ -216,12 +220,13 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps generated and config search parsing in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const generatedConfigPath = path.join(
       process.cwd(),
       'src/core/startGeneratedConfigSearchTargets.ts',
     );
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromGeneratedAndConfig } from './startGeneratedConfigSearchTargets.js';",
     );
     expect(targetSource).not.toContain('function searchQueryFromGeneratedAndConfig');
@@ -239,9 +244,10 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps ownership and implementation search parsing in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const ownershipSearchPath = path.join(process.cwd(), 'src/core/startOwnershipSearchTargets.ts');
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromImplementation, searchQueryFromOwnership } from './startOwnershipSearchTargets.js';",
     );
     expect(targetSource).not.toContain('function searchQueryFromOwnership');
@@ -256,12 +262,13 @@ describe('Mission Control intent target helper architecture', () => {
 
   it('keeps high-priority search parsing in a focused helper', () => {
     const targetSource = readTargetSource();
+    const searchSource = readSearchSource();
     const highPrioritySearchPath = path.join(
       process.cwd(),
       'src/core/startHighPrioritySearchTargets.ts',
     );
 
-    expect(targetSource).toContain(
+    expect(searchSource).toContain(
       "import { searchQueryFromHighPrioritySignals } from './startHighPrioritySearchTargets.js';",
     );
     expect(targetSource).not.toContain('function searchQueryFromHighPrioritySignals');
@@ -283,4 +290,8 @@ describe('Mission Control intent target helper architecture', () => {
 
 function readTargetSource(): string {
   return readFileSync(path.join(process.cwd(), 'src/core/startIntentTargets.ts'), 'utf8');
+}
+
+function readSearchSource(): string {
+  return readFileSync(path.join(process.cwd(), 'src/core/startSearchQueryTargets.ts'), 'utf8');
 }

@@ -88,6 +88,37 @@ test('projscan_prove returns an intent Proof Contract', async () => {
   );
 });
 
+test('projscan_prove applies team proof recipes from project config', async () => {
+  await fs.writeFile(
+    path.join(tmp, '.projscanrc.json'),
+    JSON.stringify({
+      proofRecipes: [
+        {
+          id: 'core-critical',
+          matches: ['src/core/**'],
+          requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+          requiredReviewers: ['@platform'],
+          forbiddenFiles: ['src/auth/**'],
+        },
+      ],
+    }),
+  );
+  const handler = getToolHandler('projscan_prove');
+
+  const result = (await handler?.(
+    {
+      intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+      max_files: 3,
+    },
+    tmp,
+  )) as { prove: ProveReport };
+
+  expect(result.prove.contract?.proofCommands).toContain(
+    'npm test -- tests/core/bugHunt.test.ts -- --runInBand',
+  );
+  expect(result.prove.contract?.teamProofRecipes?.[0]?.requiredReviewers).toEqual(['@platform']);
+});
+
 test('projscan_prove records and replays proof ledger evidence', async () => {
   const handler = getToolHandler('projscan_prove');
   const contractResult = (await handler?.(
@@ -128,6 +159,8 @@ test('projscan_prove records and replays proof ledger evidence', async () => {
   )) as { prove: ProveReport };
 
   expect(changedResult.prove.receipt?.proofStatus.commandsRun).toContain(command);
+  expect(changedResult.prove.receipt?.proofSufficiency?.status).toBe('weak');
+  expect(changedResult.prove.receipt?.reviewerDecision).toBe('needs-focused-review');
   expect((changedResult.prove as any).verifiedWorkflow).toEqual(
     expect.objectContaining({
       phase: 'receipt',

@@ -36,6 +36,7 @@ export async function getChangedFiles(
     };
   }
 
+  const explicit = Boolean(explicitBaseRef);
   const candidates = explicitBaseRef ? [explicitBaseRef] : [...DEFAULT_BASE_REFS, 'HEAD~1'];
   let lastError: string | null = null;
 
@@ -43,6 +44,21 @@ export async function getChangedFiles(
     const exists = await refExists(rootPath, ref);
     if (!exists) {
       lastError = `ref not found: ${ref}`;
+      continue;
+    }
+    const resolvesToHead = await refResolvesToHead(rootPath, ref);
+    if (resolvesToHead) {
+      const reason = `base ref "${ref}" resolves to HEAD and would hide committed changes`;
+      if (explicit) {
+        return {
+          available: false,
+          reason,
+          baseRef: null,
+          files: [],
+          uncommittedFiles: [],
+        };
+      }
+      lastError = reason;
       continue;
     }
     try {
@@ -89,6 +105,25 @@ export async function getChangedFiles(
   };
 }
 
+async function refResolvesToHead(rootPath: string, ref: string): Promise<boolean> {
+  try {
+    const [head, candidate] = await Promise.all([
+      resolveRef(rootPath, 'HEAD'),
+      resolveRef(rootPath, ref),
+    ]);
+    return head === candidate;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveRef(rootPath: string, ref: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', ['rev-parse', '--verify', ref], {
+    cwd: rootPath,
+  });
+  return stdout.trim();
+}
+
 async function isGitRepo(rootPath: string): Promise<boolean> {
   try {
     await execFileAsync('git', ['rev-parse', '--git-dir'], { cwd: rootPath });
@@ -113,8 +148,8 @@ async function diffNames(
 ): Promise<{ files: string[]; uncommittedFiles: string[] }> {
   const { stdout } = await execFileAsync(
     'git',
-    ['diff', '--name-only', '--diff-filter=d', `${baseRef}...HEAD`],
-    { cwd: rootPath, maxBuffer: 10 * 1024 * 1024 },
+    ['diff', '-z', '--name-only', `${baseRef}...HEAD`],
+    { cwd: rootPath, encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 },
   );
 
   // Also include uncommitted changes so PR-style runs cover work-in-progress edits.
@@ -126,9 +161,8 @@ async function diffNames(
   }
 
   const set = new Set<string>();
-  for (const raw of stdout.split('\n')) {
-    const line = raw.trim();
-    if (line) set.add(normalizePath(line));
+  for (const file of parseNulList(stdout)) {
+    if (file) set.add(normalizePath(file));
   }
   for (const f of uncommitted) set.add(f);
 
@@ -138,22 +172,30 @@ async function diffNames(
 async function statusNames(rootPath: string): Promise<string[]> {
   const { stdout } = await execFileAsync(
     'git',
-    ['status', '--porcelain', '--untracked-files=all'],
-    { cwd: rootPath, maxBuffer: 10 * 1024 * 1024 },
+    ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
+    { cwd: rootPath, encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 },
   );
   const out = new Set<string>();
-  for (const raw of stdout.split('\n')) {
-    if (!raw.trim()) continue;
-    // Format: "XY path" or "XY orig -> new" for renames. Keep leading
-    // status columns intact until after the regex strips them; trimming first
-    // turns " M file" into "M file" and leaks the status into the path.
-    const withoutStatus = raw.replace(/^..\s+/, '').trim();
-    const renamed = withoutStatus.includes(' -> ')
-      ? withoutStatus.split(' -> ').pop()!
-      : withoutStatus;
-    out.add(normalizePath(renamed));
+  const entries = parseNulList(stdout);
+  for (let index = 0; index < entries.length; index += 1) {
+    const raw = entries[index];
+    if (!raw) continue;
+    const status = raw.slice(0, 2);
+    const file = raw.slice(3);
+    if (!file) continue;
+    out.add(normalizePath(file));
+    if (isRenameOrCopyStatus(status)) index += 1;
   }
   return [...out];
+}
+
+function parseNulList(stdout: string | Buffer): string[] {
+  const value = Buffer.isBuffer(stdout) ? stdout.toString('utf-8') : stdout;
+  return value.split('\0').filter((entry) => entry.length > 0);
+}
+
+function isRenameOrCopyStatus(status: string): boolean {
+  return status.includes('R') || status.includes('C');
 }
 
 function normalizePath(p: string): string {

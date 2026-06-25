@@ -3,6 +3,7 @@ import type {
   BugHuntReport,
   EvidencePackArtifact,
   EvidencePackPrSummary,
+  EvidencePackProofReceiptSummary,
   EvidencePackVerdict,
   PreflightReport,
   WorkplanReport,
@@ -50,6 +51,15 @@ export function calibrateEvidencePackVerdict(
   return verdict;
 }
 
+export function calibrateEvidencePackVerdictForProof(
+  verdict: EvidencePackVerdict,
+  proofReceipt: EvidencePackProofReceiptSummary | undefined,
+): EvidencePackVerdict {
+  if (proofReceiptBlocksApproval(proofReceipt)) return 'blocked';
+  if (proofReceiptNeedsFocusedReview(proofReceipt) && verdict === 'ready') return 'caution';
+  return verdict;
+}
+
 export function summarizeEvidencePack(
   verdict: EvidencePackVerdict,
   currentVersion: string | null | undefined,
@@ -65,12 +75,53 @@ export function summarizeEvidencePack(
   return `ready: ${version} evidence is assembled for approval`;
 }
 
-export function approvalRecommendation(verdict: EvidencePackVerdict): string {
+export function approvalRecommendation(
+  verdict: EvidencePackVerdict,
+  proofReceipt?: EvidencePackProofReceiptSummary,
+): string {
+  if (proofReceiptBlocksApproval(proofReceipt))
+    return `Do not approve until the Proof Receipt is fixed. Run ${proofReceipt?.command ?? 'projscan prove --changed --format markdown'}.`;
+  if (proofReceiptNeedsFocusedReview(proofReceipt))
+    return `Review the Proof Receipt before approval. Run ${proofReceipt?.command ?? 'projscan prove --changed --format markdown'}.`;
   if (verdict === 'blocked')
     return 'Do not approve launch until p0 evidence is cleared or accepted.';
   if (verdict === 'caution')
     return 'Review cautions, then approve only after the regression plan passes.';
   return 'Approval can proceed after the recorded regression commands pass.';
+}
+
+export function proofReceiptBlocksApproval(
+  proofReceipt: EvidencePackProofReceiptSummary | undefined,
+): boolean {
+  if (!proofReceipt) return false;
+  return (
+    proofReceipt.reviewerDecision === 'stop' ||
+    proofReceipt.proofStatus === 'failed' ||
+    proofReceipt.proofSufficiencyStatus === 'failed' ||
+    proofReceipt.failedCommands.length > 0 ||
+    proofReceipt.failedRequirements.length > 0
+  );
+}
+
+export function proofReceiptNeedsFocusedReview(
+  proofReceipt: EvidencePackProofReceiptSummary | undefined,
+): boolean {
+  if (!proofReceipt) return false;
+  if (proofReceiptBlocksApproval(proofReceipt)) return true;
+  return (
+    !proofReceipt.available ||
+    proofReceipt.proofStatus !== 'passed' ||
+    proofReceipt.proofReplayStatus !== 'verified' ||
+    ['missing', 'stale', 'weak'].includes(proofReceipt.proofSufficiencyStatus ?? '') ||
+    proofReceipt.changedAfterProof.length > 0 ||
+    proofReceipt.missingCommands.length > 0 ||
+    proofReceipt.staleCommands.length > 0 ||
+    proofReceipt.missingRequirements.length > 0 ||
+    proofReceipt.staleRequirements.length > 0 ||
+    proofReceipt.weakRequirements.length > 0 ||
+    (proofReceipt.recipeGaps?.length ?? 0) > 0 ||
+    (proofReceipt.recipeDrift?.length ?? 0) > 0
+  );
 }
 
 function dedupeStrings(values: string[]): string[] {

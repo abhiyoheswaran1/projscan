@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { computeProve } from '../../src/core/prove.js';
 
 const execFileAsync = promisify(execFile);
+const PROOF_REPLAY_TEST_TIMEOUT_MS = 120_000;
 
 let tmp: string;
 
@@ -77,6 +78,21 @@ test('builds an executable contract from an intent', async () => {
   expect(report.contract?.riskyContracts).toContain('module boundary');
   expect(report.contract?.proofCommands).toContain(
     'projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules" --format json',
+  );
+  expect(report.contract?.proofRequirements).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        surface: 'production',
+        files: expect.arrayContaining(['src/core/bugHunt.ts']),
+        requiredCommands: expect.arrayContaining(['npm test -- tests/core/bugHunt.test.ts']),
+        requiredReview: 'review changed production behavior and matching regression proof',
+      }),
+      expect.objectContaining({
+        surface: 'test',
+        files: expect.arrayContaining(['tests/core/bugHunt.test.ts']),
+        requiredCommands: expect.arrayContaining(['npm test -- tests/core/bugHunt.test.ts']),
+      }),
+    ]),
   );
   expect(report.contract?.safeChangeShape).toContain('bounded');
   expect(report.contract?.rollbackPlan).toContain('git restore');
@@ -158,6 +174,131 @@ test('validates changed files against a saved contract', async () => {
     }),
   );
   expect((report.receipt as any).verifiedWorkflow).toEqual((report as any).verifiedWorkflow);
+});
+
+test('does not mark changed source ready when a contract requires no proof commands', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  const noProofContract = {
+    ...contractReport.contract!,
+    proofCommands: [],
+    proofRequirements: [],
+    evidenceStrength: {
+      ...contractReport.contract!.evidenceStrength,
+      gaps: [],
+    },
+  };
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: noProofContract,
+  });
+
+  expect(report.receipt?.scope.status).toBe('within-contract');
+  expect(report.receipt?.scope.allowedTouched).toContain('src/core/bugHunt.ts');
+  expect(report.receipt?.proofStatus.status).toBe('not-run');
+  expect(report.receipt?.commitReadiness).not.toBe('ready');
+  expect(report.receipt?.reviewerDecision).toBe('needs-focused-review');
+  expect(report.verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      status: report.receipt?.commitReadiness,
+      proofStatus: 'not-run',
+      missingProof: true,
+    }),
+  );
+});
+
+test('team proof recipes enrich intent contracts with commands, reviewers, and forbidden drift', async () => {
+  const report = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+    proofRecipes: [
+      {
+        id: 'core-critical',
+        matches: ['src/**/*.ts'],
+        requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+        requiredReviewers: ['@platform'],
+        forbiddenFiles: ['src/auth/**'],
+        riskSurface: 'core',
+        reason: 'Core changes need platform proof.',
+      },
+    ],
+  } as never);
+
+  expect(report.contract?.proofCommands).toContain(
+    'npm test -- tests/core/bugHunt.test.ts -- --runInBand',
+  );
+  expect(report.contract?.forbiddenFiles).toContain('src/auth/**');
+  expect(report.contract?.teamProofRecipes).toEqual([
+    {
+      id: 'core-critical',
+      matches: ['src/**/*.ts'],
+      matchedFiles: ['src/core/bugHunt.ts'],
+      requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+      requiredReviewers: ['@platform'],
+      forbiddenFiles: ['src/auth/**'],
+      riskSurface: 'core',
+      reason: 'Core changes need platform proof.',
+    },
+  ]);
+  expect(report.contract?.proofRequirements).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        source: 'recipe',
+        recipeId: 'core-critical',
+        surface: 'custom',
+        requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+        requiredReviewers: ['@platform'],
+      }),
+    ]),
+  );
+});
+
+test('nonmatching team proof recipes do not change intent contracts', async () => {
+  const report = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+    proofRecipes: [
+      {
+        id: 'docs-only',
+        matches: ['docs/**'],
+        requiredCommands: ['npm test -- docs-only'],
+        requiredReviewers: ['@docs'],
+        forbiddenFiles: ['src/auth/**'],
+      },
+    ],
+  });
+
+  expect(report.contract?.proofCommands).not.toContain('npm test -- docs-only');
+  expect(report.contract?.forbiddenFiles).not.toContain('src/auth/**');
+  expect(report.contract?.teamProofRecipes).toBeUndefined();
+  expect(report.contract?.proofRequirements).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ recipeId: 'docs-only' })]),
+  );
+});
+
+test('proof contracts cannot be written outside the project root', async () => {
+  await expect(
+    computeProve(tmp, {
+      intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+      saveContractPath: '../proof-contract.json',
+    }),
+  ).rejects.toThrow('inside the project root');
+
+  await expect(
+    computeProve(tmp, {
+      intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+      saveContractPath: 'proof-contract.json',
+    }),
+  ).rejects.toThrow('Proof Contract path must be .projscan/proof-contract.json');
 });
 
 test('classifies changed files so proof receipts are reviewable', async () => {
@@ -284,7 +425,8 @@ test('records proof command outcomes in a local redacted ledger', async () => {
   );
 
   const report = await computeProve(tmp, {
-    recordCommand: 'npm test -- tests/core/bugHunt.test.ts',
+    recordCommand:
+      'OPENAI_API_KEY=sk-proj-secret123 npm test -- tests/core/bugHunt.test.ts -- --token ghp_secret123456',
     exitCode: 0,
     durationMs: 4210,
     summary: 'passed with Bearer sk_test_123456789 and password=secret-value',
@@ -297,7 +439,10 @@ test('records proof command outcomes in a local redacted ledger', async () => {
     .map((line) => JSON.parse(line));
 
   expect(report.mode).toBe('record');
-  expect(report.ledgerRecord?.command).toBe('npm test -- tests/core/bugHunt.test.ts');
+  expect(report.ledgerRecord?.command).toContain('[redacted]');
+  expect(report.ledgerRecord?.command).not.toContain('sk-proj-secret123');
+  expect(report.ledgerRecord?.command).not.toContain('ghp_secret123456');
+  expect(report.ledgerRecord?.source).toBe('prove-record');
   expect(report.ledgerRecord?.status).toBe('passed');
   expect((report as any).verifiedWorkflow).toEqual(
     expect.objectContaining({
@@ -310,7 +455,12 @@ test('records proof command outcomes in a local redacted ledger', async () => {
       failedProof: false,
     }),
   );
-  expect(row.command).toBe('npm test -- tests/core/bugHunt.test.ts');
+  expect(row.command).toBe(report.ledgerRecord?.command);
+  expect(row.command).toContain('[redacted]');
+  expect(row.command).not.toContain('sk-proj-secret123');
+  expect(row.command).not.toContain('ghp_secret123456');
+  expect(row.normalizedCommand).not.toContain('sk-proj-secret123');
+  expect(row.source).toBe('prove-record');
   expect(row.exitCode).toBe(0);
   expect(row.durationMs).toBe(4210);
   expect(row.changedFiles).toContain('src/core/bugHunt.ts');
@@ -318,6 +468,47 @@ test('records proof command outcomes in a local redacted ledger', async () => {
   expect(row.outputSummary).not.toContain('sk_test_123456789');
   expect(row.outputSummary).not.toContain('secret-value');
   expect(row.logPath).toBe('.projscan/proof-logs/bugHunt-test.log');
+});
+
+test('proof ledger evidence becomes stale after same-file content changes', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await recordProofCommands(contractReport.contract?.proofCommands ?? [], 0, 'prove-run');
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toLowerCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.proofStatus.status).toBe('stale');
+  expect(report.receipt?.proofStatus.commandEvidence[0]).toEqual(
+    expect.objectContaining({
+      status: 'stale',
+      fresh: false,
+      source: 'prove-run',
+      staleReason: expect.stringContaining('changed-file content'),
+    }),
+  );
+  expect(report.receipt?.proofReplay.status).toBe('stale');
 });
 
 test('runs a proof command and records executed ledger evidence', async () => {
@@ -359,6 +550,36 @@ test('runs a proof command and records executed ledger evidence', async () => {
   const log = await fs.readFile(path.join(tmp, row.logPath), 'utf-8');
   expect(log).toContain('[redacted]');
   expect(log).not.toContain('secret-value');
+});
+
+test('redacts standalone secrets from executed proof logs', async () => {
+  const privateKeyLabel = ['PRIVATE', 'KEY'].join(' ');
+  const pem = [
+    `-----BEGIN ${privateKeyLabel}-----`,
+    'synthetic-proof-fixture-value',
+    `-----END ${privateKeyLabel}-----`,
+  ].join('\n');
+  const jwt = [
+    ['eyJ', 'hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'].join(''),
+    ['eyJ', 'zdWIiOiJwcm9qc2Nhbi10ZXN0In0'].join(''),
+    ['signature', 'fixture', 'only'].join(''),
+  ].join('.');
+  const slack = ['xoxb', '111111111111', '222222222222', 'syntheticfixturetoken'].join('-');
+  const script = `const values = ${JSON.stringify([pem, jwt, slack])}; console.log(values.join("\\n"));`;
+
+  const report = await computeProve(tmp, {
+    runCommand: [process.execPath, '-e', script],
+  } as never);
+  const logPath = report.ledgerRecord?.logPath;
+  expect(logPath).toBeTruthy();
+  const log = await fs.readFile(path.join(tmp, logPath ?? ''), 'utf-8');
+
+  for (const secret of [pem, jwt, slack]) {
+    expect(report.ledgerRecord?.command).not.toContain(secret);
+    expect(report.ledgerRecord?.outputSummary).not.toContain(secret);
+    expect(log).not.toContain(secret);
+  }
+  expect(log).toContain('[redacted]');
 });
 
 test('failed executed proof records a blocking ledger row', async () => {
@@ -416,6 +637,7 @@ test('replays executed proof ledger evidence in changed receipts', async () => {
       command,
       status: 'passed',
       fresh: true,
+      source: 'prove-run',
       outputSummary: expect.any(String),
       logPath: expect.stringMatching(/^\.projscan\/proof-logs\//),
     }),
@@ -438,9 +660,217 @@ test('rejects proof ledger paths outside the project root', async () => {
       ledgerPath: path.join(os.tmpdir(), 'projscan-ledger.jsonl'),
     } as never),
   ).rejects.toThrow('Proof ledger path must stay inside the project root');
+
+  await expect(
+    computeProve(tmp, {
+      recordCommand: 'npm test -- tests/core/bugHunt.test.ts',
+      exitCode: 0,
+      durationMs: 42,
+      ledgerPath: 'proof-ledger.jsonl',
+    } as never),
+  ).rejects.toThrow('Proof ledger path must be .projscan/proof-ledger.jsonl');
+});
+
+test('rejects proof log metadata paths outside proof logs', async () => {
+  await expect(
+    computeProve(tmp, {
+      recordCommand: 'npm test -- tests/core/bugHunt.test.ts',
+      exitCode: 0,
+      durationMs: 42,
+      logPath: '.projscan/other.log',
+    } as never),
+  ).rejects.toThrow('Proof log path must stay under .projscan/proof-logs/');
+});
+
+test('rejects proof ledger writes when .projscan is a symlink', async () => {
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-proof-outside-'));
+  await fs.symlink(outside, path.join(tmp, '.projscan'), 'dir');
+
+  try {
+    await expect(
+      computeProve(tmp, {
+        recordCommand: 'npm test -- tests/core/bugHunt.test.ts',
+        exitCode: 0,
+        durationMs: 42,
+      } as never),
+    ).rejects.toThrow('Proof artifact paths must not contain symlinks');
+    await expect(fs.readdir(outside)).resolves.toEqual([]);
+  } finally {
+    await fs.rm(path.join(tmp, '.projscan'), { force: true });
+    await fs.rm(outside, { recursive: true, force: true });
+  }
+});
+
+test('rejects executed proof logs when .projscan is a symlink', async () => {
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-proof-outside-'));
+  await fs.symlink(outside, path.join(tmp, '.projscan'), 'dir');
+
+  try {
+    await expect(
+      computeProve(tmp, {
+        runCommand: [process.execPath, '-e', 'console.log("proof")'],
+      } as never),
+    ).rejects.toThrow('Proof artifact paths must not contain symlinks');
+    await expect(fs.readdir(outside)).resolves.toEqual([]);
+  } finally {
+    await fs.rm(path.join(tmp, '.projscan'), { force: true });
+    await fs.rm(outside, { recursive: true, force: true });
+  }
+});
+
+test('rejects saved Proof Contracts when .projscan is a symlink', async () => {
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-proof-outside-'));
+  await fs.symlink(outside, path.join(tmp, '.projscan'), 'dir');
+
+  try {
+    await expect(
+      computeProve(tmp, {
+        intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+        saveContractPath: '.projscan/proof-contract.json',
+      }),
+    ).rejects.toThrow('Proof artifact paths must not contain symlinks');
+    await expect(fs.readdir(outside)).resolves.toEqual([]);
+  } finally {
+    await fs.rm(path.join(tmp, '.projscan'), { force: true });
+    await fs.rm(outside, { recursive: true, force: true });
+  }
+});
+
+test('rejects symlinked Proof Contract reads', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-proof-outside-'));
+  const outsideContract = path.join(outside, 'proof-contract.json');
+  await fs.mkdir(path.join(tmp, '.projscan'), { recursive: true });
+  await fs.writeFile(outsideContract, `${JSON.stringify(contractReport.contract, null, 2)}\n`);
+  await fs.symlink(outsideContract, path.join(tmp, '.projscan', 'proof-contract.json'));
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  try {
+    await expect(computeProve(tmp, { changed: true })).rejects.toThrow(
+      'Proof artifact paths must not contain symlinks',
+    );
+  } finally {
+    await fs.rm(outside, { recursive: true, force: true });
+  }
 });
 
 test('replays fresh proof ledger evidence in changed receipts', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await recordProofCommands(contractReport.contract?.proofCommands ?? [], 0, 'prove-run');
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.proofStatus.status).toBe('passed');
+  expect(report.receipt?.proofStatus.missingCommands).toEqual([]);
+  expect(report.receipt?.proofStatus.failedCommands).toEqual([]);
+  expect(report.receipt?.proofStatus.staleCommands).toEqual([]);
+  expect(report.receipt?.proofStatus.commandEvidence).toHaveLength(
+    contractReport.contract?.proofCommands.length,
+  );
+  expect(report.receipt?.proofStatus.commandEvidence.every((entry) => entry.fresh)).toBe(true);
+  expect(report.receipt?.reviewerDecision).toMatch(/safe-to-review|needs-focused-review/);
+  expect(report.receipt?.riskDeltaDirection).toMatch(/improved|flat|worse/);
+  expect(report.receipt?.proofReplay).toEqual(
+    expect.objectContaining({
+      status: 'verified',
+      changedAfterProof: [],
+      replayCommand: 'projscan prove --changed --format markdown',
+      receiptFingerprint: expect.stringMatching(/^[a-f0-9]{16}$/),
+    }),
+  );
+  expect(report.receipt?.proofReplay.events).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'proof-command',
+        status: 'passed',
+        command: 'npm test -- tests/core/bugHunt.test.ts',
+      }),
+      expect.objectContaining({
+        kind: 'receipt',
+        status: 'verified',
+      }),
+    ]),
+  );
+}, PROOF_REPLAY_TEST_TIMEOUT_MS);
+
+test('proof sufficiency is strong when executed proof covers the changed surface', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await fs.writeFile(
+    path.join(tmp, 'tests/core/bugHunt.test.ts'),
+    [
+      "import { buildBugHuntReport } from '../../src/core/bugHunt.js';",
+      '',
+      "test('builds report', () => {",
+      "  expect(buildBugHuntReport([' a '])).toEqual(['A']);",
+      '});',
+      '',
+    ].join('\n'),
+  );
+  await recordProofCommands(contractReport.contract?.proofCommands ?? [], 0, 'prove-run');
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.proofSufficiency.status).toBe('strong');
+  expect(report.receipt?.proofSufficiency.gaps).toEqual([]);
+  expect(report.receipt?.proofSufficiency.requirements).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        surface: 'production',
+        status: 'strong',
+        matchedCommands: expect.arrayContaining(['npm test -- tests/core/bugHunt.test.ts']),
+      }),
+      expect.objectContaining({
+        surface: 'test',
+        status: 'strong',
+      }),
+    ]),
+  );
+  expect((report as any).verifiedWorkflow).toEqual(
+    expect.objectContaining({
+      proofSufficiencyStatus: 'strong',
+    }),
+  );
+}, PROOF_REPLAY_TEST_TIMEOUT_MS);
+
+test('recorded-only proof stays weak until execution provenance is available', async () => {
   const contractReport = await computeProve(tmp, {
     intent: 'split bugHunt.ts into ranking, evidence, and output modules',
   });
@@ -461,15 +891,133 @@ test('replays fresh proof ledger evidence in changed receipts', async () => {
   });
 
   expect(report.receipt?.proofStatus.status).toBe('passed');
-  expect(report.receipt?.proofStatus.missingCommands).toEqual([]);
-  expect(report.receipt?.proofStatus.failedCommands).toEqual([]);
-  expect(report.receipt?.proofStatus.staleCommands).toEqual([]);
-  expect(report.receipt?.proofStatus.commandEvidence).toHaveLength(
-    contractReport.contract?.proofCommands.length,
+  expect(report.receipt?.proofSufficiency.status).toBe('weak');
+  expect(report.receipt?.reviewerDecision).toBe('needs-focused-review');
+  expect(report.receipt?.reviewerGuidance).toContain('weak proof');
+});
+
+test('proof sufficiency is missing when no required proof was recorded', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
   );
-  expect(report.receipt?.proofStatus.commandEvidence.every((entry) => entry.fresh)).toBe(true);
-  expect(report.receipt?.reviewerDecision).toMatch(/safe-to-review|needs-focused-review/);
-  expect(report.receipt?.riskDeltaDirection).toMatch(/improved|flat|worse/);
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.proofSufficiency.status).toBe('missing');
+  expect(report.receipt?.proofSufficiency.missingRequirements).toEqual(
+    expect.arrayContaining([expect.stringContaining('production')]),
+  );
+  expect(report.receipt?.proofSufficiency.gaps.join('\n')).toContain('missing proof');
+  expect(report.receipt?.proofReplay.status).toBe('needs-proof');
+  expect(report.receipt?.proofReplay.events).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'proof-command',
+        status: 'missing',
+      }),
+    ]),
+  );
+  expect(report.verdict).toBe('needs-review');
+});
+
+test('team proof recipes require configured proof and reviewers in changed receipts', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+    proofRecipes: [
+      {
+        id: 'core-critical',
+        matches: ['src/core/**'],
+        requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+        requiredReviewers: ['@platform'],
+        forbiddenFiles: ['src/auth/**'],
+        riskSurface: 'core',
+        reason: 'Core changes need platform proof.',
+      },
+    ],
+  } as never);
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.teamProofRecipes).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'core-critical',
+        matchedFiles: ['src/core/bugHunt.ts'],
+        requiredReviewers: ['@platform'],
+        missingCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+      }),
+    ]),
+  );
+  expect(report.receipt?.requiredReviewers).toEqual(['@platform']);
+  expect(report.receipt?.recipeGaps).toContain(
+    'core-critical requires proof command: npm test -- tests/core/bugHunt.test.ts -- --runInBand',
+  );
+  expect(report.receipt?.proofStatus.missingCommands).toContain(
+    'npm test -- tests/core/bugHunt.test.ts -- --runInBand',
+  );
+  expect(report.receipt?.proofSufficiency.missingRequirements).toEqual(
+    expect.arrayContaining([expect.stringContaining('recipe:core-critical')]),
+  );
+});
+
+test('team proof recipes keep attribution when only forbidden files drift', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+    proofRecipes: [
+      {
+        id: 'core-critical',
+        matches: ['src/core/**'],
+        requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+        requiredReviewers: ['@platform'],
+        forbiddenFiles: ['src/auth/**'],
+      },
+    ],
+  });
+  await fs.mkdir(path.join(tmp, 'src/auth'), { recursive: true });
+  await fs.writeFile(path.join(tmp, 'src/auth/session.ts'), 'export const session = true;\n');
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.scope.forbiddenTouched).toContain('src/auth/session.ts');
+  expect(report.receipt?.teamProofRecipes).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'core-critical',
+        matchedFiles: [],
+        forbiddenTouched: ['src/auth/session.ts'],
+        requiredReviewers: ['@platform'],
+      }),
+    ]),
+  );
+  expect(report.receipt?.requiredReviewers).toEqual(['@platform']);
+  expect(report.receipt?.recipeDrift).toEqual(['src/auth/session.ts']);
 });
 
 test('failed proof ledger evidence stops reviewer approval', async () => {
@@ -501,6 +1049,10 @@ test('failed proof ledger evidence stops reviewer approval', async () => {
   });
 
   expect(report.receipt?.proofStatus.status).toBe('failed');
+  expect(report.receipt?.proofSufficiency.status).toBe('failed');
+  expect(report.receipt?.proofSufficiency.failedRequirements).toEqual(
+    expect.arrayContaining([expect.stringContaining('production')]),
+  );
   expect(report.receipt?.proofStatus.failedCommands).toContain(commands[0]);
   expect(report.receipt?.reviewerDecision).toBe('stop');
   expect(report.receipt?.commitReadiness).toBe('blocked');
@@ -528,10 +1080,15 @@ test('proof ledger evidence becomes stale after changed files move', async () =>
   });
 
   expect(report.receipt?.proofStatus.status).toBe('stale');
+  expect(report.receipt?.proofSufficiency.status).toBe('stale');
+  expect(report.receipt?.proofSufficiency.staleRequirements).toEqual(
+    expect.arrayContaining([expect.stringContaining('production')]),
+  );
   expect((report as any).verifiedWorkflow).toEqual(
     expect.objectContaining({
       phase: 'receipt',
       proofStatus: 'stale',
+      proofSufficiencyStatus: 'stale',
       staleProof: true,
       missingProof: false,
       failedProof: false,
@@ -540,6 +1097,17 @@ test('proof ledger evidence becomes stale after changed files move', async () =>
   );
   expect(report.receipt?.proofStatus.staleCommands).toEqual(
     contractReport.contract?.proofCommands,
+  );
+  expect(report.receipt?.proofReplay.status).toBe('stale');
+  expect(report.receipt?.proofReplay.changedAfterProof).toContain('src/core/newRisk.ts');
+  expect(report.receipt?.proofReplay.events).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'proof-command',
+        status: 'stale',
+        changedAfterProof: expect.arrayContaining(['src/core/newRisk.ts']),
+      }),
+    ]),
   );
   expect(report.receipt?.proofStatus.commandEvidence[0]?.staleReason).toContain(
     'changed files differ',
@@ -581,6 +1149,7 @@ test('changed mode without a contract stays honest about missing evidence', asyn
   expect(report.verdict).toBe('needs-review');
   expect(report.contract).toBeUndefined();
   expect(report.receipt?.scope.status).toBe('missing-contract');
+  expect(report.receipt?.proofSufficiency.status).toBe('missing');
   expect(report.receipt?.evidenceGaps).toContain(
     'No Proof Contract was supplied or found at .projscan/proof-contract.json.',
   );
@@ -590,13 +1159,18 @@ async function git(args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: tmp });
 }
 
-async function recordProofCommands(commands: string[], exitCode: number): Promise<void> {
+async function recordProofCommands(
+  commands: string[],
+  exitCode: number,
+  source?: 'prove-record' | 'prove-run' | 'mission' | 'external',
+): Promise<void> {
   for (const command of commands) {
     await computeProve(tmp, {
       recordCommand: command,
       exitCode,
       durationMs: 100,
       summary: exitCode === 0 ? 'passed' : 'failed',
+      recordSource: source,
     } as never);
   }
 }

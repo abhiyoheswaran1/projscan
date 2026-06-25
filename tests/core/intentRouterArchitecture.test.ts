@@ -490,6 +490,9 @@ describe('routeIntent architecture', () => {
       'utf8',
     );
     expect(keywordWeightsSource).toContain('export function keywordWeight');
+    expect(keywordWeightsSource).toContain('const KEYWORD_WEIGHTERS');
+    expect(keywordWeightsSource).not.toContain("if (entry.tool === 'projscan_search')");
+    expect(keywordWeightsSource).not.toContain("if (entry.tool === 'projscan_regression_plan')");
   });
 
   it('keeps keyword matching isolated from the main router', () => {

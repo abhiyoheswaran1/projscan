@@ -65,6 +65,50 @@ describe('getChangedFiles', () => {
     expect(result.files.sort()).toEqual(['a.txt', 'b.txt']);
   });
 
+  it('includes committed deletions in changed-file evidence', async () => {
+    await fs.mkdir(path.join(repo, 'src'), { recursive: true });
+    await fs.writeFile(path.join(repo, 'src', 'removed.ts'), 'export const removed = true;\n');
+    await git(repo, ['add', 'src/removed.ts']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    await fs.rm(path.join(repo, 'src', 'removed.ts'));
+    await git(repo, ['add', '-u']);
+    await git(repo, ['commit', '-q', '-m', 'delete removed file']);
+
+    const result = await getChangedFiles(repo, 'HEAD~1');
+
+    expect(result.available).toBe(true);
+    expect(result.files).toEqual(['src/removed.ts']);
+  });
+
+  it('skips implicit base refs that resolve to HEAD', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    await fs.writeFile(path.join(repo, 'a.txt'), 'two');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'second']);
+
+    const result = await getChangedFiles(repo);
+
+    expect(result.available).toBe(true);
+    expect(result.baseRef).toBe('HEAD~1');
+    expect(result.files).toEqual(['a.txt']);
+  });
+
+  it('rejects explicit base refs that resolve to HEAD', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    const result = await getChangedFiles(repo, 'HEAD');
+
+    expect(result.available).toBe(false);
+    expect(result.reason).toContain('resolves to HEAD');
+    expect(result.files).toEqual([]);
+  });
+
   it('includes uncommitted working-tree changes', async () => {
     await fs.writeFile(path.join(repo, 'a.txt'), 'one');
     await git(repo, ['add', 'a.txt']);
@@ -108,6 +152,37 @@ describe('getChangedFiles', () => {
     expect(result.available).toBe(true);
     expect(result.files).toContain('a.txt');
     expect(result.files).not.toContain('M a.txt');
+  });
+
+  it('preserves tracked diff paths that contain newlines', async () => {
+    const filename = 'line\nbreak.txt';
+    await fs.writeFile(path.join(repo, filename), 'one');
+    await git(repo, ['add', filename]);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    await fs.writeFile(path.join(repo, filename), 'two');
+    await git(repo, ['add', filename]);
+    await git(repo, ['commit', '-q', '-m', 'second']);
+
+    const result = await getChangedFiles(repo, 'HEAD~1');
+
+    expect(result.files).toEqual([filename]);
+    expect(result.files).not.toContain('line');
+    expect(result.files).not.toContain('break.txt');
+  });
+
+  it('preserves untracked status paths that contain newlines', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+    const filename = 'untracked\nfile.txt';
+    await fs.writeFile(path.join(repo, filename), 'two');
+
+    const result = await getChangedFiles(repo);
+
+    expect(result.files).toContain(filename);
+    expect(result.files).not.toContain('untracked');
+    expect(result.files).not.toContain('file.txt');
   });
 
   it('returns available=false when base ref does not exist', async () => {

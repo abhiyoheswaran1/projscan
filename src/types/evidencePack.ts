@@ -71,9 +71,31 @@ export interface EvidencePackProofReceiptSummary {
   reviewerDecision: string;
   scopeStatus?: string;
   riskDeltaDirection?: string;
+  proofSufficiencyStatus?: string;
+  proofReplayStatus?: string;
+  changedAfterProof: string[];
+  receiptFingerprint?: string;
+  weakRequirements: string[];
+  missingRequirements: string[];
+  staleRequirements: string[];
+  failedRequirements: string[];
   missingCommands: string[];
   failedCommands: string[];
   staleCommands: string[];
+  teamProofRecipes?: string[];
+  requiredReviewers?: string[];
+  recipeGaps?: string[];
+  recipeDrift?: string[];
+  proofEvidenceSources?: EvidencePackProofEvidenceSources;
+}
+
+export interface EvidencePackProofEvidenceSources {
+  total: number;
+  executed: number;
+  recorded: number;
+  mission: number;
+  external: number;
+  unknown: number;
 }
 
 export interface EvidencePackPrCommentValidationCheck {

@@ -20,6 +20,7 @@ describe('Mission Control intent target architecture', () => {
 
   it('keeps tooling config search query parsing in a focused helper', () => {
     const targetSource = readSource('src/core/startIntentTargets.ts');
+    const searchQuerySource = readSource('src/core/startSearchQueryTargets.ts');
     const toolingPath = path.join(
       process.cwd(),
       'src/core/startIntentToolingConfigQueries.ts',
@@ -30,6 +31,10 @@ describe('Mission Control intent target architecture', () => {
     );
 
     expect(targetSource).toContain(
+      "export { extractSearchQuery } from './startSearchQueryTargets.js';",
+    );
+    expect(targetSource).not.toContain('searchQueryFromGeneratedAndConfig');
+    expect(searchQuerySource).toContain(
       "import { searchQueryFromGeneratedAndConfig } from './startGeneratedConfigSearchTargets.js';",
     );
     expect(targetSource).not.toContain('extractToolingConfigQuery');
@@ -66,10 +71,12 @@ describe('Mission Control intent target architecture', () => {
 
   it('delegates the ordered domain search query chain to a focused helper', () => {
     const targetSource = readSource('src/core/startIntentTargets.ts');
+    const searchQuerySource = readSource('src/core/startSearchQueryTargets.ts');
 
-    expect(targetSource).toContain(
+    expect(searchQuerySource).toContain(
       "import { searchQueryFromDomainSignals } from './startIntentDomainSearchQueries.js';",
     );
+    expect(targetSource).not.toContain('searchQueryFromDomainSignals');
     expect(targetSource).not.toContain('type QueryExtractor');
     expect(targetSource).not.toContain('function firstQuery');
     expect(targetSource).not.toContain('function searchQueryFromDomainSignals');

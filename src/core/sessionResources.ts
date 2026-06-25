@@ -17,6 +17,17 @@ const MAX_TOUCHED_FILES = 50;
 const MAX_RECENT_ISSUES = 10;
 const MAX_CONFLICTS = 25;
 
+export interface ProjectSignals {
+  issues: Issue[];
+  hotspots: Array<{ file: string; riskScore: number }> | null;
+  graph?: CodeGraph;
+  staleSignals: string[];
+}
+
+export interface BuildRiskNowOptions {
+  projectSignals?: ProjectSignals;
+}
+
 export async function buildSessionSummary(rootPath: string): Promise<SessionResourceSummary> {
   const { session } = await loadSession(rootPath);
   const touchedFiles = orderedTouchedFiles(session);
@@ -57,10 +68,13 @@ export async function buildHandoff(rootPath: string): Promise<SessionHandoff> {
   };
 }
 
-export async function buildRiskNow(rootPath: string): Promise<RiskNowResource> {
+export async function buildRiskNow(
+  rootPath: string,
+  options: BuildRiskNowOptions = {},
+): Promise<RiskNowResource> {
   const { session } = await loadSession(rootPath);
   const touchedFiles = orderedTouchedFiles(session);
-  const signals = await loadProjectSignals(rootPath, { includeGraph: true });
+  const signals = options.projectSignals ?? (await loadProjectSignals(rootPath, { includeGraph: true }));
   const conflicts = [
     ...detectSessionConflicts(touchedFiles, signals.graph),
     ...detectHotspotConflicts(touchedFiles, signals.hotspots ?? []),
@@ -130,15 +144,10 @@ function orderedTouchedFiles(session: Session): string[] {
 async function loadProjectSignals(
   rootPath: string,
   options: { includeGraph?: boolean } = {},
-): Promise<{
-  issues: Issue[];
-  hotspots: Array<{ file: string; riskScore: number }> | null;
-  graph?: CodeGraph;
-  staleSignals: string[];
-}> {
+): Promise<ProjectSignals> {
   const staleSignals: string[] = [];
   try {
-    const scan = await scanRepository(rootPath);
+    const scan = await scanRepository(rootPath, { countIgnoredFiles: false });
     const issues = await collectIssues(rootPath, scan.files);
     let graph: CodeGraph | undefined;
     if (options.includeGraph) {

@@ -2,6 +2,30 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-24: Add Team Proof Recipes to proof receipts
+
+- Status: accepted
+- Context: Proof Contracts inferred useful commands and reviewers, but teams still needed path-specific proof rules for sensitive areas such as billing, auth, deployment, and public APIs.
+- Decision: Add `proofRecipes` to config and thread matching Team Proof Recipes through `prove --intent`, `prove --changed`, and `evidence-pack --pr-comment`. A matching recipe can add required commands, required reviewers, and forbidden files to the Proof Contract. The receipt reports recipe gaps and drift from the local ledger and changed-file evidence. Saved contracts remain the source of truth for `prove --changed`; regenerate the contract when recipe policy changes.
+- Consequences: Teams can encode review expectations without suppressing normal scan rules or writing custom commands. Recipes do not run proof commands by themselves; users must run `projscan prove --run -- <command...>` or import evidence with `projscan prove --record-command`. Duplicate recipe IDs keep the first valid recipe so requirement IDs stay deterministic.
+- Verification: Focused config, public type, core prove, CLI prove, MCP prove, evidence-pack, docs, build, lint, security, performance, and AgentLoop checks cover normalization, command safety, receipt rendering, and additive JSON fields.
+
+## 2026-06-24: Add reviewer Proof Replay Pack to Proof Receipts
+
+- Status: accepted
+- Context: Proof Sufficiency showed whether proof covered each changed risk surface, but reviewers still needed the sequence: which proof ran, whether proof became stale, which files appeared after proof, and how to reproduce the receipt.
+- Decision: Add an additive `proofReplay` summary to `prove --changed` receipts. It includes replay status, timeline events, `changedAfterProof`, replay command, and a local receipt fingerprint built from receipt metadata, not command logs. `evidence-pack --pr-comment` now carries the same replay status, changed-after-proof files, and receipt fingerprint when a Proof Receipt is available.
+- Consequences: Reviewers can read one PR artifact and decide whether the proof is current, missing, stale, failed, or drifted. The change does not add a command, dependency, network path, telemetry, release action, tag, publish, deploy, or version bump.
+- Verification: Focused core, CLI, evidence-pack, docs, build, lint, security, performance, and AgentLoop checks cover additive JSON fields, markdown rendering, PR-comment rendering, stale proof, missing proof, and generated proof artifact handling.
+
+## 2026-06-24: Add Proof Sufficiency to Proof Receipts
+
+- Status: accepted
+- Context: Proof Contracts could name proof commands and Proof Receipts could replay ledger rows, but reviewers still had to infer whether the proof was enough for each changed risk surface.
+- Decision: Add an additive Proof Requirements Matrix to `prove --intent` output and a Proof Sufficiency summary to `prove --changed`. Each requirement maps a risk surface to files, commands, reviewer guidance, and a per-surface status: strong, adequate, weak, missing, stale, or failed. `evidence-pack --pr-comment` now carries the same sufficiency status when a receipt is available.
+- Consequences: Reviewers can see proof pass/fail state, freshness, and surface coverage. The change does not add a command, dependency, network path, telemetry, release action, tag, publish, deploy, or version bump.
+- Verification: Focused core, CLI, evidence-pack, docs, build, lint, and AgentLoop verification cover additive JSON fields, markdown rendering, PR-comment rendering, stale/missing/failed proof, and public docs.
+
 ## 2026-06-24: Route verified change workflows through prove
 
 - Status: accepted
@@ -3065,3 +3089,355 @@ This log records reviewer-visible architecture, workflow, and public behavior de
 - Decision: Add CLI-only `projscan prove --run -- <command...>`. The implementation executes the provided argv vector with `shell: false`, writes a redacted bounded log under `.projscan/proof-logs/`, appends a `prove-run` Proof Ledger row, and reuses `prove --changed` for freshness and receipt replay. MCP does not execute arbitrary commands in this slice.
 - Consequences: `projscan prove` gains additive run mode and stable flags `--run` / `--run-timeout-ms`. `--record-command` stays available for imported CI or external proof. Command execution remains explicit and local.
 - Verification: `npm test -- tests/core/prove.test.ts` failed before run mode existed, then passed after the core runner. `npm run build` and `npm test -- tests/cli/prove.test.ts` passed after CLI delimiter parsing was added.
+
+## 2026-06-24: Extract bug-hunt report assembly
+
+- Status: accepted
+- Context: `src/core/bugHunt.ts` stayed the top fix-first hotspot after earlier bug-hunt cleanups because the orchestrator still owned ranking, queue selection, truncation, summary, and verification-matrix decisions.
+- Decision: Move report queue assembly into `src/core/bugHuntReportAssembly.ts`. Keep `computeBugHunt` responsible for collecting doctor, preflight, session, graph, and hotspot evidence, then pass those findings into the assembly helper.
+- Consequences: Bug-hunt JSON, CLI, MCP, and public report shapes stay stable. The orchestrator drops from 453 lines / CC 65 to 239 lines / CC 29, and future queue policy changes now have one focused review boundary.
+- Verification: `npm test -- tests/core/bugHuntArchitecture.test.ts` failed before the helper existed and `bugHunt.ts` stopped owning queue helpers, then passed after extraction. `npm test -- tests/core/bugHunt.test.ts tests/core/bugHuntGraphHotspots.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed.
+
+## 2026-06-24: Extract start mission routing policy
+
+- Status: accepted
+- Context: `src/core/startMissionPolicy.ts` became the next fix-first hotspot because route explanation and action-plan policy sat beside status, unresolved-input, guardrail, proof-command, workflow, risk, and summary policy.
+- Decision: Move `routedWhyNow`, `missionActionPlan`, and `actionFromWorkflow` into `src/core/startMissionRoutingPolicy.ts`, then re-export them from `src/core/startMissionPolicy.ts` to preserve existing callers.
+- Consequences: Mission Control start output, CLI/MCP surfaces, and saved mission bundle behavior stay stable. The policy facade drops from 420 lines / CC 92 to 336 lines / CC 68, and future route/action-plan changes now have a focused helper.
+- Verification: `npm test -- tests/core/startMissionPolicyArchitecture.test.ts` failed before the helper existed and the facade re-exported it, then passed after extraction. `npm test -- tests/core/startMissionPolicy.test.ts tests/core/startMissionControl.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed.
+
+## 2026-06-24: Extract workplan mode task recipes
+
+- Status: accepted
+- Context: `src/core/workplan.ts` became the top fix-first hotspot because mode-specific task recipes lived beside preflight task extraction, coordination, ranking, ownership, and report assembly.
+- Decision: Move `modeTasks` into `src/core/workplanModeTasks.ts`. Keep `computeWorkplan`, preflight-derived tasks, coordination tasks, ranking, owner annotation, and suggested-action assembly in the existing workplan facade.
+- Consequences: Workplan task ids, priorities, titles, commands, evidence, handoff text, CLI/MCP surfaces, and public types stay stable. The main workplan file drops from 843 lines / CC 97 to 643 lines / CC 86, and future mode recipe changes now have one focused review boundary.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before the helper existed and `workplan.ts` delegated mode recipes, then passed after extraction. `npm test -- tests/core/workplan.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed.
+
+## 2026-06-24: Extract workplan preflight task recipes
+
+- Status: accepted
+- Context: `src/core/workplan.ts` remained the fix-first hotspot after mode recipe extraction because preflight-derived task recipes still lived beside coordination, ranking, ownership, quality-risk conversion, and report assembly.
+- Decision: Move `tasksFromPreflight` into `src/core/workplanPreflightTasks.ts`. Keep top-risk conversion in `workplan.ts` because it feeds report ranking rather than task recipe generation.
+- Consequences: Workplan task ids, priorities, titles, commands, evidence, handoff text, CLI/MCP surfaces, and public types stay stable. The main workplan file drops from 643 lines / CC 86 to 519 lines / CC 73, and future preflight task recipe changes now have one focused review boundary.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before the helper existed and `workplan.ts` delegated preflight recipes, then passed after extraction. `npm test -- tests/core/workplan.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/workplanPreflightTasks.ts`.
+
+## 2026-06-24: Extract start mission input and status policy
+
+- Status: accepted
+- Context: `src/core/startMissionPolicy.ts` remained a Mission Control hotspot after routing extraction because status classification, placeholder input guidance, ready-action filtering, guardrails, proof commands, workflow selection, risk conversion, and summary policy still shared one file.
+- Decision: Move `missionStatus`, `missionUnresolvedInputs`, `missionReadyActions`, `headlineForStatus`, and placeholder guidance into `src/core/startMissionInputStatusPolicy.ts`. Re-export those helpers from `startMissionPolicy.ts` to preserve existing callers.
+- Consequences: Mission Control labels, status mapping, placeholder instructions, action ordering, CLI/MCP surfaces, and public report shapes stay stable. The main policy file drops from 336 lines / CC 68 to 253 lines / CC 44, and input/status wording now has a focused review boundary.
+- Verification: `npm test -- tests/core/startMissionPolicyArchitecture.test.ts` failed before the helper existed and the facade re-exported it, then passed after extraction. `npm test -- tests/core/startMissionPolicy.test.ts tests/core/startMissionControl.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/startMissionInputStatusPolicy.ts`.
+
+## 2026-06-24: Extract workplan coordination task policy
+
+- Status: accepted
+- Context: `src/core/workplan.ts` remained the current fix-first hotspot after recipe extractions because coordination-state selection and session-handoff task assembly still lived in the main workplan facade.
+- Decision: Move `buildCoordination` and `tasksFromCoordination` into `src/core/workplanCoordinationTasks.ts`. Keep ranking, quality-risk conversion, owner annotation, and report assembly in `workplan.ts`.
+- Consequences: Workplan coordination messages, session-handoff task id, priority, commands, suggested tools, handoff text, CLI/MCP surfaces, and public report shapes stay stable. The main workplan file drops from 519 lines / CC 73 to 431 lines / CC 66, and coordination task policy now has a focused review boundary.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before the helper existed and `workplan.ts` delegated coordination policy, then passed after extraction. `npm test -- tests/core/workplan.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/workplanCoordinationTasks.ts`.
+
+## 2026-06-24: Extract workplan risk and ownership policy
+
+- Status: accepted
+- Context: `src/core/workplan.ts` remained the active fix-first hotspot after recipe and coordination extractions because top-risk assembly and owner annotation still sat beside orchestration, quality-signal collection, handoff rendering, and suggested-action assembly.
+- Decision: Move `buildTopRisks`, `annotateTasksWithOwners`, `annotateTopRisksWithOwners`, and their local owner/dedupe helpers into `src/core/workplanRiskOwnership.ts`. Keep quality-scorecard conversion and suggested-action assembly in the workplan facade.
+- Consequences: Top-risk ordering, dedupe keys, owner selection order, handoff owner text, max risk count, CLI/MCP surfaces, and public report shapes stay stable. The main workplan file drops from 431 lines / CC 66 to 332 lines / CC 50, and risk/owner policy now has a focused review boundary.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before the helper existed and `workplan.ts` delegated risk/owner policy, then passed after extraction. `npm test -- tests/core/workplan.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/workplanRiskOwnership.ts`.
+
+## 2026-06-24: Extract release evidence Proof Receipt summarization
+
+- Status: accepted
+- Context: `src/core/releaseEvidence.ts` became the next fix-first hotspot because Proof Receipt summarization lived inside the evidence-pack orchestrator beside release-train, preflight, bug-hunt, workplan, PR-summary, and website-prompt assembly.
+- Decision: Move `safeProofReceipt` into `src/core/releaseEvidenceProofReceipt.ts`. Keep `computeEvidencePack`, release-evidence public re-exports, verdict calibration, PR-comment rendering, artifacts, and website-prompt assembly unchanged.
+- Consequences: Evidence-pack JSON, PR-comment output, Proof Replay fields, Team Proof Recipe fields, fallback statuses, fallback text, and command strings stay stable. The orchestrator drops from 283 lines / CC 21 to 173 lines / CC 11, and proof receipt fallback policy now has a focused review boundary.
+- Verification: `npm test -- tests/core/releaseEvidenceArchitecture.test.ts` failed before the helper existed and `releaseEvidence.ts` delegated Proof Receipt summarization, then passed after extraction. `npm test -- tests/core/releaseEvidence.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/releaseEvidenceProofReceipt.ts`.
+
+## 2026-06-24: Extract start console execution rendering
+
+- Status: accepted
+- Context: `src/cli/commands/startConsole.ts` became the next proof-backed hotspot because execution-plan, cursor, resume-checklist, mission, proof, workflow, adoption, and risk rendering all shared one console renderer.
+- Decision: Move execution-plan, cursor, resume-checklist, checklist-item, and tool-call formatting into `src/cli/commands/startConsoleExecution.ts`. Keep `formatConsoleChecklistItem` available from `startConsole.ts` as a compatibility re-export.
+- Consequences: Start console section titles, text, ordering, chalk styling, shortcut compatibility, and public CLI behavior stay stable. The main console renderer drops from 438 lines / CC 102 to 317 lines / CC 64, and execution rendering now has a focused review boundary.
+- Verification: `npm test -- tests/cli/startConsoleArchitecture.test.ts` failed before the helper existed and `startConsole.ts` delegated execution rendering, then passed after extraction. `npm test -- tests/cli/start.test.ts tests/cli/startConsoleGuidance.test.ts tests/cli/startHandoff.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/cli/commands/startConsoleExecution.ts`.
+
+## 2026-06-24: Extract dogfood market validation policy
+
+- Status: accepted
+- Context: `src/core/dogfood.ts` became the next proof-backed hotspot because repo evaluation, feedback matching, market validation gates, website-proof copy, repeat-use counting, and next-action assembly all lived in one module.
+- Decision: Move `buildMarketValidation`, proof-gate policy, repeat-use scoring, feedback proof commands, and website-proof copy into `src/core/dogfoodMarketValidation.ts`. Keep repo discovery, repo evaluation, feedback matching, repo gap/status policy, totals, summary, and suggested action assembly in `dogfood.ts`.
+- Consequences: Dogfood JSON, CLI output, feedback questions, commands, thresholds, proof-gate ids/summaries, website-proof copy, and suggested action strings stay stable. The main dogfood module drops from 659 lines / CC 82 to 331 lines / CC 47, and market-validation policy now has a focused review boundary.
+- Verification: `npm test -- tests/core/dogfoodArchitecture.test.ts` failed before the helper existed and `dogfood.ts` delegated market validation, then passed after extraction. `npm test -- tests/core/dogfood.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/dogfood.ts` or `src/core/dogfoodMarketValidation.ts`.
+
+## 2026-06-24: Extract bug-hunt preflight actionability policy
+
+- Status: accepted
+- Context: `src/core/bugHunt.ts` remained a proof-backed hotspot after report assembly extraction because preflight actionability filtering still lived in the orchestrator beside issue collection, preflight execution, graph building, hotspot analysis, session conflicts, and report assembly.
+- Decision: Move `isActionablePreflightReason` and branch-only release-scale filtering into `src/core/bugHuntPreflightFindings.ts`, the existing bug-hunt preflight policy boundary. Keep issue conversion, session conversion, hotspot collection, evidence assembly, and max finding normalization in `bugHunt.ts`.
+- Consequences: Bug-hunt JSON, verdicts, ignored preflight reason counts, finding order, proof commands, CLI/MCP surfaces, and public report shapes stay stable. The main bug-hunt orchestrator drops from 239 lines / CC 29 to 209 lines / CC 17.
+- Verification: `npm test -- tests/core/bugHuntArchitecture.test.ts` failed before actionability policy moved out of `bugHunt.ts`, then passed after extraction. `npm test -- tests/core/bugHunt.test.ts tests/core/bugHuntGraphHotspots.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/bugHunt.ts` or `src/core/bugHuntPreflightFindings.ts`.
+
+## 2026-06-24: Extract quality scorecard dimension policy
+
+- Status: accepted
+- Context: `src/core/qualityScorecard.ts` became the next fix-first maintainability hotspot because report orchestration, issue collection, hotspot analysis, dimension scoring, maintainability evidence ranking, risk conversion, verdicts, commands, and actions shared one module.
+- Decision: Move dimension scoring, issue bucketing, maintainability hotspot evidence ordering, maintainability penalty thresholds, and score clamping into `src/core/qualityScorecardDimensions.ts`. Keep scan/issue/hotspot orchestration, risk conversion, risk ranking, verdicts, command selection, summaries, and suggested actions in `qualityScorecard.ts`.
+- Consequences: Quality-scorecard JSON, dimension order, status/score thresholds, maintainability evidence order, shell-safe risk commands, fix-first behavior, CLI/MCP surfaces, and public report shapes stay stable. The main scorecard module drops from 369 lines / CC 48 to 248 lines / CC 31.
+- Verification: `npm test -- tests/core/qualityScorecardArchitecture.test.ts` failed before dimension policy moved out of `qualityScorecard.ts`, then passed after extraction. `npm test -- tests/core/qualityScorecard.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/qualityScorecard.ts` or `src/core/qualityScorecardDimensions.ts`.
+
+## 2026-06-24: Harden Proof Replay ledger trust boundary
+
+- Status: accepted
+- Context: Parallel security review found that Proof Replay freshness only compared changed-file path sets, proof command strings could persist secrets, imported or MCP-recorded proof was not visible as distinct from executed proof, proof artifact paths were too broad, and reviewer Markdown rendered some proof strings raw.
+- Decision: Make proof ledger fingerprints content-aware, redact command strings before persistence and rendering, propagate proof source through command evidence and replay events, restrict ledger, contract, and log paths to expected `.projscan` locations, and route proof/evidence Markdown strings through existing Markdown safety helpers.
+- Consequences: Editing the same changed file after proof now marks proof stale. Ledger JSON, receipts, replay events, and Markdown distinguish `prove-run` from `prove-record`. Secret-bearing command values are redacted before storage. Custom proof artifacts are constrained to `.projscan/proof-ledger.jsonl`, `.projscan/proof-ledgers/*.jsonl`, `.projscan/proof-contract.json`, `.projscan/proof-contracts/*.json`, and `.projscan/proof-logs/*.log`.
+- Verification: `npm test -- tests/core/prove.test.ts` failed first for raw command persistence, same-file stale bypass, and missing source evidence, then passed after hardening. `npm test -- tests/cli/prove.test.ts tests/mcp/prove.test.ts`, `npm test -- tests/core/releaseEvidence.test.ts tests/docs/proveDocs.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/proofLedger.ts`, `src/core/proofReplay.ts`, and proof-facing CLI/comment renderers.
+
+## 2026-06-24: Extract start intent search-query policy
+
+- Status: accepted
+- Context: Dogfood fix-first assessment flagged `src/core/startIntentTargets.ts` as a high-churn hotspot. The file mixed public re-exports for target helpers with the ordered search-query extraction policy.
+- Decision: Move `extractSearchQuery` and its ordered helper chain into `src/core/startSearchQueryTargets.ts`. Keep `startIntentTargets.ts` as the compatibility barrel that re-exports `extractSearchQuery` and the existing target helpers.
+- Consequences: Start routing behavior and imports from `startIntentTargets.ts` stay stable. The public barrel drops from 33 lines / CC 8 to 12 lines / CC 1, while the search-query policy now has a focused review boundary.
+- Verification: `npm test -- tests/core/startIntentTargetsArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/startIntentTargets.test.ts tests/core/startIntentTargetsArchitecture.test.ts tests/core/startIntentTargetHelpersArchitecture.test.ts tests/core/startIntentDomainSearchArchitecture.test.ts tests/core/startIntentUserFacingQueryArchitecture.test.ts`, `npm test -- tests/core/startRouteActions.test.ts tests/core/startSearchIntentRouting.test.ts tests/core/start.test.ts`, `npm run build`, `npm run lint`, `npm run check:stability`, and `npm run security:release-gate` passed. `projscan file` reported no issues in `src/core/startIntentTargets.ts` or `src/core/startSearchQueryTargets.ts`.
+
+## 2026-06-24: Simplify intent router keyword-weight dispatch
+
+- Status: accepted
+- Context: Dogfood fix-first assessment flagged `src/core/intentRouterKeywordWeights.ts` as a high-churn hotspot. Its dispatch function used a repeated branch ladder across the focused keyword-weight modules.
+- Decision: Replace the branch ladder with an ordered `KEYWORD_WEIGHTERS` dispatcher. Keep the same precedence: trust feedback, file/impact, architecture, dependency, security, search, regression, workflow, then operational.
+- Consequences: Route scoring behavior stays stable, while the dispatch function drops from CC 12 to CC 5 and future weight sources can be added by extending one ordered list.
+- Verification: `npm test -- tests/core/intentRouterArchitecture.test.ts -t "keeps keyword scoring"` failed before the dispatcher existed, then passed after refactor. `npm test -- tests/core/intentRouterTrustFeedbackKeywordWeights.test.ts tests/core/intentRouterFileImpactKeywordWeights.test.ts tests/core/intentRouterArchitectureKeywordWeights.test.ts tests/core/intentRouterDependencyKeywordWeights.test.ts tests/core/intentRouterSecurityKeywordWeights.test.ts tests/core/intentRouterSearchKeywordWeights.test.ts tests/core/intentRouterRegressionKeywordWeights.test.ts tests/core/intentRouterWorkflowKeywordWeights.test.ts tests/core/intentRouterOperationalKeywordWeights.test.ts tests/core/intentRouterPrDiffKeywordConfig.test.ts tests/core/intentRouterArchitecture.test.ts` passed. `projscan file` reported no issues in `src/core/intentRouterKeywordWeights.ts`.
+
+## 2026-06-24: Extract start mission risk policy
+
+- Status: accepted
+- Context: Dogfood hotspots showed `src/core/startMissionPolicy.ts` remained the top source hotspot after prior routing and input/status extractions. Risk assembly still lived beside guardrails, proof commands, workflow selection, and summary text.
+- Decision: Move `combineRisks`, workplan-risk conversion, quality-risk filtering, low-signal hotspot filtering, and risk dedupe into `src/core/startMissionRiskPolicy.ts`. Re-export `combineRisks` from `startMissionPolicy.ts` to preserve existing callers.
+- Consequences: Mission Control top-risk behavior, fallback baseline risk, shell-safe file risk commands, fix-first inputs, and public imports stay stable. The main policy file drops from 253 lines / CC 44 to 161 lines / CC 28.
+- Verification: `npm test -- tests/core/startMissionPolicyArchitecture.test.ts -t "risk assembly"` failed before the helper existed, then passed after extraction. `npm test -- tests/core/startMissionPolicyArchitecture.test.ts tests/core/startMissionPolicy.test.ts` passed. `projscan file` reported no issues in `src/core/startMissionPolicy.ts` or `src/core/startMissionRiskPolicy.ts`.
+
+## 2026-06-24: Stream proof ledger replay lookups
+
+- Status: accepted
+- Context: Dogfood performance review showed `prove --changed` parsed the entire local proof ledger even though Proof Receipt replay only needs the newest row for each required proof command.
+- Decision: Add `readLatestProofLedgerRecords` in `src/core/proofLedger.ts` and make `computeChangedProof` resolve the contract/default proof commands before reading ledger evidence. The helper streams JSONL rows, ignores malformed and irrelevant rows, and returns only newest matching records.
+- Consequences: Proof Receipt JSON, stale/missing/failed semantics, ledger path validation, and full-history `readProofLedger` behavior stay stable. Large local proof ledgers no longer need to be materialized in memory for daily `prove --changed` replay.
+- Verification: `npm test -- tests/core/proofLedger.test.ts` failed before the streaming helper existed, then passed after implementation. `npm test -- tests/core/proofLedger.test.ts tests/core/prove.test.ts` passed.
+
+## 2026-06-24: Treat no-proof Proof Contracts as incomplete
+
+- Status: accepted
+- Context: Security review found that a crafted local Proof Contract can remove required proof commands while keeping changed files inside scope. Current Proof Sufficiency kept the receipt out of `ready`, but the verified workflow still treated `not-run` as not missing proof and pointed reviewers toward the PR comment instead of fixing the contract.
+- Decision: Treat `proofStatus: not-run` as an incomplete proof state for readiness guidance and verified workflow flags. Keep stale proof separate from missing proof so stale receipts still ask for reruns rather than new commands.
+- Consequences: Malformed or policy-empty contracts cannot look proof-complete in agent handoff fields. Valid contracts and stale-proof behavior stay stable.
+- Verification: `npm test -- tests/core/prove.test.ts -t "does not mark changed source ready"` failed before `not-run` was flagged as missing proof, then passed after the policy update. `npm test -- tests/core/prove.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, and `npm run security:release-gate` passed via AgentLoop verification.
+
+## 2026-06-24: Reject symlinked proof artifact paths
+
+- Status: accepted
+- Context: Security review found that ledger, run-log, and saved-contract paths were lexically constrained to `.projscan`, but a repo could make `.projscan` a symlink and redirect proof artifacts outside the project root.
+- Decision: Add `prepareProofArtifactWritePath` for proof artifact writes. It rejects symlinks in existing proof artifact parent paths, creates missing normal directories, rechecks the parent path, and rejects existing symlink target files before writing ledger rows, run logs, or contracts.
+- Consequences: Normal first-run `.projscan` creation still works, while malicious `.projscan` symlinks no longer receive proof ledger rows, run logs, or saved contracts. This is a bounded path-hardening step, not a full OS-level race-free file locking design.
+- Verification: `npm test -- tests/core/prove.test.ts -t "symlink"` failed before the guard existed, then passed after wiring it into proof artifact writes. `npm test -- tests/core/prove.test.ts` passed.
+
+## 2026-06-24: Surface proof evidence source in PR comments
+
+- Status: accepted
+- Context: Security review found that `evidence-pack --pr-comment` could show `proof status: passed` even when all proof evidence was imported with `prove --record-command` or MCP `record_command`, not executed by `prove --run`.
+- Decision: Add additive proof evidence source counts to `EvidencePackProofReceiptSummary` and render them in the Proof Receipt PR-comment section as executed, recorded, mission, external, and unknown counts.
+- Consequences: Reviewers can distinguish executed local proof from recorded/imported ledger evidence without parsing the full `prove --changed` JSON. MCP record mode remains available but no longer looks identical to executed proof in the review artifact.
+- Verification: `npm test -- tests/core/releaseEvidence.test.ts -t "available Proof Replay receipts"` failed before the source summary existed, then passed after adding the summary and PR-comment line. `npm test -- tests/core/releaseEvidence.test.ts tests/mcp/prove.test.ts` passed.
+
+## 2026-06-24: Ignore config baseRef for proof review gates
+
+- Status: accepted
+- Context: Security review found that `.projscanrc.json` could set `baseRef: "HEAD"` and make committed changes disappear from reviewer-facing proof and evidence-pack flows.
+- Decision: Stop using config `baseRef` for `evidence-pack` proof/preflight evidence and for CLI/MCP `prove` changed-mode fallback. Add an explicit `evidence-pack --base-ref` option for intentional review-base pinning. In changed-file detection, reject explicit refs that resolve to `HEAD` and skip implicit default refs that resolve to `HEAD`.
+- Consequences: Repo config can no longer hide committed changes from Proof Receipts or evidence-pack PR comments. Teams that need a custom review base must pass it explicitly through CLI/MCP. Non-review commands that already use config `baseRef` are unchanged in this slice.
+- Verification: `npm test -- tests/utils/changedFiles.test.ts -t "base refs"` and `npm test -- tests/core/releaseEvidence.test.ts -t "ignores repo-config baseRef"` failed before the guard/fallback changes, then passed after implementation. `npm test -- tests/core/releaseEvidence.test.ts tests/mcp/prove.test.ts tests/utils/changedFiles.test.ts` passed.
+
+## 2026-06-24: Parse changed files with NUL-delimited git output
+
+- Status: accepted
+- Context: Security review found that newline-delimited `git diff --name-only` and `git status --porcelain` output can C-quote or split valid filenames containing newlines, causing proof freshness to fingerprint wrong paths.
+- Decision: Use `git diff -z --name-only` and `git status --porcelain=v1 -z`, then parse NUL-delimited path records. Preserve rename/copy handling by skipping the extra source path record after adding the destination path.
+- Consequences: Changed-file evidence, proof ledger fingerprints, and proof receipts now preserve unusual but valid git paths. The `ChangedFilesResult` shape stays stable.
+- Verification: `npm test -- tests/utils/changedFiles.test.ts -t "newlines"` failed before NUL parsing, then passed after implementation. `npm test -- tests/utils/changedFiles.test.ts tests/core/prove.test.ts` passed.
+
+## 2026-06-24: Route mission proof ledger writes through prove record
+
+- Status: accepted
+- Context: Security review found that generated Mission Control scripts hand-built Proof Ledger JSON, bypassing the shared proof recorder's redaction, content-aware changed-file fingerprinting, and proof artifact path validation.
+- Decision: Keep mission proof logs and status files unchanged, but make `append_proof_ledger_row` call `projscan prove --record-command` instead of appending raw JSON to `.projscan/proof-ledger.jsonl`.
+- Consequences: Mission bundle proof evidence now uses the same ledger write path as CLI/MCP recorded proof. Mission scripts require the `projscan` executable to be available for ledger recording, which matches the existing mission assumption that proof commands run through projscan.
+- Verification: `npm test -- tests/cli/startMissionBundle.test.ts` failed before the generated script stopped appending raw ledger rows, then passed after rebuilding the compiled CLI. `npm test -- tests/cli/startMissionBundle.test.ts tests/core/prove.test.ts` passed.
+
+## 2026-06-24: Make ignored-file counting optional for internal scans
+
+- Status: accepted
+- Context: Performance review found that `scanRepository` counted git-ignored files on every git-backed scan, even in aggregate report paths that never render the ignored-file total.
+- Decision: Add `ScanOptions.countIgnoredFiles`, defaulting to true for compatibility. Preflight inputs, bug hunt, quality scorecard, and baseline-trend scans pass `countIgnoredFiles: false` because they only need visible file entries and issue evidence.
+- Consequences: `privacy-check` and default/public scanner calls keep accurate hidden-file counts. Heavy internal report paths avoid an extra ignored-file enumeration in large repositories.
+- Verification: `npm test -- tests/core/repositoryScanner.countIgnored.test.ts` failed before the option affected the scan boundary, then passed after implementation. `npm test -- tests/core/repositoryScanner.gitignore.test.ts tests/core/repositoryScanner.countIgnored.test.ts` and `npm test -- tests/core/preflight.test.ts tests/core/bugHunt.test.ts tests/core/qualityScorecard.test.ts tests/core/releaseEvidence.test.ts` passed.
+
+## 2026-06-24: Extract adoption MCP config catalog
+
+- Status: accepted
+- Context: Dogfood fix-first assessment flagged `src/core/adoption.ts` as the next maintainability hotspot. The file mixed MCP client config constants and types with first-run diagnostics, workflow recipes, starter-kit generation, and setup doctor logic.
+- Decision: Move MCP client ids, config install metadata, ready-to-paste client snippets, and config helper functions into `src/core/adoptionMcpConfig.ts`. Keep `adoption.ts` as the compatibility re-export surface for existing CLI, MCP, and public-agent imports.
+- Consequences: MCP config snippets, supported client ids, setup doctor behavior, CLI output, and MCP tool output stay stable. The extracted helper has no imports, no findings, and low complexity, while `adoption.ts` sheds the catalog block without a public API break.
+- Verification: `npm test -- tests/core/adoptionArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/adoptionArchitecture.test.ts tests/core/adoption.test.ts tests/cli/adoption.test.ts tests/mcp/adoption.test.ts` passed after rebuilding the compiled CLI.
+
+## 2026-06-24: Extract adoption workflow recipe catalog
+
+- Status: accepted
+- Context: `src/core/adoption.ts` still owned the full workflow recipe catalog after the MCP config extraction, keeping static agent guidance beside diagnostics, starter-kit writes, and setup doctor logic.
+- Decision: Move workflow recipe types and `getWorkflowRecipes` into `src/core/adoptionWorkflowRecipes.ts`. Keep `adoption.ts` as the compatibility re-export surface for CLI, MCP, and public-agent imports.
+- Consequences: Recipe ids, commands, MCP tools, wording, CLI JSON, and MCP adoption output stay stable. The recipe helper has no imports, no findings, and CC 1; `adoption.ts` drops below 900 lines while retaining the same public entrypoint.
+- Verification: `npm test -- tests/core/adoptionArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/adoptionArchitecture.test.ts tests/core/adoption.test.ts tests/cli/adoption.test.ts tests/mcp/adoption.test.ts` passed after rebuilding the compiled CLI.
+
+## 2026-06-24: Extract adoption first-run diagnostics
+
+- Status: accepted
+- Context: `src/core/adoption.ts` still owned first-run setup diagnostics, Git/package/config/plugin checks, and MCP startup guidance beside team starter-kit writes and MCP setup doctor logic.
+- Decision: Move first-run diagnostic types, `computeFirstRunDiagnostics`, and diagnostic helper logic into `src/core/adoptionFirstRunDiagnostics.ts`. Keep `adoption.ts` as the compatibility re-export surface, and import `checkNodeVersion` from the helper for the existing MCP setup doctor check.
+- Consequences: First-run JSON, CLI output, MCP adoption output, Node/package/Git/config/Tree-sitter/plugin diagnostics, and public imports stay stable. `adoption.ts` drops from 895 to 633 lines and from CC 53 to CC 24; the extracted helper has no findings.
+- Verification: `npm test -- tests/core/adoptionArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/adoptionArchitecture.test.ts tests/core/adoption.test.ts tests/cli/adoption.test.ts tests/mcp/adoption.test.ts` passed after rebuilding the compiled CLI.
+
+## 2026-06-24: Extract workplan quality and suggested-action policy
+
+- Status: accepted
+- Context: `src/core/workplan.ts` remained the top maintainability hotspot after adoption was split. It still mixed orchestration with bug-hunt quality-scorecard signal conversion and suggested-action rendering.
+- Decision: Move quality-scorecard-to-workplan mapping into `src/core/workplanQualitySignals.ts` and suggested-action rendering/dedupe into `src/core/workplanSuggestedActions.ts`. Keep `workplan.ts` as the orchestration and public export surface.
+- Consequences: Workplan report behavior, bug-hunt mode, suggested actions, CLI output, and MCP output stay stable while the policy code gets isolated behind focused helpers.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before the helpers existed, then passed after extraction. `npm test -- tests/core/workplanArchitecture.test.ts tests/core/workplan.test.ts tests/cli/workplan.test.ts tests/mcp/workplan.test.ts` passed.
+
+## 2026-06-24: Extract feedback intake classifier policy
+
+- Status: accepted
+- Context: `src/core/feedback.ts` became the top source hotspot after workplan was split. It mixed feedback file IO, summary aggregation, intake classification rules, and AgentLoop task-command rendering.
+- Decision: Move raw feedback classification, signal extraction, suggested verification commands, and generated AgentLoop task command rendering into `src/core/feedbackIntakeClassifier.ts`. Keep `classifyFeedbackIntake` exported from `feedback.ts` as the public compatibility wrapper.
+- Consequences: CLI feedback intake JSON/console output and public imports stay stable, while classifier policy can evolve without growing the feedback storage and summary module.
+- Verification: `npm test -- tests/core/feedbackArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/feedbackArchitecture.test.ts tests/core/feedback.test.ts tests/cli/feedback.test.ts` passed.
+
+## 2026-06-24: Extract start mode intent policy
+
+- Status: accepted
+- Context: `src/core/startMode.ts` became the top source hotspot after feedback was split. It mixed workflow-mode orchestration with regex-heavy intent, preflight, release-readiness, and prohibited-action policy.
+- Decision: Move preflight mode inference, release/publish prohibition detection, handoff hints, review/regression mode helpers, and release-candidate readiness matchers into `src/core/startModeIntentPolicy.ts`. Keep `preflightModeFromIntent` and `hasProhibitedWorkflowModeAction` re-exported from `startMode.ts` for compatibility.
+- Consequences: Start mode routing behavior and public imports stay stable, while regex policy can be reviewed independently from mode resolver orchestration.
+- Verification: `npm test -- tests/core/startModeArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/core/startModeArchitecture.test.ts tests/cli/startIntentRouting.test.ts tests/core/startReleaseRouting.test.ts tests/core/startRegressionRouting.test.ts tests/core/startSecurityRouting.test.ts` passed.
+
+## 2026-06-24: Extract start console Mission Control rendering
+
+- Status: accepted
+- Context: `src/cli/commands/startConsole.ts` remained the top source hotspot after start-mode policy was split. It still mixed top-level start console flow with Mission Control, proof queue, review gate, and mission outcome rendering.
+- Decision: Move Mission Control console rendering into `src/cli/commands/startConsoleMission.ts`. Keep execution-plan rendering in `startConsoleExecution.ts` and keep `printStart`, `startRiskSectionTitle`, and existing console exports in `startConsole.ts`.
+- Consequences: Start console output stays stable while Mission Control rendering can evolve independently from the top-level console sequence.
+- Verification: `npm test -- tests/cli/startConsoleArchitecture.test.ts` failed before the helper existed, then passed after extraction. `npm test -- tests/cli/startConsoleArchitecture.test.ts tests/cli/startConsoleGuidance.test.ts tests/cli/startConsoleRouting.test.ts tests/cli/startHandoff.test.ts tests/cli/startHandoffProofCli.test.ts tests/cli/start.test.ts` passed.
+
+## 2026-06-24: Skip ignored-file counting in session resource scans
+
+- Status: accepted
+- Context: Performance audit found that `loadProjectSignals` in `src/core/sessionResources.ts` still used the scanner default that counts git-ignored files, even though session summary, handoff, and risk-now reports do not render that count.
+- Decision: Pass `countIgnoredFiles: false` for the session resource project-signal scan while keeping `scanRepository` defaults unchanged for compatibility.
+- Consequences: Session risk and handoff paths avoid one extra ignored-file enumeration in git repositories. Public/default scan behavior, privacy-check behavior, and visible-file scanning stay unchanged.
+- Verification: `npm test -- tests/core/sessionResourcesArchitecture.test.ts` failed before the option was present, then passed after implementation. `npm test -- tests/core/sessionResourcesArchitecture.test.ts tests/core/repositoryScanner.countIgnored.test.ts` passed.
+
+## 2026-06-24: Harden Proof Receipt evidence security
+
+- Status: accepted
+- Context: Security audit found that Proof Receipt changed-file evidence ignored committed deletions, proof redaction leaked quoted values with spaces, changed-file fingerprints followed symlink targets, recorded-only proof could look reviewer-ready, and mission proof ledger rows used the generic recorded source while suppressing ledger write failures.
+- Decision: Include deletions in changed-file diff evidence, redact full quoted secret-like values and flag arguments, fingerprint symlinks by link metadata instead of target contents, downgrade recorded-only proof sufficiency to weak, route mission proof ledger rows through `--record-source mission`, and fail mission scripts if ledger recording fails.
+- Consequences: Proof and evidence-pack flows see deleted files, avoid reading symlink targets outside the repo, keep proof logs safer, and distinguish executed/mission proof from imported recorded proof. CLI `prove --record-source` is a narrow source marker for record mode; normal record mode still defaults to `prove-record`.
+- Verification: Red tests failed first for committed deletions, quoted redaction, symlink fingerprinting, missing Proof Receipt top-level review guidance, recorded-only proof sufficiency, MCP recorded proof, and mission source recording. Focused tests passed after implementation.
+
+## 2026-06-24: Reuse quality-scorecard project signals for risk-now evidence
+
+- Status: accepted
+- Context: Performance review found that `computeQualityScorecard` scanned files, collected issues, built the import graph, and analyzed hotspots, then called `buildRiskNow`, which repeated scan-heavy project-signal work for coordination conflicts.
+- Decision: Let `buildRiskNow` accept optional precomputed `ProjectSignals`. `quality-scorecard` now passes the graph and hotspot signals it already computed, while keeping the scorecard's visible hotspot list sliced to the requested risk limit.
+- Consequences: A single `quality-scorecard` run avoids duplicate graph and hotspot analysis for risk-now coordination evidence. Existing `buildRiskNow` callers keep the old behavior because project signals remain optional.
+- Verification: `npm test -- tests/core/qualityScorecard.test.ts` failed before reuse because one scorecard run built graph/hotspot signals twice, then passed after reuse. `npm test -- tests/core/qualityScorecard.test.ts tests/core/qualityScorecardArchitecture.test.ts`, `npm run typecheck`, and `npm run build` passed.
+
+## 2026-06-24: Extract quality-scorecard signal collection
+
+- Status: accepted
+- Context: Dogfood file analysis showed `src/core/qualityScorecard.ts` remained a hotspot after signal reuse because it still mixed output shaping with config loading, scanning, issue collection, graph building, hotspot analysis, and risk-now signal assembly.
+- Decision: Move scan-heavy signal collection into `src/core/qualityScorecardSignals.ts`. Keep `qualityScorecard.ts` focused on dimensions, risk ranking, verdicts, commands, and public scorecard report shaping.
+- Consequences: `qualityScorecard.ts` dropped from 268 to 206 lines, cyclomatic complexity dropped from 36 to 28, and fan-out dropped from 17 to 10. The new helper is 93 lines, CC 9, and not a hotspot.
+- Verification: `npm test -- tests/core/qualityScorecardArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/qualityScorecardArchitecture.test.ts tests/core/qualityScorecard.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. `projscan doctor --format json` stayed at 100/A with zero issues.
+
+## 2026-06-24: Extract dogfood repo evaluation policy
+
+- Status: accepted
+- Context: Dogfood file analysis showed `src/core/dogfood.ts` mixed report assembly with per-repo evaluation, feedback matching, gap calculation, and status policy, making it the next maintainability hotspot.
+- Decision: Move per-repo dogfood evaluation and feedback/gap policy into `src/core/dogfoodRepoEvaluation.ts`. Keep `dogfood.ts` focused on repo discovery, report totals, market validation, summary text, and suggested next actions.
+- Consequences: `dogfood.ts` dropped from 331 to 183 lines, cyclomatic complexity dropped from 47 to 13, and fan-out dropped from 6 to 5. The new helper carries the isolated evaluation policy and is not a hotspot.
+- Verification: `npm test -- tests/core/dogfoodArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/dogfoodArchitecture.test.ts tests/core/dogfood.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. `projscan doctor --format json` stayed at 100/A with zero issues, and compiled `projscan dogfood --repo . --target-repos 1 --format json` completed successfully.
+
+## 2026-06-24: Extract Mission Control proof policy
+
+- Status: accepted
+- Context: Dogfood file analysis showed `src/core/startMissionPolicy.ts` remained a hotspot because it still mixed workflow selection and summary text with Mission Control guardrail and proof-command policy.
+- Decision: Move guardrail, proof-command, release-candidate proof ordering, and shared action dedupe logic into `src/core/startMissionProofPolicy.ts`. Keep `startMissionPolicy.ts` as the compatibility re-export surface plus workflow selection and summary helpers.
+- Consequences: `startMissionPolicy.ts` dropped from 161 to 60 lines, cyclomatic complexity dropped from 28 to 14, and fan-out dropped from 12 to 8. The new proof helper is 104 lines, CC 15, and not a hotspot.
+- Verification: `npm test -- tests/core/startMissionPolicyArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/startMissionPolicyArchitecture.test.ts tests/core/startMissionPolicy.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. `projscan doctor --format json` stayed at 100/A with zero issues.
+
+## 2026-06-24: Extract bug-hunt source finding mappers
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/bugHunt.ts` as the top maintainability hotspot. The file still mixed bug-hunt orchestration with doctor issue and session-conflict finding mapping policy.
+- Decision: Move doctor issue and session conflict conversion into `src/core/bugHuntSourceFindings.ts`. Keep `bugHunt.ts` focused on scan/preflight/risk/hotspot orchestration and final report assembly.
+- Consequences: `bugHunt.ts` dropped from 212 to 152 lines and cyclomatic complexity dropped from 17 to 10. The new helper is 72 lines, CC 8, and not a hotspot. Bug-hunt finding IDs, priorities, evidence, tools, and verification commands remain unchanged.
+- Verification: `npm test -- tests/core/bugHuntArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/bugHuntArchitecture.test.ts tests/core/bugHunt.test.ts tests/core/bugHuntGraphHotspots.test.ts tests/types/public-bug-hunt-types.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. `projscan doctor --format json` stayed at 100/A with zero issues, and `projscan bug-hunt --format json` reported only the broad-branch manual review gate.
+
+## 2026-06-24: Harden proof artifact reads and mission scripts
+
+- Status: accepted
+- Context: Security audit found that proof ledger and Proof Contract reads could follow symlinked artifact paths outside the repo, executed proof logs missed standalone token/private-key shapes, and generated mission scripts still trusted raw shell control syntax plus PATH-resolved internal ledger recording.
+- Decision: Add read-side proof artifact symlink checks, redact standalone PEM private-key, JWT-shaped, and Slack token-shaped proof output, make mission scripts fail closed on shell control characters, and record mission proof through the Node executable plus captured projscan CLI path.
+- Consequences: Proof writes and reads now share symlink hygiene, proof logs avoid more standalone secret leakage cases, and generated mission scripts no longer run raw semicolon/pipe/ampersand/substitution/newline command strings. Internal mission ledger recording no longer resolves `projscan` from `PATH`.
+- Verification: New tests failed before implementation for symlinked ledger reads, symlinked Proof Contract reads, standalone proof-log redaction, unsafe mission command syntax, and PATH-resolved mission ledger recording. `npm test -- tests/core/proofLedger.test.ts tests/core/prove.test.ts tests/cli/startMissionBundle.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `projscan doctor --format json`, and `projscan bug-hunt --format json` passed after implementation.
+
+## 2026-06-24: Extract quality-scorecard risk shaping
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/qualityScorecard.ts` as the top maintainability hotspot after bug-hunt was split. The file still mixed scorecard orchestration with issue, hotspot, coordination-risk, baseline-risk, ranking, and suggested-action shaping.
+- Decision: Move quality risk conversion, ranking, baseline risk, and suggested-action shaping into `src/core/qualityScorecardRisks.ts`. Keep `qualityScorecard.ts` focused on signal collection, dimension scoring, verdict, summary, and report assembly.
+- Consequences: `qualityScorecard.ts` dropped from 206 to 96 lines, cyclomatic complexity dropped from 28 to 15, and fan-out dropped from 10 to 5. The new helper is 129 lines, CC 14, and not a hotspot. Risk ids, priorities, commands, ordering, baseline behavior, and suggested actions remain unchanged.
+- Verification: `npm test -- tests/core/qualityScorecardArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/qualityScorecardArchitecture.test.ts tests/core/qualityScorecard.test.ts`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. `projscan doctor --format json` stayed at 100/A with zero issues, and `projscan bug-hunt --format json` reported only the broad-branch manual review gate.
+
+## 2026-06-24: Extract start mode routing resolvers
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/startMode.ts` as the top maintainability hotspot with no doctor issues. The file still mixed public mode resolution with route-to-workflow resolver policy.
+- Decision: Move route normalization and workflow resolver policy into `src/core/startModeRoutingPolicy.ts`. Keep `startMode.ts` as the stable public wrapper for `resolveStartMode`, `isStartModeInput`, `inferModeFromIntent`, and `routesForIntent`.
+- Consequences: `startMode.ts` dropped from 213 to 74 lines and cyclomatic complexity dropped from 37 to 9. The new routing helper is not a hotspot. Public exports and routing behavior remain unchanged.
+- Verification: `npm test -- tests/core/startModeArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/startModeArchitecture.test.ts`, `npm test -- tests/core/startMode.test.ts tests/core/startSearchIntentRouting.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `projscan file src/core/startMode.ts --format json`, and `projscan doctor --format json` passed.
+
+## 2026-06-24: Extract workplan report shaping
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/workplan.ts` as the top maintainability hotspot after start-mode routing was split. The file still mixed workplan orchestration with report summary text, handoff markdown, task ranking, and priority/evidence ranking helpers.
+- Decision: Move report summary, handoff payload rendering, task ranking, and ranking helper policy into `src/core/workplanReport.ts`. Keep `workplan.ts` responsible for preflight, risk, ownership, quality-signal orchestration, and the existing public exports.
+- Consequences: `workplan.ts` dropped from 230 to 152 lines and cyclomatic complexity dropped from 27 to 16. The new report helper is not a hotspot. `computeWorkplan`, `buildWorkplanHandoff`, and `rankWorkplanTasks` behavior and import paths remain unchanged.
+- Verification: `npm test -- tests/core/workplanArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/workplanArchitecture.test.ts tests/core/workplan.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `projscan file src/core/workplan.ts --format json`, and `projscan doctor --format json` passed.
+
+## 2026-06-24: Extract adoption MCP doctor policy
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/adoption.ts` as the top source hotspot after workplan was split. The file still mixed starter-kit generation with MCP setup doctor checks and client-config discovery.
+- Decision: Move MCP setup doctor report types, project-config checks, and client-config candidate policy into `src/core/adoptionMcpDoctor.ts`. Re-export `computeMcpSetupDoctor` and its report types from `adoption.ts` to keep public imports stable.
+- Consequences: `adoption.ts` dropped from 633 to 524 lines and cyclomatic complexity dropped from 24 to 10. The new MCP doctor helper is not a hotspot. Adoption MCP doctor output and public import paths remain unchanged.
+- Verification: `npm test -- tests/core/adoptionArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/adoptionArchitecture.test.ts`, `npm test -- tests/core/adoption.test.ts tests/core/adoptionHarness.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `projscan file src/core/adoption.ts --format json`, and `projscan doctor --format json` passed.
+
+## 2026-06-24: Extract intent-router product guard signals
+
+- Status: accepted
+- Context: Dogfood quality scorecard ranked `src/core/intentRouterKeywordToolGuards.ts` as the top source hotspot. The guard table also owned product-feedback, prove, and report-control context helpers, with `feedbackIntakeContextMatches` carrying most of the concentrated complexity.
+- Decision: Move product/trust guard context helpers and their keyword lists into `src/core/intentRouterProductGuardSignals.ts`. Keep the tool guard file as the rejector table and import those context decisions.
+- Consequences: `intentRouterKeywordToolGuards.ts` dropped from 292 to 231 lines and cyclomatic complexity dropped from 100 to 68. The new product guard signal helper is not a hotspot. Feedback intake, prove, and redacted evidence routing behavior remain unchanged.
+- Verification: `npm test -- tests/core/intentRouterSearchArchitecture.test.ts` failed before extraction, then passed after implementation. `npm test -- tests/core/intentRouterSearchArchitecture.test.ts`, `npm test -- tests/core/intentRouterFeedbackRouting.test.ts tests/core/intentRouter.test.ts tests/core/intentRouterReviewRelease.test.ts`, `npm run typecheck`, `npm run lint`, `npm run build`, `projscan file src/core/intentRouterKeywordToolGuards.ts --format json`, and `projscan doctor --format json` passed.

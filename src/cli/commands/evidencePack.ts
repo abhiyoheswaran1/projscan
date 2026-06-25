@@ -24,6 +24,7 @@ export function registerEvidencePack(): void {
     )
     .option('--website-prompt', 'include website-update prompt text')
     .option('--pr-comment', 'print a GitHub PR comment markdown artifact')
+    .option('--base-ref <ref>', 'explicit git base ref for review evidence')
     .option('--max-findings <count>', 'maximum bug-hunt findings to include', parsePositiveInt)
     .action(async (cmdOpts) => {
       setupLogLevel();
@@ -35,6 +36,7 @@ export function registerEvidencePack(): void {
           lines: cmdOpts.line,
           includeWebsitePrompt: cmdOpts.websitePrompt === true,
           includePrComment: cmdOpts.prComment === true,
+          baseRef: cmdOpts.baseRef,
           maxFindings: cmdOpts.maxFindings,
         });
 

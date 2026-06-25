@@ -9,6 +9,7 @@ import { spawnCli } from '../helpers/cli.js';
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
+const PROOF_REPLAY_TEST_TIMEOUT_MS = 120_000;
 
 let tmp: string;
 
@@ -68,6 +69,45 @@ test('prove intent renders JSON', async () => {
   expect(report.contract.receiptCommand).toContain('projscan prove --changed');
 });
 
+test('prove intent applies team proof recipes from project config', async () => {
+  await fs.writeFile(
+    path.join(tmp, '.projscanrc.json'),
+    JSON.stringify({
+      proofRecipes: [
+        {
+          id: 'core-critical',
+          matches: ['src/core/**'],
+          requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+          requiredReviewers: ['@platform'],
+          forbiddenFiles: ['src/auth/**'],
+          riskSurface: 'core',
+        },
+      ],
+    }),
+  );
+
+  const result = await runCli([
+    'prove',
+    '--intent',
+    'split bugHunt.ts into ranking, evidence, and output modules',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.contract.proofCommands).toContain(
+    'npm test -- tests/core/bugHunt.test.ts -- --runInBand',
+  );
+  expect(report.contract.teamProofRecipes[0]).toEqual(
+    expect.objectContaining({
+      id: 'core-critical',
+      requiredReviewers: ['@platform'],
+    }),
+  );
+});
+
 test('prove changed reads a saved contract and renders markdown receipt', async () => {
   const save = await runCli([
     'prove',
@@ -105,8 +145,91 @@ test('prove changed reads a saved contract and renders markdown receipt', async 
   expect(changed.stdout).toContain('next command');
   expect(changed.stdout).toContain('Allowed production');
   expect(changed.stdout).toContain('Expected tests');
+  expect(changed.stdout).toContain('Proof Sufficiency');
+  expect(changed.stdout).toContain('sufficiency status');
+  expect(changed.stdout).toContain('Requirement Evidence');
+  expect(changed.stdout).toContain('Proof Replay');
+  expect(changed.stdout).toContain('replay status');
+  expect(changed.stdout).toContain('receipt fingerprint');
   expect(changed.stdout).toContain('Reviewer Checklist');
   expect(changed.stdout).toContain('Copyable Decision');
+});
+
+test('prove record can mark mission proof source', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    "export function buildBugHuntReport(findings: string[]): string[] { return findings.map(String); }\n",
+  );
+
+  const recorded = await runCli([
+    'prove',
+    '--record-command',
+    'projscan preflight --mode before_edit --format json',
+    '--record-source',
+    'mission',
+    '--exit-code',
+    '0',
+    '--duration-ms',
+    '123',
+    '--summary',
+    'mission proof passed',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(recorded.exitCode).toBe(0);
+  const report = JSON.parse(recorded.stdout);
+  expect(report.ledgerRecord.source).toBe('mission');
+});
+
+test('prove changed markdown renders team proof recipe metadata', async () => {
+  await fs.writeFile(
+    path.join(tmp, '.projscanrc.json'),
+    JSON.stringify({
+      proofRecipes: [
+        {
+          id: 'core-critical',
+          matches: ['src/core/**'],
+          requiredCommands: ['npm test -- tests/core/bugHunt.test.ts -- --runInBand'],
+          requiredReviewers: ['@platform'],
+          forbiddenFiles: ['src/auth/**'],
+        },
+      ],
+    }),
+  );
+  const save = await runCli([
+    'prove',
+    '--intent',
+    'split bugHunt.ts into ranking, evidence, and output modules',
+    '--save-contract',
+    '.projscan/proof-contract.json',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+  expect(save.exitCode).toBe(0);
+
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    "export function buildBugHuntReport(findings: string[]): string[] { return findings.map(String); }\n",
+  );
+  const changed = await runCli([
+    'prove',
+    '--changed',
+    '--contract',
+    '.projscan/proof-contract.json',
+    '--format',
+    'markdown',
+    '--quiet',
+  ]);
+
+  expect(changed.exitCode).toBe(0);
+  expect(changed.stdout).toContain('## Team Proof Recipes');
+  expect(changed.stdout).toContain('core-critical');
+  expect(changed.stdout).toContain('@platform');
+  expect(changed.stdout).toContain('npm test -- tests/core/bugHunt.test.ts -- --runInBand');
+  expect(changed.stdout).toContain('recipe proof gaps');
 });
 
 test('prove records command evidence and replays it in markdown receipts', async () => {
@@ -158,11 +281,17 @@ test('prove records command evidence and replays it in markdown receipts', async
 
   expect(changed.exitCode).toBe(0);
   expect(changed.stdout).toContain('## Proof Replay');
-  expect(changed.stdout).toContain('- **Proof status:** passed');
+  expect(changed.stdout).toContain('- **replay status:** needs-proof');
+  expect(changed.stdout).toContain('- **proof status:** passed');
+  expect(changed.stdout).toContain('- **proof sufficiency:** weak');
+  expect(changed.stdout).toContain('- **sufficiency status:** weak');
   expect(changed.stdout).toContain('- **Reviewer decision:**');
+  expect(changed.stdout).toContain('- **changed after proof:** none');
+  expect(changed.stdout).toContain('- **replay command:** `projscan prove --changed --contract .projscan/proof-contract.json --format markdown`');
+  expect(changed.stdout).toMatch(/- \*\*receipt fingerprint:\*\* `[a-f0-9]{16}`/);
   expect(changed.stdout).toContain('fresh');
   expect(changed.stdout).not.toContain('proof passed with Bearer');
-});
+}, PROOF_REPLAY_TEST_TIMEOUT_MS);
 
 test('prove runs a local proof command through the delimiter', async () => {
   await fs.writeFile(

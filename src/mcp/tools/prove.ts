@@ -1,4 +1,5 @@
 import { computeProve } from '../../core/prove.js';
+import { loadConfig } from '../../utils/config.js';
 import type { McpTool } from './_shared.js';
 
 export const proveTool: McpTool = {
@@ -66,23 +67,28 @@ export const proveTool: McpTool = {
       },
     },
   },
-  handler: async (args, rootPath) => ({
-    prove: await computeProve(rootPath, {
-      intent: stringArg(args.intent),
-      changed: args.changed === true,
-      contractPath: stringArg(args.contract_path),
-      saveContractPath: stringArg(args.save_contract_path),
-      maxFiles: finiteNumberArg(args.max_files),
-      feedbackPath: stringArg(args.feedback_path),
-      baseRef: stringArg(args.base_ref),
-      ledgerPath: stringArg(args.ledger_path),
-      recordCommand: stringArg(args.record_command),
-      exitCode: integerArg(args.exit_code),
-      durationMs: finiteNumberArg(args.duration_ms),
-      summary: stringArg(args.summary),
-      logPath: stringArg(args.log_path),
-    }),
-  }),
+  handler: async (args, rootPath) => {
+    const { config } = await loadConfig(rootPath);
+    const changed = args.changed === true;
+    return {
+      prove: await computeProve(rootPath, {
+        intent: stringArg(args.intent),
+        changed,
+        contractPath: stringArg(args.contract_path),
+        saveContractPath: stringArg(args.save_contract_path),
+        maxFiles: finiteNumberArg(args.max_files),
+        feedbackPath: stringArg(args.feedback_path),
+        baseRef: stringArg(args.base_ref),
+        ledgerPath: stringArg(args.ledger_path),
+        recordCommand: stringArg(args.record_command),
+        exitCode: integerArg(args.exit_code),
+        durationMs: finiteNumberArg(args.duration_ms),
+        summary: stringArg(args.summary),
+        logPath: stringArg(args.log_path),
+        proofRecipes: changed ? undefined : config.proofRecipes,
+      }),
+    };
+  },
 };
 
 function stringArg(value: unknown): string | undefined {
