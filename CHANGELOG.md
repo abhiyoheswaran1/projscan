@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.16.0]
+
+2026-06-26 - "Baseframe Suite Assessment Export"
+
+### Added
+
+- Added `projscan assess --intent <text> --task-id <id> --emit-baseframe`
+  to write `.baseframe/evidence/<task-id>/projscan-assessment.json`.
+- Added the exported `createBaseframeAssessment()` TypeScript API and
+  Baseframe v1 assessment and workflow manifest types.
+- Added Baseframe Suite v1 integration docs and an AgentLoopKit-consumable
+  assessment fixture.
+
+### Changed
+
+- `projscan assess --output <path>` now supports explicit ProjScan-owned
+  Baseframe assessment output paths.
+- `.baseframe/agent-workflow.json` is created or updated with relative paths
+  while preserving AgentLoopKit, AgentFlight, and unknown manifest fields.
+
+### Security
+
+- Baseframe assessment writes validate task IDs, reject traversal paths and
+  symlinked Baseframe directories, use atomic writes, and refuse to overwrite
+  unrelated artifacts.
+
 ## [4.15.0]
 
 2026-06-25 - "Proof Replay Trust Loop"

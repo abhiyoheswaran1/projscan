@@ -164,6 +164,25 @@ Use the risk delta simulator before a refactor or extraction. It predicts likely
 
 Success criteria: the team sees the one or two highest-value fixes, why they matter, how to prove them, and whether ship-readiness still needs caution or review.
 
+### Baseframe Suite assessment artifact
+
+ProjScan finds the risk.
+AgentLoopKit controls the work.
+AgentFlight proves the result.
+
+When a Baseframe Suite task needs a stable local artifact, run:
+
+```bash
+projscan assess \
+  --intent "Implement password reset" \
+  --task-id auth-password-reset-20260626-01 \
+  --emit-baseframe
+```
+
+ProjScan writes `.baseframe/evidence/<task-id>/projscan-assessment.json` and
+updates `.baseframe/agent-workflow.json` without writing AgentLoopKit or
+AgentFlight artifacts. See [Baseframe Suite Integration v1](docs/integrations/baseframe-suite-v1.md).
+
 ## Mission Control
 
 `projscan start --intent "<goal>"` turns a plain-language goal into an execution plan:
@@ -202,6 +221,19 @@ Regenerate README media:
 npm run docs:screenshots
 npm run docs:demos
 ```
+
+## 4.16.0 Notes
+
+4.16.0 ships Baseframe Suite assessment export:
+
+- `projscan assess --intent "<task>" --task-id <id> --emit-baseframe` writes
+  `.baseframe/evidence/<task-id>/projscan-assessment.json`.
+- ProjScan updates `.baseframe/agent-workflow.json` with its own status while
+  preserving AgentLoopKit, AgentFlight, and unknown manifest fields.
+- The package exports `createBaseframeAssessment()` plus Baseframe v1
+  assessment and workflow manifest types.
+- Artifact writes are local, atomic, task-ID validated, and protected against
+  traversal and symlink output paths.
 
 ## 4.15.0 Notes
 
@@ -572,7 +604,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.15.0` has seven direct runtime dependencies:
+`projscan@4.16.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -582,7 +614,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.15.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.16.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

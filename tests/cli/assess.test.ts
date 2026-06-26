@@ -85,6 +85,81 @@ test('assess rejects unsupported formats through the shared matrix', async () =>
   expect(result.stderr).toContain('projscan assess does not support --format sarif');
 });
 
+test('assess emits the default Baseframe assessment artifact path', async () => {
+  const taskId = 'auth-password-reset-20260626-01';
+  const result = await runCli([
+    'assess',
+    '--intent',
+    'Implement password reset',
+    '--task-id',
+    taskId,
+    '--emit-baseframe',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe('');
+  expect(result.stdout.trim()).toBe(
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+  );
+
+  const assessmentPath = path.join(
+    tmp,
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+  );
+  const assessment = JSON.parse(await fs.readFile(assessmentPath, 'utf-8'));
+  expect(assessment.schemaVersion).toBe('1.0');
+  expect(assessment.kind).toBe('projscan-assessment');
+  expect(assessment.taskId).toBe(taskId);
+  expect(assessment.intent).toBe('Implement password reset');
+
+  const manifest = JSON.parse(
+    await fs.readFile(path.join(tmp, '.baseframe/agent-workflow.json'), 'utf-8'),
+  );
+  expect(manifest.tools.projscan.assessmentPath).toBe(
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+  );
+});
+
+test('assess emits Baseframe assessment to an explicit output path', async () => {
+  const outputPath = path.join(
+    tmp,
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+  );
+  const result = await runCli([
+    'assess',
+    '--intent',
+    'Implement password reset',
+    '--task-id',
+    'auth-password-reset-20260626-01',
+    '--output',
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout.trim()).toBe(
+    '.baseframe/evidence/auth-password-reset-20260626-01/projscan-assessment.json',
+  );
+  const assessment = JSON.parse(await fs.readFile(outputPath, 'utf-8'));
+  expect(assessment.taskId).toBe('auth-password-reset-20260626-01');
+});
+
+test('assess rejects invalid Baseframe task IDs', async () => {
+  const result = await runCli([
+    'assess',
+    '--intent',
+    'Implement password reset',
+    '--task-id',
+    '../agentloopkit-task',
+    '--emit-baseframe',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stdout).toBe('');
+  expect(result.stderr).toMatch(/task ID/i);
+});
+
 async function runCli(
   args: string[],
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {

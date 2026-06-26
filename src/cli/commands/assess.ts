@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 
 import {
@@ -8,6 +9,7 @@ import {
   program,
   setupLogLevel,
 } from '../_shared.js';
+import { createBaseframeAssessment } from '../../core/baseframeAssessment.js';
 import { computeAssess } from '../../core/assess.js';
 import type { AssessMode, AssessProofCard, AssessReport } from '../../types/assess.js';
 
@@ -22,12 +24,30 @@ export function registerAssess(): void {
     .option('--max-cards <count>', 'maximum Proof Cards to return', parsePositiveInt)
     .option('--baseline <path>', 'prior assess JSON file to compare risk delta against')
     .option('--feedback <path>', 'local projscan feedback artifact to apply as trust memory')
+    .option('--intent <text>', 'Baseframe task intent to include in the assessment artifact')
+    .option('--task-id <id>', 'Baseframe task ID for the assessment artifact')
+    .option('--emit-baseframe', 'write the Baseframe ProjScan assessment artifact')
+    .option('--output <path>', 'explicit ProjScan-owned Baseframe assessment output path')
     .action(async (cmdOpts) => {
       setupLogLevel();
-      maybeCompactBanner();
-      const format = assertFormatSupported('assess');
 
       try {
+        if (shouldEmitBaseframe(cmdOpts)) {
+          const root = getRootPath();
+          const intent = requireBaseframeOption(cmdOpts.intent, '--intent');
+          const taskId = requireBaseframeOption(cmdOpts.taskId, '--task-id');
+          await createBaseframeAssessment({
+            root,
+            intent,
+            taskId,
+            outputPath: cmdOpts.output,
+          });
+          console.log(baseframeAssessmentRelativePath(root, taskId, cmdOpts.output));
+          return;
+        }
+
+        maybeCompactBanner();
+        const format = assertFormatSupported('assess');
         const report = await computeAssess(getRootPath(), {
           goal: cmdOpts.goal,
           mode: cmdOpts.mode,
@@ -163,6 +183,30 @@ function parsePositiveInt(value: string): number {
     throw new Error('value must be a positive integer');
   }
   return parsed;
+}
+
+function shouldEmitBaseframe(cmdOpts: {
+  emitBaseframe?: boolean;
+  output?: string;
+}): boolean {
+  return Boolean(cmdOpts.emitBaseframe || cmdOpts.output);
+}
+
+function requireBaseframeOption(value: unknown, name: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) throw new Error(`projscan assess Baseframe export requires ${name}.`);
+  return trimmed;
+}
+
+function baseframeAssessmentRelativePath(
+  root: string,
+  taskId: string,
+  outputPath: string | undefined,
+): string {
+  const absolutePath = outputPath
+    ? path.resolve(root, outputPath)
+    : path.join(root, '.baseframe', 'evidence', taskId, 'projscan-assessment.json');
+  return path.relative(root, absolutePath).replace(/\\/g, '/');
 }
 
 async function readAssessBaseline(filePath: string): Promise<AssessReport> {

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "projscan-assessment",
+  "producer": {
+    "name": "projscan",
+    "version": "4.16.0"
+  },
+  "taskId": "auth-password-reset-20260626-01",
+  "intent": "Implement password reset",
+  "generatedAt": "2026-06-26T12:00:00.000Z",
+  "repository": {
+    "root": "/repo",
+    "branch": "main",
+    "commit": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "verdict": "caution",
+  "summary": "caution: one proof-backed risk needs review before AgentLoopKit creates the task contract.",
+  "repositoryType": "TypeScript repository (Express, Vitest; npm)",
+  "impactedAreas": [
+    {
+      "name": "src",
+      "paths": [
+        "src/auth.ts"
+      ],
+      "reason": "Password reset touches authentication flow and token handling."
+    }
+  ],
+  "reviewFocus": [
+    {
+      "path": "src/auth.ts",
+      "priority": "high",
+      "reasons": [
+        "Authentication-sensitive code",
+        "Password reset token handling"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "id": "auth-password-reset-token-handling",
+      "severity": "warning",
+      "category": "authentication",
+      "message": "Password reset changes require manual review of token lifetime, storage, and invalidation.",
+      "files": [
+        "src/auth.ts"
+      ],
+      "suggestedAction": "Keep the change isolated and require auth-focused review before handoff."
+    }
+  ],
+  "suggestedChecks": [
+    {
+      "command": "projscan preflight --mode before_commit --format json",
+      "reason": "Confirm local preflight readiness before task handoff.",
+      "required": true
+    },
+    {
+      "command": "npm test",
+      "reason": "Run the repository test suite after the task implementation.",
+      "required": true
+    }
+  ]
+}

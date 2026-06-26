@@ -102,7 +102,10 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(decisions).toContain('Add executable Proof Contracts as the closed loop above Proof Cards');
   expect(decisions).toContain('Add Team Proof Recipes to proof receipts');
   expect(decisions).toContain('Trust Memory confidence adjustment');
-  expect(websitePrompt).toContain('4.15.0: Proof Replay Trust Loop');
+  expect(websitePrompt).toContain('4.16.0: Baseframe Suite Assessment Export');
+  expect(websitePrompt).toContain('Baseframe Suite Integration v1');
+  expect(websitePrompt).toContain('projscan assess --intent');
+  expect(websitePrompt).toContain('.baseframe/evidence/<task-id>/projscan-assessment.json');
   expect(websitePrompt).toContain('Proof Ledger');
   expect(websitePrompt).toContain('projscan prove --run');
   expect(websitePrompt).toContain('Proof Replay');

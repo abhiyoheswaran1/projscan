@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-26: Emit Baseframe Suite v1 assessment artifacts
+
+- Status: accepted
+- Context: AgentLoopKit and AgentFlight need a stable, local, machine-readable way to consume ProjScan's task-specific repository-risk assessment without merging products or sharing package dependencies.
+- Decision: Add `createBaseframeAssessment()` and `projscan assess --intent <text> --task-id <id> --emit-baseframe` as an additive export path. ProjScan writes only `.baseframe/evidence/<task-id>/projscan-assessment.json` and may update `.baseframe/agent-workflow.json`. The manifest update preserves unknown fields and other tool sections while updating shared timestamps and `tools.projscan`.
+- Consequences: Baseframe Suite integrations can exchange versioned JSON artifacts through the target repository. Existing `projscan assess` JSON, Markdown, and console modes remain compatible. Artifact writes stay local, atomic, task-ID validated, and restricted to ProjScan-owned paths with symlink and traversal protection.
+- Verification: Focused core and CLI tests cover schema output, manifest creation/update, relative paths, invalid task IDs, explicit/default output paths, unknown values, verdict mapping, safe writes, and existing CLI compatibility.
+
 ## 2026-06-24: Add Team Proof Recipes to proof receipts
 
 - Status: accepted

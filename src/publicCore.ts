@@ -5,6 +5,10 @@ export { analyzeDependencies } from './core/dependencyAnalyzer.js';
 export { collectIssues } from './core/issueEngine.js';
 export { analyzeHotspots, computeRiskScore } from './core/hotspotAnalyzer.js';
 export { computeAssess } from './core/assess.js';
+export {
+  createBaseframeAssessment,
+  type CreateBaseframeAssessmentOptions,
+} from './core/baseframeAssessment.js';
 export { computeSimulation } from './core/simulate.js';
 export { computeProve } from './core/prove.js';
 export { inspectFile } from './core/fileInspector.js';
