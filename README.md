@@ -25,8 +25,9 @@ Use projscan when an agent asks one of these questions:
 - Which proof commands should I run before handoff?
 - Which risks need fixes, reviewer attention, or release sign-off?
 - Which risk should I fix first?
+- Did the agent stay inside the approved change boundary?
 
-projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 48-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
+projscan runs core scans on your machine. It respects `.gitignore`, keeps `.env` values out of scans unless you opt in, and exposes the same evidence through a CLI and a 49-tool MCP server. The language layer uses 11 AST adapters covering 12 named languages.
 
 ```text
 Your agent / engineer
@@ -41,6 +42,8 @@ Your agent / engineer
   |                         |              |              +- allowed files
   |                         |              |              +- forbidden files
   |                         |              |              +- proof receipt
+  |                         |              |              +- change passport
+  |                         |              |              +- live guard
   |                         |              +- bounded extraction       |
   |                         |              +- regression test first    |
   |                         |              +- leave unchanged          |
@@ -104,6 +107,7 @@ projscan prove --intent "is my agent allowed to change billing retry logic?" --s
 # Make the bounded edit, then run the proof command.
 projscan prove --run -- npm test -- tests/billing/retry.test.ts
 projscan prove --changed --contract .projscan/proof-contract.json --format markdown
+projscan passport --contract .projscan/proof-contract.json --format markdown
 ```
 
 The command path is `start -> prove -> run -> changed`. Make the bounded edit after the contract exists and before `prove --run`. `start` chooses the contract workflow. `prove --intent` writes `.projscan/proof-contract.json` only when `--save-contract` is present. `prove --run -- <command...>` executes a local proof command, records the exit code, captures a redacted log, and fingerprints the current changed files. `prove --record-command` remains available for imported CI or external evidence when projscan did not run the command. `prove --changed` checks the current working tree against the contract and local ledger.
@@ -118,6 +122,22 @@ Team Proof Recipes let a repo encode required proof for sensitive paths in `proo
 Saved contracts are the source of truth for `prove --changed`; update the contract when a team recipe changes.
 
 Every `prove` report includes `verifiedWorkflow`, a compact JSON summary for agents and MCP clients. It names the phase, next action, next command, scope status, proof status, proof sufficiency status, risk delta direction, reviewer decision, and stale/missing/failed proof flags.
+
+`projscan passport` turns the contract and receipt into one handoff artifact. It names allowed files, forbidden files, changed files, proof replay status, Proof Sufficiency, reviewer action, and next commands. Save it when a reviewer or another agent needs the whole change story in one JSON file:
+
+```bash
+projscan passport \
+  --intent "is my agent allowed to change billing retry logic?" \
+  --save-contract .projscan/proof-contract.json \
+  --output .projscan/passport.json
+```
+
+`projscan guard` checks the current working tree against a saved Proof Contract. Use it after an agent edits files, or run `--watch` during a session:
+
+```bash
+projscan guard --contract .projscan/proof-contract.json
+projscan guard --contract .projscan/proof-contract.json --watch
+```
 
 Success criteria: the reviewer sees scope, proof execution, proof freshness, and sufficiency for the changed risk surface.
 
@@ -221,6 +241,28 @@ Regenerate README media:
 npm run docs:screenshots
 npm run docs:demos
 ```
+
+## 4.17.0 Notes
+
+4.17.0 ships the Agent Change Passport and Live Guard:
+
+- `projscan passport --intent "<task>" --save-contract .projscan/proof-contract.json`
+  creates a Proof Contract, checks the current working tree, and returns one
+  local passport with boundary, receipt, proof replay, Proof Sufficiency,
+  reviewer action, and next commands.
+- `projscan passport --contract .projscan/proof-contract.json --output
+  .projscan/passport.json` writes a JSON handoff artifact. ProjScan writes to
+  `.projscan/passport.json` or `.projscan/passports/<name>.json`, rejects
+  traversal, checks symlink paths, and refuses to overwrite unrelated files.
+- `projscan guard --contract .projscan/proof-contract.json` reports whether the
+  current diff stayed inside the approved boundary. `--watch` polls during an
+  agent session, and `--fail-on-drift` exits non-zero when the guard sees drift.
+- MCP now includes `projscan_passport`, bringing the MCP surface to 49 tools.
+  The tool returns passport evidence for agents without adding proof-command
+  execution to MCP.
+- Passport can attach Baseframe assessment evidence with `--task-id <id>
+  --emit-baseframe`, while ProjScan limits ownership to its assessment artifact
+  and shared manifest update.
 
 ## 4.16.0 Notes
 
@@ -385,6 +427,8 @@ npx -y projscan mcp --watch
 | Is this refactor worth doing?                | `projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"` |
 | Is my agent allowed to make this change?     | `projscan start --intent "is my agent allowed to change billing retry logic?"`           |
 | Did the change stay inside scope?            | `projscan prove --changed --contract .projscan/proof-contract.json --format markdown`    |
+| Can a reviewer trust this agent handoff?     | `projscan passport --contract .projscan/proof-contract.json --format markdown`           |
+| Is the agent drifting from the contract?     | `projscan guard --contract .projscan/proof-contract.json`                                |
 | Which files have high risk and low coverage? | `projscan coverage --format json`                                                        |
 | What should my agent do next?                | `projscan workplan --format json`                                                        |
 | Which proof belongs in this PR?              | `projscan evidence-pack --pr-comment`                                                    |
@@ -400,6 +444,8 @@ npx -y projscan mcp --watch
 | `projscan assess`         | proof-first assessment with Proof Cards, risk delta, and fix-first guidance |
 | `projscan simulate`       | risk delta simulator for a proposed change plan before editing              |
 | `projscan prove`          | executable Proof Contracts, Verified Workflow JSON, and Proof Receipts      |
+| `projscan passport`       | local change passport with boundary, receipt, proof, and reviewer action    |
+| `projscan guard`          | current working tree check against a saved Proof Contract                   |
 | `projscan evidence-pack`  | review evidence with risks, owners, proof receipts, and next commands       |
 | `projscan bug-hunt`       | ranked fix queue from health, hotspots, session, and preflight evidence     |
 | `projscan workplan`       | ordered agent tasks with proof and handoff text                             |
@@ -604,7 +650,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.16.0` has seven direct runtime dependencies:
+`projscan@4.17.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -614,7 +660,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.16.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.17.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

@@ -2,6 +2,14 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-27: Add Agent Change Passport and Live Guard
+
+- Status: accepted
+- Context: Proof Contracts and Proof Receipts already constrain agent work and prove completed diffs, but reviewers still needed one local handoff artifact that joins approved scope, changed files, proof freshness, Proof Sufficiency, and next commands.
+- Decision: Add `computePassport()`, `projscan passport`, and MCP tool `projscan_passport` as an additive Agent Change Passport workflow over existing `computeProve()` evidence. Add `computeGuard()` and `projscan guard` as a read-mode scope check for saved Proof Contracts. Passport can write `.projscan/passport.json` or `.projscan/passports/<name>.json`, and can attach Baseframe assessment evidence when the caller supplies a task ID. Guard reports clear, attention, drift, or blocked, and `--watch` polls without running proof commands.
+- Consequences: Agents and reviewers can exchange one local JSON handoff that names boundary, receipt, proof replay, Proof Sufficiency, reviewer action, and next commands. MCP returns passport evidence without adding proof-command execution. Existing `assess`, `prove`, Proof Ledger, Team Proof Recipes, Baseframe assessment export, and evidence-pack workflows remain compatible.
+- Verification: Focused core, CLI smoke, MCP, public type, docs, stability, release metadata, security, packed-install, AgentLoop verification, and full-suite checks cover artifact writes, drift detection, Baseframe attachment, 49-tool registry metadata, docs, and public exports.
+
 ## 2026-06-26: Emit Baseframe Suite v1 assessment artifacts
 
 - Status: accepted

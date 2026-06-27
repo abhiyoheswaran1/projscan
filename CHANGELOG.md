@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.17.0]
+
+2026-06-27 - "Agent Change Passport and Live Guard"
+
+### Added
+
+- Added `projscan passport` to package a Proof Contract and Proof Receipt into
+  one local Agent Change Passport with boundary, changed files, proof replay,
+  Proof Sufficiency, reviewer action, and next commands.
+- Added `.projscan/passport.json` and `.projscan/passports/<name>.json` artifact
+  writes with traversal, symlink, and unrelated-file overwrite guards.
+- Added `projscan guard` to check the current working tree against a saved Proof
+  Contract and report clear, attention, drift, or blocked states. The command
+  supports `--watch` and `--fail-on-drift`.
+- Added exported `computePassport()` and `computeGuard()` TypeScript APIs plus
+  Agent Change Passport and guard report types.
+- Added MCP tool `projscan_passport`, bringing the MCP server to 49 tools.
+
+### Changed
+
+- Updated README, guide, website prompt, and MCP Registry metadata for the
+  passport and guard workflow.
+- `projscan passport` can attach Baseframe assessment evidence when called with
+  `--task-id <id> --emit-baseframe`.
+
+### Security
+
+- Passport writes stay local, use atomic writes, reject traversal and symlink
+  output paths, and refuse to overwrite files that are not Agent Change
+  Passports.
+
 ## [4.16.0]
 
 2026-06-26 - "Baseframe Suite Assessment Export"

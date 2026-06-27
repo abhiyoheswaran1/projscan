@@ -51,6 +51,8 @@ import { registerQualityScorecard } from './commands/qualityScorecard.js';
 import { registerAssess } from './commands/assess.js';
 import { registerSimulate } from './commands/simulate.js';
 import { registerProve } from './commands/prove.js';
+import { registerPassport } from './commands/passport.js';
+import { registerGuard } from './commands/guard.js';
 import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerStart } from './commands/start.js';
 import { registerTrial } from './commands/trial.js';
@@ -116,6 +118,8 @@ export const CLI_COMMAND_REGISTRARS = [
   registerAssess,
   registerSimulate,
   registerProve,
+  registerPassport,
+  registerGuard,
   registerStart,
   registerTrial,
   registerTelemetry,

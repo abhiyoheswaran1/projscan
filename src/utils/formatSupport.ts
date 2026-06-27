@@ -14,6 +14,8 @@ export const COMMAND_FORMAT_SUPPORT = {
   assess: ['console', 'json', 'markdown'],
   simulate: ['console', 'json', 'markdown'],
   prove: ['console', 'json', 'markdown'],
+  passport: ['console', 'json', 'markdown'],
+  guard: ['console', 'json', 'markdown'],
   'apply-fix': ['console', 'json'],
   audit: ['console', 'json', 'markdown', 'sarif'],
   badge: ['console'],

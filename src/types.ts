@@ -28,6 +28,8 @@ export type * from './types/assess.js';
 export type * from './types/baseframe.js';
 export type * from './types/simulate.js';
 export type * from './types/prove.js';
+export type * from './types/passport.js';
+export type * from './types/guard.js';
 export type * from './types/proofLedger.js';
 export type * from './types/regressionPlan.js';
 export type * from './types/start.js';
