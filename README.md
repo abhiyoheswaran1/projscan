@@ -132,12 +132,16 @@ projscan passport \
   --output .projscan/passport.json
 ```
 
+<img src="docs/projscan-agent-change-passport.png" alt="projscan Agent Change Passport showing a drifted billing-retry handoff with approved and forbidden files, changed files, proof replay, Proof Sufficiency, warnings, and next commands" width="760">
+
 `projscan guard` checks the current working tree against a saved Proof Contract. Use it after an agent edits files, or run `--watch` during a session:
 
 ```bash
 projscan guard --contract .projscan/proof-contract.json
 projscan guard --contract .projscan/proof-contract.json --watch
 ```
+
+<img src="docs/projscan-live-guard.png" alt="projscan Live Guard watch output showing a billing-retry change move from clear to drift with reviewer action and next commands" width="760">
 
 Success criteria: the reviewer sees scope, proof execution, proof freshness, and sufficiency for the changed risk surface.
 

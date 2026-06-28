@@ -997,6 +997,8 @@ existing files that are not Agent Change Passports. Add `--task-id <id>
 --emit-baseframe` when a Baseframe Suite task also needs
 `.baseframe/evidence/<task-id>/projscan-assessment.json`.
 
+<img src="projscan-agent-change-passport.png" alt="projscan Agent Change Passport showing a drifted billing-retry handoff with approved and forbidden files, changed files, proof replay, Proof Sufficiency, warnings, and next commands" width="760">
+
 ### guard
 
 ```bash
@@ -1010,6 +1012,8 @@ Checks the current working tree against a saved Proof Contract. Guard reports
 missing or stale, `drift` when files changed outside the boundary, and `blocked`
 when the contract is missing or proof failed. `--watch` polls until interrupted.
 `--fail-on-drift` exits non-zero for drift or a missing contract.
+
+<img src="projscan-live-guard.png" alt="projscan Live Guard watch output showing a billing-retry change move from clear to drift with reviewer action and next commands" width="760">
 
 ### evidence-pack
 

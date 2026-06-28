@@ -30,6 +30,18 @@ const captures = [
     output: path.join(repoRoot, 'docs', 'projscan-proof-cards.png'),
     viewport: '1440,820',
   },
+  {
+    name: 'Agent Change Passport',
+    url: `${pathToFileURL(demoPath).href}#passport`,
+    output: path.join(repoRoot, 'docs', 'projscan-agent-change-passport.png'),
+    viewport: '1440,820',
+  },
+  {
+    name: 'Live Guard',
+    url: `${pathToFileURL(demoPath).href}#guard`,
+    output: path.join(repoRoot, 'docs', 'projscan-live-guard.png'),
+    viewport: '1440,820',
+  },
 ];
 
 for (const capture of captures) {

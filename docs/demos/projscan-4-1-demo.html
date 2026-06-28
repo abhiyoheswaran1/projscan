@@ -480,6 +480,247 @@
         text-transform: uppercase;
       }
 
+      .passport,
+      .guard {
+        padding-top: 52px;
+      }
+
+      .asset-header {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+
+      .asset-header h2 {
+        margin-bottom: 10px;
+        font-size: 39px;
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .asset-header p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .passport-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 0.93fr) minmax(0, 1.07fr);
+        gap: 20px;
+        align-items: stretch;
+      }
+
+      .passport-terminal .terminal-body,
+      .guard-terminal .terminal-body {
+        min-height: 548px;
+        padding: 18px 22px;
+        font-size: 12px;
+        line-height: 1.34;
+      }
+
+      .passport-terminal .line,
+      .guard-terminal .line {
+        min-height: 16px;
+      }
+
+      .command-wrap {
+        display: block;
+        color: #ffffff;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .passport-cards,
+      .guard-cards {
+        display: grid;
+        gap: 10px;
+      }
+
+      .passport-card,
+      .guard-card {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .passport-card h3,
+      .guard-card h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .passport-card p,
+      .guard-card p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .card-row {
+        display: grid;
+        grid-template-columns: 128px minmax(0, 1fr);
+        gap: 10px;
+        padding: 8px 0;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+      }
+
+      .card-row:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .card-row strong {
+        color: var(--ink);
+      }
+
+      .card-row span {
+        color: var(--muted);
+      }
+
+      .tight .card-row {
+        padding: 5px 0;
+      }
+
+      .tight .warning-item {
+        padding: 7px 9px;
+        font-size: 12px;
+      }
+
+      .tight .command-list code {
+        padding: 6px 8px;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .status-box {
+        min-height: 64px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbf7ef;
+      }
+
+      .status-box strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 22px;
+        line-height: 1;
+      }
+
+      .status-box span {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .status-box.red strong {
+        color: var(--red);
+      }
+
+      .status-box.amber strong {
+        color: var(--amber);
+      }
+
+      .status-box.green strong {
+        color: var(--green);
+      }
+
+      .boundary-columns,
+      .proof-columns {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .mini-list {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbf7ef;
+        font-size: 13px;
+      }
+
+      .mini-list strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .mini-list code {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+
+      .warning-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .warning-item {
+        padding: 9px 10px;
+        border-radius: 6px;
+        background: var(--red-soft);
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .command-list {
+        display: grid;
+        gap: 6px;
+        margin-top: 4px;
+      }
+
+      .command-list code {
+        display: block;
+        padding: 7px 8px;
+        border-radius: 6px;
+        background: #f3eee4;
+        color: var(--ink);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .guard-flow {
+        display: grid;
+        gap: 10px;
+      }
+
+      .guard-step {
+        display: grid;
+        grid-template-columns: 106px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbf7ef;
+      }
+
+      .guard-step strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .guard-step span:not(.tag) {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       @media (max-width: 980px) {
         .page {
           width: min(100% - 32px, 760px);
@@ -489,6 +730,8 @@
         .hero,
         .proof-header,
         .assess-header,
+        .asset-header,
+        .passport-shell,
         .proof-card-grid,
         .workflow,
         .grid {
@@ -515,9 +758,23 @@
       body.proof-only .hero,
       body.proof-only .grid,
       body.proof-only .assess,
+      body.proof-only .passport,
+      body.proof-only .guard,
       body.assess-only .hero,
       body.assess-only .grid,
-      body.assess-only .proof {
+      body.assess-only .proof,
+      body.assess-only .passport,
+      body.assess-only .guard,
+      body.passport-only .hero,
+      body.passport-only .grid,
+      body.passport-only .proof,
+      body.passport-only .assess,
+      body.passport-only .guard,
+      body.guard-only .hero,
+      body.guard-only .grid,
+      body.guard-only .proof,
+      body.guard-only .assess,
+      body.guard-only .passport {
         display: none;
       }
 
@@ -534,6 +791,16 @@
       }
 
       body.assess-only .assess-header {
+        margin-top: 0;
+      }
+
+      body.passport-only .passport,
+      body.guard-only .guard {
+        padding-top: 0;
+      }
+
+      body.passport-only .asset-header,
+      body.guard-only .asset-header {
         margin-top: 0;
       }
     </style>
@@ -669,7 +936,8 @@
           </div>
           <p>
             Developers and agents can record proof-command outcomes locally, replay them against the
-            current working tree, and hand reviewers one receipt with scope, freshness, and decision.
+            current working tree, and hand reviewers one receipt with scope, freshness, and
+            decision.
           </p>
         </div>
 
@@ -690,7 +958,9 @@
               >
               <span class="line dim">Proof Replay</span>
               <span class="line">&nbsp;</span>
-              <span class="line term-heading">Proof status: <span class="success">passed</span></span>
+              <span class="line term-heading"
+                >Proof status: <span class="success">passed</span></span
+              >
               <span class="line success">Reviewer decision: safe-to-review</span>
               <span class="line success">Scope: within-contract</span>
               <span class="line">&nbsp;</span>
@@ -714,7 +984,8 @@
               <span class="tag blue">MCP</span>
               <span>
                 <strong>Freshness</strong>
-                <code>prove --changed</code> marks proof stale when the changed-file fingerprint moves.
+                <code>prove --changed</code> marks proof stale when the changed-file fingerprint
+                moves.
               </span>
             </div>
             <div class="signal">
@@ -826,6 +1097,289 @@
           </article>
         </div>
       </section>
+
+      <section class="passport" id="passport" aria-label="Agent Change Passport screenshot">
+        <div class="asset-header">
+          <div>
+            <p class="eyebrow">Agent Change Passport</p>
+            <h2>One artifact, whole handoff.</h2>
+          </div>
+          <p>
+            A reviewer can see the approved boundary, real changed files, proof freshness, and the
+            exact action to take before approving a billing-retry agent change.
+          </p>
+        </div>
+
+        <div class="passport-shell">
+          <section class="terminal passport-terminal" aria-label="Agent Change Passport terminal">
+            <div class="terminal-bar">
+              <span class="dot red"></span>
+              <span class="dot amber"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">projscan passport</span>
+            </div>
+            <div class="terminal-body">
+              <span class="line"
+                ><span class="prompt">$</span>
+                <span class="command-wrap"
+                  >npx projscan passport --intent "is my agent allowed to change billing retry
+                  logic?" --save-contract .projscan/proof-contract.json --output
+                  .projscan/passport.json</span
+                ></span
+              >
+              <span class="line dim">Agent Change Passport</span>
+              <span class="line"
+                >Status: <span class="warn">drifted</span> | Artifact:
+                <span class="notice">.projscan/passport.json</span></span
+              >
+              <span class="line">Intent: is my agent allowed to change billing retry logic?</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Approved boundary</span>
+              <span class="line success">approved src/billing/retryPolicy.ts</span>
+              <span class="line success">approved tests/billing/retryPolicy.test.ts</span>
+              <span class="line success">approved docs/billing-retry-runbook.md</span>
+              <span class="line warn">forbidden src/billing/paymentGateway.ts</span>
+              <span class="line warn">forbidden src/billing/ledger/**</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Changed files</span>
+              <span class="line success">allowed src/billing/retryPolicy.ts</span>
+              <span class="line success">expected-test tests/billing/retryPolicy.test.ts</span>
+              <span class="line warn">drift src/billing/paymentGateway.ts</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Proof replay</span>
+              <span class="line warn">stale npm test -- tests/billing/retryPolicy.test.ts</span>
+              <span class="line warn">changed after proof: src/billing/paymentGateway.ts</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Proof Sufficiency</span>
+              <span class="line success">retry policy: adequate</span>
+              <span class="line warn">gateway contract: stale</span>
+              <span class="line warn">ledger writes: missing</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading"
+                >Reviewer action: <span class="warn">stop-and-recontract</span></span
+              >
+              <span class="line warn">Warning: forbidden billing gateway file changed.</span>
+              <span class="line warn">Warning: proof is stale after the last edit.</span>
+              <span class="line notice"
+                >Next: npx projscan prove --run -- npm test --
+                tests/billing/retryPolicy.test.ts</span
+              >
+              <span class="line notice"
+                >Next: npx projscan passport --contract .projscan/proof-contract.json</span
+              >
+            </div>
+          </section>
+
+          <div class="passport-cards" aria-label="Agent Change Passport summary cards">
+            <article class="passport-card">
+              <div class="status-grid">
+                <div class="status-box amber">
+                  <strong>drifted</strong>
+                  <span>passport status</span>
+                </div>
+                <div class="status-box red">
+                  <strong>stop</strong>
+                  <span>reviewer action</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="passport-card">
+              <h3>Approved Boundary</h3>
+              <div class="boundary-columns">
+                <div class="mini-list">
+                  <strong>Approved</strong>
+                  <code>src/billing/retryPolicy.ts</code>
+                  <code>tests/billing/retryPolicy.test.ts</code>
+                  <code>docs/billing-retry-runbook.md</code>
+                </div>
+                <div class="mini-list">
+                  <strong>Forbidden</strong>
+                  <code>src/billing/paymentGateway.ts</code>
+                  <code>src/billing/ledger/**</code>
+                  <code>secrets/**</code>
+                </div>
+              </div>
+            </article>
+
+            <article class="passport-card tight">
+              <h3>Changed Files + Proof</h3>
+              <div class="card-row">
+                <strong>Allowed</strong>
+                <span><code>src/billing/retryPolicy.ts</code></span>
+              </div>
+              <div class="card-row">
+                <strong>Test</strong>
+                <span><code>tests/billing/retryPolicy.test.ts</code></span>
+              </div>
+              <div class="card-row">
+                <strong>Drift</strong>
+                <span><code>src/billing/paymentGateway.ts</code></span>
+              </div>
+              <div class="card-row">
+                <strong>Replay</strong>
+                <span>stale test run, changed after proof</span>
+              </div>
+              <div class="card-row">
+                <strong>Sufficiency</strong>
+                <span>adequate retry policy, stale gateway contract, missing ledger writes</span>
+              </div>
+            </article>
+
+            <article class="passport-card tight">
+              <h3>Warnings + Next Commands</h3>
+              <div class="warning-list">
+                <div class="warning-item">Forbidden billing gateway file changed.</div>
+                <div class="warning-item">Proof is stale after the last edit.</div>
+              </div>
+              <div class="command-list">
+                <code
+                  >npx projscan prove --run -- npm test -- tests/billing/retryPolicy.test.ts</code
+                >
+                <code
+                  >npx projscan passport --contract .projscan/proof-contract.json --output
+                  .projscan/passport.json</code
+                >
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="guard" id="guard" aria-label="Live Guard screenshot">
+        <div class="asset-header">
+          <div>
+            <p class="eyebrow">Live Guard</p>
+            <h2>Catch boundary drift while the agent works.</h2>
+          </div>
+          <p>
+            Guard mode watches a saved Proof Contract and shows the moment a billing-retry task
+            leaves approved scope, before stale proof reaches review.
+          </p>
+        </div>
+
+        <div class="passport-shell">
+          <section class="terminal guard-terminal" aria-label="Live Guard terminal">
+            <div class="terminal-bar">
+              <span class="dot red"></span>
+              <span class="dot amber"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">projscan guard --watch</span>
+            </div>
+            <div class="terminal-body">
+              <span class="line"
+                ><span class="prompt">$</span>
+                <span class="cmd"
+                  >npx projscan guard --contract .projscan/proof-contract.json --watch</span
+                ></span
+              >
+              <span class="line dim">Live Guard</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">00:14:02 clear</span>
+              <span class="line success">scope: within approved billing retry boundary</span>
+              <span class="line success">changed: src/billing/retryPolicy.ts</span>
+              <span class="line success">proof: fresh, sufficiency adequate</span>
+              <span class="line notice">next: continue implementation</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">00:18:37 drift</span>
+              <span class="line warn">scope: forbidden billing gateway file changed</span>
+              <span class="line warn">changed: src/billing/paymentGateway.ts</span>
+              <span class="line warn">proof: stale after changed-file fingerprint moved</span>
+              <span class="line warn">reviewer action: stop-and-recontract</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Warnings</span>
+              <span class="line warn"
+                >- Contract allowed retry policy, tests, and runbook only.</span
+              >
+              <span class="line warn">- Gateway behavior now needs a new contract.</span>
+              <span class="line">&nbsp;</span>
+              <span class="line term-heading">Next Commands</span>
+              <span class="line notice"
+                >npx projscan prove --intent "is my agent allowed to change payment gateway
+                retries?" --save-contract .projscan/proof-contract.json</span
+              >
+              <span class="line notice"
+                >npx projscan passport --contract .projscan/proof-contract.json --output
+                .projscan/passport.json</span
+              >
+            </div>
+          </section>
+
+          <div class="guard-cards" aria-label="Live Guard summary cards">
+            <article class="guard-card">
+              <div class="status-grid">
+                <div class="status-box green">
+                  <strong>clear</strong>
+                  <span>before drift</span>
+                </div>
+                <div class="status-box amber">
+                  <strong>drift</strong>
+                  <span>current state</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="guard-card">
+              <h3>Watch Timeline</h3>
+              <div class="guard-flow">
+                <div class="guard-step">
+                  <span class="tag green">Clear</span>
+                  <span>
+                    <strong>Retry policy only</strong>
+                    <code>src/billing/retryPolicy.ts</code> stayed inside the contract.
+                  </span>
+                </div>
+                <div class="guard-step">
+                  <span class="tag amber">Drift</span>
+                  <span>
+                    <strong>Gateway file changed</strong>
+                    <code>src/billing/paymentGateway.ts</code> was forbidden by the contract.
+                  </span>
+                </div>
+                <div class="guard-step">
+                  <span class="tag red">Stop</span>
+                  <span>
+                    <strong>Proof is stale</strong>
+                    The changed-file fingerprint moved after the last proof run.
+                  </span>
+                </div>
+              </div>
+            </article>
+
+            <article class="guard-card">
+              <h3>Boundary Snapshot</h3>
+              <div class="boundary-columns">
+                <div class="mini-list">
+                  <strong>Allowed</strong>
+                  <code>src/billing/retryPolicy.ts</code>
+                  <code>tests/billing/retryPolicy.test.ts</code>
+                </div>
+                <div class="mini-list">
+                  <strong>Forbidden</strong>
+                  <code>src/billing/paymentGateway.ts</code>
+                  <code>src/billing/ledger/**</code>
+                </div>
+              </div>
+            </article>
+
+            <article class="guard-card tight">
+              <h3>Reviewer Signal</h3>
+              <div class="card-row">
+                <strong>Action</strong>
+                <span>stop-and-recontract</span>
+              </div>
+              <div class="card-row">
+                <strong>Reason</strong>
+                <span>scope drift plus stale proof</span>
+              </div>
+              <div class="card-row">
+                <strong>Artifact</strong>
+                <span><code>.projscan/passport.json</code></span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
     </main>
     <script>
       if (window.location.hash === '#proof') {
@@ -833,6 +1387,12 @@
       }
       if (window.location.hash === '#assess') {
         document.body.classList.add('assess-only');
+      }
+      if (window.location.hash === '#passport') {
+        document.body.classList.add('passport-only');
+      }
+      if (window.location.hash === '#guard') {
+        document.body.classList.add('guard-only');
       }
       document.documentElement.dataset.ready = 'true';
     </script>

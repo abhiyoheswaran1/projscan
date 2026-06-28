@@ -35,6 +35,8 @@ Above the fold:
 - Lead with: "ProjScan turns an AI code change into a local proof passport."
 - Passport command: `npx projscan passport --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output .projscan/passport.json`
 - Guard command: `npx projscan guard --contract .projscan/proof-contract.json --watch`
+- Primary screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-agent-change-passport.png`
+- Companion screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-live-guard.png`
 - Passport artifact: `.projscan/passport.json`
 - Proof Contract command: `npx projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json`
 - Executed proof command: `npx projscan prove --run -- npm test -- tests/billing/retry.test.ts`
@@ -91,6 +93,8 @@ Docs page additions:
 - Keep Proof Cards, simulate, Mission Control, privacy-check, evidence-pack, and MCP setup as supporting workflows.
 
 Use these release assets:
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-agent-change-passport.png`
+- `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-live-guard.png`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-mission-control.png`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-proof-router.png`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-proof-cards.png`
