@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.18.0]
+
+2026-06-29 - "Proof Broker, PR Passport, and Review Gate"
+
+### Added
+
+- Added `projscan review-gate` for a reviewer-readiness gate over Proof Broker
+  and Agent Change Passport evidence, with status, allow-review decision, proof
+  debt, recontract guidance, required reviewers, next commands,
+  PR-comment Markdown, and CI failure switches.
+- Added `.projscan/review-gate.json` and
+  `.projscan/review-gates/<name>.json` artifact writes with traversal, symlink,
+  and unrelated-file overwrite guards.
+- Added exported `computeReviewGate()` plus Review Gate report, decision,
+  proof-debt, recontract, artifact, and PR-comment TypeScript types.
+- Added MCP tool `projscan_review_gate`, bringing the MCP server to 51 tools.
+- Added `projscan proof-broker` to broker Agent Change Passport evidence into
+  PR Passport Markdown with reviewer action, required proof, proof gaps,
+  required reviewers, risky changed files, next commands, and artifact paths.
+- Added exported `computeProofBroker()` plus Proof Broker report, proof row,
+  gap, and PR Passport TypeScript types.
+- Added MCP tool `projscan_proof_broker`.
+
+### Changed
+
+- Updated README, guide, website prompt, stability docs, MCP Registry metadata,
+  and public count tests for Review Gate.
+- Review Gate reuses Proof Broker, Agent Change Passport, Proof Contract, Proof
+  Receipt, Proof Replay, Proof Sufficiency, and Team Proof Recipes without
+  executing proof commands.
+- Updated README, guide, website prompt, stability docs, MCP Registry metadata,
+  and public type tests for the Proof Broker workflow.
+- Proof Broker reuses Proof Contract, Proof Receipt, Proof Replay, Proof
+  Sufficiency, Team Proof Recipes, and Agent Change Passport reviewer-action
+  logic without executing proof commands.
+
 ## [4.17.0]
 
 2026-06-27 - "Agent Change Passport and Live Guard"

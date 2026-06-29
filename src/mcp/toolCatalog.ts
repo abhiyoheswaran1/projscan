@@ -44,6 +44,8 @@ import { assessTool } from './tools/assess.js';
 import { simulateTool } from './tools/simulate.js';
 import { proveTool } from './tools/prove.js';
 import { passportTool } from './tools/passport.js';
+import { proofBrokerTool } from './tools/proofBroker.js';
+import { reviewGateTool } from './tools/reviewGate.js';
 import { adoptionTool } from './tools/adoption.js';
 import { startTool } from './tools/start.js';
 import { understandTool } from './tools/understand.js';
@@ -90,6 +92,8 @@ export const mcpTools: McpTool[] = [
   simulateTool,
   proveTool,
   passportTool,
+  proofBrokerTool,
+  reviewGateTool,
   adoptionTool,
   startTool,
   understandTool,

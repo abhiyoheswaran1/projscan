@@ -56,6 +56,8 @@ const expectedRegistrarOrder = [
   'registerSimulate',
   'registerProve',
   'registerPassport',
+  'registerProofBroker',
+  'registerReviewGate',
   'registerGuard',
   'registerStart',
   'registerTrial',

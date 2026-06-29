@@ -509,7 +509,7 @@ test('proof ledger evidence becomes stale after same-file content changes', asyn
     }),
   );
   expect(report.receipt?.proofReplay.status).toBe('stale');
-});
+}, PROOF_REPLAY_TEST_TIMEOUT_MS);
 
 test('runs a proof command and records executed ledger evidence', async () => {
   await fs.writeFile(
@@ -1056,7 +1056,7 @@ test('failed proof ledger evidence stops reviewer approval', async () => {
   expect(report.receipt?.proofStatus.failedCommands).toContain(commands[0]);
   expect(report.receipt?.reviewerDecision).toBe('stop');
   expect(report.receipt?.commitReadiness).toBe('blocked');
-});
+}, PROOF_REPLAY_TEST_TIMEOUT_MS);
 
 test('proof ledger evidence becomes stale after changed files move', async () => {
   const contractReport = await computeProve(tmp, {

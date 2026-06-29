@@ -12,6 +12,8 @@ export {
 export { computeSimulation } from './core/simulate.js';
 export { computeProve } from './core/prove.js';
 export { computePassport } from './core/passport.js';
+export { computeProofBroker } from './core/proofBroker.js';
+export { computeReviewGate } from './core/reviewGate.js';
 export { computeGuard } from './core/guard.js';
 export { inspectFile } from './core/fileInspector.js';
 export {

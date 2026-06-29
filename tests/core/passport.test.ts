@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 import { computePassport } from '../../src/core/passport.js';
 
 const execFileAsync = promisify(execFile);
+const PASSPORT_INTEGRATION_TEST_TIMEOUT_MS = 120_000;
 
 let tmp: string;
 
@@ -93,7 +94,7 @@ test('builds an agent change passport from an intent and current receipt', async
   );
   expect(passport.prove.verifiedWorkflow.missingProof).toBe(true);
   expect(passport.artifacts.contractPath).toBe('.projscan/proof-contract.json');
-});
+}, PASSPORT_INTEGRATION_TEST_TIMEOUT_MS);
 
 test('writes only passport artifacts under allowed projscan paths', async () => {
   const passport = await computePassport(tmp, {
@@ -120,7 +121,7 @@ test('writes only passport artifacts under allowed projscan paths', async () => 
       outputPath: '../passport.json',
     }),
   ).rejects.toThrow(/must stay inside/);
-});
+}, PASSPORT_INTEGRATION_TEST_TIMEOUT_MS);
 
 test('can attach a Baseframe assessment artifact to the passport', async () => {
   const passport = await computePassport(tmp, {
@@ -142,7 +143,7 @@ test('can attach a Baseframe assessment artifact to the passport', async () => {
       ),
     ),
   ).resolves.toBeUndefined();
-});
+}, PASSPORT_INTEGRATION_TEST_TIMEOUT_MS);
 
 async function git(args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: tmp });

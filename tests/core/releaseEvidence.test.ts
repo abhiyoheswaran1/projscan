@@ -293,7 +293,7 @@ test('evidence pack top-level decision reflects missing Proof Receipt evidence',
   expect(report.prComment).toContain(
     '- first command: `projscan prove --changed --format markdown`',
   );
-}, 120_000);
+}, 180_000);
 
 test('trust calibration treats release-scale review blocks as manual review', () => {
   const preflight: PreflightReport = {

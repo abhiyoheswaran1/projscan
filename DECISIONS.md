@@ -2,6 +2,22 @@
 
 This log records reviewer-visible architecture, workflow, and public behavior decisions.
 
+## 2026-06-29: Add Review Gate for reviewer readiness
+
+- Status: accepted
+- Context: Proof Broker could prepare a PR Passport, but reviewers and CI still had to translate proof gaps into a yes/no readiness decision. Teams needed a stable artifact that says whether review can proceed, which proof debt remains, and when scope drift requires a new contract.
+- Decision: Add `computeReviewGate()`, `projscan review-gate`, and MCP tool `projscan_review_gate` as an additive projection over Proof Broker. Review Gate returns status, allow-review decision, proof debt, recontract guidance, required reviewers, next commands, PR-comment Markdown, an optional `.projscan/review-gate.json` artifact, and the embedded Proof Broker report. CLI and MCP do not run proof commands.
+- Consequences: Reviewers, agents, and CI can gate AI code handoffs on one local artifact without parsing raw receipts or broad scan output. Existing `prove`, Passport, Guard, Proof Broker, Proof Ledger, Proof Replay, Proof Sufficiency, Team Proof Recipes, Baseframe assessment export, and evidence-pack workflows remain compatible.
+- Verification: Focused public type, core, CLI, MCP, build, docs, and stability checks cover gate status derivation, proof debt, recontract guidance, CI exits, command registration, 51-tool MCP metadata, safe artifact writes, docs, and public exports.
+
+## 2026-06-28: Add Proof Broker and PR Passport
+
+- Status: accepted
+- Context: Agent Change Passport already joined contract, receipt, proof replay, Proof Sufficiency, reviewer action, and next commands, but reviewers still had to translate that evidence into a PR comment and decide which proof gaps mattered.
+- Decision: Add `computeProofBroker()`, `projscan proof-broker`, and MCP tool `projscan_proof_broker` as an additive projection over `computePassport()`. The broker returns required proof rows, required reviewers, risky changed files, proof gaps, next commands, PR Passport Markdown, and the underlying Agent Change Passport. CLI and MCP do not run proof commands.
+- Consequences: Reviewers and agents can paste one PR Passport into review without parsing raw receipts. Existing `prove`, Passport, Guard, Proof Ledger, Proof Replay, Proof Sufficiency, Team Proof Recipes, Baseframe assessment export, and evidence-pack workflows remain compatible.
+- Verification: Focused core, CLI, MCP, public type, docs, build, lint, and release-grade local checks cover broker evidence, PR Passport Markdown, command registration, 50-tool MCP metadata, docs, and public exports.
+
 ## 2026-06-27: Add Agent Change Passport and Live Guard
 
 - Status: accepted

@@ -33,6 +33,10 @@ test('docs describe executable Proof Contracts without release automation claims
     expect(doc).toContain('proofRecipes');
     expect(doc).toContain('when a matching recipe is configured');
     expect(doc).toContain('does not run proof commands by itself');
+    expect(doc).toContain('projscan proof-broker');
+    expect(doc).toContain('PR Passport');
+    expect(doc).toContain('required proof');
+    expect(doc).toContain('required reviewers');
     expect(doc).toContain('projscan evidence-pack --pr-comment');
     expect(doc).toContain('start -> prove -> run -> changed');
     expect(doc).toContain('Make the bounded edit');
@@ -42,6 +46,7 @@ test('docs describe executable Proof Contracts without release automation claims
   }
 
   expect(readme).toContain('| `projscan prove`');
+  expect(readme).toContain('| `projscan proof-broker`');
   expect(readme).toContain('allowed production');
   expect(readme).toContain('unexpected production');
   expect(readme).toContain('Proof Sufficiency estimates whether the local ledger covers each changed surface');
@@ -65,12 +70,17 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(guide).toContain('### simulate');
   expect(guide).toContain('### prove');
   expect(guide).toContain('### evidence-pack');
+  expect(guide).toContain('### proof-broker');
   expect(guide).toContain('### privacy-check');
   expect(guide).toContain('### mission-proof');
   expect(guide).toContain('AST-aware adapters cover TypeScript, JavaScript, Python, Go, Rust, Java, C#, C++, Ruby, PHP, Swift, and Kotlin');
   expect(guide).toContain('The `explain-issue` command performs regex-based static analysis around one issue');
   expect(guide).not.toContain('The `explain` command');
   expect(stability).toContain('projscan_prove');
+  expect(stability).toContain('projscan_proof_broker');
+  expect(stability).toContain('proof-broker');
+  expect(stability).toContain('--output-passport');
+  expect(stability).toContain('--pr-comment');
   expect(stability).toContain('--run-timeout-ms');
   expect(stability).toContain('proofRecipes');
   expect(stability).toContain('requiredCommands');
@@ -100,9 +110,14 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(stability).not.toContain('`projscan_graph`');
   expect(stability).not.toContain('`projscan_explain`,');
   expect(decisions).toContain('Add executable Proof Contracts as the closed loop above Proof Cards');
+  expect(decisions).toContain('Add Proof Broker and PR Passport');
   expect(decisions).toContain('Add Team Proof Recipes to proof receipts');
   expect(decisions).toContain('Trust Memory confidence adjustment');
-  expect(websitePrompt).toContain('4.17.0: Agent Change Passport and Live Guard');
+  expect(websitePrompt).toContain('4.18.0: Review Gate for AI code handoffs');
+  expect(websitePrompt).toContain('projscan review-gate --intent');
+  expect(websitePrompt).toContain('projscan review-gate --contract');
+  expect(websitePrompt).toContain('projscan review-gate --ci');
+  expect(websitePrompt).toContain('projscan proof-broker --contract');
   expect(websitePrompt).toContain('Agent Change Passport');
   expect(websitePrompt).toContain('projscan passport --intent');
   expect(websitePrompt).toContain('projscan guard --contract');
@@ -113,7 +128,8 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(websitePrompt).toContain('Proof Replay');
   expect(websitePrompt).toContain('Proof Sufficiency');
   expect(websitePrompt).toContain('Team Proof Recipes');
-  expect(websitePrompt).toContain('49 MCP tools');
+  expect(websitePrompt).toContain('51 MCP tools');
+  expect(websitePrompt).toContain('projscan_review_gate');
   expect(websitePrompt).toContain('changed-after-proof files');
   expect(websitePrompt).toContain('CLI `prove --run` executes local commands');
   expect(websitePrompt).not.toContain('Know whether the agent stayed inside the contract.');

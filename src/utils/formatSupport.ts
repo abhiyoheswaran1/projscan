@@ -15,6 +15,8 @@ export const COMMAND_FORMAT_SUPPORT = {
   simulate: ['console', 'json', 'markdown'],
   prove: ['console', 'json', 'markdown'],
   passport: ['console', 'json', 'markdown'],
+  'proof-broker': ['console', 'json', 'markdown'],
+  'review-gate': ['console', 'json', 'markdown'],
   guard: ['console', 'json', 'markdown'],
   'apply-fix': ['console', 'json'],
   audit: ['console', 'json', 'markdown', 'sarif'],

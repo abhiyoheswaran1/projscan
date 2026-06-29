@@ -52,6 +52,8 @@ import { registerAssess } from './commands/assess.js';
 import { registerSimulate } from './commands/simulate.js';
 import { registerProve } from './commands/prove.js';
 import { registerPassport } from './commands/passport.js';
+import { registerProofBroker } from './commands/proofBroker.js';
+import { registerReviewGate } from './commands/reviewGate.js';
 import { registerGuard } from './commands/guard.js';
 import { registerFirstRun, registerRecipes } from './commands/recipes.js';
 import { registerStart } from './commands/start.js';
@@ -119,6 +121,8 @@ export const CLI_COMMAND_REGISTRARS = [
   registerSimulate,
   registerProve,
   registerPassport,
+  registerProofBroker,
+  registerReviewGate,
   registerGuard,
   registerStart,
   registerTrial,

@@ -1,7 +1,8 @@
 # Website Update Prompt
 
-Use this prompt after `projscan@4.17.0`, GitHub release `v4.17.0`, and MCP
-Registry metadata are live.
+Use this prompt after `projscan@4.18.0`, GitHub tag `v4.18.0`, and MCP Registry
+metadata go live. Do not publish these website changes before that release
+exists.
 
 Pages to update:
 
@@ -12,10 +13,10 @@ Do not edit:
 
 - `https://www.baseframelabs.com/apps/projscan/changelog`
 
-The changelog updates from release data.
+The website pulls changelog content from release data.
 
 ```text
-Update the projscan website for projscan 4.17.0.
+Update the projscan website for projscan 4.18.0.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -23,76 +24,78 @@ Pages to update:
 
 Do not edit:
 - https://www.baseframelabs.com/apps/projscan/changelog
-The changelog updates from release data.
+The website pulls changelog content from release data.
 
 Release headline:
-4.17.0: Agent Change Passport and Live Guard
+4.18.0: Review Gate for AI code handoffs
 
 Primary story:
-projscan 4.17.0 turns Proof Contracts and Proof Receipts into one local Agent Change Passport. Reviewers see the approved boundary, changed files, proof replay, Proof Sufficiency, stale or missing proof, reviewer action, and next commands before approving an agent handoff. `projscan guard` checks the current working tree against a saved contract and can poll during an agent session. Source stays local, MCP exposes evidence through `projscan_passport`, and proof execution stays in the CLI `prove --run` path.
+projscan now gives reviewers one local gate for an AI agent handoff. Review Gate reads the Proof Contract, Agent Change Passport, Proof Broker, Proof Receipt, Proof Replay, Proof Sufficiency, and Team Proof Recipes, then returns one decision: `ready`, `needs-proof`, `drifted`, or `blocked`. It says whether review can proceed, itemizes proof debt, names required reviewers, gives the next commands, and tells the agent when scope drift requires a new contract. ProjScan keeps source local. MCP exposes `projscan_review_gate` and does not run proof commands.
 
 Above the fold:
-- Lead with: "ProjScan turns an AI code change into a local proof passport."
+- Lead with: "ProjScan tells reviewers whether an AI code change is ready to review."
+- Review Gate command: `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output-passport .projscan/passport.json --output .projscan/review-gate.json --pr-comment`
+- CI gate command: `npx projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof`
+- Proof Broker command: `npx projscan proof-broker --contract .projscan/proof-contract.json --pr-comment`
 - Passport command: `npx projscan passport --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output .projscan/passport.json`
 - Guard command: `npx projscan guard --contract .projscan/proof-contract.json --watch`
-- Primary screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-agent-change-passport.png`
-- Companion screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-live-guard.png`
+- Passport screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-agent-change-passport.png`
+- Guard screenshot: `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-live-guard.png`
+- Review Gate artifact: `.projscan/review-gate.json`
 - Passport artifact: `.projscan/passport.json`
 - Proof Contract command: `npx projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json`
 - Executed proof command: `npx projscan prove --run -- npm test -- tests/billing/retry.test.ts`
 - Receipt command: `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
-- Baseframe command: `npx projscan passport --intent "Implement password reset" --task-id auth-password-reset-20260627-01 --emit-baseframe`
-- Assessment artifact: `.baseframe/evidence/<task-id>/projscan-assessment.json`
-- Workflow manifest: `.baseframe/agent-workflow.json`
 - Keep Proof Cards nearby: `npx projscan assess --goal "make this repo safer to ship this week"`
 - Keep simulator nearby: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
-- Version: `4.17.0`
-- MCP tools: `49 MCP tools`
+- Version: `4.18.0`
+- MCP tools: `51 MCP tools`
 - MCP Registry name: `io.github.abhiyoheswaran1/projscan`
-- MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 49 tools, mission outcomes. Local.`
+- MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 51 tools, mission outcomes. Local.`
 - Language support: `11 AST adapters covering 12 named languages`
 - Requirements: Node.js >= 18
 
 New release bullets:
-- `projscan passport --intent <text> --save-contract .projscan/proof-contract.json` creates a Proof Contract and evaluates the current working tree in one command.
-- `projscan passport --contract .projscan/proof-contract.json --output .projscan/passport.json` writes a local Agent Change Passport JSON artifact.
-- Passport JSON includes `schemaVersion`, `kind`, generation time, status, intent, approved boundary, changed files, proof replay, Proof Sufficiency, reviewer decision, reviewer action, next commands, warnings, artifacts, optional Baseframe paths, and the underlying proof contract and receipt.
-- Passport writes are local, atomic, restricted to `.projscan/passport.json` or `.projscan/passports/<name>.json`, and protected against traversal, symlink output paths, and unrelated-file overwrites.
-- `projscan guard --contract .projscan/proof-contract.json` reports `clear`, `attention`, `drift`, or `blocked` for the current working tree.
-- `projscan guard --contract .projscan/proof-contract.json --watch` polls during an agent session without mutating files or running proof commands.
-- `projscan guard --fail-on-drift` exits non-zero when the current diff leaves the approved boundary or the contract is missing.
-- MCP exposes `projscan_passport`, bringing the tool count to 49. The MCP tool returns passport evidence and does not run local proof commands.
-- The package exports `computePassport()` and `computeGuard()` plus Agent Change Passport and guard report types.
-- Passport can attach Baseframe assessment evidence with `--task-id <id> --emit-baseframe`; ProjScan limits writes to its own assessment and the shared workflow manifest.
-- Existing proof workflows remain independent: Proof Replay, Proof Sufficiency, Team Proof Recipes, Proof Ledger freshness, stale proof, failed proof, reviewer decision, changed-after-proof files, and evidence-pack Proof Receipt sections still work.
+- `projscan review-gate --intent <text> --save-contract .projscan/proof-contract.json` creates a Proof Contract, reads the current handoff evidence, and returns a reviewer-readiness decision.
+- `projscan review-gate --contract .projscan/proof-contract.json --pr-comment` prints Review Gate Markdown for a pull request comment.
+- `projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof` prints a compact CI summary and exits non-zero until the gate is `ready`.
+- Review Gate Markdown includes status, allow-review decision, reviewer action, proof debt, recontract guidance, required reviewers, next commands, and artifact paths.
+- JSON output includes `kind: "review-gate"`, `decision`, `proofDebt`, `recontract`, `requiredReviewers`, `nextCommands`, `prComment`, artifacts, and the embedded Proof Broker report.
+- ProjScan writes Review Gate artifacts to `.projscan/review-gate.json` or `.projscan/review-gates/<name>.json`; it rejects traversal, symlink targets, non-JSON files, and existing files that are not Review Gate artifacts.
+- MCP exposes `projscan_review_gate`, bringing the tool count to 51. The MCP tool returns gate evidence and does not run local proof commands.
+- The package exports `computeReviewGate()` plus Review Gate report, decision, proof-debt, recontract, artifact, and PR-comment types.
+- Existing proof workflows remain independent: Proof Broker, Agent Change Passport, Live Guard, Proof Ledger, Proof Replay, Proof Sufficiency, Team Proof Recipes, stale proof, failed proof, changed-after-proof files, and evidence-pack Proof Receipt sections still work.
 - MCP still exposes `projscan_prove`; MCP can create, replay, and record imported proof. CLI `prove --run` executes local commands.
 
 Docs page additions:
-- Add "Agent Change Passport":
+- Add "Review Gate":
+  - `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output-passport .projscan/passport.json --output .projscan/review-gate.json --format json`
+  - `npx projscan review-gate --contract .projscan/proof-contract.json --pr-comment`
+  - `npx projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof`
+  - Explain status values: ready, needs-proof, drifted, blocked.
+  - Explain proof debt states: missing-contract, scope-drift, missing-proof, failed-proof, stale-proof, weak-proof, recipe-gap.
+  - Explain reviewer actions: review, run-proof, rerun-proof, stop-and-recontract.
+  - Explain that Review Gate reads evidence and does not run proof commands.
+- Keep "Proof Broker and PR Passport":
+  - `npx projscan proof-broker --contract .projscan/proof-contract.json --pr-comment`
+  - Explain that Proof Broker reads the Agent Change Passport and does not run proof commands.
+- Keep "Agent Change Passport":
   - `npx projscan passport --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output .projscan/passport.json`
   - `.projscan/passport.json`
-  - Explain status values: ready, needs-proof, drifted, blocked.
-  - Explain reviewer actions: review, run-proof, rerun-proof, stop-and-recontract.
-- Add "Live Guard":
+- Keep "Live Guard":
   - `npx projscan guard --contract .projscan/proof-contract.json`
   - `npx projscan guard --contract .projscan/proof-contract.json --watch`
   - `npx projscan guard --contract .projscan/proof-contract.json --fail-on-drift`
   - Explain clear, attention, drift, and blocked states.
 - Keep "Baseframe Suite Integration v1":
+  - `npx projscan assess --intent "Implement password reset" --task-id auth-password-reset-20260627-01 --emit-baseframe`
   - `npx projscan passport --intent "Implement password reset" --task-id auth-password-reset-20260627-01 --emit-baseframe`
   - `.baseframe/evidence/<task-id>/projscan-assessment.json`
   - `.baseframe/agent-workflow.json`
-- Explain that ProjScan owns `projscan-assessment.json`, the passport artifact, and the shared workflow manifest fields it updates.
-- Explain that AgentLoopKit reads the assessment and writes `agentloopkit-task.json` separately.
-- Explain that AgentFlight reads both later and writes `agentflight-result.json` separately.
-- Mention task IDs are supplied by the caller, filesystem-safe, and shared across the three tools.
-- Keep Proof Replay and Sufficiency:
-  - `npx projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json`
-  - `npx projscan prove --run -- npm test -- tests/billing/retry.test.ts`
-  - `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
-- Keep Proof Cards, simulate, Mission Control, privacy-check, evidence-pack, and MCP setup as supporting workflows.
+  - Explain that ProjScan owns `projscan-assessment.json`, the passport artifact, and the shared workflow manifest fields it updates.
+  - Explain that AgentLoopKit and AgentFlight consume those local artifacts in later steps.
 
-Use these release assets:
+Assets to keep in the gallery until new Review Gate captures land:
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-agent-change-passport.png`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-live-guard.png`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-mission-control.png`
@@ -101,17 +104,14 @@ Use these release assets:
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-mission-control.gif`
 - `https://raw.githubusercontent.com/abhiyoheswaran1/projscan/v4.17.0/docs/projscan-mission-proof.gif`
 
-Suggested copy:
-projscan is the local proof layer for AI-assisted software engineering. In 4.17.0, it turns a task contract and proof receipt into an Agent Change Passport reviewers can read before approving an agent handoff. The passport names allowed files, forbidden files, changed files, proof replay, Proof Sufficiency, stale or missing proof, reviewer action, and next commands. Guard mode checks the current working tree against the saved contract during an agent session. Source stays local, no ProjScan account or API key is required, and MCP returns evidence without executing proof commands.
+Short product description:
+projscan is the local proof layer for AI-assisted software engineering. Review Gate combines contract, passport, broker, receipt, replay, sufficiency, and recipe evidence into one reviewer-readiness decision. It shows whether review can proceed, which proof debt remains, who must review, which command to run next, and whether the agent must stop and recontract. ProjScan keeps source local, users need no ProjScan account or API key, and MCP returns evidence without executing proof commands.
 
-Publishing checklist:
-- Every current-version label reads `4.17.0`.
-- Tool count reads `49`.
-- Language copy reads `11 AST adapters covering 12 named languages`.
-- Overview and docs show `projscan passport --intent`, `projscan passport --contract`, `projscan guard --contract`, `projscan guard --watch`, `projscan prove --intent`, `projscan prove --run`, `projscan prove --changed`, `projscan assess --goal`, and `projscan simulate --plan`.
-- Passport artifact path, artifact overwrite guard, reviewer action, proof replay, Proof Sufficiency, guard status, and MCP non-execution are visible.
-- Baseframe artifact paths, task ID validation, manifest preservation, relative manifest paths, AgentLoopKit consumption, and AgentFlight follow-up are visible.
-- Proof Replay, Proof Sufficiency, Team Proof Recipes, Proof Ledger freshness, stale proof, failed proof, reviewer decision, changed-after-proof files, and evidence-pack Proof Receipt sections remain visible.
-- Screenshots load from the `v4.17.0` raw GitHub URLs.
-- Search rendered pages for stale current-version labels from `4.9.3` through `4.16.0`; keep those strings in historical context.
+Acceptance checks:
+- Every current-version label reads `4.18.0`.
+- MCP count reads `51 MCP tools`.
+- Overview and docs show `projscan review-gate --intent`, `projscan review-gate --contract`, `projscan review-gate --ci`, `projscan proof-broker --contract`, `projscan passport --intent`, `projscan guard --contract`, `projscan prove --intent`, `projscan prove --run`, `projscan prove --changed`, `projscan assess --goal`, and `projscan simulate --plan`.
+- Show Review Gate status, allow-review decision, proof debt, recontract guidance, required reviewers, artifact path, proof replay, Proof Sufficiency, guard status, and MCP non-execution.
+- Screenshots load from the listed raw GitHub URLs.
+- The copy does not claim hosted scanning, remote code upload, autonomous merging, release automation, or cloud approval.
 ```
