@@ -140,12 +140,16 @@ projscan passport \
 Use `projscan proof-broker` to build a PR Passport from the same passport evidence. It names required proof rows, missing or stale proof commands, required reviewers from Team Proof Recipes, risky changed files, and the next commands a reviewer should ask for:
 
 ```bash
+projscan proof-broker --intent "<change>" --bootstrap-contract
 projscan proof-broker --contract .projscan/proof-contract.json --pr-comment
 ```
+
+`--bootstrap-contract` writes a new Proof Contract only when explicitly requested. It does not execute proof commands and does not silently widen scope.
 
 Use `projscan review-gate` to produce a review decision from the PR Passport. It reports `ready`, `needs-proof`, `drifted`, or `blocked`, says whether review can proceed, itemizes proof debt, names the recontract command when scope moved, and can fail CI until the proof debt is gone:
 
 ```bash
+projscan review-gate --intent "<change>" --bootstrap-contract
 projscan review-gate --contract .projscan/proof-contract.json --pr-comment
 projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof
 ```

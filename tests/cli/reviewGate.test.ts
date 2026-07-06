@@ -224,6 +224,77 @@ test('review-gate ci mode fails while proof debt remains', async () => {
   expect(result.stdout).toContain('proof debt:');
 });
 
+test('review-gate bootstrap requires intent', async () => {
+  const result = await runCli([
+    'review-gate',
+    '--bootstrap-contract',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain('review-gate --bootstrap-contract requires --intent');
+});
+
+test('review-gate bootstrap renders JSON and markdown bootstrap sections', async () => {
+  const json = await runCli([
+    'review-gate',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(json.exitCode).toBe(0);
+  const report = JSON.parse(json.stdout);
+  expect(report.bootstrap.contractPath).toBe('.projscan/proof-contract.json');
+  expect(report.prComment.markdown).toContain('### Bootstrap');
+  expect(report.prComment.markdown).toContain('**Contract path:** `.projscan/proof-contract.json`');
+
+  const markdown = await runCli([
+    'review-gate',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--pr-comment',
+    '--quiet',
+  ]);
+
+  expect(markdown.exitCode).toBe(0);
+  expect(markdown.stdout).toContain('### Bootstrap');
+  expect(markdown.stdout).toContain('**Contract path:** `.projscan/proof-contract.json`');
+
+  const consoleResult = await runCli([
+    'review-gate',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--quiet',
+  ]);
+
+  expect(consoleResult.exitCode).toBe(0);
+  expect(consoleResult.stdout).toContain('Bootstrap');
+  expect(consoleResult.stdout).toContain('contract path: .projscan/proof-contract.json');
+});
+
+test('review-gate bootstrap rejects --contract when bootstrapping a new contract', async () => {
+  const result = await runCli([
+    'review-gate',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--contract',
+    '.projscan/proof-contract.json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain(
+    'review-gate --bootstrap-contract cannot be used with --contract; use --save-contract to choose the output path',
+  );
+});
+
 test('review-gate targets the linked worktree when run from linked cwd', async () => {
   const result = await runCli(
     [

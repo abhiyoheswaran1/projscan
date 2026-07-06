@@ -368,6 +368,15 @@ export function renderReviewGateMarkdown(
   for (const command of report.recontract.followUpCommands) {
     lines.push(`  - ${markdownInlineCode(command)}`);
   }
+  if (report.bootstrap) {
+    lines.push('');
+    lines.push('### Bootstrap');
+    lines.push('');
+    lines.push(`- **Attempted:** ${report.bootstrap.attempted ? 'yes' : 'no'}`);
+    lines.push(`- **Wrote contract:** ${report.bootstrap.wroteContract ? 'yes' : 'no'}`);
+    lines.push(`- **Contract path:** ${markdownInlineCode(report.bootstrap.contractPath ?? 'none')}`);
+    lines.push(`- **Intent:** ${escapeMarkdownText(report.bootstrap.intent)}`);
+  }
   lines.push('');
   lines.push('### Required Reviewers');
   lines.push('');

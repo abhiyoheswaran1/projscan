@@ -203,6 +203,74 @@ test('proof-broker renders JSON, PR-comment markdown, and console handoff output
   expect(consoleResult.stdout).toContain('Next Commands');
 });
 
+test('proof-broker bootstrap renders JSON, markdown, and console bootstrap sections', async () => {
+  const json = await runCli([
+    'proof-broker',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(json.exitCode).toBe(0);
+  const report = JSON.parse(json.stdout);
+  expect(report.bootstrap.contractPath).toBe('.projscan/proof-contract.json');
+  expect(report.prPassport.markdown).toContain('### Bootstrap');
+  expect(report.prPassport.markdown).toContain('**Contract path:** `.projscan/proof-contract.json`');
+
+  const markdown = await runCli([
+    'proof-broker',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--pr-comment',
+    '--quiet',
+  ]);
+  expect(markdown.exitCode).toBe(0);
+  expect(markdown.stdout).toContain('### Bootstrap');
+  expect(markdown.stdout).toContain('**Contract path:** `.projscan/proof-contract.json`');
+
+  const consoleResult = await runCli([
+    'proof-broker',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--quiet',
+  ]);
+  expect(consoleResult.exitCode).toBe(0);
+  expect(consoleResult.stdout).toContain('Bootstrap');
+});
+
+test('proof-broker bootstrap requires intent', async () => {
+  const result = await runCli([
+    'proof-broker',
+    '--bootstrap-contract',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain('proof-broker --bootstrap-contract requires --intent');
+});
+
+test('proof-broker bootstrap rejects --contract when bootstrapping a new contract', async () => {
+  const result = await runCli([
+    'proof-broker',
+    '--intent',
+    'is my agent allowed to change billing retry logic?',
+    '--bootstrap-contract',
+    '--contract',
+    '.projscan/proof-contract.json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain(
+    'proof-broker --bootstrap-contract cannot be used with --contract; use --save-contract to choose the output path',
+  );
+});
+
 test('proof-broker targets the linked worktree when run from linked cwd', async () => {
   const result = await runCli(
     [

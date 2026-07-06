@@ -10,7 +10,7 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeProofBroker } from '../../core/proofBroker.js';
-import type { ProofBrokerReport } from '../../types/proofBroker.js';
+import type { BootstrapContractResult, ProofBrokerReport } from '../../types/proofBroker.js';
 
 export function registerProofBroker(): void {
   registerWorktreeTargetOptions(
@@ -19,6 +19,7 @@ export function registerProofBroker(): void {
     .description('Broker required proof and print a PR Passport for reviewer handoff')
     .option('--intent <text>', 'plain-language change intent to contract before or during work')
     .option('--contract <path>', 'existing Proof Contract JSON path')
+    .option('--bootstrap-contract', 'write a new Proof Contract before building the review surface')
     .option('--save-contract <path>', 'write the generated Proof Contract JSON when --intent is supplied')
     .option('--output-passport <path>', 'write Agent Change Passport JSON to .projscan/passport.json')
     .option('--max-files <count>', 'maximum likely touched files to include in a generated contract', parsePositiveInt)
@@ -33,11 +34,20 @@ export function registerProofBroker(): void {
       const format = assertFormatSupported('proof-broker');
 
       try {
+        if (cmdOpts.bootstrapContract && !cmdOpts.intent?.trim()) {
+          throw new Error('proof-broker --bootstrap-contract requires --intent');
+        }
+        if (cmdOpts.bootstrapContract && cmdOpts.contract) {
+          throw new Error(
+            'proof-broker --bootstrap-contract cannot be used with --contract; use --save-contract to choose the output path',
+          );
+        }
         const worktree = await resolveTarget(cmdOpts);
         const config = await loadProjectConfig(worktree.effectiveWorktreePath);
         const report = await computeProofBroker(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,
+          bootstrapContract: cmdOpts.bootstrapContract,
           saveContractPath: cmdOpts.saveContract,
           outputPassportPath: cmdOpts.outputPassport,
           maxFiles: cmdOpts.maxFiles,
@@ -97,6 +107,11 @@ function printProofBrokerConsole(report: ProofBrokerReport): void {
   console.log('');
   console.log(chalk.bold('Recontract'));
   printRecontract(report);
+  if (report.bootstrap) {
+    console.log('');
+    console.log(chalk.bold('Bootstrap'));
+    printBootstrap(report.bootstrap);
+  }
   console.log('');
   console.log(chalk.bold('Next Commands'));
   printList(report.nextCommands.slice(0, 10), 'No next commands');
@@ -160,6 +175,15 @@ function printRecontract(report: ProofBrokerReport): void {
   printList(report.recontract.driftFiles, 'No drift files');
   console.log('- follow-up commands:');
   printList(report.recontract.followUpCommands.slice(0, 10), 'No follow-up commands');
+}
+
+function printBootstrap(bootstrap: BootstrapContractResult): void {
+  console.log(`- attempted: ${bootstrap.attempted ? 'yes' : 'no'}`);
+  console.log(`- wrote contract: ${bootstrap.wroteContract ? 'yes' : 'no'}`);
+  console.log(`- contract path: ${bootstrap.contractPath ?? 'none'}`);
+  console.log(`- intent: ${bootstrap.intent}`);
+  console.log('- next commands:');
+  printList(bootstrap.followUpCommands.slice(0, 10), 'No bootstrap commands');
 }
 
 async function resolveTarget(

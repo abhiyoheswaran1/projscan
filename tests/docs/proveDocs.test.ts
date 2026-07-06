@@ -47,6 +47,8 @@ test('docs describe executable Proof Contracts without release automation claims
 
   expect(readme).toContain('| `projscan prove`');
   expect(readme).toContain('| `projscan proof-broker`');
+  expect(readme).toContain('projscan proof-broker --intent "<change>" --bootstrap-contract');
+  expect(readme).toContain('projscan review-gate --intent "<change>" --bootstrap-contract');
   expect(readme).toContain('allowed production');
   expect(readme).toContain('unexpected production');
   expect(readme).toContain('Proof Sufficiency estimates whether the local ledger covers each changed surface');
@@ -60,6 +62,8 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(readme).not.toContain('PR-ready proof');
   expect(readme).not.toContain('trusted next actions');
   expect(guide).toContain('**`projscan_prove` / `projscan prove`**');
+  expect(guide).toContain('--bootstrap-contract');
+  expect(guide).toContain('writes a new Proof Contract only when explicitly requested');
   expect(guide).toContain('reviewer checklist');
   expect(guide).toContain('| `proofRecipes`');
   expect(guide).toContain('requiredCommands: string[]');

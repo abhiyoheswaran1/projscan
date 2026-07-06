@@ -192,6 +192,15 @@ and `projscan evidence-pack --pr-comment` then show missing recipe proof,
 required reviewers, and recipe drift in the Proof Receipt. A recipe does not run proof commands by itself. Use `prove --run -- <command...>` or
 `prove --record-command` to add proof to the local ledger.
 
+When you want the review surface to mint the next contract explicitly, use:
+
+```bash
+projscan proof-broker --intent "<change>" --bootstrap-contract
+projscan review-gate --intent "<change>" --bootstrap-contract
+```
+
+`--bootstrap-contract` writes a new Proof Contract only when explicitly requested. It does not execute proof commands and does not silently widen scope.
+
 ### Before handoff or commit
 
 ```bash

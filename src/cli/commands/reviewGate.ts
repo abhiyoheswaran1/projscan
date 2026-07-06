@@ -10,6 +10,7 @@ import {
   setupLogLevel,
 } from '../_shared.js';
 import { computeReviewGate } from '../../core/reviewGate.js';
+import type { BootstrapContractResult } from '../../types/proofBroker.js';
 import type { ReviewGateReport } from '../../types/reviewGate.js';
 
 export function registerReviewGate(): void {
@@ -19,6 +20,7 @@ export function registerReviewGate(): void {
     .description('Decide whether a PR is reviewable by turning proof gaps into review debt')
     .option('--intent <text>', 'plain-language change intent to contract before or during work')
     .option('--contract <path>', 'existing Proof Contract JSON path')
+    .option('--bootstrap-contract', 'write a new Proof Contract before building the review surface')
     .option('--save-contract <path>', 'write the generated Proof Contract JSON when --intent is supplied')
     .option('--output-passport <path>', 'write Agent Change Passport JSON to .projscan/passport.json')
     .option('--output <path>', 'write Review Gate JSON to .projscan/review-gate.json')
@@ -37,11 +39,20 @@ export function registerReviewGate(): void {
       const format = assertFormatSupported('review-gate');
 
       try {
+        if (cmdOpts.bootstrapContract && !cmdOpts.intent?.trim()) {
+          throw new Error('review-gate --bootstrap-contract requires --intent');
+        }
+        if (cmdOpts.bootstrapContract && cmdOpts.contract) {
+          throw new Error(
+            'review-gate --bootstrap-contract cannot be used with --contract; use --save-contract to choose the output path',
+          );
+        }
         const worktree = await resolveTarget(cmdOpts);
         const config = await loadProjectConfig(worktree.effectiveWorktreePath);
         const report = await computeReviewGate(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,
+          bootstrapContract: cmdOpts.bootstrapContract,
           saveContractPath: cmdOpts.saveContract,
           outputPassportPath: cmdOpts.outputPassport,
           outputPath: cmdOpts.output,
@@ -96,6 +107,11 @@ function printReviewGateConsole(report: ReviewGateReport): void {
   console.log('');
   console.log(chalk.bold('Recontract'));
   printRecontract(report);
+  if (report.bootstrap) {
+    console.log('');
+    console.log(chalk.bold('Bootstrap'));
+    printBootstrap(report.bootstrap);
+  }
   console.log('');
   console.log(chalk.bold('Next Commands'));
   printList(report.nextCommands.slice(0, 10), 'No next commands');
@@ -164,6 +180,15 @@ function printRecontract(report: ReviewGateReport): void {
   printList(report.recontract.driftFiles, 'No drift files');
   console.log('- follow-up commands:');
   printList(report.recontract.followUpCommands.slice(0, 10), 'No follow-up commands');
+}
+
+function printBootstrap(bootstrap: BootstrapContractResult): void {
+  console.log(`- attempted: ${bootstrap.attempted ? 'yes' : 'no'}`);
+  console.log(`- wrote contract: ${bootstrap.wroteContract ? 'yes' : 'no'}`);
+  console.log(`- contract path: ${bootstrap.contractPath ?? 'none'}`);
+  console.log(`- intent: ${bootstrap.intent}`);
+  console.log('- next commands:');
+  printList(bootstrap.followUpCommands.slice(0, 10), 'No bootstrap commands');
 }
 
 async function resolveTarget(
