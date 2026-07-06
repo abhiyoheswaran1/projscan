@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { resolveGitWorktreeTarget, type GitWorktreeTarget } from './gitWorktreeTarget.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -12,6 +13,10 @@ export interface ChangedFilesResult {
   baseRef: string | null;
   files: string[];
   uncommittedFiles: string[];
+  effectiveWorktreePath?: string;
+  effectiveWorktreeBranch?: string | null;
+  effectiveWorktreeHead?: string | null;
+  gitCommonRoot?: string | null;
 }
 
 /**
@@ -25,15 +30,20 @@ export async function getChangedFiles(
   rootPath: string,
   explicitBaseRef?: string,
 ): Promise<ChangedFilesResult> {
-  const isRepo = await isGitRepo(rootPath);
+  const target = await resolveGitWorktreeTarget(rootPath).catch(() => null);
+  const gitCwd = target?.effectiveWorktreePath ?? rootPath;
+  const isRepo = await isGitRepo(gitCwd);
   if (!isRepo) {
-    return {
+    return withTargetMetadata(
+      {
       available: false,
       reason: 'not a git repository',
       baseRef: null,
       files: [],
       uncommittedFiles: [],
-    };
+      },
+      target,
+    );
   }
 
   const explicit = Boolean(explicitBaseRef);
@@ -41,29 +51,35 @@ export async function getChangedFiles(
   let lastError: string | null = null;
 
   for (const ref of candidates) {
-    const exists = await refExists(rootPath, ref);
+    const exists = await refExists(gitCwd, ref);
     if (!exists) {
       lastError = `ref not found: ${ref}`;
       continue;
     }
-    const resolvesToHead = await refResolvesToHead(rootPath, ref);
+    const resolvesToHead = await refResolvesToHead(gitCwd, ref);
     if (resolvesToHead) {
       const reason = `base ref "${ref}" resolves to HEAD and would hide committed changes`;
       if (explicit) {
-        return {
+        return withTargetMetadata(
+          {
           available: false,
           reason,
           baseRef: null,
           files: [],
           uncommittedFiles: [],
-        };
+          },
+          target,
+        );
       }
       lastError = reason;
       continue;
     }
     try {
-      const { files, uncommittedFiles } = await diffNames(rootPath, ref);
-      return { available: true, baseRef: ref, files, uncommittedFiles };
+      const { files, uncommittedFiles } = await diffNames(gitCwd, ref);
+      return withTargetMetadata(
+        { available: true, baseRef: ref, files, uncommittedFiles },
+        target,
+      );
     } catch (err) {
       // 1.10+ — surface stdio-too-large explicitly instead of letting it
       // fall through to the generic "no usable base ref" path. The ref
@@ -72,7 +88,8 @@ export async function getChangedFiles(
       // files). The user needs a closer base ref or a streaming reader,
       // not a missing-ref diagnosis.
       if (isMaxBufferError(err)) {
-        return {
+        return withTargetMetadata(
+          {
           available: false,
           reason:
             `git diff against "${ref}" exceeded the 10MB output buffer ` +
@@ -80,7 +97,9 @@ export async function getChangedFiles(
           baseRef: null,
           files: [],
           uncommittedFiles: [],
-        };
+          },
+          target,
+        );
       }
       lastError = err instanceof Error ? err.message : String(err);
     }
@@ -88,20 +107,40 @@ export async function getChangedFiles(
 
   // Last resort: include uncommitted changes only
   try {
-    const files = await statusNames(rootPath);
+    const files = await statusNames(gitCwd);
     if (files.length > 0) {
-      return { available: true, baseRef: '(working tree)', files, uncommittedFiles: files };
+      return withTargetMetadata(
+        { available: true, baseRef: '(working tree)', files, uncommittedFiles: files },
+        target,
+      );
     }
   } catch (err) {
     lastError = err instanceof Error ? err.message : String(err);
   }
 
-  return {
+  return withTargetMetadata(
+    {
     available: false,
     reason: lastError ?? 'no usable base ref found',
     baseRef: null,
     files: [],
     uncommittedFiles: [],
+    },
+    target,
+  );
+}
+
+function withTargetMetadata(
+  result: ChangedFilesResult,
+  target: GitWorktreeTarget | null,
+): ChangedFilesResult {
+  if (!target) return result;
+  return {
+    ...result,
+    effectiveWorktreePath: target.effectiveWorktreePath,
+    effectiveWorktreeBranch: target.branch,
+    effectiveWorktreeHead: target.head,
+    gitCommonRoot: target.gitCommonRoot,
   };
 }
 

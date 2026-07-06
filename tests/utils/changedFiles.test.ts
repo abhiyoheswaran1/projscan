@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getChangedFiles } from '../../src/utils/changedFiles.js';
+import { resolveGitWorktreeTarget } from '../../src/utils/gitWorktreeTarget.js';
 
 const execFileAsync = promisify(execFile);
 const GIT_CHANGED_FILES_TIMEOUT_MS = 60000;
@@ -18,6 +20,11 @@ async function git(cwd: string, args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd });
 }
 
+async function gitOutput(cwd: string, args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync('git', args, { cwd });
+  return stdout.trim();
+}
+
 async function setupRepo(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-diff-'));
   await git(dir, ['init', '-q', '--initial-branch=main']);
@@ -27,15 +34,73 @@ async function setupRepo(): Promise<string> {
   return dir;
 }
 
+function canonicalPath(value: string): string {
+  try {
+    return fsSync.realpathSync.native(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
+
+interface LinkedWorktreeFixture {
+  linkedWorktreePath: string;
+  nestedLinkedFilePath: string;
+}
+
+async function setupLinkedWorktreeFixture(repoRoot: string): Promise<LinkedWorktreeFixture> {
+  await fs.writeFile(path.join(repoRoot, 'base.txt'), 'base\n');
+  await git(repoRoot, ['add', 'base.txt']);
+  await git(repoRoot, ['commit', '-q', '-m', 'base']);
+
+  const linkedWorktreePath = path.join(path.dirname(repoRoot), `${path.basename(repoRoot)}-agent-b`);
+  await git(repoRoot, ['worktree', 'add', '-q', '-b', 'agent-b', linkedWorktreePath]);
+
+  const nestedDir = path.join(linkedWorktreePath, 'src', 'nested');
+  await fs.mkdir(nestedDir, { recursive: true });
+  const nestedLinkedFilePath = path.join(nestedDir, 'feature.ts');
+
+  return { linkedWorktreePath, nestedLinkedFilePath };
+}
+
 describe('getChangedFiles', () => {
   let repo: string;
+  let extraCleanupPaths: string[];
 
   beforeEach(async () => {
     repo = await setupRepo();
+    extraCleanupPaths = [];
   });
 
   afterEach(async () => {
+    for (const cleanupPath of extraCleanupPaths) {
+      await fs.rm(cleanupPath, { recursive: true, force: true });
+    }
     if (repo) await fs.rm(repo, { recursive: true, force: true });
+  });
+
+  it('resolves linked worktrees and enclosing worktree roots from real git worktrees', async () => {
+    const fixture = await setupLinkedWorktreeFixture(repo);
+    extraCleanupPaths.push(fixture.linkedWorktreePath);
+    const canonicalRepo = canonicalPath(repo);
+    const canonicalLinkedWorktreePath = canonicalPath(fixture.linkedWorktreePath);
+    const canonicalNestedLinkedFilePath = canonicalPath(fixture.nestedLinkedFilePath);
+
+    const linkedTarget = await resolveGitWorktreeTarget(fixture.linkedWorktreePath);
+    const sharedRootTarget = await resolveGitWorktreeTarget(repo);
+    const nestedFileTarget = await resolveGitWorktreeTarget(repo, {
+      targetPath: fixture.nestedLinkedFilePath,
+    });
+
+    expect(linkedTarget.requestedPath).toBe(canonicalLinkedWorktreePath);
+    expect(linkedTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
+    expect(linkedTarget.branch).toBe('agent-b');
+    expect(linkedTarget.isLinkedWorktree).toBe(true);
+
+    expect(sharedRootTarget.effectiveWorktreePath).toBe(canonicalRepo);
+    expect(sharedRootTarget.isLinkedWorktree).toBe(false);
+
+    expect(nestedFileTarget.requestedPath).toBe(canonicalNestedLinkedFilePath);
+    expect(nestedFileTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
   });
 
   it('returns available=false for non-git directories', async () => {
@@ -192,5 +257,27 @@ describe('getChangedFiles', () => {
 
     const result = await getChangedFiles(repo, 'nonexistent-ref');
     expect(result.available).toBe(false);
+  });
+
+  it('targets the linked worktree when collecting changed files', async () => {
+    const fixture = await setupLinkedWorktreeFixture(repo);
+    extraCleanupPaths.push(fixture.linkedWorktreePath);
+    const canonicalLinkedWorktreePath = canonicalPath(fixture.linkedWorktreePath);
+
+    await fs.writeFile(path.join(fixture.linkedWorktreePath, 'linked-only.ts'), 'export const linked = 1;\n');
+    await git(fixture.linkedWorktreePath, ['add', 'linked-only.ts']);
+    await git(fixture.linkedWorktreePath, ['commit', '-q', '-m', 'linked change']);
+
+    await fs.writeFile(path.join(repo, 'root-only.ts'), 'export const root = 1;\n');
+
+    const result = await getChangedFiles(fixture.linkedWorktreePath, 'HEAD~1');
+    const linkedHead = await gitOutput(fixture.linkedWorktreePath, ['rev-parse', 'HEAD']);
+
+    expect(result.available).toBe(true);
+    expect(result.files).toContain('linked-only.ts');
+    expect(result.files).not.toContain('root-only.ts');
+    expect(result.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
+    expect(result.effectiveWorktreeBranch).toBe('agent-b');
+    expect(result.effectiveWorktreeHead).toBe(linkedHead);
   });
 });

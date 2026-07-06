@@ -17,6 +17,10 @@ import { renderCliPluginReporterIfRequested } from './pluginReporter.js';
 import { cliCommandPath } from './commandPath.js';
 import { renderCliBanner } from './bannerDisplay.js';
 import { assertCliFormatSupported, resolveCliFormat } from './formatOptions.js';
+import {
+  resolveGitWorktreeTarget,
+  type GitWorktreeTarget,
+} from '../utils/gitWorktreeTarget.js';
 import type { ProjscanConfig, ReportFormat } from '../types/config.js';
 import type { FileExplanation, Issue } from '../types.js';
 
@@ -75,6 +79,19 @@ export function assertFormatSupported(commandName: string): ReportFormat {
 
 export function getRootPath(): string {
   return process.cwd();
+}
+
+export async function getWorktreeTarget(targetPath?: string): Promise<GitWorktreeTarget> {
+  const opts = program.opts() as { root?: string; worktree?: string };
+  return await resolveGitWorktreeTarget(process.cwd(), {
+    targetPath: targetPath ?? opts.worktree ?? opts.root,
+  });
+}
+
+export function registerWorktreeTargetOptions(command: Command): Command {
+  return command
+    .option('--root <path>', 'path inside the git worktree to target')
+    .option('--worktree <path>', 'explicit git worktree path to target');
 }
 
 export async function loadProjectConfig(): Promise<ProjscanConfig> {
