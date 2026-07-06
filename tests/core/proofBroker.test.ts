@@ -221,6 +221,140 @@ test('missing-contract gap command matches recontract guidance and quotes placeh
   );
 });
 
+test('proof-broker bootstrap writes the default contract and reports bootstrap metadata', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'src/billing/retryPolicy.ts'),
+    [
+      'export function nextRetryDelay(attempt: number): number {',
+      '  const exponential = 2 ** Math.max(attempt - 1, 0) * 250;',
+      '  return Math.min(exponential, 8000);',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const report = await computeProofBroker(tmp, {
+    intent: 'is my agent allowed to change billing retry logic?',
+    bootstrapContract: true,
+    proofRecipes: [
+      {
+        id: 'billing-retry-safety',
+        matches: ['src/billing/**'],
+        requiredCommands: ['npm run test:billing', 'npm run typecheck'],
+        requiredReviewers: ['@billing-platform'],
+        forbiddenFiles: ['src/billing/paymentGateway.ts'],
+        riskSurface: 'billing',
+        reason: 'Billing retry changes need focused regression proof and platform review.',
+      },
+    ],
+  });
+
+  expect(report.bootstrap).toEqual({
+    attempted: true,
+    wroteContract: true,
+    contractPath: '.projscan/proof-contract.json',
+    intent: 'is my agent allowed to change billing retry logic?',
+    summary: expect.stringContaining('Proof Contract'),
+    followUpCommands: expect.arrayContaining([
+      'npm run test:billing',
+      'npm run typecheck',
+      'projscan prove --changed --contract .projscan/proof-contract.json --format markdown',
+      'projscan proof-broker --contract .projscan/proof-contract.json --pr-comment',
+    ]),
+  });
+  expect(report.artifacts.contractPath).toBe('.projscan/proof-contract.json');
+  expect(report.status).toBe('needs-proof');
+  expect(report.reviewer.action).toBe('run-proof');
+  expect(report.scope.changedFiles).toContain('src/billing/retryPolicy.ts');
+  expect(report.requiredProof).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'recipe:billing-retry-safety',
+        status: 'missing',
+      }),
+    ]),
+  );
+  expect(report.gaps).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'missing-proof',
+        command: 'npm run test:billing',
+        requirementId: 'recipe:billing-retry-safety',
+      }),
+    ]),
+  );
+});
+
+test('proof-broker bootstrap preserves explicit save-contract paths', async () => {
+  const report = await computeProofBroker(tmp, {
+    intent: 'is my agent allowed to change billing retry logic?',
+    bootstrapContract: true,
+    saveContractPath: '.projscan/proof-contracts/billing-retry.json',
+  });
+
+  expect(report.bootstrap?.contractPath).toBe('.projscan/proof-contracts/billing-retry.json');
+  expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contracts/billing-retry.json');
+});
+
+test('proof-broker bootstrap requires intent', async () => {
+  await expect(
+    computeProofBroker(tmp, {
+      bootstrapContract: true,
+    }),
+  ).rejects.toThrow('proof-broker --bootstrap-contract requires --intent');
+});
+
+test('proof-broker bootstrap preserves contract-generation warnings on the rerun report', async () => {
+  await fs.writeFile(
+    path.join(tmp, 'src/billing/retryPolicy.ts'),
+    [
+      'export function nextRetryDelay(attempt: number): number {',
+      '  return Math.min(attempt * 1200, 6000);',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  vi.resetModules();
+  vi.doMock('../../src/core/prove.js', async () => {
+    const actual = await vi.importActual<typeof import('../../src/core/prove.js')>(
+      '../../src/core/prove.js',
+    );
+    return {
+      ...actual,
+      computeProve: vi.fn(async (rootPath: string, options: Record<string, unknown> = {}) => {
+        const report = await actual.computeProve(rootPath, options);
+        if (typeof options.intent === 'string') {
+          return {
+            ...report,
+            warnings: ['bootstrap-only warning'],
+          };
+        }
+        return report;
+      }),
+    };
+  });
+
+  try {
+    const { computeProofBroker: computeProofBrokerWithMockedBootstrap } = await import(
+      '../../src/core/proofBroker.js'
+    );
+    const report = await computeProofBrokerWithMockedBootstrap(tmp, {
+      intent: 'is my agent allowed to change quasar flux harmonizer routing?',
+      bootstrapContract: true,
+    });
+
+    expect(report.warnings).toContain('bootstrap-only warning');
+    expect(report.passport.warnings).toContain('bootstrap-only warning');
+    expect(report.scope.changedFiles).toContain('src/billing/retryPolicy.ts');
+    expect(report.reviewer.action).toBe('stop-and-recontract');
+    expect(report.recontract.required).toBe(true);
+  } finally {
+    vi.doUnmock('../../src/core/prove.js');
+    vi.resetModules();
+  }
+});
+
 test('uses linked worktree target metadata instead of the shared root', async () => {
   const linkedWorktreePath = path.join(os.tmpdir(), `projscan-proof-broker-linked-${Date.now()}`);
   await git(['worktree', 'add', '-q', '-b', 'agent-b', linkedWorktreePath]);

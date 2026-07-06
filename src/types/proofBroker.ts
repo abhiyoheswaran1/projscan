@@ -12,10 +12,20 @@ import type {
   ProveScopeStatus,
 } from './prove.js';
 
+export interface BootstrapContractResult {
+  attempted: boolean;
+  wroteContract: boolean;
+  contractPath?: string;
+  intent: string;
+  summary?: string;
+  followUpCommands: string[];
+}
+
 export interface ComputeProofBrokerOptions {
   intent?: string;
   contractPath?: string;
   saveContractPath?: string;
+  bootstrapContract?: boolean;
   outputPassportPath?: string;
   maxFiles?: number;
   feedbackPath?: string;
@@ -125,6 +135,7 @@ export interface ProofBrokerReport {
   nextCommands: string[];
   warnings: string[];
   artifacts: AgentChangePassport['artifacts'];
+  bootstrap?: BootstrapContractResult;
   prPassport: ProofBrokerPrPassport;
   passport: AgentChangePassport;
 }

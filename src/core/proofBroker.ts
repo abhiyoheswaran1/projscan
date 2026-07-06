@@ -1,11 +1,13 @@
 import { markdownInlineCode, markdownInlineList, escapeMarkdownText } from './markdownSafety.js';
 import { computePassport } from './passport.js';
+import { computeProve } from './prove.js';
 import { quoteShellArg } from './startShellArgs.js';
 import type {
   AgentChangePassport,
   AgentChangePassportArtifacts,
 } from '../types/passport.js';
 import type {
+  BootstrapContractResult,
   ProofBrokerGap,
   ProofBrokerRecontractGuidance,
   ProofBrokerPrPassport,
@@ -32,6 +34,26 @@ export async function computeProofBroker(
   rootPath: string,
   options: ComputeProofBrokerOptions = {},
 ): Promise<ProofBrokerReport> {
+  if (options.bootstrapContract) {
+    const { contractPath, bootstrap, warnings } = await bootstrapBrokerContract(rootPath, options);
+    const passport = await computePassport(rootPath, {
+      contractPath,
+      outputPath: options.outputPassportPath,
+      maxFiles: options.maxFiles,
+      feedbackPath: options.feedbackPath,
+      baseRef: options.baseRef,
+      ledgerPath: options.ledgerPath,
+      proofRecipes: options.proofRecipes,
+    });
+    const bootstrapAwarePassport = warnings.length
+      ? { ...passport, warnings: unique([...warnings, ...passport.warnings]) }
+      : passport;
+    return buildProofBrokerReport(
+      bootstrapAwarePassport,
+      { ...options, contractPath, saveContractPath: contractPath },
+      bootstrap,
+    );
+  }
   const passport = await computePassport(rootPath, {
     intent: options.intent,
     contractPath: options.contractPath,
@@ -49,6 +71,7 @@ export async function computeProofBroker(
 function buildProofBrokerReport(
   passport: AgentChangePassport,
   options: ComputeProofBrokerOptions,
+  bootstrap?: BootstrapContractResult,
 ): ProofBrokerReport {
   const receipt = passport.prove.receipt;
   const requiredProof = requiredProofRows(receipt);
@@ -94,6 +117,7 @@ function buildProofBrokerReport(
     nextCommands,
     warnings: passport.warnings,
     artifacts: passport.artifacts,
+    ...(bootstrap ? { bootstrap } : {}),
     passport,
   };
   const report = {
@@ -101,6 +125,43 @@ function buildProofBrokerReport(
     prPassport: buildPrPassport(reportWithoutPassport),
   };
   return report;
+}
+
+async function bootstrapBrokerContract(
+  rootPath: string,
+  options: ComputeProofBrokerOptions,
+): Promise<{ contractPath: string; bootstrap: BootstrapContractResult; warnings: string[] }> {
+  if (!options.intent?.trim()) {
+    throw new Error('proof-broker --bootstrap-contract requires --intent');
+  }
+
+  const prove = await computeProve(rootPath, {
+    intent: options.intent,
+    saveContractPath: options.saveContractPath ?? DEFAULT_CONTRACT_PATH,
+    maxFiles: options.maxFiles,
+    feedbackPath: options.feedbackPath,
+    baseRef: options.baseRef,
+    proofRecipes: options.proofRecipes,
+  });
+
+  const contractPath = prove.savedContractPath ?? options.saveContractPath ?? DEFAULT_CONTRACT_PATH;
+  return {
+    contractPath,
+    warnings: prove.warnings,
+    bootstrap: {
+      attempted: true,
+      wroteContract: true,
+      contractPath,
+      intent: options.intent,
+      summary: prove.summary,
+      followUpCommands: [
+        ...prove.commands,
+        `projscan prove --changed --contract ${quoteShellArg(contractPath)} --format markdown`,
+        `projscan passport --contract ${quoteShellArg(contractPath)} --format markdown`,
+        `projscan proof-broker --contract ${quoteShellArg(contractPath)} --pr-comment`,
+      ],
+    },
+  };
 }
 
 function brokerSummary(passport: AgentChangePassport, gaps: ProofBrokerGap[]): string {
