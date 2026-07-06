@@ -266,41 +266,38 @@ npm run docs:screenshots
 npm run docs:demos
 ```
 
-## 4.18.0 Notes
+## 5.0.0 Notes
 
-4.18.0 adds Proof Broker, PR Passport, and Review Gate:
+5.0.0 turns Proof Broker and Review Gate into explicit, restartable proof-first
+review loops:
 
+- `projscan proof-broker --intent "<change>" --bootstrap-contract` writes the
+  next scoped Proof Contract only when explicitly requested, then returns PR
+  Passport output with bootstrap metadata and the post-bootstrap next commands.
+- `projscan review-gate --intent "<change>" --bootstrap-contract` does the same
+  on the reviewer gate surface and keeps the stop-and-recontract path explicit
+  when the target worktree has drifted.
 - `projscan review-gate --contract .projscan/proof-contract.json --pr-comment`
   prints PR-comment Markdown with status, allow-review decision, proof debt,
-  recontract guidance, required reviewers, next commands, and artifact paths.
+  recontract guidance, bootstrap status when present, required reviewers, next
+  commands, and artifact paths.
 - `projscan review-gate --contract .projscan/proof-contract.json --ci
   --fail-on-needs-proof` prints a compact CI summary and exits non-zero until
   the gate is `ready`.
-- JSON output returns `kind: "review-gate"`, `decision`, `proofDebt`,
-  `recontract`, `requiredReviewers`, `nextCommands`, `prComment`, and the
-  embedded Proof Broker report.
+- Proof Broker and Review Gate JSON now keep console output and embedded
+  Markdown aligned, including the Bootstrap section when a contract was minted
+  from the review surface.
 - ProjScan writes Review Gate artifacts to `.projscan/review-gate.json` or
   `.projscan/review-gates/<name>.json`; it rejects traversal, symlink targets,
   and unrelated overwrite targets.
-- MCP now includes `projscan_review_gate`, bringing the MCP surface to 51 tools.
-  The tool returns gate evidence and PR-comment Markdown without running proof
-  commands.
-- The package exports `computeReviewGate()` plus Review Gate report, decision,
-  proof-debt, recontract, artifact, and PR-comment types.
-- `projscan proof-broker --intent "<task>" --save-contract .projscan/proof-contract.json`
-  creates a Proof Contract, reads the current Proof Receipt, and brokers the
-  reviewer decision from the Agent Change Passport.
-- `projscan proof-broker --contract .projscan/proof-contract.json --pr-comment`
-  prints PR Passport Markdown with status, reviewer action, approved boundary,
-  changed files, required proof, required reviewers, proof gaps, next commands,
-  and `.projscan/passport.json` when you write the passport artifact.
-- JSON output returns `kind: "proof-broker"`, `requiredProof`,
-  `requiredReviewers`, `scope.riskyChangedFiles`, `gaps`, `nextCommands`,
-  `prPassport`, and the underlying Agent Change Passport.
-- MCP includes `projscan_proof_broker`. The tool returns broker evidence and PR
-  Passport Markdown without running proof commands.
-- The package exports `computeProofBroker()` plus Proof Broker report, proof
-  row, gap, and PR Passport types.
+- MCP still includes `projscan_review_gate` and `projscan_proof_broker`,
+  keeping the MCP surface at 51 tools and returning evidence without running
+  proof commands.
+- The package exports `computeReviewGate()` and `computeProofBroker()` with the
+  refreshed report types, including the additive bootstrap metadata.
+- Repo-local agent workflow guidance now runs on `agentloopkit@0.47.1`, with
+  the newer task, verification, handoff, ship, and maintainer-check idioms
+  used as the operating release loop.
 
 ## 4.17.0 Notes
 
@@ -714,7 +711,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 
 ## Install Notes
 
-`projscan@4.18.0` has seven direct runtime dependencies:
+`projscan@5.0.0` has seven direct runtime dependencies:
 
 - `@babel/parser`
 - `@babel/types`
@@ -724,7 +721,7 @@ Supply-chain scanners may flag package strings or APIs used by `git`, `npm audit
 - `ora`
 - `web-tree-sitter`
 
-If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 4.18.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
+If npm prints `allow-scripts` warnings during a global install, check which package names it lists. projscan core does not need `node-gyp` grammar builds at runtime in 5.0.0. Open an issue with the warning text if npm reports install scripts from `projscan@latest`, or run `projscan feedback intake --text "<warning text>" --format json` to turn it into a focused setup-trust task.
 
 The grammar packages are build-time sources, not global-install dependencies. Published grammar assets include `tree-sitter-python.wasm` and `tree-sitter-c_sharp.wasm`.
 

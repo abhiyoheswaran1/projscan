@@ -117,10 +117,11 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(decisions).toContain('Add Proof Broker and PR Passport');
   expect(decisions).toContain('Add Team Proof Recipes to proof receipts');
   expect(decisions).toContain('Trust Memory confidence adjustment');
-  expect(websitePrompt).toContain('4.18.0: Review Gate for AI code handoffs');
+  expect(websitePrompt).toContain('5.0.0: Proof-first review loops with explicit bootstrap');
   expect(websitePrompt).toContain('projscan review-gate --intent');
   expect(websitePrompt).toContain('projscan review-gate --contract');
   expect(websitePrompt).toContain('projscan review-gate --ci');
+  expect(websitePrompt).toContain('--bootstrap-contract');
   expect(websitePrompt).toContain('projscan proof-broker --contract');
   expect(websitePrompt).toContain('Agent Change Passport');
   expect(websitePrompt).toContain('projscan passport --intent');

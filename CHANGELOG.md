@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.0]
+
+2026-07-06 - "Proof-First Review Loop"
+
+### Added
+
+- Added `--bootstrap-contract` to `projscan proof-broker` so reviewers can
+  explicitly mint the next scoped Proof Contract, then immediately pivot into
+  the post-bootstrap proof loop without running proof commands implicitly.
+- Added `--bootstrap-contract` to `projscan review-gate` with the same explicit
+  contract-write behavior and reviewer follow-up guidance.
+- Added shared bootstrap metadata to Proof Broker and Review Gate JSON and
+  embedded Markdown outputs so console, JSON, and PR-comment surfaces all
+  report the same contract-write result.
+
+### Changed
+
+- Upgraded the repo-local AgentLoopKit workflow to `agentloopkit@0.47.1` and
+  refreshed repo guidance, task flow, verification, handoff, and reviewer
+  evidence around the newer loop idioms.
+- Proof Broker and Review Gate now surface the bootstrap result in their
+  Markdown handoff output instead of keeping bootstrap state as CLI-only text.
+- The repo's proof-phase release posture now has an explicit, task-scoped exit
+  path for the approved 5.0.0 cut instead of a blanket no-release stop.
+
 ## [4.18.0]
 
 2026-06-29 - "Proof Broker, PR Passport, and Review Gate"

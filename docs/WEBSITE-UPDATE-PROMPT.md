@@ -1,6 +1,6 @@
 # Website Update Prompt
 
-Use this prompt after `projscan@4.18.0`, GitHub tag `v4.18.0`, and MCP Registry
+Use this prompt after `projscan@5.0.0`, GitHub tag `v5.0.0`, and MCP Registry
 metadata go live. Do not publish these website changes before that release
 exists.
 
@@ -16,7 +16,7 @@ Do not edit:
 The website pulls changelog content from release data.
 
 ```text
-Update the projscan website for projscan 4.18.0.
+Update the projscan website for projscan 5.0.0.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -27,15 +27,16 @@ Do not edit:
 The website pulls changelog content from release data.
 
 Release headline:
-4.18.0: Review Gate for AI code handoffs
+5.0.0: Proof-first review loops with explicit bootstrap
 
 Primary story:
-projscan now gives reviewers one local gate for an AI agent handoff. Review Gate reads the Proof Contract, Agent Change Passport, Proof Broker, Proof Receipt, Proof Replay, Proof Sufficiency, and Team Proof Recipes, then returns one decision: `ready`, `needs-proof`, `drifted`, or `blocked`. It says whether review can proceed, itemizes proof debt, names required reviewers, gives the next commands, and tells the agent when scope drift requires a new contract. ProjScan keeps source local. MCP exposes `projscan_review_gate` and does not run proof commands.
+projscan now gives reviewers explicit restart loops from the same local review surfaces they already use. `proof-broker` and `review-gate` can mint the next scoped Proof Contract only when `--bootstrap-contract` is requested, then return aligned JSON, console, and PR-comment evidence with bootstrap status, proof debt, reviewer guidance, and next commands. Review stays local, bootstrap never runs proof commands implicitly, and MCP continues to return evidence without executing proof.
 
 Above the fold:
-- Lead with: "ProjScan tells reviewers whether an AI code change is ready to review."
-- Review Gate command: `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output-passport .projscan/passport.json --output .projscan/review-gate.json --pr-comment`
+- Lead with: "ProjScan tells reviewers when to bootstrap, prove, or stop."
+- Review Gate bootstrap command: `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --bootstrap-contract --pr-comment`
 - CI gate command: `npx projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof`
+- Proof Broker bootstrap command: `npx projscan proof-broker --intent "is my agent allowed to change billing retry logic?" --bootstrap-contract --pr-comment`
 - Proof Broker command: `npx projscan proof-broker --contract .projscan/proof-contract.json --pr-comment`
 - Passport command: `npx projscan passport --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output .projscan/passport.json`
 - Guard command: `npx projscan guard --contract .projscan/proof-contract.json --watch`
@@ -48,7 +49,7 @@ Above the fold:
 - Receipt command: `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
 - Keep Proof Cards nearby: `npx projscan assess --goal "make this repo safer to ship this week"`
 - Keep simulator nearby: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
-- Version: `4.18.0`
+- Version: `5.0.0`
 - MCP tools: `51 MCP tools`
 - MCP Registry name: `io.github.abhiyoheswaran1/projscan`
 - MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 51 tools, mission outcomes. Local.`
@@ -56,11 +57,12 @@ Above the fold:
 - Requirements: Node.js >= 18
 
 New release bullets:
-- `projscan review-gate --intent <text> --save-contract .projscan/proof-contract.json` creates a Proof Contract, reads the current handoff evidence, and returns a reviewer-readiness decision.
+- `projscan proof-broker --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware PR Passport output.
+- `projscan review-gate --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware reviewer guidance.
 - `projscan review-gate --contract .projscan/proof-contract.json --pr-comment` prints Review Gate Markdown for a pull request comment.
 - `projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof` prints a compact CI summary and exits non-zero until the gate is `ready`.
-- Review Gate Markdown includes status, allow-review decision, reviewer action, proof debt, recontract guidance, required reviewers, next commands, and artifact paths.
-- JSON output includes `kind: "review-gate"`, `decision`, `proofDebt`, `recontract`, `requiredReviewers`, `nextCommands`, `prComment`, artifacts, and the embedded Proof Broker report.
+- Review Gate Markdown includes status, allow-review decision, reviewer action, proof debt, recontract guidance, bootstrap status when present, required reviewers, next commands, and artifact paths.
+- JSON output includes `kind: "review-gate"`, `decision`, `proofDebt`, `recontract`, `bootstrap`, `requiredReviewers`, `nextCommands`, `prComment`, artifacts, and the embedded Proof Broker report.
 - ProjScan writes Review Gate artifacts to `.projscan/review-gate.json` or `.projscan/review-gates/<name>.json`; it rejects traversal, symlink targets, non-JSON files, and existing files that are not Review Gate artifacts.
 - MCP exposes `projscan_review_gate`, bringing the tool count to 51. The MCP tool returns gate evidence and does not run local proof commands.
 - The package exports `computeReviewGate()` plus Review Gate report, decision, proof-debt, recontract, artifact, and PR-comment types.
@@ -69,16 +71,17 @@ New release bullets:
 
 Docs page additions:
 - Add "Review Gate":
-  - `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output-passport .projscan/passport.json --output .projscan/review-gate.json --format json`
+  - `npx projscan review-gate --intent "is my agent allowed to change billing retry logic?" --bootstrap-contract --format json`
   - `npx projscan review-gate --contract .projscan/proof-contract.json --pr-comment`
   - `npx projscan review-gate --contract .projscan/proof-contract.json --ci --fail-on-needs-proof`
   - Explain status values: ready, needs-proof, drifted, blocked.
   - Explain proof debt states: missing-contract, scope-drift, missing-proof, failed-proof, stale-proof, weak-proof, recipe-gap.
   - Explain reviewer actions: review, run-proof, rerun-proof, stop-and-recontract.
-  - Explain that Review Gate reads evidence and does not run proof commands.
+  - Explain that bootstrap is explicit and Review Gate does not run proof commands.
 - Keep "Proof Broker and PR Passport":
+  - `npx projscan proof-broker --intent "is my agent allowed to change billing retry logic?" --bootstrap-contract --format json`
   - `npx projscan proof-broker --contract .projscan/proof-contract.json --pr-comment`
-  - Explain that Proof Broker reads the Agent Change Passport and does not run proof commands.
+  - Explain that Proof Broker reads the Agent Change Passport, can mint the next contract only when explicitly asked, and does not run proof commands.
 - Keep "Agent Change Passport":
   - `npx projscan passport --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json --output .projscan/passport.json`
   - `.projscan/passport.json`
@@ -108,7 +111,7 @@ Short product description:
 projscan is the local proof layer for AI-assisted software engineering. Review Gate combines contract, passport, broker, receipt, replay, sufficiency, and recipe evidence into one reviewer-readiness decision. It shows whether review can proceed, which proof debt remains, who must review, which command to run next, and whether the agent must stop and recontract. ProjScan keeps source local, users need no ProjScan account or API key, and MCP returns evidence without executing proof commands.
 
 Acceptance checks:
-- Every current-version label reads `4.18.0`.
+- Every current-version label reads `5.0.0`.
 - MCP count reads `51 MCP tools`.
 - Overview and docs show `projscan review-gate --intent`, `projscan review-gate --contract`, `projscan review-gate --ci`, `projscan proof-broker --contract`, `projscan passport --intent`, `projscan guard --contract`, `projscan prove --intent`, `projscan prove --run`, `projscan prove --changed`, `projscan assess --goal`, and `projscan simulate --plan`.
 - Show Review Gate status, allow-review decision, proof debt, recontract guidance, required reviewers, artifact path, proof replay, Proof Sufficiency, guard status, and MCP non-execution.
