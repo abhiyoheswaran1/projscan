@@ -53,7 +53,6 @@ Upgrade agentloopkit to 0.47.1, refresh the repo-local harness and guidance, pro
 - npm run lint
 - npm run build
 - npm test -- tests/reporters/consoleReviewReporter.test.ts
-- npm exec agentloop -- verify --task .agentloop/tasks/2026-07-06-agentloopkit-proof-phase-upgrade-train.md --task-commands --write-run
 
 ## Post-Verification Gates
 - npm exec agentloop -- check-gates
@@ -64,7 +63,8 @@ Upgrade agentloopkit to 0.47.1, refresh the repo-local harness and guidance, pro
 - Inspect relevant files before editing.
 - Keep changes focused on this contract.
 - Preserve the 2026-07-06 baseline facts above as the pre-upgrade proof point for workflow state and policy expectations.
-- Use the verification commands in this contract to produce active-task workflow proof, then run the post-verification gates only after fresh verification evidence exists.
+- Record only leaf verification commands in this contract; operators can use `npm exec agentloop -- verify --task .agentloop/tasks/2026-07-06-agentloopkit-proof-phase-upgrade-train.md --task-commands --write-run` as the wrapper that executes them and writes fresh verification evidence.
+- Run the post-verification gates only after fresh verification evidence exists.
 - Record any architecture decision in DECISIONS.md.
 
 ## Risk Notes
