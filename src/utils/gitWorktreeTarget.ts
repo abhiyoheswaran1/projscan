@@ -54,11 +54,18 @@ export async function resolveGitWorktreeTarget(
 }
 
 function resolveGitCwd(targetPath: string): string {
-  try {
-    const stats = fs.statSync(targetPath);
-    return stats.isDirectory() ? targetPath : path.dirname(targetPath);
-  } catch {
-    return path.dirname(targetPath);
+  let candidate = targetPath;
+  while (true) {
+    try {
+      const stats = fs.statSync(candidate);
+      return stats.isDirectory() ? candidate : path.dirname(candidate);
+    } catch {
+      const parent = path.dirname(candidate);
+      if (parent === candidate) {
+        return candidate;
+      }
+      candidate = parent;
+    }
   }
 }
 

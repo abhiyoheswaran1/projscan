@@ -82,10 +82,7 @@ export function getRootPath(): string {
 }
 
 export async function getWorktreeTarget(targetPath?: string): Promise<GitWorktreeTarget> {
-  const opts = program.opts() as { root?: string; worktree?: string };
-  return await resolveGitWorktreeTarget(process.cwd(), {
-    targetPath: targetPath ?? opts.worktree ?? opts.root,
-  });
+  return await resolveGitWorktreeTarget(process.cwd(), { targetPath });
 }
 
 export function registerWorktreeTargetOptions(command: Command): Command {

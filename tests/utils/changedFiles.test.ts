@@ -84,23 +84,38 @@ describe('getChangedFiles', () => {
     const canonicalRepo = canonicalPath(repo);
     const canonicalLinkedWorktreePath = canonicalPath(fixture.linkedWorktreePath);
     const canonicalNestedLinkedFilePath = canonicalPath(fixture.nestedLinkedFilePath);
+    const missingNestedLinkedFilePath = path.join(
+      fixture.linkedWorktreePath,
+      'missing',
+      'deep',
+      'path',
+      'feature.ts',
+    );
 
     const linkedTarget = await resolveGitWorktreeTarget(fixture.linkedWorktreePath);
     const sharedRootTarget = await resolveGitWorktreeTarget(repo);
     const nestedFileTarget = await resolveGitWorktreeTarget(repo, {
       targetPath: fixture.nestedLinkedFilePath,
     });
+    const missingNestedFileTarget = await resolveGitWorktreeTarget(repo, {
+      targetPath: missingNestedLinkedFilePath,
+    });
 
     expect(linkedTarget.requestedPath).toBe(canonicalLinkedWorktreePath);
     expect(linkedTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
+    expect(linkedTarget.gitCommonRoot).toBe(canonicalRepo);
     expect(linkedTarget.branch).toBe('agent-b');
     expect(linkedTarget.isLinkedWorktree).toBe(true);
 
     expect(sharedRootTarget.effectiveWorktreePath).toBe(canonicalRepo);
+    expect(sharedRootTarget.gitCommonRoot).toBe(canonicalRepo);
     expect(sharedRootTarget.isLinkedWorktree).toBe(false);
 
     expect(nestedFileTarget.requestedPath).toBe(canonicalNestedLinkedFilePath);
     expect(nestedFileTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
+
+    expect(missingNestedFileTarget.requestedPath).toBe(path.resolve(missingNestedLinkedFilePath));
+    expect(missingNestedFileTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
   });
 
   it('returns null branch in detached HEAD state', async () => {
