@@ -237,6 +237,47 @@ test('drifted gate requires recontract when files leave the approved boundary', 
   );
 });
 
+test('review-gate bootstrap writes a contract and reports bootstrap metadata', async () => {
+  await changeBillingRetryPolicy();
+
+  const report = await computeReviewGate(tmp, {
+    intent: 'is my agent allowed to change billing retry logic?',
+    bootstrapContract: true,
+    proofRecipes,
+  });
+
+  expect(report.bootstrap).toEqual({
+    attempted: true,
+    wroteContract: true,
+    contractPath: '.projscan/proof-contract.json',
+    intent: 'is my agent allowed to change billing retry logic?',
+    summary: expect.stringContaining('Proof Contract'),
+    followUpCommands: expect.arrayContaining([
+      'npm run test:billing',
+      'projscan prove --changed --contract .projscan/proof-contract.json --format markdown',
+    ]),
+  });
+  expect(report.bootstrap?.followUpCommands).not.toContain(
+    'projscan proof-broker --contract .projscan/proof-contract.json --pr-comment',
+  );
+  expect(report.bootstrap?.followUpCommands.slice(-2)).toEqual([
+    'projscan passport --contract .projscan/proof-contract.json --format markdown',
+    'projscan review-gate --contract .projscan/proof-contract.json --pr-comment',
+  ]);
+  expect(report.recontract.followUpCommands).not.toContain(
+    'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json',
+  );
+});
+
+test('review-gate bootstrap requires intent', async () => {
+  await expect(
+    computeReviewGate(tmp, {
+      bootstrapContract: true,
+      proofRecipes,
+    }),
+  ).rejects.toThrow('review-gate --bootstrap-contract requires --intent');
+});
+
 test('writes only review gate artifacts under allowed projscan paths', async () => {
   await changeBillingRetryPolicy();
 

@@ -38,11 +38,16 @@ export async function computeReviewGate(
   rootPath: string,
   options: ComputeReviewGateOptions = {},
 ): Promise<ReviewGateReport> {
+  if (options.bootstrapContract && !options.intent?.trim()) {
+    throw new Error('review-gate --bootstrap-contract requires --intent');
+  }
+
   const root = path.resolve(rootPath);
   const proofBroker = await computeProofBroker(root, {
     intent: options.intent,
     contractPath: options.contractPath,
     saveContractPath: options.saveContractPath,
+    bootstrapContract: options.bootstrapContract,
     outputPassportPath: options.outputPassportPath,
     maxFiles: options.maxFiles,
     feedbackPath: options.feedbackPath,
@@ -75,6 +80,7 @@ function buildReviewGateReport(
     ...proofBroker.nextCommands,
     `projscan review-gate --contract ${quoteShellArg(contractPath)} --pr-comment`,
   ]);
+  const bootstrap = bootstrapMetadataFor(proofBroker, contractPath);
   const reportWithoutComment = {
     schemaVersion: 1 as const,
     kind: 'review-gate' as const,
@@ -93,6 +99,7 @@ function buildReviewGateReport(
       ...proofBroker.artifacts,
       ...(reviewGatePath ? { reviewGatePath } : {}),
     },
+    ...(bootstrap ? { bootstrap } : {}),
     proofBroker,
   };
   return {
@@ -261,11 +268,40 @@ function recontractGuidanceFor(
   return {
     ...proofBroker.recontract,
     recommendedContractPath: contractPath,
-    followUpCommands: unique([
-      ...proofBroker.recontract.followUpCommands,
-      `projscan review-gate --contract ${quoteShellArg(contractPath)} --pr-comment`,
-    ]),
+    followUpCommands: reviewGateFollowUpCommands(
+      proofBroker.recontract.followUpCommands,
+      contractPath,
+      { includeProofBrokerPrComment: true },
+    ),
   };
+}
+
+function bootstrapMetadataFor(proofBroker: ProofBrokerReport, contractPath: string) {
+  if (!proofBroker.bootstrap) return undefined;
+  return {
+    ...proofBroker.bootstrap,
+    followUpCommands: reviewGateFollowUpCommands(
+      proofBroker.bootstrap.followUpCommands,
+      contractPath,
+    ),
+  };
+}
+
+function reviewGateFollowUpCommands(
+  commands: string[],
+  contractPath: string,
+  options: { includeProofBrokerPrComment?: boolean } = {},
+): string[] {
+  const filtered = commands.filter(
+    (command) => !command.startsWith('projscan proof-broker --contract '),
+  );
+  return unique([
+    ...filtered,
+    ...(options.includeProofBrokerPrComment
+      ? [`projscan proof-broker --contract ${quoteShellArg(contractPath)} --pr-comment`]
+      : []),
+    `projscan review-gate --contract ${quoteShellArg(contractPath)} --pr-comment`,
+  ]);
 }
 
 export function renderReviewGateMarkdown(

@@ -6,6 +6,7 @@ import type {
   AgentChangePassportStatus,
 } from './passport.js';
 import type {
+  BootstrapContractResult,
   ProofBrokerGapKind,
   ProofBrokerGapSeverity,
   ProofBrokerRecontractGuidance,
@@ -16,6 +17,7 @@ export interface ComputeReviewGateOptions {
   intent?: string;
   contractPath?: string;
   saveContractPath?: string;
+  bootstrapContract?: boolean;
   outputPassportPath?: string;
   outputPath?: string;
   maxFiles?: number;
@@ -85,5 +87,6 @@ export interface ReviewGateReport {
   warnings?: string[];
   artifacts: ReviewGateArtifacts;
   prComment: ReviewGatePrComment;
+  bootstrap?: BootstrapContractResult;
   proofBroker: ProofBrokerReport;
 }
