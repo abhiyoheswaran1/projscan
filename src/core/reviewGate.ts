@@ -85,7 +85,7 @@ function buildReviewGateReport(
     decision: decisionFor(status, proofDebt),
     reviewer: proofBroker.reviewer,
     proofDebt,
-    recontract: recontractGuidanceFor(proofBroker, proofDebt, contractPath),
+    recontract: recontractGuidanceFor(proofBroker, contractPath),
     requiredReviewers: proofBroker.requiredReviewers,
     nextCommands,
     warnings: proofBroker.warnings,
@@ -256,35 +256,15 @@ function decisionFor(status: ReviewGateStatus, proofDebt: ReviewGateProofDebt): 
 
 function recontractGuidanceFor(
   proofBroker: ProofBrokerReport,
-  proofDebt: ReviewGateProofDebt,
   contractPath: string,
 ): ReviewGateRecontractGuidance {
-  const driftFiles = unique([
-    ...proofBroker.scope.forbiddenTouched,
-    ...proofBroker.scope.outsideAllowed,
-    ...proofDebt.items.filter((item) => item.kind === 'scope-drift').map((item) => item.file ?? ''),
-  ]);
-  const missingContract = proofDebt.items.some((item) => item.kind === 'missing-contract');
-  const required =
-    missingContract ||
-    driftFiles.length > 0 ||
-    proofBroker.reviewer.action === 'stop-and-recontract';
-  if (!required) {
-    return {
-      required: false,
-      reason: 'Current change is inside the approved boundary.',
-      driftFiles: [],
-      command: `projscan prove --intent "<change intent>" --save-contract ${quoteShellArg(contractPath)}`,
-    };
-  }
   return {
-    required: true,
-    reason:
-      driftFiles.length > 0
-        ? 'The current change left the approved boundary. Create a new contract instead of silently widening scope.'
-        : 'A Proof Contract is required before review.',
-    driftFiles,
-    command: `projscan prove --intent "<change intent>" --save-contract ${quoteShellArg(contractPath)}`,
+    ...proofBroker.recontract,
+    recommendedContractPath: contractPath,
+    followUpCommands: unique([
+      ...proofBroker.recontract.followUpCommands,
+      `projscan review-gate --contract ${quoteShellArg(contractPath)} --pr-comment`,
+    ]),
   };
 }
 
@@ -336,8 +316,22 @@ export function renderReviewGateMarkdown(
   lines.push('');
   lines.push(`- **Required:** ${report.recontract.required ? 'yes' : 'no'}`);
   lines.push(`- **Reason:** ${escapeMarkdownText(report.recontract.reason)}`);
+  lines.push(`- **Worktree:** ${markdownInlineCode(report.recontract.target.effectiveWorktreePath)}`);
+  if (report.recontract.target.effectiveWorktreeBranch) {
+    lines.push(`- **Branch:** ${markdownInlineCode(report.recontract.target.effectiveWorktreeBranch)}`);
+  }
+  if (report.recontract.target.effectiveWorktreeHead) {
+    lines.push(`- **Head:** ${markdownInlineCode(report.recontract.target.effectiveWorktreeHead)}`);
+  }
   lines.push(`- **Drift files:** ${markdownInlineList(report.recontract.driftFiles)}`);
-  lines.push(`- **Command:** ${markdownInlineCode(report.recontract.command)}`);
+  lines.push(
+    `- **Recommended intent:** ${report.recontract.recommendedIntent ? escapeMarkdownText(report.recontract.recommendedIntent) : markdownInlineCode('<change intent>')}`,
+  );
+  lines.push(`- **Recommended contract path:** ${markdownInlineCode(report.recontract.recommendedContractPath)}`);
+  lines.push('- **Follow-up commands:**');
+  for (const command of report.recontract.followUpCommands) {
+    lines.push(`  - ${markdownInlineCode(command)}`);
+  }
   lines.push('');
   lines.push('### Required Reviewers');
   lines.push('');

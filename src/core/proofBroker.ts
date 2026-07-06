@@ -1,12 +1,13 @@
 import { markdownInlineCode, markdownInlineList, escapeMarkdownText } from './markdownSafety.js';
 import { computePassport } from './passport.js';
-import { quoteShellArg } from './startShellArgs.js';
+import { quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';
 import type {
   AgentChangePassport,
   AgentChangePassportArtifacts,
 } from '../types/passport.js';
 import type {
   ProofBrokerGap,
+  ProofBrokerRecontractGuidance,
   ProofBrokerPrPassport,
   ProofBrokerPrPassportSection,
   ProofBrokerReport,
@@ -64,6 +65,7 @@ function buildProofBrokerReport(
   };
   const gaps = brokerGaps(passport, receipt, requiredProof);
   const nextCommands = nextCommandsFor(passport, requiredProof, options);
+  const recontract = recontractGuidanceFor(passport, options);
   const reportWithoutPassport = {
     schemaVersion: 1 as const,
     kind: 'proof-broker' as const,
@@ -87,6 +89,7 @@ function buildProofBrokerReport(
     scope,
     requiredReviewers,
     gaps,
+    recontract,
     nextCommands,
     warnings: passport.warnings,
     artifacts: passport.artifacts,
@@ -183,7 +186,7 @@ function brokerGaps(
       severity: 'warning',
       message: `${file} changed after proof ran.`,
       file,
-      command: changedReceiptCommand(passport.artifacts),
+      command: changedReceiptCommand(contractPathFor(passport.artifacts, {})),
     });
   }
   for (const requirement of requiredProof) {
@@ -263,8 +266,70 @@ function nextCommandsFor(
   ]);
 }
 
-function changedReceiptCommand(artifacts: AgentChangePassportArtifacts): string {
-  return `projscan prove --changed --contract ${quoteShellArg(artifacts.contractPath ?? DEFAULT_CONTRACT_PATH)} --format markdown`;
+function recontractGuidanceFor(
+  passport: AgentChangePassport,
+  options: ComputeProofBrokerOptions,
+): ProofBrokerRecontractGuidance {
+  const recommendedContractPath = contractPathFor(passport.artifacts, options);
+  const recommendedIntent = options.intent ?? passport.intent ?? null;
+  const driftFiles = unique([
+    ...passport.receipt.forbiddenTouched,
+    ...passport.receipt.outsideAllowed,
+  ]);
+  const required =
+    !passport.prove.receipt ||
+    passport.receipt.scopeStatus === 'missing-contract' ||
+    driftFiles.length > 0 ||
+    passport.reviewer.action === 'stop-and-recontract';
+  return {
+    required,
+    reason: required
+      ? driftFiles.length > 0
+        ? 'The current change left the approved boundary. Create a new contract instead of silently widening scope.'
+        : 'A Proof Contract is required before review.'
+      : 'Current change is inside the approved boundary.',
+    target: {
+      effectiveWorktreePath: passport.target.effectiveWorktreePath,
+      effectiveWorktreeBranch: passport.target.effectiveWorktreeBranch,
+      effectiveWorktreeHead: passport.target.effectiveWorktreeHead,
+    },
+    driftFiles,
+    recommendedIntent,
+    recommendedContractPath,
+    followUpCommands: recontractFollowUpCommands(
+      passport,
+      recommendedContractPath,
+      recommendedIntent,
+    ),
+  };
+}
+
+function recontractFollowUpCommands(
+  passport: AgentChangePassport,
+  contractPath: string,
+  recommendedIntent: string | null,
+): string[] {
+  return unique([
+    proveIntentCommand(recommendedIntent, contractPath),
+    ...passport.receipt.missingCommands,
+    ...passport.receipt.failedCommands,
+    ...passport.receipt.staleCommands,
+    changedReceiptCommand(contractPath),
+    passportCommand(contractPath),
+    `projscan proof-broker --contract ${quoteShellArg(contractPath)} --pr-comment`,
+  ]);
+}
+
+function changedReceiptCommand(contractPath: string): string {
+  return `projscan prove --changed --contract ${quoteShellArg(contractPath)} --format markdown`;
+}
+
+function passportCommand(contractPath: string): string {
+  return `projscan passport --contract ${quoteShellArg(contractPath)} --format markdown`;
+}
+
+function proveIntentCommand(intent: string | null, contractPath: string): string {
+  return `projscan prove --intent ${quoteShellArgOrPlaceholder(intent ?? '<change intent>')} --save-contract ${quoteShellArg(contractPath)}`;
 }
 
 function contractPathFor(
@@ -349,6 +414,27 @@ export function renderPrPassportMarkdown(report: Omit<ProofBrokerReport, 'prPass
   lines.push('### Required Reviewers');
   lines.push('');
   renderList(lines, 'Reviewers', report.requiredReviewers);
+  lines.push('');
+  lines.push('### Recontract');
+  lines.push('');
+  lines.push(`- **Required:** ${report.recontract.required ? 'yes' : 'no'}`);
+  lines.push(`- **Reason:** ${escapeMarkdownText(report.recontract.reason)}`);
+  lines.push(`- **Worktree:** ${markdownInlineCode(report.recontract.target.effectiveWorktreePath)}`);
+  if (report.recontract.target.effectiveWorktreeBranch) {
+    lines.push(`- **Branch:** ${markdownInlineCode(report.recontract.target.effectiveWorktreeBranch)}`);
+  }
+  if (report.recontract.target.effectiveWorktreeHead) {
+    lines.push(`- **Head:** ${markdownInlineCode(report.recontract.target.effectiveWorktreeHead)}`);
+  }
+  lines.push(`- **Drift files:** ${markdownInlineList(report.recontract.driftFiles)}`);
+  lines.push(
+    `- **Recommended intent:** ${report.recontract.recommendedIntent ? escapeMarkdownText(report.recontract.recommendedIntent) : markdownInlineCode('<change intent>')}`,
+  );
+  lines.push(`- **Recommended contract path:** ${markdownInlineCode(report.recontract.recommendedContractPath)}`);
+  lines.push('- **Follow-up commands:**');
+  for (const command of report.recontract.followUpCommands) {
+    lines.push(`  - ${markdownInlineCode(command)}`);
+  }
   lines.push('');
   lines.push('### Next Commands');
   lines.push('');

@@ -105,6 +105,19 @@ const report: ReviewGateReport = {
     },
     requiredReviewers: ['@billing-platform'],
     gaps: [],
+    recontract: {
+      required: false,
+      reason: 'Current change is inside the approved boundary.',
+      target: {
+        effectiveWorktreePath: '/tmp/projscan-proof',
+        effectiveWorktreeBranch: 'main',
+        effectiveWorktreeHead: '0123456789abcdef0123456789abcdef01234567',
+      },
+      driftFiles: [],
+      recommendedIntent: 'change billing retry logic',
+      recommendedContractPath: '.projscan/proof-contract.json',
+      followUpCommands: ['npm run test:billing'],
+    },
     nextCommands: ['npm run test:billing'],
     warnings: [],
     artifacts: {

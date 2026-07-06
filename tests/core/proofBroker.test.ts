@@ -138,6 +138,34 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
       }),
     ]),
   );
+  expect(report.recontract.required).toBe(false);
+  expect(report.recontract.reason).toBe('Current change is inside the approved boundary.');
+  expect(report.recontract.target).toEqual({
+    effectiveWorktreePath: canonicalPath(tmp),
+    effectiveWorktreeBranch: report.target.effectiveWorktreeBranch,
+    effectiveWorktreeHead: report.target.effectiveWorktreeHead,
+  });
+  expect(report.recontract.driftFiles).toEqual([]);
+  expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
+  expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contract.json');
+  expect(report.recontract.followUpCommands[0]).toBe(
+    'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json',
+  );
+  expect(report.recontract.followUpCommands).toEqual(
+    expect.arrayContaining([
+      'npm run test:billing',
+      'npm run typecheck',
+      'projscan prove --changed --contract .projscan/proof-contract.json --format markdown',
+      'projscan passport --contract .projscan/proof-contract.json --format markdown',
+      'projscan proof-broker --contract .projscan/proof-contract.json --pr-comment',
+    ]),
+  );
+  expect(report.recontract.followUpCommands.indexOf('projscan prove --changed --contract .projscan/proof-contract.json --format markdown')).toBeGreaterThan(
+    report.recontract.followUpCommands.indexOf('npm run typecheck'),
+  );
+  expect(report.recontract.followUpCommands.at(-1)).toBe(
+    'projscan proof-broker --contract .projscan/proof-contract.json --pr-comment',
+  );
   expect(report.nextCommands).toEqual(
     expect.arrayContaining([
       'npm run test:billing',
@@ -160,6 +188,11 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
   expect(report.prPassport.markdown).toContain('### Target');
   expect(report.prPassport.markdown).toContain(canonicalPath(tmp));
   expect(report.prPassport.markdown).toContain('Reviewer action');
+  expect(report.prPassport.markdown).toContain('### Recontract');
+  expect(report.prPassport.markdown).toContain('Current change is inside the approved boundary.');
+  expect(report.prPassport.markdown).toContain('Recommended contract path');
+  expect(report.prPassport.markdown).toContain('projscan prove --changed --contract .projscan/proof-contract.json --format markdown');
+  expect(report.prPassport.markdown).toContain('projscan passport --contract .projscan/proof-contract.json --format markdown');
   expect(report.prPassport.markdown).toContain('recipe:billing-retry-safety');
   expect(report.prPassport.markdown).toContain('@billing-platform');
   expect(report.prPassport.markdown).toContain('`.projscan/passport.json`');
@@ -203,6 +236,11 @@ test('uses linked worktree target metadata instead of the shared root', async ()
     expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
     expect(report.passport.target).toEqual(report.target);
     expect(report.scope.changedFiles).toContain('src/billing/retryPolicy.ts');
+    expect(report.recontract.target).toEqual({
+      effectiveWorktreePath: canonicalPath(linkedWorktreePath),
+      effectiveWorktreeBranch: 'agent-b',
+      effectiveWorktreeHead: report.target.effectiveWorktreeHead,
+    });
   } finally {
     await execFileAsync('git', ['worktree', 'remove', '--force', linkedWorktreePath], { cwd: tmp }).catch(
       () => undefined,

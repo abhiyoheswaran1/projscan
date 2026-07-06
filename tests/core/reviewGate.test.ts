@@ -114,6 +114,29 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
   expect(report.proofDebt.items.map((item) => item.kind)).toContain('missing-proof');
   expect(report.proofDebt.items.map((item) => item.command)).toContain('npm run test:billing');
   expect(report.recontract.required).toBe(false);
+  expect(report.recontract.reason).toBe('Current change is inside the approved boundary.');
+  expect(report.recontract.target).toEqual({
+    effectiveWorktreePath: canonicalPath(tmp),
+    effectiveWorktreeBranch: report.target.effectiveWorktreeBranch,
+    effectiveWorktreeHead: report.target.effectiveWorktreeHead,
+  });
+  expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
+  expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contract.json');
+  expect(report.recontract.followUpCommands[0]).toBe(
+    'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json',
+  );
+  expect(report.recontract.followUpCommands).toEqual(
+    expect.arrayContaining([
+      'npm run test:billing',
+      'projscan prove --changed --contract .projscan/proof-contract.json --format markdown',
+      'projscan passport --contract .projscan/proof-contract.json --format markdown',
+      'projscan proof-broker --contract .projscan/proof-contract.json --pr-comment',
+      'projscan review-gate --contract .projscan/proof-contract.json --pr-comment',
+    ]),
+  );
+  expect(report.recontract.followUpCommands.at(-1)).toBe(
+    'projscan review-gate --contract .projscan/proof-contract.json --pr-comment',
+  );
   expect(report.requiredReviewers).toContain('@billing-platform');
   expect(report.nextCommands).toContain('npm run test:billing');
   expect(report.nextCommands).toContain(
@@ -123,6 +146,9 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
   expect(report.prComment.markdown).toContain('### Target');
   expect(report.prComment.markdown).toContain(canonicalPath(tmp));
   expect(report.prComment.markdown).toContain('Proof debt');
+  expect(report.prComment.markdown).toContain('### Recontract');
+  expect(report.prComment.markdown).toContain('Current change is inside the approved boundary.');
+  expect(report.prComment.markdown).toContain('Recommended contract path');
   expect(report.proofBroker.target).toEqual(report.target);
 });
 
@@ -161,6 +187,7 @@ test('ready gate allows review after matching proof evidence is recorded', async
   expect(report.decision.allowReview).toBe(true);
   expect(report.proofDebt.total).toBe(0);
   expect(report.recontract.required).toBe(false);
+  expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
 });
 
 test('drifted gate requires recontract when files leave the approved boundary', async () => {
@@ -183,8 +210,23 @@ test('drifted gate requires recontract when files leave the approved boundary', 
   expect(report.status).toBe('drifted');
   expect(report.decision.allowReview).toBe(false);
   expect(report.recontract.required).toBe(true);
-  expect(report.recontract.command).toBe(
-    'projscan prove --intent "<change intent>" --save-contract .projscan/proof-contracts/billing-retry.json',
+  expect(report.recontract.reason).toContain('approved boundary');
+  expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
+  expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contracts/billing-retry.json');
+  expect(report.recontract.followUpCommands[0]).toBe(
+    'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contracts/billing-retry.json',
+  );
+  expect(report.recontract.followUpCommands).toEqual(
+    expect.arrayContaining([
+      'npm run test:billing',
+      'projscan prove --changed --contract .projscan/proof-contracts/billing-retry.json --format markdown',
+      'projscan passport --contract .projscan/proof-contracts/billing-retry.json --format markdown',
+      'projscan proof-broker --contract .projscan/proof-contracts/billing-retry.json --pr-comment',
+      'projscan review-gate --contract .projscan/proof-contracts/billing-retry.json --pr-comment',
+    ]),
+  );
+  expect(report.recontract.followUpCommands.at(-1)).toBe(
+    'projscan review-gate --contract .projscan/proof-contracts/billing-retry.json --pr-comment',
   );
   expect(report.recontract.driftFiles).toContain('package.json');
   expect(report.proofDebt.items).toEqual(
