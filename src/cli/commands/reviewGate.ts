@@ -174,7 +174,7 @@ async function resolveTarget(
     return await getWorktreeTarget(requestedPath);
   } catch (err) {
     if (requestedPath) {
-      throw new Error(`${requestedPath} is not inside a git worktree.`);
+      throw new Error(`${requestedPath} is not inside a git worktree.`, { cause: err });
     }
     throw err;
   }
