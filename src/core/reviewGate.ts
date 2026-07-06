@@ -81,6 +81,7 @@ function buildReviewGateReport(
     generatedAt: new Date().toISOString(),
     status,
     ...(proofBroker.intent ? { intent: proofBroker.intent } : {}),
+    target: proofBroker.target,
     decision: decisionFor(status, proofDebt),
     reviewer: proofBroker.reviewer,
     proofDebt,

@@ -71,6 +71,7 @@ function buildProofBrokerReport(
     status: passport.status,
     summary: brokerSummary(passport, gaps),
     ...(passport.intent ? { intent: passport.intent } : {}),
+    target: passport.target,
     reviewer: passport.reviewer,
     requiredProof,
     proof: {

@@ -63,6 +63,13 @@ export interface AgentChangePassportReviewerSummary {
   summary: string;
 }
 
+export interface AgentChangePassportTarget {
+  effectiveWorktreePath: string;
+  effectiveWorktreeBranch: string | null;
+  effectiveWorktreeHead: string | null;
+  gitCommonRoot: string | null;
+}
+
 export interface AgentChangePassportArtifacts {
   contractPath?: string;
   passportPath?: string;
@@ -82,6 +89,7 @@ export interface AgentChangePassport {
   intent?: string;
   summary: string;
   boundary: AgentChangePassportBoundary;
+  target: AgentChangePassportTarget;
   receipt: AgentChangePassportReceiptSummary;
   reviewer: AgentChangePassportReviewerSummary;
   nextCommands: string[];

@@ -75,6 +75,7 @@ export interface ReviewGateReport {
   generatedAt: string;
   status: ReviewGateStatus;
   intent?: string;
+  target: AgentChangePassport['target'];
   decision: ReviewGateDecision;
   reviewer: {
     decision: AgentChangePassport['reviewer']['decision'];

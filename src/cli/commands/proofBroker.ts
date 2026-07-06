@@ -2,18 +2,20 @@ import chalk from 'chalk';
 
 import {
   assertFormatSupported,
-  getRootPath,
+  getWorktreeTarget,
   loadProjectConfig,
   maybeCompactBanner,
   program,
+  registerWorktreeTargetOptions,
   setupLogLevel,
 } from '../_shared.js';
 import { computeProofBroker } from '../../core/proofBroker.js';
 import type { ProofBrokerReport } from '../../types/proofBroker.js';
 
 export function registerProofBroker(): void {
-  program
-    .command('proof-broker')
+  registerWorktreeTargetOptions(
+    program
+      .command('proof-broker')
     .description('Broker required proof and print a PR Passport for reviewer handoff')
     .option('--intent <text>', 'plain-language change intent to contract before or during work')
     .option('--contract <path>', 'existing Proof Contract JSON path')
@@ -23,7 +25,8 @@ export function registerProofBroker(): void {
     .option('--feedback <path>', 'local projscan feedback artifact to apply as trust memory')
     .option('--base-ref <ref>', 'base ref for changed-file detection')
     .option('--ledger <path>', 'proof ledger JSONL path')
-    .option('--pr-comment', 'print PR Passport Markdown for a pull request comment')
+    .option('--pr-comment', 'print PR Passport Markdown for a pull request comment'),
+  )
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -31,7 +34,8 @@ export function registerProofBroker(): void {
 
       try {
         const config = await loadProjectConfig();
-        const report = await computeProofBroker(getRootPath(), {
+        const worktree = await resolveTarget(cmdOpts);
+        const report = await computeProofBroker(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,
           saveContractPath: cmdOpts.saveContract,
@@ -68,6 +72,9 @@ function printProofBrokerConsole(report: ProofBrokerReport): void {
         : chalk.green;
   console.log(color(`Projscan Proof Broker: ${report.status}`));
   console.log(report.summary);
+  console.log('');
+  console.log(chalk.bold('Target'));
+  printTarget(report);
   console.log('');
   console.log(chalk.bold('Reviewer'));
   console.log(`- action: ${report.reviewer.action}`);
@@ -119,6 +126,33 @@ function printList(values: string[], empty: string): void {
     return;
   }
   for (const value of values) console.log(`- ${value}`);
+}
+
+function printTarget(report: ProofBrokerReport): void {
+  console.log(`- worktree: ${report.target.effectiveWorktreePath}`);
+  if (report.target.effectiveWorktreeBranch) {
+    console.log(`- branch: ${report.target.effectiveWorktreeBranch}`);
+  }
+  if (report.target.effectiveWorktreeHead) {
+    console.log(`- head: ${report.target.effectiveWorktreeHead}`);
+  }
+  if (report.target.gitCommonRoot) {
+    console.log(`- common root: ${report.target.gitCommonRoot}`);
+  }
+}
+
+async function resolveTarget(
+  cmdOpts: { worktree?: string; root?: string },
+): Promise<Awaited<ReturnType<typeof getWorktreeTarget>>> {
+  const requestedPath = cmdOpts.worktree ?? cmdOpts.root;
+  try {
+    return await getWorktreeTarget(requestedPath);
+  } catch (err) {
+    if (requestedPath) {
+      throw new Error(`${requestedPath} is not inside a git worktree.`);
+    }
+    throw err;
+  }
 }
 
 function parsePositiveInt(value: string): number {

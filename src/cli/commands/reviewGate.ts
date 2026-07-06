@@ -2,18 +2,20 @@ import chalk from 'chalk';
 
 import {
   assertFormatSupported,
-  getRootPath,
+  getWorktreeTarget,
   loadProjectConfig,
   maybeCompactBanner,
   program,
+  registerWorktreeTargetOptions,
   setupLogLevel,
 } from '../_shared.js';
 import { computeReviewGate } from '../../core/reviewGate.js';
 import type { ReviewGateReport } from '../../types/reviewGate.js';
 
 export function registerReviewGate(): void {
-  program
-    .command('review-gate')
+  registerWorktreeTargetOptions(
+    program
+      .command('review-gate')
     .description('Decide whether a PR is reviewable by turning proof gaps into review debt')
     .option('--intent <text>', 'plain-language change intent to contract before or during work')
     .option('--contract <path>', 'existing Proof Contract JSON path')
@@ -27,7 +29,8 @@ export function registerReviewGate(): void {
     .option('--pr-comment', 'print Review Gate Markdown for a pull request comment')
     .option('--ci', 'print a compact CI summary')
     .option('--fail-on-block', 'exit non-zero when review is blocked or the contract drifted')
-    .option('--fail-on-needs-proof', 'exit non-zero for any not-ready Review Gate status')
+    .option('--fail-on-needs-proof', 'exit non-zero for any not-ready Review Gate status'),
+  )
     .action(async (cmdOpts) => {
       setupLogLevel();
       maybeCompactBanner();
@@ -35,7 +38,8 @@ export function registerReviewGate(): void {
 
       try {
         const config = await loadProjectConfig();
-        const report = await computeReviewGate(getRootPath(), {
+        const worktree = await resolveTarget(cmdOpts);
+        const report = await computeReviewGate(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,
           saveContractPath: cmdOpts.saveContract,
@@ -75,6 +79,9 @@ function printReviewGateConsole(report: ReviewGateReport): void {
         : chalk.green;
   console.log(color(`Projscan Review Gate: ${report.status}`));
   console.log(report.decision.summary);
+  console.log('');
+  console.log(chalk.bold('Target'));
+  printTarget(report);
   console.log('');
   console.log(chalk.bold('Decision'));
   console.log(`- allow review: ${report.decision.allowReview ? 'yes' : 'no'}`);
@@ -128,6 +135,33 @@ function printList(values: string[], empty: string): void {
     return;
   }
   for (const value of values) console.log(`- ${value}`);
+}
+
+function printTarget(report: ReviewGateReport): void {
+  console.log(`- worktree: ${report.target.effectiveWorktreePath}`);
+  if (report.target.effectiveWorktreeBranch) {
+    console.log(`- branch: ${report.target.effectiveWorktreeBranch}`);
+  }
+  if (report.target.effectiveWorktreeHead) {
+    console.log(`- head: ${report.target.effectiveWorktreeHead}`);
+  }
+  if (report.target.gitCommonRoot) {
+    console.log(`- common root: ${report.target.gitCommonRoot}`);
+  }
+}
+
+async function resolveTarget(
+  cmdOpts: { worktree?: string; root?: string },
+): Promise<Awaited<ReturnType<typeof getWorktreeTarget>>> {
+  const requestedPath = cmdOpts.worktree ?? cmdOpts.root;
+  try {
+    return await getWorktreeTarget(requestedPath);
+  } catch (err) {
+    if (requestedPath) {
+      throw new Error(`${requestedPath} is not inside a git worktree.`);
+    }
+    throw err;
+  }
 }
 
 function shouldFailReviewGate(

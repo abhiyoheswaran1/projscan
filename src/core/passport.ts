@@ -6,6 +6,7 @@ import { computeProve } from './prove.js';
 import { prepareProofArtifactWritePath } from './proofLedger.js';
 import { quoteShellArg } from './startShellArgs.js';
 import { atomicWriteFile } from '../utils/atomicWrite.js';
+import { getChangedFiles } from '../utils/changedFiles.js';
 import type {
   AgentChangePassport,
   AgentChangePassportArtifacts,
@@ -15,6 +16,7 @@ import type {
   AgentChangePassportReviewerAction,
   AgentChangePassportReviewerSummary,
   AgentChangePassportStatus,
+  AgentChangePassportTarget,
   ComputePassportOptions,
 } from '../types/passport.js';
 import type { ProveReceipt, ProveReport } from '../types/prove.js';
@@ -40,12 +42,14 @@ export async function computePassport(
     : undefined;
 
   const contractPath = options.contractPath ?? contractReport?.savedContractPath;
+  const changedFiles = await getChangedFiles(root, options.baseRef);
   const changedReport = await computeProve(root, {
     changed: true,
     contract: contractReport?.contract,
     contractPath,
     baseRef: options.baseRef,
     ledgerPath: options.ledgerPath,
+    changedFiles,
   });
 
   const baseframe = await maybeCreateBaseframe(root, {
@@ -60,6 +64,8 @@ export async function computePassport(
   const passport = buildPassport({
     contractReport,
     changedReport,
+    changedFiles,
+    rootPath: root,
     intent: intent ?? changedReport.contract?.intent,
     contractPath: artifacts.contractPath ?? options.contractPath,
     baseframe,
@@ -82,6 +88,8 @@ export async function computePassport(
 function buildPassport(input: {
   contractReport?: ProveReport;
   changedReport: ProveReport;
+  changedFiles: Awaited<ReturnType<typeof getChangedFiles>>;
+  rootPath: string;
   intent?: string;
   contractPath?: string;
   baseframe?: AgentChangePassportBaseframe;
@@ -109,6 +117,7 @@ function buildPassport(input: {
     ...(input.intent ? { intent: input.intent } : {}),
     summary: summarizePassport(status, reviewer),
     boundary,
+    target: summarizeTarget(input.changedFiles, input.rootPath),
     receipt: receiptSummary,
     reviewer,
     nextCommands,
@@ -123,6 +132,18 @@ function buildPassport(input: {
     },
   };
   return passport;
+}
+
+function summarizeTarget(
+  changedFiles: Awaited<ReturnType<typeof getChangedFiles>>,
+  fallbackWorktreePath: string,
+): AgentChangePassportTarget {
+  return {
+    effectiveWorktreePath: changedFiles.effectiveWorktreePath ?? fallbackWorktreePath,
+    effectiveWorktreeBranch: changedFiles.effectiveWorktreeBranch ?? null,
+    effectiveWorktreeHead: changedFiles.effectiveWorktreeHead ?? null,
+    gitCommonRoot: changedFiles.gitCommonRoot ?? null,
+  };
 }
 
 function summarizeBoundary(contract: ProveReport['contract']): AgentChangePassportBoundary {

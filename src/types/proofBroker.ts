@@ -81,6 +81,7 @@ export interface ProofBrokerReport {
   status: AgentChangePassportStatus;
   summary: string;
   intent?: string;
+  target: AgentChangePassport['target'];
   reviewer: {
     decision: AgentChangePassport['reviewer']['decision'];
     action: AgentChangePassportReviewerAction;

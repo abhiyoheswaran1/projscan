@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -11,6 +12,18 @@ const execFileAsync = promisify(execFile);
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 120_000 });
 
 let tmp: string;
+
+function canonicalPath(value: string): string {
+  try {
+    return fsSync.realpathSync.native(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
+
+function expectLocalBranch(branch: string | null): void {
+  expect(branch === 'main' || branch === 'master').toBe(true);
+}
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-proof-broker-'));
@@ -97,6 +110,10 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
 
   expect(report.kind).toBe('proof-broker');
   expect(report.status).toBe('needs-proof');
+  expect(report.target.effectiveWorktreePath).toBe(canonicalPath(tmp));
+  expectLocalBranch(report.target.effectiveWorktreeBranch);
+  expect(report.target.effectiveWorktreeHead).toMatch(/^[0-9a-f]{40}$/);
+  expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
   expect(report.reviewer.action).toBe('run-proof');
   expect(report.scope.changedFiles).toContain('src/billing/retryPolicy.ts');
   expect(report.scope.riskyChangedFiles).toContain('src/billing/retryPolicy.ts');
@@ -144,6 +161,52 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
   expect(report.prPassport.markdown).toContain('recipe:billing-retry-safety');
   expect(report.prPassport.markdown).toContain('@billing-platform');
   expect(report.prPassport.markdown).toContain('`.projscan/passport.json`');
+});
+
+test('uses linked worktree target metadata instead of the shared root', async () => {
+  const linkedWorktreePath = path.join(os.tmpdir(), `projscan-proof-broker-linked-${Date.now()}`);
+  await git(['worktree', 'add', '-q', '-b', 'agent-b', linkedWorktreePath]);
+
+  try {
+    await fs.writeFile(
+      path.join(linkedWorktreePath, 'src/billing/retryPolicy.ts'),
+      [
+        'export function nextRetryDelay(attempt: number): number {',
+        '  const exponential = 2 ** Math.max(attempt - 1, 0) * 500;',
+        '  return Math.min(exponential, 9000);',
+        '}',
+        '',
+      ].join('\n'),
+    );
+
+    const report = await computeProofBroker(linkedWorktreePath, {
+      intent: 'is my agent allowed to change billing retry logic from a linked worktree?',
+      saveContractPath: '.projscan/proof-contract.json',
+      proofRecipes: [
+        {
+          id: 'billing-retry-safety',
+          matches: ['src/billing/**'],
+          requiredCommands: ['npm run test:billing', 'npm run typecheck'],
+          requiredReviewers: ['@billing-platform'],
+          forbiddenFiles: ['src/billing/paymentGateway.ts'],
+          riskSurface: 'billing',
+          reason: 'Billing retry changes need focused regression proof and platform review.',
+        },
+      ],
+    });
+
+    expect(report.target.effectiveWorktreePath).toBe(canonicalPath(linkedWorktreePath));
+    expect(report.target.effectiveWorktreeBranch).toBe('agent-b');
+    expect(report.target.effectiveWorktreeHead).toMatch(/^[0-9a-f]{40}$/);
+    expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
+    expect(report.passport.target).toEqual(report.target);
+    expect(report.scope.changedFiles).toContain('src/billing/retryPolicy.ts');
+  } finally {
+    await execFileAsync('git', ['worktree', 'remove', '--force', linkedWorktreePath], { cwd: tmp }).catch(
+      () => undefined,
+    );
+    await fs.rm(linkedWorktreePath, { recursive: true, force: true });
+  }
 });
 
 async function git(args: string[]): Promise<void> {

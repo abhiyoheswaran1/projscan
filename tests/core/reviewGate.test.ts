@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -25,6 +26,18 @@ const proofRecipes: ProofRecipeConfig[] = [
     reason: 'Billing retry changes need focused regression proof and platform review.',
   },
 ];
+
+function expectLocalBranch(branch: string | null): void {
+  expect(branch === 'main' || branch === 'master').toBe(true);
+}
+
+function canonicalPath(value: string): string {
+  try {
+    return fsSync.realpathSync.native(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-review-gate-'));
@@ -92,6 +105,10 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
 
   expect(report.kind).toBe('review-gate');
   expect(report.status).toBe('needs-proof');
+  expect(report.target.effectiveWorktreePath).toBe(canonicalPath(tmp));
+  expectLocalBranch(report.target.effectiveWorktreeBranch);
+  expect(report.target.effectiveWorktreeHead).toMatch(/^[0-9a-f]{40}$/);
+  expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
   expect(report.decision.allowReview).toBe(false);
   expect(report.proofDebt.total).toBeGreaterThan(0);
   expect(report.proofDebt.items.map((item) => item.kind)).toContain('missing-proof');
@@ -104,6 +121,7 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
   );
   expect(report.prComment.markdown).toContain('## Projscan Review Gate');
   expect(report.prComment.markdown).toContain('Proof debt');
+  expect(report.proofBroker.target).toEqual(report.target);
 });
 
 test('ready gate allows review after matching proof evidence is recorded', async () => {

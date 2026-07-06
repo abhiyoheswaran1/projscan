@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -11,6 +12,15 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 const cliPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
 
 let tmp: string;
+let linkedWorktreePath: string;
+
+function canonicalPath(value: string): string {
+  try {
+    return fsSync.realpathSync.native(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-cli-review-gate-'));
@@ -72,6 +82,8 @@ beforeEach(async () => {
   await git(['config', 'user.name', 'Projscan Test']);
   await git(['add', '.']);
   await git(['commit', '-m', 'initial billing retry']);
+  linkedWorktreePath = path.join(os.tmpdir(), `projscan-cli-review-gate-linked-${Date.now()}`);
+  await git(['worktree', 'add', '-q', '-b', 'agent-b', linkedWorktreePath]);
   await fs.writeFile(
     path.join(tmp, 'src/billing/retryPolicy.ts'),
     [
@@ -82,9 +94,25 @@ beforeEach(async () => {
       '',
     ].join('\n'),
   );
+  await fs.writeFile(
+    path.join(linkedWorktreePath, 'src/billing/retryPolicy.ts'),
+    [
+      'export function nextRetryDelay(attempt: number): number {',
+      '  const exponential = 2 ** Math.max(attempt - 1, 0) * 500;',
+      '  return Math.min(exponential, 9000);',
+      '}',
+      '',
+    ].join('\n'),
+  );
 });
 
 afterEach(async () => {
+  if (linkedWorktreePath) {
+    await execFileAsync('git', ['worktree', 'remove', '--force', linkedWorktreePath], { cwd: tmp }).catch(
+      () => undefined,
+    );
+    await fs.rm(linkedWorktreePath, { recursive: true, force: true });
+  }
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
@@ -167,12 +195,86 @@ test('review-gate ci mode fails while proof debt remains', async () => {
   expect(result.stdout).toContain('proof debt:');
 });
 
+test('review-gate targets the linked worktree when run from linked cwd', async () => {
+  const result = await runCli(
+    [
+      'review-gate',
+      '--intent',
+      'is my agent allowed to change billing retry logic from a linked worktree?',
+      '--save-contract',
+      '.projscan/proof-contract.json',
+      '--format',
+      'json',
+      '--quiet',
+    ],
+    linkedWorktreePath,
+  );
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.target.effectiveWorktreePath).toBe(canonicalPath(linkedWorktreePath));
+  expect(report.target.effectiveWorktreeBranch).toBe('agent-b');
+  expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
+
+  const consoleResult = await runCli(
+    ['review-gate', '--contract', '.projscan/proof-contract.json', '--quiet'],
+    linkedWorktreePath,
+  );
+  expect(consoleResult.exitCode).toBe(0);
+  expect(consoleResult.stdout).toContain('Target');
+  expect(consoleResult.stdout).toContain(canonicalPath(linkedWorktreePath));
+  expect(consoleResult.stdout).toContain('agent-b');
+});
+
+test('review-gate honors --worktree override from the shared root', async () => {
+  const result = await runCli([
+    'review-gate',
+    '--intent',
+    'is my agent allowed to change billing retry logic from the shared root?',
+    '--save-contract',
+    '.projscan/proof-contract.json',
+    '--worktree',
+    linkedWorktreePath,
+    '--format',
+    'json',
+    '--quiet',
+  ]);
+
+  expect(result.exitCode).toBe(0);
+  const report = JSON.parse(result.stdout);
+  expect(report.target.effectiveWorktreePath).toBe(canonicalPath(linkedWorktreePath));
+  expect(report.target.effectiveWorktreeBranch).toBe('agent-b');
+  expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
+});
+
+test('review-gate fails cleanly for a non-worktree override path', async () => {
+  const invalidPath = path.join(os.tmpdir(), `projscan-cli-review-gate-invalid-${Date.now()}`);
+  await fs.mkdir(invalidPath, { recursive: true });
+
+  try {
+    const result = await runCli([
+      'review-gate',
+      '--contract',
+      '.projscan/proof-contract.json',
+      '--worktree',
+      invalidPath,
+      '--quiet',
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('is not inside a git worktree');
+  } finally {
+    await fs.rm(invalidPath, { recursive: true, force: true });
+  }
+});
+
 async function git(args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: tmp });
 }
 
 async function runCli(
   args: string[],
+  cwd = tmp,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return spawnCli(cliPath, args, { cwd: tmp, maxBuffer: 4 * 1024 * 1024 });
+  return spawnCli(cliPath, args, { cwd, maxBuffer: 4 * 1024 * 1024 });
 }
