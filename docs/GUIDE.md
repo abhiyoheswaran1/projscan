@@ -1024,10 +1024,25 @@ the `.projscan/passport.json` artifact path when you request one. It reads Proof
 Receipts, Proof Sufficiency, Proof Replay, and Team Proof Recipes; it does not
 run proof commands.
 
+Proof Broker uses the hybrid targeting model. Worktree-sensitive proof and
+review evidence targets the current linked worktree by default, while shared
+coordination state stays backed by the git common dir. Pass `--root <path>` or
+`--worktree <path>` to override the target explicitly. Console and structured
+output print the effective worktree target so reviewers can see exactly which
+checkout supplied the branch, HEAD, and dirty-file evidence.
+
 Use `--pr-comment` when you want Markdown for a pull request comment. Use
 `--format json` when another agent or script needs `requiredProof`,
 `requiredReviewers`, `scope.riskyChangedFiles`, `gaps`, `nextCommands`,
 `prPassport`, and the underlying Agent Change Passport in one object.
+
+```bash
+projscan proof-broker --format json
+projscan proof-broker --worktree .worktrees/agentloopkit-proof-phase-upgrade-train --format json
+```
+
+Look for `effectiveWorktreePath` in JSON output when you need to confirm the
+resolved proof target.
 
 ### review-gate
 
@@ -1043,11 +1058,22 @@ Replay, Proof Sufficiency, and Team Proof Recipe evidence, then returns a
 `ready`, `needs-proof`, `drifted`, or `blocked` status. It does not run proof
 commands.
 
+Review Gate follows the same hybrid targeting model as Proof Broker:
+worktree-sensitive evidence comes from the current linked worktree by default,
+shared coordination state remains common-dir-backed, and `--root <path>` /
+`--worktree <path>` can retarget the run. Output now prints the effective
+worktree target explicitly so a PR comment or JSON artifact shows which checkout
+was evaluated.
+
 Use `--pr-comment` when a reviewer needs Markdown with status, allow-review
 decision, proof debt, recontract guidance, required reviewers, next commands,
 and artifact paths. Use `--ci --fail-on-needs-proof` when CI should fail until
 the gate is `ready`; use `--fail-on-block` when CI should fail only on blocked
 or drifted handoffs.
+
+```bash
+projscan review-gate --worktree .worktrees/agentloopkit-proof-phase-upgrade-train --pr-comment
+```
 
 JSON output includes `kind: "review-gate"`, `decision`, `proofDebt`,
 `recontract`, `requiredReviewers`, `nextCommands`, `prComment`, artifacts, and
