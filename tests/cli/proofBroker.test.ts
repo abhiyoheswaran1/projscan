@@ -192,6 +192,14 @@ test('proof-broker renders JSON, PR-comment markdown, and console handoff output
   expect(consoleResult.exitCode).toBe(0);
   expect(consoleResult.stdout).toContain('Projscan Proof Broker');
   expect(consoleResult.stdout).toContain('Required Proof');
+  expect(consoleResult.stdout).toContain('Recontract');
+  expect(consoleResult.stdout).toContain('required: no');
+  expect(consoleResult.stdout).toContain('reason: Current change is inside the approved boundary.');
+  expect(consoleResult.stdout).toContain(`worktree: ${canonicalPath(tmp)}`);
+  expect(consoleResult.stdout).toContain('recommended intent: is my agent allowed to change billing retry logic?');
+  expect(consoleResult.stdout).toContain('recommended contract path: .projscan/proof-contract.json');
+  expect(consoleResult.stdout).toContain('follow-up commands:');
+  expect(consoleResult.stdout).toContain('npm run test:billing');
   expect(consoleResult.stdout).toContain('Next Commands');
 });
 

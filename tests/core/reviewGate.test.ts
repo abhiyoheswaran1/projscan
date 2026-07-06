@@ -122,7 +122,7 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
   });
   expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
   expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contract.json');
-  expect(report.recontract.followUpCommands[0]).toBe(
+  expect(report.recontract.followUpCommands).not.toContain(
     'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json',
   );
   expect(report.recontract.followUpCommands).toEqual(

@@ -1,6 +1,6 @@
 import { markdownInlineCode, markdownInlineList, escapeMarkdownText } from './markdownSafety.js';
 import { computePassport } from './passport.js';
-import { quoteShellArg, quoteShellArgOrPlaceholder } from './startShellArgs.js';
+import { quoteShellArg } from './startShellArgs.js';
 import type {
   AgentChangePassport,
   AgentChangePassportArtifacts,
@@ -64,9 +64,9 @@ function buildProofBrokerReport(
     outsideAllowed: passport.receipt.outsideAllowed,
     changedAfterProof: passport.receipt.changedAfterProof,
   };
-  const gaps = brokerGaps(passport, receipt, requiredProof);
-  const nextCommands = nextCommandsFor(passport, requiredProof, options);
   const recontract = recontractGuidanceFor(passport, options);
+  const gaps = brokerGaps(passport, receipt, requiredProof, recontract);
+  const nextCommands = nextCommandsFor(passport, requiredProof, options);
   const reportWithoutPassport = {
     schemaVersion: 1 as const,
     kind: 'proof-broker' as const,
@@ -155,6 +155,7 @@ function brokerGaps(
   passport: AgentChangePassport,
   receipt: ProveReceipt | undefined,
   requiredProof: ProofBrokerRequiredProof[],
+  recontract: ProofBrokerRecontractGuidance,
 ): ProofBrokerGap[] {
   const gaps: ProofBrokerGap[] = [];
   if (!receipt || passport.receipt.scopeStatus === 'missing-contract') {
@@ -162,7 +163,7 @@ function brokerGaps(
       kind: 'missing-contract',
       severity: 'blocker',
       message: 'Create a Proof Contract before review.',
-      command: 'projscan prove --intent "<change intent>" --save-contract .projscan/proof-contract.json',
+      command: recontract.followUpCommands[0],
     });
   }
   for (const file of passport.receipt.forbiddenTouched) {
@@ -301,6 +302,7 @@ function recontractGuidanceFor(
       passport,
       recommendedContractPath,
       recommendedIntent,
+      required,
     ),
   };
 }
@@ -309,16 +311,17 @@ function recontractFollowUpCommands(
   passport: AgentChangePassport,
   contractPath: string,
   recommendedIntent: string | null,
+  required: boolean,
 ): string[] {
-  return unique([
-    proveIntentCommand(recommendedIntent, contractPath),
+  const commands = [
     ...passport.receipt.missingCommands,
     ...passport.receipt.failedCommands,
     ...passport.receipt.staleCommands,
     changedReceiptCommand(contractPath),
     passportCommand(contractPath),
     `projscan proof-broker --contract ${quoteShellArg(contractPath)} --pr-comment`,
-  ]);
+  ];
+  return unique(required ? [proveIntentCommand(recommendedIntent, contractPath), ...commands] : commands);
 }
 
 function changedReceiptCommand(contractPath: string): string {
@@ -330,7 +333,7 @@ function passportCommand(contractPath: string): string {
 }
 
 function proveIntentCommand(intent: string | null, contractPath: string): string {
-  return `projscan prove --intent ${quoteShellArgOrPlaceholder(intent ?? '<change intent>')} --save-contract ${quoteShellArg(contractPath)}`;
+  return `projscan prove --intent ${quoteShellArg(intent ?? '<change intent>')} --save-contract ${quoteShellArg(contractPath)}`;
 }
 
 function contractPathFor(

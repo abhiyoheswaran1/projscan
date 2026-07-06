@@ -95,6 +95,9 @@ function printProofBrokerConsole(report: ProofBrokerReport): void {
   console.log(chalk.bold('Gaps'));
   printGaps(report);
   console.log('');
+  console.log(chalk.bold('Recontract'));
+  printRecontract(report);
+  console.log('');
   console.log(chalk.bold('Next Commands'));
   printList(report.nextCommands.slice(0, 10), 'No next commands');
 }
@@ -139,6 +142,24 @@ function printTarget(report: ProofBrokerReport): void {
   if (report.target.gitCommonRoot) {
     console.log(`- common root: ${report.target.gitCommonRoot}`);
   }
+}
+
+function printRecontract(report: ProofBrokerReport): void {
+  console.log(`- required: ${report.recontract.required ? 'yes' : 'no'}`);
+  console.log(`- reason: ${report.recontract.reason}`);
+  console.log(`- worktree: ${report.recontract.target.effectiveWorktreePath}`);
+  if (report.recontract.target.effectiveWorktreeBranch) {
+    console.log(`- branch: ${report.recontract.target.effectiveWorktreeBranch}`);
+  }
+  if (report.recontract.target.effectiveWorktreeHead) {
+    console.log(`- head: ${report.recontract.target.effectiveWorktreeHead}`);
+  }
+  console.log(`- recommended intent: ${report.recontract.recommendedIntent ?? '<change intent>'}`);
+  console.log(`- recommended contract path: ${report.recontract.recommendedContractPath}`);
+  console.log('- drift files:');
+  printList(report.recontract.driftFiles, 'No drift files');
+  console.log('- follow-up commands:');
+  printList(report.recontract.followUpCommands.slice(0, 10), 'No follow-up commands');
 }
 
 async function resolveTarget(

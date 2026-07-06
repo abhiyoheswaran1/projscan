@@ -148,7 +148,7 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
   expect(report.recontract.driftFiles).toEqual([]);
   expect(report.recontract.recommendedIntent).toBe('is my agent allowed to change billing retry logic?');
   expect(report.recontract.recommendedContractPath).toBe('.projscan/proof-contract.json');
-  expect(report.recontract.followUpCommands[0]).toBe(
+  expect(report.recontract.followUpCommands).not.toContain(
     'projscan prove --intent "is my agent allowed to change billing retry logic?" --save-contract .projscan/proof-contract.json',
   );
   expect(report.recontract.followUpCommands).toEqual(
@@ -197,6 +197,28 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
   expect(report.prPassport.markdown).toContain('recipe:billing-retry-safety');
   expect(report.prPassport.markdown).toContain('@billing-platform');
   expect(report.prPassport.markdown).toContain('`.projscan/passport.json`');
+});
+
+test('missing-contract gap command matches recontract guidance and quotes placeholder intent', async () => {
+  const report = await computeProofBroker(tmp, {
+    saveContractPath: '.projscan/custom-proof-contract.json',
+  });
+
+  expect(report.status === 'blocked' || report.status === 'drifted').toBe(true);
+  expect(report.recontract.required).toBe(true);
+  expect(report.recontract.recommendedIntent).toBe(null);
+  expect(report.recontract.recommendedContractPath).toBe('.projscan/custom-proof-contract.json');
+  expect(report.recontract.followUpCommands[0]).toBe(
+    'projscan prove --intent "<change intent>" --save-contract .projscan/custom-proof-contract.json',
+  );
+  expect(report.gaps).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'missing-contract',
+        command: 'projscan prove --intent "<change intent>" --save-contract .projscan/custom-proof-contract.json',
+      }),
+    ]),
+  );
 });
 
 test('uses linked worktree target metadata instead of the shared root', async () => {

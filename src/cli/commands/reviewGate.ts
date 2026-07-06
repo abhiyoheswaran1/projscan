@@ -95,9 +95,7 @@ function printReviewGateConsole(report: ReviewGateReport): void {
   printList(report.requiredReviewers, 'No required reviewers');
   console.log('');
   console.log(chalk.bold('Recontract'));
-  console.log(`- required: ${report.recontract.required ? 'yes' : 'no'}`);
-  console.log(`- reason: ${report.recontract.reason}`);
-  printList(report.recontract.driftFiles, 'No drift files');
+  printRecontract(report);
   console.log('');
   console.log(chalk.bold('Next Commands'));
   printList(report.nextCommands.slice(0, 10), 'No next commands');
@@ -148,6 +146,24 @@ function printTarget(report: ReviewGateReport): void {
   if (report.target.gitCommonRoot) {
     console.log(`- common root: ${report.target.gitCommonRoot}`);
   }
+}
+
+function printRecontract(report: ReviewGateReport): void {
+  console.log(`- required: ${report.recontract.required ? 'yes' : 'no'}`);
+  console.log(`- reason: ${report.recontract.reason}`);
+  console.log(`- worktree: ${report.recontract.target.effectiveWorktreePath}`);
+  if (report.recontract.target.effectiveWorktreeBranch) {
+    console.log(`- branch: ${report.recontract.target.effectiveWorktreeBranch}`);
+  }
+  if (report.recontract.target.effectiveWorktreeHead) {
+    console.log(`- head: ${report.recontract.target.effectiveWorktreeHead}`);
+  }
+  console.log(`- recommended intent: ${report.recontract.recommendedIntent ?? '<change intent>'}`);
+  console.log(`- recommended contract path: ${report.recontract.recommendedContractPath}`);
+  console.log('- drift files:');
+  printList(report.recontract.driftFiles, 'No drift files');
+  console.log('- follow-up commands:');
+  printList(report.recontract.followUpCommands.slice(0, 10), 'No follow-up commands');
 }
 
 async function resolveTarget(

@@ -132,6 +132,7 @@ const report: ReviewGateReport = {
         'required-proof',
         'gaps',
         'reviewers',
+        'recontract',
         'next-commands',
         'artifacts',
       ],
