@@ -38,9 +38,7 @@ export async function resolveGitWorktreeTarget(
     await gitRevParse(gitCwd, ['--path-format=absolute', '--git-dir']),
   );
   const head = await gitRevParse(gitCwd, ['--verify', 'HEAD']).catch(() => null);
-  const branch = await gitRevParse(gitCwd, ['--abbrev-ref', '--symbolic-full-name', 'HEAD']).catch(
-    () => null,
-  );
+  const branch = await gitSymbolicRef(gitCwd, 'HEAD').catch(() => null);
   const commonRootWorktreePath = deriveCommonRootWorktreePath(gitCommonDir);
 
   return {
@@ -70,6 +68,14 @@ async function gitRevParse(cwd: string, args: string[]): Promise<string> {
     maxBuffer: 1024 * 1024,
   });
   return stdout.trim();
+}
+
+async function gitSymbolicRef(cwd: string, ref: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', ['symbolic-ref', ref], {
+    cwd,
+    maxBuffer: 1024 * 1024,
+  });
+  return stdout.trim().replace(/^refs\/heads\//, '');
 }
 
 function deriveCommonRootWorktreePath(gitCommonDir: string | null): string | null {

@@ -103,6 +103,17 @@ describe('getChangedFiles', () => {
     expect(nestedFileTarget.effectiveWorktreePath).toBe(canonicalLinkedWorktreePath);
   });
 
+  it('returns null branch in detached HEAD state', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one\n');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+    await git(repo, ['checkout', '--detach', 'HEAD']);
+
+    const target = await resolveGitWorktreeTarget(repo);
+
+    expect(target.branch).toBeNull();
+  });
+
   it('returns available=false for non-git directories', async () => {
     const notRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'projscan-notrepo-'));
     try {
