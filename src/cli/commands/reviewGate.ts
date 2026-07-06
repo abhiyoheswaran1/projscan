@@ -37,8 +37,8 @@ export function registerReviewGate(): void {
       const format = assertFormatSupported('review-gate');
 
       try {
-        const config = await loadProjectConfig();
         const worktree = await resolveTarget(cmdOpts);
+        const config = await loadProjectConfig(worktree.effectiveWorktreePath);
         const report = await computeReviewGate(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,

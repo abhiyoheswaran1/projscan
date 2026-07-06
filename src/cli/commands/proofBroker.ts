@@ -33,8 +33,8 @@ export function registerProofBroker(): void {
       const format = assertFormatSupported('proof-broker');
 
       try {
-        const config = await loadProjectConfig();
         const worktree = await resolveTarget(cmdOpts);
+        const config = await loadProjectConfig(worktree.effectiveWorktreePath);
         const report = await computeProofBroker(worktree.effectiveWorktreePath, {
           intent: cmdOpts.intent,
           contractPath: cmdOpts.contract,

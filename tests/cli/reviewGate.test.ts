@@ -85,6 +85,25 @@ beforeEach(async () => {
   linkedWorktreePath = path.join(os.tmpdir(), `projscan-cli-review-gate-linked-${Date.now()}`);
   await git(['worktree', 'add', '-q', '-b', 'agent-b', linkedWorktreePath]);
   await fs.writeFile(
+    path.join(linkedWorktreePath, '.projscanrc.json'),
+    `${JSON.stringify(
+      {
+        proofRecipes: [
+          {
+            id: 'linked-billing-proof',
+            matches: ['src/billing/**'],
+            requiredCommands: ['npm run test:billing'],
+            requiredReviewers: ['@linked-billing'],
+            forbiddenFiles: ['src/billing/paymentGateway.ts'],
+            reason: 'Linked worktree proof policy.',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await fs.writeFile(
     path.join(tmp, 'src/billing/retryPolicy.ts'),
     [
       'export function nextRetryDelay(attempt: number): number {',
@@ -161,6 +180,8 @@ test('review-gate renders JSON, PR-comment markdown, and console handoff output'
   ]);
   expect(markdown.exitCode).toBe(0);
   expect(markdown.stdout).toContain('## Projscan Review Gate');
+  expect(markdown.stdout).toContain('### Target');
+  expect(markdown.stdout).toContain(canonicalPath(tmp));
   expect(markdown.stdout).toContain('Proof debt');
   expect(markdown.stdout).toContain('npm run test:billing');
   expect(markdown.stdout).toContain('@billing-platform');
@@ -215,6 +236,10 @@ test('review-gate targets the linked worktree when run from linked cwd', async (
   expect(report.target.effectiveWorktreePath).toBe(canonicalPath(linkedWorktreePath));
   expect(report.target.effectiveWorktreeBranch).toBe('agent-b');
   expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
+  expect(report.requiredReviewers).toContain('@linked-billing');
+  expect(report.proofBroker.requiredProof.map((row: { id: string }) => row.id)).toContain(
+    'recipe:linked-billing-proof',
+  );
 
   const consoleResult = await runCli(
     ['review-gate', '--contract', '.projscan/proof-contract.json', '--quiet'],
@@ -245,6 +270,7 @@ test('review-gate honors --worktree override from the shared root', async () => 
   expect(report.target.effectiveWorktreePath).toBe(canonicalPath(linkedWorktreePath));
   expect(report.target.effectiveWorktreeBranch).toBe('agent-b');
   expect(report.target.gitCommonRoot).toBe(canonicalPath(tmp));
+  expect(report.requiredReviewers).toContain('@linked-billing');
 });
 
 test('review-gate fails cleanly for a non-worktree override path', async () => {

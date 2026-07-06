@@ -302,6 +302,19 @@ export function renderReviewGateMarkdown(
   ];
   if (report.intent) lines.push(`- **Intent:** ${escapeMarkdownText(report.intent)}`);
   lines.push('');
+  lines.push('### Target');
+  lines.push('');
+  lines.push(`- **Worktree:** ${markdownInlineCode(report.target.effectiveWorktreePath)}`);
+  if (report.target.effectiveWorktreeBranch) {
+    lines.push(`- **Branch:** ${markdownInlineCode(report.target.effectiveWorktreeBranch)}`);
+  }
+  if (report.target.effectiveWorktreeHead) {
+    lines.push(`- **Head:** ${markdownInlineCode(report.target.effectiveWorktreeHead)}`);
+  }
+  if (report.target.gitCommonRoot) {
+    lines.push(`- **Common root:** ${markdownInlineCode(report.target.gitCommonRoot)}`);
+  }
+  lines.push('');
   lines.push('### Proof debt');
   lines.push('');
   lines.push(`- **Total:** ${report.proofDebt.total}`);

@@ -120,6 +120,8 @@ test('needs-proof gate itemizes proof debt and next commands', async () => {
     'projscan review-gate --contract .projscan/proof-contract.json --pr-comment',
   );
   expect(report.prComment.markdown).toContain('## Projscan Review Gate');
+  expect(report.prComment.markdown).toContain('### Target');
+  expect(report.prComment.markdown).toContain(canonicalPath(tmp));
   expect(report.prComment.markdown).toContain('Proof debt');
   expect(report.proofBroker.target).toEqual(report.target);
 });

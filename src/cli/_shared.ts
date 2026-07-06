@@ -91,10 +91,10 @@ export function registerWorktreeTargetOptions(command: Command): Command {
     .option('--worktree <path>', 'explicit git worktree path to target');
 }
 
-export async function loadProjectConfig(): Promise<ProjscanConfig> {
+export async function loadProjectConfig(rootPath = getRootPath()): Promise<ProjscanConfig> {
   const opts = program.opts();
   return await loadCliProjectConfig({
-    rootPath: getRootPath(),
+    rootPath,
     configOption: opts.config,
     quiet: Boolean(opts.quiet),
     format: getFormat(),

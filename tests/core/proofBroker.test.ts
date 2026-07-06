@@ -157,6 +157,8 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
     'artifacts',
   ]);
   expect(report.prPassport.markdown).toContain('## Projscan PR Passport');
+  expect(report.prPassport.markdown).toContain('### Target');
+  expect(report.prPassport.markdown).toContain(canonicalPath(tmp));
   expect(report.prPassport.markdown).toContain('Reviewer action');
   expect(report.prPassport.markdown).toContain('recipe:billing-retry-safety');
   expect(report.prPassport.markdown).toContain('@billing-platform');
