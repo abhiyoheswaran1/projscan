@@ -181,6 +181,7 @@ test('brokers missing billing retry proof into a reviewer-ready PR Passport', as
     'required-proof',
     'gaps',
     'reviewers',
+    'recontract',
     'next-commands',
     'artifacts',
   ]);

@@ -23,6 +23,7 @@ const PR_PASSPORT_SECTIONS: ProofBrokerPrPassportSection[] = [
   'required-proof',
   'gaps',
   'reviewers',
+  'recontract',
   'next-commands',
   'artifacts',
 ];

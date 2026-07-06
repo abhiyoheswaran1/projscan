@@ -97,6 +97,7 @@ const report: ProofBrokerReport = {
       'required-proof',
       'gaps',
       'reviewers',
+      'recontract',
       'next-commands',
       'artifacts',
     ],
