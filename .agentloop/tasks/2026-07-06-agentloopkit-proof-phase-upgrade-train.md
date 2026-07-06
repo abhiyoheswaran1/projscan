@@ -21,7 +21,11 @@ Upgrade agentloopkit to 0.47.1, refresh the repo-local harness and guidance, pro
 - No broad projscan feature expansion unrelated to the workflow upgrade.
 
 ## Assumptions
-- None recorded yet.
+- Baseline captured on 2026-07-06 before proof-phase edits:
+- `npm exec agentloop -- review-context` reported this task active and `in-progress`, latest verification `missing`, gates `fail`, policy status `8 current / 0 modified / 0 missing / 0 extra`, working tree `dirty (2)`, and next action `Run agentloop verify`.
+- `npm exec agentloop -- status` reported project `projscan`, git branch `main` at `68e165e`, this task active and `in-progress`, no latest verification report, no latest open task, and next action `Run agentloop verify`.
+- `npm exec agentloop -- policy show dependency-change-policy` required intentional dependency changes, intentional lockfile updates, and post-change `tests`, `typecheck`, and `build`.
+- `npm exec agentloop -- policy status` reported all eight local policies current with no modified, missing, or extra entries.
 
 ## Likely Files or Areas
 - package.json
@@ -38,21 +42,29 @@ Upgrade agentloopkit to 0.47.1, refresh the repo-local harness and guidance, pro
 ## Acceptance Criteria
 - package.json and package-lock.json upgrade agentloopkit to 0.47.1.
 - AGENTS.md, AGENTLOOP.md, and relevant .agentloop harness files describe the upgraded loop coherently.
-- The upgraded workflow produces current review-context, status, verify, check-gates, ship, and maintainer-check evidence in this repo.
+- The upgraded workflow produces current `review-context`, `status`, and `verify` evidence in this repo from the active proof-phase task.
+- After fresh verification, the upgraded workflow also produces current `check-gates`, `ship`, and `maintainer-check` evidence in this repo.
 - A follow-up dogfood slice contract is created from proof-phase evidence.
 
 ## Verification Commands
+- npm exec agentloop -- review-context
+- npm exec agentloop -- status
 - npm run typecheck
 - npm run lint
 - npm run build
 - npm test -- tests/reporters/consoleReviewReporter.test.ts
+- npm exec agentloop -- verify --task .agentloop/tasks/2026-07-06-agentloopkit-proof-phase-upgrade-train.md --task-commands --write-run
 
 ## Post-Verification Gates
-- No post-verification gate recorded. Use this for commands that need a fresh AgentLoop verification report.
+- npm exec agentloop -- check-gates
+- npm exec agentloop -- ship
+- npm exec agentloop -- maintainer-check
 
 ## Implementation Plan
 - Inspect relevant files before editing.
 - Keep changes focused on this contract.
+- Preserve the 2026-07-06 baseline facts above as the pre-upgrade proof point for workflow state and policy expectations.
+- Use the verification commands in this contract to produce active-task workflow proof, then run the post-verification gates only after fresh verification evidence exists.
 - Record any architecture decision in DECISIONS.md.
 
 ## Risk Notes
