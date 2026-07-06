@@ -41,7 +41,7 @@ describe('consoleReviewReporter', () => {
     expect(out).toContain('... and 1 more');
     expect(out).toContain('Dependency changes:');
     expect(out).toContain('package.json');
-    expect(out).toContain('+ agentloopkit@^0.33.0 (dev)');
+    expect(out).toContain('+ agentloopkit@^0.47.1 (dev)');
     expect(out).toContain('- old-tool@^1.0.0 (dep)');
     expect(out).toContain('~ projscan: ^4.2.0 → ^4.3.0 (dep)');
   });
@@ -140,7 +140,7 @@ function makeReview(overrides: Partial<ReviewReport> = {}): ReviewReport {
       {
         workspace: '',
         manifestFile: 'package.json',
-        added: [{ name: 'agentloopkit', version: '^0.33.0', kind: 'dev' }],
+        added: [{ name: 'agentloopkit', version: '^0.47.1', kind: 'dev' }],
         removed: [{ name: 'old-tool', version: '^1.0.0', kind: 'dep' }],
         bumped: [{ name: 'projscan', from: '^4.2.0', to: '^4.3.0', kind: 'dep' }],
       },

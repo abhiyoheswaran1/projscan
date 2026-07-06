@@ -79,7 +79,7 @@ const dataflowRisk: ReviewDataflowRisk = {
 const dependencyChange: ReviewDependencyChange = {
   workspace: '',
   manifestFile: 'package.json',
-  added: [{ name: 'agentloopkit', version: '^0.33.0', kind: 'dev' }],
+  added: [{ name: 'agentloopkit', version: '^0.47.1', kind: 'dev' }],
   removed: [],
   bumped: [],
   intentAlignment: 'expected',

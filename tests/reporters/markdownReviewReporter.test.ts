@@ -31,7 +31,7 @@ describe('markdownReviewReporter', () => {
     expect(out).toContain('| `newRisk` | `src/new.ts`:L3 | 10 | added | new |');
     expect(out).toContain('## Dependency changes');
     expect(out).toContain('### `package.json`');
-    expect(out).toContain('- ➕ `agentloopkit@^0.33.0` (dev)');
+    expect(out).toContain('- ➕ `agentloopkit@^0.47.1` (dev)');
     expect(out).toContain('- ➖ `old-tool@^1.0.0` (dep)');
     expect(out).toContain('- 🔄 `projscan`: `^4.2.0` → `^4.3.0` (dep)');
   });
