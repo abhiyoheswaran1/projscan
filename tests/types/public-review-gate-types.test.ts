@@ -56,8 +56,15 @@ const report: ReviewGateReport = {
   recontract: {
     required: false,
     reason: 'Current change is inside the approved boundary.',
+    target: {
+      effectiveWorktreePath: '/tmp/projscan-proof',
+      effectiveWorktreeBranch: 'main',
+      effectiveWorktreeHead: '0123456789abcdef0123456789abcdef01234567',
+    },
     driftFiles: [],
-    command: 'projscan prove --intent "<change intent>" --save-contract .projscan/proof-contract.json',
+    recommendedIntent: 'change billing retry logic',
+    recommendedContractPath: '.projscan/proof-contract.json',
+    followUpCommands: ['npm run test:billing'],
   },
   requiredReviewers: ['@billing-platform'],
   nextCommands: ['npm run test:billing'],

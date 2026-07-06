@@ -8,6 +8,7 @@ import type {
 import type {
   ProofBrokerGapKind,
   ProofBrokerGapSeverity,
+  ProofBrokerRecontractGuidance,
   ProofBrokerReport,
 } from './proofBroker.js';
 
@@ -53,12 +54,7 @@ export interface ReviewGateProofDebt {
   items: ReviewGateProofDebtItem[];
 }
 
-export interface ReviewGateRecontractGuidance {
-  required: boolean;
-  reason: string;
-  driftFiles: string[];
-  command: string;
-}
+export type ReviewGateRecontractGuidance = ProofBrokerRecontractGuidance;
 
 export interface ReviewGatePrComment {
   title: 'Projscan Review Gate';

@@ -74,6 +74,20 @@ export interface ProofBrokerPrPassport {
   sections: ProofBrokerPrPassportSection[];
 }
 
+export interface ProofBrokerRecontractGuidance {
+  required: boolean;
+  reason: string;
+  target: {
+    effectiveWorktreePath: string;
+    effectiveWorktreeBranch: string | null;
+    effectiveWorktreeHead: string | null;
+  };
+  driftFiles: string[];
+  recommendedIntent: string | null;
+  recommendedContractPath: string;
+  followUpCommands: string[];
+}
+
 export interface ProofBrokerReport {
   schemaVersion: 1;
   kind: 'proof-broker';
@@ -106,6 +120,7 @@ export interface ProofBrokerReport {
   };
   requiredReviewers: string[];
   gaps: ProofBrokerGap[];
+  recontract: ProofBrokerRecontractGuidance;
   nextCommands: string[];
   warnings: string[];
   artifacts: AgentChangePassport['artifacts'];

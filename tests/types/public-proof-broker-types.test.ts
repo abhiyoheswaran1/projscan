@@ -67,6 +67,22 @@ const report: ProofBrokerReport = {
   },
   requiredReviewers: ['@billing-platform'],
   gaps: [gap],
+  recontract: {
+    required: true,
+    reason: 'A Proof Contract is required before review.',
+    target: {
+      effectiveWorktreePath: '/tmp/projscan-proof',
+      effectiveWorktreeBranch: 'agent-b',
+      effectiveWorktreeHead: '0123456789abcdef0123456789abcdef01234567',
+    },
+    driftFiles: ['package.json'],
+    recommendedIntent: 'change billing retry logic',
+    recommendedContractPath: '.projscan/proof-contract.json',
+    followUpCommands: [
+      'projscan prove --intent "change billing retry logic" --save-contract .projscan/proof-contract.json',
+      'projscan prove --changed --contract .projscan/proof-contract.json --format markdown',
+    ],
+  },
   nextCommands: ['npm run test:billing'],
   warnings: [],
   artifacts: {
