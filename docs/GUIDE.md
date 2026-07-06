@@ -1024,6 +1024,18 @@ the `.projscan/passport.json` artifact path when you request one. It reads Proof
 Receipts, Proof Sufficiency, Proof Replay, and Team Proof Recipes; it does not
 run proof commands.
 
+When proof is missing or scope has drifted, Proof Broker also emits a concrete
+`recontract` recipe so the next step is explicit instead of implied. The recipe
+includes the target worktree, `recontract.recommendedContractPath`, a
+`recommendedIntent` when one is available, drift files, and ordered
+`followUpCommands`. The recipe is advisory only: projscan does not create a new
+contract unless the user explicitly runs `projscan prove --intent ... --save-contract ...`.
+`recontract.recommendedContractPath` preserves an explicit contract path when
+supplied and otherwise defaults to `.projscan/proof-contract.json`.
+`recontract.followUpCommands` orders the restart loop so missing proof commands
+appear before replay and handoff commands; when recontract is required, the
+quoted `projscan prove --intent ... --save-contract ...` step appears first.
+
 Proof Broker uses the hybrid targeting model. Worktree-sensitive proof and
 review evidence targets the current linked worktree by default, while shared
 coordination state stays backed by the git common dir. Pass `--root <path>` or
@@ -1057,6 +1069,18 @@ same Proof Contract, Proof Receipt, Agent Change Passport, Proof Broker, Proof
 Replay, Proof Sufficiency, and Team Proof Recipe evidence, then returns a
 `ready`, `needs-proof`, `drifted`, or `blocked` status. It does not run proof
 commands.
+
+When proof is missing or scope has drifted, Review Gate carries the same
+advisory `recontract` recipe forward from Proof Broker. That recipe exposes the
+target worktree, `recontract.recommendedContractPath`, a `recommendedIntent`
+when one is available, drift files, and ordered `followUpCommands` so a human
+or agent can restart the proof loop deliberately. The recipe remains advisory:
+projscan does not create or widen a contract unless the user explicitly runs
+`projscan prove --intent ... --save-contract ...`. As with Proof Broker,
+`recontract.recommendedContractPath` preserves an explicit contract path when
+supplied and otherwise defaults to `.projscan/proof-contract.json`, and
+`recontract.followUpCommands` keeps missing proof commands ahead of replay and
+handoff commands.
 
 Review Gate follows the same hybrid targeting model as Proof Broker:
 worktree-sensitive evidence comes from the current linked worktree by default,
