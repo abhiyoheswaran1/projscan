@@ -126,11 +126,16 @@ export function isGeneratedPath(file: string): boolean {
   return (
     file.startsWith('.projscan/') ||
     file.startsWith('.projscan-memory/') ||
-    file.startsWith('.agentloop/') ||
-    file.startsWith('.agentflight/') ||
+    isHarnessEvidencePath(file) ||
     file.startsWith('coverage/') ||
     file.startsWith('dist/')
   );
+}
+
+// Sibling Baseframe tools (AgentLoopKit, AgentFlight) write session evidence
+// here as part of their sanctioned workflow; these paths are never scope drift.
+export function isHarnessEvidencePath(file: string): boolean {
+  return file.startsWith('.agentloop/') || file.startsWith('.agentflight/');
 }
 
 export function isSecuritySensitivePath(file: string): boolean {

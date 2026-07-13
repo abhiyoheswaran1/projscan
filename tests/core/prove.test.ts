@@ -1155,6 +1155,98 @@ test('changed mode without a contract stays honest about missing evidence', asyn
   );
 });
 
+test('intent contracts leave sibling Baseframe harness directories out of forbiddenFiles', async () => {
+  const report = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+
+  expect(report.contract?.forbiddenFiles).not.toContain('.agentloop/**');
+  expect(report.contract?.forbiddenFiles).not.toContain('.agentflight/**');
+  expect(report.contract?.forbiddenFiles).toContain('.git/**');
+  expect(report.contract?.forbiddenFiles).toContain('node_modules/**');
+});
+
+test('sanctioned Baseframe harness writes stay informational even when a saved contract forbids them', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  const contract = {
+    ...contractReport.contract!,
+    forbiddenFiles: [
+      ...contractReport.contract!.forbiddenFiles,
+      '.agentloop/**',
+      '.agentflight/**',
+    ],
+  };
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await fs.mkdir(path.join(tmp, '.agentloop/loops/instance-1'), { recursive: true });
+  await fs.writeFile(path.join(tmp, '.agentloop/state.json'), '{"status":"running"}\n');
+  await fs.writeFile(path.join(tmp, '.agentloop/loops/instance-1/loop.json'), '{"tasks":[]}\n');
+  await fs.mkdir(path.join(tmp, '.agentflight'), { recursive: true });
+  await fs.writeFile(path.join(tmp, '.agentflight/verification-report.json'), '{"verdict":"pass"}\n');
+
+  const report = await computeProve(tmp, { changed: true, contract });
+
+  expect(report.receipt?.scope.forbiddenTouched).toEqual([]);
+  expect(report.receipt?.scope.status).toBe('within-contract');
+  expect(report.receipt?.commitReadiness).not.toBe('blocked');
+  expect(report.receipt?.reviewerDecision).not.toBe('stop');
+  expect(report.receipt?.scope.generatedTouched).toEqual(
+    expect.arrayContaining([
+      '.agentloop/state.json',
+      '.agentloop/loops/instance-1/loop.json',
+      '.agentflight/verification-report.json',
+    ]),
+  );
+  expect(report.receipt?.scope.classifications).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ file: '.agentloop/state.json', kind: 'generated' }),
+      expect.objectContaining({ file: '.agentflight/verification-report.json', kind: 'generated' }),
+    ]),
+  );
+});
+
+test('runner-prefixed recorded proof satisfies plain contract proof commands', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await computeProve(tmp, {
+    recordCommand: 'npx projscan assess --mode fix-first --format json',
+    exitCode: 0,
+    durationMs: 10,
+  });
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.proofStatus.missingCommands).not.toContain(
+    'projscan assess --mode fix-first --format json',
+  );
+  const evidence = report.receipt?.proofStatus.commandEvidence.find(
+    (entry) => entry.command === 'projscan assess --mode fix-first --format json',
+  );
+  expect(evidence?.status).toBe('passed');
+});
+
 async function git(args: string[]): Promise<void> {
   await execFileAsync('git', args, { cwd: tmp });
 }

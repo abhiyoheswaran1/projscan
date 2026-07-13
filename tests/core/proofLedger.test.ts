@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   appendProofLedgerRecord,
   changedFileFingerprint,
+  normalizeProofCommand,
   readProofLedger,
   readLatestProofLedgerRecords,
   redactProofCommand,
@@ -99,6 +100,82 @@ describe('proof ledger latest lookup', () => {
     } finally {
       await fs.rm(outside, { recursive: true, force: true });
     }
+  });
+});
+
+describe('proof command normalization', () => {
+  it('strips package-runner prefixes so equivalent invocations match', () => {
+    expect(normalizeProofCommand('npx projscan assess --mode fix-first --format json')).toBe(
+      'projscan assess --mode fix-first --format json',
+    );
+    expect(normalizeProofCommand('npx -y projscan assess --format json')).toBe(
+      'projscan assess --format json',
+    );
+    expect(normalizeProofCommand('npx --yes projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('pnpm exec projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('pnpm dlx projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('yarn exec projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('npm exec -- projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('bunx projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('./node_modules/.bin/projscan assess')).toBe('projscan assess');
+    expect(normalizeProofCommand('node_modules/.bin/projscan assess')).toBe('projscan assess');
+  });
+
+  it('leaves non-runner commands and bare runner names untouched', () => {
+    expect(normalizeProofCommand('npm test -- tests/core/prove.test.ts')).toBe(
+      'npm test -- tests/core/prove.test.ts',
+    );
+    expect(normalizeProofCommand('npx')).toBe('npx');
+    expect(normalizeProofCommand('echo npx projscan')).toBe('echo npx projscan');
+  });
+
+  it('matches runner-prefixed ledger records against plain contract commands', async () => {
+    await appendProofLedgerRecord(tmp, undefined, {
+      command: 'npx projscan assess --mode fix-first --format json',
+      exitCode: 0,
+      durationMs: 100,
+      changedFiles: ['src/core/prove.ts'],
+      outputSummary: 'assess passed',
+      completedAt: '2026-06-24T10:00:00.000Z',
+    });
+
+    const records = await readLatestProofLedgerRecords(tmp, undefined, [
+      'projscan assess --mode fix-first --format json',
+    ]);
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.exitCode).toBe(0);
+  });
+
+  it('matches ledger rows recorded before runner-prefix normalization existed', async () => {
+    await fs.mkdir(path.join(tmp, '.projscan'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmp, '.projscan/proof-ledger.jsonl'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        id: 'proof-ledger-legacy',
+        command: 'npx projscan assess --mode fix-first --format json',
+        normalizedCommand: 'npx projscan assess --mode fix-first --format json',
+        cwd: '.',
+        exitCode: 0,
+        status: 'passed',
+        startedAt: '2026-06-24T10:00:00.000Z',
+        completedAt: '2026-06-24T10:00:01.000Z',
+        durationMs: 1000,
+        changedFileFingerprint: 'legacy',
+        changedFiles: ['src/core/prove.ts'],
+        outputSummary: 'assess passed',
+        source: 'prove-record',
+      })}\n`,
+      'utf-8',
+    );
+
+    const records = await readLatestProofLedgerRecords(tmp, undefined, [
+      'projscan assess --mode fix-first --format json',
+    ]);
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.exitCode).toBe(0);
   });
 });
 

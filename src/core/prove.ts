@@ -19,6 +19,7 @@ import {
   isConfigPath,
   isDocumentationPath,
   isGeneratedPath,
+  isHarnessEvidencePath,
   isProductionPath,
   isSecuritySensitivePath,
   isTestPath,
@@ -79,9 +80,10 @@ const PROOF_RUN_TIMEOUT_EXIT_CODE = 124;
 const COMMAND_NOT_FOUND_EXIT_CODE = 127;
 const MAX_PROOF_RUN_OUTPUT_CHARS = 256 * 1024;
 const MAX_PROOF_RUN_LOG_CHARS = 512 * 1024;
+// Sibling Baseframe harness directories (.agentloop, .agentflight) are
+// intentionally absent: their sanctioned workflows write evidence there
+// mid-session, so they are classified as harness evidence, not forbidden.
 const GENERATED_FORBIDDEN_PATTERNS = [
-  '.agentflight/**',
-  '.agentloop/**',
   '.git/**',
   '.projscan-memory/**',
   'coverage/**',
@@ -141,6 +143,11 @@ const CHANGED_FILE_RULES: ChangedFileRule[] = [
     kind: 'generated',
     reason: 'Proof Contract artifact used for validation.',
     matches: (input) => Boolean(input.contractPath),
+  },
+  {
+    kind: 'generated',
+    reason: 'Baseframe harness evidence written by the sanctioned agent workflow.',
+    matches: (input) => isHarnessEvidencePath(input.file),
   },
   {
     kind: 'forbidden',
@@ -1071,9 +1078,11 @@ function latestProofRecordsByCommand(
 ): Map<string, ProofLedgerRecords[number]> {
   const latest = new Map<string, ProofLedgerRecords[number]>();
   for (const record of records) {
-    const existing = latest.get(record.normalizedCommand);
+    // Re-normalize so rows written before runner-prefix stripping still match.
+    const normalizedCommand = normalizeProofCommand(record.normalizedCommand);
+    const existing = latest.get(normalizedCommand);
     if (!existing || record.completedAt.localeCompare(existing.completedAt) >= 0) {
-      latest.set(record.normalizedCommand, record);
+      latest.set(normalizedCommand, record);
     }
   }
   return latest;
@@ -1145,15 +1154,17 @@ function scopeFor(
     ...contract.likelyTests,
     ...(contractPath ? [contractPath] : []),
   ]);
-  const forbiddenTouched = changedFiles.filter((file) =>
-    contract.forbiddenFiles.some((pattern) => pathMatches(file, pattern)),
+  const forbiddenTouched = changedFiles.filter(
+    (file) =>
+      !isHarnessEvidencePath(file) &&
+      contract.forbiddenFiles.some((pattern) => pathMatches(file, pattern)),
   );
   const forbiddenTouchedSet = new Set(forbiddenTouched);
   const allowedProductionSet = new Set(contract.allowedFiles);
   const likelyTestSet = new Set(contract.likelyTests);
   const allowedTouched = changedFiles.filter((file) => allowed.has(file));
   const outsideAllowed = changedFiles.filter(
-    (file) => !allowed.has(file) && !isLocalProofArtifactPath(file),
+    (file) => !allowed.has(file) && !isLocalProofArtifactPath(file) && !isHarnessEvidencePath(file),
   );
   const classifications = changedFiles.map((file) =>
     classifyChangedFile({

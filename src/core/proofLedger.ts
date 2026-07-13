@@ -21,8 +21,19 @@ const REDACTION_PATTERNS = [
   /\b[A-Za-z_][A-Za-z0-9_]*\.env\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^"'\s,;]+)/gi,
 ];
 
+const RUNNER_PREFIX_REGEX =
+  /^(?:npx(?: -{1,2}[A-Za-z0-9-]+(?:=\S+)?)*|npm exec(?: --)?|pnpm (?:exec|dlx)|yarn (?:exec|dlx)|bunx|bun x) /;
+const RUNNER_BIN_PREFIX_REGEX = /^(?:\.\/)?node_modules\/\.bin\//;
+
 export function normalizeProofCommand(command: string): string {
-  return command.trim().replace(/\s+/g, ' ');
+  let normalized = command.trim().replace(/\s+/g, ' ');
+  for (;;) {
+    const stripped = normalized
+      .replace(RUNNER_PREFIX_REGEX, '')
+      .replace(RUNNER_BIN_PREFIX_REGEX, '');
+    if (stripped === normalized) return normalized;
+    normalized = stripped;
+  }
 }
 
 export function redactProofCommand(command: string): string {
@@ -135,10 +146,13 @@ export async function readLatestProofLedgerRecords(
   const requested = new Set(normalizedCommands);
   for await (const line of lines) {
     const record = parseProofLedgerRow(line);
-    if (!record || !requested.has(record.normalizedCommand)) continue;
-    const latest = latestByCommand.get(record.normalizedCommand);
+    if (!record) continue;
+    // Re-normalize so rows written before runner-prefix stripping still match.
+    const normalizedCommand = normalizeProofCommand(record.normalizedCommand);
+    if (!requested.has(normalizedCommand)) continue;
+    const latest = latestByCommand.get(normalizedCommand);
     if (!latest || record.completedAt.localeCompare(latest.completedAt) >= 0) {
-      latestByCommand.set(record.normalizedCommand, record);
+      latestByCommand.set(normalizedCommand, record);
     }
   }
 
@@ -154,7 +168,7 @@ export function latestProofRecordFor(
   const normalized = normalizeProofCommand(command);
   let latest: ProofLedgerRecord | undefined;
   for (const record of records) {
-    if (record.normalizedCommand !== normalized) continue;
+    if (normalizeProofCommand(record.normalizedCommand) !== normalized) continue;
     if (!latest || record.completedAt.localeCompare(latest.completedAt) >= 0) latest = record;
   }
   return latest;
