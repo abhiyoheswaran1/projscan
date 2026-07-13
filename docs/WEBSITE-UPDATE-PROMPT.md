@@ -1,6 +1,6 @@
 # Website Update Prompt
 
-Use this prompt after `projscan@5.0.0`, GitHub tag `v5.0.0`, and MCP Registry
+Use this prompt after `projscan@5.0.1`, GitHub tag `v5.0.1`, and MCP Registry
 metadata go live. Do not publish these website changes before that release
 exists.
 
@@ -16,7 +16,7 @@ Do not edit:
 The website pulls changelog content from release data.
 
 ```text
-Update the projscan website for projscan 5.0.0.
+Update the projscan website for projscan 5.0.1.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -27,10 +27,10 @@ Do not edit:
 The website pulls changelog content from release data.
 
 Release headline:
-5.0.0: Proof-first review loops with explicit bootstrap
+5.0.1: Baseframe suite interop fixes for proof receipts
 
 Primary story:
-projscan now gives reviewers explicit restart loops from the same local review surfaces they already use. `proof-broker` and `review-gate` can mint the next scoped Proof Contract only when `--bootstrap-contract` is requested, then return aligned JSON, console, and PR-comment evidence with bootstrap status, proof debt, reviewer guidance, and next commands. Review stays local, bootstrap never runs proof commands implicitly, and MCP continues to return evidence without executing proof.
+projscan 5.0.1 makes the Verified Change Workflow run cleanly alongside AgentLoopKit and AgentFlight. Proof Receipts now classify `.agentloop/` and `.agentflight/` writes as informational harness evidence instead of forbidden scope drift, so the documented suite workflow no longer blocks `prove --changed` or stops `review-gate`. Proof Ledger matching also normalizes package-runner prefixes (`npx`, `pnpm exec`, `node_modules/.bin`), so equivalent proof-command invocations satisfy the contract. The 5.0.0 review loops are unchanged: `proof-broker` and `review-gate` mint the next scoped Proof Contract only when `--bootstrap-contract` is requested, review stays local, and MCP continues to return evidence without executing proof.
 
 Above the fold:
 - Lead with: "ProjScan tells reviewers when to bootstrap, prove, or stop."
@@ -49,7 +49,7 @@ Above the fold:
 - Receipt command: `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
 - Keep Proof Cards nearby: `npx projscan assess --goal "make this repo safer to ship this week"`
 - Keep simulator nearby: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
-- Version: `5.0.0`
+- Version: `5.0.1`
 - MCP tools: `51 MCP tools`
 - MCP Registry name: `io.github.abhiyoheswaran1/projscan`
 - MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 51 tools, mission outcomes. Local.`
@@ -57,6 +57,8 @@ Above the fold:
 - Requirements: Node.js >= 18
 
 New release bullets:
+- Proof Receipts classify sibling Baseframe harness writes (`.agentloop/`, `.agentflight/`) as informational harness evidence, so AgentLoopKit and AgentFlight sanctioned writes no longer register as forbidden scope drift.
+- Proof Ledger matching normalizes package-runner prefixes (`npx`, `npm exec`, `pnpm exec`/`dlx`, `yarn exec`/`dlx`, `bunx`, `node_modules/.bin`), so `npx projscan assess ...` satisfies a required `projscan assess ...`.
 - `projscan proof-broker --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware PR Passport output.
 - `projscan review-gate --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware reviewer guidance.
 - `projscan review-gate --contract .projscan/proof-contract.json --pr-comment` prints Review Gate Markdown for a pull request comment.
@@ -111,7 +113,7 @@ Short product description:
 projscan is the local proof layer for AI-assisted software engineering. Review Gate combines contract, passport, broker, receipt, replay, sufficiency, and recipe evidence into one reviewer-readiness decision. It shows whether review can proceed, which proof debt remains, who must review, which command to run next, and whether the agent must stop and recontract. ProjScan keeps source local, users need no ProjScan account or API key, and MCP returns evidence without executing proof commands.
 
 Acceptance checks:
-- Every current-version label reads `5.0.0`.
+- Every current-version label reads `5.0.1`.
 - MCP count reads `51 MCP tools`.
 - Overview and docs show `projscan review-gate --intent`, `projscan review-gate --contract`, `projscan review-gate --ci`, `projscan proof-broker --contract`, `projscan passport --intent`, `projscan guard --contract`, `projscan prove --intent`, `projscan prove --run`, `projscan prove --changed`, `projscan assess --goal`, and `projscan simulate --plan`.
 - Show Review Gate status, allow-review decision, proof debt, recontract guidance, required reviewers, artifact path, proof replay, Proof Sufficiency, guard status, and MCP non-execution.

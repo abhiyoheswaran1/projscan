@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.1]
+
+2026-07-13 - "Baseframe Suite Interop Patch"
+
+### Fixed
+
+- Proof Receipts now classify writes under sibling Baseframe harness
+  directories (`.agentloop/`, `.agentflight/`) as informational harness
+  evidence instead of forbidden scope drift, so AgentLoopKit and AgentFlight's
+  sanctioned mid-session writes no longer block `prove --changed` or flip
+  `review-gate` to `stop`. Auto-generated Proof Contracts stop listing those
+  directories in `forbiddenFiles`, and receipts ignore such entries in
+  contracts saved by older versions.
+- Proof Ledger matching now normalizes package-runner prefixes (`npx`,
+  `npm exec`, `pnpm exec`/`dlx`, `yarn exec`/`dlx`, `bunx`, and
+  `node_modules/.bin/`), so `npx projscan assess --mode fix-first --format
+  json` satisfies a required `projscan assess --mode fix-first --format json`
+  instead of reporting `missing proof-command`. Ledger rows recorded by older
+  versions are re-normalized at read time.
+
 ## [5.0.0]
 
 2026-07-06 - "Proof-First Review Loop"
