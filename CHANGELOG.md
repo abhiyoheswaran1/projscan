@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.2]
+
+2026-07-14 - "Dependency-Intent Scope Patch"
+
+### Fixed
+
+- `prove --intent` contracts for dependency or tooling version changes (for
+  example "upgrade projscan to 5.0.1") now place `package.json` and
+  `package-lock.json` in `allowedFiles` instead of `forbiddenFiles`, so an
+  upgrade contract no longer blocks its own intent. Unrelated intents keep the
+  manifests forbidden by default.
+- Harness-evidence classification now normalizes leading `./` prefixes and
+  backslash separators before matching, so externally supplied changed-file
+  paths (MCP, imported proof) are recognized as sanctioned `.agentloop/` and
+  `.agentflight/` writes the same way contract glob patterns are. Changed files
+  are also normalized and de-duplicated at intake, so a single harness write can
+  no longer be counted twice in scope drift.
+- Team Proof Recipe `forbiddenFiles` entries now receive the same harness-path
+  guard as Proof Contract `forbiddenFiles`, so a recipe forbidding
+  `.agentloop/**` or `.agentflight/**` no longer flags sanctioned harness
+  evidence as forbidden scope drift.
+
 ## [5.0.1]
 
 2026-07-13 - "Baseframe Suite Interop Patch"
