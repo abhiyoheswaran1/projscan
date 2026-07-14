@@ -134,8 +134,11 @@ export function isGeneratedPath(file: string): boolean {
 
 // Sibling Baseframe tools (AgentLoopKit, AgentFlight) write session evidence
 // here as part of their sanctioned workflow; these paths are never scope drift.
+// Normalize separators and leading "./" so externally supplied changed-file
+// paths match the same way contract glob patterns do.
 export function isHarnessEvidencePath(file: string): boolean {
-  return file.startsWith('.agentloop/') || file.startsWith('.agentflight/');
+  const normalized = file.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '');
+  return normalized.startsWith('.agentloop/') || normalized.startsWith('.agentflight/');
 }
 
 export function isSecuritySensitivePath(file: string): boolean {

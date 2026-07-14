@@ -117,7 +117,7 @@ test('docs describe executable Proof Contracts without release automation claims
   expect(decisions).toContain('Add Proof Broker and PR Passport');
   expect(decisions).toContain('Add Team Proof Recipes to proof receipts');
   expect(decisions).toContain('Trust Memory confidence adjustment');
-  expect(websitePrompt).toContain('5.0.1: Baseframe suite interop fixes for proof receipts');
+  expect(websitePrompt).toContain('5.0.2: Dependency-intent contracts keep their manifests in scope');
   expect(websitePrompt).toContain('projscan review-gate --intent');
   expect(websitePrompt).toContain('projscan review-gate --contract');
   expect(websitePrompt).toContain('projscan review-gate --ci');

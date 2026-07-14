@@ -1214,6 +1214,107 @@ test('sanctioned Baseframe harness writes stay informational even when a saved c
   );
 });
 
+test('dependency-change intents allow the package manifests instead of forbidding them', async () => {
+  const report = await computeProve(tmp, {
+    intent: 'upgrade projscan to 5.0.1 and regression-verify suite interop',
+  });
+
+  expect(report.contract?.forbiddenFiles).not.toContain('package.json');
+  expect(report.contract?.forbiddenFiles).not.toContain('package-lock.json');
+  expect(report.contract?.allowedFiles).toEqual(
+    expect.arrayContaining(['package.json', 'package-lock.json']),
+  );
+  expect(report.contract?.forbiddenFiles).toContain('.env');
+  expect(report.contract?.forbiddenFiles).toContain('.git/**');
+});
+
+test('non-dependency intents keep the package manifests forbidden', async () => {
+  const report = await computeProve(tmp, {
+    intent: 'update the onboarding copy in the docs',
+  });
+
+  expect(report.contract?.forbiddenFiles).toContain('package.json');
+  expect(report.contract?.forbiddenFiles).toContain('package-lock.json');
+  expect(report.contract?.allowedFiles).not.toContain('package.json');
+});
+
+test('harness writes stay informational when changed files arrive unnormalized or duplicated', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+  });
+  const contract = {
+    ...contractReport.contract!,
+    forbiddenFiles: [
+      ...contractReport.contract!.forbiddenFiles,
+      '.agentloop/**',
+      '.agentflight/**',
+    ],
+  };
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract,
+    changedFiles: {
+      available: true,
+      baseRef: 'main',
+      files: [
+        './.agentloop/state.json',
+        '.agentloop/state.json',
+        './src/core/bugHunt.ts',
+        'src/core/bugHunt.ts',
+      ],
+      uncommittedFiles: [],
+    },
+  });
+
+  expect(report.receipt?.scope.changedFiles).toEqual([
+    '.agentloop/state.json',
+    'src/core/bugHunt.ts',
+  ]);
+  expect(report.receipt?.scope.forbiddenTouched).toEqual([]);
+  expect(report.receipt?.scope.status).toBe('within-contract');
+  expect(report.receipt?.scope.classifications).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ file: '.agentloop/state.json', kind: 'generated' }),
+    ]),
+  );
+});
+
+test('team proof recipe forbiddenFiles do not flag harness evidence paths', async () => {
+  const contractReport = await computeProve(tmp, {
+    intent: 'split bugHunt.ts into ranking, evidence, and output modules',
+    proofRecipes: [
+      {
+        id: 'core-recipe',
+        matches: ['src/core/**'],
+        requiredCommands: ['npm test -- tests/core/bugHunt.test.ts'],
+        forbiddenFiles: ['.agentloop/**', '.agentflight/**'],
+      },
+    ],
+  });
+  await fs.writeFile(
+    path.join(tmp, 'src/core/bugHunt.ts'),
+    [
+      'export function buildBugHuntReport(findings: string[]): string[] {',
+      '  return findings.map((finding) => finding.trim().toUpperCase());',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await fs.mkdir(path.join(tmp, '.agentloop'), { recursive: true });
+  await fs.writeFile(path.join(tmp, '.agentloop/state.json'), '{"status":"running"}\n');
+
+  const report = await computeProve(tmp, {
+    changed: true,
+    contract: contractReport.contract,
+  });
+
+  expect(report.receipt?.recipeForbiddenTouched).toBeUndefined();
+  expect(report.receipt?.recipeDrift).toBeUndefined();
+  expect(report.receipt?.scope.forbiddenTouched).toEqual([]);
+  expect(report.receipt?.commitReadiness).not.toBe('blocked');
+});
+
 test('runner-prefixed recorded proof satisfies plain contract proof commands', async () => {
   const contractReport = await computeProve(tmp, {
     intent: 'split bugHunt.ts into ranking, evidence, and output modules',

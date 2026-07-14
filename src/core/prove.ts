@@ -98,6 +98,16 @@ const HIGH_RISK_FORBIDDEN_FILES = [
   'package-lock.json',
   'package.json',
 ];
+// A contract minted for a dependency change must not forbid the dependency
+// manifests it exists to bound; unrelated intents keep them forbidden.
+const DEPENDENCY_MANIFEST_FILES = ['package.json', 'package-lock.json'];
+// These verbs almost always mean a dependency or tooling version change in a
+// coding intent; the broader verbs count only next to a dependency noun.
+const DEPENDENCY_VERB_REGEX = /\b(?:upgrade|upgrading|upgraded|bump|bumping|bumped|downgrade|downgrading|downgraded)\b/;
+const DEPENDENCY_CONTEXT_VERB_REGEX =
+  /\b(?:install(?:ing|ed)?|uninstall(?:ing|ed)?|reinstall(?:ing|ed)?|updat(?:e|ing|ed)|add(?:ing|ed)?|remov(?:e|ing|ed)|pin(?:ning|ned)?)\b/;
+const DEPENDENCY_NOUN_REGEX =
+  /\b(?:dep|deps|dependency|dependencies|package|packages|lockfile|node[-_ ]?modules?|npm|pnpm|yarn)\b/;
 const PATH_MATCH_REGEX_CACHE = new Map<string, RegExp>();
 
 interface TrustMemoryEvaluation {
@@ -553,10 +563,18 @@ async function computeChangedProof(
   rootPath: string,
   options: ComputeProveOptions,
 ): Promise<ProveReport> {
-  const [contract, changedFiles] = await Promise.all([
+  const [contract, rawChangedFiles] = await Promise.all([
     resolveContract(rootPath, options),
     options.changedFiles ? Promise.resolve(options.changedFiles) : getChangedFiles(rootPath, options.baseRef),
   ]);
+  // Externally supplied changed files (MCP, imported proof) can carry "./"
+  // prefixes or duplicates; normalize once so every scope decision sees one
+  // canonical path per file.
+  const changedFiles: ChangedFilesResult = {
+    ...rawChangedFiles,
+    files: unique(rawChangedFiles.files.map(normalizeRepoPath)),
+    uncommittedFiles: unique(rawChangedFiles.uncommittedFiles.map(normalizeRepoPath)),
+  };
   const quickPreflight = quickProofPreflight(changedFiles);
   const relevantChangedFiles = proofRelevantChangedFiles(changedFiles.files);
   const proofCommands = proofCommandsForReceipt(contract.contract);
@@ -620,7 +638,10 @@ function buildContract(input: {
   proofRecipes?: ProofRecipeConfig[];
 }): ProveContract {
   const simulationFiles = input.simulation.filesLikelyTouched.map((file) => file.path);
-  const allowedFiles = unique(simulationFiles);
+  const allowedFiles = unique([
+    ...simulationFiles,
+    ...(isDependencyChangeIntent(input.intent) ? DEPENDENCY_MANIFEST_FILES : []),
+  ]);
   const likelyTests = unique(input.simulation.testsLikelyAffected);
   const matchedRecipes = matchTeamProofRecipes(input.proofRecipes ?? [], [
     ...allowedFiles,
@@ -747,8 +768,10 @@ function teamProofRecipesForReceipt(
         changedFiles.filter((file) => recipe.matches.some((pattern) => pathMatches(file, pattern))),
       );
       const forbiddenTouched = unique(
-        changedFiles.filter((file) =>
-          (recipe.forbiddenFiles ?? []).some((pattern) => pathMatches(file, pattern)),
+        changedFiles.filter(
+          (file) =>
+            !isHarnessEvidencePath(file) &&
+            (recipe.forbiddenFiles ?? []).some((pattern) => pathMatches(file, pattern)),
         ),
       );
       if (matchedFiles.length === 0 && forbiddenTouched.length === 0) return null;
@@ -1258,6 +1281,12 @@ function resolveProofContractPath(rootPath: string, filePath: string): string {
     );
   }
   return fullPath;
+}
+
+function isDependencyChangeIntent(intent: string): boolean {
+  const lower = intent.toLowerCase();
+  if (DEPENDENCY_VERB_REGEX.test(lower)) return true;
+  return DEPENDENCY_CONTEXT_VERB_REGEX.test(lower) && DEPENDENCY_NOUN_REGEX.test(lower);
 }
 
 function forbiddenFilesFor(intent: string, allowed: string[]): string[] {
