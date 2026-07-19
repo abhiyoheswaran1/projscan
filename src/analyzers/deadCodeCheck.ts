@@ -3,8 +3,11 @@ import path from 'node:path';
 import type { FileEntry, Issue } from '../types.js';
 import { buildCodeGraph } from '../core/codeGraph.js';
 import { getAdapterFor } from '../core/languages/registry.js';
+import { componentAdapter } from '../core/languages/componentAdapter.js';
+import { computeCoverageLedger, type CoverageLedger } from '../core/coverageLedger.js';
 
-const SOURCE_EXTENSIONS = new Set([
+// Files eligible to BE REPORTED as having unused exports.
+const FLAGGABLE_SOURCE_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
   '.js',
@@ -15,6 +18,15 @@ const SOURCE_EXTENSIONS = new Set([
   '.cts',
   '.py',
   '.pyw',
+]);
+
+// Files that must be PARSED so their imports count as usage, even though they
+// are never reported themselves. Single-file components (`.astro`, `.vue`,
+// `.svelte`) import project modules from their script blocks; omitting them
+// made every module imported only from a component look orphaned.
+const GRAPH_INPUT_EXTENSIONS = new Set([
+  ...FLAGGABLE_SOURCE_EXTENSIONS,
+  ...componentAdapter.extensions,
 ]);
 
 const JAVASCRIPT_SOURCE_EXTENSIONS = new Set([
@@ -58,14 +70,20 @@ interface PackageExports {
  * got picked up from a barrel.
  */
 export async function check(rootPath: string, files: FileEntry[]): Promise<Issue[]> {
-  const sourceFiles = files.filter((f) => SOURCE_EXTENSIONS.has(f.extension));
-  if (sourceFiles.length === 0) return [];
+  const graphInputs = files.filter((f) => GRAPH_INPUT_EXTENSIONS.has(f.extension));
+  const flaggableFiles = graphInputs.filter((f) => FLAGGABLE_SOURCE_EXTENSIONS.has(f.extension));
+  if (flaggableFiles.length === 0) return [];
 
   const publicEntries = await loadPublicEntries(rootPath);
-  const graph = await buildCodeGraph(rootPath, sourceFiles);
+  const graph = await buildCodeGraph(rootPath, graphInputs);
+
+  // "Nothing imports this" is only true if we could see every importer. When
+  // the repo holds code we have no adapter for, say so in the finding instead
+  // of asserting a reachability claim we cannot actually support.
+  const ledger = computeCoverageLedger(files);
 
   const issues: Issue[] = [];
-  for (const file of sourceFiles) {
+  for (const file of flaggableFiles) {
     if (isTestFile(file.relativePath)) continue;
     if (isBarrelFile(file.relativePath)) continue;
     if (isPublicEntry(file.relativePath, publicEntries)) continue;
@@ -94,7 +112,7 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
         .map((e) => e.name)
         .join(
           ', ',
-        )}${namedExports.length > 5 ? `, … +${namedExports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?`,
+        )}${namedExports.length > 5 ? `, … +${namedExports.length - 5}` : ''}) but nothing in the project imports this file. Dead code or awaiting wiring?${reachabilityCaveat(ledger)}`,
       severity: 'info',
       category: 'architecture',
       fixAvailable: false,
@@ -103,6 +121,22 @@ export async function check(rootPath: string, files: FileEntry[]): Promise<Issue
   }
 
   return issues;
+}
+
+/**
+ * Trailing sentence naming the code we could not read, so a reader (or an
+ * agent) can weigh this finding instead of trusting it flatly. Empty when
+ * coverage was complete — an unqualified claim should stay unqualified.
+ */
+function reachabilityCaveat(ledger: CoverageLedger): string {
+  if (!ledger.weakensReachability) return '';
+  const groups = ledger.blindSpots
+    .slice(0, 3)
+    .map((s) => `${s.extension} ×${s.fileCount}`)
+    .join(', ');
+  return ` Note: could not parse ${ledger.blindSpotFiles} code file${
+    ledger.blindSpotFiles === 1 ? '' : 's'
+  } (${groups}) — if any of them import this file, it is not dead.`;
 }
 
 function isTestFile(relativePath: string): boolean {
