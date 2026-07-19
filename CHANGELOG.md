@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.3]
+
+2026-07-19 - "Component-Aware Dead-Code Analysis"
+
+### Fixed
+
+- Dead-code analysis now parses `.astro`, `.vue`, and `.svelte` script regions
+  (Astro frontmatter and Vue/Svelte `<script>` blocks) when building its import
+  graph, so a module imported only from a single-file component is no longer
+  reported as having unused exports (#68). A new component adapter extracts
+  those script regions while preserving byte offsets and reuses the existing
+  JavaScript/TypeScript parser, resolver, and tsconfig path aliases. Component
+  files feed the graph as importers but are never themselves flagged as dead.
+
+### Added
+
+- Single-file-component imports now feed the shared code graph, so `impact`,
+  `coupling`, `hotspots`, and `search` see `.astro`, `.vue`, and `.svelte`
+  imports in addition to dead-code analysis.
+- Dead-code findings append a coverage caveat that names code files the analyzer
+  could not parse (no language adapter) when those files could plausibly import
+  the flagged module, so "nothing imports this file" is no longer asserted when
+  reachability could not be fully determined. Findings stay unqualified when
+  coverage is complete.
+
 ## [5.0.2]
 
 2026-07-14 - "Dependency-Intent Scope Patch"

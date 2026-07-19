@@ -1,6 +1,6 @@
 # Website Update Prompt
 
-Use this prompt after `projscan@5.0.2`, GitHub tag `v5.0.2`, and MCP Registry
+Use this prompt after `projscan@5.0.3`, GitHub tag `v5.0.3`, and MCP Registry
 metadata go live. Do not publish these website changes before that release
 exists.
 
@@ -16,7 +16,7 @@ Do not edit:
 The website pulls changelog content from release data.
 
 ```text
-Update the projscan website for projscan 5.0.2.
+Update the projscan website for projscan 5.0.3.
 
 Pages to update:
 - https://www.baseframelabs.com/apps/projscan
@@ -27,10 +27,10 @@ Do not edit:
 The website pulls changelog content from release data.
 
 Release headline:
-5.0.2: Dependency-intent contracts keep their manifests in scope
+5.0.3: Dead-code analysis reads Astro, Vue, and Svelte imports
 
 Primary story:
-projscan 5.0.2 keeps a Proof Contract's own scope executable. When `prove --intent` describes a dependency or tooling version change (for example "upgrade projscan to 5.0.1"), the generated contract now places `package.json` and `package-lock.json` in `allowedFiles` instead of `forbiddenFiles`, so an upgrade contract no longer blocks the very files its intent must touch; unrelated intents keep the manifests forbidden by default. This release also hardens Baseframe suite interop from 5.0.1: harness-evidence classification normalizes `./` prefixes and separators so externally supplied changed-file paths (MCP, imported proof) are recognized as sanctioned `.agentloop/` and `.agentflight/` writes, changed files are de-duplicated at intake so a single harness write can never be counted twice, and Team Proof Recipe `forbiddenFiles` entries receive the same harness guard as contract `forbiddenFiles`. The 5.0.0 review loops are unchanged: `proof-broker` and `review-gate` mint the next scoped Proof Contract only when `--bootstrap-contract` is requested, review stays local, and MCP continues to return evidence without executing proof.
+projscan 5.0.3 fixes a dead-code false positive on single-file-component projects. The unused-exports analyzer built its import graph from a fixed extension allowlist that excluded `.astro`, `.vue`, and `.svelte`, so a module imported only from Astro frontmatter or a Vue/Svelte `<script>` block read as orphaned and was reported as dead. A new component adapter parses those script regions and feeds their imports into the shared code graph, which also makes single-file-component imports visible to `impact`, `coupling`, `hotspots`, and `search`; the component files themselves are never flagged. This release also makes the analyzer honest about its own coverage: because "nothing imports this file" is only sound when every importer was parsed, dead-code findings now name any code the analyzer could not parse when that code could plausibly import the file, and stay unqualified when coverage is complete. The 5.0.0 review loops are unchanged: `proof-broker` and `review-gate` mint the next scoped Proof Contract only when `--bootstrap-contract` is requested, review stays local, and MCP continues to return evidence without executing proof.
 
 Above the fold:
 - Lead with: "ProjScan tells reviewers when to bootstrap, prove, or stop."
@@ -49,7 +49,7 @@ Above the fold:
 - Receipt command: `npx projscan prove --changed --contract .projscan/proof-contract.json --format markdown`
 - Keep Proof Cards nearby: `npx projscan assess --goal "make this repo safer to ship this week"`
 - Keep simulator nearby: `npx projscan simulate --plan "split bugHunt.ts into ranking, evidence, and output modules"`
-- Version: `5.0.2`
+- Version: `5.0.3`
 - MCP tools: `51 MCP tools`
 - MCP Registry name: `io.github.abhiyoheswaran1/projscan`
 - MCP Registry description: `Agent-first MCP. 11 AST adapters, 12 named languages, 51 tools, mission outcomes. Local.`
@@ -57,9 +57,9 @@ Above the fold:
 - Requirements: Node.js >= 18
 
 New release bullets:
-- Dependency-change `prove --intent` contracts place `package.json` and `package-lock.json` in `allowedFiles` instead of `forbiddenFiles`, so an upgrade contract no longer blocks its own intent; unrelated intents keep the manifests forbidden by default.
-- Harness-evidence classification normalizes leading `./` prefixes and separators, so externally supplied changed-file paths (MCP, imported proof) are recognized as sanctioned `.agentloop/` and `.agentflight/` writes; changed files are de-duplicated at intake so a single harness write is never counted twice in scope drift.
-- Team Proof Recipe `forbiddenFiles` entries receive the same harness-path guard as Proof Contract `forbiddenFiles`, so a recipe forbidding `.agentloop/**` or `.agentflight/**` no longer flags sanctioned harness evidence as forbidden scope drift.
+- Dead-code analysis now parses `.astro`, `.vue`, and `.svelte` script regions (Astro frontmatter and Vue/Svelte `<script>` blocks) when building its import graph, so a module imported only from a single-file component is no longer reported as having unused exports.
+- Single-file-component imports feed the shared code graph, so `impact`, `coupling`, `hotspots`, and `search` see `.astro`, `.vue`, and `.svelte` imports; the component files themselves are never flagged as dead.
+- Dead-code findings append a coverage caveat that names code the analyzer could not parse when that code could import the flagged file, so "nothing imports this file" is not asserted when reachability could not be fully determined; findings stay unqualified when coverage is complete.
 - Proof Receipts still classify sibling Baseframe harness writes (`.agentloop/`, `.agentflight/`) as informational harness evidence, and Proof Ledger matching still normalizes package-runner prefixes (`npx`, `npm exec`, `pnpm exec`/`dlx`, `yarn exec`/`dlx`, `bunx`, `node_modules/.bin`).
 - `projscan proof-broker --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware PR Passport output.
 - `projscan review-gate --intent <text> --bootstrap-contract` writes the next scoped Proof Contract only when explicitly requested and returns bootstrap-aware reviewer guidance.
@@ -115,7 +115,7 @@ Short product description:
 projscan is the local proof layer for AI-assisted software engineering. Review Gate combines contract, passport, broker, receipt, replay, sufficiency, and recipe evidence into one reviewer-readiness decision. It shows whether review can proceed, which proof debt remains, who must review, which command to run next, and whether the agent must stop and recontract. ProjScan keeps source local, users need no ProjScan account or API key, and MCP returns evidence without executing proof commands.
 
 Acceptance checks:
-- Every current-version label reads `5.0.2`.
+- Every current-version label reads `5.0.3`.
 - MCP count reads `51 MCP tools`.
 - Overview and docs show `projscan review-gate --intent`, `projscan review-gate --contract`, `projscan review-gate --ci`, `projscan proof-broker --contract`, `projscan passport --intent`, `projscan guard --contract`, `projscan prove --intent`, `projscan prove --run`, `projscan prove --changed`, `projscan assess --goal`, and `projscan simulate --plan`.
 - Show Review Gate status, allow-review decision, proof debt, recontract guidance, required reviewers, artifact path, proof replay, Proof Sufficiency, guard status, and MCP non-execution.
