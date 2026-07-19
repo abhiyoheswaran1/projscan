@@ -406,4 +406,69 @@ describe('deadCodeCheck', () => {
     const dead = issues.find((i) => i.id === 'unused-exports-pkg/lonely.py');
     expect(dead?.title).toMatch(/Unused names/);
   });
+
+  it('counts .astro frontmatter imports as importers', async () => {
+    const files = [
+      await writeFile(tmp, 'src/data/zurichMap.ts', 'export const zurichMap = { lat: 47 };'),
+      await writeFile(
+        tmp,
+        'src/pages/index.astro',
+        '---\nimport { zurichMap } from "../data/zurichMap.js";\n---\n<div>{zurichMap.lat}</div>\n',
+      ),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-src/data/zurichMap.ts')).toBeUndefined();
+  });
+
+  it('counts .vue and .svelte script imports as importers', async () => {
+    const files = [
+      await writeFile(tmp, 'src/data/vueData.ts', 'export const vueData = 1;'),
+      await writeFile(tmp, 'src/data/svelteData.ts', 'export const svelteData = 1;'),
+      await writeFile(
+        tmp,
+        'src/components/Card.vue',
+        '<template><p>hi</p></template>\n<script setup lang="ts">\nimport { vueData } from "../data/vueData.js";\n</script>\n',
+      ),
+      await writeFile(
+        tmp,
+        'src/components/Card.svelte',
+        '<script lang="ts">\nimport { svelteData } from "../data/svelteData.js";\n</script>\n<p>hi</p>\n',
+      ),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.find((i) => i.id === 'unused-exports-src/data/vueData.ts')).toBeUndefined();
+    expect(issues.find((i) => i.id === 'unused-exports-src/data/svelteData.ts')).toBeUndefined();
+  });
+
+  it('hedges the dead-code claim when unparseable code files could be importers', async () => {
+    const files = [
+      await writeFile(tmp, 'src/data/maybeDead.ts', 'export const maybeDead = 1;'),
+      await writeFile(tmp, 'lib/main.dart', 'void main() {}\n'),
+    ];
+    const issues = await check(tmp, files);
+    const dead = issues.find((i) => i.id === 'unused-exports-src/data/maybeDead.ts');
+    expect(dead).toBeDefined();
+    expect(dead?.description).toMatch(/\.dart/);
+    expect(dead?.description).toMatch(/could not/i);
+  });
+
+  it('states the dead-code claim plainly when coverage is complete', async () => {
+    const files = [await writeFile(tmp, 'src/data/reallyDead.ts', 'export const reallyDead = 1;')];
+    const issues = await check(tmp, files);
+    const dead = issues.find((i) => i.id === 'unused-exports-src/data/reallyDead.ts');
+    expect(dead).toBeDefined();
+    expect(dead?.description).not.toMatch(/could not/i);
+  });
+
+  it('never flags component files themselves as dead code', async () => {
+    const files = [
+      await writeFile(
+        tmp,
+        'src/components/Orphan.astro',
+        '---\nexport const prerender = true;\n---\n<div>orphan</div>\n',
+      ),
+    ];
+    const issues = await check(tmp, files);
+    expect(issues.filter((i) => i.id.includes('Orphan.astro'))).toEqual([]);
+  });
 });

@@ -10,6 +10,7 @@ import { csharpAdapter } from './csharpAdapter.js';
 import { kotlinAdapter } from './kotlinAdapter.js';
 import { swiftAdapter } from './swiftAdapter.js';
 import { cppAdapter } from './cppAdapter.js';
+import { componentAdapter } from './componentAdapter.js';
 import type { LanguageAdapter } from './LanguageAdapter.js';
 
 const adapters: LanguageAdapter[] = [
@@ -24,6 +25,7 @@ const adapters: LanguageAdapter[] = [
   kotlinAdapter,
   swiftAdapter,
   cppAdapter,
+  componentAdapter,
 ];
 const byExtension = new Map<string, LanguageAdapter>();
 
