@@ -7,6 +7,18 @@ const execFileAsync = promisify(execFile);
 
 const DEFAULT_BASE_REFS = ['origin/main', 'origin/master', 'main', 'master'];
 
+// projscan writes these directories itself (graph/session/workspace caches,
+// trust memory) as a side effect of running. They are never the user's work,
+// so they must never be reported as changed files — otherwise projscan counts
+// its own scratch output as uncommitted user changes, which is wrong on its
+// own terms and races non-deterministically against the git-status snapshot.
+// Paths here are already normalized to POSIX separators by normalizePath.
+const PROJSCAN_ARTIFACT_PREFIXES = ['.projscan-cache/', '.projscan-memory/'];
+
+function isProjscanArtifactPath(file: string): boolean {
+  return PROJSCAN_ARTIFACT_PREFIXES.some((prefix) => file.startsWith(prefix));
+}
+
 export interface ChangedFilesResult {
   available: boolean;
   reason?: string;
@@ -201,7 +213,10 @@ async function diffNames(
 
   const set = new Set<string>();
   for (const file of parseNulList(stdout)) {
-    if (file) set.add(normalizePath(file));
+    if (!file) continue;
+    const normalized = normalizePath(file);
+    if (isProjscanArtifactPath(normalized)) continue;
+    set.add(normalized);
   }
   for (const f of uncommitted) set.add(f);
 
@@ -222,7 +237,8 @@ async function statusNames(rootPath: string): Promise<string[]> {
     const status = raw.slice(0, 2);
     const file = raw.slice(3);
     if (!file) continue;
-    out.add(normalizePath(file));
+    const normalized = normalizePath(file);
+    if (!isProjscanArtifactPath(normalized)) out.add(normalized);
     if (isRenameOrCopyStatus(status)) index += 1;
   }
   return [...out];

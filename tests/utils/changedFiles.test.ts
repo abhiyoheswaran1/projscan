@@ -214,6 +214,31 @@ describe('getChangedFiles', () => {
     expect(result.files).toContain('uncommitted.txt');
   });
 
+  it('excludes projscan-owned cache and memory artifacts from changed files', async () => {
+    await fs.writeFile(path.join(repo, 'a.txt'), 'one');
+    await git(repo, ['add', 'a.txt']);
+    await git(repo, ['commit', '-q', '-m', 'first']);
+
+    // projscan writes these itself as a side effect of running; they are never
+    // the user's work, so they must not appear as changed files even when the
+    // repo has no .gitignore for them.
+    await fs.mkdir(path.join(repo, '.projscan-cache'), { recursive: true });
+    await fs.writeFile(path.join(repo, '.projscan-cache', 'graph.json'), '{}');
+    await fs.mkdir(path.join(repo, '.projscan-memory'), { recursive: true });
+    await fs.writeFile(path.join(repo, '.projscan-memory', 'memory.json'), '{}');
+    // A real edit alongside the artifacts, to prove filtering is selective.
+    await fs.writeFile(path.join(repo, 'src.ts'), 'export const x = 1;\n');
+
+    const result = await getChangedFiles(repo);
+
+    expect(result.available).toBe(true);
+    expect(result.files).toContain('src.ts');
+    expect(result.files).not.toContain('.projscan-cache/graph.json');
+    expect(result.files).not.toContain('.projscan-memory/memory.json');
+    expect(result.uncommittedFiles).not.toContain('.projscan-cache/graph.json');
+    expect(result.uncommittedFiles).not.toContain('.projscan-memory/memory.json');
+  });
+
   it('expands untracked nested directories to file paths', async () => {
     await fs.writeFile(path.join(repo, 'a.txt'), 'one');
     await git(repo, ['add', 'a.txt']);
