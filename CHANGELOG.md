@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [5.0.4]
+
+2026-11-24 - "Changed-File Hygiene and Dependency Security"
+
+### Fixed
+
+- Exclude ProjScan's own cache and memory artifacts from changed files (#70).
+
+### Security
+
+- Resolve development-dependency audit findings from 28 to 0 (#71).
+- Override sharp to 0.35.5 in the development Transformers dependency tree,
+  retaining `@xenova/transformers` 2.17.2 without a forced downgrade.
+
+### Chore
+
+- Add weekly Dependabot updates for npm dependencies and GitHub Actions.
+
 ## [5.0.3]
 
 2026-07-19 - "Component-Aware Dead-Code Analysis"
