@@ -144,6 +144,9 @@
     "picomatch": ">=2.3.2 <3 || >=4.0.4",
     "brace-expansion": ">=2.0.2 <3 || >=5.0.6",
     "flatted": "^3.4.2",
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "@xenova/transformers": {
+      "sharp": "0.35.5"
+    }
   }
 }
