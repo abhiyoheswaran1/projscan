@@ -39,7 +39,7 @@ async function ensureBuiltWasmViaCli(pkgDir, wasmName) {
  *
  * Uses the same flags the cli uses internally (extracted from the
  * compiled tree-sitter binary's strings table):
- *   -Os -g --target=wasm32-unknown-wasi -fPIC -shared
+ *   -Os -g --target=wasm32-wasip1 -fPIC -shared
  *   -Wl,--allow-undefined -Wl,--no-entry -nostdlib -fno-exceptions
  *   -fvisibility=hidden -Wl,--export=tree_sitter_<name>
  *
@@ -81,7 +81,7 @@ async function ensureBuiltWasmViaWasiSdk(pkgDir, wasmName, exportName) {
     [
       '-Os',
       '-g',
-      '--target=wasm32-unknown-wasi',
+      '--target=wasm32-wasip1',
       '-fPIC',
       '-shared',
       '-Wl,--allow-undefined',
